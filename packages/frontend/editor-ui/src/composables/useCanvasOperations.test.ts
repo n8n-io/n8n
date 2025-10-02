@@ -57,10 +57,10 @@ import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 import {
-	injectWorkflowHandle,
-	useWorkflowHandle,
-	type WorkflowHandle,
-} from '@/composables/useWorkflowHandle';
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 
 import { TelemetryHelpers } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
@@ -124,11 +124,11 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/composables/useWorkflowHandle', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
 	return {
 		...actual,
-		injectWorkflowHandle: vi.fn(),
+		injectWorkflowState: vi.fn(),
 	};
 });
 
@@ -154,14 +154,14 @@ describe('useCanvasOperations', () => {
 		},
 	};
 
-	let workflowHandle: WorkflowHandle;
+	let workflowState: WorkflowState;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ initialState });
 		setActivePinia(pinia);
 
-		workflowHandle = useWorkflowHandle();
-		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		vi.clearAllMocks();
 	});
@@ -2995,14 +2995,14 @@ describe('useCanvasOperations', () => {
 					credentialsUpdated: credentialsUpdatedRef,
 				};
 			});
-			const resetStateSpy = vi.spyOn(workflowHandle, 'resetState');
+			const resetStateSpy = vi.spyOn(workflowState, 'resetState');
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
 			nodeCreatorStore.setShowScrim = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
-			const setActiveExecutionId = vi.spyOn(workflowHandle, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
 
@@ -3162,7 +3162,7 @@ describe('useCanvasOperations', () => {
 		it('should initialize workspace and set execution data when execution is found', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const uiStore = mockedStore(useUIStore);
-			const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
+			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
 
 			const { openExecution } = useCanvasOperations();
 
@@ -3627,7 +3627,7 @@ describe('useCanvasOperations', () => {
 				renameNode: vi.fn(),
 			});
 
-			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
+			const setWorkflowName = vi.spyOn(workflowState, 'setWorkflowName');
 
 			const canvasOperations = useCanvasOperations();
 			const workflowDataWithName = {
