@@ -1,3 +1,13 @@
+## [1.114.1](https://github.com/n8n-io/n8n/compare/n8n@1.114.0...n8n@1.114.1) (2025-10-02)
+
+
+### Bug Fixes
+
+* **Anthropic Chat Model Node:** Fix Sonnet 4.5 not working with default topP ([#20286](https://github.com/n8n-io/n8n/issues/20286)) ([4cb9567](https://github.com/n8n-io/n8n/commit/4cb95677a94c539ed2c4542341b05ee4debb83bb))
+* **core:** Add `globals` and `locals` to denylist in native Python runner ([#20172](https://github.com/n8n-io/n8n/issues/20172)) ([b078c8f](https://github.com/n8n-io/n8n/commit/b078c8f4f483e17044c76c629745d8b1bc9936dc))
+
+
+
 # [1.114.0](https://github.com/n8n-io/n8n/compare/n8n@1.113.0...n8n@1.114.0) (2025-09-29)
 
 
