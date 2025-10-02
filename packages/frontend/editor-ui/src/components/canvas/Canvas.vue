@@ -53,6 +53,7 @@ import {
 import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
+import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
 import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';

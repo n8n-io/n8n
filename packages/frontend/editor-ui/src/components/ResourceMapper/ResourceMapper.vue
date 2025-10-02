@@ -30,6 +30,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/stores/projects.store';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { N8nButton, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 type Props = {

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
+import EmptySharedSectionActionBox from '@/components/Folders/EmptySharedSectionActionBox.vue';
 import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
 import FolderCard from '@/components/Folders/FolderCard.vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';

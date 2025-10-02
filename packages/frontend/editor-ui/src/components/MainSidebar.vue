@@ -32,6 +32,7 @@ import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import Logo from '@/components/Logo/Logo.vue';
+import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';

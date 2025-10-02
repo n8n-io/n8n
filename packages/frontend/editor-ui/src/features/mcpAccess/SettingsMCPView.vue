@@ -13,6 +13,7 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 
 import { ElSwitch } from 'element-plus';
 import {
