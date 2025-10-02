@@ -7,9 +7,10 @@ import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { ElMenu } from 'element-plus';
 import { computed, onBeforeMount } from 'vue';
 
+import { ElMenu } from 'element-plus';
+import { N8nButton, N8nMenuItem, N8nText, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	collapsed: boolean;
 	planName?: string;

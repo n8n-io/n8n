@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-
 import BaseMessage from './BaseMessage.vue';
+import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
 import N8nText from '../../N8nText';

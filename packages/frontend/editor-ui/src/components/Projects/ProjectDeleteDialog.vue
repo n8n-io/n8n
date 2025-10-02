@@ -5,6 +5,8 @@ import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
 import type { ResourceCounts } from '@/stores/projects.store';
 
+import { ElDialog, ElRadio } from 'element-plus';
+import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 type Props = {
 	currentProject: Project | null;
 	projects: ProjectListItem[];
@@ -70,7 +72,7 @@ const onDelete = () => {
 			<N8nText color="text-base">{{ locale.baseText('projects.settings.delete.message') }}</N8nText>
 			<div class="pt-l">
 				<ElRadio
-					:model-value="operation"
+					:model-value="operation ?? ''"
 					label="transfer"
 					class="mb-s"
 					@update:model-value="operation = 'transfer'"
@@ -92,7 +94,7 @@ const onDelete = () => {
 				</div>
 
 				<ElRadio
-					:model-value="operation"
+					:model-value="operation ?? ''"
 					label="wipe"
 					class="mb-s"
 					@update:model-value="operation = 'wipe'"

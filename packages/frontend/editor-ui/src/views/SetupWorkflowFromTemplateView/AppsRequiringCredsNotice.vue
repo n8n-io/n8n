@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import N8nNotice from '@n8n/design-system/components/N8nNotice';
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -9,6 +8,7 @@ import type {
 } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
 import { I18nT } from 'vue-i18n';
 
+import { N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
 
 const props = defineProps<{

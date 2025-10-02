@@ -61,20 +61,6 @@ import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
-import {
-	N8nBlockUi,
-	N8nButton,
-	N8nCallout,
-	N8nIconButton,
-	N8nInfoTip,
-	N8nLink,
-	N8nOption,
-	N8nSelect,
-	N8nSpinner,
-	N8nTabs,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
@@ -91,6 +77,20 @@ import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import { type SearchShortcut } from '@/types';
 
+import {
+	N8nBlockUi,
+	N8nButton,
+	N8nCallout,
+	N8nIconButton,
+	N8nInfoTip,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nSpinner,
+	N8nTabs,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );

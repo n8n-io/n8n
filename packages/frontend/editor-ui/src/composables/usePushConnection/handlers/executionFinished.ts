@@ -32,6 +32,7 @@ import { parse } from 'flatted';
 import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
+import { type WorkflowState } from '@/composables/useWorkflowState';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -43,7 +44,7 @@ export type SimplifiedExecution = Pick<
  */
 export async function executionFinished(
 	{ data }: ExecutionFinished,
-	options: { router: ReturnType<typeof useRouter> },
+	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
@@ -105,7 +106,7 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 
 	if (data.status === 'success') {
-		handleExecutionFinishedWithOther(successToastAlreadyShown);
+		handleExecutionFinishedWithOther(options.workflowState, successToastAlreadyShown);
 		successToastAlreadyShown = true;
 	}
 
@@ -124,10 +125,10 @@ export async function executionFinished(
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithOther(successToastAlreadyShown);
+		handleExecutionFinishedWithOther(options.workflowState, successToastAlreadyShown);
 	}
 
-	setRunExecutionData(execution, runExecutionData);
+	setRunExecutionData(execution, runExecutionData, options.workflowState);
 
 	continueEvaluationLoop(execution, options.router);
 }
@@ -345,13 +346,16 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-function handleExecutionFinishedSuccessfully(workflowName: string, message: string) {
-	const workflowsStore = useWorkflowsStore();
+function handleExecutionFinishedSuccessfully(
+	workflowName: string,
+	message: string,
+	workflowState: WorkflowState,
+) {
 	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
 
 	workflowHelpers.setDocumentTitle(workflowName, 'IDLE');
-	workflowsStore.setActiveExecutionId(undefined);
+	workflowState.setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: message,
 		type: 'success',
@@ -361,7 +365,10 @@ function handleExecutionFinishedSuccessfully(workflowName: string, message: stri
 /**
  * Handle the case when the workflow execution finished successfully.
  */
-export function handleExecutionFinishedWithOther(successToastAlreadyShown: boolean) {
+export function handleExecutionFinishedWithOther(
+	workflowState: WorkflowState,
+	successToastAlreadyShown: boolean,
+) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
@@ -397,12 +404,14 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 			handleExecutionFinishedSuccessfully(
 				workflowName,
 				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
+				workflowState,
 			);
 		}
 	} else if (!successToastAlreadyShown) {
 		handleExecutionFinishedSuccessfully(
 			workflowName,
 			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+			workflowState,
 		);
 	}
 }
@@ -410,6 +419,7 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 export function setRunExecutionData(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
+	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const nodeHelpers = useNodeHelpers();
@@ -422,14 +432,14 @@ export function setRunExecutionData(
 		return;
 	}
 
-	workflowsStore.setWorkflowExecutionData({
+	workflowState.setWorkflowExecutionData({
 		...workflowExecution,
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
 	});
 	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
-	workflowsStore.setActiveExecutionId(undefined);
+	workflowState.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
@@ -446,7 +456,7 @@ export function setRunExecutionData(
 			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
 	}
 
-	workflowsStore.setActiveExecutionId(undefined);
+	workflowState.setActiveExecutionId(undefined);
 
 	void useExternalHooks().run('pushConnection.executionFinished', {
 		itemsCount,

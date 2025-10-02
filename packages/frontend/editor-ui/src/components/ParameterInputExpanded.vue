@@ -17,6 +17,7 @@ import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
+import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	value: NodeParameterValueType;

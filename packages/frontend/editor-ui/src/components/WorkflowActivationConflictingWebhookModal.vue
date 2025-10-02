@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
+import { N8nButton, N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 const modalBus = createEventBus();
 const uiStore = useUIStore();
 const rootStore = useRootStore();

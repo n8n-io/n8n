@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
@@ -51,7 +53,6 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { ProjectTypes } from '@/types/projects.types';
 import { sanitizeFilename } from '@/utils/fileUtils';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { N8nInlineTextEdit } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -62,6 +63,13 @@ import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
+import {
+	N8nActionDropdown,
+	N8nBadge,
+	N8nButton,
+	N8nInlineTextEdit,
+	N8nTooltip,
+} from '@n8n/design-system';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
