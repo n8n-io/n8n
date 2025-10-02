@@ -36,6 +36,7 @@ import {
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -265,7 +266,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should return false for an existing workflow', () => {
-			workflowsStore.setWorkflowId('123');
+			useWorkflowState().setWorkflowId('123');
 			expect(workflowsStore.isNewWorkflow).toBe(false);
 		});
 	});
@@ -545,18 +546,6 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalled();
 			expect(Object.values(workflowsStore.workflowsById)).toEqual(mockWorkflows);
-		});
-	});
-
-	describe('setWorkflowName()', () => {
-		it('should set the workflow name correctly', () => {
-			workflowsStore.setWorkflowName({ newName: 'New Workflow Name', setStateDirty: false });
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
-		});
-
-		it('should propagate name to workflowObject for pre-exec expressions', () => {
-			workflowsStore.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
-			expect(workflowsStore.workflowObject.name).toBe('WF Title');
 		});
 	});
 
@@ -849,7 +838,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node success run data', () => {
-			workflowsStore.setWorkflowExecutionData(executionResponse);
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -873,7 +862,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should add node error event and track errored executions', async () => {
 			workflowsStore.workflow.pinData = {};
-			workflowsStore.setWorkflowExecutionData(executionResponse);
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -963,7 +952,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1018,7 +1007,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',

@@ -77,7 +77,6 @@ import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
-import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
@@ -745,29 +744,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value = createEmptyWorkflow();
 	}
 
-	function resetState() {
-		removeAllConnections({ setStateDirty: false });
-		removeAllNodes({ setStateDirty: false, removePinData: true });
-
-		setWorkflowExecutionData(null);
-		resetAllNodesIssues();
-
-		setActive(defaults.active);
-		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-		setWorkflowName({ newName: '', setStateDirty: false });
-		setWorkflowSettings({ ...defaults.settings });
-		setWorkflowTagIds([]);
-
-		setActiveExecutionId(undefined);
-		executingNode.value.length = 0;
-		executionWaitingForWebhook.value = false;
-	}
-
-	function setWorkflowId(id?: string) {
-		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
-		workflowObject.value.id = workflow.value.id;
-	}
-
 	function setUsedCredentials(data: IUsedCredential[]) {
 		workflow.value.usedCredentials = data;
 		usedCredentials.value = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
@@ -901,7 +877,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
-			setActive(true);
+			workflow.value.active = true;
 		}
 	}
 
@@ -914,7 +890,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[targetWorkflowId].active = false;
 		}
 		if (targetWorkflowId === workflow.value.id) {
-			setActive(false);
+			workflow.value.active = false;
 		}
 	}
 
@@ -922,10 +898,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const data = await workflowsApi.getActiveWorkflows(rootStore.restApiContext);
 		activeWorkflows.value = data;
 		return data;
-	}
-
-	function setActive(active: boolean) {
-		workflow.value.active = active;
 	}
 
 	function setIsArchived(isArchived: boolean) {
@@ -948,18 +920,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			newName = newWorkflow.name;
 		} catch (e) {}
 		return newName;
-	}
-
-	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		if (workflowResultData?.data?.waitTill) {
-			delete workflowResultData.data.resultData.runData[
-				workflowResultData.data.resultData.lastNodeExecuted as string
-			];
-		}
-		workflowExecutionData.value = workflowResultData;
-		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
-		workflowExecutionResultDataLastUpdate.value = Date.now();
-		workflowExecutionStartedData.value = undefined;
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -995,10 +955,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setPinData(validPinData);
 
 		dataPinningEventBus.emit('pin-data', validPinData);
-	}
-
-	function setWorkflowTagIds(tags: string[]) {
-		workflow.value.tags = tags;
 	}
 
 	function addWorkflowTagIds(tags: string[]) {
@@ -1218,15 +1174,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
-	function removeAllConnections(data: { setStateDirty: boolean }): void {
-		if (data?.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-
-		workflow.value.connections = {};
-		workflowObject.value.setConnections({});
-	}
-
 	function removeAllNodeConnection(
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
@@ -1366,13 +1313,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
-	function resetAllNodesIssues(): boolean {
-		workflow.value.nodes.forEach((node) => {
-			node.issues = undefined;
-		});
-		return true;
-	}
-
 	/**
 	 * @returns `true` if the object was changed
 	 */
@@ -1460,20 +1400,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 		}
-	}
-
-	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
-		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-
-		if (data.removePinData) {
-			workflow.value.pinData = {};
-		}
-
-		workflow.value.nodes.splice(0, workflow.value.nodes.length);
-		workflowObject.value.setNodes(workflow.value.nodes);
-		nodeMetadata.value = {};
 	}
 
 	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
@@ -2045,7 +1971,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionStartedData,
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
-		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
@@ -2116,13 +2041,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowData,
 		makeNewWorkflowShareable,
 		resetWorkflow,
-		resetState,
 		addNodeExecutionStartedData,
 		addExecutingNode,
 		removeExecutingNode,
-		setWorkflowId,
 		setUsedCredentials,
-		setWorkflowName,
 		setWorkflowVersionId,
 		replaceInvalidWorkflowCredentials,
 		setWorkflows,
@@ -2133,14 +2055,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowActive,
 		setWorkflowInactive,
 		fetchActiveWorkflows,
-		setActive,
 		setIsArchived,
 		getDuplicateCurrentWorkflowName,
-		setWorkflowExecutionData,
 		setWorkflowExecutionRunData,
-		setWorkflowSettings,
 		setWorkflowPinData,
-		setWorkflowTagIds,
 		setParentFolder,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
@@ -2152,15 +2070,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		unpinData,
 		addConnection,
 		removeConnection,
-		removeAllConnections,
 		removeAllNodeConnection,
 		renameNodeSelectedAndExecution,
-		resetAllNodesIssues,
 		updateNodeAtIndex,
 		setNodeIssue,
 		addNode,
 		removeNode,
-		removeAllNodes,
 		updateNodeProperties,
 		setNodeValue,
 		setNodeParameters,
@@ -2197,5 +2112,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowDataAndMakeShareable,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
+		defaults,
+		// This is exposed to ease the refactoring to the injected workflowState composable
+		// Please do not use outside this context
+		private: {
+			setWorkflowSettings,
+			setWorkflowName,
+			setActiveExecutionId,
+		},
 	};
 });

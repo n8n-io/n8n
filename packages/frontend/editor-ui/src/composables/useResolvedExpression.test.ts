@@ -5,6 +5,15 @@ import * as workflowHelpers from './useWorkflowHelpers';
 import { renderComponent } from '../__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
+
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
 
 async function renderTestComponent(...options: Parameters<typeof useResolvedExpression>) {
 	let resolvedExpression!: ReturnType<typeof useResolvedExpression>;
@@ -31,10 +40,15 @@ const mockResolveExpression = () => {
 	return mock;
 };
 
+let workflowState: WorkflowState;
+
 describe('useResolvedExpression', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.useFakeTimers();
+
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 	});
 
 	afterEach(() => {
@@ -105,7 +119,7 @@ describe('useResolvedExpression', () => {
 		const resolveExpressionSpy = mockResolveExpression();
 		resolveExpressionSpy.mockImplementation(() => workflowsStore.workflow.name);
 
-		workflowsStore.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
+		workflowState.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
 
 		const { resolvedExpressionString } = await renderTestComponent({
 			expression: '={{ $workflow.name }}',
@@ -116,7 +130,7 @@ describe('useResolvedExpression', () => {
 		expect(toValue(resolvedExpressionString)).toBe('Old Name');
 
 		// Update name and expect re-resolution
-		workflowsStore.setWorkflowName({ newName: 'New Name', setStateDirty: false });
+		workflowState.setWorkflowName({ newName: 'New Name', setStateDirty: false });
 		await nextTick();
 		vi.advanceTimersByTime(200);
 		expect(toValue(resolvedExpressionString)).toBe('New Name');
