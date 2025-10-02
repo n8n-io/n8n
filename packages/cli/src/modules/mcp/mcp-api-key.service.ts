@@ -1,8 +1,8 @@
-import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import { NextFunction, Response, Request } from 'express';
+import { NextFunction, Response } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -110,7 +110,7 @@ export class McpServerApiKeyService {
 	}
 
 	getAuthMiddleware() {
-		return async (req: Request, res: Response, next: NextFunction) => {
+		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			const authorizationHeader = req.header('authorization');
 
 			if (!authorizationHeader) {
@@ -142,7 +142,6 @@ export class McpServerApiKeyService {
 				return;
 			}
 
-			// @ts-ignore
 			req.user = user;
 
 			next();
