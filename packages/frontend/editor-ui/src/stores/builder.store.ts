@@ -32,6 +32,7 @@ import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useCredentialsStore } from './credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
+import { stringSizeInBytes } from '@/utils/typesUtils';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
@@ -71,6 +72,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		clearMessages,
 		mapAssistantMessageToUI,
 		clearRatingLogic,
+		getRunningTools,
 	} = useBuilderMessages();
 
 	// Computed properties
@@ -222,7 +224,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
-			const userMsg = createAssistantMessage('[Task aborted]', 'aborted-streaming');
+			const userMsg = createAssistantMessage(
+				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
+				'aborted-streaming',
+			);
 			chatMessages.value = [...chatMessages.value, userMsg];
 			return;
 		}
@@ -318,6 +323,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 
 		if (type === 'execution') {
+			const resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+			const resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+
+			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
 			trackingPayload.execution_status = executionStatus ?? '';
 			if (executionStatus === 'error') {
 				trackingPayload.error_message = errorMessage ?? '';
@@ -366,9 +375,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 					if (result.shouldClearThinking) {
 						assistantThinkingMessage.value = undefined;
-					}
-
-					if (result.thinkingMessage) {
+					} else {
+						// Always update thinking message, even when undefined (to clear it)
 						assistantThinkingMessage.value = result.thinkingMessage;
 					}
 				},
@@ -599,5 +607,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
 		updateBuilderCredits,
+		getRunningTools,
 	};
 });

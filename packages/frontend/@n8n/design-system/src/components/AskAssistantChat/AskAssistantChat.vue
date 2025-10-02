@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
@@ -12,6 +12,7 @@ import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssis
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPromptInput from '../N8nPromptInput';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
@@ -121,18 +122,17 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 				titleSource = errorMessage;
 			}
 
-			// Combine all updates from all tool messages
+			// Combine all updates from all messages in the group
 			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
 
-			// Create collapsed message with title logic based on final status
+			// Create collapsed message using last message as base, but with titles from titleSource
 			const collapsedMessage: ChatUI.ToolMessage = {
 				...lastMessage,
-				status: titleSource.status,
-				updates: combinedUpdates,
 				displayTitle: titleSource.displayTitle,
-				// Only set customDisplayTitle if status is running (for example "Adding X node")
 				customDisplayTitle:
 					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
+				status: titleSource.status,
+				updates: combinedUpdates,
 			};
 
 			result.push(collapsedMessage);
@@ -198,9 +198,15 @@ function onRateMessage(feedback: RatingFeedback) {
 	emit('feedback', feedback);
 }
 
+function getScrollViewport(): HTMLElement | null {
+	// The viewport is the parent of messagesRef (ScrollAreaViewport component)
+	return messagesRef.value?.parentElement || null;
+}
+
 function scrollToBottom() {
-	if (messagesRef.value) {
-		messagesRef.value?.scrollTo({
+	const viewport = getScrollViewport();
+	if (viewport && messagesRef.value) {
+		viewport.scrollTo({
 			top: messagesRef.value.scrollHeight,
 			behavior: 'smooth',
 		});
@@ -208,20 +214,20 @@ function scrollToBottom() {
 }
 
 function isScrolledToBottom(): boolean {
-	if (!messagesRef.value) return false;
+	const viewport = getScrollViewport();
+	if (!viewport || !messagesRef.value) return false;
 
 	const threshold = 10; // Allow for small rounding errors
 	const isAtBottom =
-		Math.abs(
-			messagesRef.value.scrollHeight - messagesRef.value.scrollTop - messagesRef.value.clientHeight,
-		) <= threshold;
+		Math.abs(viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight) <= threshold;
 
 	return isAtBottom;
 }
 
 function scrollToBottomImmediate() {
-	if (messagesRef.value) {
-		messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
+	const viewport = getScrollViewport();
+	if (viewport && messagesRef.value) {
+		viewport.scrollTop = messagesRef.value.scrollHeight;
 	}
 }
 
@@ -236,8 +242,8 @@ watch(
 		if (props.scrollOnNewMessage && messages.length > 0) {
 			// Wait for DOM updates before scrolling
 			await nextTick();
-			// Check if messagesRef is available after nextTick
-			if (messagesRef.value) {
+			// Check if viewport is available after nextTick
+			if (getScrollViewport()) {
 				scrollToBottom();
 			}
 		}
@@ -251,7 +257,8 @@ let scrollLockActive = false;
 let scrollHandler: (() => void) | null = null;
 
 onMounted(() => {
-	if (inputWrapperRef.value && messagesRef.value && 'ResizeObserver' in window) {
+	const viewport = getScrollViewport();
+	if (inputWrapperRef.value && viewport && 'ResizeObserver' in window) {
 		// Track user scroll to determine if they want to stay at bottom
 		let userIsAtBottom = true;
 
@@ -263,7 +270,7 @@ onMounted(() => {
 		};
 
 		// Monitor user scrolling
-		messagesRef.value.addEventListener('scroll', scrollHandler);
+		viewport.addEventListener('scroll', scrollHandler);
 
 		// Monitor input size changes
 		resizeObserver = new ResizeObserver(() => {
@@ -291,8 +298,9 @@ onMounted(() => {
 
 onUnmounted(() => {
 	// Remove scroll event listener to prevent memory leak
-	if (scrollHandler && messagesRef.value) {
-		messagesRef.value.removeEventListener('scroll', scrollHandler);
+	const viewport = getScrollViewport();
+	if (scrollHandler && viewport) {
+		viewport.removeEventListener('scroll', scrollHandler);
 		scrollHandler = null;
 	}
 
@@ -302,6 +310,30 @@ onUnmounted(() => {
 		resizeObserver = null;
 	}
 });
+
+function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
+	const $style = useCssModule();
+	return {
+		[$style.firstToolMessage]:
+			message.type === 'tool' &&
+			(messageCount === 0 || normalizedMessages.value[messageCount - 1].type !== 'tool'),
+		[$style.lastToolMessage]:
+			message.type === 'tool' &&
+			((messageCount === normalizedMessages.value.length - 1 && !props.loadingMessage) ||
+				(messageCount < normalizedMessages.value.length - 1 &&
+					normalizedMessages.value[messageCount + 1]?.type !== 'tool')),
+	};
+}
+
+function getMessageColor(message: ChatUI.AssistantMessage): string | undefined {
+	if (message.type === 'text' && message.role === 'assistant') {
+		const isTaskAbortedMessage = message.content === t('aiAssistant.builder.streamAbortedMessage');
+		if (isTaskAbortedMessage) {
+			return 'var(--color-text-base)';
+		}
+	}
+	return undefined;
+}
 
 // Expose focusInput method to parent components
 defineExpose({
@@ -326,65 +358,78 @@ defineExpose({
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div
-				v-if="normalizedMessages?.length || loadingMessage"
-				ref="messagesRef"
-				:class="$style.messages"
-			>
-				<div v-if="normalizedMessages?.length">
-					<data
-						v-for="(message, i) in normalizedMessages"
-						:key="message.id"
-						:data-test-id="
-							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
-						"
-					>
-						<MessageWrapper
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-							:streaming="streaming"
-							:is-last-message="i === normalizedMessages.length - 1"
-							@code-replace="() => emit('codeReplace', i)"
-							@code-undo="() => emit('codeUndo', i)"
-							@feedback="onRateMessage"
-						>
-							<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
-								<slot name="custom-message" v-bind="customMessageProps" />
-							</template>
-						</MessageWrapper>
-
-						<div
-							v-if="lastMessageQuickReplies.length && i === normalizedMessages.length - 1"
-							:class="$style.quickReplies"
-						>
-							<div :class="$style.quickRepliesTitle">
-								{{ t('assistantChat.quickRepliesTitle') }}
-							</div>
-							<div
-								v-for="opt in lastMessageQuickReplies"
-								:key="opt.type"
-								data-test-id="quick-replies"
-							>
-								<N8nButton
-									v-if="opt.text"
-									type="secondary"
-									size="mini"
-									@click="() => onQuickReply(opt)"
-								>
-									{{ opt.text }}
-								</N8nButton>
-							</div>
-						</div>
-					</data>
-					<slot name="messagesFooter" />
-				</div>
-				<div
-					v-if="loadingMessage"
-					:class="{ [$style.message]: true, [$style.loading]: normalizedMessages?.length }"
+			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
+				<N8nScrollArea
+					type="hover"
+					:enable-vertical-scroll="true"
+					:enable-horizontal-scroll="false"
 				>
-					<AssistantLoadingMessage :message="loadingMessage" />
-				</div>
+					<div ref="messagesRef" :class="$style.messagesContent">
+						<div v-if="normalizedMessages?.length">
+							<data
+								v-for="(message, i) in normalizedMessages"
+								:key="message.id"
+								:data-test-id="
+									message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
+								"
+							>
+								<MessageWrapper
+									:message="message"
+									:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
+									:user="user"
+									:streaming="streaming"
+									:is-last-message="i === normalizedMessages.length - 1"
+									:class="getMessageStyles(message, i)"
+									:color="getMessageColor(message)"
+									@code-replace="() => emit('codeReplace', i)"
+									@code-undo="() => emit('codeUndo', i)"
+									@feedback="onRateMessage"
+								>
+									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
+										<slot name="custom-message" v-bind="customMessageProps" />
+									</template>
+								</MessageWrapper>
+
+								<div
+									v-if="lastMessageQuickReplies.length && i === normalizedMessages.length - 1"
+									:class="$style.quickReplies"
+								>
+									<div :class="$style.quickRepliesTitle">
+										{{ t('assistantChat.quickRepliesTitle') }}
+									</div>
+									<div
+										v-for="opt in lastMessageQuickReplies"
+										:key="opt.type"
+										data-test-id="quick-replies"
+									>
+										<N8nButton
+											v-if="opt.text"
+											type="secondary"
+											size="mini"
+											@click="() => onQuickReply(opt)"
+										>
+											{{ opt.text }}
+										</N8nButton>
+									</div>
+								</div>
+							</data>
+							<slot name="messagesFooter" />
+						</div>
+						<div
+							v-if="loadingMessage"
+							:class="{
+								[$style.message]: true,
+								[$style.loading]: normalizedMessages?.length,
+								[$style.firstToolMessage]:
+									normalizedMessages?.length === 0 ||
+									normalizedMessages[normalizedMessages.length - 1].type !== 'tool',
+								[$style.lastToolMessage]: true,
+							}"
+						>
+							<AssistantLoadingMessage :message="loadingMessage" />
+						</div>
+					</div>
+				</N8nScrollArea>
 			</div>
 			<div
 				v-else-if="showPlaceholder"
@@ -491,37 +536,25 @@ defineExpose({
 	left: 0;
 	width: 100%;
 	height: 100%;
+}
+
+.messagesContent {
 	padding: var(--spacing-xs);
 	padding-bottom: var(--spacing-xl); // Extra padding for fade area
-	overflow-y: auto;
-
-	@supports not (selector(::-webkit-scrollbar)) {
-		scrollbar-width: thin;
-	}
-	@supports selector(::-webkit-scrollbar) {
-		&::-webkit-scrollbar {
-			width: var(--spacing-2xs);
-		}
-		&::-webkit-scrollbar-thumb {
-			border-radius: var(--spacing-xs);
-			background: var(--color-foreground-dark);
-			border: var(--spacing-5xs) solid white;
-		}
-	}
-
-	& + & {
-		padding-top: 0;
-	}
 }
 
 .message {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-s);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
+}
 
-	&.loading {
-		margin-top: var(--spacing-m);
-	}
+.firstToolMessage {
+	margin-top: var(--spacing-m);
+}
+
+.lastToolMessage {
+	margin-bottom: var(--spacing-l);
 }
 
 .chatTitle {
@@ -554,6 +587,7 @@ defineExpose({
 
 .quickReplies {
 	margin-top: var(--spacing-s);
+
 	> * {
 		margin-bottom: var(--spacing-3xs);
 	}
