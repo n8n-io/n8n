@@ -1,14 +1,20 @@
 <script lang="ts" setup>
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+
 defineProps<{
 	title: string;
 	suffix?: string;
+	suffixIcon?: IconOrEmoji;
 }>();
 </script>
 
 <template>
 	<span :class="$style.container">
 		<span :class="$style.title">{{ title }}</span>
-		<span v-if="suffix" :class="$style.suffix">{{ suffix }}</span>
+		<span v-if="suffix" :class="$style.suffix">
+			<ProjectIcon v-if="suffixIcon" :icon="suffixIcon" size="mini" :border-less="true" />
+			{{ suffix }}
+		</span>
 	</span>
 </template>
 
@@ -30,6 +36,9 @@ defineProps<{
 }
 
 .suffix {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
 	color: var(--color-text-light);
 	overflow: hidden;
 	text-overflow: ellipsis;
