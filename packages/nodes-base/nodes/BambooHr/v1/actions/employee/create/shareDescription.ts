@@ -102,7 +102,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'non-exempt',
 				},
 			],
-			default: 'exempt',
+			default: 'non-exempt',
 		},
 		{
 			displayName: 'Gender',

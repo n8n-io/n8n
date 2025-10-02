@@ -138,7 +138,7 @@ export const engagementFields: INodeProperties[] = [
 						value: 'WAITING',
 					},
 				],
-				default: 'COMPLETED',
+				default: 'NOT_STARTED',
 			},
 			{
 				displayName: 'Subject',

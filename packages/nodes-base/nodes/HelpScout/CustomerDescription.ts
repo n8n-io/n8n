@@ -115,7 +115,7 @@ export const customerFields: INodeProperties[] = [
 						value: 'unknown',
 					},
 				],
-				default: 'female',
+				default: 'unknown',
 				description: 'Gender of this customer',
 			},
 			{

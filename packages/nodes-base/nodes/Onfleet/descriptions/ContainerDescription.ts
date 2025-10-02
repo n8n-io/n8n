@@ -53,7 +53,7 @@ const containerTypeField = {
 			value: 'workers',
 		},
 	],
-	default: 'organizations',
+	default: 'workers',
 } as INodeProperties;
 
 const containerIdField = {

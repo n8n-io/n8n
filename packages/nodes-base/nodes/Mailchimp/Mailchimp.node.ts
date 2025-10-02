@@ -341,7 +341,7 @@ export class Mailchimp implements INodeType {
 						value: 'unsubscribed',
 					},
 				],
-				default: 'cleaned',
+				default: 'subscribed',
 				description: "Subscriber's current status",
 			},
 			{

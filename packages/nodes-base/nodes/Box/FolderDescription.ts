@@ -288,7 +288,7 @@ export const folderFields: INodeProperties[] = [
 						value: 'DESC',
 					},
 				],
-				default: 'ASC',
+				default: 'DESC',
 				description:
 					'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
