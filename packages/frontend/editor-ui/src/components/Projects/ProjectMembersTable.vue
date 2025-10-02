@@ -89,7 +89,7 @@ const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
 		id: role.slug as ProjectRole,
 		label: role.displayName,
 		disabled: !role.licensed,
-		badge: !role.licensed ? i18n.baseText('projects.settings.role.upgrade.badge') : undefined,
+		badge: !role.licensed ? i18n.baseText('generic.upgrade') : undefined,
 		badgeProps: !role.licensed ? { theme: 'warning', bold: true } : undefined,
 	})),
 ]);
