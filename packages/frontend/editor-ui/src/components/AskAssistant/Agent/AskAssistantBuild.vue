@@ -40,7 +40,7 @@ const user = computed(() => ({
 
 const loadingMessage = computed(() => {
 	// Check if we have any running tool messages visible in the chat
-	const hasVisibleRunningTools = builderStore.getRunningTools(builderStore.chatMessages);
+	const hasVisibleRunningTools = builderStore.getRunningTools(builderStore.chatMessages).length > 0;
 	// Don't show loading message if tools are already visible and running
 	// to avoid duplicate display (tool messages show their own status)
 	if (hasVisibleRunningTools) {

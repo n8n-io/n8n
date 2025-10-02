@@ -179,11 +179,12 @@ export function useBuilderMessages() {
 		return shouldClearThinking;
 	}
 
+	function getToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.ToolMessage[] {
+		return messages.filter((msg): msg is ChatUI.ToolMessage => msg.type === 'tool');
+	}
+
 	function getRunningTools(messages: ChatUI.AssistantMessage[]) {
-		const allToolMessages = messages.filter(
-			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
-		);
-		return allToolMessages.some((msg) => msg.status === 'running');
+		return getToolMessages(messages).filter((msg) => msg.status === 'running');
 	}
 
 	/**
@@ -198,7 +199,7 @@ export function useBuilderMessages() {
 		hasAnyRunningTools: boolean;
 		isStillThinking: boolean;
 	} {
-		const hasAnyRunningTools = getRunningTools(messages);
+		const hasAnyRunningTools = getRunningTools(messages).length > 0;
 		if (hasAnyRunningTools) {
 			return {
 				hasAnyRunningTools: true,
@@ -206,7 +207,7 @@ export function useBuilderMessages() {
 			};
 		}
 
-		const hasCompletedTools = allToolMessages.some((msg) => msg.status === 'completed');
+		const hasCompletedTools = getToolMessages(messages).some((msg) => msg.status === 'completed');
 
 		// Find the last completed tool message
 		let lastCompletedToolIndex = -1;
