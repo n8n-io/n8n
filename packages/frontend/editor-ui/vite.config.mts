@@ -139,6 +139,7 @@ const plugins: UserConfig['plugins'] = [
 				? html
 						.replace('%CONFIG_TAGS%', '')
 						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
+						.replaceAll('/%7B%7BBASE_PATH%7D%7D', '//localhost:5678')
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
