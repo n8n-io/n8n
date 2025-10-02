@@ -121,7 +121,7 @@ To create default config: ${picocolors.cyan(`${execCommand} n8n-node cloud-suppo
 
 			this.log(`${picocolors.yellow('⚠️  n8n Cloud compatibility issues detected')}
 
-These lint failures prevent publication to n8n Cloud.
+These lint failures prevent verification to n8n Cloud.
 
 To disable cloud compatibility checks:
   ${picocolors.cyan(`${execCommand} n8n-node cloud-support disable`)}

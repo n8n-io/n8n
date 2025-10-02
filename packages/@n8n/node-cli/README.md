@@ -150,7 +150,7 @@ n8n-node lint --fix
 
 #### `n8n-node cloud-support`
 
-Manage n8n Cloud publication eligibility.
+Manage n8n Cloud eligibility.
 
 ```bash
 n8n-node cloud-support [enable|disable]
@@ -162,7 +162,7 @@ n8n-node cloud-support [enable|disable]
 | `enable` | Enable strict mode + default ESLint config |
 | `disable` | Allow custom ESLint config (disables cloud eligibility) |
 
-Strict mode enforces the default ESLint configuration and community node rules required for n8n Cloud publication. When disabled, you can customize your ESLint config but your node won't be eligible for cloud publication.
+Strict mode enforces the default ESLint configuration and community node rules required for n8n Cloud verification. When disabled, you can customize your ESLint config but your node won't be eligible for n8n Cloud verification.
 
 #### `n8n-node release`
 

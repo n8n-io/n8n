@@ -57,7 +57,7 @@ export default class CloudSupport extends Command {
 	private async disableCloudSupport(workingDir: string): Promise<void> {
 		intro(picocolors.inverse(' n8n-node cloud-support disable '));
 
-		log.warning(`This will make your node ineligible for n8n Cloud publication!
+		log.warning(`This will make your node ineligible for n8n Cloud verification!
 
 The following changes will be made:
   • Switch to ${picocolors.magenta('configWithoutCloudSupport')} in ${picocolors.cyan('eslint.config.mjs')}
@@ -86,7 +86,7 @@ The following changes will be made:
 		log.success(`Disabled strict mode in ${picocolors.cyan('package.json')}`);
 
 		outro(
-			'Cloud support disabled. Your node can pass linting but cannot be published to n8n Cloud.',
+			"Cloud support disabled. Your node may pass linting but it won't pass verification for n8n Cloud.",
 		);
 	}
 
@@ -141,12 +141,12 @@ export default configWithoutCloudSupport;
 				log.success(`✅ Cloud support is ${picocolors.green('ENABLED')}
   • Strict mode: ${picocolors.green('enabled')}
   • ESLint config: ${picocolors.green('using default config')}
-  • Status: ${picocolors.green('eligible')} for n8n Cloud publication`);
+  • Status: ${picocolors.green('eligible')} for n8n Cloud verification`);
 			} else {
 				log.warning(`⚠️  Cloud support is ${picocolors.yellow('DISABLED')}
   • Strict mode: ${isStrictMode ? picocolors.green('enabled') : picocolors.red('disabled')}
   • ESLint config: ${isUsingDefaultConfig ? picocolors.green('using default config') : picocolors.red('using custom config')}
-  • Status: ${picocolors.red('NOT eligible')} for n8n Cloud publication`);
+  • Status: ${picocolors.red('NOT eligible')} for n8n Cloud verification`);
 			}
 
 			const packageManager = (await detectPackageManager()) ?? 'npm';
