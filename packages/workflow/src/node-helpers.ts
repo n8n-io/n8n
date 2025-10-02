@@ -1233,7 +1233,6 @@ function addToIssuesIfMissing(
 	// TODO: Check what it really has when undefined
 	if (
 		(nodeProperties.type === 'string' &&
-			(nodeProperties.name !== 'fieldValue' || value === undefined) &&
 			(nodeProperties.name !== 'placeholder' || value === undefined) &&
 			(value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||

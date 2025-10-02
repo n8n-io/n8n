@@ -235,17 +235,25 @@ export function prepareFormData({
 			input.isTextarea = true;
 		} else if (fieldType === 'html') {
 			input.isHtml = true;
-			input.html = field.html as string;
+			if (typeof field.html === 'string') {
+				input.html = field.html;
+			}
 		} else if (fieldType === 'hiddenField') {
 			input.isHidden = true;
-			input.hiddenName = field.fieldName as string;
-			input.hiddenValue =
-				input.defaultValue === '' ? (field.fieldValue as string) : input.defaultValue;
+			if (typeof field.fieldName === 'string') {
+				input.hiddenName = field.fieldName;
+			}
+			const hiddenDefault = input.defaultValue === '' ? field.fieldValue : input.defaultValue;
+			if (typeof hiddenDefault === 'string') {
+				input.hiddenValue = hiddenDefault;
+			}
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
-			input.defaultValue =
-				input.defaultValue === '' ? (field.fieldValue as string) : input.defaultValue;
+			const defaultValue = input.defaultValue === '' ? field.fieldValue : input.defaultValue;
+			if (typeof defaultValue === 'string' || typeof defaultValue === 'number') {
+				input.defaultValue = defaultValue;
+			}
 		}
 
 		formData.formFields.push(input);

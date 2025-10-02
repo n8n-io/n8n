@@ -438,20 +438,20 @@ describe('FormTrigger, formWebhook', () => {
 					expect.objectContaining({
 						id: 'field-0',
 						label: 'Name',
-						defaultValue: undefined,
+						defaultValue: '',
 						inputRequired: 'form-required',
 						isInput: true,
 					}),
 					expect.objectContaining({
 						id: 'field-1',
 						label: 'Age',
-						defaultValue: undefined,
+						defaultValue: '',
 						isInput: true,
 					}),
 					expect.objectContaining({
 						id: 'field-2',
 						label: 'Gender',
-						defaultValue: undefined,
+						defaultValue: '',
 						isInput: true,
 					}),
 					expect.objectContaining({
@@ -516,7 +516,7 @@ describe('FormTrigger, formWebhook', () => {
 						expect.objectContaining({
 							id: 'field-0',
 							label: 'Name',
-							defaultValue: undefined,
+							defaultValue: '',
 							isInput: true,
 							inputRequired: 'form-required',
 						}),
@@ -730,30 +730,31 @@ describe('FormTrigger, prepareFormData', () => {
 			buttonLabel: 'Submit',
 		});
 
-		expect(result).toEqual(
-			expect.objectContaining({
-				testRun: true,
-				formTitle: 'Test Form',
-				formDescription: 'This is a test form',
-				formDescriptionMetadata: 'This is a test form',
-				formSubmittedText: 'Your response has been recorded',
-				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
-				formFields: [
-					expect.objectContaining({
-						id: 'field-0',
-						label: 'Name',
-						defaultValue: undefined,
-						placeholder: 'Enter your name',
-						isInput: true,
-					}),
-				],
-				useResponseData: undefined,
-				appendAttribution: true,
-				buttonLabel: 'Submit',
-				dangerousCustomCss: undefined,
-				formSubmittedHeader: undefined,
-			}),
-		);
+		expect(result).toEqual({
+			testRun: true,
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formDescriptionMetadata: 'This is a test form',
+			formSubmittedText: 'Your response has been recorded',
+			n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
+			formFields: [
+				{
+					id: 'field-0',
+					errorId: 'error-field-0',
+					label: 'Name',
+					inputRequired: 'form-required',
+					defaultValue: '',
+					placeholder: 'Enter your name',
+					isInput: true,
+					type: 'text',
+				},
+			],
+			useResponseData: undefined,
+			appendAttribution: true,
+			buttonLabel: 'Submit',
+			dangerousCustomCss: undefined,
+			formSubmittedHeader: undefined,
+		});
 	});
 
 	it('should set redirectUrl with http if protocol is missing', () => {
