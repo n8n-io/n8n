@@ -424,9 +424,7 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
-		if (isAiBuilderEnabled) {
-			this.settings.aiBuilder.enabled = isAiBuilderEnabled;
-		}
+		this.settings.aiBuilder.enabled = isAiBuilderEnabled;
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
