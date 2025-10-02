@@ -3,16 +3,15 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { canvasEventBus } from '@/event-bus/canvas';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
-import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup } from './types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',
@@ -32,7 +31,6 @@ export function useNodeCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
-	const rootStore = useRootStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -56,7 +54,7 @@ export function useNodeCommands(options: {
 		const { mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
 		return mergedNodes.map((node) => {
 			const { name, displayName } = node;
-			const src = getIconSource(node, rootStore.baseUrl);
+
 			return {
 				id: name,
 				title: i18n.baseText('commandBar.nodes.addNodeWithPrefix', {
@@ -68,11 +66,13 @@ export function useNodeCommands(options: {
 					i18n.baseText('commandBar.nodes.keywords.create'),
 					i18n.baseText('commandBar.nodes.keywords.node'),
 				],
-				icon: src.path
-					? {
-							html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
-						}
-					: undefined,
+				icon: {
+					component: NodeIcon as Component,
+					props: {
+						nodeType: node,
+						size: 24,
+					},
+				},
 				handler: async () => {
 					const nodes = await addNodes([{ type: name }]);
 					if (nodes && nodes.length > 0) {
@@ -95,7 +95,7 @@ export function useNodeCommands(options: {
 		return editableWorkflow.value.nodes.map((node) => {
 			const { id, name, type } = node;
 			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			const src = getIconSource(nodeType, rootStore.baseUrl);
+
 			return {
 				id,
 				title: i18n.baseText('commandBar.nodes.openNodeWithPrefix', {
@@ -103,11 +103,13 @@ export function useNodeCommands(options: {
 				}),
 				section: i18n.baseText('commandBar.sections.nodes'),
 				keywords: [type],
-				icon: src?.path
-					? {
-							html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
-						}
-					: undefined,
+				icon: {
+					component: NodeIcon,
+					props: {
+						nodeType,
+						size: 24,
+					},
+				},
 				handler: () => {
 					setNodeActive(id, 'command_bar');
 				},

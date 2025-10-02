@@ -11,14 +11,13 @@ import { VIEWS } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup, CommandBarItem } from './types';
 import { useTagsStore } from '@/stores/tags.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
@@ -36,7 +35,6 @@ export function useWorkflowNavigationCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
 	const projectsStore = useProjectsStore();
-	const rootStore = useRootStore();
 	const tagsStore = useTagsStore();
 	const sourceControlStore = useSourceControlStore();
 	const foldersStore = useFoldersStore();
@@ -225,10 +223,13 @@ export function useWorkflowNavigationCommands(options: {
 		let icon: CommandBarItem['icon'] | undefined;
 		if (matchedNodeType) {
 			const nodeType = nodeTypesStore.getNodeType(matchedNodeType);
-			const src = getIconSource(nodeType, rootStore.baseUrl);
-			if (src?.path) {
+			if (nodeType) {
 				icon = {
-					html: `<img src="${src.path}" style="width: 100%; height: 100%; object-fit: contain;" />`,
+					component: NodeIcon,
+					props: {
+						nodeType,
+						size: 24,
+					},
 				};
 			}
 		}
