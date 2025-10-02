@@ -449,42 +449,61 @@ export class Stripe implements INodeType {
 						//       meterEvent: create
 						// ----------------------------------
 
-						const eventName = this.getNodeParameter('eventName', i);
-						const customerId = this.getNodeParameter('customerId', i);
-						const value = this.getNodeParameter('value', i);
+						const eventName = this.getNodeParameter('eventName', i) as string;
+						const customerId = this.getNodeParameter('customerId', i) as string;
+						const value = this.getNodeParameter('value', i) as number;
 
-						if (typeof value !== 'number') {
-							throw new NodeOperationError(this.getNode(), 'Invalid value', { itemIndex: i });
-						}
-
-						const body = {
+						const body: IDataObject = {
 							event_name: eventName,
 							'payload[stripe_customer_id]': customerId,
 							'payload[value]': value.toString(),
-						} as IDataObject;
+						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						if (additionalFields.identifier) {
-							body.identifier = additionalFields.identifier as string;
-						}
+						if (typeof additionalFields === 'object' && additionalFields !== null) {
+							if (
+								'identifier' in additionalFields &&
+								typeof additionalFields.identifier === 'string'
+							) {
+								body.identifier = additionalFields.identifier;
+							}
 
-						if (additionalFields.timestamp) {
-							const timestamp = additionalFields.timestamp as string;
-							// Convert to Unix timestamp
-							body.timestamp = Math.floor(new Date(timestamp).getTime() / 1000).toString();
-						}
+							if (
+								'timestamp' in additionalFields &&
+								typeof additionalFields.timestamp === 'string'
+							) {
+								// Convert to Unix timestamp
+								body.timestamp = Math.floor(
+									new Date(additionalFields.timestamp).getTime() / 1000,
+								).toString();
+							}
 
-						if (additionalFields.customPayloadFields) {
-							const customFields = additionalFields.customPayloadFields as {
-								values: Array<{ key: string; value: string }>;
-							};
-							if (customFields.values && customFields.values.length > 0) {
-								customFields.values.forEach((field) => {
-									if (field.key && field.value) {
-										body[`payload[${field.key}]`] = field.value;
+							if (
+								'customPayloadFields' in additionalFields &&
+								typeof additionalFields.customPayloadFields === 'object' &&
+								additionalFields.customPayloadFields !== null
+							) {
+								const customFields = additionalFields.customPayloadFields as IDataObject;
+								if ('values' in customFields) {
+									const values = customFields.values;
+									if (Array.isArray(values)) {
+										values.forEach((field) => {
+											if (
+												typeof field === 'object' &&
+												field !== null &&
+												'key' in field &&
+												'value' in field
+											) {
+												const key = field.key;
+												const fieldValue = field.value;
+												if (typeof key === 'string' && typeof fieldValue === 'string') {
+													body[`payload[${key}]`] = fieldValue;
+												}
+											}
+										});
 									}
-								});
+								}
 							}
 						}
 

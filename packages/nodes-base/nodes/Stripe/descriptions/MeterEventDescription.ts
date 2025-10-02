@@ -67,7 +67,7 @@ export const meterEventFields: INodeProperties[] = [
 			},
 		},
 		default: 1,
-		description: 'The usage value for this meter event. Must be a positive integer.',
+		description: 'The usage value for this meter event. Can be positive or negative.',
 	},
 	{
 		displayName: 'Additional Fields',
