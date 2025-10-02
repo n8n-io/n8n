@@ -20,7 +20,7 @@ const flagsSchema = z.object({
 @Command({
 	name: 'export:nodes',
 	description: 'Export all node types to a JSON file',
-	examples: ['', '--output=./custom-nodes.json', '--output=/tmp/nodes.json'],
+	examples: ['', '--output=/tmp/nodes.json'],
 	flagsSchema,
 })
 export class ExportNodes extends BaseCommand<z.infer<typeof flagsSchema>> {
@@ -33,7 +33,6 @@ export class ExportNodes extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// Ensure output directory exists
 		await mkdir(outputDir, { recursive: true });
 
-		// Access LoadNodesAndCredentials directly from DI container
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		const { nodes } = loadNodesAndCredentials.types;
 
