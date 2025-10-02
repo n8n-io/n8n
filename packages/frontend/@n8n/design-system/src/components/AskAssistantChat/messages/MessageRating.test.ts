@@ -78,30 +78,6 @@ describe('MessageRating', () => {
 			expect(wrapper.getByText('assistantChat.builder.success')).toBeTruthy();
 		});
 
-		it('should hide rating buttons and show feedback form after thumbs up when showFeedback is true', async () => {
-			const wrapper = render(MessageRating, {
-				props: { showFeedback: true },
-				global: { stubs },
-			});
-
-			const upButton = wrapper.container.querySelector('[data-test-id="message-thumbs-up-button"]');
-			await fireEvent.click(upButton!);
-			await nextTick();
-
-			expect(
-				wrapper.container.querySelector('[data-test-id="message-thumbs-up-button"]'),
-			).toBeFalsy();
-			expect(
-				wrapper.container.querySelector('[data-test-id="message-thumbs-down-button"]'),
-			).toBeFalsy();
-			expect(
-				wrapper.container.querySelector('[data-test-id="message-feedback-input"]'),
-			).toBeTruthy();
-			expect(
-				wrapper.container.querySelector('[data-test-id="message-submit-feedback-button"]'),
-			).toBeTruthy();
-		});
-
 		it('should hide rating buttons and show feedback form after thumbs down when showFeedback is true', async () => {
 			const wrapper = render(MessageRating, {
 				props: { showFeedback: true },

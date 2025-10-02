@@ -35,7 +35,7 @@ function onRateButton(rating: 'up' | 'down') {
 	showRatingButtons.value = false;
 
 	emit('feedback', { rating });
-	if (props.showFeedback) {
+	if (props.showFeedback && rating === 'down') {
 		showFeedbackArea.value = true;
 		setTimeout(() => {
 			if (feedbackInput.value) {
