@@ -337,6 +337,14 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-save-button');
 	}
 
+	/**
+	 * Get the "Set up template" button that appears when credential setup is incomplete
+	 * @returns Locator for the setup workflow credentials button
+	 */
+	getSetupWorkflowCredentialsButton(): Locator {
+		return this.page.getByRole('button', { name: 'Set up template' });
+	}
+
 	// Production Checklist methods
 	getProductionChecklistButton(): Locator {
 		return this.page.getByTestId('suggested-action-count');
@@ -808,8 +816,8 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(
 			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"]`,
 		);
-  }
-  
+	}
+
 	getWorkflowName(): Locator {
 		return this.page.getByTestId('workflow-name-input');
 	}
