@@ -13,6 +13,7 @@ import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigat
 import { useProjectNavigationCommands } from './commandBar/useProjectNavigationCommands';
 import { useExecutionCommands } from './commandBar/useExecutionCommands';
 import { useEvaluationCommands } from './commandBar/useEvaluationCommands';
+import { useGenericCommands } from './commandBar/useGenericCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
@@ -74,11 +75,13 @@ export function useCommandBar() {
 		lastQuery,
 		activeNodeId,
 	});
+	const genericCommandGroup = useGenericCommands();
 
 	const canvasViewGroups: CommandGroup[] = [
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const executionViewGroups: CommandGroup[] = [
@@ -88,6 +91,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const workflowsListViewGroups: CommandGroup[] = [
@@ -96,6 +100,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const credentialsListViewGroups: CommandGroup[] = [
@@ -104,6 +109,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const executionsListViewGroups: CommandGroup[] = [
@@ -111,6 +117,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const dataStoresListViewGroups: CommandGroup[] = [
@@ -119,6 +126,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		credentialNavigationGroup,
 		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const evaluationViewGroups: CommandGroup[] = [
@@ -128,6 +136,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const fallbackViewCommands: CommandGroup[] = [
@@ -136,6 +145,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
@@ -168,7 +178,6 @@ export function useCommandBar() {
 	});
 
 	const context = computed(() => {
-		console.log(router.currentRoute.value.name);
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
 			case VIEWS.NEW_WORKFLOW:
