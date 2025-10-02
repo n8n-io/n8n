@@ -14,7 +14,7 @@
             "type": ["array", "null"]
         },
         "Tags": {
-            "type": "null"
+            "type": ["array", "null"]
         },
         "UserId": {
             "type": "string"
