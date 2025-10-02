@@ -107,11 +107,10 @@ test.describe('Resource Locator', () => {
 	});
 
 	// unlike RMC and remote options, RLC does not support loadOptionDependsOn
-	// NODE-3720
-	test.skip('should retrieve list options when other params throw errors', async ({ n8n }) => {
+	test('should retrieve list options when other params throw errors', async ({ n8n }) => {
 		await n8n.canvas.addNode(E2E_TEST_NODE_NAME, { closeNDV: false, action: 'Resource Locator' });
 
-		await n8n.ndv.getResourceLocatorInput('rlc').click();
+		await n8n.ndv.getResourceLocatorInput('rlc').getByTestId('rlc-input').focus();
 
 		await expect(n8n.page.getByTestId('rlc-item').first()).toBeVisible();
 		const visiblePopper = n8n.ndv.getVisiblePopper();
@@ -122,7 +121,7 @@ test.describe('Resource Locator', () => {
 
 		await n8n.ndv.getInputPanel().click(); // remove focus from input, hide expression preview
 
-		await n8n.ndv.getResourceLocatorInput('rlc').click();
+		await n8n.ndv.getResourceLocatorInput('rlc').getByTestId('rlc-input').focus();
 
 		await expect(n8n.page.getByTestId('rlc-item').first()).toBeVisible();
 		const visiblePopperAfter = n8n.ndv.getVisiblePopper();
