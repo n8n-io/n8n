@@ -849,10 +849,24 @@ async function onOpenRenameNodeModal(id: string) {
 		nameInput?.focus();
 		nameInput?.select();
 
+		let shouldSaveAfterRename = false;
+
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+				e.preventDefault();
+				shouldSaveAfterRename = true;
+				nameInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+			}
+		};
+		nameInput?.addEventListener('keydown', handleKeyDown);
+
 		const promptResponse = await promptResponsePromise;
+
+		nameInput?.removeEventListener('keydown', handleKeyDown);
 
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
+			if (shouldSaveAfterRename) await onSaveWorkflow();
 		}
 	} catch (e) {}
 }
