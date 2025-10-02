@@ -80,9 +80,12 @@ vi.mock('@/components/Projects/ProjectMembersRoleCell.vue', () => ({
 			roles: { type: Object, required: true },
 			actions: { type: Array, required: true },
 		},
-		emits: ['update:role'],
+		emits: ['update:role', 'badge-click'],
 		template: `
-			<div data-test-id="role-cell">
+			<div
+				data-test-id="role-cell"
+				@badge-click="$emit('badge-click', $event)"
+			>
 				<button
 					:data-test-id="'role-dropdown-' + data.id"
 					@click="$emit('update:role', { role: 'project:admin', userId: data.id })"
@@ -552,17 +555,19 @@ describe('ProjectMembersTable', () => {
 			expect(screen.getByText('Editor')).toBeInTheDocument();
 		});
 
-		it('should emit show-upgrade-dialog event when clicking disabled role', async () => {
+		it('should emit show-upgrade-dialog event when badge is clicked', () => {
 			const { emitted } = renderComponent();
 
-			// Find and click the upgrade button for viewer role (unlicensed)
-			const upgradeButton = screen.getByTestId('role-dropdown-3');
-			await userEvent.click(upgradeButton);
+			// Simulate badge-click event from ProjectMembersRoleCell
+			const roleCells = screen.getAllByTestId('role-cell');
+			expect(roleCells.length).toBeGreaterThan(0);
 
-			// The component should emit the show-upgrade-dialog event when
-			// a disabled role is clicked (this is handled by ProjectMembersRoleCell)
-			// We verify the event handler is properly connected
-			expect(emitted()).toBeDefined();
+			roleCells[0].dispatchEvent(
+				new CustomEvent('badge-click', { detail: 'project:viewer', bubbles: true }),
+			);
+
+			// The component should emit show-upgrade-dialog when badge is clicked
+			expect(emitted()).toHaveProperty('show-upgrade-dialog');
 		});
 
 		it('should add badge and badgeProps to unlicensed roles in roleActions', () => {

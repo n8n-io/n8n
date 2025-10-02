@@ -18,21 +18,34 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				items: { type: Array, required: true },
 				placement: { type: String },
 			},
-			emits: ['select'],
+			emits: ['select', 'badge-click'],
+			methods: {
+				handleRadioChange(itemId: string) {
+					// @ts-expect-error - $emit exists at runtime
+					this.$emit('select', itemId);
+				},
+				handleBadgeClick(event: CustomEvent) {
+					// @ts-expect-error - $emit exists at runtime
+					this.$emit('badge-click', event.detail);
+				},
+			},
 			template: `
-				<div data-test-id="action-dropdown">
+				<div
+					data-test-id="project-member-role-dropdown"
+					@change="handleRadioChange($event.target.value)"
+					@badge-click="handleBadgeClick($event)"
+				>
 					<div data-test-id="activator">
 						<slot name="activator" />
 					</div>
 					<ul data-test-id="dropdown-menu">
 						<li v-for="item in items" :key="item.id">
-							<button
+							<div
 								:data-test-id="'action-' + item.id"
 								:disabled="item.disabled"
-								@click="$emit('select', item.id)"
 							>
 								<slot name="menuItem" v-bind="item" />
-							</button>
+							</div>
 						</li>
 					</ul>
 				</div>
@@ -54,15 +67,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				color: { type: String },
 			},
 			template: '<i :data-icon="icon"></i>',
-		},
-		N8nTooltip: {
-			name: 'N8nTooltip',
-			props: {
-				content: { type: String },
-				placement: { type: String },
-				showAfter: { type: Number },
-			},
-			template: '<div data-test-id="tooltip" :title="content"><slot /></div>',
 		},
 	};
 });
@@ -243,7 +247,8 @@ describe('ProjectMembersRoleCell', () => {
 			const { emitted } = renderComponent();
 			const user = userEvent.setup();
 
-			await user.click(screen.getByTestId('action-project:admin'));
+			const adminRadio = screen.getByRole('radio', { name: /Admin/i });
+			await user.click(adminRadio);
 
 			expect(emitted()).toHaveProperty('update:role');
 			expect(emitted()['update:role'][0]).toEqual([
@@ -263,7 +268,8 @@ describe('ProjectMembersRoleCell', () => {
 			});
 			const user = userEvent.setup();
 
-			await user.click(screen.getByTestId('action-project:admin'));
+			const adminRadio = screen.getByRole('radio', { name: /Admin/i });
+			await user.click(adminRadio);
 
 			expect(emitted()['update:role'][0]).toEqual([
 				{
@@ -315,8 +321,8 @@ describe('ProjectMembersRoleCell', () => {
 		it('should handle disabled actions correctly', () => {
 			renderComponent();
 
-			const viewerButton = screen.getByTestId('action-project:viewer');
-			expect(viewerButton).toBeDisabled();
+			const viewerDiv = screen.getByTestId('action-project:viewer');
+			expect(viewerDiv).toHaveAttribute('disabled');
 		});
 
 		it('should show role descriptions in radio labels', () => {
@@ -381,40 +387,24 @@ describe('ProjectMembersRoleCell', () => {
 		});
 	});
 
-	describe('Upgrade Indicators', () => {
-		it('should show tooltip for disabled roles', () => {
+	describe('Badge Click for Disabled Roles', () => {
+		it('should forward badge-click event when emitted from dropdown', () => {
 			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
 				{ id: 'project:admin', label: 'Admin', disabled: false },
 				{ id: 'project:viewer', label: 'Viewer', disabled: true },
 			];
 
-			renderComponent({
+			const { emitted } = renderComponent({
 				props: {
 					actions: disabledActions,
 				},
 			});
 
-			// Tooltip should be rendered for disabled role
-			const tooltip = screen.getByTestId('tooltip');
-			expect(tooltip).toBeInTheDocument();
-		});
+			// Simulate badge-click event from N8nActionDropdown
+			const dropdown = screen.getByTestId('project-member-role-dropdown');
+			dropdown.dispatchEvent(new CustomEvent('badge-click', { detail: 'project:viewer' }));
 
-		it('should have click handler for disabled role', () => {
-			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
-				{ id: 'project:admin', label: 'Admin', disabled: false },
-				{ id: 'project:viewer', label: 'Viewer', disabled: true },
-			];
-
-			renderComponent({
-				props: {
-					actions: disabledActions,
-				},
-			});
-
-			// Verify the disabled role action button exists
-			const viewerActionButton = screen.getByTestId('action-project:viewer');
-			expect(viewerActionButton).toBeInTheDocument();
-			expect(viewerActionButton).toHaveAttribute('disabled');
+			expect(emitted()).toHaveProperty('badge-click');
 		});
 
 		it('should use lighter text color for disabled roles', () => {
@@ -430,22 +420,6 @@ describe('ProjectMembersRoleCell', () => {
 
 			// Verify that disabled role is rendered
 			expect(screen.getByText('Viewer')).toBeInTheDocument();
-		});
-
-		it('should not show tooltip for enabled roles', () => {
-			const enabledActions: Array<ActionDropdownItem<ProjectRole>> = [
-				{ id: 'project:admin', label: 'Admin', disabled: false },
-				{ id: 'project:editor', label: 'Editor', disabled: false },
-			];
-
-			renderComponent({
-				props: {
-					actions: enabledActions,
-				},
-			});
-
-			// No tooltip should be rendered for enabled roles
-			expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
 		});
 	});
 });

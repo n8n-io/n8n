@@ -1,19 +1,10 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue';
 import type { ProjectRole } from '@n8n/permissions';
-import {
-	type ActionDropdownItem,
-	N8nActionDropdown,
-	N8nIcon,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import { ElRadio } from 'element-plus';
 import { isProjectRole } from '@/utils/typeGuards';
 import type { ProjectMemberData } from '@/types/projects.types';
-import { useI18n } from '@n8n/i18n';
-
-const i18n = useI18n();
 const props = defineProps<{
 	data: ProjectMemberData;
 	roles: Record<ProjectRole, { label: string; desc: string }>;
@@ -22,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:role': [payload: { role: ProjectRole; userId: string }];
-	'show-upgrade-dialog': [];
+	'badge-click': [action: ProjectRole];
 }>();
 
 const selectedRole = ref<string>(props.data.role);
@@ -46,12 +37,6 @@ const onActionSelect = (role: ProjectRole) => {
 		userId: props.data.id,
 	});
 };
-
-const onDisabledRoleClick = (item: ActionDropdownItem<ProjectRole>) => {
-	if (item.disabled) {
-		emit('show-upgrade-dialog');
-	}
-};
 </script>
 
 <template>
@@ -62,6 +47,7 @@ const onDisabledRoleClick = (item: ActionDropdownItem<ProjectRole>) => {
 		:max-height="280"
 		data-test-id="project-member-role-dropdown"
 		@select="onActionSelect"
+		@badge-click="emit('badge-click', $event)"
 	>
 		<template #activator>
 			<button :class="$style.roleLabel" type="button">
@@ -70,38 +56,17 @@ const onDisabledRoleClick = (item: ActionDropdownItem<ProjectRole>) => {
 			</button>
 		</template>
 		<template #menuItem="item">
-			<N8nTooltip
-				v-if="item.disabled"
-				:content="i18n.baseText('projects.settings.role.upgrade.tooltip')"
-				placement="left"
-				:show-after="300"
-			>
-				<ElRadio
-					:model-value="selectedRole"
-					:label="item.id"
-					:disabled="item.disabled"
-					:class="{ [$style.disabledRadio]: item.disabled }"
-					@update:model-value="selectedRole = item.id"
-					@click="onDisabledRoleClick(item)"
-				>
-					<span :class="$style.radioLabel">
-						<N8nText color="text-light" class="pb-3xs">{{ item.label }}</N8nText>
-						<N8nText color="text-light" size="small">{{
-							isProjectRole(item.id) ? props.roles[item.id]?.desc || '' : ''
-						}}</N8nText>
-					</span>
-				</ElRadio>
-			</N8nTooltip>
 			<ElRadio
-				v-else
 				:model-value="selectedRole"
 				:label="item.id"
 				:disabled="item.disabled"
 				@update:model-value="selectedRole = item.id"
 			>
 				<span :class="$style.radioLabel">
-					<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
-					<N8nText color="text-dark" size="small">{{
+					<N8nText :color="item.disabled ? 'text-light' : 'text-dark'" class="pb-3xs">
+						{{ item.label }}
+					</N8nText>
+					<N8nText :color="item.disabled ? 'text-light' : 'text-dark'" size="small">{{
 						isProjectRole(item.id) ? props.roles[item.id]?.desc || '' : ''
 					}}</N8nText>
 				</span>
@@ -131,9 +96,5 @@ const onDisabledRoleClick = (item: ActionDropdownItem<ProjectRole>) => {
 	span {
 		white-space: normal;
 	}
-}
-
-.disabledRadio {
-	cursor: pointer;
 }
 </style>
