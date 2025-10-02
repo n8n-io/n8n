@@ -2,12 +2,17 @@ import { DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	DATA_TABLE_SYSTEM_TESTING_COLUMN,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
 import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
+import { DataStoreSystemColumnNameConflictError } from './errors/data-store-system-column-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 
 @Service()
@@ -41,6 +46,13 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 
 	async addColumn(dataTableId: string, schema: DataStoreCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
+			if (DATA_TABLE_SYSTEM_COLUMNS.includes(schema.name)) {
+				throw new DataStoreSystemColumnNameConflictError(schema.name);
+			}
+			if (schema.name === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
+				throw new DataStoreSystemColumnNameConflictError(schema.name, 'testing');
+			}
+
 			const existingColumnMatch = await em.existsBy(DataTableColumn, {
 				name: schema.name,
 				dataTableId,

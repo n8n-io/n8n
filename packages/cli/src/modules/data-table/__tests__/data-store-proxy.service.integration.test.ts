@@ -238,6 +238,33 @@ describe('DataStoreProxyService', () => {
 			PROJECT_ID,
 			options,
 			true,
+			undefined,
+		);
+	});
+
+	it('should call upsertRow dry run with correct parameters', async () => {
+		const options: UpsertDataStoreRowOptions = {
+			filter: {
+				filters: [{ columnName: 'name', condition: 'eq', value: 'test' }],
+				type: 'and',
+			},
+			data: { name: 'newName' },
+			dryRun: true,
+		};
+
+		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+			workflow,
+			node,
+			'dataStore-id',
+		);
+		await dataStoreOperations.upsertRow(options);
+
+		expect(dataStoreServiceMock.upsertRow).toBeCalledWith(
+			'dataStore-id',
+			PROJECT_ID,
+			options,
+			true,
+			true,
 		);
 	});
 });

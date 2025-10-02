@@ -169,7 +169,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 			});
 		}
 
-		await dataTableProxy.updateRow({
+		await dataTableProxy.updateRows({
 			filter: {
 				type: 'and',
 				filters: [
