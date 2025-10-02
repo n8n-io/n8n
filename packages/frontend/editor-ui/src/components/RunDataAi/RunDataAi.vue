@@ -242,6 +242,11 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	}
 	:global(.el-tree-node__content) {
 		margin-left: var(--spacing-xs);
+		background-color: transparent !important;
+
+		&:hover {
+			background-color: transparent !important;
+		}
 	}
 }
 .nodeIcon {
@@ -253,7 +258,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	background-color: var(--color-foreground-base);
 }
 .treeNode {
-	display: inline-flex;
+	display: flex;
 	border-radius: var(--border-radius-base);
 	align-items: center;
 	padding-right: var(--spacing-3xs);
@@ -262,15 +267,18 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	color: var(--color-text-dark);
 	margin-bottom: var(--spacing-3xs);
 	cursor: pointer;
+	width: 100%;
+	box-sizing: border-box;
 
 	&.isSelected {
 		font-weight: var(--font-weight-bold);
 	}
 	&:hover {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color-foreground-light);
 	}
 	&[data-tree-depth='0'] {
 		margin-left: calc(-1 * var(--spacing-2xs));
+		width: calc(100% + var(--spacing-2xs));
 	}
 
 	&::after {
