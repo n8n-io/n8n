@@ -57,6 +57,8 @@ import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
+import CommunityNodeFooter from '@/components/Node/NodeCreator/Panel/CommunityNodeFooter.vue';
+import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';

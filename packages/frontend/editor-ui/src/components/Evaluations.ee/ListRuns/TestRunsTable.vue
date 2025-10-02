@@ -9,6 +9,7 @@ import { statusDictionary } from '../shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
 import { I18nT } from 'vue-i18n';
 import { N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 const emit = defineEmits<{
 	rowClick: [run: TestRunRecord & { index: number }];
 }>();
