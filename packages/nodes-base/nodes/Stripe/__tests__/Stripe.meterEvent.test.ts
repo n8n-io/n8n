@@ -135,4 +135,150 @@ describe('Stripe Node - MeterEvent', () => {
 			{},
 		);
 	});
+
+	it('should handle custom payload fields correctly', async () => {
+		// Setup parameters with custom payload fields
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'resource':
+					return 'meterEvent';
+				case 'operation':
+					return 'create';
+				case 'eventName':
+					return 'api_usage';
+				case 'customerId':
+					return 'cus_12345678';
+				case 'value':
+					return 100;
+				case 'additionalFields':
+					return {
+						customPayloadFields: {
+							values: [
+								{ key: 'region', value: 'us-east-1' },
+								{ key: 'tier', value: 'premium' },
+							],
+						},
+					};
+				default:
+					return undefined;
+			}
+		});
+
+		const mockResponse = {
+			object: 'billing.meter_event',
+			event_name: 'api_usage',
+		};
+
+		mockHelpers.stripeApiRequest.mockResolvedValue(mockResponse);
+
+		await node.execute.call(mockExecuteFunctions);
+
+		// Verify API call includes custom payload fields
+		expect(mockHelpers.stripeApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/billing/meter_events',
+			{
+				event_name: 'api_usage',
+				'payload[stripe_customer_id]': 'cus_12345678',
+				'payload[value]': '100',
+				'payload[region]': 'us-east-1',
+				'payload[tier]': 'premium',
+			},
+			{},
+		);
+	});
+
+	it('should handle negative values correctly', async () => {
+		// Setup parameters with negative value
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'resource':
+					return 'meterEvent';
+				case 'operation':
+					return 'create';
+				case 'eventName':
+					return 'api_usage';
+				case 'customerId':
+					return 'cus_12345678';
+				case 'value':
+					return -25;
+				case 'additionalFields':
+					return {};
+				default:
+					return undefined;
+			}
+		});
+
+		const mockResponse = {
+			object: 'billing.meter_event',
+			event_name: 'api_usage',
+			payload: {
+				stripe_customer_id: 'cus_12345678',
+				value: '-25',
+			},
+		};
+
+		mockHelpers.stripeApiRequest.mockResolvedValue(mockResponse);
+
+		await node.execute.call(mockExecuteFunctions);
+
+		// Verify API call accepts negative value
+		expect(mockHelpers.stripeApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/billing/meter_events',
+			{
+				event_name: 'api_usage',
+				'payload[stripe_customer_id]': 'cus_12345678',
+				'payload[value]': '-25',
+			},
+			{},
+		);
+	});
+
+	it('should handle timestamp edge cases', async () => {
+		// Test with a timestamp at the maximum allowed (5 minutes in future)
+		const futureTimestamp = new Date(Date.now() + 4 * 60 * 1000).toISOString();
+
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'resource':
+					return 'meterEvent';
+				case 'operation':
+					return 'create';
+				case 'eventName':
+					return 'api_usage';
+				case 'customerId':
+					return 'cus_12345678';
+				case 'value':
+					return 10;
+				case 'additionalFields':
+					return {
+						timestamp: futureTimestamp,
+					};
+				default:
+					return undefined;
+			}
+		});
+
+		const mockResponse = {
+			object: 'billing.meter_event',
+			event_name: 'api_usage',
+		};
+
+		mockHelpers.stripeApiRequest.mockResolvedValue(mockResponse);
+
+		await node.execute.call(mockExecuteFunctions);
+
+		const expectedTimestamp = Math.floor(new Date(futureTimestamp).getTime() / 1000);
+
+		// Verify timestamp is converted to Unix timestamp (integer)
+		expect(mockHelpers.stripeApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/billing/meter_events',
+			expect.objectContaining({
+				timestamp: expectedTimestamp,
+			}),
+			{},
+		);
+	});
 });

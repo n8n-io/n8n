@@ -484,7 +484,7 @@ export class Stripe implements INodeType {
 							) {
 								const customFields = additionalFields.customPayloadFields;
 								if ('values' in customFields && Array.isArray(customFields.values)) {
-									customFields.values.forEach((field: unknown) => {
+									customFields.values.forEach((field) => {
 										if (
 											typeof field === 'object' &&
 											field !== null &&
