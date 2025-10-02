@@ -49,7 +49,7 @@ export class SidebarPage {
 	}
 
 	getUserMenu(): Locator {
-		return this.page.getByTestId('user-menu');
+		return this.page.getByTestId('main-sidebar-user-menu');
 	}
 
 	getLogoutMenuItem(): Locator {
@@ -70,7 +70,7 @@ export class SidebarPage {
 	}
 
 	getAdminPanel(): Locator {
-		return this.page.getByRole('menuitem', { name: 'Admin Panel' });
+		return this.page.getByTestId('cloud-admin');
 	}
 
 	getTrialBanner(): Locator {
