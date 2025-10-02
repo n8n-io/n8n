@@ -528,8 +528,8 @@ export class HttpRequestV3 implements INodeType {
 						requestOptions.body = uploadData;
 						requestOptions.headers = {
 							...requestOptions.headers,
-							contentLength: contentLength,
-							contentType: itemBinaryData.mimeType ?? 'application/octet-stream',
+							'content-length': contentLength,
+							'content-type': itemBinaryData.mimeType ?? 'application/octet-stream',
 						};
 					} else if (bodyContentType === 'raw') {
 						requestOptions.body = body;
@@ -928,7 +928,7 @@ export class HttpRequestV3 implements INodeType {
 
 				interface IResponse {
 					headers?: {
-						contentType?: string;
+						'content-type'?: string;
 						[key: string]: string | undefined;
 					};
 					body?: unknown;
@@ -974,7 +974,7 @@ export class HttpRequestV3 implements INodeType {
 						}
 					}
 
-					const responseContentType = response.headers['content-type'] ?? '';
+					const responseContentType = response.headers?.['content-type'] ?? '';
 					if (autoDetectResponseFormat) {
 						if (responseContentType.includes('application/json')) {
 							responseFormat = 'json';
