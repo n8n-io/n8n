@@ -217,6 +217,7 @@
 	"aiAssistant.builder.canvasPrompt.cancelButton": "Cancel",
 	"aiAssistant.builder.canvasPrompt.startManually.title": "Start manually",
 	"aiAssistant.builder.canvasPrompt.startManually.subTitle": "Add the first node",
+	"aiAssistant.builder.canvasPrompt.buildWithAI": "Build with AI",
 	"aiAssistant.builder.streamAbortedMessage": "[Task aborted]",
 	"aiAssistant.builder.executeMessage.description": "Complete these steps before executing your workflow:",
 	"aiAssistant.builder.executeMessage.noIssues": "Your workflow is ready to be executed",

@@ -16,6 +16,7 @@ import type {
 	CanvasNode,
 	CanvasNodeAddNodesRender,
 	CanvasNodeAIPromptRender,
+	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
@@ -103,6 +104,13 @@ export function useCanvasMapping({
 		};
 	}
 
+	function createChoicePromptRenderType(): CanvasNodeChoicePromptRender {
+		return {
+			type: CanvasNodeRenderType.ChoicePrompt,
+			options: {},
+		};
+	}
+
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const icon = getNodeIconSource(
@@ -142,6 +150,9 @@ export function useCanvasMapping({
 						break;
 					case `${CanvasNodeRenderType.AIPrompt}`:
 						acc[node.id] = createAIPromptRenderType();
+						break;
+					case `${CanvasNodeRenderType.ChoicePrompt}`:
+						acc[node.id] = createChoicePromptRenderType();
 						break;
 					default:
 						acc[node.id] = createDefaultNodeRenderType(node);

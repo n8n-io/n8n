@@ -1475,6 +1475,7 @@ function removeSourceControlEventBindings() {
 function addCommandBarEventBindings() {
 	canvasEventBus.on('create:sticky', onCreateSticky);
 }
+
 function removeCommandBarEventBindings() {
 	canvasEventBus.off('create:sticky', onCreateSticky);
 }
@@ -1803,12 +1804,12 @@ watch(
 			parameters: {},
 		};
 
-		const aiPromptItem: INodeUi = {
-			id: CanvasNodeRenderType.AIPrompt,
-			name: CanvasNodeRenderType.AIPrompt,
-			type: CanvasNodeRenderType.AIPrompt,
+		const choicePromptItem: INodeUi = {
+			id: CanvasNodeRenderType.ChoicePrompt,
+			name: CanvasNodeRenderType.ChoicePrompt,
+			type: CanvasNodeRenderType.ChoicePrompt,
 			typeVersion: 1,
-			position: [-300, -100],
+			position: [0, 0],
 			parameters: {},
 			draggable: false,
 		};
@@ -1817,7 +1818,7 @@ watch(
 			builderStore.isAIBuilderEnabled &&
 			builderStore.isAssistantEnabled &&
 			builderStore.assistantMessages.length === 0
-				? [aiPromptItem]
+				? [choicePromptItem]
 				: [addNodesItem];
 	},
 );

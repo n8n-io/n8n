@@ -45,6 +45,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	AIPrompt = 'n8n-nodes-base.aiPrompt',
+	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -84,6 +85,11 @@ export type CanvasNodeAddNodesRender = {
 
 export type CanvasNodeAIPromptRender = {
 	type: CanvasNodeRenderType.AIPrompt;
+	options: Record<string, never>;
+};
+
+export type CanvasNodeChoicePromptRender = {
+	type: CanvasNodeRenderType.ChoicePrompt;
 	options: Record<string, never>;
 };
 
@@ -134,7 +140,8 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeAIPromptRender;
+		| CanvasNodeAIPromptRender
+		| CanvasNodeChoicePromptRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
