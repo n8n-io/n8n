@@ -506,10 +506,10 @@ export function useCanvasOperations() {
 		const workflowObject = workflowsStore.workflowObject;
 
 		const inputNodeNames = replaceInputs
-			? uniq(workflowObject.getParentNodes(previousNode.name, 'main', 1))
+			? uniq(workflowObject.getParentNodes(previousNode.name, 'ALL', 1))
 			: [];
 		const outputNodeNames = replaceOutputs
-			? uniq(workflowObject.getChildNodes(previousNode.name, 'main', 1))
+			? uniq(workflowObject.getChildNodes(previousNode.name, 'ALL', 1))
 			: [];
 		const connectionPairs = [
 			...workflowObject.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
@@ -530,21 +530,27 @@ export function useCanvasOperations() {
 			);
 			deleteConnection(oldCanvasConnection, { trackHistory, trackBulk: false });
 
+			const newSourceIConnection = {
+				...pair[0],
+				node: pair[0].node === previousNode.name ? newNode.name : pair[0].node,
+			};
+			const newTargetIConnection = {
+				...pair[1],
+				node: pair[1].node === previousNode.name ? newNode.name : pair[1].node,
+			};
+
+			if (!isConnectionAllowed(sourceNode, targetNode, newSourceIConnection, newTargetIConnection))
+				continue;
+
 			const newCanvasConnection = mapLegacyConnectionToCanvasConnection(
 				sourceNode.name === previousNode.name ? newNode : sourceNode,
 				targetNode.name === previousNode.name ? newNode : targetNode,
-				[
-					{
-						...pair[0],
-						node: pair[0].node === previousNode.name ? newNode.name : pair[0].node,
-					},
-					{
-						...pair[1],
-						node: pair[1].node === previousNode.name ? newNode.name : pair[1].node,
-					},
-				],
+				[newSourceIConnection, newTargetIConnection],
 			);
+
 			createConnection(newCanvasConnection, { trackHistory });
+			revalidateNodeInputConnections(newCanvasConnection.target);
+			revalidateNodeOutputConnections(newCanvasConnection.source);
 		}
 
 		if (trackHistory && trackBulk) {
