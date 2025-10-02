@@ -194,6 +194,7 @@ describe('AskAssistantBuild', () => {
 			.fn()
 			.mockReturnValue({ success: true, workflowData: {}, newNodeIds: [] });
 		builderStore.getWorkflowSnapshot = vi.fn().mockReturnValue('{}');
+		builderStore.getRunningTools = vi.fn().mockReturnValue([]);
 		builderStore.workflowMessages = [];
 		builderStore.toolMessages = [];
 		builderStore.workflowPrompt = workflowPrompt;
