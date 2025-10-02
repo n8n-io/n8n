@@ -260,7 +260,7 @@ const {
 	editableWorkflowObject,
 	lastClickPosition,
 	startChat,
-	replaceNode,
+	addNodesAndConnections,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
@@ -1171,7 +1171,7 @@ function removeImportEventBindings() {
 /**
  * Node creator
  */
-const nodeCreatorReplaceTarget = ref<string | null>(null);
+const nodeCreatorReplaceTargetId = ref<string | undefined>(undefined);
 
 async function onAddNodesAndConnections(
 	{ nodes, connections }: AddedNodesAndConnections,
@@ -1182,7 +1182,7 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	if (nodeCreatorReplaceTarget.value !== null) {
+	if (nodeCreatorReplaceTargetId.value !== undefined) {
 		uiStore.resetLastInteractedWith();
 
 		nodes = nodes.map((x) => ({
@@ -1190,14 +1190,6 @@ async function onAddNodesAndConnections(
 			openDetail: false,
 		}));
 	}
-
-	const addedNodes = await addNodes(nodes, {
-		dragAndDrop,
-		position,
-		viewport: viewportBoundaries.value,
-		trackHistory: true,
-		telemetry: true,
-	});
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -1231,18 +1223,17 @@ async function onAddNodesAndConnections(
 		};
 	});
 
-	await addConnections(mappedConnections);
-
-	uiStore.resetLastInteractedWith();
+	const { addedNodes } = await addNodesAndConnections(nodes, mappedConnections, {
+		dragAndDrop,
+		position,
+		viewport: viewportBoundaries.value,
+		telemetry: true,
+		replaceNodeId: nodeCreatorReplaceTargetId.value,
+	});
 
 	if (addedNodes.length > 0) {
 		const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
 		selectNodes([lastAddedNodeId]);
-
-		if (nodeCreatorReplaceTarget.value !== null) {
-			replaceNode(nodeCreatorReplaceTarget.value, lastAddedNodeId);
-			nodeCreatorReplaceTarget.value = null;
-		}
 	}
 }
 
@@ -1270,7 +1261,7 @@ function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.setNodeCreatorState(options);
 
 	if (!options.createNodeActive) {
-		// nodeCreatorReplaceTarget.value = null;
+		nodeCreatorReplaceTargetId.value = undefined;
 		if (!options.hasAddedNodes) uiStore.resetLastInteractedWith();
 	}
 }
@@ -1315,7 +1306,7 @@ function onClickReplaceNode(nodeId: string) {
 	const nodeType = nodeTypesStore.getNodeType(node.type);
 	if (!nodeType) return;
 
-	nodeCreatorReplaceTarget.value = nodeId;
+	nodeCreatorReplaceTargetId.value = nodeId;
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_REPLACE_ACTION);
 	} else {

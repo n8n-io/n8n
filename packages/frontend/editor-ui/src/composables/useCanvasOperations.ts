@@ -4,6 +4,7 @@
  */
 
 import type {
+	AddedNode,
 	AddedNodesAndConnections,
 	IExecutionResponse,
 	INodeUi,
@@ -2313,6 +2314,49 @@ export function useCanvasOperations() {
 		}
 	}
 
+	async function addNodesAndConnections(
+		nodes: AddedNode[],
+		connections: CanvasConnectionCreateData[],
+		{
+			trackBulk = true,
+			trackHistory = true,
+			...options
+		}: AddNodesOptions & {
+			replaceNodeId?: string;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
+		},
+	) {
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		const addedNodes = await addNodes(nodes, {
+			...options,
+			trackHistory,
+			trackBulk: false,
+			telemetry: true,
+		});
+
+		await addConnections(connections, { trackHistory, trackBulk: false });
+
+		uiStore.resetLastInteractedWith();
+
+		if (addedNodes.length > 0 && options.replaceNodeId) {
+			const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
+			replaceNode(options.replaceNodeId, lastAddedNodeId, {
+				trackHistory,
+				trackBulk: false,
+			});
+		}
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+
+		return { addedNodes };
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2368,5 +2412,6 @@ export function useCanvasOperations() {
 		replaceNodeConnections,
 		tryToOpenSubworkflowInNewTab,
 		replaceNode,
+		addNodesAndConnections,
 	};
 }
