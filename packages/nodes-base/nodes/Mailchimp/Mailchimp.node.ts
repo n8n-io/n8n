@@ -341,7 +341,7 @@ export class Mailchimp implements INodeType {
 						value: 'unsubscribed',
 					},
 				],
-				default: '',
+				default: 'cleaned',
 				description: "Subscriber's current status",
 			},
 			{
@@ -383,7 +383,7 @@ export class Mailchimp implements INodeType {
 								value: 'text',
 							},
 						],
-						default: '',
+						default: 'html',
 						description: 'Type of email this member asked to get',
 					},
 					{
@@ -841,7 +841,7 @@ export class Mailchimp implements INodeType {
 								value: 'text',
 							},
 						],
-						default: '',
+						default: 'html',
 						description: 'Type of email this member asked to get',
 					},
 					{
@@ -870,7 +870,7 @@ export class Mailchimp implements INodeType {
 								value: 'unsubscribed',
 							},
 						],
-						default: '',
+						default: 'cleaned',
 						description: "Subscriber's current status",
 					},
 					{
@@ -959,7 +959,7 @@ export class Mailchimp implements INodeType {
 								value: 'text',
 							},
 						],
-						default: '',
+						default: 'html',
 						description: 'Type of email this member asked to get',
 					},
 					{
@@ -1127,7 +1127,7 @@ export class Mailchimp implements INodeType {
 								value: 'unsubscribed',
 							},
 						],
-						default: '',
+						default: 'cleaned',
 						description: "Subscriber's current status",
 					},
 					{
@@ -1512,7 +1512,7 @@ export class Mailchimp implements INodeType {
 								value: 'DESC',
 							},
 						],
-						default: '',
+						default: 'ASC',
 						description: 'Determines the order direction for sorted results',
 					},
 					{
@@ -1529,7 +1529,7 @@ export class Mailchimp implements INodeType {
 								value: 'send_time',
 							},
 						],
-						default: '',
+						default: 'create_time',
 						description: 'Returns files sorted by the specified field',
 					},
 					{
@@ -1554,7 +1554,7 @@ export class Mailchimp implements INodeType {
 								value: 'schedule',
 							},
 						],
-						default: '',
+						default: 'save',
 						description: 'The status of the campaign',
 					},
 				],

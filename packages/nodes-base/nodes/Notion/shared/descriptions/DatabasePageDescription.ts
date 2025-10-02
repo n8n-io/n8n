@@ -1377,7 +1377,7 @@ export const databasePageFields: INodeProperties[] = [
 										timestamp: [true],
 									},
 								},
-								default: '',
+								default: 'created_time',
 								description: 'The name of the property to filter by',
 							},
 							{
@@ -1405,7 +1405,7 @@ export const databasePageFields: INodeProperties[] = [
 										value: 'descending',
 									},
 								],
-								default: '',
+								default: 'ascending',
 								description: 'The direction to sort',
 							},
 						],

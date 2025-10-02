@@ -609,7 +609,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 					value: 3,
 				},
 			],
-			default: '',
+			default: 1,
 		},
 		{
 			displayName: 'Group Name or ID',

@@ -112,7 +112,7 @@ export const attendeeFields: INodeProperties[] = [
 		name: 'details',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 'polls',
 		description: 'The details to retrieve for the attendee',
 		options: [
 			{

@@ -48,7 +48,7 @@ export class SalesforceTrigger implements INodeType {
 				name: 'triggerOn',
 				description: 'Which Salesforce event should trigger the node',
 				type: 'options',
-				default: '',
+				default: 'accountCreated',
 				options: [
 					{
 						name: 'Account Created',
@@ -279,7 +279,7 @@ export class SalesforceTrigger implements INodeType {
 			workflowData.lastTimeChecked = endDate;
 
 			if (newItems.length > 0) {
-				return [this.helpers.returnJsonArray(newItems as IDataObject[])];
+				return [this.helpers.returnJsonArray(newItems)];
 			}
 
 			return null;

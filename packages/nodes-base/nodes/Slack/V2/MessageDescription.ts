@@ -68,7 +68,7 @@ export const sendToSelector: INodeProperties = {
 			value: 'user',
 		},
 	],
-	default: '',
+	default: 'channel',
 	placeholder: 'Select...',
 };
 
@@ -612,7 +612,7 @@ export const messageFields: INodeProperties[] = [
 										value: 'emoji',
 									},
 								],
-								default: '',
+								default: 'image',
 								placeholder: 'Select a type…',
 							},
 							{
@@ -1046,7 +1046,7 @@ export const messageFields: INodeProperties[] = [
 				value: 'user',
 			},
 		],
-		default: '',
+		default: 'channel',
 		placeholder: 'Select...',
 	},
 	{

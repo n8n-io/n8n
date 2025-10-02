@@ -19,7 +19,7 @@ export const folderMessageOperations: INodeProperties[] = [
 				action: 'Get many folder messages',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 

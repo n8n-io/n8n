@@ -171,7 +171,7 @@ const createAttributeOperations: INodeProperties[] = [
 	{
 		displayName: 'Type',
 		name: 'attributeType',
-		default: '',
+		default: 'boolean',
 		description: 'Attribute Type',
 		displayOptions: {
 			show: {

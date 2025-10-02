@@ -195,7 +195,7 @@ export const folderFields: INodeProperties[] = [
 				resource: ['folder'],
 			},
 		},
-		default: '',
+		default: 'view',
 		description: 'The type of sharing link to create',
 	},
 	{
@@ -218,7 +218,7 @@ export const folderFields: INodeProperties[] = [
 				resource: ['folder'],
 			},
 		},
-		default: '',
+		default: 'anonymous',
 		description: 'The type of sharing link to create',
 	},
 ];

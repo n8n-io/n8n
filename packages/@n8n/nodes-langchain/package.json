@@ -158,6 +158,7 @@
     "@types/pg": "^8.11.6",
     "@types/sanitize-html": "^2.11.0",
     "@types/temp": "^0.9.1",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
     "fast-glob": "catalog:",
     "jest-mock-extended": "^3.0.4",
     "n8n-core": "workspace:*",

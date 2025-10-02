@@ -110,7 +110,7 @@ export const dealFields: INodeProperties[] = [
 				value: 'Sales',
 			},
 		],
-		default: '',
+		default: 'Sales',
 		displayOptions: {
 			show: {
 				resource: ['deal'],
@@ -150,7 +150,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Stage',
 		name: 'stage',
 		type: 'options',
-		default: '',
+		default: 'New (Untouched)',
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
@@ -387,7 +387,7 @@ export const dealFields: INodeProperties[] = [
 						value: 'Sales',
 					},
 				],
-				default: '',
+				default: 'Sales',
 			},
 			{
 				displayName: 'Status',
@@ -413,7 +413,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Stage',
 				name: 'stage',
 				type: 'options',
-				default: '',
+				default: 'Contacted',
 				options: [
 					{
 						name: 'Contacted',

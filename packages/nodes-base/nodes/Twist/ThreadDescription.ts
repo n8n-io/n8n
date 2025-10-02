@@ -139,7 +139,7 @@ export const threadFields: INodeProperties[] = [
 										value: 'send_reply',
 									},
 								],
-								default: '',
+								default: 'open_url',
 							},
 							{
 								displayName: 'Button Text',
@@ -172,7 +172,7 @@ export const threadFields: INodeProperties[] = [
 										value: 'action',
 									},
 								],
-								default: '',
+								default: 'action',
 							},
 							{
 								displayName: 'URL',
@@ -341,7 +341,7 @@ export const threadFields: INodeProperties[] = [
 						value: 'is_starred',
 					},
 				],
-				default: '',
+				default: 'attached_to_me',
 				description:
 					'A filter can be one of <code>attached_to_me</code>, <code>everyone</code> and <code>is_starred</code>',
 			},
@@ -425,7 +425,7 @@ export const threadFields: INodeProperties[] = [
 										value: 'send_reply',
 									},
 								],
-								default: '',
+								default: 'open_url',
 							},
 							{
 								displayName: 'Button Text',
@@ -458,7 +458,7 @@ export const threadFields: INodeProperties[] = [
 										value: 'action',
 									},
 								],
-								default: '',
+								default: 'action',
 							},
 							{
 								displayName: 'URL',

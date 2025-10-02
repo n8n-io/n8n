@@ -25,7 +25,7 @@ export const worksheetOperations: INodeProperties[] = [
 				action: 'Get a worksheet',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 

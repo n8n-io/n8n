@@ -86,7 +86,7 @@ const field: INodeProperties[] = [
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',
-		default: '',
+		default: 'message',
 		options: [
 			{
 				name: 'Message',
@@ -107,7 +107,7 @@ const field: INodeProperties[] = [
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',
-		default: '',
+		default: 'message',
 		options: [
 			{
 				name: 'Message',
@@ -124,7 +124,7 @@ const field: INodeProperties[] = [
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',
-		default: '',
+		default: 'category',
 		options: [
 			{
 				name: 'Category',

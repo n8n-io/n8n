@@ -272,7 +272,7 @@ export class GoogleSheetsTrigger implements INodeType {
 												description: 'Manually specify the data range',
 											},
 										],
-										default: '',
+										default: 'specifyRangeA1',
 									},
 									{
 										displayName: 'Header Row',

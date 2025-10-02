@@ -60,7 +60,7 @@ export const userFields: INodeProperties[] = [
 				operation: ['upsert'],
 			},
 		},
-		default: '',
+		default: 'email',
 		description: 'Identifier to be used',
 	},
 	{

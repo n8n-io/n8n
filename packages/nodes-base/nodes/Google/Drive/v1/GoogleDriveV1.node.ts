@@ -761,7 +761,7 @@ const versionDescription: INodeTypeDescription = {
 									value: 'writer',
 								},
 							],
-							default: '',
+							default: 'commenter',
 						},
 						{
 							displayName: 'Type',
@@ -785,7 +785,7 @@ const versionDescription: INodeTypeDescription = {
 									value: 'anyone',
 								},
 							],
-							default: '',
+							default: 'user',
 							description:
 								'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles">here</a>',
 						},
@@ -1390,7 +1390,7 @@ const versionDescription: INodeTypeDescription = {
 							description: 'All drives',
 						},
 					],
-					default: '',
+					default: 'user',
 					description: 'The corpora to operate on',
 				},
 				{

@@ -110,7 +110,7 @@ export const userFields: INodeProperties[] = [
 						value: 'DECLINED',
 					},
 				],
-				default: '',
+				default: 'ACTIVE',
 				description:
 					"If provided, you'll get a filtered list of users with the corresponding status",
 			},
@@ -132,7 +132,7 @@ export const userFields: INodeProperties[] = [
 						value: 'HOURLYRATE',
 					},
 				],
-				default: '',
+				default: 'EMAIL',
 			},
 			{
 				displayName: 'Sort Order',
@@ -148,7 +148,7 @@ export const userFields: INodeProperties[] = [
 						value: 'DESCENDING',
 					},
 				],
-				default: '',
+				default: 'ASCENDING',
 			},
 		],
 	},

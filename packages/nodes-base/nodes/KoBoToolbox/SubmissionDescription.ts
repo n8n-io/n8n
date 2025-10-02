@@ -94,7 +94,7 @@ export const submissionFields: INodeProperties[] = [
 				operation: ['setValidation'],
 			},
 		},
-		default: '',
+		default: 'validation_status_approved',
 		options: [
 			{
 				name: 'Approved',

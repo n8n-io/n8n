@@ -905,7 +905,7 @@ export const userFields: INodeProperties[] = [
 								value: 'givenName',
 							},
 						],
-						default: '',
+						default: 'email',
 						description: 'Field to sort the results by',
 					},
 					{

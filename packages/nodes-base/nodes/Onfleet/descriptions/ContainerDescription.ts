@@ -53,7 +53,7 @@ const containerTypeField = {
 			value: 'workers',
 		},
 	],
-	default: '',
+	default: 'organizations',
 } as INodeProperties;
 
 const containerIdField = {
@@ -82,7 +82,7 @@ const insertTypeField = {
 			value: 1,
 		},
 	],
-	default: '',
+	default: -1,
 } as INodeProperties;
 
 const indexField = {

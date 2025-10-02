@@ -133,7 +133,7 @@ export const searchFields: INodeProperties[] = [
 			},
 		],
 		required: true,
-		default: '',
+		default: 'email',
 		displayOptions: {
 			show: {
 				resource: ['search'],

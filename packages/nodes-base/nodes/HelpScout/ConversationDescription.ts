@@ -88,7 +88,7 @@ export const conversationFields: INodeProperties[] = [
 				resource: ['conversation'],
 			},
 		},
-		default: '',
+		default: 'active',
 		description: 'Conversation status',
 	},
 	{
@@ -130,7 +130,7 @@ export const conversationFields: INodeProperties[] = [
 				resource: ['conversation'],
 			},
 		},
-		default: '',
+		default: 'chat',
 		description: 'Conversation type',
 	},
 	{
@@ -275,7 +275,7 @@ export const conversationFields: INodeProperties[] = [
 								value: 'reply',
 							},
 						],
-						default: '',
+						default: 'chat',
 					},
 					{
 						displayName: 'Text',
@@ -427,7 +427,7 @@ export const conversationFields: INodeProperties[] = [
 						value: 'threads',
 					},
 				],
-				default: '',
+				default: 'threads',
 				description: 'Allows embedding/loading of sub-entities',
 			},
 			{
@@ -511,7 +511,7 @@ export const conversationFields: INodeProperties[] = [
 						value: 'subject',
 					},
 				],
-				default: '',
+				default: 'createdAt',
 				description: 'Sorts the result by specified field',
 			},
 			{

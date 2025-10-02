@@ -370,7 +370,7 @@ export class Vonage implements INodeType {
 								value: 3,
 							},
 						],
-						default: '',
+						default: 0,
 						description: 'The Data Coding Scheme value of the message',
 					},
 					{

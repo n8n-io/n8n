@@ -279,7 +279,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'emailCustomerQuarantinedReason',
 				description: 'The reason why the email address has been quarantined',
 				type: 'options',
-				default: '',
+				default: 'SUSPENSION_REMEDIATION',
 				options: [
 					{
 						name: 'Suspension Remediation',
@@ -300,7 +300,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'employmentRole',
 				description: 'Job role',
 				type: 'options',
-				default: '',
+				default: 'accounting',
 				options: [
 					{
 						name: 'Accounting',
@@ -417,7 +417,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'employmentSeniority',
 				description: 'Job Seniority',
 				type: 'options',
-				default: '',
+				default: 'director',
 				options: [
 					{
 						name: 'Director',
@@ -462,7 +462,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'employmentSubRole',
 				description: 'Job sub role',
 				type: 'options',
-				default: '',
+				default: 'account_executive',
 				options: [
 					{
 						name: 'Account Executive',
@@ -1043,7 +1043,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'inferredLanguageCodes',
 				description: 'Inferred languages based on location. ISO 639-1.',
 				type: 'options',
-				default: '',
+				default: 'ab',
 				options: [
 					{
 						name: 'Abkhazian',
@@ -1806,7 +1806,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'latestTrafficSource',
 				description: 'The source of the latest session for a contact',
 				type: 'options',
-				default: '',
+				default: 'DIRECT_TRAFFIC',
 				options: [
 					{
 						name: 'Direct Traffic',
@@ -2090,7 +2090,7 @@ export const contactFields: INodeProperties[] = [
 				description:
 					'The contact’s time zone. This can be set automatically by HubSpot based on other contact properties. It can also be set manually for each contact.',
 				type: 'options',
-				default: '',
+				default: 'atlantic_slash_cape_verde',
 				options: [
 					{
 						name: 'UTC -01:00 Atlantic Cape Verde',

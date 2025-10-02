@@ -159,7 +159,7 @@ export const zoneCertificateFields: INodeProperties[] = [
 						value: 'pending',
 					},
 				],
-				default: '',
+				default: 'active',
 				description: "Status of the zone's custom SSL",
 			},
 		],

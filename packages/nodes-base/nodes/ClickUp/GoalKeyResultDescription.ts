@@ -91,7 +91,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				value: 'percentage',
 			},
 		],
-		default: '',
+		default: 'automatic',
 		displayOptions: {
 			show: {
 				resource: ['goalKeyResult'],

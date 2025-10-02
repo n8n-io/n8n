@@ -211,7 +211,7 @@ export const memberFields: INodeProperties[] = [
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
-				default: {},
+				default: 0,
 				options: [
 					{
 						name: 'Owner',

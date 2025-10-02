@@ -209,7 +209,7 @@ export function getFilters(
 									value: 'neq',
 								},
 							],
-							default: '',
+							default: 'eq',
 						},
 						{
 							displayName: 'Search Function',
@@ -238,7 +238,7 @@ export function getFilters(
 									value: 'wfts',
 								},
 							],
-							default: '',
+							default: 'fts',
 						},
 						{
 							displayName: 'Field Value',

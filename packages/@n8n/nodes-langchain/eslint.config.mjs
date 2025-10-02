@@ -91,6 +91,7 @@ export default defineConfig(
 			'n8n-nodes-base/node-param-default-wrong-for-fixed-collection': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-fixed-collection': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-multi-options': 'error',
+			'n8n-nodes-base/node-param-default-wrong-for-options': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-number': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-simplify': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-string': 'error',

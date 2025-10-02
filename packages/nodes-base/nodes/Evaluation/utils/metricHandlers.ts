@@ -98,7 +98,7 @@ export const metricHandlers = {
 		const toolUsageScores = normalizedExpectedTools.map((normalizedTool) => {
 			return intermediateSteps.some((step) => {
 				// Handle malformed intermediate steps gracefully
-				if (!step || !step.action || typeof step.action.tool !== 'string') {
+				if (!step?.action || typeof step.action.tool !== 'string') {
 					return false;
 				}
 				return step.action.tool.toLowerCase() === normalizedTool;

@@ -147,7 +147,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 								],
-								default: '',
+								default: 'home',
 							},
 						],
 					},
@@ -265,7 +265,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 								],
-								default: '',
+								default: 'home',
 								description:
 									'The type of the email address. The type can be custom or one of these predefined values.',
 							},
@@ -316,7 +316,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 								],
-								default: '',
+								default: 'anniversary',
 								description:
 									'The type of the event. The type can be custom or one of these predefined values.',
 							},
@@ -434,7 +434,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'workPager',
 									},
 								],
-								default: '',
+								default: 'googleVoice',
 							},
 							{
 								displayName: 'Value',
@@ -526,7 +526,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'spouse',
 									},
 								],
-								default: '',
+								default: 'assistant',
 								description:
 									"The person's relation to the other person. The type can be custom or one of these predefined values.",
 							},
@@ -928,7 +928,7 @@ export const contactFields: INodeProperties[] = [
 						description: 'Sort people by last name',
 					},
 				],
-				default: '',
+				default: 'LAST_MODIFIED_ASCENDING',
 				description: 'The order of the contacts returned in the result',
 			},
 		],
@@ -1157,7 +1157,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 								],
-								default: '',
+								default: 'home',
 							},
 						],
 					},
@@ -1275,7 +1275,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 								],
-								default: '',
+								default: 'home',
 								description:
 									'The type of the email address. The type can be custom or one of these predefined values.',
 							},
@@ -1326,7 +1326,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 								],
-								default: '',
+								default: 'anniversary',
 								description:
 									'The type of the event. The type can be custom or one of these predefined values.',
 							},
@@ -1444,7 +1444,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'workPager',
 									},
 								],
-								default: '',
+								default: 'googleVoice',
 							},
 							{
 								displayName: 'Value',
@@ -1536,7 +1536,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'spouse',
 									},
 								],
-								default: '',
+								default: 'assistant',
 								description:
 									"The person's relation to the other person. The type can be custom or one of these predefined values.",
 							},

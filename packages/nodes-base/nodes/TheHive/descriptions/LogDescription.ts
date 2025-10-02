@@ -144,7 +144,7 @@ export const logFields: INodeProperties[] = [
 				value: 'Deleted',
 			},
 		],
-		default: '',
+		default: 'Ok',
 		required: true,
 		displayOptions: {
 			show: {

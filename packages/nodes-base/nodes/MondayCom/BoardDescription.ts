@@ -105,7 +105,7 @@ export const boardFields: INodeProperties[] = [
 				resource: ['board'],
 			},
 		},
-		default: '',
+		default: 'share',
 		description: "The board's kind (public / private / share)",
 	},
 	{

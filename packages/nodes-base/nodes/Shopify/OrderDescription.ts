@@ -233,7 +233,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'Every line item in the order has been restocked and the order canceled',
 					},
 				],
-				default: '',
+				default: 'fulfilled',
 				description: "The order's status in terms of fulfilled line items",
 			},
 			{

@@ -799,7 +799,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Order By',
 				name: 'orderBy',
 				type: 'options',
-				default: '',
+				default: 'id',
 				options: [
 					{
 						name: 'ID',

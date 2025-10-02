@@ -142,7 +142,7 @@ export const certificateFields: INodeProperties[] = [
 						description: 'X.509 User Certificate',
 					},
 				],
-				default: '',
+				default: 'Code Signing',
 				description: 'One of the following Certificate objects. Ignores any other value.',
 			},
 			{
@@ -388,7 +388,7 @@ export const certificateFields: INodeProperties[] = [
 							'Use Elliptic Prime Curve 521 bit encryption. (not supported by all Certificate Authorities).',
 					},
 				],
-				default: '',
+				default: 'P256',
 				description:
 					'For Elliptic Curve Cryptography (ECC), use this parameter in conjunction with KeyAlgorithm',
 			},
@@ -408,7 +408,7 @@ export const certificateFields: INodeProperties[] = [
 						description: 'Elliptic Curve Cryptography (ECC)',
 					},
 				],
-				default: '',
+				default: 'RSA',
 				description: 'The encryption algorithm for the public ke:',
 			},
 			{
@@ -449,7 +449,7 @@ export const certificateFields: INodeProperties[] = [
 							'Certificates are neither enrolled or monitored by Trust Protection Platform',
 					},
 				],
-				default: '',
+				default: 'Enrollment',
 				description:
 					'The level of management that Trust Protection Platform applies to the certificate',
 			},
@@ -552,7 +552,7 @@ export const certificateFields: INodeProperties[] = [
 									},
 								],
 								description: 'An integer that represents the kind of SAN',
-								default: '',
+								default: 0,
 							},
 							{
 								displayName: 'Name',

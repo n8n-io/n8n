@@ -16,7 +16,7 @@ const clashHandlingProperties: INodeProperties = {
 					displayName: 'When Field Values Clash',
 					name: 'resolveClash',
 					type: 'options',
-					default: '',
+					default: 'addSuffix',
 					options: [
 						{
 							name: 'Always Add Input Number to Field Names',

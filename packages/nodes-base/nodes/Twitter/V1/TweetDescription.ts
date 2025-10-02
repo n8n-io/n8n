@@ -287,7 +287,7 @@ export const tweetFields: INodeProperties[] = [
 								required: true,
 								description:
 									'Returns tweets by users located within a given radius of the given latitude/longitude',
-								default: '',
+								default: 'mi',
 							},
 							{
 								displayName: 'Distance',

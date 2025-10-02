@@ -122,7 +122,7 @@ const vehicleTypeField = {
 			value: 'TRUCK',
 		},
 	],
-	default: '',
+	default: 'BICYCLE',
 	description:
 		"Whether the worker has vehicle or not. If it's not provided, this worker will be treated as if on foot.",
 } as INodeProperties;
