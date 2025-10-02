@@ -5,8 +5,18 @@ import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-// Mock fs/promises
-jest.mock('fs/promises');
+// Mock fs/promises with proper implementations
+jest.mock('fs/promises', () => ({
+	mkdir: jest.fn(),
+	rm: jest.fn(),
+	readdir: jest.fn(),
+	appendFile: jest.fn(),
+}));
+
+// Mock compression utility
+jest.mock('@/utils/compression.util', () => ({
+	compressFolder: jest.fn(),
+}));
 
 // Mock validateDbTypeForExportEntities
 jest.mock('@/utils/validate-database-type', () => ({
@@ -63,6 +73,16 @@ describe('ExportService', () => {
 			// Default to empty array for entity queries
 			return [];
 		});
+
+		// Set up proper mock implementations for fs/promises
+		jest.mocked(mkdir).mockResolvedValue(undefined);
+		jest.mocked(rm).mockResolvedValue(undefined);
+		jest.mocked(readdir).mockResolvedValue([]);
+		jest.mocked(appendFile).mockResolvedValue(undefined);
+
+		// Mock the compression utility
+		const { compressFolder } = require('@/utils/compression.util');
+		jest.mocked(compressFolder).mockResolvedValue(undefined);
 
 		exportService = new ExportService(mockLogger, mockDataSource, mockCipher);
 	});
