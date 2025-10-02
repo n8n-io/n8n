@@ -4227,12 +4227,10 @@ describe('useCanvasOperations', () => {
 
 	describe('openWorkflowTemplate', () => {
 		let templatesStore: ReturnType<typeof mockedStore<typeof useTemplatesStore>>;
-		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 		let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 		beforeEach(() => {
 			templatesStore = mockedStore(useTemplatesStore);
-			workflowsStore = mockedStore(useWorkflowsStore);
 			projectsStore = mockedStore(useProjectsStore);
 
 			projectsStore.currentProjectId = 'test-project-id';

@@ -1,7 +1,6 @@
 import {
 	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
-	DEFAULT_NEW_WORKFLOW_NAME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
@@ -16,7 +15,6 @@ import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -92,7 +90,6 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
