@@ -1,5 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
+import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import {
 	assertParamIsBoolean,
@@ -52,7 +52,8 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 			'includeDocumentMetadata',
 			itemIndex,
 			true,
-		) as boolean;
+		);
+		assertParamIsBoolean('includeDocumentMetadata', includeDocumentMetadata, context.getNode());
 
 		// Embed the query to prepare for vector similarity search
 		const embeddedQuery = await embeddings.embedQuery(query);
@@ -62,28 +63,28 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 
 		// If reranker is used, rerank the documents
 		if (useReranker && docs.length > 0) {
-			const reranker = (await context.getInputConnectionData(
-				NodeConnectionTypes.AiReranker,
-				0,
-			)) as BaseDocumentCompressor;
-			const documents = docs.map(([doc]) => doc);
+			const reranker = await context.getInputConnectionData(NodeConnectionTypes.AiReranker, 0);
+			if (reranker instanceof BaseDocumentCompressor) {
+				const documents = docs.map(([doc]) => doc);
 
-			const rerankedDocuments = await reranker.compressDocuments(documents, query);
-			docs = rerankedDocuments.map((doc) => {
-				const { relevanceScore, ...metadata } = doc.metadata || {};
-				return [{ ...doc, metadata }, relevanceScore];
-			});
+				const rerankedDocuments = await reranker.compressDocuments(documents, query);
+				docs = rerankedDocuments.map((doc) => {
+					const { relevanceScore, ...metadata } = doc.metadata || {};
+					return [{ ...doc, metadata }, relevanceScore];
+				});
+			}
 		}
 
 		// Format the documents for the output similar to the original tool format
 		const serializedDocs = docs.map(([doc]) => {
 			if (includeDocumentMetadata) {
 				return {
-					type: 'text' as const,
+					type: 'text',
 					text: JSON.stringify({ ...doc }),
 				};
 			} else {
 				return {
+					type: 'text',
 					pageContent: JSON.stringify({ pageContent: doc.pageContent }),
 				};
 			}
