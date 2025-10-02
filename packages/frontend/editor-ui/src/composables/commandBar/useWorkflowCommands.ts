@@ -40,6 +40,7 @@ const ITEM_ID = {
 	OPEN_WORKFLOW_SETTINGS: 'open-workflow-settings',
 	TIDY_UP_WORKFLOW: 'tidy-up-workflow',
 	RENAME_WORKFLOW: 'rename-workflow',
+	ADD_TAG: 'add-tag',
 	DUPLICATE_WORKFLOW: 'duplicate-workflow',
 	DOWNLOAD_WORKFLOW: 'download-workflow',
 	IMPORT_WORKFLOW_FROM_URL: 'import-workflow-from-url',
@@ -183,6 +184,20 @@ export function useWorkflowCommands(): CommandGroup {
 							component: N8nIcon as Component,
 							props: {
 								icon: 'pencil-alt',
+							},
+						},
+					},
+					{
+						id: ITEM_ID.ADD_TAG,
+						title: i18n.baseText('workflowDetails.addTag'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							nodeViewEventBus.emit('addTag');
+						},
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'tags',
 							},
 						},
 					},

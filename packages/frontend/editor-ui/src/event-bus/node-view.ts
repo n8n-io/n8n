@@ -35,6 +35,8 @@ export interface NodeViewEventBusEvents {
 
 	/** Command to rename current workflow */
 	renameWorkflow: never;
+
+	addTag: never;
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();
