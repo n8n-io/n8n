@@ -92,11 +92,17 @@ type ContentBlock = {
 type ComplexBlock = MessageContentComplex; // as in your codebase
 type Block = ContentBlock | ComplexBlock;
 
+// --- type guards ---
+function isBlock(x: unknown): x is Block {
+	return typeof x === 'object' && x !== null && 'type' in x;
+}
+
 /**
  * Collapse provider content (string or array-of-blocks) to plain text for UI/output.
  * - Remove ALL chain-of-thought (thinking) from user-visible output.
  * - Keep only plain 'text' blocks when content is an array.
- * - For strings, strip <think>...</think> sections entirely (not just tags).
+ * - For strings, remove <think>...</think> sections entirely (not just tags).
+ * - Preserves whitespace by default (collapse only if explicitly asked).
  */
 export function flattenContentToText(
 	content: string | Block[] | undefined | null,
@@ -111,48 +117,40 @@ export function flattenContentToText(
 		// Examples: "text <think>hidden</think> more" -> "text  more"
 		let out = content.replace(/<think>[\s\S]*?<\/think>/gi, '');
 
-		// Optional: collapse multi-space/newlines to single space (nicer UI)
-		if (opts?.collapseWhitespace !== false) {
+		//  Preserve whitespace by default; only collapse when requested
+		if (opts?.collapseWhitespace === true) {
 			out = out.replace(/\s+/g, ' ').trim();
 		}
 		return out;
 	}
 
+	// check to avoid iterating plain objects
+	if (!Array.isArray(content)) return '';
+
 	// 2) ARRAY INPUT
 	let out = '';
 	for (const b of content) {
-		if (!b || typeof b !== 'object') continue;
+		if (!isBlock(b)) continue;
 
-		switch ((b as any).type) {
-			case 'text': {
-				const t = (b as any).text;
-				if (typeof t === 'string') out += t;
+		switch (b.type) {
+			case 'text':
+				if (typeof b.text === 'string') out += b.text;
 				break;
-			}
-
-			// Explicitly ignore chain-of-thought
-			case 'thinking': {
-				// Some providers send nested thinking as array-of-text blocks.
-				// Don't append it to user-visible output:
-				// const nested = (b as any).thinking as Array<{ type: 'text'; text: string }> | undefined;
-				// (We intentionally ignore.)
+			case 'thinking':
+				// ignore chain-of-thought
 				break;
-			}
-
-			// Known non-textual / metadata types we ignore for the final plain-text:
 			case 'image_url':
 			case 'reference':
 			case 'document_url':
 			case 'input_audio':
 			case 'file':
 			default:
-				// ignore unknown/unsupported safely
+				// ignore
 				break;
 		}
 	}
 
-	// Optional: normalize whitespace in concatenated text
-	if (opts?.collapseWhitespace !== false) {
+	if (opts?.collapseWhitespace === true) {
 		out = out.replace(/\s+/g, ' ').trim();
 	}
 
@@ -374,25 +372,34 @@ export async function toolsAgentExecute(
 				response = await executor.invoke(invokeParams, executeOptions);
 
 				// If provider put structured blocks into response.output (array or tagged string), flatten them.
+				// If provider put structured blocks into response.output (array or tagged string), flatten them.
 				if (response && typeof response.output !== 'undefined') {
 					try {
-						// Sometimes output is already a string; sometimes providers return objects/arrays.
-						// If it's an object with a "content" field (OpenAI-compatible), try to flatten it too.
-						if (Array.isArray((response as any).output)) {
-							(response as any).output = flattenContentToText((response as any).output);
-						} else if (
-							typeof (response as any).output === 'object' &&
-							(response as any).output !== null
-						) {
-							const maybeContent = (response as any).output.content ?? (response as any).output;
-							(response as any).output = flattenContentToText(maybeContent);
-						} else if (typeof (response as any).output === 'string') {
-							(response as any).output = flattenContentToText((response as any).output);
+						const out = response.output;
+
+						if (Array.isArray(out)) {
+							response.output = flattenContentToText(out);
+						} else if (out && typeof out === 'object') {
+							// only flatten if it has a usable `content` field
+							const hasUsableContent =
+								Object.prototype.hasOwnProperty.call(out as Record<string, unknown>, 'content') &&
+								(typeof (out as { content?: unknown }).content === 'string' ||
+									Array.isArray((out as { content?: unknown }).content));
+
+							if (hasUsableContent) {
+								response.output = flattenContentToText(
+									(out as { content: string | Block[] }).content,
+								);
+							}
+							// else: keep object as-is (e.g. { text: "success" })
+						} else if (typeof out === 'string') {
+							response.output = flattenContentToText(out);
 						}
 					} catch {
-						// If anything goes wrong, leave output as-is rather than throwing.
+						// leave output as-is rather than throwing
 					}
 				}
+
 				return response;
 			}
 		});

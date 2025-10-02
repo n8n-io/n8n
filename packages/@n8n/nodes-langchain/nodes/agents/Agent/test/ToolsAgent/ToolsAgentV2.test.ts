@@ -892,7 +892,7 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should remove <think> tags from string content', () => {
-			expect(flattenContentToText('text <think>hidden</think> more')).toBe('text more');
+			expect(flattenContentToText('text <think>hidden</think> more')).toBe('text  more'); // note double space
 			expect(flattenContentToText('<think>start</think>visible<think>end</think>')).toBe('visible');
 		});
 
@@ -977,6 +977,22 @@ describe('toolsAgentExecute', () => {
 				{ type: 'unknown' }, // unknown type
 			];
 			expect(flattenContentToText(content)).toBe('valid');
+		});
+
+		it('should return empty string for unexpected plain object input', () => {
+			// @ts-expect-error simulating provider object without content blocks
+			expect(flattenContentToText({ foo: 'bar' })).toBe('');
+		});
+
+		it('should optionally collapse whitespace when requested (arrays)', () => {
+			const content = [
+				{ type: 'text', text: 'Line 1\n' },
+				{ type: 'text', text: '  Line 2' },
+			];
+			// default: preserve
+			expect(flattenContentToText(content)).toBe('Line 1\n  Line 2');
+			// explicit collapse
+			expect(flattenContentToText(content, { collapseWhitespace: true })).toBe('Line 1 Line 2');
 		});
 	});
 });
