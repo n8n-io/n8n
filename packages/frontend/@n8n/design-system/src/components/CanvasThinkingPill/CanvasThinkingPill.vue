@@ -6,7 +6,7 @@ import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import N8nButton from '../N8nButton';
 
 defineOptions({
-	name: 'CanvasThinkingPill',
+	name: 'N8nCanvasThinkingPill',
 });
 
 defineProps<{

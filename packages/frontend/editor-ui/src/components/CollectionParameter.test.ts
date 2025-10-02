@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import CollectionParameter from './CollectionParameter.vue';
+import { createTestNodeProperties } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(CollectionParameter, {
 	pinia: createTestingPinia(),
@@ -15,7 +16,7 @@ describe('CollectionParameter', () => {
 		const { getAllByTestId } = renderComponent({
 			props: {
 				path: 'parameters.additionalFields',
-				parameter: {
+				parameter: createTestNodeProperties({
 					displayName: 'Additional Fields',
 					name: 'additionalFields',
 					type: 'collection',
@@ -30,9 +31,10 @@ describe('CollectionParameter', () => {
 							displayName: 'Value',
 							name: 'value',
 							type: 'number',
+							default: 0,
 						},
 					],
-				},
+				}),
 				nodeValues: {
 					parameters: {
 						additionalFields: {},

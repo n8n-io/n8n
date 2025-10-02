@@ -553,6 +553,11 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.setWorkflowName({ newName: 'New Workflow Name', setStateDirty: false });
 			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
 		});
+
+		it('should propagate name to workflowObject for pre-exec expressions', () => {
+			workflowsStore.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
+			expect(workflowsStore.workflowObject.name).toBe('WF Title');
+		});
 	});
 
 	describe('setWorkflowActive()', () => {
@@ -857,6 +862,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -887,6 +893,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'Edit Fields',
 						runData: {
 							[errorEvent.nodeName]: [errorEvent.data],
 						},
@@ -969,6 +976,7 @@ describe('useWorkflowsStore', () => {
 				...runWithExistingRunData,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -977,7 +985,7 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
-		it('should replace existing placeholder task data in new log view', () => {
+		it('should replace existing placeholder task data and lastNodeExecuted', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
@@ -1023,6 +1031,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
 						},

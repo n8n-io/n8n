@@ -230,3 +230,19 @@ async def test_timeout_during_execution(broker, manager):
 
     assert error_msg["taskId"] == task_id
     assert "timed out" in error_msg["error"]["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_stdlib_submodules_with_wildcard(broker, manager_with_stdlib_wildcard):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        from collections.abc import Iterable
+        result = isinstance([1, 2, 3], Iterable)
+        return [{"json": {"is_iterable": result}}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"] == [{"json": {"is_iterable": True}}]

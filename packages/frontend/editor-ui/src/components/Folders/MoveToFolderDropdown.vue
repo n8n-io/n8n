@@ -2,9 +2,9 @@
 import { useI18n } from '@n8n/i18n';
 import type { ChangeLocationSearchResult } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
-import { N8nSelect } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 
+import { N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 /**
  * This component is used to select a folder within a project.
  * If parentFolderId is provided it will filter out the parent folder from the results.

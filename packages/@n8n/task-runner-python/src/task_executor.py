@@ -405,8 +405,12 @@ class TaskExecutor:
         else:
             safe_modules.update(external_allow)
 
+        # keep modules marked as safe and submodules of those
         modules_to_remove = [
-            name for name in sys.modules.keys() if name not in safe_modules
+            name
+            for name in sys.modules.keys()
+            if name not in safe_modules
+            and not any(name.startswith(safe + ".") for safe in safe_modules)
         ]
 
         for module_name in modules_to_remove:

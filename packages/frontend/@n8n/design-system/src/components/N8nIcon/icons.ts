@@ -74,6 +74,8 @@ import IconLucideCirclePlay from '~icons/lucide/circle-play';
 import IconLucideCirclePlus from '~icons/lucide/circle-plus';
 import IconLucideCircleUserRound from '~icons/lucide/circle-user-round';
 import IconLucideCircleX from '~icons/lucide/circle-x';
+import IconLucideClipboard from '~icons/lucide/clipboard';
+import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
 import IconLucideClipboardList from '~icons/lucide/clipboard-list';
 import IconLucideClock from '~icons/lucide/clock';
 import IconLucideCloud from '~icons/lucide/cloud';
@@ -285,6 +287,8 @@ export const deprecatedIconSet = {
 	cogs: IconLucideCog,
 	comment: IconLucideMessageCircle,
 	comments: IconLucideMessagesSquare,
+	clipboard: IconLucideClipboard,
+	'clipboard-check': IconLucideClipboardCheck,
 	'clipboard-list': IconLucideClipboardList,
 	clock: IconLucideClock,
 	clone: IconLucideCopy,
@@ -493,6 +497,8 @@ export const updatedIconSet = {
 	'circle-plus': IconLucideCirclePlus,
 	'circle-user-round': IconLucideCircleUserRound,
 	'circle-x': IconLucideCircleX,
+	clipboard: IconLucideClipboard,
+	'clipboard-check': IconLucideClipboardCheck,
 	'clipboard-list': IconLucideClipboardList,
 	clock: IconLucideClock,
 	cloud: IconLucideCloud,

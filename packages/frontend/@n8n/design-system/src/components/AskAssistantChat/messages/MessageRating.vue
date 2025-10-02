@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-import type { RatingFeedback } from '@n8n/design-system/types';
-
+import { useI18n } from '../../../composables/useI18n';
+import type { RatingFeedback } from '../../../types';
 import N8nButton from '../../N8nButton';
 import N8nIconButton from '../../N8nIconButton';
 import N8nInput from '../../N8nInput';

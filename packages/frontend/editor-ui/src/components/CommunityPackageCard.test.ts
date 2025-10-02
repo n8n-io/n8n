@@ -3,11 +3,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CommunityPackageCard from './CommunityPackageCard.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { PublicInstalledNode, PublicInstalledPackage } from 'n8n-workflow';
 
-const communityPackage = {
+const communityPackage: PublicInstalledPackage = {
 	packageName: 'n8n-nodes-test',
 	installedVersion: '1.0.0',
-	installedNodes: [{ name: 'TestNode' }],
+	installedNodes: [{ name: 'TestNode' } as PublicInstalledNode],
+	createdAt: new Date(0),
+	updatedAt: new Date(0),
 };
 
 const renderComponent = createComponentRenderer(CommunityPackageCard);

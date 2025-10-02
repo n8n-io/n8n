@@ -781,6 +781,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			uiStore.stateIsDirty = true;
 		}
 		workflow.value.name = data.newName;
+		workflowObject.value.name = data.newName;
 
 		if (
 			workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
@@ -1094,7 +1095,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflow.value.pinData = {};
 		}
 
-		const { [nodeName]: _, ...pinData } = workflow.value.pinData as IPinData;
+		const { [nodeName]: _, ...pinData } = workflow.value.pinData;
 		workflow.value.pinData = pinData;
 		workflowObject.value.setPinData(pinData);
 
@@ -1626,11 +1627,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const node = getNodeByName(nodeName);
 		if (!node) return;
 
+		workflowExecutionData.value.data.resultData.lastNodeExecuted = nodeName;
+
 		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
 			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
 		}
 
-		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
+		const tasksData = workflowExecutionData.value.data.resultData.runData[nodeName];
 		if (isNodeWaiting) {
 			tasksData.push(data);
 			workflowExecutionResultDataLastUpdate.value = Date.now();

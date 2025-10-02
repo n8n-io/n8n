@@ -219,9 +219,6 @@ describe('CredentialEdit', () => {
 	test('shows the save button when credentialId is null', async () => {
 		const { queryByTestId } = renderComponent({
 			props: {
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'new',
 			},
@@ -233,9 +230,6 @@ describe('CredentialEdit', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
 				activeId: '123', // credentialId will be set to this value in edit mode
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'edit',
 			},
@@ -255,9 +249,6 @@ describe('CredentialEdit', () => {
 		const { queryByText } = renderComponent({
 			props: {
 				activeId: '123', // credentialId will be set to this value in edit mode
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'edit',
 			},
@@ -280,9 +271,6 @@ describe('CredentialEdit', () => {
 		const { queryByText } = renderComponent({
 			props: {
 				activeId: '123', // credentialId will be set to this value in edit mode
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'edit',
 			},

@@ -10,6 +10,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 
+import { ElSwitch } from 'element-plus';
+import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -94,8 +96,9 @@ async function onClick(event: Event) {
 	emit('edit', props.destination.id);
 }
 
-function onEnabledSwitched(state: boolean) {
-	nodeParameters.value.enabled = state;
+function onEnabledSwitched(state: string | number | boolean) {
+	const boolValue = typeof state === 'boolean' ? state : Boolean(state);
+	nodeParameters.value.enabled = boolValue;
 	void saveDestination();
 }
 
