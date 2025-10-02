@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor, within } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -362,14 +362,12 @@ describe('InsightsTableWorkflows', () => {
 				},
 			});
 
-			await waitFor(() => {
-				expect(
-					screen.getByRole('heading', {
-						level: 4,
-						name: 'Upgrade to access more detailed insights',
-					}),
-				).toBeInTheDocument();
-			});
+			expect(
+				await screen.findByRole('heading', {
+					level: 4,
+					name: 'Upgrade to access more detailed insights',
+				}),
+			).toBeInTheDocument();
 		});
 
 		it('should use sample data when dashboard is not enabled', () => {
