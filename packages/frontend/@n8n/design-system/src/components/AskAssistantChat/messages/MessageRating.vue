@@ -188,8 +188,9 @@ function onCancelFeedback() {
 /* Minimal style specific */
 .minimal {
 	margin-top: var(--spacing-5xs);
+
 	.buttons {
-		gap: 2px;
+		gap: var(--spacing-5xs);
 	}
 
 	.ratingButton {

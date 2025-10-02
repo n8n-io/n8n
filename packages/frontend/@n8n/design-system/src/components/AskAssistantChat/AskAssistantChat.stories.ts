@@ -51,14 +51,6 @@ DefaultPlaceholderChat.args = {
 	},
 };
 
-export const InputPlaceholderChat = TemplateWithInputPlaceholder.bind({});
-DefaultPlaceholderChat.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-};
-
 export const Chat = Template.bind({});
 Chat.args = {
 	user: {
