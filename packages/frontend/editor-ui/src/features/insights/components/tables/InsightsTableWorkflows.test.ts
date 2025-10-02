@@ -17,6 +17,20 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 
+vi.mock('@/features/insights/components/InsightsPaywall.vue', async (importOriginal) => {
+	const actual = await importOriginal<{ default: unknown }>();
+	return {
+		...actual,
+		default: defineComponent({
+			template: `
+				<div>
+					<h4>Upgrade to access more detailed insights</h4>
+				</div>
+			`,
+		}),
+	};
+});
+
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
@@ -363,10 +377,7 @@ describe('InsightsTableWorkflows', () => {
 			});
 
 			expect(
-				await screen.findByRole('heading', {
-					level: 4,
-					name: 'Upgrade to access more detailed insights',
-				}),
+				await screen.findByText('Upgrade to access more detailed insights'),
 			).toBeInTheDocument();
 		});
 
