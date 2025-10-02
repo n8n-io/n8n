@@ -456,8 +456,8 @@ export class HttpRequestV3 implements INodeType {
 							// If it's already an array, append to it
 							accumulator[cur.name] = [...existingValue, currentValue];
 						} else if (isExistingBinary(existingValue) && isExistingBinary(currentValue)) {
-							// Only overwrite binary data with another binary data
-							accumulator[cur.name] = currentValue;
+							// When both are binary, append to an array to preserve all values
+							accumulator[cur.name] = [existingValue, currentValue];
 						} else if (isExistingBinary(existingValue) && !isExistingBinary(currentValue)) {
 							// Never overwrite binary data with non-binary data
 							accumulator[cur.name] = [existingValue, currentValue];
