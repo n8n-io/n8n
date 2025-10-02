@@ -778,6 +778,18 @@ describe('GET /users', () => {
 
 				expect(users).toBeInstanceOf(Array);
 
+				// Fields that should be restricted for members without user:create scope
+				const restrictionsFields = [
+					'mfaEnabled',
+					'settings',
+					'personalizationAnswers',
+					'inviteAcceptUrl',
+					'lastActiveAt',
+					'isOwner',
+					'signInType',
+					'projectRelations',
+				];
+
 				// Verify that sensitive/admin fields are NOT present for members
 				users.forEach((user: any) => {
 					// Basic fields should be present
@@ -785,14 +797,9 @@ describe('GET /users', () => {
 
 					if (user.id !== member1.id) {
 						// Admin-only fields should NOT be present
-						expect(user).not.toHaveProperty('mfaEnabled');
-						expect(user).not.toHaveProperty('settings');
-						expect(user).not.toHaveProperty('personalizationAnswers');
-						expect(user).not.toHaveProperty('inviteAcceptUrl');
-						expect(user).not.toHaveProperty('lastActiveAt');
-						expect(user).not.toHaveProperty('isOwner');
-						expect(user).not.toHaveProperty('signInType');
-						expect(user).not.toHaveProperty('projectRelations');
+						restrictionsFields.forEach((field) => {
+							expect(user).not.toHaveProperty(field);
+						});
 					} else {
 						// Admin-only fields should be present for own user
 						expect(user).toHaveProperty('mfaEnabled');

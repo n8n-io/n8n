@@ -1,8 +1,8 @@
 import {
 	RoleChangeRequestDto,
 	SettingsUpdateRequestDto,
-	userAdminSchema,
-	userMemberSchema,
+	userDetailSchema,
+	userBaseSchema,
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
@@ -98,11 +98,9 @@ export class UsersController {
 
 		const usersSeesAllDetails = hasGlobalScope(currentUser, 'user:create');
 		return publicUsers.map((user) => {
-			if (usersSeesAllDetails || user.id === currentUser.id) {
-				return userAdminSchema.parse(user);
-			} else {
-				return userMemberSchema.parse(user);
-			}
+			return usersSeesAllDetails || user.id === currentUser.id
+				? userDetailSchema.parse(user)
+				: userBaseSchema.parse(user);
 		});
 	}
 

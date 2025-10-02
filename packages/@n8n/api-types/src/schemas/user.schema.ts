@@ -22,7 +22,7 @@ export const userProjectSchema = z.object({
 	name: z.string(),
 });
 
-export const userMemberSchema = z.object({
+export const userBaseSchema = z.object({
 	id: z.string(),
 	firstName: z.string().nullable().optional(),
 	lastName: z.string().nullable().optional(),
@@ -30,7 +30,7 @@ export const userMemberSchema = z.object({
 	role: roleSchema.optional(),
 });
 
-export const userAdminSchema = userMemberSchema.extend({
+export const userDetailSchema = userBaseSchema.extend({
 	isPending: z.boolean().optional(),
 	isOwner: z.boolean().optional(),
 	signInType: z.string().optional(),
@@ -44,8 +44,8 @@ export const userAdminSchema = userMemberSchema.extend({
 
 export const usersListSchema = z.object({
 	count: z.number(),
-	items: z.array(userAdminSchema),
+	items: z.array(userDetailSchema),
 });
 
-export type User = z.infer<typeof userAdminSchema>;
+export type User = z.infer<typeof userDetailSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;

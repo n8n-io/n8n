@@ -1,4 +1,4 @@
-import { roleSchema, userAdminSchema, userMemberSchema, usersListSchema } from '../user.schema';
+import { roleSchema, userDetailSchema, userBaseSchema, usersListSchema } from '../user.schema';
 
 describe('user.schema', () => {
 	describe('roleSchema', () => {
@@ -14,7 +14,7 @@ describe('user.schema', () => {
 		});
 	});
 
-	describe('userAdminSchema', () => {
+	describe('userDetailSchema', () => {
 		test.each([
 			{
 				name: 'valid user',
@@ -80,12 +80,12 @@ describe('user.schema', () => {
 				isValid: false,
 			},
 		])('should validate $name', ({ data, isValid }) => {
-			const result = userAdminSchema.safeParse(data);
+			const result = userDetailSchema.safeParse(data);
 			expect(result.success).toBe(isValid);
 		});
 	});
 
-	describe('userMemberSchema', () => {
+	describe('userBaseSchema', () => {
 		test.each([
 			{
 				name: 'valid user',
@@ -151,7 +151,7 @@ describe('user.schema', () => {
 				isValid: false,
 			},
 		])('should validate $name', ({ data, isValid }) => {
-			const result = userMemberSchema.safeParse(data);
+			const result = userBaseSchema.safeParse(data);
 			expect(result.success).toBe(isValid);
 		});
 	});
