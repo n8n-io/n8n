@@ -277,7 +277,7 @@ onUnmounted(() => {
 <template>
 	<Teleport to="body">
 		<Transition name="command-bar" appear>
-			<div v-if="isOpen" ref="commandBarRef" :class="$style.commandBar">
+			<div v-if="isOpen" ref="commandBarRef" :class="$style.commandBar" data-test-id="command-bar">
 				<div v-if="context" :class="$style.contextContainer">
 					<N8nBadge size="small">{{ context }}</N8nBadge>
 				</div>
@@ -297,6 +297,7 @@ onUnmounted(() => {
 					v-else-if="flattenedItems.length > 0"
 					ref="itemsListRef"
 					:class="$style.itemsList"
+					data-test-id="command-bar-items-list"
 					@scroll="handleScroll"
 				>
 					<template v-for="item in groupedItems.ungrouped" :key="item.id">
