@@ -21,8 +21,9 @@ import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/composables/useExecutionData';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
-import { N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;

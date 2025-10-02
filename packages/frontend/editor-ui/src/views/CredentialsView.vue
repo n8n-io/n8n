@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CredentialCard from '@/components/CredentialCard.vue';
+import EmptySharedSectionActionBox from '@/components/Folders/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type { BaseFilters, Resource, ICredentialTypeMap } from '@/Interface';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';

@@ -142,7 +142,7 @@ import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useParentFolder } from '@/composables/useParentFolder';
 
-import { N8nCallout } from '@n8n/design-system';
+import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -2069,7 +2069,7 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<CanvasThinkingPill
+			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
 				:class="$style.thinkingPill"
 				show-stop
