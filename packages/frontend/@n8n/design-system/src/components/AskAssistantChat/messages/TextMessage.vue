@@ -20,7 +20,7 @@ interface Props {
 	color?: string;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
