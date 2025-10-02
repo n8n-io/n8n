@@ -590,6 +590,7 @@ export const enum VIEWS {
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
+	CONFIGURATION_SETTINGS = 'ConfigurationSettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',

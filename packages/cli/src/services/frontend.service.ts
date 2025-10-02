@@ -124,6 +124,8 @@ export class FrontendService {
 			executionTimeout: this.globalConfig.executions.timeout,
 			maxExecutionTimeout: this.globalConfig.executions.maxTimeout,
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
+			allowPersonalProjectWorkflowActivation:
+				this.globalConfig.workflows.allowPersonalProjectWorkflowActivation,
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,

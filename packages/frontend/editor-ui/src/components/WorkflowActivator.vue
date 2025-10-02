@@ -17,6 +17,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { INodeUi, IUsedCredential } from '@/Interface';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
@@ -43,6 +44,7 @@ const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
+const settingsStore = useSettingsStore();
 
 const isWorkflowActive = computed((): boolean => {
 	const activeWorkflows = workflowsStore.activeWorkflows;
@@ -87,8 +89,22 @@ const isNewWorkflow = computed(
 		props.workflowId === 'new',
 );
 
+const isPersonalProject = computed((): boolean => {
+	const currentWorkflow = workflowsStore.getWorkflowById(props.workflowId);
+	return currentWorkflow?.homeProject?.type === 'personal';
+});
+
+const personalProjectActivationDisabled = computed((): boolean => {
+	return isPersonalProject.value && !settingsStore.settings.allowPersonalProjectWorkflowActivation;
+});
+
 const disabled = computed((): boolean => {
 	if (props.isArchived) {
+		return true;
+	}
+
+	// Disable activation for personal projects (if the setting is disabled)
+	if (personalProjectActivationDisabled.value) {
 		return true;
 	}
 
@@ -226,9 +242,11 @@ watch(
 						i18n.baseText(
 							isArchived
 								? 'workflowActivator.thisWorkflowIsArchived'
-								: containsOnlyExecuteWorkflowTrigger
-									? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
-									: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
+								: personalProjectActivationDisabled
+									? 'workflowActivator.personalProjectWorkflowActivationDisabled'
+									: containsOnlyExecuteWorkflowTrigger
+										? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
+										: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
 						)
 					}}
 				</div>

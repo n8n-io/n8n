@@ -44,6 +44,7 @@ const SettingsUsersView = async () => await import('./views/SettingsUsersView.vu
 const SettingsCommunityNodesView = async () =>
 	await import('./views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
+const SettingsConfigurationView = async () => await import('./views/SettingsConfigurationView.vue');
 const SettingsLogStreamingView = async () => await import('./views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('./views/SetupView.vue');
 const SigninView = async () => await import('./views/SigninView.vue');
@@ -582,6 +583,24 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'api',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'configuration',
+				name: VIEWS.CONFIGURATION_SETTINGS,
+				components: {
+					settingsView: SettingsConfigurationView,
+				},
+				meta: {
+					middleware: ['authenticated'],
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'configuration',
 							};
 						},
 					},
