@@ -160,6 +160,7 @@
 	<script>
 		let interval = 1000;
 		let timeoutId;
+		const redirectUrl = "{{redirectUrl}}";
 		const checkExecutionStatus = async () => {
 			if (!interval) return;
 
@@ -186,62 +187,74 @@
 		};
 
 		document.addEventListener('DOMContentLoaded', function () {
-			const binary = "{{{responseBinary}}}"
-				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
-				: '';
+			try {
+			const rawBinary = "{{{responseBinary}}}";
 
-			const byteArray = binary.data.type === 'Buffer'
-				? new Uint8Array(binary.data.data)
-				: Uint8Array.from(binary.data, c => c.charCodeAt(0));
+			if (rawBinary) {
+				let binary = JSON.parse(decodeURIComponent(rawBinary));
 
-			if (binary) {
-				const blob = new Blob(
-					[byteArray],
-					{ type: binary.type }
-				);
+				if (binary && binary.data) {
 
-				const link = document.createElement("a");
-				link.href = URL.createObjectURL(blob);
-				link.download = binary.fileName;
-				document.body.appendChild(link);
+					const byteArray = binary.data.type === 'Buffer'
+						? new Uint8Array(binary.data.data)
+						: Uint8Array.from(binary.data, c => c.charCodeAt(0));
 
-				link.click();
-				document.body.removeChild(link);
+					const blob = new Blob([byteArray], { type: binary.type });
+					const link = document.createElement("a");
+					link.href = URL.createObjectURL(blob);
+					link.download = binary.fileName;
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+
+				}
 			}
-		});
+		} catch (err) {
+			console.error("[Binary] failed to parse or download:", err);
+		}
 
+		if (redirectUrl) {
 			fetch('', {
-					method: 'POST',
-					body: {}
+				method: 'POST',
+				body: {}
 			})
-			.then(async function (response) {
+			.then(() => {
+				window.location.replace(redirectUrl);
+			})
+			.catch((error) => {
+				console.error("[Redirect] POST failed:", error);
+				window.location.replace(redirectUrl);
+			});
+		} else {
+
+			fetch('', { method: 'POST', body: {} })
+				.then(async function (response) {
 					if (response.status === 200) {
-						const redirectUrl = document.getElementById("redirectUrl");
-						if (redirectUrl) {
-							window.location.replace(redirectUrl.href);
+
+						const text = await response.text();
+
+						try {
+							const json = JSON.parse(text);
+							if (json?.redirectUrl) {
+								const url = json.redirectUrl.includes("://")
+									? json.redirectUrl
+									: "https://" + json.redirectUrl;
+								window.location.replace(url);
+							}
+						} catch (e) {
+							console.warn("[Redirect Fallback] response not JSON");
 						}
 					}
+				})
+				.catch((error) => {
+					console.error("[Redirect Fallback] fetch error:", error);
+				})
+				.finally(() => {
+					timeoutId = setTimeout(checkExecutionStatus, interval);
+				});
+		}
+	});
 
-					const text = await response.text();
-					let json;
-
-					try {
-							json = JSON.parse(text);
-					} catch (e) {}
-
-					if (json?.redirectURL) {
-							const url = json.redirectURL.includes("://")
-									? json.redirectURL
-									: "https://" + json.redirectURL;
-							window.location.replace(url);
-					}
-			})
-			.catch(function (error) {
-					console.error('Error:', error);
-			})
-			.finally(() => {
-				timeoutId = setTimeout(checkExecutionStatus, interval);
-			});
 	</script>
 	</body>
 
