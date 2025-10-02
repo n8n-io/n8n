@@ -11,7 +11,7 @@
             "type": "string"
         },
         "PermissionsBoundary": {
-            "type": "null"
+            "type": ["array", "null"]
         },
         "Tags": {
             "type": "null"
