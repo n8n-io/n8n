@@ -29,7 +29,10 @@ export class MyNode implements INodeType {
     displayName: 'My Node',
     name: 'myNode',
     credentials: [
-      'someOtherCredential', // No credential class with this name in package
+      {
+        name: 'someOtherCredential', // No credential class with this name in package
+        required: true,
+      },
     ],
     // ...
   };
@@ -53,7 +56,10 @@ export class MyNode implements INodeType {
     displayName: 'My Node',
     name: 'myNode',
     credentials: [
-      'myApiCredential', // Matches credential class name property
+      {
+        name: 'myApiCredential', // Matches credential class name property
+        required: true,
+      },
     ],
     // ...
   };

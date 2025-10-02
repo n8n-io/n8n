@@ -161,5 +161,29 @@ ruleTester.run('package-name-convention', PackageNameConventionRule, {
 				},
 			],
 		},
+		{
+			name: 'incomplete package name with missing suffix',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-", "version": "1.0.0" }',
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: 'n8n-nodes-' },
+					suggestions: [],
+				},
+			],
+		},
+		{
+			name: 'incomplete scoped package name with missing suffix',
+			filename: 'package.json',
+			code: '{ "name": "@company/n8n-nodes-", "version": "1.0.0" }',
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: '@company/n8n-nodes-' },
+					suggestions: [],
+				},
+			],
+		},
 	],
 });

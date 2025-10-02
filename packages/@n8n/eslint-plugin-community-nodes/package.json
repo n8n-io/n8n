@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --project tsconfig.build.json",
     "build:docs": "eslint-doc-generator",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -22,7 +22,7 @@
     "test": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch --project tsconfig.build.json"
   },
   "dependencies": {
     "@typescript-eslint/utils": "^8.35.0",

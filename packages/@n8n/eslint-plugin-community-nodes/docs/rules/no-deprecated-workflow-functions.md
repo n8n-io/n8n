@@ -15,11 +15,23 @@ Prevents usage of deprecated functions from n8n-workflow package and suggests mo
 ### ❌ Incorrect
 
 ```typescript
-import { NodeOperationError } from 'n8n-workflow';
+import { IRequestOptions } from 'n8n-workflow';
 
 export class MyNode implements INodeType {
   async execute(this: IExecuteFunctions) {
-    throw new NodeOperationError(this.getNode(), 'Error occurred');
+    // Using deprecated request helper function
+    const response = await this.helpers.request({
+      method: 'GET',
+      url: 'https://api.example.com/data',
+    });
+
+    // Using deprecated type
+    const options: IRequestOptions = {
+      method: 'POST',
+      url: 'https://api.example.com/data',
+    };
+
+    return [this.helpers.returnJsonArray([response])];
   }
 }
 ```
@@ -27,13 +39,23 @@ export class MyNode implements INodeType {
 ### ✅ Correct
 
 ```typescript
-import { NodeOperationError } from 'n8n-workflow';
+import { IHttpRequestOptions } from 'n8n-workflow';
 
 export class MyNode implements INodeType {
   async execute(this: IExecuteFunctions) {
-    throw new NodeOperationError(this.getNode(), 'Error occurred', {
-      itemIndex: 0,
+    // Using modern httpRequest helper function
+    const response = await this.helpers.httpRequest({
+      method: 'GET',
+      url: 'https://api.example.com/data',
     });
+
+    // Using modern type
+    const options: IHttpRequestOptions = {
+      method: 'POST',
+      url: 'https://api.example.com/data',
+    };
+
+    return [this.helpers.returnJsonArray([response])];
   }
 }
 ```

@@ -230,5 +230,32 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 				},
 			],
 		},
+		{
+			name: 'empty string should be invalid with default options',
+			code: createCredentialCode(''),
+			errors: [
+				{
+					messageId: 'invalidDocumentationUrl',
+					data: {
+						value: '',
+						expectedFormats: 'a valid URL',
+					},
+				},
+			],
+		},
+		{
+			name: 'empty string should be invalid when slugs are allowed',
+			code: createCredentialCode(''),
+			options: [{ allowUrls: false, allowSlugs: true }],
+			errors: [
+				{
+					messageId: 'invalidDocumentationUrl',
+					data: {
+						value: '',
+						expectedFormats: 'a camelCase or kebab-case slug (can contain slashes)',
+					},
+				},
+			],
+		},
 	],
 });

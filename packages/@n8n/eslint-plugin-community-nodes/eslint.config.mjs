@@ -14,8 +14,10 @@ export default defineConfig([
 			},
 		},
 		rules: {
-			'eslint-plugin/require-meta-docs-url': 'off', // We use RuleCreator which adds this automatically
-			'eslint-plugin/require-meta-default-options': 'off', // TypeScript-ESLint uses different pattern
+			// We use RuleCreator which adds this automatically
+			'eslint-plugin/require-meta-docs-url': 'off',
+			// typescript-eslint uses different pattern
+			'eslint-plugin/require-meta-default-options': 'off',
 			// Disable naming convention for plugin configs (ESLint rule names use kebab-case)
 			'@typescript-eslint/naming-convention': 'off',
 			// Allow default exports for ESLint plugin

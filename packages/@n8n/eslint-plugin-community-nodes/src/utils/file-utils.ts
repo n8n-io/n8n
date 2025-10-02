@@ -69,11 +69,18 @@ interface PackageJsonN8n {
 	[key: string]: unknown;
 }
 
+function isValidPackageJson(obj: unknown): obj is { n8n?: PackageJsonN8n } {
+	return typeof obj === 'object' && obj !== null;
+}
+
 function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
 	try {
 		const content = readFileSync(packageJsonPath, 'utf8');
-		const packageJson = JSON.parse(content) as { n8n?: PackageJsonN8n };
-		return packageJson.n8n ?? {};
+		const parsed: unknown = JSON.parse(content);
+		if (isValidPackageJson(parsed)) {
+			return parsed.n8n ?? {};
+		}
+		return {};
 	} catch {
 		return {};
 	}

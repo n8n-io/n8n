@@ -180,16 +180,16 @@ export const IconValidationRule = createRule({
 						return;
 					}
 
-					const iconProperty = findObjectProperty(descriptionProperty.value, 'icon');
+					const descriptionValue = descriptionProperty.value;
+					const iconProperty = findObjectProperty(descriptionValue, 'icon');
 					if (!iconProperty) {
 						const suggestions: ReportSuggestionArray<keyof typeof messages> = [];
 
 						suggestions.push({
 							messageId: 'addPlaceholder',
 							fix(fixer) {
-								const objectExpression = descriptionProperty.value as TSESTree.ObjectExpression;
 								const lastProperty =
-									objectExpression.properties[objectExpression.properties.length - 1];
+									descriptionValue.properties[descriptionValue.properties.length - 1];
 								if (lastProperty) {
 									return fixer.insertTextAfter(lastProperty, ',\n\t\ticon: "file:./icon.svg"');
 								}

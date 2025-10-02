@@ -117,7 +117,7 @@ export const CredentialDocumentationUrlRule = createRule({
 				}
 
 				const documentationUrl = getStringLiteralValue(documentationUrlProperty.value);
-				if (!documentationUrl) {
+				if (documentationUrl === null) {
 					return;
 				}
 

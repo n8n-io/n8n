@@ -98,12 +98,10 @@ function generatePackageNameSuggestions(invalidName: string): string[] {
 
 	if (invalidName.startsWith('@')) {
 		const [scope, packagePart] = invalidName.split('/');
-		if (packagePart?.startsWith('n8n-nodes-')) return [`${scope}/${packagePart}`];
 		const clean = cleanName(packagePart ?? '');
 		return clean ? [`${scope}/n8n-nodes-${clean}`] : [];
 	}
 
-	if (invalidName.startsWith('n8n-nodes-')) return [invalidName];
 	const clean = cleanName(invalidName);
 	return clean ? [`n8n-nodes-${clean}`] : [];
 }
