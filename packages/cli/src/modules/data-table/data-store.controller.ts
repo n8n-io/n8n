@@ -34,6 +34,7 @@ import { DataStoreColumnNameConflictError } from './errors/data-store-column-nam
 import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
+import { DataStoreSystemColumnNameConflictError } from './errors/data-store-system-column-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 
 @RestController('/projects/:projectId/data-tables')
@@ -150,7 +151,10 @@ export class DataStoreController {
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreColumnNameConflictError) {
+			} else if (
+				e instanceof DataStoreColumnNameConflictError ||
+				e instanceof DataStoreSystemColumnNameConflictError
+			) {
 				throw new ConflictError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
