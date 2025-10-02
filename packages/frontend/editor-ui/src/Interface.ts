@@ -854,7 +854,7 @@ export type NodeCreatorOpenSource =
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
-	| 'node_replace_action'
+	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
