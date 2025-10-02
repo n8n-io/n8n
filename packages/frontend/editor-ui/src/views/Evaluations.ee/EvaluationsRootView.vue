@@ -12,10 +12,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 import { computed, watch } from 'vue';
-import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import EvaluationsPaywall from '@/components/Evaluations.ee/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '@/components/Evaluations.ee/SetupWizard/SetupWizard.vue';
 
+import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	name: string;
 }>();

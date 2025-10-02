@@ -2,8 +2,7 @@
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { computed } from 'vue';
 
-import type { IUser, UserStackGroups } from '@n8n/design-system/types';
-
+import type { IUser, UserStackGroups } from '../../types';
 import N8nAvatar from '../N8nAvatar';
 import N8nUserInfo from '../N8nUserInfo';
 

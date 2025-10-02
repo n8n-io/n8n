@@ -498,13 +498,6 @@ describe('Folders', () => {
 		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 		const { getByTestId } = renderComponent({
 			pinia,
-			global: {
-				stubs: {
-					RouterLink: {
-						template: '<div data-test-id="folder-card"><slot /></div>',
-					},
-				},
-			},
 		});
 		await waitAllPromises();
 		expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();

@@ -22,10 +22,10 @@ import DraggableTarget from './DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
-import { N8nInput, N8nText } from '@n8n/design-system';
-import { N8nResizeWrapper, type ResizeData } from '@n8n/design-system';
 import { useThrottleFn } from '@vueuse/core';
 
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nInput, N8nResizeWrapper, N8nText, type ResizeData } from '@n8n/design-system';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {

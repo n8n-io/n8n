@@ -17,6 +17,10 @@ vi.mock('@/components/NodeIcon.vue', () => ({
 
 const renderComponent = createComponentRenderer(NodeIssueItem);
 
+function formatIssueMessage(value: string | string[]) {
+	return Array.isArray(value) ? value.join(', ') : value;
+}
+
 describe('NodeIssueItem', () => {
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 	let pinia: ReturnType<typeof createTestingPinia>;
@@ -34,8 +38,7 @@ describe('NodeIssueItem', () => {
 			props: {
 				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
 				getNodeType: vi.fn(),
-				formatIssueMessage: (value: string | string[]) =>
-					Array.isArray(value) ? value.join(', ') : value,
+				formatIssueMessage,
 			},
 		});
 
@@ -53,7 +56,7 @@ describe('NodeIssueItem', () => {
 			props: {
 				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
 				getNodeType: vi.fn(() => nodeType),
-				formatIssueMessage: (value: string) => value,
+				formatIssueMessage,
 			},
 		});
 

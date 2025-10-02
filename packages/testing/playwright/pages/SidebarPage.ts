@@ -56,12 +56,31 @@ export class SidebarPage {
 		return this.page.getByTestId('user-menu-item-logout');
 	}
 
+	getAboutModal(): Locator {
+		return this.page.getByTestId('about-modal');
+	}
+
+	async clickAboutMenuItem(): Promise<void> {
+		await this.page
+			.getByTestId('menu-item')
+			.filter({ hasText: 'About n8n' })
+			.dispatchEvent('click');
+	}
+
+	async closeAboutModal(): Promise<void> {
+		await this.page.getByTestId('close-about-modal-button').click();
+	}
+
 	getAdminPanel(): Locator {
 		return this.page.getByRole('menuitem', { name: 'Admin Panel' });
 	}
 
 	getTrialBanner(): Locator {
 		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	getTemplatesLink(): Locator {
+		return this.page.locator('a:has(#templates)');
 	}
 
 	async openUserMenu(): Promise<void> {

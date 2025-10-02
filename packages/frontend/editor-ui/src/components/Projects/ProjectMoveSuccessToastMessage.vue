@@ -5,6 +5,7 @@ import type { ProjectListItem } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	routeName: string;
 	resourceType: ResourceType;

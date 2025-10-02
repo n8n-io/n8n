@@ -113,9 +113,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
-import CanvasThinkingPill from '@n8n/design-system/components/CanvasThinkingPill/CanvasThinkingPill.vue';
 import { nodeViewEventBus } from '@/event-bus';
-import { N8nCallout } from '@n8n/design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -146,6 +144,8 @@ import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
 import { useParentFolder } from '@/composables/useParentFolder';
+
+import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -1456,6 +1456,16 @@ function removeSourceControlEventBindings() {
 }
 
 /**
+ * Command bar
+ * */
+function addCommandBarEventBindings() {
+	canvasEventBus.on('create:sticky', onCreateSticky);
+}
+function removeCommandBarEventBindings() {
+	canvasEventBus.off('create:sticky', onCreateSticky);
+}
+
+/**
  * Post message events
  */
 
@@ -1920,10 +1930,11 @@ onMounted(() => {
 	addBeforeUnloadEventBindings();
 	addImportEventBindings();
 	addExecutionOpenedEventBindings();
+	addCommandBarEventBindings();
 	registerCustomActions();
 });
 
-onActivated(async () => {
+onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
 });
@@ -1940,6 +1951,7 @@ onBeforeUnmount(() => {
 	removeBeforeUnloadEventBindings();
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
+	removeCommandBarEventBindings();
 	unregisterCustomActions();
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
@@ -2063,7 +2075,7 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<CanvasThinkingPill
+			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
 				:class="$style.thinkingPill"
 				show-stop

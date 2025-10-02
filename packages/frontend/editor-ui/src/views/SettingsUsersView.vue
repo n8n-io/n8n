@@ -15,6 +15,7 @@ import {
 	EnterpriseEditionFeature,
 	INVITE_USER_MODAL_KEY,
 } from '@/constants';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';
@@ -30,6 +31,19 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 
+import { ElSwitch } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nBadge,
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
 
@@ -341,15 +355,16 @@ const onSearch = (value: string) => {
 	void debouncedUpdateUsersTableData();
 };
 
-async function onUpdateMfaEnforced(value: boolean) {
+async function onUpdateMfaEnforced(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
 	try {
-		await usersStore.updateEnforceMfa(value);
+		await usersStore.updateEnforceMfa(boolValue);
 		showToast({
 			type: 'success',
-			title: value
+			title: boolValue
 				? i18n.baseText('settings.personal.mfa.enforce.enabled.title')
 				: i18n.baseText('settings.personal.mfa.enforce.disabled.title'),
-			message: value
+			message: boolValue
 				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
 				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
 		});

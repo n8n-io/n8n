@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useVersionsStore } from '@/stores/versions.store';
-import { N8nButton, N8nLink, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VERSIONS_MODAL_KEY } from '@/constants';
 
+import { N8nButton, N8nLink, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	disabled?: boolean;
 	tooltipText?: string;

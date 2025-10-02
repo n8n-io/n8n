@@ -4,6 +4,7 @@ import TemplateCard from './TemplateCard.vue';
 import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nHeading } from '@n8n/design-system';
 interface Props {
 	workflows?: ITemplatesWorkflow[];
 	infiniteScrollEnabled?: boolean;
