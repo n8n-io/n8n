@@ -1,6 +1,6 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { ApiKeyRepository, UserRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
@@ -9,7 +9,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { JwtService } from '@/services/jwt.service';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { createOwner } from '@test-integration/db/users';
 
 const mockReqWith = (authHeader: string | undefined) => {
 	const req = mockDeep<Request>();
@@ -23,29 +22,23 @@ const mockReqWith = (authHeader: string | undefined) => {
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
 
-let userRepository: UserRepository;
-let apiKeyRepository: ApiKeyRepository;
+let userRepository: jest.Mocked<UserRepository>;
+let apiKeyRepository: jest.Mocked<ApiKeyRepository>;
 let mcpServerApiKeyService: McpServerApiKeyService;
 
 describe('McpServerApiKeyService', () => {
-	beforeEach(async () => {
-		await testDb.truncate(['User', 'ApiKey']);
+	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
-	beforeAll(async () => {
-		await testDb.init();
-		userRepository = Container.get(UserRepository);
-		apiKeyRepository = Container.get(ApiKeyRepository);
+	beforeAll(() => {
+		userRepository = mockInstance(UserRepository);
+		apiKeyRepository = mockInstance(ApiKeyRepository);
 		mcpServerApiKeyService = new McpServerApiKeyService(
 			apiKeyRepository,
 			jwtService,
 			userRepository,
 		);
-	});
-
-	afterAll(async () => {
-		await testDb.terminate();
 	});
 
 	describe('getAuthMiddleware', () => {
@@ -111,6 +104,8 @@ describe('McpServerApiKeyService', () => {
 				jti: randomUUID(),
 			});
 
+			userRepository.findOne.mockResolvedValue(null);
+
 			const req = mockReqWith(`Bearer ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
@@ -130,7 +125,9 @@ describe('McpServerApiKeyService', () => {
 
 		it('should return 401 if JWT verification fails (invalid signature)', async () => {
 			// Arrange
-			const user = await createOwner();
+			const userId = randomUUID();
+			const mockUser = mockDeep<User>();
+			mockUser.id = userId;
 
 			const wrongJwtService = new JwtService(
 				mock<InstanceSettings>({ encryptionKey: 'wrong-key' }),
@@ -138,22 +135,13 @@ describe('McpServerApiKeyService', () => {
 			);
 
 			const apiKey = wrongJwtService.sign({
-				sub: user.id,
+				sub: userId,
 				iss: 'n8n',
 				aud: 'mcp-server-api',
 				jti: randomUUID(),
 			});
 
-			// Use the service's repository to insert with proper ID generation
-			const apiKeyEntity = apiKeyRepository.create({
-				userId: user.id,
-				apiKey,
-				audience: 'mcp-server-api',
-				scopes: [],
-				label: 'MCP Server API Key',
-			});
-
-			await apiKeyRepository.save(apiKeyEntity);
+			userRepository.findOne.mockResolvedValue(mockUser);
 
 			const req = mockReqWith(`Bearer ${apiKey}`);
 			const res = mockDeep<Response>();
@@ -174,10 +162,20 @@ describe('McpServerApiKeyService', () => {
 
 		it('should authenticate successfully with valid API key', async () => {
 			// Arrange
-			const user = await createOwner();
-			const apiKeyEntity = await mcpServerApiKeyService.createMcpServerApiKey(user);
+			const userId = randomUUID();
+			const mockUser = mockDeep<User>();
+			mockUser.id = userId;
 
-			const req = mockReqWith(`Bearer ${apiKeyEntity.apiKey}`);
+			const apiKey = jwtService.sign({
+				sub: userId,
+				iss: 'n8n',
+				aud: 'mcp-server-api',
+				jti: randomUUID(),
+			});
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+
+			const req = mockReqWith(`Bearer ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
@@ -195,15 +193,25 @@ describe('McpServerApiKeyService', () => {
 			// @ts-ignore
 			expect(req.user).toBeDefined();
 			// @ts-ignore
-			expect(req.user.id).toBe(user.id);
+			expect(req.user.id).toBe(userId);
 		});
 
 		it('should attach user with role information to request', async () => {
 			// Arrange
-			const user = await createOwner();
-			const apiKeyEntity = await mcpServerApiKeyService.createMcpServerApiKey(user);
+			const userId = randomUUID();
+			const mockUser = mockDeep<User>();
+			mockUser.id = userId;
 
-			const req = mockReqWith(`Bearer ${apiKeyEntity.apiKey}`);
+			const apiKey = jwtService.sign({
+				sub: userId,
+				iss: 'n8n',
+				aud: 'mcp-server-api',
+				jti: randomUUID(),
+			});
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+
+			const req = mockReqWith(`Bearer ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
@@ -224,10 +232,20 @@ describe('McpServerApiKeyService', () => {
 
 		it('should handle Bearer token with exact case matching', async () => {
 			// Arrange
-			const user = await createOwner();
-			const apiKeyEntity = await mcpServerApiKeyService.createMcpServerApiKey(user);
+			const userId = randomUUID();
+			const mockUser = mockDeep<User>();
+			mockUser.id = userId;
 
-			const req = mockReqWith(`Bearer ${apiKeyEntity.apiKey}`);
+			const apiKey = jwtService.sign({
+				sub: userId,
+				iss: 'n8n',
+				aud: 'mcp-server-api',
+				jti: randomUUID(),
+			});
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+
+			const req = mockReqWith(`Bearer ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
@@ -245,10 +263,20 @@ describe('McpServerApiKeyService', () => {
 
 		it('should throw error with non-standard Bearer casing', async () => {
 			// Arrange
-			const user = await createOwner();
-			const apiKeyEntity = await mcpServerApiKeyService.createMcpServerApiKey(user);
+			const userId = randomUUID();
+			const mockUser = mockDeep<User>();
+			mockUser.id = userId;
 
-			const req = mockReqWith(`BEARER ${apiKeyEntity.apiKey}`);
+			const apiKey = jwtService.sign({
+				sub: userId,
+				iss: 'n8n',
+				aud: 'mcp-server-api',
+				jti: randomUUID(),
+			});
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+
+			const req = mockReqWith(`BEARER ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
@@ -272,6 +300,8 @@ describe('McpServerApiKeyService', () => {
 				jti: randomUUID(),
 			});
 
+			userRepository.findOne.mockResolvedValue(null);
+
 			const req = mockReqWith(`Bearer ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
@@ -291,6 +321,8 @@ describe('McpServerApiKeyService', () => {
 
 		it('should return 401 for malformed JWT', async () => {
 			// Arrange
+			userRepository.findOne.mockResolvedValue(null);
+
 			const req = mockReqWith('Bearer malformed.jwt.token');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
@@ -310,10 +342,20 @@ describe('McpServerApiKeyService', () => {
 
 		it('should handle Bearer token with extra whitespace', async () => {
 			// Arrange
-			const user = await createOwner();
-			const apiKeyEntity = await mcpServerApiKeyService.createMcpServerApiKey(user);
+			const userId = randomUUID();
+			const mockUser = mockDeep<User>();
+			mockUser.id = userId;
 
-			const req = mockReqWith(`Bearer    ${apiKeyEntity.apiKey}`);
+			const apiKey = jwtService.sign({
+				sub: userId,
+				iss: 'n8n',
+				aud: 'mcp-server-api',
+				jti: randomUUID(),
+			});
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+
+			const req = mockReqWith(`Bearer    ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
@@ -331,13 +373,16 @@ describe('McpServerApiKeyService', () => {
 
 		it('should return 401 if API key exists but user is deleted', async () => {
 			// Arrange
-			const user = await createOwner();
-			const apiKeyEntity = await mcpServerApiKeyService.createMcpServerApiKey(user);
+			const apiKey = jwtService.sign({
+				sub: randomUUID(),
+				iss: 'n8n',
+				aud: 'mcp-server-api',
+				jti: randomUUID(),
+			});
 
-			// Delete the user
-			await userRepository.delete({ id: user.id });
+			userRepository.findOne.mockResolvedValue(null);
 
-			const req = mockReqWith(`Bearer ${apiKeyEntity.apiKey}`);
+			const req = mockReqWith(`Bearer ${apiKey}`);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
