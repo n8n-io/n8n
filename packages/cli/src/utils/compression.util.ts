@@ -1,11 +1,7 @@
 import * as fflate from 'fflate';
-import { promisify } from 'util';
-import { readFile, readdir, writeFile, mkdir, stat } from 'fs/promises';
+import { readFile, readdir, writeFile, mkdir } from 'fs/promises';
 import * as path from 'path';
-import { createWriteStream } from 'fs';
-
-const unzip = promisify(fflate.unzip);
-const zip = promisify(fflate.zip);
+import { createWriteStream, createReadStream } from 'fs';
 
 // Reuse the same compression levels as the Compression node
 const ALREADY_COMPRESSED = [
@@ -118,56 +114,67 @@ export async function compressFolder(
 }
 
 /**
- * Decompress a ZIP archive to a folder
- * Reuses the same patterns as the Compression node
+ * Decompress a ZIP archive to a folder using streaming
+ * Reuses the same patterns as the Compression node but with streaming approach
  */
-export async function decompressFolder(
-	sourcePath: string,
-	outputDir: string,
-	options: DecompressionOptions = {},
-): Promise<void> {
-	const { overwrite = false, exclude = [] } = options;
-
+export async function decompressFolder(sourcePath: string, outputDir: string): Promise<void> {
 	// Ensure output directory exists
 	await mkdir(outputDir, { recursive: true });
 
-	const zipContent = await readFile(sourcePath);
-	const files = await unzip(zipContent);
+	return new Promise<void>(async (resolve, reject) => {
+		let filesToProcess = 0;
 
-	for (const [fileName, fileData] of Object.entries(files)) {
-		// Skip excluded files
-		if (
-			exclude.some((pattern) =>
-				pattern.startsWith('*.') ? fileName.endsWith(pattern.slice(1)) : fileName.includes(pattern),
-			)
-		) {
-			continue;
-		}
+		const unzip = new fflate.Unzip((stream) => {
+			if (!stream.name.endsWith('/')) {
+				filesToProcess++;
 
-		// Skip __MACOSX files (same logic as Compression node)
-		if (fileName.includes('__MACOSX')) {
-			continue;
-		}
+				let data = new Uint8Array();
 
-		// Sanitize path to prevent zip slip attacks
-		const filePath = sanitizePath(fileName, outputDir);
-		const dirPath = path.dirname(filePath);
+				// Sanitize path to prevent zip slip attacks
+				const filePath = sanitizePath(stream.name, outputDir);
+				const dirPath = path.dirname(filePath);
 
-		// Create directory if it doesn't exist
-		await mkdir(dirPath, { recursive: true });
+				// Create directory if it doesn't exist
+				mkdir(dirPath, { recursive: true }).catch((err) => {
+					if (err.code !== 'EEXIST') {
+						reject(err);
+					}
+				});
 
-		// Check if file exists and handle overwrite
-		try {
-			await stat(filePath);
-			if (!overwrite) {
-				continue; // Skip existing files
+				stream.ondata = async (err, chunk, final) => {
+					if (err) {
+						reject(err);
+						return;
+					}
+
+					data = new Uint8Array([...data, ...chunk]);
+
+					if (final) {
+						await writeFile(filePath, Buffer.from(data));
+
+						filesToProcess--;
+
+						if (filesToProcess === 0) {
+							resolve();
+						}
+					}
+				};
+
+				stream.start();
 			}
-		} catch {
-			// File doesn't exist, continue
+		});
+
+		unzip.register(fflate.AsyncUnzipInflate);
+
+		// Create readable stream
+		const zipStream = createReadStream(sourcePath);
+
+		for await (const chunk of zipStream) {
+			unzip.push(chunk);
 		}
 
-		await writeFile(filePath, Buffer.from(fileData.buffer));
-	}
+		zipStream.on('error', reject);
+	});
 }
 
 /**
