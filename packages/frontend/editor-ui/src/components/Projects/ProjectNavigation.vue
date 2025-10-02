@@ -230,8 +230,8 @@ onBeforeMount(async () => {
 
 .addFirstProjectBtn {
 	font-size: var(--font-size-xs);
-	padding: var(--spacing-3xs);
-	margin: 0 var(--spacing-m) var(--spacing-m);
+	margin: 0 var(--spacing-s);
+	width: calc(100% - var(--spacing-s) * 2);
 
 	&.collapsed {
 		> span:last-child {
