@@ -218,10 +218,10 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const createWorkflowCommand = (workflow: IWorkflowDb): CommandBarItem => {
-		const keywords = workflowKeywords.value.get(workflow.id) ?? [];
+		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
-		// Get node icon if this workflow matched by node type
+		// // Get node icon if this workflow matched by node type
 		let icon: CommandBarItem['icon'] | undefined;
 		if (matchedNodeType) {
 			const nodeType = nodeTypesStore.getNodeType(matchedNodeType);
@@ -235,10 +235,13 @@ export function useWorkflowNavigationCommands(options: {
 
 		// Add workflow name to keywords since we're using a custom component for the title
 		const workflowName = workflow.name;
-		keywords.push(workflowName);
+		keywords = [...keywords, workflowName];
 
 		if (workflow.tags && workflow.tags.length > 0) {
-			keywords.push(...workflow.tags.map((tag) => (typeof tag === 'string' ? tag : tag.name)));
+			keywords = [
+				...keywords,
+				...workflow.tags.map((tag) => (typeof tag === 'string' ? tag : tag.name)),
+			];
 		}
 
 		const suffix = getWorkflowProjectSuffix(workflow);
