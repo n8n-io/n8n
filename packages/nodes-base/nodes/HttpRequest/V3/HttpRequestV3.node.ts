@@ -388,30 +388,9 @@ export class HttpRequestV3 implements INodeType {
 				}
 
 				const parametersToKeyValue = async (
-					accumulator: { [key: string]: string | number | boolean | object | Array<any> },
+					accumulator: IDataObject,
 					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 				) => {
-					if (cur.parameterType === 'formBinaryData') {
-						if (!cur.inputDataFieldName) return accumulator;
-						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
-						let uploadData: Buffer | Readable;
-						const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
-						if (itemBinaryData.id) {
-							uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
-						} else {
-							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
-						}
-
-						accumulator[cur.name] = {
-							value: uploadData,
-							options: {
-								filename: binaryData.fileName,
-								contentType: binaryData.mimeType,
-							},
-						};
-						return accumulator;
-					}
-
 					interface IBinaryDataObject {
 						value: Buffer | Readable;
 						options: {
@@ -419,9 +398,6 @@ export class HttpRequestV3 implements INodeType {
 							contentType?: string;
 						};
 					}
-
-					// Handle multiple values for the same parameter, with special handling for binary data objects
-					const existingValue = accumulator[cur.name];
 
 					const isExistingBinary = (value: unknown): value is IBinaryDataObject => {
 						return (
@@ -433,33 +409,51 @@ export class HttpRequestV3 implements INodeType {
 						);
 					};
 
-					const isNewBinary = (value: unknown): value is IBinaryDataObject => {
-						return (
-							value !== null &&
-							typeof value === 'object' &&
-							'value' in value &&
-							'options' in value &&
-							(value.value instanceof Buffer || value.value instanceof Readable)
-						);
-					};
+					// Prepare the current value to be added
+					let currentValue: IBinaryDataObject | string;
+
+					if (cur.parameterType === 'formBinaryData') {
+						if (!cur.inputDataFieldName) return accumulator;
+						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
+						let uploadData: Buffer | Readable;
+						const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
+						if (itemBinaryData.id) {
+							uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
+						} else {
+							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+						}
+
+						currentValue = {
+							value: uploadData,
+							options: {
+								filename: binaryData.fileName,
+								contentType: binaryData.mimeType,
+							},
+						};
+					} else {
+						currentValue = cur.value;
+					}
+
+					// Handle multiple values for the same parameter, with special handling for binary data objects
+					const existingValue = accumulator[cur.name];
 
 					if (existingValue !== undefined) {
 						if (Array.isArray(existingValue)) {
 							// If it's already an array, append to it
-							accumulator[cur.name] = existingValue.concat(cur.value);
-						} else if (isExistingBinary(existingValue) && isNewBinary(cur.value)) {
+							accumulator[cur.name] = [...existingValue, currentValue];
+						} else if (isExistingBinary(existingValue) && isExistingBinary(currentValue)) {
 							// Only overwrite binary data with another binary data
-							accumulator[cur.name] = cur.value;
-						} else if (isExistingBinary(existingValue) && !isNewBinary(cur.value)) {
+							accumulator[cur.name] = currentValue;
+						} else if (isExistingBinary(existingValue) && !isExistingBinary(currentValue)) {
 							// Never overwrite binary data with non-binary data
-							accumulator[cur.name] = [existingValue, cur.value];
+							accumulator[cur.name] = [existingValue, currentValue];
 						} else {
 							// Convert existing value and new value into an array
-							accumulator[cur.name] = [existingValue, cur.value];
+							accumulator[cur.name] = [existingValue, currentValue];
 						}
 					} else {
 						// First occurrence of this parameter
-						accumulator[cur.name] = cur.value;
+						accumulator[cur.name] = currentValue;
 					}
 					return accumulator;
 				};
