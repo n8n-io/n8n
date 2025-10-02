@@ -710,18 +710,30 @@ export const variablesOptions = () => {
 	const environmentsStore = useEnvironmentsStore();
 	const variables = environmentsStore.variables;
 
+	const getDescription = (isGlobal: boolean, isOverridden: boolean, projectName?: string) =>
+		isGlobal
+			? isOverridden
+				? i18n.baseText('codeNodeEditor.completer.$vars.varName.global.overridden', {
+						interpolate: { projectName: projectName ?? '' },
+					})
+				: i18n.baseText('codeNodeEditor.completer.$vars.varName.global')
+			: i18n.baseText('codeNodeEditor.completer.$vars.varName.project', {
+					interpolate: { projectName: projectName ?? '' },
+				});
+
 	return applySections({
 		options: variables.map((variable) => {
 			const isOverridden =
 				!variable.project && !!variables.find((v) => v.key === variable.key && v.project);
+
 			return createCompletionOption({
 				name: variable.key,
 				doc: {
 					section: variable.project ? 'project' : 'global',
 					name: variable.key,
 					returnType: 'string',
-					description: i18n.baseText('codeNodeEditor.completer.$vars.varName'),
-					docURL: 'https://docs.n8n.io/environments/variables/',
+					description: getDescription(!variable.project, isOverridden, variable.project?.name),
+					docURL: 'https://docs.n8n.io/code/variables/',
 				},
 				type: isOverridden ? 'strikethrough' : undefined,
 			});
