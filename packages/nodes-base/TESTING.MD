@@ -3,7 +3,7 @@ help.
 
 ## Approach for standard unit tests
 
-1. **Create the test file**: Decide which node you want to test and create a test file with the corresponding name in the test folder. For example, for a node in `nodeA/v2/NodeAV2.ts`, create a test file in `nodeA/v2/test/NodeAV2.test.ts`.
+1. **Create the test file**: Decide which node you want to test and create a test file with the corresponding name in the test folder. For example, for a node in `nodeA/v2/NodeAV2.node.ts`, create a test file in `nodeA/v2/test/NodeAV2.test.ts`.
 
 2. **Use AI assistance**: Send this prompt to your AI tool (Cursor, Copilot, Claude, etc.):
    ```
