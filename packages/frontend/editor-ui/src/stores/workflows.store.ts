@@ -1,7 +1,6 @@
 import {
 	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
-	DEFAULT_NEW_WORKFLOW_NAME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
@@ -16,7 +15,6 @@ import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -92,7 +90,6 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -691,55 +688,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return await workflowsApi.getWorkflowsWithNodesIncluded(rootStore.restApiContext, nodeTypes);
 	}
 
-	async function getNewWorkflowData(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		let workflowData = {
-			name: '',
-			settings: { ...defaults.settings },
-		};
-		try {
-			const data: IDataObject = {
-				name,
-				projectId,
-				parentFolderId,
-			};
-
-			workflowData = await workflowsApi.getNewWorkflow(
-				rootStore.restApiContext,
-				isEmpty(data) ? undefined : data,
-			);
-		} catch (e) {
-			// in case of error, default to original name
-			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
-		}
-
-		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-
-		return workflowData;
-	}
-
-	async function getNewWorkflowDataAndMakeShareable(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
-		makeNewWorkflowShareable();
-		return workflowData;
-	}
-
-	function makeNewWorkflowShareable() {
-		const { currentProject, personalProject } = useProjectsStore();
-		const homeProject = currentProject ?? personalProject ?? {};
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-
-		workflow.value.homeProject = homeProject as ProjectSharingData;
-		workflow.value.scopes = scopes;
-	}
-
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
 	}
@@ -750,21 +698,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			accu[credential.id] = credential;
 			return accu;
 		}, {});
-	}
-
-	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
-		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-		workflow.value.name = data.newName;
-		workflowObject.value.name = data.newName;
-
-		if (
-			workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-			workflowsById.value[workflow.value.id]
-		) {
-			workflowsById.value[workflow.value.id].name = data.newName;
-		}
 	}
 
 	function setWorkflowVersionId(versionId: string) {
@@ -2038,8 +1971,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchWorkflowsPage,
 		fetchWorkflow,
 		fetchWorkflowsWithNodesIncluded,
-		getNewWorkflowData,
-		makeNewWorkflowShareable,
 		resetWorkflow,
 		addNodeExecutionStartedData,
 		addExecutingNode,
@@ -2109,7 +2040,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		markExecutionAsStopped,
 		findNodeByPartialId,
 		getPartialIdForNode,
-		getNewWorkflowDataAndMakeShareable,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
 		defaults,
@@ -2117,7 +2047,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Please do not use outside this context
 		private: {
 			setWorkflowSettings,
-			setWorkflowName,
 			setActiveExecutionId,
 		},
 	};
