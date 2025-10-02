@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { FrontendSettings } from '@n8n/api-types';
-import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 import { useFavicon } from '@vueuse/core';
+import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 
 import LogoIcon from './logo-icon.svg';
 import LogoText from './logo-text.svg';
@@ -9,28 +8,28 @@ import LogoText from './logo-text.svg';
 const props = defineProps<
 	(
 		| {
-				location: 'authView';
+				size: 'large';
 		  }
 		| {
-				location: 'sidebar';
+				size: 'small';
 				collapsed: boolean;
 		  }
 	) & {
-		releaseChannel: FrontendSettings['releaseChannel'];
+		releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	}
 >();
 
-const { location, releaseChannel } = props;
+const { size, releaseChannel } = props;
 
 const showLogoText = computed(() => {
-	if (location === 'authView') return true;
+	if (size === 'large') return true;
 	return !props.collapsed;
 });
 
 const $style = useCssModule();
 const containerClasses = computed(() => {
-	if (location === 'authView') {
-		return [$style.logoContainer, $style.authView];
+	if (size === 'large') {
+		return [$style.logoContainer, $style.large];
 	}
 	return [
 		$style.logoContainer,
@@ -77,7 +76,7 @@ onMounted(() => {
 	}
 }
 
-.authView {
+.large {
 	transform: scale(2);
 	margin-bottom: var(--spacing-xl);
 

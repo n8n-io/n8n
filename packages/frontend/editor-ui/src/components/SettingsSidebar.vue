@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-import type { IMenuItem } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -10,7 +9,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nHeading, N8nIcon, N8nLink, N8nMenu } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 const emit = defineEmits<{
 	return: [];
 }>();
@@ -127,27 +126,26 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 	return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
 });
+
+const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item.available));
 </script>
 
 <template>
 	<div :class="$style.container">
-		<N8nMenu :items="sidebarMenuItems">
-			<template #header>
-				<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
-					<i class="mr-xs">
-						<N8nIcon icon="arrow-left" />
-					</i>
-					<N8nHeading size="large" :bold="true">{{ i18n.baseText('settings') }}</N8nHeading>
-				</div>
-			</template>
-			<template #menuSuffix>
-				<div :class="$style.versionContainer">
-					<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
-						{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
-					</N8nLink>
-				</div>
-			</template>
-		</N8nMenu>
+		<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
+			<i>
+				<N8nIcon icon="arrow-left" />
+			</i>
+			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
+		</div>
+		<div :class="$style.items">
+			<N8nMenuItem v-for="item in visibleItems" :key="item.id" :item="item" />
+		</div>
+		<div :class="$style.versionContainer">
+			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
+				{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
+			</N8nLink>
+		</div>
 	</div>
 </template>
 
@@ -162,15 +160,25 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 }
 
 .returnButton {
-	padding: var(--spacing-s) var(--spacing-l);
+	padding: var(--spacing-xs);
 	cursor: pointer;
+	display: flex;
+	gap: var(--spacing-3xs);
+	align-items: center;
 	&:hover {
 		color: var(--color-primary);
 	}
 }
 
+.items {
+	display: flex;
+	flex-direction: column;
+
+	padding: 0 var(--spacing-3xs);
+}
+
 .versionContainer {
-	padding: var(--spacing-xs) var(--spacing-l);
+	padding: var(--spacing-xs);
 }
 
 @media screen and (max-height: 420px) {
