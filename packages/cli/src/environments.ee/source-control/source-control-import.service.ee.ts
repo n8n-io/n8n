@@ -917,13 +917,8 @@ export class SourceControlImportService {
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				);
 
-				// This is just a safety check as there should only be team projects in the work folder
-				if (!project?.id || project.type !== 'team') {
-					this.logger.debug(`Skipping non-team project: ${project?.id || 'unknown'}`);
-					continue;
-				}
-
-				// Validate that owner matches the project itself
+				// Ensure that only team owned projects are imported as we can't resolve owners for personal projects
+				// This is a safety check as only team owned projects should be exported in the first place
 				if (
 					typeof project.owner !== 'object' ||
 					project.owner.type !== 'team' ||
