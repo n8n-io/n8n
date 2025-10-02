@@ -130,7 +130,7 @@ describe('Stripe Node - MeterEvent', () => {
 				'payload[stripe_customer_id]': 'cus_12345678',
 				'payload[value]': '50',
 				identifier: 'custom_id_123',
-				timestamp: '1704110400',
+				timestamp: 1704110400,
 			},
 			{},
 		);

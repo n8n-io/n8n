@@ -474,9 +474,7 @@ export class Stripe implements INodeType {
 								typeof additionalFields.timestamp === 'string'
 							) {
 								// Convert to Unix timestamp
-								body.timestamp = Math.floor(
-									new Date(additionalFields.timestamp).getTime() / 1000,
-								).toString();
+								body.timestamp = Math.floor(new Date(additionalFields.timestamp).getTime() / 1000);
 							}
 
 							if (
@@ -484,25 +482,20 @@ export class Stripe implements INodeType {
 								typeof additionalFields.customPayloadFields === 'object' &&
 								additionalFields.customPayloadFields !== null
 							) {
-								const customFields = additionalFields.customPayloadFields as IDataObject;
-								if ('values' in customFields) {
-									const values = customFields.values;
-									if (Array.isArray(values)) {
-										values.forEach((field) => {
-											if (
-												typeof field === 'object' &&
-												field !== null &&
-												'key' in field &&
-												'value' in field
-											) {
-												const key = field.key;
-												const fieldValue = field.value;
-												if (typeof key === 'string' && typeof fieldValue === 'string') {
-													body[`payload[${key}]`] = fieldValue;
-												}
-											}
-										});
-									}
+								const customFields = additionalFields.customPayloadFields;
+								if ('values' in customFields && Array.isArray(customFields.values)) {
+									customFields.values.forEach((field: unknown) => {
+										if (
+											typeof field === 'object' &&
+											field !== null &&
+											'key' in field &&
+											'value' in field &&
+											typeof field.key === 'string' &&
+											typeof field.value === 'string'
+										) {
+											body[`payload[${field.key}]`] = field.value;
+										}
+									});
 								}
 							}
 						}
