@@ -74,7 +74,10 @@ export function useNodeCommands(options: {
 						}
 					: undefined,
 				handler: async () => {
-					await addNodes([{ type: name }]);
+					const nodes = await addNodes([{ type: name }]);
+					if (nodes && nodes.length > 0) {
+						canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
+					}
 				},
 			};
 		});
