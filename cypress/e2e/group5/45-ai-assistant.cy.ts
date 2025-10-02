@@ -138,7 +138,7 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.quickReplyButtons().eq(0).click();
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
-		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', 'Sure, let\'s do it');
+		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', "Sure, let's do it");
 	});
 
 	it.skip('should warn before starting a new session', () => {
