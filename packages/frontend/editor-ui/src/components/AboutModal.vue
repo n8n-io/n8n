@@ -9,6 +9,8 @@ import { useDebugInfo } from '@/composables/useDebugInfo';
 import { useI18n } from '@n8n/i18n';
 import { getThirdPartyLicenses } from '@n8n/rest-api-client';
 
+import { ElCol, ElRow } from 'element-plus';
+import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 const modalBus = createEventBus();
 const toast = useToast();
 const i18n = useI18n();

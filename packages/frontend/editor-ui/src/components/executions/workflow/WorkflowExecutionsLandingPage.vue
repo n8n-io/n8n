@@ -7,6 +7,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { SimplifiedNodeType } from '@/Interface';
 import { getNodeIconSource, type NodeIconSource } from '@/utils/nodeIcon';
-import { N8nNodeIcon } from '@n8n/design-system';
 import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import { computed } from 'vue';
 
+import { N8nNodeIcon } from '@n8n/design-system';
 type Props = {
 	size?: number;
 	disabled?: boolean;
