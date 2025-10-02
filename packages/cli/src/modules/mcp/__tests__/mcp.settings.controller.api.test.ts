@@ -2,7 +2,7 @@ import { testDb } from '@n8n/backend-test-utils';
 import { ApiKeyRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createOwner, createUser } from '@test-integration/db/users';
+import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'] });
@@ -10,13 +10,13 @@ const testServer = setupTestServer({ endpointGroups: ['mcp'] });
 let owner: User;
 let member: User;
 
-beforeEach(async () => {
+beforeAll(async () => {
 	owner = await createOwner();
-	member = await createUser({ role: { slug: 'global:owner' } });
+	member = await createMember();
 });
 
 afterEach(async () => {
-	await testDb.truncate(['User', 'ApiKey']);
+	await testDb.truncate(['ApiKey']);
 });
 
 describe('GET /mcp/api-key', () => {
