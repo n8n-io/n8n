@@ -549,21 +549,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('setWorkflowName()', () => {
-		it('should set the workflow name correctly', () => {
-			workflowsStore.private.setWorkflowName({
-				newName: 'New Workflow Name',
-				setStateDirty: false,
-			});
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
-		});
-
-		it('should propagate name to workflowObject for pre-exec expressions', () => {
-			workflowsStore.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
-			expect(workflowsStore.workflowObject.name).toBe('WF Title');
-		});
-	});
-
 	describe('setWorkflowActive()', () => {
 		it('should set workflow as active when it is not already active', () => {
 			uiStore.stateIsDirty = true;
