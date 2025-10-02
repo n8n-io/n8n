@@ -31,6 +31,7 @@ import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useCredentialsStore } from './credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
+import { stringSizeInBytes } from '@/utils/typesUtils';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
@@ -319,6 +320,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 
 		if (type === 'execution') {
+			const resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+			const resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+
+			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
 			trackingPayload.execution_status = executionStatus ?? '';
 			if (executionStatus === 'error') {
 				trackingPayload.error_message = errorMessage ?? '';
