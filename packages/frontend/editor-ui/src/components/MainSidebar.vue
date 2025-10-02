@@ -16,6 +16,8 @@ import {
 	N8nScrollArea,
 	N8nAvatar,
 	N8nText,
+	N8nIcon,
+	N8nButton,
 } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
