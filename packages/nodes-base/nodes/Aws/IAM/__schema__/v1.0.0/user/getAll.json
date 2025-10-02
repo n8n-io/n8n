@@ -5,7 +5,7 @@
             "type": "string"
         },
         "CreateDate": {
-            "type": "integer"
+            "type": "string"
         },
         "Path": {
             "type": "string"
