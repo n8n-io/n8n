@@ -90,7 +90,6 @@ export class WaitTracker {
 	}
 
 	async startExecution(executionId: string) {
-		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
 		// Get the data to execute
@@ -127,10 +126,12 @@ export class WaitTracker {
 
 		const { parentExecution } = fullExecutionData.data;
 		if (parentExecution) {
-			// on child execution completion, resume parent execution
-			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
-				void this.startExecution(parentExecution.executionId);
-			});
+			// On child execution completion, resume parent execution. Only try to resume parent if it is actually waiting.
+			if (this.has(parentExecution.executionId)) {
+				void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
+					void this.startExecution(parentExecution.executionId);
+				});
+			}
 		}
 	}
 
