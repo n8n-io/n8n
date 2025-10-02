@@ -91,6 +91,49 @@ export function useBuilderMessages() {
 	}
 
 	/**
+	 * Process a tool message - either update existing or add new
+	 */
+	function processToolMessage(
+		messages: ChatUI.AssistantMessage[],
+		msg: ChatRequest.ToolMessage,
+		messageId: string,
+	): void {
+		// Use toolCallId as the message ID for consistency across updates
+		const toolMessageId = msg.toolCallId ?? messageId;
+
+		// Check if we already have this tool message
+		const existingIndex = msg.toolCallId
+			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
+			: -1;
+
+		if (existingIndex !== -1) {
+			// Update existing tool message - merge updates array
+			const existing = messages[existingIndex] as ChatUI.ToolMessage;
+			const toolMessage: ChatUI.ToolMessage = {
+				...existing,
+				status: msg.status,
+				updates: [...(existing.updates || []), ...(msg.updates || [])],
+			};
+			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
+		} else {
+			// Add new tool message
+			const toolMessage: ChatUI.AssistantMessage = {
+				id: toolMessageId,
+				role: 'assistant',
+				type: 'tool',
+				toolName: msg.toolName,
+				toolCallId: msg.toolCallId,
+				displayTitle: msg.displayTitle,
+				customDisplayTitle: msg.customDisplayTitle,
+				status: msg.status,
+				updates: msg.updates || [],
+				read: false,
+			};
+			messages.push(toolMessage);
+		}
+	}
+
+	/**
 	 * Process a single message and add it to the messages array
 	 */
 	function processSingleMessage(
@@ -136,47 +179,11 @@ export function useBuilderMessages() {
 		return shouldClearThinking;
 	}
 
-	/**
-	 * Process a tool message - either update existing or add new
-	 */
-	function processToolMessage(
-		messages: ChatUI.AssistantMessage[],
-		msg: ChatRequest.ToolMessage,
-		messageId: string,
-	): void {
-		// Use toolCallId as the message ID for consistency across updates
-		const toolMessageId = msg.toolCallId ?? messageId;
-
-		// Check if we already have this tool message
-		const existingIndex = msg.toolCallId
-			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
-			: -1;
-
-		if (existingIndex !== -1) {
-			// Update existing tool message - merge updates array
-			const existing = messages[existingIndex] as ChatUI.ToolMessage;
-			const toolMessage: ChatUI.ToolMessage = {
-				...existing,
-				status: msg.status,
-				updates: [...(existing.updates || []), ...(msg.updates || [])],
-			};
-			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
-		} else {
-			// Add new tool message
-			const toolMessage: ChatUI.AssistantMessage = {
-				id: toolMessageId,
-				role: 'assistant',
-				type: 'tool',
-				toolName: msg.toolName,
-				toolCallId: msg.toolCallId,
-				displayTitle: msg.displayTitle,
-				customDisplayTitle: msg.customDisplayTitle,
-				status: msg.status,
-				updates: msg.updates || [],
-				read: false,
-			};
-			messages.push(toolMessage);
-		}
+	function getRunningTools(messages: ChatUI.AssistantMessage[]) {
+		const allToolMessages = messages.filter(
+			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
+		);
+		return allToolMessages.some((msg) => msg.status === 'running');
 	}
 
 	/**
@@ -191,10 +198,7 @@ export function useBuilderMessages() {
 		hasAnyRunningTools: boolean;
 		isStillThinking: boolean;
 	} {
-		const allToolMessages = messages.filter(
-			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
-		);
-		const hasAnyRunningTools = allToolMessages.some((msg) => msg.status === 'running');
+		const hasAnyRunningTools = getRunningTools(messages);
 		if (hasAnyRunningTools) {
 			return {
 				hasAnyRunningTools: true,
@@ -241,10 +245,7 @@ export function useBuilderMessages() {
 		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
 		if (hasAnyRunningTools) {
-			const runningTools = messages.filter(
-				(msg): msg is ChatUI.ToolMessage => msg.type === 'tool' && msg.status === 'running',
-			);
-
+			const runningTools = getRunningTools(messages);
 			const lastRunningTool = runningTools[runningTools.length - 1];
 			if (lastRunningTool) {
 				const toolName = lastRunningTool.customDisplayTitle || lastRunningTool.displayTitle;
@@ -419,5 +420,6 @@ export function useBuilderMessages() {
 		mapAssistantMessageToUI,
 		applyRatingLogic,
 		clearRatingLogic,
+		getRunningTools,
 	};
 }

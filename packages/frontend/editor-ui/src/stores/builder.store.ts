@@ -70,6 +70,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		clearMessages,
 		mapAssistantMessageToUI,
 		clearRatingLogic,
+		getRunningTools,
 	} = useBuilderMessages();
 
 	// Computed properties
@@ -604,5 +605,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
 		updateBuilderCredits,
+		getRunningTools,
 	};
 });

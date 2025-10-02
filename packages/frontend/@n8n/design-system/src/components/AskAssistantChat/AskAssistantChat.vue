@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
@@ -311,6 +311,30 @@ onUnmounted(() => {
 	}
 });
 
+function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
+	const $style = useCssModule();
+	return {
+		[$style.firstToolMessage]:
+			message.type === 'tool' &&
+			(messageCount === 0 || normalizedMessages.value[messageCount - 1].type !== 'tool'),
+		[$style.lastToolMessage]:
+			message.type === 'tool' &&
+			((messageCount === normalizedMessages.value.length - 1 && !props.loadingMessage) ||
+				(messageCount < normalizedMessages.value.length - 1 &&
+					normalizedMessages.value[messageCount + 1]?.type !== 'tool')),
+	};
+}
+
+function getMessageColor(message: ChatUI.AssistantMessage): string | undefined {
+	if (message.type === 'text' && message.role === 'assistant') {
+		const isTaskAbortedMessage = message.content === t('aiAssistant.builder.streamAbortedMessage');
+		if (isTaskAbortedMessage) {
+			return 'var(--color-text-base)';
+		}
+	}
+	return undefined;
+}
+
 // Expose focusInput method to parent components
 defineExpose({
 	focusInput: () => {
@@ -355,16 +379,8 @@ defineExpose({
 									:user="user"
 									:streaming="streaming"
 									:is-last-message="i === normalizedMessages.length - 1"
-									:class="{
-										[$style.firstToolMessage]:
-											message.type === 'tool' &&
-											(i === 0 || normalizedMessages[i - 1].type !== 'tool'),
-										[$style.lastToolMessage]:
-											message.type === 'tool' &&
-											((i === normalizedMessages.length - 1 && !loadingMessage) ||
-												(i < normalizedMessages.length - 1 &&
-													normalizedMessages[i + 1]?.type !== 'tool')),
-									}"
+									:class="getMessageStyles(message, i)"
+									:color="getMessageColor(message)"
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
