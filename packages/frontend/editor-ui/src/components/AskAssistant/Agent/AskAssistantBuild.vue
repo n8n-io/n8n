@@ -38,7 +38,17 @@ const user = computed(() => ({
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
-const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
+const loadingMessage = computed(() => {
+	// Check if we have any running tool messages visible in the chat
+	const hasVisibleRunningTools = builderStore.getRunningTools(builderStore.chatMessages).length > 0;
+	// Don't show loading message if tools are already visible and running
+	// to avoid duplicate display (tool messages show their own status)
+	if (hasVisibleRunningTools) {
+		return undefined;
+	}
+
+	return builderStore.assistantThinkingMessage;
+});
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
 	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
@@ -225,7 +235,10 @@ watch(
 			const successful =
 				lastMessage &&
 				lastMessage.type !== 'error' &&
-				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+				!(
+					lastMessage.type === 'text' &&
+					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
+				);
 
 			builderStore.initialGeneration = false;
 
@@ -271,9 +284,9 @@ watch(currentRoute, () => {
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
-				<N8nText :class="$style.topText">{{
-					i18n.baseText('aiAssistant.builder.assistantPlaceholder')
-				}}</N8nText>
+				<N8nText :class="$style.topText"
+					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
+				</N8nText>
 			</template>
 		</N8nAskAssistantChat>
 	</div>
@@ -298,6 +311,7 @@ watch(currentRoute, () => {
 	padding: var(--spacing-xs);
 	border: 0;
 }
+
 .newWorkflowText {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
