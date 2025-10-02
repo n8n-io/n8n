@@ -204,6 +204,5 @@ export const mysqlMigrations: Migration[] = [
 	LinkRoleToProjectRelationTable1753953244168,
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
 	AddProjectIdToVariableTable1758794506893,
-	UpdateParentFolderIdColumn1740445074052,
 	AddAudienceColumnToApiKeys1758731786132,
 ];
