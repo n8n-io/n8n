@@ -10,8 +10,8 @@ import {
 	sleep,
 	jsonStringify,
 	ensureError,
-	ExecutionCancelledError,
 	UnexpectedError,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
@@ -80,11 +80,11 @@ export class ScalingService {
 		this.logger.debug('Queue setup completed');
 	}
 
-	setupWorker(concurrency: number) {
+	async setupWorker(concurrency: number) {
 		this.assertWorker();
 		this.assertQueue();
 
-		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+		await this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				this.eventService.emit('job-dequeued', {
 					executionId: job.data.executionId,
@@ -230,7 +230,7 @@ export class ScalingService {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
 				await job.discard(); // prevent retries
-				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
+				await job.moveToFailed(new ManualExecutionCancelledError(job.data.executionId), true); // remove from queue
 				return true;
 			}
 

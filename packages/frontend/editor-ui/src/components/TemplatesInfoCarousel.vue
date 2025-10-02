@@ -5,6 +5,7 @@ import Card from '@/components/CollectionWorkflowCard.vue';
 import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
 import { VueAgile } from 'vue-agile';
 
+import { N8nIcon } from '@n8n/design-system';
 type SliderRef = InstanceType<typeof VueAgile>;
 
 const props = withDefaults(

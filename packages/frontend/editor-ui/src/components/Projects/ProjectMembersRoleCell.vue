@@ -14,7 +14,6 @@ import type { ProjectMemberData } from '@/types/projects.types';
 import { useI18n } from '@n8n/i18n';
 
 const i18n = useI18n();
-
 const props = defineProps<{
 	data: ProjectMemberData;
 	roles: Record<ProjectRole, { label: string; desc: string }>;

@@ -15,6 +15,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nHeading, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();

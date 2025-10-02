@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
+import { N8nActionBox } from '@n8n/design-system';
 const i18n = useI18n();
 const uiStore = useUIStore();
 

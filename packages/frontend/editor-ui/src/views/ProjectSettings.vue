@@ -3,7 +3,6 @@ import type { ProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
-import { N8nFormInput, N8nInput } from '@n8n/design-system';
 import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
 import { useI18n } from '@n8n/i18n';
@@ -24,6 +23,15 @@ import type { TableOptions } from '@n8n/design-system/components/N8nDataTableSer
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/utils/typeGuards';
 
+import {
+	N8nButton,
+	N8nFormInput,
+	N8nIcon,
+	N8nIconPicker,
+	N8nInput,
+	N8nText,
+	N8nUserSelect,
+} from '@n8n/design-system';
 type FormDataDiff = {
 	name?: string;
 	description?: string;

@@ -12,6 +12,7 @@ import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '../ViewSubExecution.vue';
 import { formatTokenUsageCount } from '@/utils/aiUtils';
 
+import { N8nInfoTip, N8nTooltip } from '@n8n/design-system';
 interface RunMeta {
 	startTimeMs: number;
 	executionTimeMs: number;

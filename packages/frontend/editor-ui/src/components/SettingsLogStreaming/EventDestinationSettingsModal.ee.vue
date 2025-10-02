@@ -49,8 +49,16 @@ import {
 	syslogModalDescription,
 } from './descriptions.ee';
 import { useElementSize } from '@vueuse/core';
-import { N8nInlineTextEdit, N8nText } from '@n8n/design-system';
-
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nInlineTextEdit,
+	N8nInputLabel,
+	N8nMenu,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
 const props = withDefaults(
@@ -316,7 +324,7 @@ async function saveDestination() {
 				? `${nodeParameters.value.__type}`
 				: 'unknown'
 		)
-			.replace('$$MessageEventBusDestination', '')
+			.replace('$MessageEventBusDestination', '')
 			.toLowerCase();
 
 		const isComplete = () => {

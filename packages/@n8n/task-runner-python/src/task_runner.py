@@ -201,6 +201,8 @@ class TaskRunner:
             try:
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
+            except websockets.ConnectionClosedOK:
+                break
             except Exception as e:
                 self.logger.error(f"Error handling message: {e}")
 

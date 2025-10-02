@@ -14,6 +14,7 @@ import { INSIGHT_TYPES, TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../i
 import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
+import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
 );

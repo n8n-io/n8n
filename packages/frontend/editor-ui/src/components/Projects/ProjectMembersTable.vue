@@ -2,19 +2,19 @@
 import { computed, ref } from 'vue';
 import type { ProjectRole } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nUserInfo,
-	N8nDataTableServer,
-	N8nText,
-	type ActionDropdownItem,
-	type UserAction,
-} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import ProjectMembersActionsCell from '@/components/Projects/ProjectMembersActionsCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 import type { ProjectMemberData } from '@/types/projects.types';
 
+import {
+	N8nDataTableServer,
+	N8nText,
+	N8nUserInfo,
+	type ActionDropdownItem,
+	type UserAction,
+} from '@n8n/design-system';
 const i18n = useI18n();
 
 const props = defineProps<{
