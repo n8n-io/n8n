@@ -620,7 +620,7 @@ export class HttpRequestV3 implements INodeType {
 				}
 				if (httpBearerAuth !== undefined) {
 					requestOptions.headers = requestOptions.headers ?? {};
-					requestOptions.headers.Authorization = `Bearer ${typeof httpBearerAuth.token === 'object' ? JSON.stringify(httpBearerAuth.token) : String(httpBearerAuth.token)}`;
+					requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
 					authDataKeys.headers = ['Authorization'];
 				}
 				if (httpHeaderAuth !== undefined) {
