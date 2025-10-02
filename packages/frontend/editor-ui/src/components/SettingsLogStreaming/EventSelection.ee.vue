@@ -1,66 +1,57 @@
-<script lang="ts">
-import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
 import type { BaseTextKey } from '@n8n/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
-import { defineComponent } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
-export default defineComponent({
-	name: 'EventSelection',
-	components: {
-		Checkbox,
-	},
-	props: {
-		destinationId: {
-			type: String,
-			default: 'defaultDestinationId',
-		},
-		readonly: Boolean,
-	},
-	setup() {
-		const i18n = useI18n();
+import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 
-		return {
-			i18n,
-		};
-	},
-	data() {
-		return {
-			unchanged: true,
-		};
-	},
-	computed: {
-		...mapStores(useLogStreamingStore),
-		anonymizeAuditMessages() {
-			return this.logStreamingStore.items[this.destinationId]?.destination.anonymizeAuditMessages;
-		},
-	},
-	methods: {
-		onInput() {
-			this.$emit('input');
-		},
-		onCheckboxChecked(eventName: string, checked: CheckboxValueType) {
-			this.logStreamingStore.setSelectedInGroup(this.destinationId, eventName, Boolean(checked));
-			this.$forceUpdate();
-		},
-		anonymizeAuditMessagesChanged(value: CheckboxValueType) {
-			this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages =
-				Boolean(value);
-			this.$emit('change', { name: 'anonymizeAuditMessages', node: this.destinationId, value });
-			this.$forceUpdate();
-		},
-		groupLabelName(t: string): string {
-			return this.i18n.baseText(`settings.log-streaming.eventGroup.${t}` as BaseTextKey) ?? t;
-		},
-		groupLabelInfo(t: string): string | undefined {
-			const labelInfo = `settings.log-streaming.eventGroup.${t}.info`;
-			const infoText = this.i18n.baseText(labelInfo as BaseTextKey);
-			if (infoText === labelInfo || infoText === '') return;
-			return infoText;
-		},
-	},
+interface Props {
+	destinationId?: string;
+	readonly?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	destinationId: 'defaultDestinationId',
+	readonly: false,
 });
+
+const emit = defineEmits<{
+	input: [];
+	change: [payload: { name: string; node: string; value: CheckboxValueType }];
+}>();
+
+const i18n = useI18n();
+const logStreamingStore = useLogStreamingStore();
+
+const anonymizeAuditMessages = computed(
+	() => logStreamingStore.items[props.destinationId]?.destination.anonymizeAuditMessages,
+);
+
+function onInput() {
+	emit('input');
+}
+
+function onCheckboxChecked(eventName: string, checked: CheckboxValueType) {
+	logStreamingStore.setSelectedInGroup(props.destinationId, eventName, Boolean(checked));
+}
+
+function anonymizeAuditMessagesChanged(value: CheckboxValueType) {
+	logStreamingStore.items[props.destinationId].destination.anonymizeAuditMessages = Boolean(value);
+	emit('change', { name: 'anonymizeAuditMessages', node: props.destinationId, value });
+}
+
+function groupLabelName(t: string): string {
+	return i18n.baseText(`settings.log-streaming.eventGroup.${t}` as BaseTextKey) ?? t;
+}
+
+function groupLabelInfo(t: string): string | undefined {
+	const labelInfo = `settings.log-streaming.eventGroup.${t}.info`;
+	const infoText = i18n.baseText(labelInfo as BaseTextKey);
+	if (infoText === labelInfo || infoText === '') return;
+	return infoText;
+}
 </script>
 
 <template>
@@ -80,7 +71,7 @@ export default defineComponent({
 			>
 				<strong>{{ groupLabelName(group.name) }}</strong>
 				<N8nTooltip
-					v-if="groupLabelInfo(group.name)"
+					v-if="groupLabelInfo(group.name) !== undefined"
 					placement="top"
 					:popper-class="$style.tooltipPopper"
 					class="ml-xs"
@@ -93,7 +84,7 @@ export default defineComponent({
 			</Checkbox>
 			<Checkbox
 				v-if="group.name === 'n8n.audit'"
-				:model-value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
+				:model-value="anonymizeAuditMessages"
 				:disabled="readonly"
 				@update:model-value="onInput"
 				@change="anonymizeAuditMessagesChanged"

@@ -13,10 +13,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
-import { ElTree } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { Workflow } from 'n8n-workflow';
 
+import { ElTree } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 export interface Props {
 	node: INodeUi;
 	runIndex?: number;

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "exports": {
     ".": {
       "types": "./dist/plugin.d.ts",
@@ -19,14 +19,14 @@
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"
   },
+  "dependencies": {
+    "@typescript-eslint/utils": "^8.35.0"
+  },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@typescript-eslint/rule-tester": "^8.35.0",
-    "@typescript-eslint/utils": "^8.35.0",
-    "@typescript-eslint/typescript-estree": "^8.35.0",
     "rimraf": "catalog:",
-    "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

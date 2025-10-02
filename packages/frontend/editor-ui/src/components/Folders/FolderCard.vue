@@ -10,7 +10,18 @@ import { ResourceType } from '@/utils/projects.utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import { type IUser } from 'n8n-workflow';
+import TimeAgo from '@/components/TimeAgo.vue';
+import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nBreadcrumbs,
+	N8nCard,
+	N8nHeading,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;

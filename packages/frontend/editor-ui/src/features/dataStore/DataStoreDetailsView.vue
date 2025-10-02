@@ -16,6 +16,7 @@ import DataStoreTable from './components/dataGrid/DataStoreTable.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 
+import { N8nButton, N8nLoading, N8nSpinner, N8nText } from '@n8n/design-system';
 type Props = {
 	id: string;
 	projectId: string;

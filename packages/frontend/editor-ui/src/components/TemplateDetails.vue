@@ -17,6 +17,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { N8nLoading, N8nTags, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	template: ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null;
 	blockTitle: string;
