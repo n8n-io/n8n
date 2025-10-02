@@ -378,12 +378,10 @@ export class DataStoreRowsRepository {
 
 		const columnUpdates = this.prepareUpdateData(data, columns, dbType);
 
-		return beforeRows
-			.map((original) => {
-				const updated = { ...original, ...columnUpdates, updatedAt: new Date() };
-				return this.toDryRunRows(original, updated);
-			})
-			.flat();
+		return beforeRows.flatMap((original) => {
+			const updated = { ...original, ...columnUpdates, updatedAt: new Date() };
+			return this.toDryRunRows(original, updated);
+		});
 	}
 
 	async dryRunUpsertRow(
@@ -463,7 +461,7 @@ export class DataStoreRowsRepository {
 
 			// Skip deletion for dry run
 			if (dryRun) {
-				return affectedRows.map((row) => this.toDryRunRows(row, null)).flat();
+				return affectedRows.flatMap((row) => this.toDryRunRows(row, null));
 			}
 
 			const deleteQuery = em.createQueryBuilder().delete().from(table, 'dataTable');
