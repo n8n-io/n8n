@@ -184,7 +184,11 @@ export function injectWorkflowState() {
 	return inject(
 		WorkflowStateKey,
 		() => {
-			console.error('Attempted to inject workflowState outside of NodeView tree');
+			// While we're migrating we're happy to fall back onto a separate instance since
+			// all data is still stored in the workflowsStore
+			// Once we're ready to move the actual refs to `useWorkflowState` we should error here
+			// to track down remaining usages that would break
+			// console.error('Attempted to inject workflowState outside of NodeView tree');
 			return useWorkflowState();
 		},
 		true,

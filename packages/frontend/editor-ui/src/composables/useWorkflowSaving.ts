@@ -27,7 +27,7 @@ import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import { useWorkflowState } from './useWorkflowState';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -35,7 +35,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = useWorkflowState();
+	const workflowState = injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
