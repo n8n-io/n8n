@@ -901,8 +901,11 @@ export class SourceControlImportService {
 	}
 
 	/**
+	 * Reads project files candidates from the work folder and imports them into the database.
+	 *
 	 * Only team projects are supported.
-	 * Personal project are not supported because they are not stable across instances.
+	 * Personal project are not supported because they are not stable across instances
+	 * (different ids across instances).
 	 */
 	async importTeamProjectsFromWorkFolder(candidates: SourceControlledFile[]) {
 		const importResults = [];

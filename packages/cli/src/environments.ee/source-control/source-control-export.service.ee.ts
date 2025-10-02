@@ -474,8 +474,11 @@ export class SourceControlExportService {
 	}
 
 	/**
+	 * Writes candidates projects to files in the work folder.
+	 *
 	 * Only team projects are supported.
-	 * Personal project are not supported because they are not stable across instances.
+	 * Personal project are not supported because they are not stable across instances
+	 * (different ids across instances).
 	 */
 	async exportTeamProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
