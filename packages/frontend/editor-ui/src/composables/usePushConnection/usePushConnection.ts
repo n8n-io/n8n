@@ -70,9 +70,9 @@ export function usePushConnection({
 			case 'nodeDescriptionUpdated':
 				return await nodeDescriptionUpdated(event);
 			case 'nodeExecuteBefore':
-				return await nodeExecuteBefore(event);
+				return await nodeExecuteBefore(event, options);
 			case 'nodeExecuteAfter':
-				return await nodeExecuteAfter(event);
+				return await nodeExecuteAfter(event, options);
 			case 'nodeExecuteAfterData':
 				return await nodeExecuteAfterData(event);
 			case 'executionStarted':

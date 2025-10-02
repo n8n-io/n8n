@@ -48,6 +48,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState } from './useWorkflowState';
+import { useDocumentTitle } from './useDocumentTitle';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -374,7 +375,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
+			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 
@@ -409,7 +410,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return runWorkflowApiResponse;
 		} catch (error) {
 			workflowState.setWorkflowExecutionData(null);
-			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'ERROR');
+			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -512,7 +513,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				async () => {
 					const execution = await workflowsStore.getExecution(executionId);
 					if (!['running', 'waiting'].includes(execution?.status as string)) {
-						workflowsStore.markExecutionAsStopped(stopData);
+						workflowState.markExecutionAsStopped(stopData);
 						return true;
 					}
 
@@ -523,7 +524,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			);
 
 			if (!markedAsStopped) {
-				workflowsStore.markExecutionAsStopped(stopData);
+				workflowState.markExecutionAsStopped(stopData);
 			}
 		}
 	}

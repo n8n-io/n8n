@@ -14,6 +14,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { useExecutingNode } from '@/composables/useExecutingNode';
+import { toRef } from 'vue';
 
 const runWorkflow = vi.fn();
 
@@ -187,10 +189,12 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
-		workflowsStore.lastAddedExecutingNode = 'test-node';
-
+		const workflowState = mock<WorkflowState>({
+			executingNodes: mock<ReturnType<typeof useExecutingNode>>({
+				...useExecutingNode(),
+				lastAddedExecutingNode: toRef('test-node'),
+			}),
+		});
 		await executionFinished(
 			{
 				type: 'executionFinished',
@@ -202,10 +206,10 @@ describe('executionFinished', () => {
 			},
 			{
 				router: mock<Router>(),
-				workflowState: mock<WorkflowState>(),
+				workflowState,
 			},
 		);
 
-		expect(workflowsStore.lastAddedExecutingNode).toBeNull();
+		expect(workflowState.executingNodes.lastAddedExecutingNode.value).toBeNull();
 	});
 });

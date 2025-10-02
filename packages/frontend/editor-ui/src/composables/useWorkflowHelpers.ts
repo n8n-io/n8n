@@ -64,7 +64,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState, WorkflowState } from '@/composables/useWorkflowState';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -542,17 +542,6 @@ export function useWorkflowHelpers() {
 	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
-	const documentTitle = useDocumentTitle();
-
-	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
-		let icon = '⚠️';
-		if (status === 'EXECUTING') {
-			icon = '🔄';
-		} else if (status === 'IDLE') {
-			icon = '▶️';
-		}
-		documentTitle.set(`${icon} ${workflowName}`);
-	};
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -1063,7 +1052,6 @@ export function useWorkflowHelpers() {
 	}
 
 	return {
-		setDocumentTitle,
 		resolveParameter,
 		resolveRequiredParameters,
 		getConnectedNodes,

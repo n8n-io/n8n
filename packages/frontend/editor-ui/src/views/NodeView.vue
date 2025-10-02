@@ -545,7 +545,7 @@ function updateNodesIssues() {
 
 function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
+	documentTitle.setDocumentTitle(data.name, 'IDLE');
 
 	initializeWorkspace(data);
 
@@ -1452,7 +1452,7 @@ async function onSourceControlPull() {
 		if (workflowId.value && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
+				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 				openWorkflow(workflowData);
 			}
 		}
@@ -1625,7 +1625,7 @@ function checkIfRouteIsAllowed() {
  */
 
 async function initializeDebugMode() {
-	workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+	documentTitle.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
 
 	if (!workflowsStore.isInDebugMode) {
 		await applyExecutionData(route.params.executionId as string);

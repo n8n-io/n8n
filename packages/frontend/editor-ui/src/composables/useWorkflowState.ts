@@ -3,7 +3,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WorkflowStateKey,
 } from '@/constants';
-import type { IExecutionResponse, INewWorkflowData } from '@/Interface';
+import type { IExecutionResponse, IExecutionsStopData, INewWorkflowData } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
@@ -14,6 +14,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
+import { useExecutingNode } from './useExecutingNode';
+import { clearPopupWindowState } from '@/utils/executionUtils';
+import { useDocumentTitle } from './useDocumentTitle';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
@@ -144,6 +147,40 @@ export function useWorkflowState() {
 		return workflowData;
 	}
 
+	//// Execution
+
+	const executingNodes = useExecutingNode();
+	const documentTitle = useDocumentTitle();
+
+	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
+		setActiveExecutionId(undefined);
+		executingNodes.clearNodeExecutionQueue();
+		ws.executionWaitingForWebhook = false;
+		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
+		ws.workflowExecutionStartedData = undefined;
+
+		// TODO(ckolb): confirm this works across files?
+		clearPopupWindowState();
+
+		if (!ws.workflowExecutionData) {
+			return;
+		}
+
+		const runData = ws.workflowExecutionData.data?.resultData.runData ?? {};
+
+		for (const nodeName in runData) {
+			runData[nodeName] = runData[nodeName].filter(
+				({ executionStatus }) => executionStatus === 'success',
+			);
+		}
+
+		if (stopData) {
+			ws.workflowExecutionData.status = stopData.status;
+			ws.workflowExecutionData.startedAt = stopData.startedAt;
+			ws.workflowExecutionData.stoppedAt = stopData.stoppedAt;
+		}
+	}
+
 	function resetState() {
 		removeAllConnections({ setStateDirty: false });
 		removeAllNodes({ setStateDirty: false, removePinData: true });
@@ -158,7 +195,7 @@ export function useWorkflowState() {
 		setWorkflowTagIds([]);
 
 		setActiveExecutionId(undefined);
-		ws.executingNode.length = 0;
+		executingNodes.executingNode.value.length = 0;
 		ws.executionWaitingForWebhook = false;
 	}
 
@@ -175,6 +212,10 @@ export function useWorkflowState() {
 		setWorkflowTagIds,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
+		markExecutionAsStopped,
+
+		// reexport
+		executingNodes,
 	};
 }
 

@@ -26,7 +26,6 @@ import type {
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
-	IExecutionsStopData,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -79,7 +78,6 @@ import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
-	clearPopupWindowState,
 	findTriggerNodeToAutoSelect,
 	openFormPopupWindow,
 } from '@/utils/executionUtils';
@@ -97,7 +95,6 @@ import { useSettingsStore } from './settings.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
-import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
@@ -159,15 +156,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
-
-	const {
-		executingNode,
-		lastAddedExecutingNode,
-		addExecutingNode,
-		removeExecutingNode,
-		isNodeExecuting,
-		clearNodeExecutionQueue,
-	} = useExecutingNode();
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -1830,34 +1818,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		setActiveExecutionId(undefined);
-		clearNodeExecutionQueue();
-		executionWaitingForWebhook.value = false;
-		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
-		workflowExecutionStartedData.value = undefined;
-
-		clearPopupWindowState();
-
-		if (!workflowExecutionData.value) {
-			return;
-		}
-
-		const runData = workflowExecutionData.value.data?.resultData.runData ?? {};
-
-		for (const nodeName in runData) {
-			runData[nodeName] = runData[nodeName].filter(
-				({ executionStatus }) => executionStatus === 'success',
-			);
-		}
-
-		if (stopData) {
-			workflowExecutionData.value.status = stopData.status;
-			workflowExecutionData.value.startedAt = stopData.startedAt;
-			workflowExecutionData.value.stoppedAt = stopData.stoppedAt;
-		}
-	}
-
 	function setSelectedTriggerNodeName(value: string) {
 		selectedTriggerNodeName.value = value;
 	}
@@ -1906,8 +1866,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		previousExecutionId: readonlyPreviousExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
-		executingNode,
-		lastAddedExecutingNode,
 		workflowsById,
 		nodeMetadata,
 		isInDebugMode,
@@ -1955,7 +1913,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPinnedDataLastUpdate,
 		getPinnedDataLastRemovedAt,
 		isNodePristine,
-		isNodeExecuting,
 		getExecutionDataById,
 		getPinDataSize,
 		getNodeTypes,
@@ -1973,8 +1930,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchWorkflowsWithNodesIncluded,
 		resetWorkflow,
 		addNodeExecutionStartedData,
-		addExecutingNode,
-		removeExecutingNode,
 		setUsedCredentials,
 		setWorkflowVersionId,
 		replaceInvalidWorkflowCredentials,
@@ -2037,7 +1992,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
-		markExecutionAsStopped,
 		findNodeByPartialId,
 		getPartialIdForNode,
 		setSelectedTriggerNodeName,

@@ -34,6 +34,7 @@ import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -103,6 +104,7 @@ const inputModes = [
 
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const posthogStore = usePostHog();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
@@ -197,19 +199,20 @@ const isExecutingPrevious = computed(() => {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
-	const executingNode = workflowsStore.executingNode;
+	const executingNode = workflowState.executingNodes.executingNode;
 
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		workflowsStore.isNodeExecuting(props.currentNodeName)
+		workflowState.executingNodes.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
 
-	if (executingNode.length || triggeredNode) {
+	if (executingNode.value.length || triggeredNode) {
 		return !!parentNodes.value.find(
-			(node) => workflowsStore.isNodeExecuting(node.name) || node.name === triggeredNode,
+			(node) =>
+				workflowState.executingNodes.isNodeExecuting(node.name) || node.name === triggeredNode,
 		);
 	}
 	return false;

@@ -6,14 +6,25 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import type { WorkflowState } from '@/composables/useWorkflowState';
+import type { useExecutingNode } from '@/composables/useExecutingNode';
+import { mock } from 'vitest-mock-extended';
+import type { Mocked } from 'vitest';
 
 describe('nodeExecuteAfter', () => {
+	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	beforeEach(() => {
 		const pinia = createTestingPinia({
 			stubActions: true,
 		});
 
 		setActivePinia(pinia);
+
+		mockOptions = {
+			workflowState: mock<WorkflowState>({
+				executingNodes: mock<ReturnType<typeof useExecutingNode>>({}),
+			}),
+		};
 	});
 
 	it('should update node execution data with placeholder and remove executing node', async () => {
@@ -35,11 +46,13 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event);
+		await nodeExecuteAfter(event, mockOptions);
 
 		expect(workflowsStore.updateNodeExecutionStatus).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.removeExecutingNode).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.removeExecutingNode).toHaveBeenCalledWith('Test Node');
+		expect(mockOptions.workflowState.executingNodes.removeExecutingNode).toHaveBeenCalledTimes(1);
+		expect(mockOptions.workflowState.executingNodes.removeExecutingNode).toHaveBeenCalledWith(
+			'Test Node',
+		);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 
@@ -75,7 +88,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event);
+		await nodeExecuteAfter(event, mockOptions);
 
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
@@ -110,7 +123,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event);
+		await nodeExecuteAfter(event, mockOptions);
 
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
@@ -136,7 +149,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event);
+		await nodeExecuteAfter(event, mockOptions);
 
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.executionId).toBe('exec-1');
@@ -176,7 +189,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event);
+		await nodeExecuteAfter(event, mockOptions);
 
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		// Should only contain main connection, invalid_connection should be filtered out
