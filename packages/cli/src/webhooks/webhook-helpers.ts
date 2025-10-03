@@ -909,9 +909,16 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
  * @param parentExecution - The parent execution metadata, if any
  * @returns true if the parent should be restarted, false otherwise
  */
-export function _privateShouldRestartParentExecution(parentExecution: RelatedExecution): boolean {
-	// If shouldWait is undefined, we assume true for backward compatibility
-	return parentExecution.shouldWait === undefined || parentExecution.shouldWait;
+export function _privateShouldRestartParentExecution(
+	parentExecution: RelatedExecution | undefined,
+): boolean {
+	if (parentExecution === undefined) {
+		return false;
+	}
+	if (parentExecution.shouldResume === undefined) {
+		return true; // Preserve existing behavior for executions started before the flag was introduced for backward compatibility.
+	}
+	return parentExecution.shouldResume;
 }
 
 /**

@@ -146,7 +146,7 @@ describe('WaitTracker', () => {
 		});
 
 		describe('parent execution restart behavior', () => {
-			const setupParentExecutionTest = (shouldWait: boolean | undefined) => {
+			const setupParentExecutionTest = (shouldResume: boolean | undefined) => {
 				const parentExecution = mock<IExecutionResponse>({
 					id: 'parent_execution_id',
 					finished: false,
@@ -155,7 +155,7 @@ describe('WaitTracker', () => {
 				execution.data.parentExecution = {
 					executionId: parentExecution.id,
 					workflowId: parentExecution.workflowData.id,
-					shouldWait,
+					shouldResume,
 				};
 				executionRepository.findSingleExecution
 					.calledWith(parentExecution.id)

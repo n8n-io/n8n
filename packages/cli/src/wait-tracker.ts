@@ -126,9 +126,10 @@ export class WaitTracker {
 		await this.workflowRunner.run(data, false, false, executionId);
 
 		const { parentExecution } = fullExecutionData.data;
+		// NOTE: this logic is duplicated in webhook-helpers.ts.ts - make sure to update both places.
 		if (
-			parentExecution !== undefined &&
-			(parentExecution?.shouldWait === undefined || parentExecution?.shouldWait)
+			parentExecution &&
+			(parentExecution?.shouldResume === undefined || parentExecution?.shouldResume)
 		) {
 			// on child execution completion, resume parent execution
 			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
