@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import TemplatesInfoCarousel from '@/components/TemplatesInfoCarousel.vue';
-import TemplateFilters from '@/components/TemplateFilters.vue';
-import TemplateList from '@/components/TemplateList.vue';
-import TemplatesView from '@/views/TemplatesView.vue';
+import TemplatesInfoCarousel from '../components/TemplatesInfoCarousel.vue';
+import TemplateFilters from '../components/TemplateFilters.vue';
+import TemplateList from '../components/TemplateList.vue';
+import TemplatesView from './TemplatesView.vue';
 
 import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import type { IDataObject } from 'n8n-workflow';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useToast } from '@/composables/useToast';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';

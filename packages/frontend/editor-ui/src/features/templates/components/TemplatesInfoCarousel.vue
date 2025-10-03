@@ -2,7 +2,7 @@
 import { nextTick, onBeforeMount, onMounted, ref, watch } from 'vue';
 import type { ITemplatesCollection } from '@n8n/rest-api-client/api/templates';
 import Card from '@/components/CollectionWorkflowCard.vue';
-import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
+import TemplatesInfoCard from './TemplatesInfoCard.vue';
 import { VueAgile } from 'vue-agile';
 
 import { N8nIcon } from '@n8n/design-system';

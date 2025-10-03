@@ -11,7 +11,7 @@ import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms
 import { replaceAllTemplateNodeCredentials } from '@/utils/templates/templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { RouteLocationRaw, Router } from 'vue-router';
-import type { TemplatesStore } from '@/stores/templates.store';
+import type { TemplatesStore } from '@/features/templates/templates.store';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { useExternalHooks } from '@/composables/useExternalHooks';

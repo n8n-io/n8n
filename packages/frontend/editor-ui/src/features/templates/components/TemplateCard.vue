@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { abbreviateNumber } from '@/utils/typesUtils';
-import NodeList from './NodeList.vue';
+import NodeList from '@/components/NodeList.vue';
 import TimeAgo from '@/components/TimeAgo.vue';
 import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
