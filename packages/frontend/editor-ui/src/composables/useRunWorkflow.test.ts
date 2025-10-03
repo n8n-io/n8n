@@ -65,7 +65,6 @@ vi.mock('@/stores/workflows.store', () => {
 			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
 				storeState.activeExecutionId = id;
 			}),
-			setWorkflowName: vi.fn(),
 		},
 	};
 

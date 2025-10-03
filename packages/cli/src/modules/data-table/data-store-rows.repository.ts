@@ -20,6 +20,7 @@ import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DataTableInsertRowsReturnType,
 	DataTableInsertRowsResult,
+	DataStoreRowReturnWithState,
 } from 'n8n-workflow';
 
 import { DataStoreUserTableName } from './data-store.types';
@@ -297,7 +298,7 @@ export class DataStoreRowsRepository {
 		});
 	}
 
-	async updateRow<T extends boolean | undefined>(
+	async updateRows<T extends boolean | undefined>(
 		dataStoreId: string,
 		data: Record<string, DataStoreColumnJsType | null>,
 		filter: DataTableFilter,
@@ -305,7 +306,7 @@ export class DataStoreRowsRepository {
 		returnData?: T,
 		trx?: EntityManager,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
-	async updateRow(
+	async updateRows(
 		dataStoreId: string,
 		data: Record<string, DataStoreColumnJsType | null>,
 		filter: DataTableFilter,
@@ -323,21 +324,13 @@ export class DataStoreRowsRepository {
 				this.dataSource.driver.escape(x),
 			);
 			const selectColumns = [...escapedSystemColumns, ...escapedColumns];
-			const setData = { ...data };
-
-			for (const column of columns) {
-				if (column.name in setData) {
-					setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
-				}
-			}
+			const setData = this.prepareUpdateData(data, columns, dbType);
 
 			let affectedRows: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 			if (!useReturning && returnData) {
 				// Only Postgres supports RETURNING statement on updates (with our typeorm),
 				// on other engines we must query the list of updates rows later by ID
-				const selectQuery = em.createQueryBuilder().select('id').from(table, 'dataTable');
-				this.applyFilters(selectQuery, filter, 'dataTable', columns);
-				affectedRows = await selectQuery.getRawMany<{ id: number }>();
+				affectedRows = await this.getAffectedRowsForUpdate(dataStoreId, filter, columns, true, trx);
 			}
 
 			setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
@@ -364,6 +357,58 @@ export class DataStoreRowsRepository {
 			const ids = affectedRows.map((row) => row.id);
 			return await this.getManyByIds(dataStoreId, ids, columns, em);
 		});
+	}
+
+	async dryRunUpdateRows(
+		dataStoreId: string,
+		data: Record<string, DataStoreColumnJsType | null>,
+		filter: DataTableFilter,
+		columns: DataTableColumn[],
+		trx?: EntityManager,
+	): Promise<DataStoreRowReturnWithState[]> {
+		const dbType = this.dataSource.options.type;
+
+		const beforeRows = await this.getAffectedRowsForUpdate(
+			dataStoreId,
+			filter,
+			columns,
+			false,
+			trx,
+		);
+
+		const columnUpdates = this.prepareUpdateData(data, columns, dbType);
+
+		return beforeRows.flatMap((original) => {
+			const updated = { ...original, ...columnUpdates, updatedAt: new Date() };
+			return this.toDryRunRows(original, updated);
+		});
+	}
+
+	async dryRunUpsertRow(
+		dataStoreId: string,
+		data: Record<string, DataStoreColumnJsType | null>,
+		filter: DataTableFilter,
+		columns: DataTableColumn[],
+		trx?: EntityManager,
+	): Promise<DataStoreRowReturnWithState[]> {
+		const updateResult = await this.dryRunUpdateRows(dataStoreId, data, filter, columns, trx);
+
+		if (updateResult.length > 0) {
+			return updateResult;
+		}
+
+		// No rows were updated, simulate insert
+		const dbType = this.dataSource.options.type;
+		const now = new Date();
+		const preparedData = this.prepareUpdateData(data, columns, dbType);
+		const insertedRow: DataStoreRowReturn = {
+			id: 0, // Placeholder ID for dry run
+			createdAt: now,
+			updatedAt: now,
+			...preparedData,
+		};
+
+		return this.toDryRunRows(null, insertedRow);
 	}
 
 	/**
@@ -416,7 +461,7 @@ export class DataStoreRowsRepository {
 
 			// Skip deletion for dry run
 			if (dryRun) {
-				return affectedRows;
+				return affectedRows.flatMap((row) => this.toDryRunRows(row, null));
 			}
 
 			const deleteQuery = em.createQueryBuilder().delete().from(table, 'dataTable');
@@ -442,6 +487,75 @@ export class DataStoreRowsRepository {
 
 			return affectedRows;
 		});
+	}
+
+	private async getAffectedRowsForUpdate<T extends boolean>(
+		dataStoreId: string,
+		filter: DataTableFilter,
+		columns: DataTableColumn[],
+		idsOnly: T,
+		trx?: EntityManager,
+	): Promise<T extends true ? Array<Pick<DataStoreRowReturn, 'id'>> : DataStoreRowReturn[]> {
+		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+			const table = toTableName(dataStoreId);
+			const selectColumns = idsOnly ? 'id' : '*';
+			const selectQuery = em.createQueryBuilder().select(selectColumns).from(table, 'dataTable');
+			this.applyFilters(selectQuery, filter, 'dataTable', columns);
+			const rawRows: DataStoreRowsReturn = await selectQuery.getRawMany();
+
+			if (idsOnly) {
+				return rawRows;
+			}
+
+			return normalizeRows(rawRows, columns);
+		});
+	}
+
+	private prepareUpdateData(
+		data: Record<string, DataStoreColumnJsType | null>,
+		columns: DataTableColumn[],
+		dbType: DataSourceOptions['type'],
+	): Record<string, DataStoreColumnJsType | null> {
+		const setData = { ...data };
+		for (const column of columns) {
+			if (column.name in setData) {
+				setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
+			}
+		}
+		return setData;
+	}
+
+	private toDryRunRows(
+		beforeState: DataStoreRowReturn | null,
+		afterState: DataStoreRowReturn | null,
+	): DataStoreRowReturnWithState[] {
+		if (beforeState === null && afterState === null) {
+			throw new Error('Both before and after rows cannot be null');
+		}
+
+		if (beforeState && afterState) {
+			return [
+				{ ...beforeState, dryRunState: 'before' },
+				{ ...afterState, dryRunState: 'after' },
+			];
+		}
+
+		// If one of the states is null, create a template row with nulls for missing values
+		const template = (beforeState ?? afterState)!;
+		const nullRow = {
+			id: null,
+			createdAt: null,
+			updatedAt: null,
+			...Object.fromEntries(Object.keys(template).map((key) => [key, null])),
+		};
+
+		const before = beforeState ?? nullRow;
+		const after = afterState ?? nullRow;
+
+		return [
+			{ ...before, dryRunState: 'before' },
+			{ ...after, dryRunState: 'after' },
+		];
 	}
 
 	async createTableWithColumns(

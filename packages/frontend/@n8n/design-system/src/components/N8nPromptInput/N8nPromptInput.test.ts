@@ -220,7 +220,39 @@ describe('N8nPromptInput', () => {
 	});
 
 	describe('user interactions', () => {
-		it('should emit submit on Enter key in single-line mode', async () => {
+		it('should emit submit on Ctrl+Enter', async () => {
+			const render = renderComponent({
+				props: {
+					modelValue: 'Test message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+
+			expect(render.emitted('submit')).toBeTruthy();
+		});
+
+		it('should emit submit on Cmd+Enter', async () => {
+			const render = renderComponent({
+				props: {
+					modelValue: 'Test message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+			await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+			expect(render.emitted('submit')).toBeTruthy();
+		});
+
+		it('should not emit submit on plain Enter', async () => {
 			const render = renderComponent({
 				props: {
 					modelValue: 'Test message',
@@ -232,22 +264,6 @@ describe('N8nPromptInput', () => {
 
 			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
 			await fireEvent.keyDown(textarea, { key: 'Enter' });
-
-			expect(render.emitted('submit')).toBeTruthy();
-		});
-
-		it('should not emit submit on Shift+Enter', async () => {
-			const render = renderComponent({
-				props: {
-					modelValue: 'Test message',
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
 
 			expect(render.emitted('submit')).toBeFalsy();
 		});
@@ -801,8 +817,8 @@ describe('N8nPromptInput', () => {
 			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
 			const focusSpy = vi.spyOn(textarea, 'focus');
 
-			// Trigger submit
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			// Trigger submit with Ctrl+Enter
+			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
 			// Wait for next tick and animation frame
 			await wrapper.vm.$nextTick();
@@ -826,8 +842,8 @@ describe('N8nPromptInput', () => {
 			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
 			const focusSpy = vi.spyOn(textarea, 'focus');
 
-			// Trigger submit
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			// Trigger submit with Ctrl+Enter
+			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
 			// Wait for next tick
 			await wrapper.vm.$nextTick();
@@ -914,7 +930,7 @@ describe('N8nPromptInput', () => {
 			});
 
 			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
 			expect(render.emitted('submit')).toBeFalsy();
 		});
