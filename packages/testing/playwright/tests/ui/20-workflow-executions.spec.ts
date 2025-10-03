@@ -50,6 +50,9 @@ test.describe('Workflow Executions', () => {
 		test('should not redirect back to execution tab when request is not done before leaving the page', async ({
 			n8n,
 		}) => {
+			await n8n.page.route('**/rest/executions?filter=*', (route) => route.continue());
+			await n8n.page.route('**/rest/executions/active?filter=*', (route) => route.continue());
+
 			await n8n.canvas.clickExecutionsTab();
 			await n8n.canvas.clickEditorTab();
 			await expect(n8n.page).toHaveURL(/\/workflow\/[^/]+$/, {
