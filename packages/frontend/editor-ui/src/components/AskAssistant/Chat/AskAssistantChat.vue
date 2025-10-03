@@ -4,8 +4,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useBuilderStore } from '@/stores/builder.store';
-import { useI18n } from '@n8n/i18n';
 
 const emit = defineEmits<{
 	close: [];
@@ -14,8 +12,6 @@ const emit = defineEmits<{
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
-const builderStore = useBuilderStore();
-const i18n = useI18n();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',

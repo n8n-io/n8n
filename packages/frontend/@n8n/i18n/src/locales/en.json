@@ -227,6 +227,7 @@
 	"aiAssistant.builder.executeMessage.executionFailed": "Workflow execution failed: {errorMessage}",
 	"aiAssistant.builder.toast.title": "Send chat message to start the execution",
 	"aiAssistant.builder.toast.description": "Please send a message in the chat panel to start the execution of your workflow",
+	"aiAssistant.assistant": "AI Assistant",
 	"aiAssistant.newSessionModal.title.part1": "Start new",
 	"aiAssistant.newSessionModal.title.part2": "session",
 	"aiAssistant.newSessionModal.message": "You already have an active AI Assistant session. Starting a new session will clear your current conversation history.",
