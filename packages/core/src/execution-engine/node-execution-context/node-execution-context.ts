@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { readFileSync } from 'fs';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -28,10 +29,19 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
+	jsonParse,
 	NodeHelpers,
 	NodeOperationError,
 	UnexpectedError,
 } from 'n8n-workflow';
+import { join, resolve } from 'path';
+
+import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { ensureType } from './utils/ensure-type';
+import { extractValue } from './utils/extract-value';
+import { getAdditionalKeys } from './utils/get-additional-keys';
+import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
+import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
@@ -40,13 +50,6 @@ import {
 	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
-
-import { cleanupParameterData } from './utils/cleanup-parameter-data';
-import { ensureType } from './utils/ensure-type';
-import { extractValue } from './utils/extract-value';
-import { getAdditionalKeys } from './utils/get-additional-keys';
-import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -212,6 +215,16 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
+	}
+
+	@Memoized
+	getN8nVersion() {
+		const rootDir = resolve(__dirname, '..', '..', '..', '..', '..');
+		const packageJsonPath = join(rootDir, 'package.json');
+		const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'), {
+			fallbackValue: { version: '0.0.0' },
+		});
+		return packageJson.version;
 	}
 
 	setSignatureValidationRequired() {
