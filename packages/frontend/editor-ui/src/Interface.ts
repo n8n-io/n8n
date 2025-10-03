@@ -37,7 +37,6 @@ import type {
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	INodeExecutionData,
-	INodeProperties,
 	NodeConnectionType,
 	StartNodeData,
 	AnnotationVote,
@@ -1060,27 +1059,6 @@ export interface CloudPlanState {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-export interface ExternalSecretsProviderSecret {
-	key: string;
-}
-
-export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
-
-export type ExternalSecretsProviderProperty = INodeProperties;
-
-export type ExternalSecretsProviderState = 'connected' | 'tested' | 'initializing' | 'error';
-
-export interface ExternalSecretsProvider {
-	icon: string;
-	name: string;
-	displayName: string;
-	connected: boolean;
-	connectedAt: string | false;
-	state: ExternalSecretsProviderState;
-	data?: ExternalSecretsProviderData;
-	properties?: ExternalSecretsProviderProperty[];
-}
 
 export type CloudUpdateLinkSourceType =
 	| 'advanced-permissions'

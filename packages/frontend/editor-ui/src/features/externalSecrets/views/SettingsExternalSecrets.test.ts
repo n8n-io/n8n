@@ -3,7 +3,7 @@ import merge from 'lodash/merge';
 import { EnterpriseEditionFeature } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import SettingsExternalSecrets from '@/views/SettingsExternalSecrets.vue';
+import SettingsExternalSecrets from './SettingsExternalSecrets.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useSettingsStore } from '@/stores/settings.store';
 import { setupServer } from '@/__tests__/server';
