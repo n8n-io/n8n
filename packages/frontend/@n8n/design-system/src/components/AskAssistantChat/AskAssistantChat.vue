@@ -12,8 +12,8 @@ import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssis
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPromptInput from '../N8nPromptInput';
-import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();

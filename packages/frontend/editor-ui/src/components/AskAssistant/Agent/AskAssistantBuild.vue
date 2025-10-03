@@ -12,6 +12,8 @@ import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
+import type { WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -63,6 +65,14 @@ const showExecuteMessage = computed(() => {
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
+
+const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
+	// Only show suggestions when no messages in chat yet (blank state)
+	if (builderStore.chatMessages.length === 0) {
+		return WORKFLOW_SUGGESTIONS;
+	}
+	return undefined;
+});
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -270,6 +280,7 @@ watch(currentRoute, () => {
 			:credits-quota="creditsQuota"
 			:credits-remaining="creditsRemaining"
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
+			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
