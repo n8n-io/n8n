@@ -236,10 +236,9 @@
 
 						try {
 							const json = JSON.parse(text);
-							if (json?.redirectURL) {
-								const url = json.redirectURL.includes("://")
-									? json.redirectURL
-									: "https://" + json.redirectURL;
+							const target = json?.redirectUrl || json?.redirectURL;
+							if (target) {
+								const url = target.includes("://") ? target : "https://" + target;
 								window.location.replace(url);
 							}
 						} catch (e) {
