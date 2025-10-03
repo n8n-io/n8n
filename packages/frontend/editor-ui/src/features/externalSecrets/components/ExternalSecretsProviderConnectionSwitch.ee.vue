@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { ExternalSecretsProvider } from '@/Interface';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import type { ExternalSecretsProvider } from '../externalSecrets.types';
+import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';

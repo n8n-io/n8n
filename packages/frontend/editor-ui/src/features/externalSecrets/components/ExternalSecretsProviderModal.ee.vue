@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import Modal from './Modal.vue';
+import Modal from '@/components/Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -7,16 +7,16 @@ import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProv
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
+import type { IUpdateInformation } from '@/Interface';
 import type {
-	IUpdateInformation,
 	ExternalSecretsProviderData,
 	ExternalSecretsProvider,
-} from '@/Interface';
+} from '../externalSecrets.types';
 import type { IParameterLabel } from 'n8n-workflow';
-import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
-import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
+import ExternalSecretsProviderImage from './ExternalSecretsProviderImage.ee.vue';
+import ExternalSecretsProviderConnectionSwitch from './ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { I18nT } from 'vue-i18n';
 

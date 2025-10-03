@@ -2,10 +2,10 @@
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
-import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
-import type { ExternalSecretsProvider } from '@/Interface';
+import ExternalSecretsProviderCard from '../components/ExternalSecretsProviderCard.ee.vue';
+import type { ExternalSecretsProvider } from '../externalSecrets.types';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 

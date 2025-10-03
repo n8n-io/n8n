@@ -7,7 +7,7 @@ import type {
 } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
 
 export function useExternalSecretsProvider(
