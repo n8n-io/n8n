@@ -382,7 +382,10 @@ export class SourceControlService {
 		})) as SourceControlledFile[];
 
 		if (options.force !== true) {
-			const possibleConflicts = this.getConflicts(statusResult);
+			const possibleConflicts = statusResult.filter(
+				(file) => file.conflict || file.status === 'modified',
+			);
+
 			if (possibleConflicts?.length > 0) {
 				await this.gitService.resetBranch();
 				return {
