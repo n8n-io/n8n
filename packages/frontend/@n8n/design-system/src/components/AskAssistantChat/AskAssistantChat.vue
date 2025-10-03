@@ -27,7 +27,6 @@ interface Props {
 	disabled?: boolean;
 	loadingMessage?: string;
 	sessionId?: string;
-	title?: string;
 	inputPlaceholder?: string;
 	scrollOnNewMessage?: boolean;
 	showStop?: boolean;
@@ -50,7 +49,6 @@ const emit = defineEmits<{
 const onClose = () => emit('close');
 
 const props = withDefaults(defineProps<Props>(), {
-	title: () => useI18n().t('assistantChat.aiAssistantLabel'),
 	user: () => ({
 		firstName: '',
 		lastName: '',
@@ -348,8 +346,11 @@ defineExpose({
 		<div :class="$style.header">
 			<div :class="$style.chatTitle">
 				<div :class="$style.headerText">
-					<AssistantIcon size="large" />
-					<AssistantText size="large" :text="title" />
+					<div :class="$style.assistantTitle">
+						<AssistantIcon size="large" />
+						<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
+					</div>
+					<span :class="$style.betaTag">{{ t('assistantChat.aiAssistantBetaLabel') }}</span>
 				</div>
 				<slot name="header" />
 			</div>
@@ -513,6 +514,12 @@ defineExpose({
 	}
 }
 
+.betaTag {
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+}
+
 .body {
 	background-color: var(--color-background-light);
 	border: var(--border-base);
@@ -563,7 +570,11 @@ defineExpose({
 }
 
 .headerText {
-	gap: var(--spacing-xs);
+	gap: var(--spacing-3xs);
+}
+
+.assistantTitle {
+	gap: var(--spacing-2xs);
 }
 
 .greeting {

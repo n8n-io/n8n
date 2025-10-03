@@ -70,11 +70,6 @@ async function undoCodeDiff(index: number) {
 			:streaming="assistantStore.streaming"
 			:loading-message="loadingMessage"
 			:session-id="assistantStore.currentSessionId"
-			:title="
-				builderStore.isAIBuilderEnabled
-					? i18n.baseText('aiAssistant.n8nAi')
-					: i18n.baseText('aiAssistant.assistant')
-			"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@code-replace="onCodeReplace"
