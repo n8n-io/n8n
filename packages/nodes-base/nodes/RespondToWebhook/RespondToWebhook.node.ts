@@ -115,7 +115,7 @@ export class RespondToWebhook implements INodeType {
 			},
 			{
 				displayName:
-					'Verify that the "Webhook" node\'s "Respond" parameter is set to "Using Respond to Webhook Node". <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">more details',
+					'Verify that the "Webhook" node\'s "Respond" parameter is set to "Using Respond to Webhook Node". <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
 				name: 'generalNotice',
 				type: 'notice',
 				default: '',
