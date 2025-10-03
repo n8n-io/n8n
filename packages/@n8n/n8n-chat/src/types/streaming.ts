@@ -2,12 +2,14 @@
  * Agent message chunk for streaming
  */
 export interface AgentMessageChunk {
+	id: string;
 	role: 'assistant';
 	type: 'message';
 	text: string;
 }
 
 export interface ErrorMessageChunk {
+	id: string;
 	role: 'assistant';
 	type: 'error';
 	content: string;

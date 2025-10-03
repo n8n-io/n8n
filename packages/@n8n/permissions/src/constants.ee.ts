@@ -33,7 +33,7 @@ export const RESOURCES = {
 	role: ['manage'] as const,
 	mcp: ['manage'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
-	chatHub: ['manage'] as const,
+	chatHub: ['manage', 'message'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

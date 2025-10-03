@@ -1,5 +1,6 @@
+import { STREAM_SEPARATOR } from '@/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Body } from '@n8n/decorators';
+import { RestController, Get, Post, Body, GlobalScope } from '@n8n/decorators';
 import type { StreamOutput } from '@n8n/n8n-chat';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
@@ -19,6 +20,7 @@ export class ChatHubController {
 		res.json(models);
 	}
 
+	@GlobalScope('chat:message')
 	@Post('/agents/openai')
 	async ask(
 		req: AuthenticatedRequest,
@@ -33,13 +35,16 @@ export class ChatHubController {
 
 			res.on('close', handleClose);
 
-			const aiResponse = this.chatService.ask(payload, req.user, signal);
+			const messageId = crypto.randomUUID();
+			const aiResponse = this.chatService.ask(payload, req.user, messageId, signal);
+
+			res.header('Content-type', 'application/json-lines').flush();
 
 			try {
 				// Handle the stream
 				for await (const chunk of aiResponse) {
 					res.flush();
-					res.write(JSON.stringify(chunk) + '⧉⇋⇋➽⌑⧉§§\n');
+					res.write(JSON.stringify(chunk) + STREAM_SEPARATOR);
 				}
 			} catch (streamError) {
 				// If an error occurs during streaming, send it as part of the stream
@@ -50,13 +55,14 @@ export class ChatHubController {
 				const errorChunk: StreamOutput = {
 					messages: [
 						{
+							id: messageId,
 							role: 'assistant',
 							type: 'error',
 							content: streamError.message,
 						},
 					],
 				};
-				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+				res.write(JSON.stringify(errorChunk) + STREAM_SEPARATOR);
 			} finally {
 				// Clean up event listener
 				res.off('close', handleClose);

@@ -31,22 +31,30 @@ export class OpenAiChatAgent {
 		this.tracer = config.tracer;
 	}
 
-	async *ask(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
-		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
+	async *ask(payload: ChatPayload, userId: string, messageId: string, abortSignal?: AbortSignal) {
+		const conversationId = crypto.randomUUID(); // TODO: receive this when conversation continues
+
+		const { agent, streamConfig } = this.setupAgentAndConfigs(
 			payload,
 			userId,
+			conversationId,
 			abortSignal,
 		);
 
 		try {
 			const stream = await this.createAgentStream(payload, streamConfig, agent);
-			yield* this.processAgentStream(stream, agent, threadConfig);
+			yield* this.processAgentStream(stream, agent, messageId);
 		} catch (error: unknown) {
 			this.handleStreamError(error);
 		}
 	}
 
-	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	private setupAgentAndConfigs(
+		payload: ChatPayload,
+		userId: string,
+		conversationId: string,
+		abortSignal?: AbortSignal,
+	) {
 		this.logger?.debug(
 			`Starting chat with model ${payload.model} for user ${userId}: ${payload.message}`,
 		);
@@ -58,7 +66,7 @@ export class OpenAiChatAgent {
 		});
 
 		// TOOD: Do we want a session manager?
-		const threadId = crypto.randomUUID();
+		const threadId = `${userId}-${conversationId}`;
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
@@ -99,13 +107,18 @@ export class OpenAiChatAgent {
 	private async *processAgentStream(
 		stream: IterableReadableStream<AIMessageChunk>,
 		_agent: ChatOpenAI,
-		_threadConfig: RunnableConfig,
+		messageId: string,
 	) {
 		try {
-			const streamProcessor = createStreamProcessor(stream, this.logger);
+			const streamProcessor = createStreamProcessor(stream, messageId, this.logger);
 			for await (const output of streamProcessor) {
 				yield output;
 			}
+
+			this.logger?.debug('Agent stream processing completed');
+			yield {
+				messages: [{ role: 'assistant', type: 'complete', text: 'Stream processing completed' }],
+			};
 		} catch (error) {
 			if (error instanceof Error) {
 				// TODO: Better error handling
