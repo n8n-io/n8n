@@ -1,12 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import {
-	type Variables,
-	type TagEntity,
-	FolderRepository,
-	TagRepository,
-	type User,
-} from '@n8n/db';
+import { type TagEntity, FolderRepository, TagRepository, type User, Variables } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';

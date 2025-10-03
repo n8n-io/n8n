@@ -1,12 +1,24 @@
-import type { Variables } from '@n8n/db';
+import { CreateVariableRequestDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope, Scope } from '@n8n/permissions';
 
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
-import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { CacheService } from '@/services/cache/cache.service';
+import { ProjectService } from '@/services/project.service.ee';
+
+const projectVariableScopes: Partial<Record<Scope, Scope>> = {
+	'variable:list': 'projectVariable:list',
+	'variable:read': 'projectVariable:read',
+	'variable:create': 'projectVariable:create',
+	'variable:update': 'projectVariable:update',
+	'variable:delete': 'projectVariable:delete',
+};
 
 @Service()
 export class VariablesService {
@@ -14,27 +26,45 @@ export class VariablesService {
 		private readonly cacheService: CacheService,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly eventService: EventService,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
+		private readonly projectService: ProjectService,
 	) {}
 
-	async getAllCached(state?: 'empty'): Promise<Variables[]> {
-		let variables = await this.cacheService.get('variables', {
-			refreshFn: async () => await this.findAll(),
+	private async findAll() {
+		const variables = await this.variablesRepository.find({
+			relations: ['project'],
 		});
-
-		if (variables === undefined) {
-			return [];
-		}
-
-		if (state === 'empty') {
-			variables = variables.filter((v) => v.value === '');
-		}
-
-		return variables.map((v) => this.variablesRepository.create(v));
+		return variables;
 	}
 
-	async getCount(): Promise<number> {
-		return (await this.getAllCached()).length;
+	private async isAuthorizedForVariable(
+		user: User,
+		scope: Scope,
+		projectId?: string,
+	): Promise<boolean> {
+		if (!projectId) {
+			// If the variable is global, only check for global scope
+			return hasGlobalScope(user, scope);
+		}
+
+		// Get the scope required to access a project variable
+		const projectVariableScope = projectVariableScopes[scope];
+		if (!projectVariableScope)
+			throw new Error(`No project variable scope mapping for scope "${scope}"`);
+
+		// Check if user has access to the specific project with the required variable scope
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			projectVariableScope,
+		]);
+
+		return !!project;
+	}
+
+	async getAllCached(): Promise<Variables[]> {
+		const variables = await this.cacheService.get('variables', {
+			refreshFn: async () => await this.findAll(),
+		});
+		return variables ?? [];
 	}
 
 	async getCached(id: string): Promise<Variables | null> {
@@ -43,12 +73,7 @@ export class VariablesService {
 		if (!foundVariable) {
 			return null;
 		}
-		return this.variablesRepository.create(foundVariable as Partial<Variables>);
-	}
-
-	async delete(id: string): Promise<void> {
-		await this.variablesRepository.delete(id);
-		await this.updateCache();
+		return foundVariable;
 	}
 
 	async updateCache(): Promise<void> {
@@ -57,32 +82,131 @@ export class VariablesService {
 		await this.cacheService.set('variables', variables);
 	}
 
-	async findAll(): Promise<Variables[]> {
-		return await this.variablesRepository.find();
+	async getAllForUser(
+		user: User,
+		filter: { state?: 'empty'; projectId?: string | null } = {},
+	): Promise<Variables[]> {
+		const allCachedVariables = await this.getAllCached();
+		const canListGlobalVariables = hasGlobalScope(user, 'variable:list');
+		const projectIds = await this.projectService.getProjectIdsWithScope(user, [
+			'projectVariable:list',
+		]);
+
+		const userHasAccess = (variable: Variables) =>
+			(!variable.project && canListGlobalVariables) ||
+			// Project variable
+			(variable.project &&
+				// Project variable access
+				projectIds.includes(variable.project.id));
+
+		const stateAndProjectFilter = (variable: Variables) =>
+			// State filter
+			(filter.state !== 'empty' || variable.value === '') &&
+			// Project filter
+			(typeof filter.projectId === 'undefined' ||
+				(variable.project?.id ?? null) === filter.projectId);
+
+		return allCachedVariables.filter(
+			(variable) => userHasAccess(variable) && stateAndProjectFilter(variable),
+		);
 	}
 
-	validateVariable(variable: Omit<Variables, 'id'>): void {
-		if (variable.key.length > 50) {
-			throw new VariableValidationError('key cannot be longer than 50 characters');
+	async getForUser(
+		user: User,
+		variableId: string,
+		scope: Scope = 'variable:read',
+	): Promise<Variables | null> {
+		const variable = await this.getCached(variableId);
+		if (!variable) {
+			return null;
 		}
-		if (variable.key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
-			throw new VariableValidationError('key can only contain characters A-Za-z0-9_');
+
+		const userHasAccess = await this.isAuthorizedForVariable(user, scope, variable.project?.id);
+		if (!userHasAccess) {
+			throw new ForbiddenError('You are not allowed to access this variable');
 		}
-		if (variable.value?.length > 255) {
-			throw new VariableValidationError('value cannot be longer than 255 characters');
-		}
+
+		return variable;
 	}
 
-	async create(variable: Omit<Variables, 'id'>): Promise<Variables> {
-		if (!this.canCreateNewVariable(await this.getCount())) {
+	async deleteForUser(user: User, id: string): Promise<void> {
+		const existingVariable = await this.getCached(id);
+
+		const userHasRight = await this.isAuthorizedForVariable(
+			user,
+			'variable:delete',
+			existingVariable?.project?.id,
+		);
+		if (!userHasRight) {
+			throw new ForbiddenError('You are not allowed to delete this variable');
+		}
+
+		await this.delete(id);
+	}
+
+	async delete(id: string): Promise<void> {
+		await this.variablesRepository.delete(id);
+		await this.updateCache();
+	}
+
+	private async canCreateNewVariable() {
+		if (!this.licenseState.isVariablesLicensed()) {
+			throw new FeatureNotLicensedError('feat:variables');
+		}
+
+		// This defaults to -1 which is what we want if we've enabled
+		// variables via the config
+		const limit = this.licenseState.getMaxVariables();
+		if (limit === -1) {
+			return;
+		}
+
+		const variablesCount = (await this.getAllCached()).length;
+		if (limit <= variablesCount) {
 			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
-		this.validateVariable(variable);
+	}
+
+	async validateUniqueVariable(key: string, projectId?: string) {
+		const existingVariablesByKey = (await this.getAllCached()).filter((v) => v.key === key);
+		// If variable is global, check that it does not already exist with the same key
+		if (!projectId && existingVariablesByKey.find((v) => !v.project)) {
+			throw new VariableCountLimitReachedError(
+				`A global variable with key "${key}" already exists`,
+			);
+		}
+
+		// If variable is for a project, check that it does not already exist in the same project with the same key
+		if (projectId && existingVariablesByKey.find((v) => v.project?.id === projectId)) {
+			throw new VariableCountLimitReachedError(
+				`A variable with key "${key}" already exists in the specified project`,
+			);
+		}
+	}
+
+	async create(user: User, variable: CreateVariableRequestDto): Promise<Variables> {
+		const userHasRight = await this.isAuthorizedForVariable(
+			user,
+			'variable:create',
+			variable.projectId,
+		);
+		if (!userHasRight) {
+			throw new ForbiddenError(
+				`You are not allowed to create a variable${variable.projectId ? ' in this project' : ''}`,
+			);
+		}
+
+		// Check license and limits
+		await this.canCreateNewVariable();
+
+		// Check that variable key is unique (globally or in the project)
+		await this.validateUniqueVariable(variable.key, variable.projectId);
 
 		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(
 			{
 				...variable,
+				project: variable.projectId ? { id: variable.projectId } : null,
 				id: generateNanoId(),
 			},
 			{ transaction: false },
@@ -91,23 +215,40 @@ export class VariablesService {
 		return saveResult;
 	}
 
-	async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
-		this.validateVariable(variable);
-		await this.variablesRepository.update(id, variable);
+	async update(user: User, id: string, variable: CreateVariableRequestDto): Promise<Variables> {
+		const existingVariable = await this.getCached(id);
+
+		const userHasRightOnExistingVariable = await this.isAuthorizedForVariable(
+			user,
+			'variable:update',
+			existingVariable?.project?.id,
+		);
+		if (!userHasRightOnExistingVariable) {
+			throw new ForbiddenError('You are not allowed to update this variable');
+		}
+
+		// Check that user has rights to move the variable to the new project (if projectId changed)
+		if (existingVariable?.project?.id !== variable.projectId) {
+			const userHasRightOnNewProject = await this.isAuthorizedForVariable(
+				user,
+				'variable:update',
+				variable.projectId ?? undefined,
+			);
+			if (!userHasRightOnNewProject) {
+				throw new ForbiddenError(
+					'You are not allowed to move this variable to the specified project',
+				);
+			}
+		}
+
+		// TODO: implement guards when changing variable projectId or moving from global to project variable or vice versa
+
+		await this.variablesRepository.update(id, {
+			key: variable.key,
+			value: variable.value,
+			project: variable.projectId ? { id: variable.projectId } : null,
+		});
 		await this.updateCache();
 		return (await this.getCached(id))!;
-	}
-
-	private canCreateNewVariable(variableCount: number): boolean {
-		if (!this.license.isVariablesEnabled()) {
-			return false;
-		}
-		// This defaults to -1 which is what we want if we've enabled
-		// variables via the config
-		const limit = this.license.getVariablesLimit();
-		if (limit === -1) {
-			return true;
-		}
-		return limit > variableCount;
 	}
 }

@@ -29,6 +29,16 @@ import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
 
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nBreadcrumbs,
+	N8nCard,
+	N8nIcon,
+	N8nTags,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -158,8 +168,10 @@ const actions = computed(() => {
 		});
 	}
 
+	// TODO: add test to verify that moving a readonly card is not possible
 	if (
-		((workflowPermissions.value.update && !props.readOnly) ||
+		!props.readOnly &&
+		(workflowPermissions.value.update ||
 			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
 		showFolders.value &&
 		route.name !== VIEWS.SHARED_WORKFLOWS

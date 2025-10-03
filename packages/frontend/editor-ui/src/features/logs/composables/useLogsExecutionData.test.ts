@@ -15,9 +15,24 @@ import {
 import type { IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { useToast } from '@/composables/useToast';
+import {
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 import { computed } from 'vue';
 
 vi.mock('@/composables/useToast');
+
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
+
+let workflowState: WorkflowState;
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -28,13 +43,16 @@ describe(useLogsExecutionData, () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
 	});
 
 	describe('isEnabled', () => {
 		beforeEach(() => {
-			workflowsStore.setWorkflowExecutionData(
+			workflowState.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
 					data: { resultData: { runData: { n0: [createTestTaskData()] } } },
 					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
@@ -61,7 +79,7 @@ describe(useLogsExecutionData, () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
-			workflowsStore.setWorkflowExecutionData(
+			workflowState.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
 					id: 'e0',
 					workflowData: createTestWorkflow({

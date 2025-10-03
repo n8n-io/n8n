@@ -28,6 +28,11 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useCredentialsStore } from './credentials.store';
+import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
+import { stringSizeInBytes } from '@/utils/typesUtils';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
@@ -48,7 +53,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const uiStore = useUIStore();
+	const credentialsStore = useCredentialsStore();
+	const nodeTypesStore = useNodeTypesStore();
+
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
@@ -63,6 +72,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		clearMessages,
 		mapAssistantMessageToUI,
 		clearRatingLogic,
+		getRunningTools,
 	} = useBuilderMessages();
 
 	// Computed properties
@@ -88,6 +98,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
 	const isAIBuilderEnabled = computed(() => {
+		// Check license first
+		if (!settings.isAiBuilderEnabled) {
+			return false;
+		}
+
 		const releaseExperimentVariant = posthogStore.getVariant(
 			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 		);
@@ -214,7 +229,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
-			const userMsg = createAssistantMessage('[Task aborted]', 'aborted-streaming');
+			const userMsg = createAssistantMessage(
+				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
+				'aborted-streaming',
+			);
 			chatMessages.value = [...chatMessages.value, userMsg];
 			return;
 		}
@@ -274,12 +292,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
 		initialGeneration?: boolean;
+		type?: 'message' | 'execution';
+		errorMessage?: string;
+		errorNodeType?: string;
+		executionStatus?: string;
 	}) {
 		if (streaming.value) {
 			return;
 		}
 
-		const { text, source = 'chat', quickReplyType } = options;
+		const {
+			text,
+			source = 'chat',
+			quickReplyType,
+			errorMessage,
+			type = 'message',
+			errorNodeType,
+			executionStatus,
+		} = options;
 
 		// Set initial generation flag if provided
 		if (options.initialGeneration !== undefined) {
@@ -288,13 +318,28 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const messageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
-		telemetry.track('User submitted builder message', {
+		const trackingPayload: Record<string, string> = {
 			source,
 			message: text,
 			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
-		});
+			type,
+		};
+
+		if (type === 'execution') {
+			const resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+			const resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+
+			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
+			trackingPayload.execution_status = executionStatus ?? '';
+			if (executionStatus === 'error') {
+				trackingPayload.error_message = errorMessage ?? '';
+				trackingPayload.error_node_type = errorNodeType ?? '';
+			}
+		}
+
+		telemetry.track('User submitted builder message', trackingPayload);
 
 		prepareForStreaming(text, messageId);
 
@@ -335,9 +380,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 					if (result.shouldClearThinking) {
 						assistantThinkingMessage.value = undefined;
-					}
-
-					if (result.thinkingMessage) {
+					} else {
+						// Always update thinking message, even when undefined (to clear it)
 						assistantThinkingMessage.value = result.thinkingMessage;
 					}
 				},
@@ -410,6 +454,48 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
+	function setDefaultNodesCredentials(workflowData: WorkflowDataUpdate) {
+		// Set default credentials for new nodes if available
+		workflowData.nodes?.forEach((node) => {
+			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
+			if (hasCredentials) {
+				return;
+			}
+
+			const nodeType = nodeTypesStore.getNodeType(node.type);
+			if (!nodeType?.credentials) {
+				return;
+			}
+
+			// Try to find and set the first available credential
+			for (const credentialConfig of nodeType.credentials) {
+				const credentials = credentialsStore.getCredentialsByType(credentialConfig.name);
+				// No credentials of this type exist, try the next one
+				if (!credentials || credentials.length === 0) {
+					continue;
+				}
+
+				// Found valid credentials - set them and exit the loop
+				const credential = credentials[0];
+
+				node.credentials = {
+					[credential.type]: {
+						id: credential.id,
+						name: credential.name,
+					},
+				};
+
+				const authField = getMainAuthField(nodeType);
+				const authType = getAuthTypeForNodeCredential(nodeType, credentialConfig);
+				if (authField && authType) {
+					node.parameters[authField.name] = authType.value;
+				}
+
+				break; // Exit loop after setting the first valid credential
+			}
+		});
+	}
+
 	function applyWorkflowUpdate(workflowJson: string) {
 		let workflowData: WorkflowDataUpdate;
 		try {
@@ -427,8 +513,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
-		workflowsStore.removeAllConnections({ setStateDirty: false });
-		workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+		workflowState.removeAllConnections({ setStateDirty: false });
+		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
 
 		// For the initial generation, we want to apply auto-generated workflow name
 		// but only if the workflow has default name
@@ -437,7 +523,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			initialGeneration.value &&
 			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
 		) {
-			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 		}
 
 		// Restore positions for nodes that still exist and identify new nodes
@@ -454,6 +540,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				return node;
 			});
 		}
+
+		setDefaultNodesCredentials(workflowData);
 
 		return {
 			success: true,
@@ -524,5 +612,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
 		updateBuilderCredits,
+		getRunningTools,
 	};
 });
