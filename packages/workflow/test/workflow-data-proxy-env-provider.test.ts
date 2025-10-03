@@ -76,6 +76,8 @@ describe('createEnvProvider', () => {
 	});
 
 	it('should throw ExpressionError when env access is blocked', () => {
+		vi.useFakeTimers({ now: new Date() });
+
 		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
 		const proxy = createEnvProvider(1, 1, createEnvProviderState());
 
@@ -87,5 +89,7 @@ describe('createEnvProvider', () => {
 				itemIndex: 1,
 			}),
 		);
+
+		vi.useRealTimers();
 	});
 });
