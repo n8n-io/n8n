@@ -126,7 +126,10 @@ export class WaitTracker {
 		await this.workflowRunner.run(data, false, false, executionId);
 
 		const { parentExecution } = fullExecutionData.data;
-		if (parentExecution) {
+		if (
+			parentExecution !== undefined &&
+			(parentExecution?.shouldWait === undefined || parentExecution?.shouldWait)
+		) {
 			// on child execution completion, resume parent execution
 			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
 				void this.startExecution(parentExecution.executionId);

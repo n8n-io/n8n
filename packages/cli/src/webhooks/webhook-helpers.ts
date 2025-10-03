@@ -648,7 +648,10 @@ export async function executeWebhook(
 		const executePromise = activeExecutions.getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
-		if (parentExecution) {
+		if (
+			parentExecution !== undefined &&
+			(parentExecution?.shouldWait === undefined || parentExecution?.shouldWait)
+		) {
 			// on child execution completion, resume parent execution
 			void executePromise.then(() => {
 				const waitTracker = Container.get(WaitTracker);
