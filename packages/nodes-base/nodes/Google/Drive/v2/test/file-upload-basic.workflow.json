@@ -1,0 +1,66 @@
+{
+	"name": "Google Drive V2 File Upload Basic Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"inputDataFieldName": "data",
+				"name": "test-document.txt"
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 3,
+			"position": [200, 0],
+			"id": "file-upload-basic",
+			"name": "Upload File Basic",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Drive OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Upload File Basic": [
+			{
+				"json": {
+					"id": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+					"name": "test-document.txt",
+					"mimeType": "text/plain",
+					"parents": ["1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"],
+					"size": "1024",
+					"createdTime": "2024-01-01T00:00:00.000Z",
+					"modifiedTime": "2024-01-01T00:00:00.000Z",
+					"webViewLink": "https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view?usp=drivesdk",
+					"webContentLink": "https://drive.google.com/uc?id=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms&export=download"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Upload File Basic",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
