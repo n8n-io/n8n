@@ -11,11 +11,13 @@ import {
 	searchAttachments,
 } from '../../../v2/methods/listSearch';
 import * as transport from '../../../v2/transport';
+import * as utils from '../../../v2/helpers/utils';
 
 jest.mock('../../../v2/transport');
 jest.mock('../../../v2/helpers/utils');
 
 const mockTransport = transport as jest.Mocked<typeof transport>;
+const mockUtils = utils as jest.Mocked<typeof utils>;
 
 describe('MicrosoftOutlookV2 - listSearch methods', () => {
 	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
@@ -314,11 +316,8 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 	});
 
 	describe('searchEvents', () => {
-		const { encodeOutlookId } = require('../../../v2/helpers/utils');
-		const mockEncodeOutlookId = encodeOutlookId as jest.MockedFunction<typeof encodeOutlookId>;
-
 		beforeEach(() => {
-			mockEncodeOutlookId.mockReturnValue('encoded-id');
+			mockUtils.encodeOutlookId.mockReturnValue('encoded-id');
 		});
 
 		it('should search events successfully', async () => {
@@ -397,11 +396,8 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 	});
 
 	describe('searchFolders', () => {
-		const { encodeOutlookId } = require('../../../v2/helpers/utils');
-		const mockEncodeOutlookId = encodeOutlookId as jest.MockedFunction<typeof encodeOutlookId>;
-
 		beforeEach(() => {
-			mockEncodeOutlookId.mockReturnValue('encoded-folder-id');
+			mockUtils.encodeOutlookId.mockReturnValue('encoded-folder-id');
 		});
 
 		it('should search folders successfully', async () => {

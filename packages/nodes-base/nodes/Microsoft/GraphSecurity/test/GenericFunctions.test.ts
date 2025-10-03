@@ -535,9 +535,10 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			const mockResponse = { data: 'test' };
 			mockRequest.mockResolvedValue(mockResponse);
 
-			const promises = Array.from({ length: 5 }, (_, i) =>
-				msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts/' + i),
-			);
+			const promises: Array<Promise<any>> = [];
+			for (let i = 0; i < 5; i++) {
+				promises.push(msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts/' + i));
+			}
 
 			const results = await Promise.all(promises);
 

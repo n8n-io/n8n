@@ -20,7 +20,7 @@ describe('Test MicrosoftOutlookV2, message => get', () => {
 					'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 			})
 			.reply(200, {
-				'@odata.context': `https://graph.microsoft.com/v1.0/$metadata#users/messages/$entity`,
+				'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users/messages/$entity',
 				'@odata.etag': 'W/"CQAAABYAAABZf4De/LkrSqpPI8eyjUmAAAFSpKec"',
 				id: messageId,
 				conversationId:
