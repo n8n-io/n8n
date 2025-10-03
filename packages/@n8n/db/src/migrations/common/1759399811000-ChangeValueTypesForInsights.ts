@@ -19,7 +19,7 @@ export class ChangeValueTypesForInsights1759399811000 implements IrreversibleMig
 	}: MigrationContext) {
 		const insightsRawTable = escape.tableName(INSIGHTS_RAW_TABLE_NAME);
 		const insightsByPeriodTable = escape.tableName(INSIGHTS_BY_PERIOD_TABLE_NAME);
-		const valueColumnName = escape.tableName(VALUE_COLUMN_NAME);
+		const valueColumnName = escape.columnName(VALUE_COLUMN_NAME);
 
 		if (isSqlite) {
 			const tempInsightsByPeriodTable = escape.tableName(INSIGHTS_BY_PERIOD_TEMP_TABLE_NAME);
