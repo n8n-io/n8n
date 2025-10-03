@@ -68,6 +68,7 @@ onBeforeUnmount(() => {
 			v-show="builderStore.isAssistantOpen || assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="chatWidth"
+			:class="$style.resizeWrapper"
 			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
@@ -91,6 +92,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+.resizeWrapper {
+	z-index: var(--z-index-ask-assistant-chat);
+}
+
 .wrapper {
 	height: 100%;
 	display: flex;
