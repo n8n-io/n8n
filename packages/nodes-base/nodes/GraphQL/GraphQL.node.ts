@@ -515,47 +515,39 @@ export class GraphQL implements INodeType {
 					response = await this.helpers.request(requestOptions);
 				}
 
-				// Parse string responses if needed
-				if (typeof response === 'string') {
-					// Try to parse string responses to check for GraphQL errors
-					if (response.startsWith('{"errors":') || response.includes('"errors"')) {
-						try {
-							const parsedResponse = JSON.parse(response);
-							if (parsedResponse.errors) {
-								response = parsedResponse;
-							}
-						} catch (e) {
-							// If parsing fails and responseFormat is not 'string', throw error
-							if (responseFormat !== 'string') {
-								throw new NodeOperationError(
-									this.getNode(),
-									'Response body is not valid JSON. Change "Response Format" to "String"',
-									{ itemIndex },
-								);
-							}
-						}
-					} else if (responseFormat !== 'string') {
-						// For non-string format, all responses must be valid JSON
-						try {
-							response = JSON.parse(response);
-						} catch (error) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Response body is not valid JSON. Change "Response Format" to "String"',
-								{ itemIndex },
-							);
-						}
+				// Parse string responses
+				if (typeof response === 'string' && responseFormat !== 'string') {
+					try {
+						response = JSON.parse(response);
+					} catch (error) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Response body is not valid JSON. Change "Response Format" to "String"',
+							{ itemIndex },
+						);
 					}
 				}
 
 				// Check for GraphQL errors BEFORE adding to returnItems
-				if (typeof response === 'object' && response !== null && 'errors' in response) {
-					const errors = response.errors;
-					// Validate that errors is an array
+				let parsedForErrorCheck = response;
+				if (typeof response === 'string') {
+					try {
+						parsedForErrorCheck = JSON.parse(response);
+					} catch {
+						// Not JSON, no errors to check
+						parsedForErrorCheck = response;
+					}
+				}
+
+				if (
+					typeof parsedForErrorCheck === 'object' &&
+					parsedForErrorCheck !== null &&
+					'errors' in parsedForErrorCheck
+				) {
+					const errors = parsedForErrorCheck.errors;
 					if (Array.isArray(errors) && errors.length > 0) {
 						const message =
 							errors.map((error: IDataObject) => error.message).join(', ') || 'Unexpected error';
-						// Wrap errors array in a JsonObject for NodeApiError
 						const errorPayload: JsonObject = { errors };
 						throw new NodeApiError(this.getNode(), errorPayload, { message });
 					}
