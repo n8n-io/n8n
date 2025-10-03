@@ -52,7 +52,7 @@ const onSubmit = async () => {
 			},
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.add.error'));
+		toast.showError(error, i18n.baseText('dataTable.add.error'));
 	}
 };
 
@@ -70,13 +70,13 @@ const redirectToDataStores = () => {
 	<Modal :name="props.modalName" :center="true" width="540px" :before-close="redirectToDataStores">
 		<template #header>
 			<div :class="$style.header">
-				<h2>{{ i18n.baseText('dataStore.add.title') }}</h2>
+				<h2>{{ i18n.baseText('dataTable.add.title') }}</h2>
 			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
 				<N8nInputLabel
-					:label="i18n.baseText('dataStore.add.input.name.label')"
+					:label="i18n.baseText('dataTable.add.input.name.label')"
 					:required="true"
 					input-name="dataStoreName"
 				>
@@ -84,7 +84,7 @@ const redirectToDataStores = () => {
 						ref="inputRef"
 						v-model="dataStoreName"
 						type="text"
-						:placeholder="i18n.baseText('dataStore.add.input.name.placeholder')"
+						:placeholder="i18n.baseText('dataTable.add.input.name.placeholder')"
 						data-test-id="data-store-name-input"
 						name="dataStoreName"
 						@keyup.enter="onSubmit"

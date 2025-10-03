@@ -1,10 +1,10 @@
-import type { Project } from '@/types/projects.types';
+import type { Project } from "@/types/projects.types";
 
-export type DataStore = {
+export type DataTable = {
 	id: string;
 	name: string;
 	sizeBytes: number;
-	columns: DataStoreColumn[];
+	columns: DataTableColumn[];
 	createdAt: string;
 	updatedAt: string;
 	projectId: string;
@@ -12,31 +12,39 @@ export type DataStore = {
 };
 
 // Single sources of truth for supported types
-export const DATA_STORE_COLUMN_TYPES = ['string', 'number', 'boolean', 'date'] as const;
-export type DataStoreColumnType = (typeof DATA_STORE_COLUMN_TYPES)[number];
+export const DATA_TABLE_COLUMN_TYPES = [
+	"string",
+	"number",
+	"boolean",
+	"date",
+] as const;
+export type DataTableColumnType = (typeof DATA_TABLE_COLUMN_TYPES)[number];
 
 export const AG_GRID_CELL_TYPES = [
-	'text',
-	'number',
-	'boolean',
-	'date',
-	'dateString',
-	'object',
+	"text",
+	"number",
+	"boolean",
+	"date",
+	"dateString",
+	"object",
 ] as const;
 export type AGGridCellType = (typeof AG_GRID_CELL_TYPES)[number];
 
-export type DataStoreColumn = {
+export type DataTableColumn = {
 	id: string;
 	name: string;
-	type: DataStoreColumnType;
+	type: DataTableColumnType;
 	index: number;
 };
 
-export type DataStoreColumnCreatePayload = Pick<DataStoreColumn, 'name' | 'type'>;
+export type DataTableColumnCreatePayload = Pick<
+	DataTableColumn,
+	"name" | "type"
+>;
 
-export type DataStoreValue = string | number | boolean | Date | null;
+export type DataTableValue = string | number | boolean | Date | null;
 
-export type DataStoreRow = Record<string, DataStoreValue>;
+export type DataTableRow = Record<string, DataTableValue>;
 
 export type AddColumnResponse = {
 	success: boolean;

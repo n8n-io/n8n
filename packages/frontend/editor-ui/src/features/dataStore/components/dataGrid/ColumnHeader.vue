@@ -90,7 +90,7 @@ const typeIcon = computed(() => {
 const columnActionItems = [
 	{
 		id: ItemAction.Delete,
-		label: i18n.baseText('dataStore.deleteColumn.confirm.title'),
+		label: i18n.baseText('dataTable.deleteColumn.confirm.title'),
 		icon: 'trash-2',
 		customClass: 'data-store-column-header-action-item',
 	} as const,

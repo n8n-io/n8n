@@ -2,10 +2,10 @@
 import { computed, nextTick, ref } from 'vue';
 import type {
 	AddColumnResponse,
-	DataStoreColumnCreatePayload,
-	DataStoreColumnType,
+	DataTableColumnCreatePayload,
+	DataTableColumnType,
 } from '@/features/dataStore/datastore.types';
-import { DATA_STORE_COLUMN_TYPES } from '@/features/dataStore/datastore.types';
+import { DATA_TABLE_COLUMN_TYPES } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
@@ -20,7 +20,7 @@ type FormError = {
 const props = defineProps<{
 	// the params key is needed so that we can pass this directly to ag-grid as column
 	params: {
-		onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<AddColumnResponse>;
+		onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 	};
 	popoverId?: string;
 	useTextTrigger?: boolean;
@@ -33,9 +33,9 @@ const { debounce } = useDebounce();
 const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const columnName = ref('');
-const columnType = ref<DataStoreColumnType>('string');
+const columnType = ref<DataTableColumnType>('string');
 
-const columnTypes: DataStoreColumnType[] = [...DATA_STORE_COLUMN_TYPES];
+const columnTypes: DataTableColumnType[] = [...DATA_TABLE_COLUMN_TYPES];
 
 const error = ref<FormError | null>(null);
 
@@ -65,14 +65,14 @@ const onAddButtonClicked = async () => {
 	});
 
 	if (!response.success) {
-		let errorMessage = i18n.baseText('dataStore.addColumn.error');
+		let errorMessage = i18n.baseText('dataTable.addColumn.error');
 		let errorDescription = response.errorMessage;
 		// Provide custom error message for conflict (column already exists)
 		if (response.httpStatus === 409) {
-			errorMessage = i18n.baseText('dataStore.addColumn.alreadyExistsError', {
+			errorMessage = i18n.baseText('dataTable.addColumn.alreadyExistsError', {
 				interpolate: { name: columnName.value },
 			});
-			errorDescription = i18n.baseText('dataStore.addColumn.alreadyExistsDescription');
+			errorDescription = i18n.baseText('dataTable.addColumn.alreadyExistsDescription');
 		}
 		error.value = {
 			message: errorMessage,
@@ -106,8 +106,8 @@ const validateName = () => {
 	}
 	if (columnName.value && !COLUMN_NAME_REGEX.test(columnName.value)) {
 		error.value = {
-			message: i18n.baseText('dataStore.addColumn.invalidName.error'),
-			description: i18n.baseText('dataStore.addColumn.invalidName.description'),
+			message: i18n.baseText('dataTable.addColumn.invalidName.error'),
+			description: i18n.baseText('dataTable.addColumn.invalidName.description'),
 		};
 	}
 };
@@ -116,7 +116,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 </script>
 
 <template>
-	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('dataStore.addColumn.label')">
+	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('dataTable.addColumn.label')">
 		<div class="add-column-header-component-wrapper">
 			<N8nPopoverReka
 				:id="popoverId"
@@ -128,7 +128,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 				<template #trigger>
 					<template v-if="props.useTextTrigger">
 						<N8nButton data-test-id="data-store-add-column-trigger-button" type="tertiary">
-							{{ i18n.baseText('dataStore.addColumn.label') }}
+							{{ i18n.baseText('dataTable.addColumn.label') }}
 						</N8nButton>
 					</template>
 					<template v-else>
@@ -147,14 +147,14 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 					>
 						<div class="popover-body">
 							<N8nInputLabel
-								:label="i18n.baseText('dataStore.addColumn.nameInput.label')"
+								:label="i18n.baseText('dataTable.addColumn.nameInput.label')"
 								:required="true"
 								:class="error ? '' : 'mb-s'"
 							>
 								<N8nInput
 									ref="nameInputRef"
 									v-model="columnName"
-									:placeholder="i18n.baseText('dataStore.addColumn.nameInput.placeholder')"
+									:placeholder="i18n.baseText('dataTable.addColumn.nameInput.placeholder')"
 									:maxlength="MAX_COLUMN_NAME_LENGTH"
 									@keyup.enter="onAddButtonClicked"
 									@input="onInput"
@@ -179,7 +179,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 								</div>
 							</N8nInputLabel>
 							<N8nInputLabel
-								:label="i18n.baseText('dataStore.addColumn.typeInput.label')"
+								:label="i18n.baseText('dataTable.addColumn.typeInput.label')"
 								:required="true"
 								class="type-label"
 							>
@@ -209,7 +209,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 								:disabled="!columnName || !columnType || !!error"
 								@click="onAddButtonClicked"
 							>
-								{{ i18n.baseText('dataStore.addColumn.label') }}
+								{{ i18n.baseText('dataTable.addColumn.label') }}
 							</N8nButton>
 						</div>
 					</div>

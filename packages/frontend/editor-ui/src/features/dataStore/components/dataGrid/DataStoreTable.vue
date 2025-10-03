@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import type {
-	DataStore,
-	DataStoreColumnCreatePayload,
-	DataStoreRow,
+	DataTable,
+	DataTableColumnCreatePayload,
+	DataTableRow,
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent } from 'ag-grid-community';
@@ -65,7 +65,7 @@ ModuleRegistry.registerModules([
 ]);
 
 type Props = {
-	dataStore: DataStore;
+	dataStore: DataTable;
 };
 
 const props = defineProps<Props>();
@@ -84,7 +84,7 @@ const dataStoreGridBase = useDataStoreGridBase({
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 });
-const rowData = ref<DataStoreRow[]>([]);
+const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
 const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataStoreColumnFilters({
@@ -138,7 +138,7 @@ async function onDeleteColumnFunction(columnId: string) {
 	await dataStoreOperations.onDeleteColumn(columnId);
 }
 
-async function onAddColumnFunction(column: DataStoreColumnCreatePayload) {
+async function onAddColumnFunction(column: DataTableColumnCreatePayload) {
 	return await dataStoreOperations.onAddColumn(column);
 }
 
@@ -157,7 +157,7 @@ const initialize = async (params: GridReadyEvent) => {
 	initializeFilters();
 };
 
-const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
+const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
 
 watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
 	await setCurrentPage(1);

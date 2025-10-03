@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type { DataTable } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useRouter } from 'vue-router';
@@ -13,7 +13,7 @@ import { telemetry } from '@/plugins/telemetry';
 const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
-	dataStore: DataStore;
+	dataStore: DataTable;
 };
 
 const props = defineProps<Props>();
@@ -39,7 +39,7 @@ const breadcrumbs = computed<PathItem[]>(() => {
 	return [
 		{
 			id: 'datastores',
-			label: i18n.baseText('dataStore.dataStores'),
+			label: i18n.baseText('dataTable.dataTables'),
 			href: `/projects/${project.value.id}/datatables`,
 		},
 	];
@@ -85,7 +85,7 @@ const onNameSubmit = async (name: string) => {
 	} catch (error) {
 		// Revert to original name if rename fails
 		editableName.value = props.dataStore.name;
-		toast.showError(error, i18n.baseText('dataStore.rename.error'));
+		toast.showError(error, i18n.baseText('dataTable.rename.error'));
 	}
 };
 
@@ -114,7 +114,7 @@ watch(
 					ref="renameInput"
 					v-model="editableName"
 					data-test-id="datastore-header-name-input"
-					:placeholder="i18n.baseText('dataStore.add.input.name.label')"
+					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
 					:max-length="30"
 					:read-only="false"

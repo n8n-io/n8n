@@ -5,11 +5,14 @@ import type {
 	ValueSetterParams,
 	CellEditRequestEvent,
 	ValueFormatterParams,
-} from 'ag-grid-community';
-import type { Ref } from 'vue';
-import { DateTime } from 'luxon';
-import type { I18nClass } from '@n8n/i18n';
-import type { DataStoreColumn, DataStoreRow } from '@/features/dataStore/datastore.types';
+} from "ag-grid-community";
+import type { Ref } from "vue";
+import { DateTime } from "luxon";
+import type { I18nClass } from "@n8n/i18n";
+import type {
+	DataTableColumn,
+	DataTableRow,
+} from "@/features/dataStore/datastore.types";
 import {
 	ADD_ROW_ROW_ID,
 	EMPTY_VALUE,
@@ -17,28 +20,31 @@ import {
 	NUMBER_DECIMAL_SEPARATOR,
 	NUMBER_THOUSAND_SEPARATOR,
 	NUMBER_WITH_SPACES_REGEX,
-} from '@/features/dataStore/constants';
-import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
-import { isDataStoreValue } from '@/features/dataStore/typeGuards';
+} from "@/features/dataStore/constants";
+import NullEmptyCellRenderer from "@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue";
+import { isDataStoreValue } from "@/features/dataStore/typeGuards";
 
 export const getCellClass = (params: CellClassParams): string => {
 	if (params.data?.id === ADD_ROW_ROW_ID) {
-		return 'add-row-cell';
+		return "add-row-cell";
 	}
-	if (params.column.getUserProvidedColDef()?.cellDataType === 'boolean') {
-		return 'boolean-cell';
+	if (params.column.getUserProvidedColDef()?.cellDataType === "boolean") {
+		return "boolean-cell";
 	}
-	return '';
+	return "";
 };
 
 export const createValueGetter =
-	(col: DataStoreColumn) => (params: ValueGetterParams<DataStoreRow>) => {
-		if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
+	(col: DataTableColumn) => (params: ValueGetterParams<DataTableRow>) => {
+		if (
+			params.data?.[col.name] === null ||
+			params.data?.[col.name] === undefined
+		) {
 			return null;
 		}
-		if (col.type === 'date') {
+		if (col.type === "date") {
 			const value = params.data?.[col.name];
-			if (typeof value === 'string') {
+			if (typeof value === "string") {
 				return new Date(value);
 			}
 		}
@@ -46,42 +52,49 @@ export const createValueGetter =
 	};
 
 export const createCellRendererSelector =
-	(col: DataStoreColumn) => (params: ICellRendererParams) => {
-		if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
+	(col: DataTableColumn) => (params: ICellRendererParams) => {
+		if (params.data?.id === ADD_ROW_ROW_ID || col.id === "add-column") {
 			return {};
 		}
-		let rowValue = (params.data as DataStoreRow | undefined)?.[col.name];
+		let rowValue = (params.data as DataTableRow | undefined)?.[col.name];
 		if (rowValue === undefined) {
 			rowValue = null;
 		}
 		if (rowValue === null) {
-			return { component: NullEmptyCellRenderer, params: { value: NULL_VALUE } };
+			return {
+				component: NullEmptyCellRenderer,
+				params: { value: NULL_VALUE },
+			};
 		}
-		if (rowValue === '') {
-			return { component: NullEmptyCellRenderer, params: { value: EMPTY_VALUE } };
+		if (rowValue === "") {
+			return {
+				component: NullEmptyCellRenderer,
+				params: { value: EMPTY_VALUE },
+			};
 		}
 		return undefined;
 	};
 
 export const createStringValueSetter =
-	(col: DataStoreColumn, isTextEditorOpen: Ref<boolean>) =>
-	(params: ValueSetterParams<DataStoreRow>) => {
+	(col: DataTableColumn, isTextEditorOpen: Ref<boolean>) =>
+	(params: ValueSetterParams<DataTableRow>) => {
 		let originalValue = params.data[col.name];
 		if (originalValue === undefined) {
 			originalValue = null;
 		}
-		let newValue = params.newValue as unknown as DataStoreRow[keyof DataStoreRow];
+		let newValue =
+			params.newValue as unknown as DataTableRow[keyof DataTableRow];
 
 		if (!isDataStoreValue(newValue)) {
 			return false;
 		}
 
-		if (originalValue === null && newValue === '') {
+		if (originalValue === null && newValue === "") {
 			return false;
 		}
 
 		if (isTextEditorOpen.value && newValue === null) {
-			newValue = '';
+			newValue = "";
 		}
 
 		params.data[col.name] = newValue;
@@ -89,109 +102,112 @@ export const createStringValueSetter =
 	};
 
 export const stringCellEditorParams = (
-	params: CellEditRequestEvent<DataStoreRow>,
+	params: CellEditRequestEvent<DataTableRow>,
 ): { value: string; maxLength: number } => ({
-	value: (params.value as string | null | undefined) ?? '',
+	value: (params.value as string | null | undefined) ?? "",
 	maxLength: 999999999,
 });
 
 export const dateValueFormatter = (
-	params: ValueFormatterParams<DataStoreRow, Date | null | undefined>,
+	params: ValueFormatterParams<DataTableRow, Date | null | undefined>,
 ): string => {
 	const value = params.value;
-	if (value === null || value === undefined) return '';
+	if (value === null || value === undefined) return "";
 	// Format using user's local timezone (includes offset)
-	return DateTime.fromJSDate(value).toISO() ?? '';
+	return DateTime.fromJSDate(value).toISO() ?? "";
 };
 
 const numberWithSpaces = (num: number) => {
-	const parts = num.toString().split('.');
-	parts[0] = parts[0].replace(NUMBER_WITH_SPACES_REGEX, NUMBER_THOUSAND_SEPARATOR);
+	const parts = num.toString().split(".");
+	parts[0] = parts[0].replace(
+		NUMBER_WITH_SPACES_REGEX,
+		NUMBER_THOUSAND_SEPARATOR,
+	);
 	return parts.join(NUMBER_DECIMAL_SEPARATOR);
 };
 
 export const numberValueFormatter = (
-	params: ValueFormatterParams<DataStoreRow, number | null | undefined>,
+	params: ValueFormatterParams<DataTableRow, number | null | undefined>,
 ): string => {
 	const value = params.value;
-	if (value === null || value === undefined) return '';
+	if (value === null || value === undefined) return "";
 	return numberWithSpaces(value);
 };
 
 const createNullFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'null',
-	displayName: i18n.baseText('dataStore.filters.isNull'),
+	displayKey: "null",
+	displayName: i18n.baseText("dataTable.filters.isNull"),
 	predicate: () => true,
 	numberOfInputs: 0,
 });
 
 const createNotNullFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'notNull',
-	displayName: i18n.baseText('dataStore.filters.isNotNull'),
+	displayKey: "notNull",
+	displayName: i18n.baseText("dataTable.filters.isNotNull"),
 	predicate: () => true,
 	numberOfInputs: 0,
 });
 
 const createIsEmptyFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'isEmpty',
-	displayName: i18n.baseText('dataStore.filters.isEmpty'),
+	displayKey: "isEmpty",
+	displayName: i18n.baseText("dataTable.filters.isEmpty"),
 	predicate: () => true,
 	numberOfInputs: 0,
 });
 
 const createIsNotEmptyFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'notEmpty',
-	displayName: i18n.baseText('dataStore.filters.isNotEmpty'),
+	displayKey: "notEmpty",
+	displayName: i18n.baseText("dataTable.filters.isNotEmpty"),
 	predicate: () => true,
 	numberOfInputs: 0,
 });
 
 const createBetweenFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'between',
-	displayName: i18n.baseText('dataStore.filters.between'),
+	displayKey: "between",
+	displayName: i18n.baseText("dataTable.filters.between"),
 	predicate: () => true,
 	numberOfInputs: 2,
 });
 
 const createGreaterThanFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'greaterThan',
-	displayName: i18n.baseText('dataStore.filters.greaterThan'),
+	displayKey: "greaterThan",
+	displayName: i18n.baseText("dataTable.filters.greaterThan"),
 	predicate: () => true,
 	numberOfInputs: 1,
 });
 
 const createGreaterThanOrEqualFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'greaterThanOrEqual',
-	displayName: i18n.baseText('dataStore.filters.greaterThanOrEqual'),
+	displayKey: "greaterThanOrEqual",
+	displayName: i18n.baseText("dataTable.filters.greaterThanOrEqual"),
 	predicate: () => true,
 	numberOfInputs: 1,
 });
 
 const createLessThanFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'lessThan',
-	displayName: i18n.baseText('dataStore.filters.lessThan'),
+	displayKey: "lessThan",
+	displayName: i18n.baseText("dataTable.filters.lessThan"),
 	predicate: () => true,
 	numberOfInputs: 1,
 });
 
 const createLessThanOrEqualFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'lessThanOrEqual',
-	displayName: i18n.baseText('dataStore.filters.lessThanOrEqual'),
+	displayKey: "lessThanOrEqual",
+	displayName: i18n.baseText("dataTable.filters.lessThanOrEqual"),
 	predicate: () => true,
 	numberOfInputs: 1,
 });
 
 const createInRangeFilterOption = (i18n: I18nClass) => ({
-	displayKey: 'inRange',
-	displayName: i18n.baseText('dataStore.filters.between'),
+	displayKey: "inRange",
+	displayName: i18n.baseText("dataTable.filters.between"),
 	predicate: () => true,
 	numberOfInputs: 2,
 });
 
 export const getStringColumnFilterOptions = (i18n: I18nClass) => [
-	'contains',
-	'equals',
-	'notEqual',
+	"contains",
+	"equals",
+	"notEqual",
 	createIsEmptyFilterOption(i18n),
 	createIsNotEmptyFilterOption(i18n),
 	createNullFilterOption(i18n),
@@ -199,8 +215,8 @@ export const getStringColumnFilterOptions = (i18n: I18nClass) => [
 ];
 
 export const getDateColumnFilterOptions = (i18n: I18nClass) => [
-	'equals',
-	'notEqual',
+	"equals",
+	"notEqual",
 	createLessThanFilterOption(i18n),
 	createLessThanOrEqualFilterOption(i18n),
 	createGreaterThanFilterOption(i18n),
@@ -211,8 +227,8 @@ export const getDateColumnFilterOptions = (i18n: I18nClass) => [
 ];
 
 export const getNumberColumnFilterOptions = (i18n: I18nClass) => [
-	'equals',
-	'notEqual',
+	"equals",
+	"notEqual",
 	createLessThanFilterOption(i18n),
 	createLessThanOrEqualFilterOption(i18n),
 	createGreaterThanFilterOption(i18n),
@@ -223,16 +239,16 @@ export const getNumberColumnFilterOptions = (i18n: I18nClass) => [
 ];
 
 export const getBooleanColumnFilterOptions = (i18n: I18nClass) => [
-	'empty',
+	"empty",
 	{
-		displayKey: 'true',
-		displayName: i18n.baseText('dataStore.filters.true'),
+		displayKey: "true",
+		displayName: i18n.baseText("dataTable.filters.true"),
 		numberOfInputs: 0,
 		predicate: () => true,
 	},
 	{
-		displayKey: 'false',
-		displayName: i18n.baseText('dataStore.filters.false'),
+		displayKey: "false",
+		displayName: i18n.baseText("dataTable.filters.false"),
 		numberOfInputs: 0,
 		predicate: () => true,
 	},

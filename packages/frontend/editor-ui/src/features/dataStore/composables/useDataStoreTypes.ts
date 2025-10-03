@@ -1,15 +1,16 @@
 import type {
 	AGGridCellType,
-	DataStoreColumnType,
-	DataStoreValue,
-} from '@/features/dataStore/datastore.types';
-import { isAGGridCellType } from '@/features/dataStore/typeGuards';
-import { ResponseError } from '@n8n/rest-api-client';
-import { useI18n } from '@n8n/i18n';
-import { DATA_TYPE_ICON_MAP } from '@/constants';
+	DataTableColumnType,
+	DataTableValue,
+} from "@/features/dataStore/datastore.types";
+import { isAGGridCellType } from "@/features/dataStore/typeGuards";
+import { ResponseError } from "@n8n/rest-api-client";
+import { useI18n } from "@n8n/i18n";
+import { DATA_TYPE_ICON_MAP } from "@/constants";
 
 export const useDataStoreTypes = () => {
-	const getIconForType = (type: DataStoreColumnType) => DATA_TYPE_ICON_MAP[type];
+	const getIconForType = (type: DataTableColumnType) =>
+		DATA_TYPE_ICON_MAP[type];
 	const i18n = useI18n();
 
 	/**
@@ -19,41 +20,47 @@ export const useDataStoreTypes = () => {
 	 * @param colType The DataStoreColumnType to map.
 	 * @returns The corresponding AGGridCellType.
 	 */
-	const mapToAGCellType = (colType: DataStoreColumnType): AGGridCellType => {
-		if (colType === 'string') {
-			return 'text';
+	const mapToAGCellType = (colType: DataTableColumnType): AGGridCellType => {
+		if (colType === "string") {
+			return "text";
 		}
 		return colType;
 	};
 
-	const mapToDataStoreColumnType = (colType: AGGridCellType): DataStoreColumnType => {
+	const mapToDataStoreColumnType = (
+		colType: AGGridCellType,
+	): DataTableColumnType => {
 		if (!isAGGridCellType(colType)) {
-			return 'string';
+			return "string";
 		}
-		if (colType === 'text') {
-			return 'string';
+		if (colType === "text") {
+			return "string";
 		}
-		return colType as DataStoreColumnType;
+		return colType as DataTableColumnType;
 	};
 
-	const getDefaultValueForType = (colType: DataStoreColumnType): DataStoreValue => {
+	const getDefaultValueForType = (
+		colType: DataTableColumnType,
+	): DataTableValue => {
 		switch (colType) {
-			case 'string':
-				return '';
-			case 'number':
+			case "string":
+				return "";
+			case "number":
 				return 0;
-			case 'boolean':
+			case "boolean":
 				return false;
-			case 'date':
+			case "date":
 				return null;
 			default:
 				return null;
 		}
 	};
 
-	const getAddColumnError = (error: unknown): { httpStatus: number; message: string } => {
+	const getAddColumnError = (
+		error: unknown,
+	): { httpStatus: number; message: string } => {
 		const DEFAULT_HTTP_STATUS = 500;
-		const DEFAULT_MESSAGE = i18n.baseText('generic.unknownError');
+		const DEFAULT_MESSAGE = i18n.baseText("generic.unknownError");
 
 		if (error instanceof ResponseError) {
 			return {

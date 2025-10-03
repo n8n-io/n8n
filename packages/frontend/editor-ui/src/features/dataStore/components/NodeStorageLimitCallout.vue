@@ -30,7 +30,7 @@ const calloutType = computed(() => {
 	<N8nCallout v-if="calloutType" :theme="calloutType" class="mt-xs">
 		<span v-if="calloutType === 'danger'">
 			{{
-				i18n.baseText('dataStore.banner.storageLimitError.message', {
+				i18n.baseText('dataTable.banner.storageLimitError.message', {
 					interpolate: {
 						usage: `${dataStoreStore.dataStoreSize} / ${dataStoreStore.maxSizeMB}MB`,
 					},
@@ -39,7 +39,7 @@ const calloutType = computed(() => {
 		</span>
 		<span v-else>
 			{{
-				i18n.baseText('dataStore.banner.storageLimitWarning.message', {
+				i18n.baseText('dataTable.banner.storageLimitWarning.message', {
 					interpolate: {
 						usage: `${dataStoreStore.dataStoreSize} / ${dataStoreStore.maxSizeMB}MB`,
 					},

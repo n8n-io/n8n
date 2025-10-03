@@ -1,46 +1,47 @@
-import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import { useI18n } from "@n8n/i18n";
+import { type FrontendModuleDescription } from "@/moduleInitializer/module.types";
 import {
 	ADD_DATA_STORE_MODAL_KEY,
 	DATA_STORE_DETAILS,
 	DATA_STORE_VIEW,
 	PROJECT_DATA_STORES,
-} from '@/features/dataStore/constants';
+} from "@/features/dataStore/constants";
 
 const i18n = useI18n();
 
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const DataStoreView = async () => await import('@/features/dataStore/DataStoreView.vue');
+const MainSidebar = async () => await import("@/components/MainSidebar.vue");
+const DataStoreView = async () =>
+	await import("@/features/dataStore/DataStoreView.vue");
 const DataStoreDetailsView = async () =>
-	await import('@/features/dataStore/DataStoreDetailsView.vue');
+	await import("@/features/dataStore/DataStoreDetailsView.vue");
 
 export const DataStoreModule: FrontendModuleDescription = {
-	id: 'data-table',
-	name: 'Data Store',
-	description: 'Manage and store data efficiently with the Data Store module.',
-	icon: 'database',
+	id: "data-table",
+	name: "Data Store",
+	description: "Manage and store data efficiently with the Data Store module.",
+	icon: "database",
 	modals: [
 		{
 			key: ADD_DATA_STORE_MODAL_KEY,
-			component: async () => await import('./components/AddDataStoreModal.vue'),
+			component: async () => await import("./components/AddDataStoreModal.vue"),
 			initialState: { open: false },
 		},
 	],
 	routes: [
 		{
 			name: DATA_STORE_VIEW,
-			path: '/home/datatables',
+			path: "/home/datatables",
 			components: {
 				default: DataStoreView,
 				sidebar: MainSidebar,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ["authenticated", "custom"],
 			},
 		},
 		{
 			name: PROJECT_DATA_STORES,
-			path: 'datatables/:new(new)?',
+			path: "datatables/:new(new)?",
 			props: true,
 			components: {
 				default: DataStoreView,
@@ -48,12 +49,12 @@ export const DataStoreModule: FrontendModuleDescription = {
 			},
 			meta: {
 				projectRoute: true,
-				middleware: ['authenticated', 'custom'],
+				middleware: ["authenticated", "custom"],
 			},
 		},
 		{
 			name: DATA_STORE_DETAILS,
-			path: 'datatables/:id',
+			path: "datatables/:id",
 			props: true,
 			components: {
 				default: DataStoreDetailsView,
@@ -61,16 +62,16 @@ export const DataStoreModule: FrontendModuleDescription = {
 			},
 			meta: {
 				projectRoute: true,
-				middleware: ['authenticated', 'custom'],
+				middleware: ["authenticated", "custom"],
 			},
 		},
 	],
 	projectTabs: {
 		overview: [
 			{
-				label: i18n.baseText('dataStore.dataStores'),
+				label: i18n.baseText("dataTable.dataTables"),
 				value: DATA_STORE_VIEW,
-				tag: i18n.baseText('generic.betaProper'),
+				tag: i18n.baseText("generic.betaProper"),
 				to: {
 					name: DATA_STORE_VIEW,
 				},
@@ -78,9 +79,9 @@ export const DataStoreModule: FrontendModuleDescription = {
 		],
 		project: [
 			{
-				label: i18n.baseText('dataStore.dataStores'),
+				label: i18n.baseText("dataTable.dataTables"),
 				value: PROJECT_DATA_STORES,
-				tag: i18n.baseText('generic.betaProper'),
+				tag: i18n.baseText("generic.betaProper"),
 				dynamicRoute: {
 					name: PROJECT_DATA_STORES,
 					includeProjectId: true,
@@ -90,8 +91,8 @@ export const DataStoreModule: FrontendModuleDescription = {
 	},
 	resources: [
 		{
-			key: 'dataStore',
-			displayName: 'Data Store',
+			key: "dataStore",
+			displayName: "Data Store",
 		},
 	],
 };

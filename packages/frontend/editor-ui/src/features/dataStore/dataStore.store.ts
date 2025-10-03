@@ -1,7 +1,7 @@
-import { defineStore } from 'pinia';
-import { DATA_STORE_STORE } from '@/features/dataStore/constants';
-import { computed, ref } from 'vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { defineStore } from "pinia";
+import { DATA_STORE_STORE } from "@/features/dataStore/constants";
+import { computed, ref } from "vue";
+import { useRootStore } from "@n8n/stores/useRootStore";
 import {
 	fetchDataStoresApi,
 	createDataStoreApi,
@@ -15,26 +15,26 @@ import {
 	updateDataStoreRowsApi,
 	deleteDataStoreRowsApi,
 	fetchDataStoreGlobalLimitInBytes,
-} from '@/features/dataStore/dataStore.api';
+} from "@/features/dataStore/dataStore.api";
 import type {
-	DataStore,
-	DataStoreColumnCreatePayload,
-	DataStoreRow,
-} from '@/features/dataStore/datastore.types';
-import { useProjectsStore } from '@/stores/projects.store';
-import { reorderItem } from '@/features/dataStore/utils';
-import { type DataTableSizeStatus } from 'n8n-workflow';
-import { useSettingsStore } from '@/stores/settings.store';
+	DataTable,
+	DataTableColumnCreatePayload,
+	DataTableRow,
+} from "@/features/dataStore/datastore.types";
+import { useProjectsStore } from "@/stores/projects.store";
+import { reorderItem } from "@/features/dataStore/utils";
+import { type DataTableSizeStatus } from "n8n-workflow";
+import { useSettingsStore } from "@/stores/settings.store";
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
 	const settingsStore = useSettingsStore();
 
-	const dataStores = ref<DataStore[]>([]);
+	const dataStores = ref<DataTable[]>([]);
 	const totalCount = ref(0);
 	const dataStoreSize = ref(0);
-	const dataStoreSizeLimitState = ref<DataTableSizeStatus>('ok');
+	const dataStoreSizeLimitState = ref<DataTableSizeStatus>("ok");
 	const dataStoreTableSizes = ref<Record<string, number>>({});
 
 	const formatSize = (sizeBytes: number) => {
@@ -47,23 +47,37 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const dataStoreSizes = computed(() => {
 		const formattedSizes: Record<string, number> = {};
-		for (const [dataStoreId, sizeBytes] of Object.entries(dataStoreTableSizes.value)) {
+		for (const [dataStoreId, sizeBytes] of Object.entries(
+			dataStoreTableSizes.value,
+		)) {
 			formattedSizes[dataStoreId] = formatSize(sizeBytes);
 		}
 		return formattedSizes;
 	});
 
-	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
-		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
-		});
+	const fetchDataStores = async (
+		projectId: string,
+		page: number,
+		pageSize: number,
+	) => {
+		const response = await fetchDataStoresApi(
+			rootStore.restApiContext,
+			projectId,
+			{
+				skip: (page - 1) * pageSize,
+				take: pageSize,
+			},
+		);
 		dataStores.value = response.data;
 		totalCount.value = response.count;
 	};
 
 	const createDataStore = async (name: string, projectId: string) => {
-		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
+		const newStore = await createDataStoreApi(
+			rootStore.restApiContext,
+			name,
+			projectId,
+		);
 		if (!newStore.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
 			if (project) {
@@ -76,9 +90,15 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	};
 
 	const deleteDataStore = async (datastoreId: string, projectId: string) => {
-		const deleted = await deleteDataStoreApi(rootStore.restApiContext, datastoreId, projectId);
+		const deleted = await deleteDataStoreApi(
+			rootStore.restApiContext,
+			datastoreId,
+			projectId,
+		);
 		if (deleted) {
-			dataStores.value = dataStores.value.filter((store) => store.id !== datastoreId);
+			dataStores.value = dataStores.value.filter(
+				(store) => store.id !== datastoreId,
+			);
 			totalCount.value -= 1;
 		}
 		return deleted;
@@ -96,17 +116,23 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 			columnId,
 		);
 		if (deleted) {
-			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			const index = dataStores.value.findIndex(
+				(store) => store.id === datastoreId,
+			);
 			if (index !== -1) {
-				dataStores.value[index].columns = dataStores.value[index].columns.filter(
-					(col) => col.id !== columnId,
-				);
+				dataStores.value[index].columns = dataStores.value[
+					index
+				].columns.filter((col) => col.id !== columnId);
 			}
 		}
 		return deleted;
 	};
 
-	const updateDataStore = async (datastoreId: string, name: string, projectId: string) => {
+	const updateDataStore = async (
+		datastoreId: string,
+		name: string,
+		projectId: string,
+	) => {
 		const updated = await updateDataStoreApi(
 			rootStore.restApiContext,
 			datastoreId,
@@ -114,7 +140,9 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 			projectId,
 		);
 		if (updated) {
-			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			const index = dataStores.value.findIndex(
+				(store) => store.id === datastoreId,
+			);
 			if (index !== -1) {
 				dataStores.value[index] = { ...dataStores.value[index], name };
 			}
@@ -122,11 +150,19 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return updated;
 	};
 
-	const fetchDataStoreDetails = async (datastoreId: string, projectId: string) => {
-		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, undefined, {
+	const fetchDataStoreDetails = async (
+		datastoreId: string,
+		projectId: string,
+	) => {
+		const response = await fetchDataStoresApi(
+			rootStore.restApiContext,
 			projectId,
-			id: datastoreId,
-		});
+			undefined,
+			{
+				projectId,
+				id: datastoreId,
+			},
+		);
 		if (response.data.length > 0) {
 			dataStores.value = response.data;
 			return response.data[0];
@@ -134,8 +170,13 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return null;
 	};
 
-	const fetchOrFindDataStore = async (datastoreId: string, projectId: string) => {
-		const existingStore = dataStores.value.find((store) => store.id === datastoreId);
+	const fetchOrFindDataStore = async (
+		datastoreId: string,
+		projectId: string,
+	) => {
+		const existingStore = dataStores.value.find(
+			(store) => store.id === datastoreId,
+		);
 		if (existingStore) {
 			return existingStore;
 		}
@@ -145,7 +186,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const addDataStoreColumn = async (
 		datastoreId: string,
 		projectId: string,
-		column: DataStoreColumnCreatePayload,
+		column: DataTableColumnCreatePayload,
 	) => {
 		const newColumn = await addDataStoreColumnApi(
 			rootStore.restApiContext,
@@ -154,7 +195,9 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 			column,
 		);
 		if (newColumn) {
-			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			const index = dataStores.value.findIndex(
+				(store) => store.id === datastoreId,
+			);
 			if (index !== -1) {
 				dataStores.value[index].columns.push(newColumn);
 			}
@@ -176,8 +219,12 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 			targetIndex,
 		);
 		if (moved) {
-			const dsIndex = dataStores.value.findIndex((store) => store.id === datastoreId);
-			const fromIndex = dataStores.value[dsIndex].columns.findIndex((col) => col.id === columnId);
+			const dsIndex = dataStores.value.findIndex(
+				(store) => store.id === datastoreId,
+			);
+			const fromIndex = dataStores.value[dsIndex].columns.findIndex(
+				(col) => col.id === columnId,
+			);
 			dataStores.value[dsIndex].columns = reorderItem(
 				dataStores.value[dsIndex].columns,
 				fromIndex,
@@ -195,12 +242,17 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		sortBy: string,
 		filter?: string,
 	) => {
-		return await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
-			sortBy,
-			filter,
-		});
+		return await getDataStoreRowsApi(
+			rootStore.restApiContext,
+			datastoreId,
+			projectId,
+			{
+				skip: (page - 1) * pageSize,
+				take: pageSize,
+				sortBy,
+				filter,
+			},
+		);
 	};
 
 	const insertEmptyRow = async (dataStoreId: string, projectId: string) => {
@@ -217,7 +269,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		dataStoreId: string,
 		projectId: string,
 		rowId: number,
-		rowData: DataStoreRow,
+		rowData: DataTableRow,
 	) => {
 		return await updateDataStoreRowsApi(
 			rootStore.restApiContext,
@@ -228,12 +280,23 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		);
 	};
 
-	const deleteRows = async (dataStoreId: string, projectId: string, rowIds: number[]) => {
-		return await deleteDataStoreRowsApi(rootStore.restApiContext, dataStoreId, rowIds, projectId);
+	const deleteRows = async (
+		dataStoreId: string,
+		projectId: string,
+		rowIds: number[],
+	) => {
+		return await deleteDataStoreRowsApi(
+			rootStore.restApiContext,
+			dataStoreId,
+			rowIds,
+			projectId,
+		);
 	};
 
 	const fetchDataStoreSize = async () => {
-		const result = await fetchDataStoreGlobalLimitInBytes(rootStore.restApiContext);
+		const result = await fetchDataStoreGlobalLimitInBytes(
+			rootStore.restApiContext,
+		);
 		dataStoreSize.value = formatSize(result.totalBytes);
 		dataStoreSizeLimitState.value = result.quotaStatus;
 

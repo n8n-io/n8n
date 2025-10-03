@@ -94,7 +94,7 @@ const onAddModalClick = () => {
 };
 
 onMounted(() => {
-	documentTitle.set(i18n.baseText('dataStore.dataStores'));
+	documentTitle.set(i18n.baseText('dataTable.dataTables'));
 });
 
 watch(
@@ -141,9 +141,9 @@ watch(
 		<template #empty>
 			<N8nActionBox
 				data-test-id="empty-shared-action-box"
-				:heading="i18n.baseText('dataStore.empty.label')"
-				:description="i18n.baseText('dataStore.empty.description')"
-				:button-text="i18n.baseText('dataStore.add.button.label')"
+				:heading="i18n.baseText('dataTable.empty.label')"
+				:description="i18n.baseText('dataTable.empty.description')"
+				:button-text="i18n.baseText('dataTable.add.button.label')"
 				button-type="secondary"
 				@click:button="onAddModalClick"
 			/>

@@ -68,7 +68,7 @@ const getDataStoreSize = computed(() => {
 							data-test-id="data-store-card-size"
 						>
 							{{
-								i18n.baseText('dataStore.card.size', {
+								i18n.baseText('dataTable.card.size', {
 									interpolate: { size: getDataStoreSize },
 								})
 							}}
@@ -80,7 +80,7 @@ const getDataStoreSize = computed(() => {
 							data-test-id="data-store-card-column-count"
 						>
 							{{
-								i18n.baseText('dataStore.card.column.count', {
+								i18n.baseText('dataTable.card.column.count', {
 									interpolate: { count: props.dataStore.columns.length + 1 },
 								})
 							}}

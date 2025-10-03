@@ -2,8 +2,8 @@
 import { onMounted, ref } from 'vue';
 import type {
 	AddColumnResponse,
-	DataStore,
-	DataStoreColumnCreatePayload,
+	DataTable,
+	DataTableColumnCreatePayload,
 } from '@/features/dataStore/datastore.types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
@@ -32,16 +32,16 @@ const dataStoreStore = useDataStoreStore();
 
 const loading = ref(false);
 const saving = ref(false);
-const dataStore = ref<DataStore | null>(null);
+const dataStore = ref<DataTable | null>(null);
 const dataStoreTableRef = ref<InstanceType<typeof DataStoreTable>>();
 
 const { debounce } = useDebounce();
 
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {
-		error = new Error(String(i18n.baseText('dataStore.getDetails.error')));
+		error = new Error(String(i18n.baseText('dataTable.getDetails.error')));
 	}
-	toast.showError(error, i18n.baseText('dataStore.getDetails.error'));
+	toast.showError(error, i18n.baseText('dataTable.getDetails.error'));
 	await router.push({ name: DATA_STORE_VIEW, params: { projectId: props.projectId } });
 };
 
@@ -51,9 +51,9 @@ const initialize = async () => {
 		const response = await dataStoreStore.fetchOrFindDataStore(props.id, props.projectId);
 		if (response) {
 			dataStore.value = response;
-			documentTitle.set(`${i18n.baseText('dataStore.dataStores')} > ${response.name}`);
+			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
 		} else {
-			await showErrorAndGoBackToList(new Error(i18n.baseText('dataStore.notFound')));
+			await showErrorAndGoBackToList(new Error(i18n.baseText('dataTable.notFound')));
 		}
 	} catch (error) {
 		await showErrorAndGoBackToList(error);
@@ -86,18 +86,18 @@ const onToggleSave = (value: boolean) => {
 	}
 };
 
-const onAddColumn = async (column: DataStoreColumnCreatePayload): Promise<AddColumnResponse> => {
+const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddColumnResponse> => {
 	if (!dataStoreTableRef.value) {
 		return {
 			success: false,
-			errorMessage: i18n.baseText('dataStore.error.tableNotInitialized'),
+			errorMessage: i18n.baseText('dataTable.error.tableNotInitialized'),
 		};
 	}
 	return await dataStoreTableRef.value.addColumn(column);
 };
 
 onMounted(async () => {
-	documentTitle.set(i18n.baseText('dataStore.dataStores'));
+	documentTitle.set(i18n.baseText('dataTable.dataTables'));
 	await initialize();
 });
 </script>
@@ -123,7 +123,7 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.actions">
 					<N8nButton @click="dataStoreTableRef?.addRow">{{
-						i18n.baseText('dataStore.addRow.label')
+						i18n.baseText('dataTable.addRow.label')
 					}}</N8nButton>
 					<AddColumnButton
 						:use-text-trigger="true"

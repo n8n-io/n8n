@@ -1,5 +1,5 @@
-import { LOOSE_DATE_REGEX } from '@/features/dataStore/constants';
-import type { DataStoreColumnType } from '@/features/dataStore/datastore.types';
+import { LOOSE_DATE_REGEX } from "@/features/dataStore/constants";
+import type { DataTableColumnType } from "@/features/dataStore/datastore.types";
 
 /**
  * Parses a loose date string into a Date object.
@@ -49,9 +49,9 @@ export const parseLooseDateInput = (text: string): Date | null => {
 export const areValuesEqual = (
 	oldValue: unknown,
 	newValue: unknown,
-	type: DataStoreColumnType | undefined,
+	type: DataTableColumnType | undefined,
 ) => {
-	if (type && type === 'date') {
+	if (type && type === "date") {
 		if (oldValue instanceof Date && newValue instanceof Date) {
 			return oldValue.getTime() === newValue.getTime();
 		}

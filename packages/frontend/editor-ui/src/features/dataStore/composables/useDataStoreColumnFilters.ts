@@ -1,22 +1,25 @@
-import { computed, ref, type Ref } from 'vue';
-import type { ColDef, GridApi } from 'ag-grid-community';
-import type { DataStoreRow } from '@/features/dataStore/datastore.types';
+import { computed, ref, type Ref } from "vue";
+import type { ColDef, GridApi } from "ag-grid-community";
+import type { DataTableRow } from "@/features/dataStore/datastore.types";
 import type {
 	BackendFilter,
 	BackendFilterRecord,
 	FilterModel,
-} from '../types/dataStoreFilters.types';
-import { GRID_FILTER_CONFIG, isSpecialColumn } from '../utils/filterMappings';
+} from "../types/dataStoreFilters.types";
+import { GRID_FILTER_CONFIG, isSpecialColumn } from "../utils/filterMappings";
 import {
 	processTextFilter,
 	processNumberFilter,
 	processDateFilter,
-} from '../utils/filterProcessors';
+} from "../utils/filterProcessors";
 
 export type UseDataStoreColumnFiltersParams = {
 	gridApi: Ref<GridApi>;
 	colDefs: Ref<ColDef[]>;
-	setGridData: (params: { rowData?: DataStoreRow[]; colDefs?: ColDef[] }) => void;
+	setGridData: (params: {
+		rowData?: DataTableRow[];
+		colDefs?: ColDef[];
+	}) => void;
 };
 
 export const useDataStoreColumnFilters = ({
@@ -27,7 +30,10 @@ export const useDataStoreColumnFilters = ({
 	const currentFilterJSON = ref<string | undefined>(undefined);
 
 	const initializeFilters = () => {
-		gridApi.value.setGridOption('defaultColDef', GRID_FILTER_CONFIG.defaultColDef);
+		gridApi.value.setGridOption(
+			"defaultColDef",
+			GRID_FILTER_CONFIG.defaultColDef,
+		);
 
 		const updated = colDefs.value.map((def) => {
 			const colId = def.colId ?? def.field;
@@ -41,7 +47,10 @@ export const useDataStoreColumnFilters = ({
 		setGridData({ colDefs: updated });
 	};
 
-	function convertAgModelToBackend(model: FilterModel, defs: ColDef[]): BackendFilter | undefined {
+	function convertAgModelToBackend(
+		model: FilterModel,
+		defs: ColDef[],
+	): BackendFilter | undefined {
 		const allFilters: BackendFilterRecord[] = [];
 
 		const colIdToField = new Map<string, string>();
@@ -56,13 +65,13 @@ export const useDataStoreColumnFilters = ({
 			if (!filterType) continue;
 
 			switch (filter.filterType) {
-				case 'text':
+				case "text":
 					allFilters.push(processTextFilter(filter, colField));
 					break;
-				case 'number':
+				case "number":
 					allFilters.push(...processNumberFilter(filter, colField));
 					break;
-				case 'date':
+				case "date":
 					allFilters.push(...processDateFilter(filter, colField));
 					break;
 				default:
@@ -71,7 +80,7 @@ export const useDataStoreColumnFilters = ({
 		}
 
 		if (allFilters.length === 0) return undefined;
-		return { type: 'and', filters: allFilters };
+		return { type: "and", filters: allFilters };
 	}
 
 	const onFilterChanged = () => {

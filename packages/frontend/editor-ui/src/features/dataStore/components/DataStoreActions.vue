@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type { DataTable } from '@/features/dataStore/datastore.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { DATA_STORE_CARD_ACTIONS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
@@ -11,7 +11,7 @@ import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
-	dataStore: DataStore;
+	dataStore: DataTable;
 	isReadOnly?: boolean;
 	location: 'card' | 'breadcrumbs';
 };
@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	rename: [
 		value: {
-			dataStore: DataStore;
+			dataStore: DataTable;
 			action: string;
 		},
 	];
@@ -68,10 +68,10 @@ const onAction = async (action: string) => {
 		}
 		case DATA_STORE_CARD_ACTIONS.DELETE: {
 			const promptResponse = await message.confirm(
-				i18n.baseText('dataStore.delete.confirm.message', {
+				i18n.baseText('dataTable.delete.confirm.message', {
 					interpolate: { name: props.dataStore.name },
 				}),
-				i18n.baseText('dataStore.delete.confirm.title'),
+				i18n.baseText('dataTable.delete.confirm.title'),
 				{
 					confirmButtonText: i18n.baseText('generic.delete'),
 					cancelButtonText: i18n.baseText('generic.cancel'),
@@ -100,7 +100,7 @@ const deleteDataStore = async () => {
 			data_table_project_id: props.dataStore.projectId,
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.delete.error'));
+		toast.showError(error, i18n.baseText('dataTable.delete.error'));
 	}
 };
 </script>

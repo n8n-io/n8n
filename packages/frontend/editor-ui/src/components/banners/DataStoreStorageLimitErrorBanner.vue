@@ -11,7 +11,7 @@ const i18n = useI18n();
 	<BaseBanner name="DATA_STORE_STORAGE_LIMIT_ERROR" :dismissible="true" theme="danger">
 		<template #mainContent>
 			<span>{{
-				i18n.baseText('dataStore.banner.storageLimitError.message', {
+				i18n.baseText('dataTable.banner.storageLimitError.message', {
 					interpolate: {
 						usage: `${dataStoreStore.dataStoreSize} / ${dataStoreStore.maxSizeMB}MB`,
 					},

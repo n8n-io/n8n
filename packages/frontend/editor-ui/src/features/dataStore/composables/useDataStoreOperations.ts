@@ -1,33 +1,39 @@
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useMessage } from "@/composables/useMessage";
+import { useToast } from "@/composables/useToast";
+import { useTelemetry } from "@/composables/useTelemetry";
 import type {
 	AddColumnResponse,
-	DataStoreColumn,
-	DataStoreColumnCreatePayload,
-	DataStoreRow,
-} from '@/features/dataStore/datastore.types';
-import { ref, type Ref } from 'vue';
-import { useI18n } from '@n8n/i18n';
+	DataTableColumn,
+	DataTableColumnCreatePayload,
+	DataTableRow,
+} from "@/features/dataStore/datastore.types";
+import { ref, type Ref } from "vue";
+import { useI18n } from "@n8n/i18n";
 import type {
 	CellKeyDownEvent,
 	CellValueChangedEvent,
 	ColDef,
 	ColumnMovedEvent,
 	GridApi,
-} from 'ag-grid-community';
-import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
-import { MODAL_CONFIRM } from '@/constants';
-import { isDataStoreValue, isAGGridCellType } from '@/features/dataStore/typeGuards';
-import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
-import { areValuesEqual } from '@/features/dataStore/utils/typeUtils';
+} from "ag-grid-community";
+import { useDataStoreStore } from "@/features/dataStore/dataStore.store";
+import { MODAL_CONFIRM } from "@/constants";
+import {
+	isDataStoreValue,
+	isAGGridCellType,
+} from "@/features/dataStore/typeGuards";
+import { useDataStoreTypes } from "@/features/dataStore/composables/useDataStoreTypes";
+import { areValuesEqual } from "@/features/dataStore/utils/typeUtils";
 
 export type UseDataStoreOperationsParams = {
 	colDefs: Ref<ColDef[]>;
-	rowData: Ref<DataStoreRow[]>;
+	rowData: Ref<DataTableRow[]>;
 	deleteGridColumn: (columnId: string) => void;
-	addGridColumn: (column: DataStoreColumn) => void;
-	setGridData: (params: { rowData?: DataStoreRow[]; colDefs?: ColDef[] }) => void;
+	addGridColumn: (column: DataTableColumn) => void;
+	setGridData: (params: {
+		rowData?: DataTableRow[];
+		colDefs?: ColDef[];
+	}) => void;
 	insertGridColumnAtIndex: (column: ColDef, index: number) => void;
 	moveGridColumn: (oldIndex: number, newIndex: number) => void;
 	dataStoreId: string;
@@ -45,7 +51,9 @@ export type UseDataStoreOperationsParams = {
 	currentFilterJSON?: Ref<string | undefined>;
 	handleClearSelection: () => void;
 	selectedRowIds: Ref<Set<number>>;
-	handleCopyFocusedCell: (params: CellKeyDownEvent<DataStoreRow>) => Promise<void>;
+	handleCopyFocusedCell: (
+		params: CellKeyDownEvent<DataTableRow>,
+	) => Promise<void>;
 };
 
 export const useDataStoreOperations = ({
@@ -86,13 +94,13 @@ export const useDataStoreOperations = ({
 		if (!columnToDelete) return;
 
 		const promptResponse = await message.confirm(
-			i18n.baseText('dataStore.deleteColumn.confirm.message', {
-				interpolate: { name: columnToDelete.headerName ?? '' },
+			i18n.baseText("dataTable.deleteColumn.confirm.message", {
+				interpolate: { name: columnToDelete.headerName ?? "" },
 			}),
-			i18n.baseText('dataStore.deleteColumn.confirm.title'),
+			i18n.baseText("dataTable.deleteColumn.confirm.title"),
 			{
-				confirmButtonText: i18n.baseText('generic.delete'),
-				cancelButtonText: i18n.baseText('generic.cancel'),
+				confirmButtonText: i18n.baseText("generic.delete"),
+				cancelButtonText: i18n.baseText("generic.cancel"),
 			},
 		);
 
@@ -100,7 +108,9 @@ export const useDataStoreOperations = ({
 			return;
 		}
 
-		const columnToDeleteIndex = colDefs.value.findIndex((col) => col.colId === columnId);
+		const columnToDeleteIndex = colDefs.value.findIndex(
+			(col) => col.colId === columnId,
+		);
 		deleteGridColumn(columnId);
 		const rowDataOldValue = [...rowData.value];
 		rowData.value = rowData.value.map((row) => {
@@ -109,29 +119,39 @@ export const useDataStoreOperations = ({
 		});
 		setGridData({ rowData: rowData.value });
 		try {
-			await dataStoreStore.deleteDataStoreColumn(dataStoreId, projectId, columnId);
-			telemetry.track('User deleted data table column', {
+			await dataStoreStore.deleteDataStoreColumn(
+				dataStoreId,
+				projectId,
+				columnId,
+			);
+			telemetry.track("User deleted data table column", {
 				column_id: columnId,
 				column_type: columnToDelete.cellDataType,
 				data_table_id: dataStoreId,
 			});
 		} catch (error) {
-			toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
+			toast.showError(error, i18n.baseText("dataTable.deleteColumn.error"));
 			insertGridColumnAtIndex(columnToDelete, columnToDeleteIndex);
 			rowData.value = rowDataOldValue;
 			setGridData({ rowData: rowData.value });
 		}
 	}
 
-	async function onAddColumn(column: DataStoreColumnCreatePayload): Promise<AddColumnResponse> {
+	async function onAddColumn(
+		column: DataTableColumnCreatePayload,
+	): Promise<AddColumnResponse> {
 		try {
-			const newColumn = await dataStoreStore.addDataStoreColumn(dataStoreId, projectId, column);
+			const newColumn = await dataStoreStore.addDataStoreColumn(
+				dataStoreId,
+				projectId,
+				column,
+			);
 			addGridColumn(newColumn);
 			rowData.value = rowData.value.map((row) => {
 				return { ...row, [newColumn.name]: null };
 			});
 			setGridData({ rowData: rowData.value });
-			telemetry.track('User added data table column', {
+			telemetry.track("User added data table column", {
 				column_id: newColumn.id,
 				column_type: newColumn.type,
 				data_table_id: dataStoreId,
@@ -150,14 +170,16 @@ export const useDataStoreOperations = ({
 	const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 		if (
 			!moveEvent.finished ||
-			moveEvent.source !== 'uiColumnMoved' ||
+			moveEvent.source !== "uiColumnMoved" ||
 			moveEvent.toIndex === undefined ||
 			!moveEvent.column
 		) {
 			return;
 		}
 
-		const oldIndex = colDefs.value.findIndex((col) => col.colId === moveEvent.column!.getColId());
+		const oldIndex = colDefs.value.findIndex(
+			(col) => col.colId === moveEvent.column!.getColId(),
+		);
 		const newIndex = moveEvent.toIndex - 2; // selection and id columns are included here
 		try {
 			await dataStoreStore.moveDataStoreColumn(
@@ -168,7 +190,7 @@ export const useDataStoreOperations = ({
 			);
 			moveGridColumn(oldIndex, newIndex);
 		} catch (error) {
-			toast.showError(error, i18n.baseText('dataStore.moveColumn.error'));
+			toast.showError(error, i18n.baseText("dataTable.moveColumn.error"));
 			gridApi.value.moveColumnByIndex(moveEvent.toIndex, oldIndex + 1);
 		}
 	};
@@ -179,26 +201,31 @@ export const useDataStoreOperations = ({
 
 			contentLoading.value = true;
 			toggleSave(true);
-			const insertedRow = await dataStoreStore.insertEmptyRow(dataStoreId, projectId);
-			const newRow: DataStoreRow = insertedRow;
+			const insertedRow = await dataStoreStore.insertEmptyRow(
+				dataStoreId,
+				projectId,
+			);
+			const newRow: DataTableRow = insertedRow;
 			rowData.value.push(newRow);
 			setTotalItems(totalItems.value + 1);
 			setGridData({ rowData: rowData.value });
 			focusFirstEditableCell(newRow.id as number);
-			telemetry.track('User added row to data table', {
+			telemetry.track("User added row to data table", {
 				data_table_id: dataStoreId,
 			});
 		} catch (error) {
-			toast.showError(error, i18n.baseText('dataStore.addRow.error'));
+			toast.showError(error, i18n.baseText("dataTable.addRow.error"));
 		} finally {
 			toggleSave(false);
 			contentLoading.value = false;
 		}
 	}
 
-	const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) => {
+	const onCellValueChanged = async (
+		params: CellValueChangedEvent<DataTableRow>,
+	) => {
 		const { data, api, oldValue, colDef } = params;
-		const fieldName = String(colDef.field ?? '');
+		const fieldName = String(colDef.field ?? "");
 		if (!fieldName) return;
 
 		const value = params.data[fieldName];
@@ -211,8 +238,8 @@ export const useDataStoreOperations = ({
 			return;
 		}
 
-		if (typeof data.id !== 'number') {
-			throw new Error('Expected row id to be a number');
+		if (typeof data.id !== "number") {
+			throw new Error("Expected row id to be a number");
 		}
 		const id = data.id;
 
@@ -221,7 +248,7 @@ export const useDataStoreOperations = ({
 			await dataStoreStore.updateRow(dataStoreId, projectId, id, {
 				[fieldName]: value,
 			});
-			telemetry.track('User edited data table content', {
+			telemetry.track("User edited data table content", {
 				data_table_id: dataStoreId,
 				column_id: colDef.colId,
 				column_type: colDef.cellDataType,
@@ -229,11 +256,14 @@ export const useDataStoreOperations = ({
 		} catch (error) {
 			// Revert cell to original value if the update fails
 			const validOldValue = isDataStoreValue(oldValue) ? oldValue : null;
-			const revertedData: DataStoreRow = { ...data, [fieldName]: validOldValue };
+			const revertedData: DataTableRow = {
+				...data,
+				[fieldName]: validOldValue,
+			};
 			api.applyTransaction({
 				update: [revertedData],
 			});
-			toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
+			toast.showError(error, i18n.baseText("dataTable.updateRow.error"));
 		} finally {
 			toggleSave(false);
 		}
@@ -256,7 +286,7 @@ export const useDataStoreOperations = ({
 			setGridData({ rowData: rowData.value });
 			handleClearSelection();
 		} catch (error) {
-			toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
+			toast.showError(error, i18n.baseText("dataTable.fetchContent.error"));
 		} finally {
 			contentLoading.value = false;
 		}
@@ -266,14 +296,14 @@ export const useDataStoreOperations = ({
 		if (selectedRowIds.value.size === 0) return;
 
 		const confirmResponse = await message.confirm(
-			i18n.baseText('dataStore.deleteRows.confirmation', {
+			i18n.baseText("dataTable.deleteRows.confirmation", {
 				adjustToNumber: selectedRowIds.value.size,
 				interpolate: { count: selectedRowIds.value.size },
 			}),
-			i18n.baseText('dataStore.deleteRows.title'),
+			i18n.baseText("dataTable.deleteRows.title"),
 			{
-				confirmButtonText: i18n.baseText('generic.delete'),
-				cancelButtonText: i18n.baseText('generic.cancel'),
+				confirmButtonText: i18n.baseText("generic.delete"),
+				cancelButtonText: i18n.baseText("generic.cancel"),
 			},
 		);
 
@@ -287,22 +317,23 @@ export const useDataStoreOperations = ({
 			await dataStoreStore.deleteRows(dataStoreId, projectId, idsToDelete);
 			await fetchDataStoreRows();
 
-			telemetry.track('User deleted rows in data table', {
+			telemetry.track("User deleted rows in data table", {
 				data_table_id: dataStoreId,
 				deleted_row_count: idsToDelete.length,
 			});
 		} catch (error) {
-			toast.showError(error, i18n.baseText('dataStore.deleteRows.error'));
+			toast.showError(error, i18n.baseText("dataTable.deleteRows.error"));
 		} finally {
 			toggleSave(false);
 		}
 	};
 
-	const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
+	const onCellKeyDown = async (params: CellKeyDownEvent<DataTableRow>) => {
 		const event = params.event as KeyboardEvent;
 		const target = event.target as HTMLElement;
 
-		const isSelectionColumn = params.column.getColId() === 'ag-Grid-SelectionColumn';
+		const isSelectionColumn =
+			params.column.getColId() === "ag-Grid-SelectionColumn";
 		const isEditing =
 			params.api.getEditingCells().length > 0 ||
 			(target instanceof HTMLInputElement && !isSelectionColumn);
@@ -310,18 +341,21 @@ export const useDataStoreOperations = ({
 			return;
 		}
 
-		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
+		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
 			event.preventDefault();
 			await handleCopyFocusedCell(params);
 			return;
 		}
 
-		if (event.key === 'Escape') {
+		if (event.key === "Escape") {
 			handleClearSelection();
 			return;
 		}
 
-		if ((event.key !== 'Delete' && event.key !== 'Backspace') || selectedRowIds.value.size === 0) {
+		if (
+			(event.key !== "Delete" && event.key !== "Backspace") ||
+			selectedRowIds.value.size === 0
+		) {
 			return;
 		}
 		event.preventDefault();

@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, type Ref } from "vue";
 import type {
 	CellClickedEvent,
 	CellEditingStartedEvent,
@@ -10,29 +10,29 @@ import type {
 	ICellRendererParams,
 	SortChangedEvent,
 	SortDirection,
-} from 'ag-grid-community';
+} from "ag-grid-community";
 import type {
 	AddColumnResponse,
-	DataStoreColumn,
-	DataStoreColumnCreatePayload,
-	DataStoreRow,
-} from '@/features/dataStore/datastore.types';
+	DataTableColumn,
+	DataTableColumnCreatePayload,
+	DataTableRow,
+} from "@/features/dataStore/datastore.types";
 import {
 	ADD_ROW_ROW_ID,
 	DATA_STORE_ID_COLUMN_WIDTH,
 	DEFAULT_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
-} from '@/features/dataStore/constants';
-import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
-import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
-import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElDatePickerCellEditor.vue';
-import ElDatePickerFilter from '@/features/dataStore/components/dataGrid/ElDatePickerFilter.vue';
-import orderBy from 'lodash/orderBy';
-import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
-import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
-import { reorderItem } from '@/features/dataStore/utils';
-import { useClipboard } from '@/composables/useClipboard';
-import { onClickOutside } from '@vueuse/core';
+} from "@/features/dataStore/constants";
+import { useDataStoreTypes } from "@/features/dataStore/composables/useDataStoreTypes";
+import ColumnHeader from "@/features/dataStore/components/dataGrid/ColumnHeader.vue";
+import ElDatePickerCellEditor from "@/features/dataStore/components/dataGrid/ElDatePickerCellEditor.vue";
+import ElDatePickerFilter from "@/features/dataStore/components/dataGrid/ElDatePickerFilter.vue";
+import orderBy from "lodash/orderBy";
+import AddColumnButton from "@/features/dataStore/components/dataGrid/AddColumnButton.vue";
+import AddRowButton from "@/features/dataStore/components/dataGrid/AddRowButton.vue";
+import { reorderItem } from "@/features/dataStore/utils";
+import { useClipboard } from "@/composables/useClipboard";
+import { onClickOutside } from "@vueuse/core";
 import {
 	getCellClass,
 	createValueGetter,
@@ -45,8 +45,8 @@ import {
 	getDateColumnFilterOptions,
 	getNumberColumnFilterOptions,
 	getBooleanColumnFilterOptions,
-} from '@/features/dataStore/utils/columnUtils';
-import { useI18n } from '@n8n/i18n';
+} from "@/features/dataStore/utils/columnUtils";
+import { useI18n } from "@n8n/i18n";
 
 export const useDataStoreGridBase = ({
 	gridContainerRef,
@@ -57,7 +57,9 @@ export const useDataStoreGridBase = ({
 	gridContainerRef: Ref<HTMLElement | null>;
 	onDeleteColumn: (columnId: string) => void;
 	onAddRowClick: () => void;
-	onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<AddColumnResponse>;
+	onAddColumn: (
+		column: DataTableColumnCreatePayload,
+	) => Promise<AddColumnResponse>;
 }) => {
 	const gridApi = ref<GridApi | null>(null);
 	const colDefs = ref<ColDef[]>([]);
@@ -66,14 +68,14 @@ export const useDataStoreGridBase = ({
 	const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
 	const i18n = useI18n();
 	const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
-	const currentSortOrder = ref<SortDirection>('asc');
+	const currentSortOrder = ref<SortDirection>("asc");
 
 	// Track the last focused cell so we can start editing when users click on it
 	// AG Grid doesn't provide cell blur event so we need to reset this manually
 	const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 	const initializedGridApi = computed(() => {
 		if (!gridApi.value) {
-			throw new Error('Grid API is not initialized');
+			throw new Error("Grid API is not initialized");
 		}
 		return gridApi.value;
 	});
@@ -83,7 +85,7 @@ export const useDataStoreGridBase = ({
 		// Ensure popups (e.g., agLargeTextCellEditor) are positioned relative to the grid container
 		// to avoid misalignment when the page scrolls.
 		if (gridContainerRef.value) {
-			params.api.setGridOption('popupParent', gridContainerRef.value);
+			params.api.setGridOption("popupParent", gridContainerRef.value);
 		}
 	};
 
@@ -92,17 +94,19 @@ export const useDataStoreGridBase = ({
 		rowData,
 	}: {
 		colDefs?: ColDef[];
-		rowData?: DataStoreRow[];
+		rowData?: DataTableRow[];
 	}) => {
 		if (colDefs) {
-			initializedGridApi.value.setGridOption('columnDefs', colDefs);
+			initializedGridApi.value.setGridOption("columnDefs", colDefs);
 		}
 
 		if (rowData) {
-			initializedGridApi.value.setGridOption('rowData', rowData);
+			initializedGridApi.value.setGridOption("rowData", rowData);
 		}
 
-		initializedGridApi.value.setGridOption('pinnedBottomRowData', [{ id: ADD_ROW_ROW_ID }]);
+		initializedGridApi.value.setGridOption("pinnedBottomRowData", [
+			{ id: ADD_ROW_ROW_ID },
+		]);
 	};
 
 	const focusFirstEditableCell = (rowId: number) => {
@@ -132,7 +136,10 @@ export const useDataStoreGridBase = ({
 		});
 	};
 
-	const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {}) => {
+	const createColumnDef = (
+		col: DataTableColumn,
+		extraProps: Partial<ColDef> = {},
+	) => {
 		const columnDef: ColDef = {
 			colId: col.id,
 			field: col.name,
@@ -142,7 +149,10 @@ export const useDataStoreGridBase = ({
 			resizable: true,
 			lockPinned: true,
 			headerComponent: ColumnHeader,
-			headerComponentParams: { onDelete: onDeleteColumn, allowMenuActions: true },
+			headerComponentParams: {
+				onDelete: onDeleteColumn,
+				allowMenuActions: true,
+			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
 			cellClass: getCellClass,
@@ -151,16 +161,16 @@ export const useDataStoreGridBase = ({
 			width: DEFAULT_COLUMN_WIDTH,
 		};
 
-		if (col.type === 'string') {
-			columnDef.cellEditor = 'agLargeTextCellEditor';
+		if (col.type === "string") {
+			columnDef.cellEditor = "agLargeTextCellEditor";
 			columnDef.cellEditorPopup = true;
-			columnDef.cellEditorPopupPosition = 'over';
+			columnDef.cellEditorPopupPosition = "over";
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
 			columnDef.filterParams = {
 				filterOptions: getStringColumnFilterOptions(i18n),
 			};
-		} else if (col.type === 'date') {
+		} else if (col.type === "date") {
 			columnDef.cellEditorSelector = () => ({
 				component: ElDatePickerCellEditor,
 			});
@@ -170,12 +180,12 @@ export const useDataStoreGridBase = ({
 			columnDef.filterParams = {
 				filterOptions: getDateColumnFilterOptions(i18n),
 			};
-		} else if (col.type === 'number') {
+		} else if (col.type === "number") {
 			columnDef.valueFormatter = numberValueFormatter;
 			columnDef.filterParams = {
 				filterOptions: getNumberColumnFilterOptions(i18n),
 			};
-		} else if (col.type === 'boolean') {
+		} else if (col.type === "boolean") {
 			columnDef.filterParams = {
 				filterOptions: getBooleanColumnFilterOptions(i18n),
 			};
@@ -187,31 +197,36 @@ export const useDataStoreGridBase = ({
 		};
 	};
 
-	const onCellEditingStarted = (params: CellEditingStartedEvent<DataStoreRow>) => {
-		if (params.column.getColDef().cellDataType === 'text') {
+	const onCellEditingStarted = (
+		params: CellEditingStartedEvent<DataTableRow>,
+	) => {
+		if (params.column.getColDef().cellDataType === "text") {
 			isTextEditorOpen.value = true;
 		} else {
 			isTextEditorOpen.value = false;
 		}
 	};
 
-	const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => {
-		if (params.column.getColDef().cellDataType === 'text') {
+	const onCellEditingStopped = (
+		params: CellEditingStoppedEvent<DataTableRow>,
+	) => {
+		if (params.column.getColDef().cellDataType === "text") {
 			isTextEditorOpen.value = false;
 		}
 	};
 
-	const getColumnDefinitions = (dataStoreColumns: DataStoreColumn[]) => {
+	const getColumnDefinitions = (dataStoreColumns: DataTableColumn[]) => {
 		const systemDateColumnOptions: Partial<ColDef> = {
 			editable: false,
 			suppressMovable: true,
 			lockPinned: true,
-			lockPosition: 'right',
+			lockPosition: "right",
 			headerComponentParams: {
 				allowMenuActions: false,
 			},
-			cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'system-cell'),
-			headerClass: 'system-column',
+			cellClass: (params) =>
+				params.data?.id === ADD_ROW_ROW_ID ? "add-row-cell" : "system-cell",
+			headerClass: "system-column",
 			width: DEFAULT_COLUMN_WIDTH,
 		};
 		return [
@@ -222,7 +237,7 @@ export const useDataStoreGridBase = ({
 					index: 0,
 					id: DEFAULT_ID_COLUMN_NAME,
 					name: DEFAULT_ID_COLUMN_NAME,
-					type: 'string',
+					type: "string",
 				},
 				{
 					editable: false,
@@ -233,13 +248,13 @@ export const useDataStoreGridBase = ({
 					minWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					resizable: false,
-					headerClass: 'system-column',
+					headerClass: "system-column",
 					headerComponentParams: {
 						allowMenuActions: false,
 						showTypeIcon: false,
 					},
 					cellClass: (params) =>
-						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
+						params.data?.id === ADD_ROW_ROW_ID ? "add-row-cell" : "id-column",
 					cellRendererSelector: (params: ICellRendererParams) => {
 						if (params.value === ADD_ROW_ROW_ID) {
 							return {
@@ -252,37 +267,37 @@ export const useDataStoreGridBase = ({
 				},
 			),
 			// Append other columns
-			...orderBy(dataStoreColumns, 'index').map((col) => createColumnDef(col)),
+			...orderBy(dataStoreColumns, "index").map((col) => createColumnDef(col)),
 			createColumnDef(
 				{
 					index: dataStoreColumns.length + 1,
-					id: 'createdAt',
-					name: 'createdAt',
-					type: 'date',
+					id: "createdAt",
+					name: "createdAt",
+					type: "date",
 				},
 				systemDateColumnOptions,
 			),
 			createColumnDef(
 				{
 					index: dataStoreColumns.length + 2,
-					id: 'updatedAt',
-					name: 'updatedAt',
-					type: 'date',
+					id: "updatedAt",
+					name: "updatedAt",
+					type: "date",
 				},
 				systemDateColumnOptions,
 			),
 			createColumnDef(
 				{
 					index: dataStoreColumns.length + 3,
-					id: 'add-column',
-					name: 'Add Column',
-					type: 'string',
+					id: "add-column",
+					name: "Add Column",
+					type: "string",
 				},
 				{
 					editable: false,
 					suppressMovable: true,
 					lockPinned: true,
-					lockPosition: 'right',
+					lockPosition: "right",
 					resizable: false,
 					flex: 1,
 					headerComponent: AddColumnButton,
@@ -292,7 +307,7 @@ export const useDataStoreGridBase = ({
 		];
 	};
 
-	const loadColumns = (dataStoreColumns: DataStoreColumn[]) => {
+	const loadColumns = (dataStoreColumns: DataTableColumn[]) => {
 		colDefs.value = getColumnDefinitions(dataStoreColumns);
 		setGridData({ colDefs: colDefs.value });
 	};
@@ -307,7 +322,7 @@ export const useDataStoreGridBase = ({
 		setGridData({ colDefs: colDefs.value });
 	};
 
-	const addColumn = (column: DataStoreColumn) => {
+	const addColumn = (column: DataTableColumn) => {
 		colDefs.value = [
 			...colDefs.value.slice(0, -1),
 			createColumnDef(column),
@@ -322,14 +337,22 @@ export const useDataStoreGridBase = ({
 		if (!columnToBeMoved) {
 			return;
 		}
-		const middleWithIndex = colDefs.value.slice(1, -1).map((col, index) => ({ ...col, index }));
+		const middleWithIndex = colDefs.value
+			.slice(1, -1)
+			.map((col, index) => ({ ...col, index }));
 		const reorderedMiddle = reorderItem(middleWithIndex, fromIndex, newIndex)
 			.sort((a, b) => a.index - b.index)
 			.map(({ index, ...col }) => col);
-		colDefs.value = [colDefs.value[0], ...reorderedMiddle, colDefs.value[colDefs.value.length - 1]];
+		colDefs.value = [
+			colDefs.value[0],
+			...reorderedMiddle,
+			colDefs.value[colDefs.value.length - 1],
+		];
 	};
 
-	const handleCopyFocusedCell = async (params: CellKeyDownEvent<DataStoreRow>) => {
+	const handleCopyFocusedCell = async (
+		params: CellKeyDownEvent<DataTableRow>,
+	) => {
 		const focused = params.api.getFocusedCell();
 		if (!focused) {
 			return;
@@ -338,7 +361,8 @@ export const useDataStoreGridBase = ({
 		const colDef = focused.column.getColDef();
 		if (row?.data && colDef.field) {
 			const rawValue = row.data[colDef.field];
-			const text = rawValue === null || rawValue === undefined ? '' : String(rawValue);
+			const text =
+				rawValue === null || rawValue === undefined ? "" : String(rawValue);
 			await copyToClipboard(text);
 		}
 	};
@@ -347,36 +371,42 @@ export const useDataStoreGridBase = ({
 		const focusedCell = initializedGridApi.value.getFocusedCell();
 		const isEditing = initializedGridApi.value.getEditingCells().length > 0;
 		if (!focusedCell || isEditing) return;
-		const row = initializedGridApi.value.getDisplayedRowAtIndex(focusedCell.rowIndex);
+		const row = initializedGridApi.value.getDisplayedRowAtIndex(
+			focusedCell.rowIndex,
+		);
 		if (!row) return;
 
 		const colDef = focusedCell.column.getColDef();
-		if (colDef.cellDataType === 'text') {
+		if (colDef.cellDataType === "text") {
 			row.setDataValue(focusedCell.column.getColId(), data);
-		} else if (colDef.cellDataType === 'number') {
+		} else if (colDef.cellDataType === "number") {
 			if (!Number.isNaN(Number(data))) {
 				row.setDataValue(focusedCell.column.getColId(), Number(data));
 			}
-		} else if (colDef.cellDataType === 'date') {
+		} else if (colDef.cellDataType === "date") {
 			if (!Number.isNaN(Date.parse(data))) {
 				row.setDataValue(focusedCell.column.getColId(), new Date(data));
 			}
-		} else if (colDef.cellDataType === 'boolean') {
-			if (data === 'true') {
+		} else if (colDef.cellDataType === "boolean") {
+			if (data === "true") {
 				row.setDataValue(focusedCell.column.getColId(), true);
-			} else if (data === 'false') {
+			} else if (data === "false") {
 				row.setDataValue(focusedCell.column.getColId(), false);
 			}
 		}
 	}
 
-	const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
+	const onCellClicked = (params: CellClickedEvent<DataTableRow>) => {
 		const clickedCellColumn = params.column.getColId();
 		const clickedCellRow = params.rowIndex;
 
 		if (
 			clickedCellRow === null ||
-			params.api.isEditing({ rowIndex: clickedCellRow, column: params.column, rowPinned: null })
+			params.api.isEditing({
+				rowIndex: clickedCellRow,
+				column: params.column,
+				rowPinned: null,
+			})
 		)
 			return;
 
@@ -406,17 +436,18 @@ export const useDataStoreGridBase = ({
 	};
 
 	const onSortChanged = async (event: SortChangedEvent) => {
-		const sortedColumn = event.columns?.filter((col) => col.getSort() !== null).pop() ?? null;
+		const sortedColumn =
+			event.columns?.filter((col) => col.getSort() !== null).pop() ?? null;
 
 		if (sortedColumn) {
 			const colId = sortedColumn.getColId();
 			const columnDef = colDefs.value.find((col) => col.colId === colId);
 
 			currentSortBy.value = columnDef?.field || colId;
-			currentSortOrder.value = sortedColumn.getSort() ?? 'asc';
+			currentSortOrder.value = sortedColumn.getSort() ?? "asc";
 		} else {
 			currentSortBy.value = DEFAULT_ID_COLUMN_NAME;
-			currentSortOrder.value = 'asc';
+			currentSortOrder.value = "asc";
 		}
 	};
 
