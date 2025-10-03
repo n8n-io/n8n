@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import fsPromises from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type {
 	Expression,
@@ -12,9 +13,9 @@ import type {
 } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 
-import { InstanceSettings } from '@/instance-settings';
-
 import { NodeExecutionContext } from '../node-execution-context';
+
+import { InstanceSettings } from '@/instance-settings';
 
 class TestContext extends NodeExecutionContext {}
 
@@ -402,6 +403,44 @@ describe('NodeExecutionContext', () => {
 			expect(result).toBe(
 				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
 			);
+		});
+	});
+
+	describe('getN8nVersion', () => {
+		it('should return the version of the n8n', async () => {
+			const spy = jest.spyOn(fsPromises, 'readFile');
+			spy.mockResolvedValue('{ "version": "1.114.0" }');
+
+			const result = await testContext.getN8nVersion();
+
+			expect(result).toBe('1.114.0');
+		});
+
+		it('should return 0.0.0 when the package.json file is not found', async () => {
+			const spy = jest.spyOn(fsPromises, 'readFile');
+			spy.mockRejectedValue(new Error('File not found'));
+
+			const result = await testContext.getN8nVersion();
+
+			expect(result).toBe('0.0.0');
+		});
+
+		it('should return 0.0.0 when the package.json file is not valid', async () => {
+			const spy = jest.spyOn(fsPromises, 'readFile');
+			spy.mockResolvedValue('invalid');
+
+			const result = await testContext.getN8nVersion();
+
+			expect(result).toBe('0.0.0');
+		});
+
+		it('should return 0.0.0 when the package.json file does not contain the version', async () => {
+			const spy = jest.spyOn(fsPromises, 'readFile');
+			spy.mockResolvedValue('{ "foo": "bar" }');
+
+			const result = await testContext.getN8nVersion();
+
+			expect(result).toBe('0.0.0');
 		});
 	});
 });
