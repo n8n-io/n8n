@@ -879,8 +879,7 @@
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
     "eslint-plugin-n8n-nodes-base": "^1.16.3",
-    "n8n-core": "workspace:*",
-    "oracledb": "^6.9.0"
+    "n8n-core": "workspace:*"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
