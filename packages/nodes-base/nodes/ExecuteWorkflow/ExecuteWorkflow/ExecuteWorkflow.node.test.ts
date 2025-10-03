@@ -32,8 +32,9 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
-			.mockReturnValueOnce(true) // waitForSubWorkflow
-			.mockReturnValueOnce([]); // workflowInputs.schema
+			.mockReturnValueOnce({}) // workflowInputs.value
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true); // waitForSubWorkflow
 
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
 		executeFunctions.getWorkflowDataProxy.mockReturnValue({
@@ -51,8 +52,7 @@ describe('ExecuteWorkflow', () => {
 		expect(result).toEqual([
 			[
 				{
-					json: { key: 'value' },
-					index: 0,
+					json: { key: 'subValue' },
 					pairedItem: { item: 0 },
 					metadata: {
 						subExecution: { workflowId: 'subWorkflowId', executionId: 'subExecutionId' },
@@ -64,7 +64,7 @@ describe('ExecuteWorkflow', () => {
 		// Verify shouldResume is set correctly
 		expect(executeFunctions.executeWorkflow).toHaveBeenCalledWith(
 			{ id: 'subWorkflowId' },
-			[{ json: { key: 'value' } }],
+			[{ json: { key: 'value' }, index: 0, pairedItem: { item: 0 }, binary: undefined }],
 			undefined,
 			{
 				parentExecution: {
@@ -80,8 +80,9 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('once') // mode
-			.mockReturnValueOnce(false) // waitForSubWorkflow
-			.mockReturnValueOnce([]); // workflowInputs.schema
+			.mockReturnValueOnce({}) // workflowInputs.value
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(false); // waitForSubWorkflow
 
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
 		(getWorkflowInfo as jest.Mock).mockResolvedValue({ id: 'subWorkflowId' });
@@ -93,12 +94,14 @@ describe('ExecuteWorkflow', () => {
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
-		expect(result).toEqual([[{ json: { key: 'value' }, index: 0, pairedItem: { item: 0 } }]]);
+		expect(result).toEqual([
+			[{ json: { key: 'value' }, index: 0, pairedItem: { item: 0 }, binary: undefined }],
+		]);
 
 		// Verify shouldResume is set to false
 		expect(executeFunctions.executeWorkflow).toHaveBeenCalledWith(
 			{ id: 'subWorkflowId' },
-			[{ json: { key: 'value' } }],
+			[{ json: { key: 'value' }, index: 0, pairedItem: { item: 0 }, binary: undefined }],
 			undefined,
 			{
 				doNotWaitToFinish: true,
@@ -115,8 +118,9 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
-			.mockReturnValueOnce(true) // waitForSubWorkflow
-			.mockReturnValueOnce([]); // workflowInputs.schema
+			.mockReturnValueOnce({}) // workflowInputs.value
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true); // waitForSubWorkflow
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
 
@@ -132,8 +136,13 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
-			.mockReturnValueOnce(true) // waitForSubWorkflow
-			.mockReturnValue([]); // workflowInputs.schema
+			.mockReturnValueOnce({}) // workflowInputs.value (item 0)
+			.mockReturnValueOnce({}) // workflowInputs.value (item 1)
+			.mockReturnValueOnce({}) // workflowInputs.value (item 2)
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true) // waitForSubWorkflow (item 0)
+			.mockReturnValueOnce(true) // waitForSubWorkflow (item 1)
+			.mockReturnValueOnce(true); // waitForSubWorkflow (item 2)
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
 		executeFunctions.getInputData.mockReturnValueOnce([
@@ -158,8 +167,9 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
-			.mockReturnValueOnce(true) // waitForSubWorkflow
-			.mockReturnValueOnce([]); // workflowInputs.schema
+			.mockReturnValueOnce({}) // workflowInputs.value
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true); // waitForSubWorkflow
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
 
@@ -175,8 +185,13 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
-			.mockReturnValueOnce(true) // waitForSubWorkflow
-			.mockReturnValueOnce([]); // workflowInputs.schema
+			.mockReturnValueOnce({}) // workflowInputs.value (item 0)
+			.mockReturnValueOnce({}) // workflowInputs.value (item 1)
+			.mockReturnValueOnce({}) // workflowInputs.value (item 2)
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true) // waitForSubWorkflow (item 0)
+			.mockReturnValueOnce(true) // waitForSubWorkflow (item 1)
+			.mockReturnValueOnce(true); // waitForSubWorkflow (item 2)
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
 		executeFunctions.getInputData.mockReturnValueOnce([
@@ -203,8 +218,9 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
-			.mockReturnValueOnce(true) // waitForSubWorkflow
-			.mockReturnValueOnce([]); // workflowInputs.schema
+			.mockReturnValueOnce({}) // workflowInputs.value
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true); // waitForSubWorkflow
 
 		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
 		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
