@@ -1,6 +1,7 @@
 import type { CommunityRegisteredRequestDto, UsageState } from '@n8n/api-types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
-import type { IRestApiContext } from '@n8n/rest-api-client';
+
+import type { IRestApiContext } from '../types';
+import { makeRestApiRequest } from '../utils';
 
 export const getLicense = async (context: IRestApiContext): Promise<UsageState['data']> => {
 	return await makeRestApiRequest(context, 'GET', '/license');
