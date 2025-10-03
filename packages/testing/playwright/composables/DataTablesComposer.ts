@@ -27,7 +27,6 @@ export class DataTableComposer {
 		if (source === 'empty-state') {
 			await this.n8n.dataTable.clickEmptyStateButton();
 		} else {
-			await this.n8n.dataTable.clickAddResourceDropdown();
 			await this.n8n.dataTable.clickAddDataTableAction();
 		}
 		await this.n8n.dataTableComposer.createNewDataTable(dataTableName);

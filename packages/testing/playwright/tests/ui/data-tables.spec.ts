@@ -55,7 +55,6 @@ test.describe('Data Table list view', () => {
 
 		await n8n.dataTable.clickDataTableOverviewTab();
 
-		await n8n.dataTable.clickAddResourceDropdown();
 		await n8n.dataTable.clickAddDataTableAction();
 
 		const newDataTableModal = n8n.dataTable.getNewDataTableModal();
@@ -129,7 +128,6 @@ test.describe('Data Table list view', () => {
 
 		// Create just enough data tables to require pagination
 		for (let i = 0; i < TOTAL_DATA_TABLES; i++) {
-			await n8n.dataTable.clickAddResourceDropdown();
 			await n8n.dataTable.clickAddDataTableAction();
 			await n8n.dataTableComposer.createNewDataTable(`Data Table ${i + 1}`);
 			await n8n.sideBar.clickProjectMenuItem(TEST_PROJECT_NAME);

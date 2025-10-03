@@ -1,6 +1,9 @@
 import { BasePage } from './BasePage';
+import { AddResource } from './components/AddResource';
 
 export class DataStoreView extends BasePage {
+	readonly addResource = new AddResource(this.page);
+
 	getDataTableOverviewTab() {
 		return this.page.getByTestId('tab-data-stores');
 	}
@@ -27,14 +30,6 @@ export class DataStoreView extends BasePage {
 
 	getNewDataTableConfirmButton() {
 		return this.page.getByTestId('confirm-add-data-store-button');
-	}
-
-	getAddResourceDropdown() {
-		return this.page.getByTestId('add-resource');
-	}
-
-	getAddDataTableAction() {
-		return this.page.getByTestId('action-dataStore');
 	}
 
 	getDataTableCards() {
@@ -85,12 +80,10 @@ export class DataStoreView extends BasePage {
 		await this.getEmptyStateActionBoxButton().click();
 	}
 
-	async clickAddResourceDropdown() {
-		await this.getAddResourceDropdown().click();
-	}
-
 	async clickAddDataTableAction() {
-		await this.getAddDataTableAction().click();
+		// TODO: figure out why this is needed
+		await this.page.waitForTimeout(3000);
+		await this.addResource.dataStore();
 	}
 
 	async clickDataTableCardActionsButton(dataTableName: string) {
