@@ -8,7 +8,7 @@ import type {
 	ITemplatesWorkflowFull,
 	IWorkflowTemplateNode,
 } from '@n8n/rest-api-client/api/templates';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { keyFromCredentialTypeAndName } from '@/utils/templates/templateTransforms';
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
