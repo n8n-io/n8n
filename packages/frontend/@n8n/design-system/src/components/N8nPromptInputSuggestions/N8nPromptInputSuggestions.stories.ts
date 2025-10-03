@@ -1,7 +1,8 @@
 import type { StoryFn } from '@storybook/vue3-vite';
+
 import N8nPromptInputSuggestions from './N8nPromptInputSuggestions.vue';
-import N8nPromptInput from '../N8nPromptInput';
 import type { WorkflowSuggestion } from '../../types/assistant';
+import N8nPromptInput from '../N8nPromptInput';
 
 export default {
 	title: 'Assistant/PromptInputSuggestions',
