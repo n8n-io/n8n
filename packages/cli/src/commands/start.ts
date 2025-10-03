@@ -383,6 +383,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async catch(error: Error) {
+		console.log(error);
+		console.log(JSON.stringify(error, null, 2));
 		if (error.stack) this.logger.error(error.stack);
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
