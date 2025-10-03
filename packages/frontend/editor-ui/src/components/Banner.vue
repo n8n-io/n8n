@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import { ElTag } from 'element-plus';
+import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 interface Props {
 	theme: 'success' | 'danger';
 	message: string;

@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useRoute } from 'vue-router';
 
+import { N8nButton } from '@n8n/design-system';
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const toast = useToast();

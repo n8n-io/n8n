@@ -13,15 +13,9 @@
         "id": {
             "type": "integer"
         },
-        "options": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
         "type": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

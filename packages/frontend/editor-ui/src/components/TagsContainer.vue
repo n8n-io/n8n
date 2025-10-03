@@ -7,6 +7,7 @@ import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 
+import { ElTag } from 'element-plus';
 interface TagsContainerProps {
 	tagIds: string[];
 	tagsById: { [id: string]: ITag };
@@ -156,7 +157,7 @@ onBeforeUnmount(() => {
 					<ElTag
 						:title="tag.name"
 						type="info"
-						size="mini"
+						size="small"
 						:class="{ hoverable }"
 						:disable-transitions="true"
 					>

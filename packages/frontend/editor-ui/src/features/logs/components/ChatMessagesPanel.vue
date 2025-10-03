@@ -12,7 +12,6 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-
 interface Props {
 	pastChatMessages: string[];
 	messages: ChatMessage[];

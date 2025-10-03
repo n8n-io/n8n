@@ -70,7 +70,7 @@ const router = createRouter({
 	],
 });
 
-vi.mock('@/api/usage', () => ({
+vi.mock('@n8n/rest-api-client/api/usage', () => ({
 	getLicense: vi.fn(),
 }));
 
@@ -498,13 +498,6 @@ describe('Folders', () => {
 		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 		const { getByTestId } = renderComponent({
 			pinia,
-			global: {
-				stubs: {
-					RouterLink: {
-						template: '<div data-test-id="folder-card"><slot /></div>',
-					},
-				},
-			},
 		});
 		await waitAllPromises();
 		expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();

@@ -9,9 +9,9 @@ import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { N8nPopoverReka, N8nText } from '@n8n/design-system';
 import { useStyles } from '@/composables/useStyles';
 
+import { N8nPopoverReka, N8nText } from '@n8n/design-system';
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
 	unresolvedExpression?: string;

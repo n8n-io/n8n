@@ -10,10 +10,10 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	path: string;
 	modelValue: AssignmentValue;

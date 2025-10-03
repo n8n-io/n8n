@@ -8,6 +8,7 @@ import { useEventListener } from '@vueuse/core';
 import { PopOutWindowKey } from '@/constants';
 import { type SearchShortcut } from '@/types';
 
+import { N8nIcon, N8nInput } from '@n8n/design-system';
 type Props = {
 	modelValue: string;
 	paneType?: NodePanelType;

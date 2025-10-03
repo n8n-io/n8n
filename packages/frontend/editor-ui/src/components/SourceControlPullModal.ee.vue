@@ -15,25 +15,26 @@ import {
 	notifyUserAboutPullWorkFolderOutcome,
 } from '@/utils/sourceControlUtils';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
-import {
-	N8nBadge,
-	N8nButton,
-	N8nHeading,
-	N8nInfoTip,
-	N8nLink,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
 
+import {
+	N8nBadge,
+	N8nButton,
+	N8nHeading,
+	N8nIconButton,
+	N8nInfoTip,
+	N8nLink,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 type SourceControlledFileType = SourceControlledFile['type'];
 type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
 

@@ -8,7 +8,7 @@ import type {
 import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
@@ -48,18 +48,22 @@ const SettingsLogStreamingView = async () => await import('./views/SettingsLogSt
 const SetupView = async () => await import('./views/SetupView.vue');
 const SigninView = async () => await import('./views/SigninView.vue');
 const SignupView = async () => await import('./views/SignupView.vue');
-const TemplatesCollectionView = async () => await import('@/views/TemplatesCollectionView.vue');
-const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflowView.vue');
+const TemplatesCollectionView = async () =>
+	await import('@/features/templates/views/TemplatesCollectionView.vue');
+const TemplatesWorkflowView = async () =>
+	await import('@/features/templates/views/TemplatesWorkflowView.vue');
 const SetupWorkflowFromTemplateView = async () =>
-	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
-const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
+	await import('@/features/templates/views/SetupWorkflowFromTemplateView.vue');
+const TemplatesSearchView = async () =>
+	await import('@/features/templates/views/TemplatesSearchView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
 const SignoutView = async () => await import('@/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () => await import('./views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
+const SettingsExternalSecrets = async () =>
+	await import('@/features/externalSecrets/views/SettingsExternalSecrets.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');

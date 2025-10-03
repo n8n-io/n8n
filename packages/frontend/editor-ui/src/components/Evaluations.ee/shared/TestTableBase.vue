@@ -1,12 +1,12 @@
 <script setup lang="ts" generic="T extends object">
 import { SHORT_TABLE_CELL_MIN_WIDTH } from '@/views/Evaluations.ee/utils';
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { ColumnCls, TableInstance } from 'element-plus';
-import { ElTable, ElTableColumn } from 'element-plus';
 import isEqual from 'lodash/isEqual';
 import { nextTick, ref, useCssModule, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
+import { ElTable, ElTableColumn } from 'element-plus';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 /**
  * A reusable table component for displaying evaluation results data
  * @template T - The type of data being displayed in the table rows
