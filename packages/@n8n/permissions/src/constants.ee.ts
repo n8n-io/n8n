@@ -31,6 +31,8 @@ export const RESOURCES = {
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
+	mcp: ['manage'] as const,
+	mcpApiKey: ['create', 'rotate'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
