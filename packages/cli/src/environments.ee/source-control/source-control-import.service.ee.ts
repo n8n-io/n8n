@@ -31,28 +31,6 @@ import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
-import {
-	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
-	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
-	SOURCE_CONTROL_GIT_FOLDER,
-	SOURCE_CONTROL_TAGS_EXPORT_FILE,
-	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
-	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from './constants';
-import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
-import { SourceControlScopedService } from './source-control-scoped.service';
-import type {
-	ExportableCredential,
-	StatusExportableCredential,
-} from './types/exportable-credential';
-import type { ExportableFolder } from './types/exportable-folders';
-import type { ExportableProject } from './types/exportable-project';
-import type { ExportableTags } from './types/exportable-tags';
-import type { StatusResourceOwner, RemoteResourceOwner } from './types/resource-owner';
-import type { SourceControlContext } from './types/source-control-context';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { VariablesService } from '../variables/variables.service.ee';
-
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
@@ -60,6 +38,33 @@ import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import {
+	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
+	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
+	SOURCE_CONTROL_TAGS_EXPORT_FILE,
+	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
+	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
+} from './constants';
+import {
+	getCredentialExportPath,
+	getProjectExportPath,
+	getWorkflowExportPath,
+} from './source-control-helper.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
+import type {
+	ExportableCredential,
+	StatusExportableCredential,
+} from './types/exportable-credential';
+import type { ExportableFolder } from './types/exportable-folders';
+import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
+import type { ExportableTags } from './types/exportable-tags';
+import type { StatusResourceOwner, RemoteResourceOwner } from './types/resource-owner';
+import type { SourceControlContext } from './types/source-control-context';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { VariablesService } from '../variables/variables.service.ee';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -119,6 +124,8 @@ export class SourceControlImportService {
 
 	private credentialExportFolder: string;
 
+	private projectExportFolder: string;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -146,6 +153,7 @@ export class SourceControlImportService {
 			this.gitFolder,
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 		);
+		this.projectExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_PROJECT_EXPORT_FOLDER);
 	}
 
 	async getRemoteVersionIdsFromFiles(
@@ -521,6 +529,89 @@ export class SourceControlImportService {
 				),
 		});
 		return { tags: localTags, mappings: localMappings };
+	}
+
+	/**
+	 * Reads projects from the git work folder and returns the projects that are accessible to the context user
+	 */
+	async getRemoteProjectsFromFiles(
+		context: SourceControlContext,
+	): Promise<ExportableProjectWithFileName[]> {
+		const remoteProjectFiles = await glob('*.json', {
+			cwd: this.projectExportFolder,
+			absolute: true,
+		});
+
+		const remoteProjects = await Promise.all(
+			remoteProjectFiles.map(async (file) => {
+				this.logger.debug(`Parsing project file ${file}`);
+				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+				const parsedProject = jsonParse<ExportableProject>(fileContent);
+
+				return {
+					...parsedProject,
+					filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
+				};
+			}),
+		);
+
+		if (context.hasAccessToAllProjects()) {
+			return remoteProjects;
+		}
+
+		const accessibleProjects =
+			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+
+		return remoteProjects.filter((remoteProject) => {
+			return findOwnerProject(remoteProject.owner, accessibleProjects);
+		});
+	}
+
+	async getLocalProjectsFromDb(
+		context: SourceControlContext,
+	): Promise<ExportableProjectWithFileName[]> {
+		const localProjects = await this.projectRepository.find({
+			select: ['id', 'name', 'description', 'icon', 'type'],
+			where: {
+				type: 'team',
+				...(this.sourceControlScopedService.getProjectsWithPushScopeByContextFilter(context) ?? {}),
+			},
+		});
+
+		return localProjects.map((local) =>
+			this.mapProjectEntityToExportableProjectWithFileName(local),
+		);
+	}
+
+	async getAllLocalProjectsFromDb(): Promise<ExportableProjectWithFileName[]> {
+		const localProjects = await this.projectRepository.find({
+			select: ['id', 'name', 'description', 'icon', 'type'],
+			where: {
+				type: 'team',
+			},
+		});
+
+		return localProjects.map((local) =>
+			this.mapProjectEntityToExportableProjectWithFileName(local),
+		);
+	}
+
+	private mapProjectEntityToExportableProjectWithFileName(
+		project: Project,
+	): ExportableProjectWithFileName {
+		return {
+			id: project.id,
+			name: project.name,
+			description: project.description,
+			icon: project.icon,
+			filename: getProjectExportPath(project.id, this.projectExportFolder),
+			type: project.type as 'team', // This is safe because we only select team projects
+			owner: {
+				type: 'team',
+				teamId: project.id,
+				teamName: project.name,
+			},
+		};
 	}
 
 	async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
