@@ -15,7 +15,7 @@ import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from './ContactAdministratorToInstall.vue';
 
-const { node } = defineProps<{ node: INodeUi }>();
+const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -92,10 +92,14 @@ watch(isNodeDefined, () => {
 		</p>
 		<div class="mt-s mb-xs">
 			<N8nText size="large" color="text-dark" bold>
-				{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
+				{{
+					previewMode
+						? i18n.baseText('nodeSettings.communityNodeUnknown.title.preview')
+						: i18n.baseText('nodeSettings.communityNodeUnknown.title')
+				}}
 			</N8nText>
 		</div>
-		<div v-if="isCommunityNode" :class="$style.descriptionContainer">
+		<div v-if="isCommunityNode && !previewMode" :class="$style.descriptionContainer">
 			<I18nT keypath="nodeSettings.communityNodeUnknown.description" tag="span" scope="global">
 				<template #action>
 					<N8nText size="medium" bold>{{ npmPackage }}</N8nText>
@@ -124,7 +128,12 @@ watch(isNodeDefined, () => {
 			</div>
 			<ContactAdministratorToInstall v-else :box="false" />
 		</div>
-		<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
+		<I18nT
+			v-else-if="!previewMode"
+			keypath="nodeSettings.nodeTypeUnknown.description"
+			tag="span"
+			scope="global"
+		>
 			<template #action>
 				<a
 					:href="CUSTOM_NODES_DOCS_URL"

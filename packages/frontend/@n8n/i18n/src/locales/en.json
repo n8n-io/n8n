@@ -1531,6 +1531,7 @@
 	"nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown": "The node is not valid as its type ({nodeType}) is unknown",
 	"nodeSettings.communityNodeDetails.title": "Node details",
 	"nodeSettings.communityNodeUnknown.title": "Install this node to use it",
+	"nodeSettings.communityNodeUnknown.title.preview": "Detailed node info is not avaialable",
 	"nodeSettings.communityNodeUnknown.description": "This node is not currently installed. It's part of the {action} community package.",
 	"nodeSettings.communityNodeUnknown.installLink.text": "How to install community nodes",
 	"nodeSettings.communityNodeUnknown.installButton.label": "Install",

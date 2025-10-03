@@ -14,7 +14,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL } from '@/constants';
+import { BASE_NODE_SURVEY_URL, VIEWS } from '@/constants';
 
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -63,6 +63,9 @@ import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/Communi
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { useRoute } from 'vue-router';
+import { useSettingsStore } from '@/stores/settings.store';
+
 const props = withDefaults(
 	defineProps<{
 		eventBus?: EventBus;
@@ -124,6 +127,7 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const route = useRoute();
 const nodeSettingsParameters = useNodeSettingsParameters();
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
@@ -146,6 +150,9 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
+const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+const { isPreviewMode } = useSettingsStore();
+const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
 	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
@@ -669,7 +676,11 @@ function handleSelectAction(params: INodeParameters) {
 			@tab-changed="onTabSelect"
 		/>
 
-		<NodeSettingsInvalidNodeWarning v-if="node && !nodeValid" :node="node" />
+		<NodeSettingsInvalidNodeWarning
+			v-if="node && !nodeValid"
+			:node="node"
+			:preview-mode="isDemoPreview"
+		/>
 
 		<div
 			v-if="node && nodeValid"
@@ -726,7 +737,7 @@ function handleSelectAction(params: INodeParameters) {
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
-						v-if="!isEmbeddedInCanvas"
+						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"

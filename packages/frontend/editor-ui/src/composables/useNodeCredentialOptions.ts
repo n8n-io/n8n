@@ -47,12 +47,12 @@ export function useNodeCredentialOptions(
 		let options: CredentialDropdownOption[] = [];
 		types.forEach((type) => {
 			options = options.concat(
-				credentialsStore.allUsableCredentialsByType[type].map<CredentialDropdownOption>(
+				credentialsStore.allUsableCredentialsByType[type]?.map<CredentialDropdownOption>(
 					(option: ICredentialsResponse) => ({
 						...option,
 						typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
 					}),
-				),
+				) ?? [],
 			);
 		});
 
