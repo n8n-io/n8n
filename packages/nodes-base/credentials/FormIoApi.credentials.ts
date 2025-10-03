@@ -90,15 +90,10 @@ export class FormIoApi implements ICredentialType {
 			returnFullResponse: true,
 		} satisfies IHttpRequestOptions;
 
-		try {
-			const responseObject = await this.helpers.httpRequest(options);
-			const token = responseObject.headers['x-jwt-token'];
+		const responseObject = await this.helpers.httpRequest(options);
+		const token = responseObject.headers['x-jwt-token'];
 
-			return { token };
-		} catch (error) {
-			console.log('error', error);
-			return { token: error.message };
-		}
+		return { token };
 	}
 
 	authenticate: IAuthenticate = {
