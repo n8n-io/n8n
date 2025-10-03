@@ -2,7 +2,6 @@
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useBuilderStore } from '@/stores/builder.store';
-import { useAssistantStore } from '@/stores/assistant.store';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon } from '@n8n/design-system';
@@ -11,15 +10,15 @@ const nodeCreatorStore = useNodeCreatorStore();
 const builderStore = useBuilderStore();
 const i18n = useI18n();
 
-function onAddFirstStepClick() {
+const onAddFirstStepClick = () => {
 	if (nodeCreatorStore.isCreateNodeActive) {
-		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
+		nodeCreatorStore.isCreateNodeActive = false;
 	} else {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
 			NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 		);
 	}
-}
+};
 
 async function onBuildWithAIClick() {
 	await builderStore.toggleChat();
@@ -27,16 +26,23 @@ async function onBuildWithAIClick() {
 </script>
 
 <template>
-	<div :class="$style.choicePrompt" data-test-id="canvas-choice-prompt">
+	<div :class="$style.choicePrompt" data-test-id="canvas-choice-prompt" @click.stop @mousedown.stop>
 		<!-- Add First Step Button -->
 		<div :class="$style.option">
-			<button
-				:class="$style.button"
-				data-test-id="canvas-add-first-step-button"
-				@click.stop="onAddFirstStepClick"
+			<div
+				:class="[
+					$style.selectedButtonHighlight,
+					{ [$style.highlighted]: nodeCreatorStore.isCreateNodeActive },
+				]"
 			>
-				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
-			</button>
+				<button
+					:class="$style.button"
+					data-test-id="canvas-add-first-step-button"
+					@mousedown.stop.prevent="onAddFirstStepClick"
+				>
+					<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
+				</button>
+			</div>
 			<p :class="$style.label">
 				{{ i18n.baseText('nodeView.canvasAddButton.addFirstStep') }}
 			</p>
@@ -50,12 +56,15 @@ async function onBuildWithAIClick() {
 		<!-- Build with AI Button -->
 		<div :class="$style.option">
 			<div
-				:class="[$style.aiButtonHighlight, { [$style.highlighted]: builderStore.isAssistantOpen }]"
+				:class="[
+					$style.selectedButtonHighlight,
+					{ [$style.highlighted]: builderStore.isAssistantOpen },
+				]"
 			>
 				<button
-					:class="[$style.button, $style.aiButton]"
+					:class="[$style.button]"
 					data-test-id="canvas-build-with-ai-button"
-					@click.stop="onBuildWithAIClick"
+					@mousedown.stop.prevent="onBuildWithAIClick"
 				>
 					<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
 				</button>
@@ -94,7 +103,7 @@ async function onBuildWithAIClick() {
 	cursor: pointer;
 }
 
-.aiButtonHighlight {
+.selectedButtonHighlight {
 	border-radius: var(--border-radius-large);
 
 	&.highlighted {

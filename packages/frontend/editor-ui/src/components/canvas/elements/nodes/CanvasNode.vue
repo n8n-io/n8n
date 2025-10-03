@@ -112,6 +112,7 @@ const dataTestId = computed(() =>
 		CanvasNodeRenderType.StickyNote,
 		CanvasNodeRenderType.AddNodes,
 		CanvasNodeRenderType.AIPrompt,
+		CanvasNodeRenderType.ChoicePrompt,
 	].includes(renderType.value)
 		? undefined
 		: 'canvas-node',
@@ -305,7 +306,12 @@ provide(CanvasNodeKey, {
 });
 
 const hasToolbar = computed(
-	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(renderType.value),
+	() =>
+		![
+			CanvasNodeRenderType.AddNodes,
+			CanvasNodeRenderType.AIPrompt,
+			CanvasNodeRenderType.ChoicePrompt,
+		].includes(renderType.value),
 );
 
 const showToolbar = computed(() => {
