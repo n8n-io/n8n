@@ -25,6 +25,7 @@ export const LOG_SCOPES = [
 	'cron',
 	'community-nodes',
 	'legacy-sqlite-execution-recovery',
+	'chat',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
