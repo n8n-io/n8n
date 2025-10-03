@@ -3,7 +3,7 @@ import Modal from '@/components/Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
+import { useExternalSecretsProvider } from '@/features/externalSecrets/composables/useExternalSecretsProvider';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
