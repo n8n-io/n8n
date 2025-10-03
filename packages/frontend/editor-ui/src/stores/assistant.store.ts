@@ -30,7 +30,6 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
-import { useBuilderStore } from './builder.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
@@ -63,7 +62,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
-	const builderStore = useBuilderStore();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {

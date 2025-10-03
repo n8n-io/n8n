@@ -111,7 +111,6 @@ const dataTestId = computed(() =>
 	[
 		CanvasNodeRenderType.StickyNote,
 		CanvasNodeRenderType.AddNodes,
-		CanvasNodeRenderType.AIPrompt,
 		CanvasNodeRenderType.ChoicePrompt,
 	].includes(renderType.value)
 		? undefined
@@ -268,6 +267,7 @@ function onOpenContextMenuFromToolbar(event: MouseEvent) {
 function onOpenContextMenuFromNode(event: MouseEvent) {
 	emit('open:contextmenu', props.id, event, 'node-right-click');
 }
+
 function onUpdate(parameters: Record<string, unknown>) {
 	emit('update', props.id, parameters);
 }
@@ -307,11 +307,7 @@ provide(CanvasNodeKey, {
 
 const hasToolbar = computed(
 	() =>
-		![
-			CanvasNodeRenderType.AddNodes,
-			CanvasNodeRenderType.AIPrompt,
-			CanvasNodeRenderType.ChoicePrompt,
-		].includes(renderType.value),
+		![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.ChoicePrompt].includes(renderType.value),
 );
 
 const showToolbar = computed(() => {

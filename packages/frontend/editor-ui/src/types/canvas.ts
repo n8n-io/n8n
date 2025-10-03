@@ -82,11 +82,6 @@ export type CanvasNodeAddNodesRender = {
 	options: Record<string, never>;
 };
 
-export type CanvasNodeAIPromptRender = {
-	type: CanvasNodeRenderType.AIPrompt;
-	options: Record<string, never>;
-};
-
 export type CanvasNodeChoicePromptRender = {
 	type: CanvasNodeRenderType.ChoicePrompt;
 	options: Record<string, never>;
@@ -139,7 +134,6 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeAIPromptRender
 		| CanvasNodeChoicePromptRender;
 }
 
