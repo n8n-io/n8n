@@ -53,18 +53,20 @@ export function getNodeIconSource(
 	nodeType?: IconNodeType | string | null,
 ): NodeIconSource | undefined {
 	if (!nodeType) return undefined;
+
 	if (typeof nodeType === 'string') {
-		const communityNode = useNodeTypesStore().communityNodeType(removePreviewToken(nodeType));
+		const cleanedNodeType = removePreviewToken(nodeType);
+		const nodeDescription =
+			useNodeTypesStore().communityNodeType(cleanedNodeType)?.nodeDescription ??
+			useNodeTypesStore().getNodeType(cleanedNodeType);
 		let url: string | null = null;
-		if (communityNode?.nodeDescription?.iconUrl) {
-			const themedUrl = getThemedValue(
-				communityNode.nodeDescription.iconUrl,
-				useUIStore().appliedTheme,
-			);
+		if (nodeDescription?.iconUrl) {
+			const themedUrl = getThemedValue(nodeDescription.iconUrl, useUIStore().appliedTheme);
 			url = themedUrl;
 		}
 		return url ? { type: 'file', src: url } : undefined;
 	}
+
 	const createFileIconSource = (src: string): NodeIconSource => ({
 		type: 'file',
 		src,
@@ -89,23 +91,13 @@ export function getNodeIconSource(
 	}
 
 	if (nodeType.name && isNodePreviewKey(nodeType.name)) {
-		// Handle both string and object iconUrl for preview nodes
-		if (typeof nodeType.iconUrl === 'string') {
+		const themedUrl = getThemedValue(nodeType.iconUrl, useUIStore().appliedTheme);
+		if (themedUrl) {
 			return {
 				type: 'file',
-				src: nodeType.iconUrl,
+				src: themedUrl,
 				badge: undefined,
 			};
-		} else if (nodeType.iconUrl && typeof nodeType.iconUrl === 'object') {
-			// Use getThemedValue to get the appropriate theme URL
-			const themedUrl = getThemedValue(nodeType.iconUrl, useUIStore().appliedTheme);
-			if (themedUrl) {
-				return {
-					type: 'file',
-					src: themedUrl,
-					badge: undefined,
-				};
-			}
 		}
 	}
 

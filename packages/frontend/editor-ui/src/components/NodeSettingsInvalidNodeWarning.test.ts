@@ -1,7 +1,8 @@
 import { mockNode } from '@/__tests__/mocks';
 import { renderComponent } from '@/__tests__/render';
-import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useInstallNode } from '@/composables/useInstallNode';
+import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -10,6 +11,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { TestingPinia } from '@pinia/testing';
 import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
 import { vi, type MockedFunction } from 'vitest';
 import { ref } from 'vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
@@ -191,6 +193,38 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 	});
 
 	describe('Node installation watcher', () => {
+		it('should call unsetActiveNodeName when node is defined', async () => {
+			mockUseUsersStore.isInstanceOwner = true;
+			mockUseNodeTypesStore.communityNodeType = () =>
+				({
+					isOfficialNode: true,
+				}) as CommunityNodeType;
+			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
+			const mockUnsetActiveNodeName = vi.fn();
+			mockUseNDVStore.unsetActiveNodeName = mockUnsetActiveNodeName;
+
+			const { rerender } = renderComponent(NodeSettingsInvalidNodeWarning, {
+				props: {
+					node,
+				},
+				pinia,
+			});
+
+			mockUseNodeTypesStore.nodeTypes = {
+				'n8n-nodes-test.testNode': {
+					description: {
+						name: 'Test Node',
+					},
+				},
+			} as unknown as NodeTypesByTypeNameAndVersion;
+
+			await rerender({ node });
+
+			await waitFor(() => {
+				expect(mockUnsetActiveNodeName).toHaveBeenCalled();
+			});
+		});
+
 		it('should not call unsetActiveNodeName when node is not defined', () => {
 			mockUseUsersStore.isInstanceOwner = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
