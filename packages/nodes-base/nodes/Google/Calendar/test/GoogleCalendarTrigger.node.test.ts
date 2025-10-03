@@ -38,7 +38,7 @@ describe('GoogleCalendarTrigger', () => {
 
 		mockPollFunctions.getNode.mockReturnValue(mockNode);
 		mockPollFunctions.getWorkflowStaticData.mockReturnValue({});
-		mockPollFunctions.helpers.returnJsonArray.mockImplementation((data: any[]) =>
+		(mockPollFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any[]) =>
 			data.map((item: any, index: number) => ({ json: item, pairedItem: { item: index } })),
 		);
 		encodeURIComponentOnceSpy.mockImplementation((uri) => encodeURIComponent(uri));
