@@ -167,6 +167,7 @@ const lastMessageQuickReplies = computed(() => {
 
 const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
 const messagesRef = ref<HTMLDivElement | null>(null);
 const inputWrapperRef = ref<HTMLDivElement | null>(null);
@@ -220,37 +221,25 @@ function onRateMessage(feedback: RatingFeedback) {
 	emit('feedback', feedback);
 }
 
-function getScrollViewport(): HTMLElement | null {
-	// The viewport is the parent of messagesRef (ScrollAreaViewport component)
-	return messagesRef.value?.parentElement || null;
-}
-
 function scrollToBottom() {
-	const viewport = getScrollViewport();
-	if (viewport && messagesRef.value) {
-		viewport.scrollTo({
-			top: messagesRef.value.scrollHeight,
-			behavior: 'smooth',
-		});
-	}
+	scrollAreaRef.value?.scrollToBottom(true);
 }
 
 function isScrolledToBottom(): boolean {
-	const viewport = getScrollViewport();
-	if (!viewport || !messagesRef.value) return false;
+	const position = scrollAreaRef.value?.getScrollPosition();
+	if (!position) return false;
 
 	const threshold = 10; // Allow for small rounding errors
 	const isAtBottom =
-		Math.abs(viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight) <= threshold;
+		Math.abs(
+			position.height - position.top - (messagesRef.value?.parentElement?.clientHeight || 0),
+		) <= threshold;
 
 	return isAtBottom;
 }
 
 function scrollToBottomImmediate() {
-	const viewport = getScrollViewport();
-	if (viewport && messagesRef.value) {
-		viewport.scrollTop = messagesRef.value.scrollHeight;
-	}
+	scrollAreaRef.value?.scrollToBottom(false);
 }
 
 watch(sendDisabled, () => {
@@ -264,10 +253,7 @@ watch(
 		if (props.scrollOnNewMessage && messages.length > 0) {
 			// Wait for DOM updates before scrolling
 			await nextTick();
-			// Check if viewport is available after nextTick
-			if (getScrollViewport()) {
-				scrollToBottom();
-			}
+			scrollToBottom();
 		}
 	},
 	{ immediate: true, deep: true },
@@ -280,8 +266,7 @@ let scrollHandler: (() => void) | null = null;
 let userIsAtBottom = true;
 
 function setupInputObservers() {
-	const viewport = getScrollViewport();
-	if (!inputWrapperRef.value || !viewport || !('ResizeObserver' in window)) {
+	if (!inputWrapperRef.value || !scrollAreaRef.value || !('ResizeObserver' in window)) {
 		return;
 	}
 
@@ -290,6 +275,10 @@ function setupInputObservers() {
 
 	// Reset state
 	userIsAtBottom = true;
+
+	// Get the viewport element to attach scroll listener
+	const viewport = messagesRef.value?.parentElement;
+	if (!viewport) return;
 
 	// Create scroll handler function so we can remove it later
 	scrollHandler = () => {
@@ -325,7 +314,7 @@ function setupInputObservers() {
 }
 
 function cleanupInputObservers() {
-	const viewport = getScrollViewport();
+	const viewport = messagesRef.value?.parentElement;
 	if (scrollHandler && viewport) {
 		viewport.removeEventListener('scroll', scrollHandler);
 		scrollHandler = null;
@@ -404,6 +393,7 @@ defineExpose({
 		<div :class="$style.body">
 			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
 				<N8nScrollArea
+					ref="scrollAreaRef"
 					type="hover"
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"

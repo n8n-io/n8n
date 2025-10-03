@@ -6,7 +6,7 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from 'reka-ui';
-import { computed } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 
 export interface Props {
 	/**
@@ -58,6 +58,8 @@ const props = withDefaults(defineProps<Props>(), {
 	asChild: false,
 });
 
+const rootRef = ref<InstanceType<typeof ScrollAreaRoot>>();
+
 const viewportStyle = computed(() => {
 	const style: Record<string, string> = {};
 	if (props.maxHeight) {
@@ -68,10 +70,71 @@ const viewportStyle = computed(() => {
 	}
 	return style;
 });
+
+/**
+ * Scrolls the viewport to the bottom
+ * @param smooth - Whether to use smooth scrolling animation
+ */
+async function scrollToBottom(smooth = false) {
+	// Wait for DOM updates to ensure content is fully rendered
+	await nextTick();
+
+	// Reka-ui exposes the viewport element directly on the rootRef
+	const viewport = (rootRef.value as any)?.viewport;
+
+	if (viewport && viewport instanceof HTMLElement) {
+		viewport.scrollTo({
+			top: viewport.scrollHeight,
+			behavior: smooth ? 'smooth' : 'auto',
+		});
+	}
+}
+
+/**
+ * Scrolls the viewport to the top
+ * @param smooth - Whether to use smooth scrolling animation
+ */
+async function scrollToTop(smooth = false) {
+	await nextTick();
+
+	// Reka-ui exposes the viewport element directly on the rootRef
+	const viewport = (rootRef.value as any)?.viewport;
+
+	if (viewport && viewport instanceof HTMLElement) {
+		viewport.scrollTo({
+			top: 0,
+			behavior: smooth ? 'smooth' : 'auto',
+		});
+	}
+}
+
+/**
+ * Gets the current scroll position
+ */
+function getScrollPosition() {
+	const viewport = (rootRef.value as any)?.viewport;
+
+	if (viewport && viewport instanceof HTMLElement) {
+		return {
+			top: viewport.scrollTop,
+			left: viewport.scrollLeft,
+			height: viewport.scrollHeight,
+			width: viewport.scrollWidth,
+		};
+	}
+	return null;
+}
+
+defineExpose({
+	scrollToBottom,
+	scrollToTop,
+	getScrollPosition,
+});
 </script>
 
 <template>
 	<ScrollAreaRoot
+		ref="rootRef"
 		:type="type"
 		:dir="dir"
 		:scroll-hide-delay="scrollHideDelay"
