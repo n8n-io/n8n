@@ -380,7 +380,7 @@ export const requesterFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description:
-					'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
