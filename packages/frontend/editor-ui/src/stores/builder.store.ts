@@ -160,14 +160,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Opens the chat panel and adjusts the canvas viewport to make room.
 	 */
 	async function openChat() {
-		chatWindowOpen.value = true;
 		chatMessages.value = [];
+		await fetchBuilderCredits();
+		await loadSessions();
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,
 			width: window.innerWidth - chatWidth.value,
 		};
-		await fetchBuilderCredits();
-		await loadSessions();
+		chatWindowOpen.value = true;
 	}
 
 	/**
