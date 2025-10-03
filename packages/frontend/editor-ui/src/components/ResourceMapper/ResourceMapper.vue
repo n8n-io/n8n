@@ -185,7 +185,8 @@ onMounted(async () => {
 		await checkStaleFields();
 	}
 	// Set default values if this is the first time the parameter is being set
-	if (!state.paramValue.value) {
+	// Also set defaults if the value object exists but is empty (no fields initialized)
+	if (!state.paramValue.value || Object.keys(state.paramValue.value).length === 0) {
 		setDefaultFieldValues();
 	}
 	updateNodeIssues();
