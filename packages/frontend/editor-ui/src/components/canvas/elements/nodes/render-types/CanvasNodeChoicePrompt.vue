@@ -11,13 +11,21 @@ const builderStore = useBuilderStore();
 const i18n = useI18n();
 
 function onAddFirstStepClick() {
-	nodeCreatorStore.openNodeCreatorForTriggerNodes(
-		NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
-	);
+	if (nodeCreatorStore.isCreateNodeActive) {
+		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
+	} else {
+		nodeCreatorStore.openNodeCreatorForTriggerNodes(
+			NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
+		);
+	}
 }
 
 async function onBuildWithAIClick() {
-	await builderStore.openChat();
+	if (builderStore.isAssistantOpen) {
+		builderStore.closeChat();
+	} else {
+		await builderStore.openChat();
+	}
 }
 </script>
 
