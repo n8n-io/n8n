@@ -100,7 +100,7 @@ export const agentGroupFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description:
-					'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
@@ -111,7 +111,7 @@ export const agentGroupFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description:
-					'Comma-separated agent IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Comma-separated agent IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
@@ -284,7 +284,7 @@ export const agentGroupFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description:
-					'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
@@ -301,7 +301,7 @@ export const agentGroupFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description:
-					'Comma-separated agent user IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Comma-separated agent user IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},

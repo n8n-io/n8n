@@ -123,7 +123,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Contact Names or IDs',
@@ -134,7 +134,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Category Name or ID',
@@ -283,7 +283,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Contact Names or IDs',
@@ -294,7 +294,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Category Name or ID',
@@ -479,7 +479,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Ticket properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Ticket properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
@@ -548,7 +548,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Ticket properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Ticket properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
