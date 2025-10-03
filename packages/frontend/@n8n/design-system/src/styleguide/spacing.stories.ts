@@ -3,7 +3,7 @@ import { type StoryFn } from '@storybook/vue3-vite';
 import Sizes from './Sizes.vue';
 
 export default {
-	title: 'Styleguide/Spacing',
+	title: 'Styleguide/Spacing Primitives',
 	parameters: {
 		design: {
 			type: 'figma',
@@ -17,5 +17,5 @@ export const Spacing: StoryFn = () => ({
 		Sizes,
 	},
 	template:
-		"<sizes :variables=\"['--spacing-5xs','--spacing-4xs','--spacing-3xs','--spacing-2xs','--spacing-xs','--spacing-s','--spacing-m','--spacing-l','--spacing-xl','--spacing-2xl','--spacing-3xl','--spacing-4xl','--spacing-5xl']\" />",
+		"<sizes :variables=\"['--spacing--3xs','--spacing--2xs','--spacing--xs','--spacing--sm','--spacing--md','--spacing--lg','--spacing--xl','--spacing--2xl','--spacing--3xl','--spacing--4xl','--spacing--5xl','--spacing--6xl','--spacing--7xl','--spacing--8xl']\" />",
 });
