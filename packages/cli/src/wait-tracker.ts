@@ -8,6 +8,7 @@ import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflo
 import { ActiveExecutions } from '@/active-executions';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
+import { shouldRestartParentExecution } from './workflow-helpers';
 
 @Service()
 export class WaitTracker {
@@ -126,11 +127,7 @@ export class WaitTracker {
 		await this.workflowRunner.run(data, false, false, executionId);
 
 		const { parentExecution } = fullExecutionData.data;
-		// NOTE: this logic is duplicated in webhook-helpers.ts.ts - make sure to update both places.
-		if (
-			parentExecution &&
-			(parentExecution?.shouldResume === undefined || parentExecution?.shouldResume)
-		) {
+		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
 			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
 				void this.startExecution(parentExecution.executionId);
