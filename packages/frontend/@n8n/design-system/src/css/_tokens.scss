@@ -1,8 +1,8 @@
 @use 'sass:math';
 
 @mixin theme {
-	--color-primary-h: var(--h-primary);
-	--color-primary-s: var(--s-primary);
+	--color-primary-h: 7;
+	--color-primary-s: 100%;
 	--color-primary-l: 68%;
 
 	// Primary tokens
@@ -86,13 +86,13 @@
 
 	// Canvas
 	--color-canvas-background: var(--color--gray-50);
-	--color-canvas-background-h: var(--h-gray); // Used for connectors labels background
+	--color-canvas-background-h: 220; // Used for connectors labels background
 	--color-canvas-background-s: 47%;
 	--color-canvas-background-l: 99%;
 	--color-canvas-dot: var(--color--gray-200);
 	--color-canvas-read-only-line: var(--color--gray-100);
 	--color-canvas-selected: var(--color--gray-150);
-	--color-canvas-selected-transparent: hsla(var(--h-gray), 47%, 30%, 0.1);
+	--color-canvas-selected-transparent: hsla(220, 47%, 30%, 0.1);
 	--color-canvas-label-background: hsla(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -279,11 +279,11 @@
 	--color-button-highlight-font: var(--color--gray-700);
 	--color-button-highlight-border: transparent;
 	--color-button-highlight-background: transparent;
-	--color-button-highlight-hover-active-focus-font: var(--p-color-primary-shade-100);
-	--color-button-highlight-hover-active-focus-border: var(--p-gray-40);
-	--color-button-highlight-hover-background: var(--p-gray-40);
-	--color-button-highlight-active-focus-background: var(--p-gray-40);
-	--color-button-highlight-focus-outline: var(--p-gray-40);
+	--color-button-highlight-hover-active-focus-font: var(--color--orange-200);
+	--color-button-highlight-hover-active-focus-border: var(--color--gray-100);
+	--color-button-highlight-hover-background: var(--color--gray-100);
+	--color-button-highlight-active-focus-background: var(--color--gray-100);
+	--color-button-highlight-focus-outline: var(--color--gray-100);
 	--color-button-highlight-disabled-font: var(--color--gray-200);
 	--color-button-highlight-disabled-border: transparent;
 	--color-button-highlight-disabled-background: transparent;
