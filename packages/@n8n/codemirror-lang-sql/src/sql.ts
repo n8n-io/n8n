@@ -365,7 +365,7 @@ export const PLSQL = SQLDialect.define({
 
 /// [OracleDB](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/index.html) dialect.
 export const OracleDB = SQLDialect.define({
-	operatorChars: '*/+-%<>!=~^&|',
+	operatorChars: '*/+-<>!=|',
 	doubleQuotedStrings: true, // "IDENTIFIER" support
 	charSetCasts: true, // e.g., N'こんにちは';
 	functions:
