@@ -77,7 +77,6 @@ export function parseFilterProperties(filterProperties: GristFilterProperties) {
 		acc[cur.field] = acc[cur.field] ?? [];
 		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
 		acc[cur.field].push(values);
-
 		return acc;
 	}, {});
 }
