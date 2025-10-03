@@ -25,33 +25,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-const TemplateWithInputPlaceholder: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		AskAssistantChat,
-	},
-	template: `
-		<div style="width:275px; height:500px">
-			<ask-assistant-chat v-bind="args" >
-				<template #inputPlaceholder>
-					<button>Click me</button>
-				</template>
-			</ask-assistant-chat>
-		</div>
-	`,
-	methods,
-});
-
 export const DefaultPlaceholderChat = Template.bind({});
-DefaultPlaceholderChat.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-};
-
-export const InputPlaceholderChat = TemplateWithInputPlaceholder.bind({});
 DefaultPlaceholderChat.args = {
 	user: {
 		firstName: 'Max',
@@ -513,8 +487,8 @@ CodeDiffWithMinimalRating.args = {
 	]),
 };
 
-export const ToolMessageRunning = Template.bind({});
-ToolMessageRunning.args = {
+export const ToolMessageStates = Template.bind({});
+ToolMessageStates.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',
@@ -524,112 +498,33 @@ ToolMessageRunning.args = {
 			id: '127',
 			type: 'tool',
 			role: 'assistant',
-			toolName: 'code_tool',
-			toolCallId: 'call_123',
-			status: 'running',
-			updates: [
-				{
-					type: 'progress',
-					data: { message: 'Analyzing the codebase structure...' },
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'input',
-					data: {
-						query: 'Find all Vue components in the project',
-						path: '/src/components',
-					},
-					timestamp: new Date().toISOString(),
-				},
-			],
-			read: false,
-		},
-	]),
-};
-
-export const ToolMessageCompleted = Template.bind({});
-ToolMessageCompleted.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-	messages: getMessages([
-		{
-			id: '128',
-			type: 'tool',
-			role: 'assistant',
 			toolName: 'search_files',
 			toolCallId: 'call_456',
 			status: 'completed',
-			updates: [
-				{
-					type: 'input',
-					data: {
-						pattern: '*.vue',
-						directory: '/src',
-					},
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'progress',
-					data: { message: 'Searching for Vue files...' },
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'output',
-					data: {
-						files: [
-							'/src/components/Button.vue',
-							'/src/components/Modal.vue',
-							'/src/views/Home.vue',
-						],
-						count: 3,
-					},
-					timestamp: new Date().toISOString(),
-				},
-			],
+			displayTitle: 'Search Files',
+			updates: [],
 			read: false,
 		},
-	]),
-};
-
-export const ToolMessageError = Template.bind({});
-ToolMessageError.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-	messages: getMessages([
 		{
-			id: '129',
+			id: '128',
 			type: 'tool',
 			role: 'assistant',
 			toolName: 'database_query',
 			toolCallId: 'call_789',
 			status: 'error',
-			updates: [
-				{
-					type: 'input',
-					data: {
-						query: 'SELECT * FROM users WHERE id = 123',
-						database: 'production',
-					},
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'progress',
-					data: { message: 'Connecting to database...' },
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'error',
-					data: {
-						error: 'Connection timeout',
-						details: 'Failed to connect to database after 30 seconds',
-					},
-					timestamp: new Date().toISOString(),
-				},
-			],
+			displayTitle: 'Database Query',
+			updates: [],
+			read: false,
+		},
+		{
+			id: '129',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'code_tool',
+			toolCallId: 'call_123',
+			status: 'running',
+			displayTitle: 'Code Tool',
+			updates: [],
 			read: false,
 		},
 	]),
@@ -815,6 +710,384 @@ MixedMessagesWithTools.args = {
 				'@@ -1,3 +1,8 @@\n const response = await $http.request(options);\n-return response.data;\n+\n+if (response.status !== 200) {\n+  throw new Error(`HTTP request failed with status ${response.status}`);\n+}\n+\n+return response.data;',
 			suggestionId: 'fix_http_error',
 			read: false,
+		},
+	]),
+};
+
+export const ToolCallsWithThinking = Template.bind({});
+ToolCallsWithThinking.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: 'msg-1',
+			type: 'text',
+			role: 'user',
+			content: 'Can you help me process some data?',
+			read: true,
+		},
+		{
+			id: 'msg-2',
+			type: 'text',
+			role: 'assistant',
+			content: "Of course I'd be happy to help you!",
+			read: true,
+		},
+		{
+			id: 'tool-1',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'code_tool',
+			toolCallId: 'call_code_1',
+			status: 'completed',
+			displayTitle: 'Code Tool',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'tool-2',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'web_search',
+			toolCallId: 'call_web_1',
+			status: 'completed',
+			displayTitle: 'Web Search',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'tool-3',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'calculator',
+			toolCallId: 'call_calc_1',
+			status: 'completed',
+			displayTitle: 'Calculator',
+			updates: [],
+			read: true,
+		},
+	]),
+	loadingMessage: 'Thinking...',
+	streaming: true,
+};
+
+export const CompletedToolCallsWithSummary = Template.bind({});
+CompletedToolCallsWithSummary.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: 'msg-1',
+			type: 'text',
+			role: 'user',
+			content: 'Can you help me build a workflow?',
+			read: true,
+		},
+		{
+			id: 'msg-2',
+			type: 'text',
+			role: 'assistant',
+			content: "Of course I'd be happy to help you!",
+			read: true,
+		},
+		{
+			id: 'tool-1',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'code_tool',
+			toolCallId: 'call_code_1',
+			status: 'completed',
+			displayTitle: 'Code Tool',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'tool-2',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'web_search',
+			toolCallId: 'call_web_1',
+			status: 'completed',
+			displayTitle: 'Web Search',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'tool-3',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'calculator',
+			toolCallId: 'call_calc_1',
+			status: 'completed',
+			displayTitle: 'Calculator',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'tool-4',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'builder',
+			toolCallId: 'call_builder_1',
+			status: 'completed',
+			displayTitle: 'Builder',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'msg-3',
+			type: 'text',
+			role: 'assistant',
+			content: `#### 📝 What's been completed
+• Code Tool ran
+• Web Search executed
+• Calculator calculated
+• Builder built`,
+			read: false,
+		},
+	]),
+};
+
+export const TaskAborted = Template.bind({});
+TaskAborted.args = {
+	messages: [
+		{
+			id: 'user-msg',
+			type: 'text',
+			role: 'user',
+			content: 'Create a workflow to process emails',
+			read: true,
+		},
+		{
+			id: 'tool-1',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'workflow_builder',
+			toolCallId: 'call_builder_1',
+			status: 'running',
+			displayTitle: 'Building Workflow',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'abort-msg',
+			type: 'text',
+			role: 'assistant',
+			content: 'Task aborted',
+			read: true,
+		},
+	],
+};
+
+export const ScrollbarWithManyMessages = Template.bind({});
+ScrollbarWithManyMessages.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '1',
+			type: 'text',
+			role: 'user',
+			content: 'Hey, can you help me with a workflow?',
+			read: true,
+		},
+		{
+			id: '2',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"Of course! I'd be happy to help you create a workflow. What would you like to build?",
+			read: true,
+		},
+		{
+			id: '3',
+			type: 'text',
+			role: 'user',
+			content: 'I need to connect Slack to Google Sheets',
+			read: true,
+		},
+		{
+			id: '4',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"Great! I can help you set up a workflow that connects Slack to Google Sheets. Here's what we'll need to do:",
+			read: true,
+		},
+		{
+			id: '5',
+			type: 'block',
+			role: 'assistant',
+			title: 'Steps to connect Slack and Google Sheets',
+			content: `1. Add a Slack Trigger node to your workflow
+2. Configure it to listen for specific events (like new messages in a channel)
+3. Add a Google Sheets node
+4. Set up authentication for both services
+5. Map the data from Slack to your Google Sheets columns`,
+			read: true,
+		},
+		{
+			id: '6',
+			type: 'text',
+			role: 'user',
+			content: 'That sounds good. Can you show me how to set up the Slack trigger?',
+			read: true,
+		},
+		{
+			id: '7',
+			type: 'text',
+			role: 'assistant',
+			content: "Here's how to set up the Slack Trigger node:",
+			read: true,
+		},
+		{
+			id: '8',
+			type: 'block',
+			role: 'assistant',
+			title: 'Slack Trigger Configuration',
+			content: `**Event Type**: Choose the event you want to monitor (e.g., "New Message Posted to Channel")
+
+**Channel**: Select the Slack channel you want to watch
+
+**Credentials**: You'll need to authenticate with Slack by:
+- Creating a Slack app
+- Adding the necessary OAuth scopes
+- Installing the app to your workspace
+
+Once configured, the trigger will activate whenever the specified event occurs.`,
+			read: true,
+		},
+		{
+			id: '9',
+			type: 'text',
+			role: 'user',
+			content: 'What about the Google Sheets part?',
+			read: true,
+		},
+		{
+			id: '10',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'For Google Sheets, you\'ll want to use the "Append" operation to add new rows. Here\'s the configuration:',
+			read: true,
+		},
+		{
+			id: '11',
+			type: 'code-diff',
+			role: 'assistant',
+			description: 'Example data mapping from Slack to Google Sheets',
+			codeDiff: `@@ -1,3 +1,10 @@
++// Map Slack message data to Google Sheets columns
++{
++  "Timestamp": "{{ $json.ts }}",
++  "User": "{{ $json.user }}",
++  "Channel": "{{ $json.channel }}",
++  "Message": "{{ $json.text }}",
++  "Thread": "{{ $json.thread_ts }}"
++}`,
+			suggestionId: 'sheets-mapping',
+			read: true,
+		},
+		{
+			id: '12',
+			type: 'text',
+			role: 'user',
+			content: 'Perfect! How do I handle errors?',
+			read: true,
+		},
+		{
+			id: '13',
+			type: 'text',
+			role: 'assistant',
+			content: 'Good thinking! Let me check for error handling best practices in your workflow.',
+			read: true,
+		},
+		{
+			id: '14',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'analyze_workflow',
+			toolCallId: 'call_analyze_123',
+			status: 'completed',
+			displayTitle: 'Analyzing Workflow',
+			customDisplayTitle: 'Checking for error handling patterns',
+			updates: [
+				{
+					type: 'input',
+					data: {
+						workflowId: 'slack-to-sheets',
+						checkType: 'error-handling',
+					},
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'progress',
+					data: { message: 'Scanning workflow nodes...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'progress',
+					data: { message: 'Checking for Error Trigger nodes...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'output',
+					data: {
+						recommendations: [
+							'Add Error Trigger node',
+							'Configure retry logic for API calls',
+							'Add try/catch blocks in Code nodes',
+						],
+						currentErrorHandling: 'None detected',
+					},
+					timestamp: new Date().toISOString(),
+				},
+			],
+			read: true,
+		},
+		{
+			id: '15',
+			type: 'text',
+			role: 'user',
+			content: 'Thanks! Can you show me the complete workflow?',
+			read: true,
+		},
+		{
+			id: '16',
+			type: 'text',
+			role: 'assistant',
+			content: "Here's what your complete workflow will look like:",
+			read: true,
+		},
+		{
+			id: '17',
+			type: 'block',
+			role: 'assistant',
+			title: 'Complete Workflow Structure',
+			content: `**Nodes in Order**:
+
+1. **Slack Trigger** → Listens for new messages
+2. **Function Node** → Formats the data
+3. **Google Sheets** → Appends the row
+4. **Error Trigger** → Catches any errors
+5. **Slack Node** → Sends error notifications (if needed)
+
+**Connections**:
+- Main flow: Slack Trigger → Function → Google Sheets
+- Error flow: Error Trigger → Slack notification
+
+This structure ensures data flows smoothly and errors are handled gracefully.`,
+			read: true,
+			showRating: true,
+			ratingStyle: 'minimal',
+			showFeedback: true,
 		},
 	]),
 };
