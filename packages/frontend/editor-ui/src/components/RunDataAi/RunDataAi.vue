@@ -138,7 +138,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								:class="$style.treeToggle"
 								@click="toggleTreeItem(currentNode)"
 							>
-								<N8nIcon :icon="currentNode.expanded ? 'chevron-down' : 'chevron-right'" />
+								<N8nIcon :icon="currentNode.expanded ? 'chevron-down' : 'chevron-up'" />
 							</button>
 						</div>
 					</template>
@@ -178,6 +178,11 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	padding: 0 var(--spacing-3xs);
 	margin: 0 calc(-1 * var(--spacing-3xs));
 	cursor: pointer;
+	color: var(--color-text-base);
+
+	&:hover {
+		color: var(--color-text-dark);
+	}
 }
 .leafLabel {
 	display: flex;
@@ -278,10 +283,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	border-radius: var(--border-radius-base);
 	min-height: 32px;
 	width: 100%;
-
-	&.selected {
-		font-weight: var(--font-weight-bold);
-	}
+	font-weight: var(--font-weight-bold);
 }
 
 .background {
