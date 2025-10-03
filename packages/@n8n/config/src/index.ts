@@ -4,6 +4,7 @@ import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
+import { ChatConfig } from './configs/chat.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -53,6 +54,7 @@ export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
+export { ChatConfig } from './configs/chat.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -209,4 +211,7 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+
+	@Nested
+	chat: ChatConfig;
 }

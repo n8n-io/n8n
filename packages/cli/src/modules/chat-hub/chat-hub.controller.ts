@@ -1,5 +1,6 @@
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Body } from '@n8n/decorators';
+import type { StreamOutput } from '@n8n/n8n-chat';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
@@ -46,7 +47,7 @@ export class ChatHubController {
 				assert(streamError instanceof Error);
 
 				// Send error as proper error type now that frontend supports it
-				const errorChunk = {
+				const errorChunk: StreamOutput = {
 					messages: [
 						{
 							role: 'assistant',
