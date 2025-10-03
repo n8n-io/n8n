@@ -37,7 +37,6 @@ import type {
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	INodeExecutionData,
-	INodeProperties,
 	NodeConnectionType,
 	StartNodeData,
 	AnnotationVote,
