@@ -1,24 +1,14 @@
 import { CreateVariableRequestDto, VariableListRequestDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import {
-	Body,
-	Delete,
-	Get,
-	GlobalScope,
-	Licensed,
-	Patch,
-	Post,
-	Query,
-	RestController,
-} from '@n8n/decorators';
+import { Body, Delete, Get, Licensed, Patch, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
-
-import { VariablesService } from './variables.service.ee';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
+
+import { VariablesService } from './variables.service.ee';
 
 @RestController('/variables')
 export class VariablesController {
@@ -53,7 +43,6 @@ export class VariablesController {
 	}
 
 	@Get('/:id')
-	@GlobalScope('variable:read')
 	async getVariable(req: AuthenticatedRequest<{ id: string }>) {
 		const variable = await this.variablesService.getForUser(req.user, req.params.id);
 		if (variable === null) {
@@ -64,7 +53,6 @@ export class VariablesController {
 
 	@Patch('/:id')
 	@Licensed('feat:variables')
-	@GlobalScope('variable:update')
 	async updateVariable(
 		req: AuthenticatedRequest<{ id: string }>,
 		_res: Response,
@@ -84,7 +72,6 @@ export class VariablesController {
 	}
 
 	@Delete('/:id')
-	@GlobalScope('variable:delete')
 	async deleteVariable(req: AuthenticatedRequest<{ id: string }>) {
 		await this.variablesService.deleteForUser(req.user, req.params.id);
 

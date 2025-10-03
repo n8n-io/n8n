@@ -14,14 +14,23 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -107,14 +116,23 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -332,14 +350,23 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -425,14 +452,23 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -561,14 +597,23 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -682,14 +727,23 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -803,14 +857,23 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         

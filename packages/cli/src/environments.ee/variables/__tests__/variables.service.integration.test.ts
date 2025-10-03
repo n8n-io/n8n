@@ -2,15 +2,15 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
-import { createAdmin, createMember } from '@test-integration/db/users';
-import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { mock } from 'jest-mock-extended';
-
-import { VariablesService } from '../variables.service.ee';
 
 import type { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { createAdmin, createMember } from '@test-integration/db/users';
+import { createProjectVariable, createVariable } from '@test-integration/db/variables';
+
+import { VariablesService } from '../variables.service.ee';
 
 describe('VariablesService', () => {
 	let variablesService: VariablesService;
@@ -408,5 +408,222 @@ describe('VariablesService', () => {
 				expect(variables).toHaveLength(0);
 			},
 		);
+	});
+
+	describe('update', () => {
+		it('user without global variable:update scope should not be able to update a global variable', async () => {
+			// ARRANGE
+			const user = await createMember();
+			const variable = await createVariable('VAR1', 'value1');
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable.id, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value2',
+				}),
+			).rejects.toThrow('You are not allowed to update this variable');
+		});
+
+		it('user with global variable:update scope should be able to update a global variable', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			const variable = await createVariable('VAR1', 'value1');
+
+			// ACT
+			const updatedVariable = await variablesService.update(user, variable.id, {
+				value: 'value2',
+			});
+
+			// ASSERT
+			expect(updatedVariable).toBeDefined();
+			expect(updatedVariable).toMatchObject({
+				id: variable.id,
+				key: 'VAR1',
+				type: 'string',
+				value: 'value2',
+			});
+		});
+
+		it('user without projectVariable:update scope should not be able to update a project variable', async () => {
+			// ARRANGE
+			const user = await createMember();
+			const project = await createTeamProject();
+			const variable = await createProjectVariable('VAR1', 'value1', project);
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable.id, {
+					value: 'value2',
+				}),
+			).rejects.toThrow('You are not allowed to update this variable');
+		});
+
+		it('user without projectVariable:update scope on destination project should not be able to update a project variable', async () => {
+			// ARRANGE
+			const user = await createMember();
+			const project1 = await createTeamProject();
+			const project2 = await createTeamProject();
+			await linkUserToProject(user, project1, 'project:editor');
+
+			const variable = await createProjectVariable('VAR1', 'value1', project1);
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable.id, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value2',
+					projectId: project2.id,
+				}),
+			).rejects.toThrow('You are not allowed to move this variable to the specified project');
+		});
+
+		it('user without global projectVariable:update scope should not be able to update a project variable to global', async () => {
+			// ARRANGE
+			const user = await createMember();
+			const project = await createTeamProject();
+			await linkUserToProject(user, project, 'project:editor');
+
+			const variable = await createProjectVariable('VAR1', 'value1', project);
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable.id, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value2',
+					projectId: null,
+				}),
+			).rejects.toThrow('You are not allowed to move this variable to the global scope');
+		});
+
+		it('user with projectVariable:update scope should be able to update a project variable in that project', async () => {
+			// ARRANGE
+			const user = await createMember();
+			const project = await createTeamProject();
+			await linkUserToProject(user, project, 'project:editor');
+
+			const variable = await createProjectVariable('VAR1', 'value1', project);
+
+			// ACT
+			const updatedVariable = await variablesService.update(user, variable.id, {
+				key: 'VAR1',
+				type: 'string',
+				value: 'value2',
+				projectId: project.id,
+			});
+
+			// ASSERT
+			expect(updatedVariable).toBeDefined();
+			expect(updatedVariable).toMatchObject({
+				id: variable.id,
+				key: 'VAR1',
+				type: 'string',
+				value: 'value2',
+				project: { id: project.id, name: project.name },
+			});
+		});
+
+		it('user should not be able to change variable key to one that already exists (global)', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			await createVariable('VAR1', 'value1');
+			const variable2 = await createVariable('VAR2', 'value2');
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable2.id, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value2',
+				}),
+			).rejects.toThrow('A global variable with key "VAR1" already exists');
+		});
+
+		it('user should not be able to change variable key to one that already exists (project)', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			const project = await createTeamProject();
+
+			await createProjectVariable('VAR1', 'value1', project);
+			const variable2 = await createProjectVariable('VAR2', 'value2', project);
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable2.id, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value2',
+					projectId: project.id,
+				}),
+			).rejects.toThrow('A variable with key "VAR1" already exists in the specified project');
+		});
+
+		it('user should not be able to change variable key to one that already exists (global -> project)', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			const variable1 = await createVariable('VAR1', 'value1');
+			const project = await createTeamProject();
+			await createProjectVariable('VAR2', 'value2', project);
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable1.id, {
+					key: 'VAR2',
+					type: 'string',
+					value: 'value1',
+					projectId: project.id,
+				}),
+			).rejects.toThrow('A variable with key "VAR2" already exists in the specified project');
+		});
+
+		it('user should not be able to change variable key to one that already exists (project -> global)', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			const project = await createTeamProject();
+			const variable1 = await createProjectVariable('VAR1', 'value1', project);
+			await createVariable('VAR2', 'value2');
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.update(user, variable1.id, {
+					key: 'VAR2',
+					type: 'string',
+					value: 'value1',
+					projectId: null,
+				}),
+			).rejects.toThrow('A global variable with key "VAR2" already exists');
+		});
+
+		it('user with projectVariable:update scope on both projects should be able to update variable on destination project', async () => {
+			// ARRANGE
+			const user = await createMember();
+			const project1 = await createTeamProject();
+			const project2 = await createTeamProject();
+			await linkUserToProject(user, project1, 'project:editor');
+			await linkUserToProject(user, project2, 'project:editor');
+
+			const variable = await createProjectVariable('VAR1', 'value1', project1);
+
+			// ACT
+			const updatedVariable = await variablesService.update(user, variable.id, {
+				key: 'VAR1',
+				type: 'string',
+				value: 'value2',
+				projectId: project2.id,
+			});
+
+			// ASSERT
+			expect(updatedVariable).toBeDefined();
+			expect(updatedVariable).toMatchObject({
+				id: variable.id,
+				key: 'VAR1',
+				type: 'string',
+				value: 'value2',
+				project: { id: project2.id, name: project2.name },
+			});
+		});
 	});
 });
