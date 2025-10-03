@@ -1,7 +1,7 @@
 import { mockDeep } from 'jest-mock-extended';
 import moment from 'moment-timezone';
 import type { IPollFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { GoogleCalendarTrigger } from '../GoogleCalendarTrigger.node';
