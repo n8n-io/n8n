@@ -23,6 +23,7 @@ import {
 	MSSQL,
 	MariaSQL,
 	MySQL,
+	OracleDB,
 	PLSQL,
 	PostgreSQL,
 	SQLite,
@@ -47,6 +48,7 @@ const SQL_DIALECTS = {
 	SQLite,
 	Cassandra,
 	PLSQL,
+	OracleDB,
 } as const;
 
 type Props = {

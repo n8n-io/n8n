@@ -84,8 +84,6 @@ export async function execute(
 		extractValue: true,
 	}) as string;
 
-	const updateTableSchema = configureTableSchemaUpdater(this.getNode(), schema, table);
-
 	let tableSchema = await getColumnMetaData(this.getNode(), pool, schema, table);
 
 	const queries: QueryWithValues[] = [];
@@ -156,6 +154,8 @@ export async function execute(
 		}
 		queries.push({ query, executeManyValues });
 	} else {
+		const updateTableSchema = configureTableSchemaUpdater(this.getNode(), schema, table);
+
 		for (let index = 0; index < items.length; index++) {
 			schema = this.getNodeParameter('schema', index, undefined, {
 				extractValue: true,
@@ -170,6 +170,9 @@ export async function execute(
 
 			if (dataMode === 'autoMapInputData') {
 				item = items[index].json;
+
+				// Column refresh is needed only for 'autoMapInputData'
+				tableSchema = await updateTableSchema(pool, tableSchema, schema, table, index);
 			} else if (dataMode === 'defineBelow') {
 				item = this.getNodeParameter('columns.value', index) as IDataObject;
 			}
@@ -186,13 +189,20 @@ export async function execute(
 				matchValues.push(item[column] as string);
 			});
 
-			tableSchema = await updateTableSchema(pool, tableSchema, schema, table, index);
 			const columnMetaDataObject = getColumnMap(tableSchema);
 			const updateColumns = Object.keys(item).filter(
 				(column) => !columnsToMatchOn.includes(column),
 			);
 
 			if (!Object.keys(updateColumns).length) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"Add values to update to the input item or set the 'Data Mode' to 'Define Below' to define the values to update.",
+				);
+			}
+
+			if (Object.keys(item).length === columnsToMatchOn.length) {
+				// Only match column exists, nothing to update
 				throw new NodeOperationError(
 					this.getNode(),
 					"Add values to update to the input item or set the 'Data Mode' to 'Define Below' to define the values to update.",

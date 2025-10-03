@@ -16,7 +16,7 @@ export const versionDescription: INodeTypeDescription = {
 		name: 'Oracle Database',
 	},
 	inputs: [NodeConnectionTypes.Main],
-	outputs: ['main'],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{

@@ -72,6 +72,7 @@ const displayOptions = {
 function getQuery(
 	ctx: IExecuteFunctions,
 	items: INodeExecutionData[],
+	item: IDataObject,
 	schema: string,
 	table: string,
 	tableSchema: ColumnInfo[],
@@ -80,14 +81,6 @@ function getQuery(
 	index: number,
 	executeManyValues: any[] | null = null,
 ) {
-	const dataMode = ctx.getNodeParameter('columns.mappingMode', index) as string;
-	let item: IDataObject = {};
-
-	if (dataMode === 'autoMapInputData') {
-		item = items[index].json;
-	} else if (dataMode === 'defineBelow') {
-		item = ctx.getNodeParameter('columns.value', index) as IDataObject;
-	}
 	const columnMetaDataObject: ColumnMap = getColumnMap(tableSchema);
 	const columnsToMatchOn: string[] = ctx.getNodeParameter(
 		'columns.matchingColumns',
@@ -107,7 +100,8 @@ function getQuery(
 			"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
 		);
 	}
-	if (Object.keys(item).length === 1) {
+
+	if (Object.keys(item).length === columnsToMatchOn.length) {
 		// Only match column exists, nothing to update/insert
 		throw new NodeOperationError(
 			ctx.getNode(),
@@ -167,6 +161,8 @@ function getQuery(
 		const keysOrder = [...columnsToMatchOn, ...updateColumns, ...inputColumns];
 
 		for (let i = 0; i < items.length; i++) {
+			const dataMode = ctx.getNodeParameter('columns.mappingMode', i) as string;
+
 			if (dataMode === 'autoMapInputData') {
 				item = items[i].json;
 			}
@@ -176,8 +172,7 @@ function getQuery(
 			const result = [];
 			for (const key of keysOrder) {
 				const type = columnMetaDataObject[key].type;
-				let value: any = item[key];
-				value = getCompatibleValue(type, value);
+				const value = getCompatibleValue(type, item[key]);
 				result.push(value);
 			}
 			executeManyValues.push(result);
@@ -197,22 +192,34 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const stmtBatching = (nodeOptions.stmtBatching as QueryMode) || 'single';
 	const queries: QueryWithValues[] = [];
+	let item: IDataObject = {};
+
+	let schema = this.getNodeParameter('schema', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	let table = this.getNodeParameter('table', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	let tableSchema = await getColumnMetaData(this.getNode(), pool, schema, table);
+
+	let dataMode = this.getNodeParameter('columns.mappingMode', 0) as string;
+
 	if (stmtBatching === 'single') {
 		const executeManyValues: oracleDBTypes.BindParameters[] = [];
 		const bindDefs: oracleDBTypes.BindDefinition[] = [];
-		const schema = this.getNodeParameter('schema', 0, undefined, {
-			extractValue: true,
-		}) as string;
 
-		const table = this.getNodeParameter('table', 0, undefined, {
-			extractValue: true,
-		}) as string;
-
-		const tableSchema = await getColumnMetaData(this.getNode(), pool, schema, table);
+		if (dataMode === 'autoMapInputData') {
+			item = items[0].json;
+		} else if (dataMode === 'defineBelow') {
+			item = this.getNodeParameter('columns.value', 0) as IDataObject;
+		}
 
 		const query = getQuery(
 			this,
 			items,
+			item,
 			schema,
 			table,
 			tableSchema,
@@ -225,27 +232,40 @@ export async function execute(
 		nodeOptions.bindDefs = bindDefs;
 		queries.push({ query, executeManyValues });
 	} else {
-		let schema = this.getNodeParameter('schema', 0, undefined, {
-			extractValue: true,
-		}) as string;
-
-		let table = this.getNodeParameter('table', 0, undefined, {
-			extractValue: true,
-		}) as string;
 		const updateTableSchema = configureTableSchemaUpdater(this.getNode(), schema, table);
-		let tableSchema = await getColumnMetaData(this.getNode(), pool, schema, table);
 
 		for (let i = 0; i < items.length; i++) {
+			dataMode = this.getNodeParameter('columns.mappingMode', i) as string;
+
 			schema = this.getNodeParameter('schema', i, undefined, {
 				extractValue: true,
 			}) as string;
 			table = this.getNodeParameter('table', i, undefined, {
 				extractValue: true,
 			}) as string;
-			tableSchema = await updateTableSchema(pool, tableSchema, schema, table, i);
+
+			if (dataMode === 'autoMapInputData') {
+				item = items[i].json;
+
+				// Column refresh is needed only for 'autoMapInputData'
+				tableSchema = await updateTableSchema(pool, tableSchema, schema, table, i);
+			} else {
+				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			}
 
 			const bindParams: oracleDBTypes.BindParameter[] = []; // bindParameters
-			const query = getQuery(this, items, schema, table, tableSchema, bindParams, null, i, null);
+			const query = getQuery(
+				this,
+				items,
+				item,
+				schema,
+				table,
+				tableSchema,
+				bindParams,
+				null,
+				i,
+				null,
+			);
 
 			queries.push({ query, values: bindParams });
 		}

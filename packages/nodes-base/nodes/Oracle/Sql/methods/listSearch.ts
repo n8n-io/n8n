@@ -32,7 +32,7 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 
 		return { results };
 	} catch (error) {
-		throw new NodeOperationError(this.getNode(), `Failed to fetch tables: ${error.message}`);
+		throw new NodeOperationError(this.getNode(), `Failed to fetch schemas: ${error.message}`);
 	} finally {
 		if (conn) {
 			await conn.close(); // Ensure connection is closed
