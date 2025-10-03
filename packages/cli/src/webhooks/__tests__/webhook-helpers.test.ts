@@ -474,29 +474,29 @@ describe('_privateShouldRestartParentExecution', () => {
 		expect(_privateShouldRestartParentExecution(undefined)).toBe(false);
 	});
 
-	it('should return false when shouldWait is explicitly false', () => {
+	it('should return false when shouldResume is explicitly false', () => {
 		const parentExecution = {
 			executionId: 'parent-exec-id',
 			workflowId: 'parent-workflow-id',
-			shouldWait: false,
+			shouldResume: false,
 		};
 		expect(_privateShouldRestartParentExecution(parentExecution)).toBe(false);
 	});
 
-	it('should return true when shouldWait is undefined', () => {
+	it('should return true when shouldResume is undefined', () => {
 		const parentExecution = {
 			executionId: 'parent-exec-id',
 			workflowId: 'parent-workflow-id',
-			shouldWait: undefined,
+			shouldResume: undefined,
 		};
 		expect(_privateShouldRestartParentExecution(parentExecution)).toBe(true);
 	});
 
-	it('should return true when shouldWait is true', () => {
+	it('should return true when shouldResume is true', () => {
 		const parentExecution = {
 			executionId: 'parent-exec-id',
 			workflowId: 'parent-workflow-id',
-			shouldWait: true,
+			shouldResume: true,
 		};
 		expect(_privateShouldRestartParentExecution(parentExecution)).toBe(true);
 	});
