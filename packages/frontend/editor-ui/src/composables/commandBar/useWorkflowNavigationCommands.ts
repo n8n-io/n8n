@@ -285,6 +285,7 @@ export function useWorkflowNavigationCommands(options: {
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
 		const hasCreatePermission = !sourceControlStore.preferences.branchReadOnly;
+		// TODO: add create permission check
 
 		const newWorkflowCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_WORKFLOW,
