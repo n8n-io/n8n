@@ -7,5 +7,5 @@ export class UpdateVariableRequestDto extends Z.class({
 	key: variableKeySchema.optional(),
 	type: variableTypeSchema.optional(),
 	value: variableValueSchema.optional(),
-	projectId: z.string().max(36).optional(),
+	projectId: z.string().max(36).optional().nullable(),
 }) {}

@@ -233,12 +233,19 @@ export class VariablesService {
 			throw new ForbiddenError('You are not allowed to update this variable');
 		}
 
+		// Project id can be undefined (not provided, keep the existing) or null (move to global scope) or a string (move to project)
+		// Default to existing project id if not provided in the update
+		let newProjectId = existingVariable.project?.id;
+		if (typeof variable.projectId !== 'undefined') {
+			newProjectId = variable.projectId ?? undefined;
+		}
+
 		// Check that user has rights to move the variable to the new project (if projectId changed)
-		if (existingVariable?.project?.id !== variable.projectId) {
+		if (existingVariable?.project?.id !== newProjectId) {
 			const userHasRightOnNewProject = await this.isAuthorizedForVariable(
 				user,
 				'variable:update',
-				variable.projectId ?? undefined,
+				newProjectId,
 			);
 			if (!userHasRightOnNewProject) {
 				throw new ForbiddenError(
@@ -248,7 +255,7 @@ export class VariablesService {
 		}
 
 		if (variable.key) {
-			await this.validateUniqueVariable(variable.key, variable.projectId, id);
+			await this.validateUniqueVariable(variable.key, newProjectId, id);
 		}
 
 		await this.variablesRepository.update(id, {
