@@ -10,7 +10,12 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	ExecutionCancelledError,
+	sleep,
+	SystemShutdownExecutionCancelledError,
+} from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
@@ -156,13 +161,11 @@ export class ActiveExecutions {
 	}
 
 	/** Cancel the execution promise and reject its post-execution promise. */
-	stopExecution(executionId: string, reason?: string, source = 'Manual'): void {
+	stopExecution(executionId: string, cancellationError: ExecutionCancelledError): void {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {
 			this.logger.warn('Attempted to stop execution that does not exist', {
 				executionId,
-				reason,
-				source,
 			});
 			return;
 		}
@@ -173,32 +176,18 @@ export class ActiveExecutions {
 			return;
 		}
 
-		const workflowId = execution.executionData.workflowData?.id;
-		const duration = Date.now() - execution.startedAt.getTime();
-
-		this.logger.warn('Stopping execution', {
-			executionId,
-			reason: reason || 'No reason provided',
-			source,
-			workflowId,
-			durationMs: duration,
-		});
-
 		execution.status = 'cancelled';
-		this.eventService.emit('execution-cancelled', { executionId, reason, source });
-
-		const error = new ExecutionCancelledError(executionId);
-		if (reason) {
-			error.message = `${error.message} - Reason: ${reason} (Source: ${source})`;
-		}
+		this.eventService.emit('execution-cancelled', { executionId });
 
 		try {
-			execution.responsePromise?.reject(error);
+			execution.responsePromise?.reject(cancellationError);
 			if (execution.status === 'waiting') {
+				// A waiting execution will not have a valid workflowExecution or postExecutePromise
+				// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
 				delete this.activeExecutions[executionId];
 			} else {
 				execution.workflowExecution?.cancel();
-				execution.postExecutePromise.reject(error);
+				execution.postExecutePromise.reject(cancellationError);
 			}
 		} catch (cleanupError) {
 			this.logger.error('Error during execution cleanup', {
@@ -206,8 +195,6 @@ export class ActiveExecutions {
 				error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
 			});
 		}
-
-		this.logger.debug('Execution cancelled', { executionId, reason, source });
 	}
 
 	/** Resolve the post-execution promise in an execution. */
@@ -301,7 +288,7 @@ export class ActiveExecutions {
 			const { responsePromise, status } = this.activeExecutions[executionId];
 			if (!!responsePromise || (isRegularMode && cancelAll)) {
 				// Cancel all executions that have a response promise, because these promises can't be retained between restarts
-				this.stopExecution(executionId, 'Shutdown requested', 'Shutdown');
+				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {
 				// Remove waiting and new executions to not block shutdown

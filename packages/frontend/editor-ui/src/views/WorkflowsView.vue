@@ -1,10 +1,14 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
+import EmptySharedSectionActionBox from '@/components/Folders/EmptySharedSectionActionBox.vue';
+import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
+import FolderCard from '@/components/Folders/FolderCard.vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
@@ -28,7 +32,9 @@ import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplat
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
+import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
@@ -60,17 +66,6 @@ import {
 	TemplateClickSource,
 	trackTemplatesClick,
 } from '@/utils/experiments';
-import {
-	N8nButton,
-	N8nCard,
-	N8nHeading,
-	N8nIcon,
-	N8nInlineTextEdit,
-	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-} from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -80,6 +75,24 @@ import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nCallout,
+	N8nCard,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInlineTextEdit,
+	N8nInputLabel,
+	N8nLink,
+	N8nLoading,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
 
@@ -128,6 +141,7 @@ const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
+const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -146,6 +160,12 @@ const filters = ref<Filters>({
 });
 
 const workflowListEventBus = createEventBus();
+
+type ResourcesListLayoutExpose = {
+	getScrollContainer?: () => HTMLElement | null;
+};
+
+const resourcesListLayoutRef = useTemplateRef('resourcesListLayout');
 
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
@@ -251,6 +271,18 @@ const isDragNDropEnabled = computed(() => {
 	return !readOnlyEnv.value && hasPermissionToUpdateFolders.value;
 });
 
+const listScrollContainer = computed<HTMLElement | null>(() => {
+	const component = resourcesListLayoutRef.value as ResourcesListLayoutExpose | null;
+	return component?.getScrollContainer?.() ?? null;
+});
+
+const isAutoScrollActive = computed(() => isDragging.value && isDragNDropEnabled.value);
+
+useAutoScrollOnDrag({
+	isActive: isAutoScrollActive,
+	container: listScrollContainer,
+});
+
 const hasPermissionToCreateFolders = computed(() => {
 	if (!currentProject.value) return false;
 	return getResourcePermissions(currentProject.value.scopes).folder.create === true;
@@ -320,6 +352,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
+				settings: resource.settings,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -529,12 +562,18 @@ const showInsights = computed(() => {
 	return (
 		projectPages.isOverviewSubPage &&
 		insightsStore.isSummaryEnabled &&
-		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
+		(workflowListResources.value.length > 0 ||
+			(!personalizedTemplatesV2Store.isFeatureEnabled() &&
+				!personalizedTemplatesV3Store.isFeatureEnabled()))
 	);
 });
 
 const showTemplateRecommendationV2 = computed(() => {
 	return personalizedTemplatesV2Store.isFeatureEnabled() && !loading.value;
+});
+
+const showTemplateRecommendationV3 = computed(() => {
+	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
 });
 
 /**
@@ -1428,6 +1467,13 @@ const moveFolder = async (payload: {
 		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
+			toast.showMessage({
+				title: i18n.baseText('folders.move.success.title'),
+				message: i18n.baseText('folders.move.success.messageNoAccess', {
+					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+				}),
+				type: 'success',
+			});
 		} else {
 			// Else show success message and update the list
 			toast.showToast({
@@ -1750,6 +1796,7 @@ const onNameSubmit = async (name: string) => {
 	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
+		ref="resourcesListLayout"
 		v-else
 		v-model:filters="filters"
 		resource-key="workflows"
@@ -1931,7 +1978,7 @@ const onNameSubmit = async (name: string) => {
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
-				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
+				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
 				v-else-if="showFolders && currentFolder"
@@ -2026,6 +2073,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 				<WorkflowCard
 					data-test-id="resources-list-item-workflow"
+					data-target="workflow"
 					:class="{
 						['mb-2xs']: true,
 						[$style['drag-active']]: isDragging,
@@ -2039,7 +2087,9 @@ const onNameSubmit = async (name: string) => {
 					:data-resourceid="(data as WorkflowResource).id"
 					:data-resourcename="(data as WorkflowResource).name"
 					:show-ownership-badge="showCardsBadge"
-					data-target="workflow"
+					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
+					:are-tags-enabled="settingsStore.areTagsEnabled"
+					:is-mcp-enabled="settingsStore.isModuleActive('mcp')"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
@@ -2191,7 +2241,8 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 				</div>
-				<TemplateRecommendationV2 v-if="showTemplateRecommendationV2" />
+				<TemplateRecommendationV3 v-if="showTemplateRecommendationV3" />
+				<TemplateRecommendationV2 v-else-if="showTemplateRecommendationV2" />
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">

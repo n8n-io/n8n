@@ -96,6 +96,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { getResourcePermissions } from '@n8n/permissions';
 
+import { N8nButton, N8nFormInputs } from '@n8n/design-system';
 const SURVEY_VERSION = 'v4';
 
 const externalHooks = useExternalHooks();
@@ -620,7 +621,7 @@ const onSubmit = async (values: object) => {
 	>
 		<template #content>
 			<div :class="$style.container">
-				<n8n-form-inputs
+				<N8nFormInputs
 					v-model="formValues"
 					:inputs="survey"
 					:column-view="true"
@@ -633,7 +634,7 @@ const onSubmit = async (values: object) => {
 		</template>
 		<template #footer>
 			<div>
-				<n8n-button
+				<N8nButton
 					:loading="isSaving"
 					:label="i18n.baseText('personalizationModal.getStarted')"
 					float="right"

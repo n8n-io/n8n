@@ -2,9 +2,9 @@
 import { useI18n } from '@n8n/i18n';
 import type { ChangeLocationSearchResult } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
-import { N8nSelect } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 
+import { N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 /**
  * This component is used to select a folder within a project.
  * If parentFolderId is provided it will filter out the parent folder from the results.
@@ -139,14 +139,14 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 				<div :class="$style['folder-select-item']">
 					<ul :class="$style.list">
 						<li v-if="location.resource === 'project'" :class="$style.current">
-							<n8n-text>{{ location.name }}</n8n-text>
+							<N8nText>{{ location.name }}</N8nText>
 						</li>
 						<template v-else>
 							<li v-if="location.path.length > maxPathLength" :class="$style.item">
-								<n8n-text>...</n8n-text>
+								<N8nText>...</N8nText>
 							</li>
 							<li v-if="location.path.length > 0" :class="$style.separator">
-								<n8n-text>{{ separator }}</n8n-text>
+								<N8nText>{{ separator }}</N8nText>
 							</li>
 							<template
 								v-for="(fragment, index) in location.path.slice(-maxPathLength)"
@@ -162,12 +162,12 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 									data-test-id="breadcrumbs-item"
 									data-target="folder-breadcrumb-item"
 								>
-									<n8n-text>
+									<N8nText>
 										{{ fragment }}
-									</n8n-text>
+									</N8nText>
 								</li>
 								<li v-if="!isTopLevelFolder(location, index)" :class="$style.separator">
-									<n8n-text>{{ separator }}</n8n-text>
+									<N8nText>{{ separator }}</N8nText>
 								</li>
 							</template>
 						</template>

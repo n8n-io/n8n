@@ -3,8 +3,7 @@ import type { ITaskData } from 'n8n-workflow';
 import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nInfoTip } from '@n8n/design-system';
-
+import { N8nInfoTip, N8nText } from '@n8n/design-system';
 const i18n = useI18n();
 
 const props = defineProps<{
@@ -66,22 +65,20 @@ const runMetadata = computed(() => {
 			tooltip-placement="right"
 		>
 			<div>
-				<n8n-text :bold="true" size="small"
+				<N8nText :bold="true" size="small"
 					>{{
 						runTaskData?.error
 							? i18n.baseText('runData.executionStatus.failed')
 							: runTaskData?.executionStatus === 'canceled'
 								? i18n.baseText('runData.executionStatus.canceled')
 								: i18n.baseText('runData.executionStatus.success')
-					}} </n8n-text
+					}} </N8nText
 				><br />
-				<n8n-text :bold="true" size="small">{{
-					i18n.baseText('runData.startTime') + ':'
-				}}</n8n-text>
+				<N8nText :bold="true" size="small">{{ i18n.baseText('runData.startTime') + ':' }}</N8nText>
 				{{ runMetadata.startTime }}<br />
-				<n8n-text :bold="true" size="small">{{
+				<N8nText :bold="true" size="small">{{
 					i18n.baseText('runData.executionTime') + ':'
-				}}</n8n-text>
+				}}</N8nText>
 				{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
 			</div>
 		</N8nInfoTip>

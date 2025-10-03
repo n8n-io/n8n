@@ -7,7 +7,8 @@ import { ProjectTypes } from '@/types/projects.types';
 import type { CredentialsResource, FolderResource, WorkflowResource } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	resource: WorkflowResource | CredentialsResource | FolderResource;
 	resourceType: ResourceType;
@@ -165,9 +166,9 @@ const projectLocation = computed(() => {
 				:show-border="showBadgeBorder"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
-				<router-link v-if="projectLocation" :to="projectLocation">
+				<RouterLink v-if="projectLocation" :to="projectLocation">
 					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
-				</router-link>
+				</RouterLink>
 				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
 			</N8nBadge>
 			<template #content>

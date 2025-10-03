@@ -11,6 +11,7 @@ import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
+import NDVHeader from '@/components/NDVHeader.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -46,6 +47,8 @@ import PanelDragButtonV2 from './PanelDragButtonV2.vue';
 import TriggerPanel from './TriggerPanel.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -272,7 +275,7 @@ const maxInputRun = computed(() => {
 		node = activeNode.value;
 	}
 
-	if (!node || !runData || !runData.hasOwnProperty(node.name)) {
+	if (!node || !runData?.hasOwnProperty(node.name)) {
 		return 0;
 	}
 
@@ -750,7 +753,7 @@ onBeforeUnmount(() => {
 							:push-ref="pushRef"
 							:read-only="readOnly || hasForeignCredential"
 							:is-production-execution-preview="isProductionExecutionPreview"
-							:is-pane-active="isInputPaneActive"
+							:search-shortcut="isInputPaneActive ? '/' : undefined"
 							:display-mode="inputPanelDisplayMode"
 							:class="$style.input"
 							:is-mapping-onboarded="ndvStore.isMappingOnboarded"

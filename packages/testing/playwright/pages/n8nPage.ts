@@ -16,25 +16,33 @@ import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
-import { SettingsPage } from './SettingsPage';
+import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
+import { TemplateCredentialSetupPage } from './TemplateCredentialSetupPage';
+import { TemplatesPage } from './TemplatesPage';
 import { VariablesPage } from './VariablesPage';
 import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
 import { WorkflowActivationModal } from './WorkflowActivationModal';
+import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { MfaComposer } from '../composables/MfaComposer';
+import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
+import { TemplatesComposer } from '../composables/TemplatesComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { NavigationHelper } from '../helpers/NavigationHelper';
-import type { ApiHelpers } from '../services/api-helper';
+import { ApiHelpers } from '../services/api-helper';
+import { BaseModal } from './components/BaseModal';
+import { Breadcrumbs } from './components/Breadcrumbs';
+import { SettingsUsersPage } from './SettingsUsersPage';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -53,8 +61,10 @@ export class n8nPage {
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
-	readonly settings: SettingsPage;
+	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
+	readonly templateCredentialSetup: TemplateCredentialSetupPage;
+	readonly templates: TemplatesPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
@@ -64,12 +74,14 @@ export class n8nPage {
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 	readonly signIn: SignInPage;
-
+	readonly settingsUsers: SettingsUsersPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
+	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
+	readonly modal: BaseModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -78,14 +90,17 @@ export class n8nPage {
 	readonly credentialsComposer: CredentialsComposer;
 	readonly mfaComposer: MfaComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
+	readonly ndvComposer: NodeDetailsViewComposer;
+	readonly templatesComposer: TemplatesComposer;
 	readonly start: TestEntryComposer;
 
 	// Helpers
 	readonly navigate: NavigationHelper;
+	readonly breadcrumbs: Breadcrumbs;
 
-	constructor(page: Page, api: ApiHelpers) {
+	constructor(page: Page) {
 		this.page = page;
-		this.api = api;
+		this.api = new ApiHelpers(page.context().request);
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
@@ -99,8 +114,10 @@ export class n8nPage {
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
-		this.settings = new SettingsPage(page);
+		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
+		this.templateCredentialSetup = new TemplateCredentialSetupPage(page);
+		this.templates = new TemplatesPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
@@ -111,11 +128,13 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
-
+		this.settingsUsers = new SettingsUsersPage(page);
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
+		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
+		this.modal = new BaseModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
@@ -124,10 +143,13 @@ export class n8nPage {
 		this.credentialsComposer = new CredentialsComposer(this);
 		this.mfaComposer = new MfaComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
+		this.ndvComposer = new NodeDetailsViewComposer(this);
+		this.templatesComposer = new TemplatesComposer(this);
 		this.start = new TestEntryComposer(this);
 
 		// Helpers
 		this.navigate = new NavigationHelper(page);
+		this.breadcrumbs = new Breadcrumbs(page);
 	}
 
 	async goHome() {

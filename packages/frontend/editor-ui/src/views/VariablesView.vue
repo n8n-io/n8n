@@ -26,19 +26,20 @@ import type {
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import { getResourcePermissions } from '@n8n/permissions';
-import {
-	N8nActionBox,
-	N8nBadge,
-	N8nButton,
-	N8nCheckbox,
-	N8nInputLabel,
-	N8nTooltip,
-} from '@n8n/design-system';
 import { uid } from '@n8n/design-system/utils';
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
 
+import {
+	N8nActionBox,
+	N8nBadge,
+	N8nButton,
+	N8nCheckbox,
+	N8nHeading,
+	N8nInputLabel,
+	N8nTooltip,
+} from '@n8n/design-system';
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
@@ -270,9 +271,9 @@ onMounted(() => {
 		@click:add="addEmptyVariableForm"
 	>
 		<template #header>
-			<n8n-heading size="2xlarge" class="mb-m">
+			<N8nHeading size="2xlarge" class="mb-m">
 				{{ i18n.baseText('variables.heading') }}
-			</n8n-heading>
+			</N8nHeading>
 		</template>
 		<template #add-button>
 			<N8nTooltip placement="top" :disabled="canCreateVariables">

@@ -15,6 +15,7 @@ import * as ssoHelpers from '../../sso-helpers';
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
 import { OidcService } from '../oidc.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { OidcConfigDto } from '@n8n/api-types';
 
 describe('OidcService', () => {
 	let oidcService: OidcService;
@@ -158,6 +159,24 @@ describe('OidcService', () => {
 			);
 		});
 
+		it('should fill out optional prompt parameter with default value', async () => {
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(mockOidcConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toEqual({
+				clientId: mockOidcConfig.clientId,
+				clientSecret: mockOidcConfig.clientSecret,
+				loginEnabled: mockOidcConfig.loginEnabled,
+				prompt: 'select_account',
+				discoveryEndpoint: expect.any(URL),
+			});
+		});
+
 		it('should decrypt client secret when requested', async () => {
 			const encryptedSecret = 'encrypted-secret';
 			const decryptedSecret = 'decrypted-secret';
@@ -193,6 +212,64 @@ describe('OidcService', () => {
 			expect(cipher.decrypt).toHaveBeenCalledWith(encryptedSecret);
 			expect(result?.clientSecret).toBe(decryptedSecret);
 		});
+
+		it('should not issue warnings for default config with empty discoveryEndpoint', async () => {
+			const defaultConfig = {
+				...mockOidcConfig,
+				discoveryEndpoint: '',
+			};
+
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(defaultConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toBeUndefined();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should issue warnings when Zod validation fails', async () => {
+			const invalidConfig = {
+				...mockOidcConfig,
+				discoveryEndpoint: 'not-a-valid-url',
+			};
+
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(invalidConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to load OIDC configuration from database, falling back to default configuration.',
+				expect.any(Object),
+			);
+		});
+
+		it('should not issue warnings for valid complete configuration', async () => {
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(mockOidcConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toEqual({
+				clientId: mockOidcConfig.clientId,
+				clientSecret: mockOidcConfig.clientSecret,
+				loginEnabled: mockOidcConfig.loginEnabled,
+				prompt: 'select_account',
+				discoveryEndpoint: expect.any(URL),
+			});
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('broadcastReloadOIDCConfigurationCommand', () => {
@@ -208,7 +285,7 @@ describe('OidcService', () => {
 			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockConfigFromDB);
 			jest.spyOn(client, 'discovery').mockResolvedValue({} as client.Configuration);
 
-			await oidcService.updateConfig(mockOidcConfig);
+			await oidcService.updateConfig(mockOidcConfig as any as OidcConfigDto);
 
 			// In multi-main setup, should attempt to publish
 			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
@@ -223,7 +300,7 @@ describe('OidcService', () => {
 			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockConfigFromDB);
 			jest.spyOn(client, 'discovery').mockResolvedValue({} as client.Configuration);
 
-			await oidcService.updateConfig(mockOidcConfig);
+			await oidcService.updateConfig(mockOidcConfig as any as OidcConfigDto);
 
 			// Should not attempt to import Publisher in single main setup
 			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();

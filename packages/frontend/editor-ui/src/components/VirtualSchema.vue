@@ -19,7 +19,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { N8nText } from '@n8n/design-system';
 import {
 	createResultError,
 	type NodeConnectionType,
@@ -49,6 +48,7 @@ import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	nodes?: IConnectedNode[];
 	node?: INodeUi | null;
@@ -59,6 +59,7 @@ type Props = {
 	search?: string;
 	compact?: boolean;
 	outputIndex?: number;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -71,6 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	compact: false,
 	outputIndex: undefined,
+	truncateLimit: 600,
 });
 
 const telemetry = useTelemetry();
@@ -210,7 +212,12 @@ const contextItems = computed(() => {
 		return [];
 	}
 
-	const flatSchema = flattenSchema({ schema, depth: 1, isDataEmpty: false });
+	const flatSchema = flattenSchema({
+		schema,
+		depth: 1,
+		isDataEmpty: false,
+		truncateLimit: props.truncateLimit,
+	});
 	const fields: Renders[] = flatSchema.flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
@@ -334,7 +341,7 @@ const nodeAdditionalInfo = (node: INodeUi) => {
 };
 
 const flattenedNodes = computed(() =>
-	flattenMultipleSchemas(nodesSchemas.value, nodeAdditionalInfo),
+	flattenMultipleSchemas(nodesSchemas.value, nodeAdditionalInfo, props.truncateLimit),
 );
 
 const flattenNodeSchema = computed(() =>
@@ -344,6 +351,7 @@ const flattenNodeSchema = computed(() =>
 				depth: 0,
 				level: -1,
 				isDataEmpty: props.data.length === 0,
+				truncateLimit: props.truncateLimit,
 			})
 		: [],
 );
@@ -439,15 +447,13 @@ const onDragEnd = (el: HTMLElement) => {
 		]"
 	>
 		<NDVEmptyState v-if="noSearchResults" :title="i18n.baseText('ndv.search.noNodeMatch.title')">
-			<template #description>
-				<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
-					<template #link>
-						<a href="#" @click="emit('clear:search')">
-							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
-						</a>
-					</template>
-				</I18nT>
-			</template>
+			<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
+				<template #link>
+					<a href="#" @click.prevent="emit('clear:search')">
+						{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
+					</a>
+				</template>
+			</I18nT>
 		</NDVEmptyState>
 
 		<Draggable

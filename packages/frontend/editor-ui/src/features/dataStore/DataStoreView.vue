@@ -23,6 +23,9 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
+import { N8nActionBox } from '@n8n/design-system';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -139,7 +142,7 @@ watch(
 			</ProjectHeader>
 		</template>
 		<template #empty>
-			<n8n-action-box
+			<N8nActionBox
 				data-test-id="empty-shared-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
 				:description="i18n.baseText('dataStore.empty.description')"

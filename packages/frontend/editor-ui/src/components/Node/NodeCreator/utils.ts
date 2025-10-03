@@ -342,6 +342,7 @@ export function getRagStarterCallout(): OpenTemplateElement {
 // Callout without a divider
 export function getPreBuiltAgentsCallout(): ViewCreateElement {
 	return {
+		uuid: uuidv4(),
 		key: PRE_BUILT_AGENTS_COLLECTION,
 		type: 'view',
 		properties: {
@@ -360,6 +361,7 @@ export function getPreBuiltAgentsCallout(): ViewCreateElement {
 // Callout with divider after it
 export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 	return {
+		uuid: uuidv4(),
 		key: PRE_BUILT_AGENTS_COLLECTION,
 		type: 'link',
 		properties: {
@@ -378,6 +380,7 @@ export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 
 export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {
 	return {
+		uuid: 'ai_templates_root',
 		key: 'ai_templates_root',
 		type: 'link',
 		properties: {

@@ -7,6 +7,7 @@ jest.mock('@/services/export.service');
 
 describe('ExportEntitiesCommand', () => {
 	const mockExportService = mockInstance(ExportService);
+
 	describe('run', () => {
 		it('should export entities', async () => {
 			const command = new ExportEntitiesCommand();

@@ -1,3 +1,4 @@
+import type { Request } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -34,7 +35,7 @@ export class WorkflowComposer {
 	 * @param workflowName - The name of the workflow to create
 	 */
 	async createWorkflow(workflowName = 'My New Workflow') {
-		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.setWorkflowName(workflowName);
 
 		const responsePromise = this.n8n.page.waitForResponse(
@@ -58,7 +59,7 @@ export class WorkflowComposer {
 	): Promise<{ workflowName: string }> {
 		const workflowName = name ?? `Imported Workflow ${nanoid(8)}`;
 		await this.n8n.goHome();
-		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.importWorkflow(fileName, workflowName);
 		return { workflowName };
 	}
@@ -69,7 +70,7 @@ export class WorkflowComposer {
 	 * @returns Promise that resolves when the import is complete
 	 */
 	async importWorkflowFromURL(url: string): Promise<void> {
-		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.clickWorkflowMenu();
 		await this.n8n.canvas.clickImportFromURL();
 		await this.n8n.canvas.fillImportURLInput(url);
@@ -80,7 +81,7 @@ export class WorkflowComposer {
 	 * Opens the import from URL dialog and then dismisses it by clicking outside
 	 */
 	async openAndDismissImportFromURLDialog(): Promise<void> {
-		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.clickWorkflowMenu();
 		await this.n8n.canvas.clickImportFromURL();
 		await this.n8n.canvas.clickOutsideModal();
@@ -90,9 +91,21 @@ export class WorkflowComposer {
 	 * Opens the import from URL dialog and then cancels it
 	 */
 	async openAndCancelImportFromURLDialog(): Promise<void> {
-		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.clickWorkflowMenu();
 		await this.n8n.canvas.clickImportFromURL();
 		await this.n8n.canvas.clickCancelImportURL();
+	}
+
+	/**
+	 * Saves the current workflow and waits for the POST request to complete
+	 * @returns The Request object containing the save request details
+	 */
+	async saveWorkflowAndWaitForRequest(): Promise<Request> {
+		const saveRequestPromise = this.n8n.page.waitForRequest(
+			(req) => req.url().includes('/rest/workflows') && req.method() === 'POST',
+		);
+		await this.n8n.canvas.clickSaveWorkflowButton();
+		return await saveRequestPromise;
 	}
 }

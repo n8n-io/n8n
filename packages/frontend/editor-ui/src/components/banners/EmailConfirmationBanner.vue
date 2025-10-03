@@ -6,6 +6,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
+import { N8nButton } from '@n8n/design-system';
 const toast = useToast();
 const cloudPlanStore = useCloudPlanStore();
 
@@ -36,12 +37,12 @@ async function onConfirmEmailClick() {
 		<template #mainContent>
 			<span>
 				{{ locale.baseText('banners.confirmEmail.message.1') }}
-				<router-link to="/settings/personal">{{ userEmail }}</router-link>
+				<RouterLink to="/settings/personal">{{ userEmail }}</RouterLink>
 				{{ locale.baseText('banners.confirmEmail.message.2') }}
 			</span>
 		</template>
 		<template #trailingContent>
-			<n8n-button
+			<N8nButton
 				type="success"
 				icon="mail"
 				size="small"
@@ -49,7 +50,7 @@ async function onConfirmEmailClick() {
 				@click="onConfirmEmailClick"
 			>
 				{{ locale.baseText('banners.confirmEmail.button') }}
-			</n8n-button>
+			</N8nButton>
 		</template>
 	</BaseBanner>
 </template>
