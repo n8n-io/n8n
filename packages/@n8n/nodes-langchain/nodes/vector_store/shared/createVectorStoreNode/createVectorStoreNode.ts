@@ -32,7 +32,8 @@ const ragStarterCallout: INodeProperties = {
 	typeOptions: {
 		calloutAction: {
 			label: 'RAG starter template',
-			type: 'openRagStarterTemplate',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'rag-starter-template',
 		},
 	},
 	default: '',

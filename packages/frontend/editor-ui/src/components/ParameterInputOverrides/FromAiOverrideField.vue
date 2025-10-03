@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { i18n } from '@n8n/i18n';
 
+import { N8nIconButton, N8nText } from '@n8n/design-system';
+import AiStarsIcon from '@/components/AiStarsIcon.vue';
 defineProps<{
 	isReadOnly?: boolean;
 }>();
@@ -58,8 +60,8 @@ const emit = defineEmits<{
 }
 
 .overrideCloseButton {
-	padding: 0px var(--spacing-2xs);
-	border: 0px;
+	padding: 0 var(--spacing-2xs);
+	border: 0;
 	color: var(--color-text-base);
 	margin-left: auto;
 	--button-hover-background-color: transparent;

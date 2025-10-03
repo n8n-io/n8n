@@ -1,6 +1,10 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
-import type { User, ExecutionEntity } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
@@ -18,6 +22,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	ExecutionError,
+	TimeoutExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -30,9 +35,6 @@ import { ManualExecutionService } from '@/manual-execution.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -41,7 +43,7 @@ setupTestServer({ endpointGroups: [] });
 mockInstance(Telemetry);
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 
 	runner = Container.get(WorkflowRunner);
 });
@@ -177,7 +179,7 @@ describe('run', () => {
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+		jest.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
@@ -192,6 +194,7 @@ describe('run', () => {
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
+			runData: undefined,
 		});
 
 		// ACT
@@ -333,7 +336,7 @@ describe('workflow timeout with startedAt', () => {
 		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
-		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const startedAt = new Date(Date.now() - 5000); // 5 seconds ago
 		const data = mock<IWorkflowExecutionDataProcess>({
@@ -389,7 +392,7 @@ describe('workflow timeout with startedAt', () => {
 		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
-		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const startedAt = new Date(Date.now() - 15000); // 15 seconds ago (timeout already elapsed)
 		const data = mock<IWorkflowExecutionDataProcess>({
@@ -422,7 +425,7 @@ describe('workflow timeout with startedAt', () => {
 
 		// ASSERT
 		// The execution should be stopped immediately because the timeout has already elapsed
-		expect(mockStopExecution).toHaveBeenCalledWith('1');
+		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 
 	it('should use original timeout logic when startedAt is not provided', async () => {
@@ -436,7 +439,7 @@ describe('workflow timeout with startedAt', () => {
 		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
-		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: {
@@ -469,6 +472,63 @@ describe('workflow timeout with startedAt', () => {
 		// ASSERT
 		// The execution should not be stopped immediately (original timeout logic)
 		expect(mockStopExecution).not.toHaveBeenCalled();
+	});
+
+	it('should call stopExecution when the timeout callback is executed', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+
+		// Mock config to return a workflow timeout of 10 seconds
+		Container.get(GlobalConfig).executions.timeout = 10;
+
+		let timeoutCallback: (() => void) | undefined;
+		jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+			if (typeof fn === 'function') {
+				timeoutCallback = fn;
+			}
+			return {} as NodeJS.Timeout;
+		});
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: {
+				nodes: [],
+				settings: { executionTimeout: 10 }, // 10 seconds timeout
+			},
+			executionData: undefined,
+			executionMode: 'webhook',
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// Execute the timeout callback
+		expect(timeoutCallback).toBeDefined();
+		timeoutCallback!();
+
+		// ASSERT
+		// The execution should be stopped when the timeout callback is executed
+		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 });
 

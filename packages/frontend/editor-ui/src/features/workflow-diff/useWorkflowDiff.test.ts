@@ -15,7 +15,7 @@ import { useCanvasMapping } from '@/composables/useCanvasMapping';
 // Mock modules at top level
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
-		getWorkflow: vi.fn().mockReturnValue({
+		createWorkflowObject: vi.fn().mockReturnValue({
 			id: 'test-workflow',
 			nodes: [],
 			connections: {},
@@ -37,7 +37,6 @@ vi.mock('@/composables/useCanvasMapping', () => ({
 		additionalNodePropertiesById: computed(() => ({})),
 		nodeExecutionRunDataOutputMapById: computed(() => ({})),
 		nodeExecutionWaitingForNextById: computed(() => ({})),
-		nodeIssuesById: computed(() => ({})),
 		nodeHasIssuesById: computed(() => ({})),
 		nodes: computed(() => []),
 		connections: computed(() => []),
@@ -401,7 +400,6 @@ describe('useWorkflowDiff', () => {
 			additionalNodePropertiesById: computed(() => ({}) as Record<string, Partial<CanvasNode>>),
 			nodeExecutionRunDataOutputMapById: computed(() => ({}) as Record<string, ExecutionOutputMap>),
 			nodeExecutionWaitingForNextById: computed(() => ({}) as Record<string, boolean>),
-			nodeIssuesById: computed(() => ({}) as Record<string, string[]>),
 			nodeHasIssuesById: computed(() => ({}) as Record<string, boolean>),
 			nodes: computed(() => nodes as CanvasNode[]),
 			connections: computed(() => connections as CanvasConnection[]),

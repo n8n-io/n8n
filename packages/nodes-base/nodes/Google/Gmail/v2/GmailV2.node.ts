@@ -2,6 +2,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
@@ -31,10 +32,26 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
-	replyToEmail,
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
+import { replyToEmail } from '../utils/replyToEmail';
+
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Sort your Gmail inbox using our pre-built',
+	name: 'preBuiltAgentsCalloutGmail',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Email triage agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'email_triage_agent_with_gmail',
+		},
+	},
+	default: '',
+};
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -72,6 +89,7 @@ const versionDescription: INodeTypeDescription = {
 	],
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
+		preBuiltAgentsCallout,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',

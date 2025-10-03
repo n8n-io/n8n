@@ -8,6 +8,9 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	ExecutionCancelledError,
 	NodeConnectionTypes,
+	metricRequiresModelConnection,
+	DEFAULT_EVALUATION_METRIC,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -85,12 +88,22 @@ export class TestRunnerService {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
 
-		if (
-			!triggerNode.credentials ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.documentId) ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.sheetName)
-		) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: triggerNode.name });
+		const { parameters, credentials, name, typeVersion } = triggerNode;
+		const source = parameters?.source
+			? (parameters.source as string)
+			: typeVersion >= 4.7
+				? 'dataTable'
+				: 'googleSheets';
+
+		const isConfigured =
+			source === 'dataTable'
+				? checkNodeParameterNotEmpty(parameters?.dataTableId)
+				: !!credentials &&
+					checkNodeParameterNotEmpty(parameters?.documentId) &&
+					checkNodeParameterNotEmpty(parameters?.sheetName);
+
+		if (!isConfigured) {
+			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: name });
 		}
 
 		if (triggerNode?.disabled) {
@@ -102,6 +115,16 @@ export class TestRunnerService {
 	 * Checks if the Evaluation Set Metrics nodes are present in the workflow
 	 * and are configured correctly.
 	 */
+	private hasModelNodeConnected(workflow: IWorkflowBase, targetNodeName: string): boolean {
+		// Check if there's a node connected to the target node via ai_languageModel connection type
+		return Object.keys(workflow.connections).some((sourceNodeName) => {
+			const connections = workflow.connections[sourceNodeName];
+			return connections?.[NodeConnectionTypes.AiLanguageModel]?.[0]?.some(
+				(connection) => connection.node === targetNodeName,
+			);
+		});
+	}
+
 	private validateSetMetricsNodes(workflow: IWorkflowBase) {
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 		if (metricsNodes.length === 0) {
@@ -110,11 +133,6 @@ export class TestRunnerService {
 
 		const unconfiguredMetricsNode = metricsNodes.find((node) => {
 			if (node.disabled === true || !node.parameters) {
-				return true;
-			}
-
-			// For versions 4.7+, check if metric parameter is missing
-			if (node.typeVersion >= 4.7 && !node.parameters.metric) {
 				return true;
 			}
 
@@ -132,6 +150,17 @@ export class TestRunnerService {
 						(assignment) => !assignment.name || assignment.value === null,
 					)
 				);
+			}
+
+			// For version 4.7+, check if AI-based metrics require model connection
+			if (node.typeVersion >= 4.7) {
+				const metric = (node.parameters.metric ?? DEFAULT_EVALUATION_METRIC) as string;
+				if (
+					metricRequiresModelConnection(metric) && // See packages/workflow/src/evaluation-helpers.ts
+					!this.hasModelNodeConnected(workflow, node.name)
+				) {
+					return true;
+				}
 			}
 
 			return false;
@@ -224,7 +253,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -240,7 +268,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -254,7 +281,10 @@ export class TestRunnerService {
 
 		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {
-			this.activeExecutions.stopExecution(executionId);
+			this.activeExecutions.stopExecution(
+				executionId,
+				new ManualExecutionCancelledError(executionId),
+			);
 		});
 
 		// Wait for the execution to finish
@@ -301,7 +331,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			executionData: {
 				startData: {
 					destinationNode: triggerNode.name,
@@ -311,7 +340,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},

@@ -11,12 +11,14 @@ import type {
 	NodeConnectionType,
 	INodeInputConfiguration,
 	INodeTypeDescription,
+	Workflow,
 } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	rootNode: INodeUi;
 }
@@ -59,10 +61,11 @@ const nodeType = computed(() =>
 
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
 const ndvStore = useNDVStore();
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+
+const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 const nodeInputIssues = computed(() => {
-	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflow.value, [
+	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflowObject.value, [
 		'typeUnknown',
 		'parameters',
 		'credentials',
@@ -82,7 +85,8 @@ const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
 
 			// Get input-index-specific connections using the per-type index
 			const nodeConnections =
-				workflow.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ?? [];
+				workflowObject.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ??
+				[];
 			const inputConnections = nodeConnections[typeIndex] ?? [];
 			const nodeNames = inputConnections.map((conn) => conn.node);
 			const nodes = getINodesFromNames(nodeNames);
@@ -159,7 +163,7 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 			if (node) {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
-					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflow.value);
+					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflowObject.value);
 					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
@@ -187,7 +191,7 @@ function isNodeInputConfiguration(
 function getPossibleSubInputConnections(): INodeInputConfiguration[] {
 	if (!nodeType.value || !props.rootNode) return [];
 
-	const inputs = NodeHelpers.getNodeInputs(workflow.value, props.rootNode, nodeType.value);
+	const inputs = NodeHelpers.getNodeInputs(workflowObject.value, props.rootNode, nodeType.value);
 
 	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
 		if (!isNodeInputConfiguration(input)) return false;
@@ -298,7 +302,7 @@ defineExpose({
 								}"
 								@click="onPlusClick(getConnectionContext(connection, index))"
 							>
-								<n8n-tooltip
+								<N8nTooltip
 									placement="top"
 									:teleported="true"
 									:offset="10"
@@ -317,13 +321,13 @@ defineExpose({
 											/>
 										</template>
 									</template>
-									<n8n-icon-button
+									<N8nIconButton
 										size="medium"
 										icon="plus"
 										type="tertiary"
 										:data-test-id="`add-subnode-${getConnectionKey(connection, index)}`"
 									/>
-								</n8n-tooltip>
+								</N8nTooltip>
 							</div>
 							<div
 								v-if="connectedNodes[getConnectionKey(connection, index)].length > 0"
@@ -341,7 +345,7 @@ defineExpose({
 									:data-node-name="node.node.name"
 									:style="`--node-index: ${nodeIndex}`"
 								>
-									<n8n-tooltip
+									<N8nTooltip
 										:key="node.node.name"
 										placement="top"
 										:teleported="true"
@@ -371,7 +375,7 @@ defineExpose({
 												circle
 											/>
 										</div>
-									</n8n-tooltip>
+									</N8nTooltip>
 								</div>
 							</div>
 						</div>

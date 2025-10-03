@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
 
-import { directionsCursorMaps, type Direction, type ResizeData } from '@n8n/design-system/types';
+import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;
@@ -185,7 +185,7 @@ const resizerMove = (event: MouseEvent) => {
 
 <style lang="scss" module>
 .resize {
-	--resizer--size: 12px;
+	--resizer--size: 4px;
 	--resizer--side-offset: -2px;
 	--resizer--corner-offset: -3px;
 

@@ -3,6 +3,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -16,7 +17,12 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
+import {
+	ExecutionCancelledError,
+	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	Workflow,
+} from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -58,6 +64,7 @@ export class WorkflowRunner {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionDataService: ExecutionDataService,
 		private readonly eventService: EventService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	setExecutionMode(mode: 'regular' | 'queue') {
@@ -80,7 +87,7 @@ export class WorkflowRunner {
 		if (
 			error instanceof ExecutionNotFoundError ||
 			error instanceof ExecutionCancelledError ||
-			error.message.includes('cancelled')
+			(typeof error.message === 'string' && error.message.includes('cancelled'))
 		) {
 			return;
 		}
@@ -219,9 +226,9 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 
 		const workflowSettings = data.workflowData.settings ?? {};
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
+		let workflowTimeout = workflowSettings.executionTimeout ?? this.executionsConfig.timeout; // initialize with default
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
+			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 		}
 
 		let pinData: IPinData | undefined;
@@ -305,7 +312,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
-				let timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as milliseconds
+				let timeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout) * 1000; // as milliseconds
 				if (data.startedAt && data.startedAt instanceof Date) {
 					// If startedAt is set, we calculate the timeout based on the startedAt time
 					// This is useful for executions that were waiting in a waiting state
@@ -314,10 +321,16 @@ export class WorkflowRunner {
 					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
 				}
 				if (timeout === 0) {
-					this.activeExecutions.stopExecution(executionId);
+					this.activeExecutions.stopExecution(
+						executionId,
+						new TimeoutExecutionCancelledError(executionId),
+					);
 				} else {
 					executionTimeout = setTimeout(() => {
-						void this.activeExecutions.stopExecution(executionId);
+						void this.activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
 					}, timeout);
 				}
 			}
@@ -405,7 +418,7 @@ export class WorkflowRunner {
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-					const error = new ExecutionCancelledError(executionId);
+					const error = new ManualExecutionCancelledError(executionId);
 					await this.processError(
 						error,
 						new Date(),
@@ -422,6 +435,7 @@ export class WorkflowRunner {
 				} catch (error) {
 					if (
 						error instanceof Error &&
+						typeof error.message === 'string' &&
 						error.message.includes('job stalled more than maxStalledCount')
 					) {
 						error = new MaxStalledCountError(error);

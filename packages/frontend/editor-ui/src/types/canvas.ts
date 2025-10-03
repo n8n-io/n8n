@@ -111,7 +111,8 @@ export interface CanvasNodeData {
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		items: string[];
+		execution: string[];
+		validation: string[];
 		visible: boolean;
 	};
 	pinnedData: {
@@ -125,7 +126,7 @@ export interface CanvasNodeData {
 		waitingForNext?: boolean;
 	};
 	runData: {
-		outputMap: ExecutionOutputMap;
+		outputMap?: ExecutionOutputMap;
 		iterations: number;
 		visible: boolean;
 	};
@@ -178,12 +179,14 @@ export type CanvasEventBusEvents = {
 	'saved:workflow': never;
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
+	'nodes:selectAll': never;
 	'nodes:action': {
 		ids: string[];
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[] };
+	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
+	'create:sticky': never;
 };
 
 export interface CanvasNodeInjectionData {
@@ -238,3 +241,5 @@ export type ViewportBoundaries = {
 	yMin: number;
 	yMax: number;
 };
+
+export type SearchShortcut = '/' | 'ctrl+f';

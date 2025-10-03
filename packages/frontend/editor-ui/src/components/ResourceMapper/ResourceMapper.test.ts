@@ -33,7 +33,6 @@ const renderComponent = createComponentRenderer(ResourceMapper, {
 		inputSize: 'small',
 		labelSize: 'small',
 		dependentParametersValues: '-1',
-		isReadonly: false,
 		teleported: false,
 	},
 	global: {

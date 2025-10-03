@@ -76,7 +76,7 @@ const { runDataOutputMap } = useCanvasNode();
 
 const runData = computed(() =>
 	props.mode === CanvasConnectionMode.Output
-		? runDataOutputMap.value[props.type]?.[props.index]
+		? runDataOutputMap.value?.[props.type]?.[props.index]
 		: undefined,
 );
 

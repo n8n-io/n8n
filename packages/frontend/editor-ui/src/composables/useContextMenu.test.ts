@@ -43,12 +43,12 @@ describe('useContextMenu', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.nodes = nodes;
 		workflowsStore.workflow.scopes = ['workflow:update'];
-		vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue({
+		workflowsStore.workflowObject = {
 			nodes,
 			getNode: (_: string) => {
 				return {};
 			},
-		} as never);
+		} as never;
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);

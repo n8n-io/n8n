@@ -22,8 +22,10 @@ describe('MultipleParameter', () => {
 						displayName: 'Value',
 						name: 'value',
 						type: 'number',
+						default: undefined,
 					},
 				],
+				default: undefined,
 			},
 			nodeValues: {
 				parameters: {

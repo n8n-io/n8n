@@ -13,14 +13,24 @@ export function chatWithBuilder(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	abortSignal?: AbortSignal,
+	useDeprecatedCredentials = false,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
 		'/ai/build',
-		payload,
+		{
+			...payload,
+			payload: {
+				...payload.payload,
+				useDeprecatedCredentials,
+			},
+		},
 		onMessageUpdated,
 		onDone,
 		onError,
+		undefined,
+		abortSignal,
 	);
 }
 
@@ -95,4 +105,11 @@ export async function getAiSessions(
 	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', {
 		workflowId,
 	} as IDataObject);
+}
+
+export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
+	creditsQuota: number;
+	creditsClaimed: number;
+}> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
 }

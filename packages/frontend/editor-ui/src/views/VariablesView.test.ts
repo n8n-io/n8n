@@ -11,7 +11,8 @@ import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createRouter, createWebHistory } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import type { IUser, EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
 
 const router = createRouter({
@@ -144,6 +145,23 @@ describe('VariablesView', () => {
 		const table = await wrapper.findByTestId('resources-table');
 		expect(table).toBeVisible();
 		expect(wrapper.container.querySelectorAll('tr')).toHaveLength(4);
+	});
+
+	it('should truncate long variable values', async () => {
+		userWithPrivileges([
+			{
+				id: '1',
+				key: 'a',
+				value: 'This is a very long variable value that should be truncated',
+			},
+		]);
+
+		const { findByTestId, getByText, queryByText } = renderComponent();
+
+		const table = await findByTestId('resources-table');
+		expect(table).toBeVisible();
+		expect(queryByText('This is a very long variable value that should be truncated')).toBeNull();
+		expect(getByText('This is a very long ...')).toBeVisible();
 	});
 
 	describe('CRUD', () => {

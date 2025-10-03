@@ -11,6 +11,7 @@ import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
+import NDVHeader from '@/components/NDVHeader.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -44,7 +45,10 @@ import InputPanel from './InputPanel.vue';
 import OutputPanel from './OutputPanel.vue';
 import PanelDragButtonV2 from './PanelDragButtonV2.vue';
 import TriggerPanel from './TriggerPanel.vue';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -77,6 +81,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
 const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
@@ -270,7 +275,7 @@ const maxInputRun = computed(() => {
 		node = activeNode.value;
 	}
 
-	if (!node || !runData || !runData.hasOwnProperty(node.name)) {
+	if (!node || !runData?.hasOwnProperty(node.name)) {
 		return 0;
 	}
 
@@ -370,7 +375,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onWorkflowActivate = () => {
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	setTimeout(() => {
 		void workflowActivate.activateCurrentWorkflow('ndv');
 	}, 1000);
@@ -491,7 +496,7 @@ const close = async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	ndvStore.resetNDVPushRef();
 };
 
@@ -625,6 +630,7 @@ watch(
 						data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
 						input_displayed_row_height_avg: avgInputRowHeight.value,
 						output_displayed_row_height_avg: avgOutputRowHeight.value,
+						source: telemetryContext.ndv_source?.value ?? 'other',
 					});
 				}
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip
@@ -738,7 +744,7 @@ onBeforeUnmount(() => {
 						/>
 						<InputPanel
 							v-else-if="!isTriggerNode"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
@@ -747,7 +753,7 @@ onBeforeUnmount(() => {
 							:push-ref="pushRef"
 							:read-only="readOnly || hasForeignCredential"
 							:is-production-execution-preview="isProductionExecutionPreview"
-							:is-pane-active="isInputPaneActive"
+							:search-shortcut="isInputPaneActive ? '/' : undefined"
 							:display-mode="inputPanelDisplayMode"
 							:class="$style.input"
 							:is-mapping-onboarded="ndvStore.isMappingOnboarded"
@@ -799,6 +805,7 @@ onBeforeUnmount(() => {
 								:executable="!readOnly"
 								:input-size="inputSize"
 								:class="$style.settings"
+								is-ndv-v2
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
 								@activate="onWorkflowActivate"
@@ -814,7 +821,7 @@ onBeforeUnmount(() => {
 					>
 						<OutputPanel
 							data-test-id="output-panel"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="outputRun"
 							:linked-runs="linked"
@@ -851,7 +858,7 @@ onBeforeUnmount(() => {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-color: var(--color-ndv-overlay-background);
+	background-color: var(--color-dialog-overlay-background-dark);
 }
 
 .dialog {
@@ -880,10 +887,13 @@ onBeforeUnmount(() => {
 }
 
 .main {
-	width: 0;
+	width: 100%;
 	flex-grow: 1;
 	display: flex;
 	align-items: stretch;
+	height: 100%;
+	min-height: 0;
+	position: relative;
 }
 
 .column {
@@ -915,14 +925,6 @@ onBeforeUnmount(() => {
 	border-bottom: var(--border-base);
 	border-top-left-radius: var(--border-radius-large);
 	border-top-right-radius: var(--border-radius-large);
-}
-
-.main {
-	display: flex;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	position: relative;
 }
 
 .settings {

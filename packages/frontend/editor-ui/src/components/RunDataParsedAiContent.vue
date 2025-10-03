@@ -3,12 +3,14 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { type ParsedAiContent } from '@/utils/aiUtils';
-import { N8nIconButton } from '@n8n/design-system';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
 import { computed } from 'vue';
 import { createSearchHighlightPlugin } from '@/components/RunDataAi/utils';
+
+import { N8nIconButton } from '@n8n/design-system';
+import TextWithHighlights from '@/components/TextWithHighlights.vue';
 
 const {
 	content,
@@ -157,42 +159,40 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 }
 
 .markdown {
-	& {
+	white-space: pre-wrap;
+
+	h1 {
+		font-size: var(--font-size-l);
+		line-height: var(--font-line-height-xloose);
+	}
+
+	h2 {
+		font-size: var(--font-size-m);
+		line-height: var(--font-line-height-loose);
+	}
+
+	h3 {
+		font-size: var(--font-size-s);
+		line-height: var(--font-line-height-regular);
+	}
+
+	pre {
+		background: var(--chat--message--pre--background);
+		border-radius: var(--border-radius-base);
+		line-height: var(--font-line-height-xloose);
+		padding: var(--spacing-s);
+		font-size: var(--font-size-s);
 		white-space: pre-wrap;
 
-		h1 {
-			font-size: var(--font-size-l);
+		.compact & {
+			padding: var(--spacing-3xs);
+			font-size: var(--font-size-xs);
+		}
+	}
+
+	p {
+		.compact & {
 			line-height: var(--font-line-height-xloose);
-		}
-
-		h2 {
-			font-size: var(--font-size-m);
-			line-height: var(--font-line-height-loose);
-		}
-
-		h3 {
-			font-size: var(--font-size-s);
-			line-height: var(--font-line-height-regular);
-		}
-
-		pre {
-			background: var(--chat--message--pre--background);
-			border-radius: var(--border-radius-base);
-			line-height: var(--font-line-height-xloose);
-			padding: var(--spacing-s);
-			font-size: var(--font-size-s);
-			white-space: pre-wrap;
-
-			.compact & {
-				padding: var(--spacing-3xs);
-				font-size: var(--font-size-xs);
-			}
-		}
-
-		p {
-			.compact & {
-				line-height: var(--font-line-height-xloose);
-			}
 		}
 	}
 }

@@ -9,18 +9,23 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import {
-	N8nText,
-	N8nTooltip,
-	N8nIcon,
-	N8nTableHeaderControlsButton,
-	N8nExternalLink,
-} from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
+import { ElScrollbar } from 'element-plus';
+import {
+	N8nCallout,
+	N8nExternalLink,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nLoading,
+	N8nTableHeaderControlsButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import {
 	applyCachedSortOrder,
 	applyCachedVisibility,
@@ -28,8 +33,10 @@ import {
 	getTestCasesColumns,
 	getTestTableHeaders,
 } from './utils';
-import { indexedDbCache } from '@/plugins/cache';
-import { jsonParse } from 'n8n-workflow';
+import {
+	useWorkflowSettingsCache,
+	type UserEvaluationPreferences,
+} from '@/composables/useWorkflowsCache';
 
 export type Column =
 	| {
@@ -44,11 +51,6 @@ export type Column =
 	// even if some columns are disabled / not available in the current run
 	| { key: string; disabled: true };
 
-interface UserPreferences {
-	order: string[];
-	visibility: Record<string, boolean>;
-}
-
 export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
 
 const router = useRouter();
@@ -56,6 +58,7 @@ const toast = useToast();
 const evaluationStore = useEvaluationStore();
 const workflowsStore = useWorkflowsStore();
 const locale = useI18n();
+const workflowsCache = useWorkflowSettingsCache();
 
 const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
@@ -65,7 +68,7 @@ const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
 const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
 
-const cachedUserPreferences = ref<UserPreferences | undefined>();
+const cachedUserPreferences = ref<UserEvaluationPreferences | undefined>();
 const expandedRows = ref<Set<string>>(new Set());
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
@@ -158,18 +161,13 @@ const fetchExecutionTestCases = async () => {
 };
 
 async function loadCachedUserPreferences() {
-	const cache = await indexedDbCache('workflows', 'evaluations');
-	cachedUserPreferences.value = jsonParse(cache.getItem(workflowId.value) ?? '', {
-		fallbackValue: {
-			order: [],
-			visibility: {},
-		},
-	});
+	cachedUserPreferences.value = await workflowsCache.getEvaluationPreferences(workflowId.value);
 }
 
 async function saveCachedUserPreferences() {
-	const cache = await indexedDbCache('workflows', 'evaluations');
-	cache.setItem(workflowId.value, JSON.stringify(cachedUserPreferences.value));
+	if (cachedUserPreferences.value) {
+		await workflowsCache.saveEvaluationPreferences(workflowId.value, cachedUserPreferences.value);
+	}
 }
 
 async function handleColumnVisibilityUpdate(columnKey: string, visibility: boolean) {
@@ -213,16 +211,16 @@ onMounted(async () => {
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
 				<N8nIcon icon="arrow-left" />
-				<n8n-heading size="large" :bold="true">{{
+				<N8nHeading size="large" :bold="true">{{
 					locale.baseText('evaluation.listRuns.runListHeader', {
 						interpolate: {
 							name: workflowName,
 						},
 					})
-				}}</n8n-heading>
+				}}</N8nHeading>
 			</button>
 			<span :class="$style.headerSeparator">/</span>
-			<n8n-heading size="large" :bold="true">
+			<N8nHeading size="large" :bold="true">
 				{{
 					locale.baseText('evaluation.listRuns.testCasesListHeader', {
 						interpolate: {
@@ -230,9 +228,9 @@ onMounted(async () => {
 						},
 					})
 				}}
-			</n8n-heading>
+			</N8nHeading>
 		</div>
-		<n8n-callout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
+		<N8nCallout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
 			<N8nText size="small" :class="$style.capitalized">
 				{{
 					locale.baseText(
@@ -241,9 +239,9 @@ onMounted(async () => {
 					) ?? locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 				}}
 			</N8nText>
-		</n8n-callout>
+		</N8nCallout>
 
-		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
+		<ElScrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
 					<N8nText size="small" :class="$style.summaryCardTitle">
@@ -301,11 +299,11 @@ onMounted(async () => {
 					}}</N8nText>
 				</div>
 			</div>
-		</el-scrollbar>
+		</ElScrollbar>
 
 		<div :class="['mb-s', $style.runsHeader]">
 			<div>
-				<n8n-heading size="large" :bold="true"
+				<N8nHeading size="large" :bold="true"
 					>{{
 						locale.baseText('evaluation.listRuns.allTestCases', {
 							interpolate: {
@@ -313,10 +311,10 @@ onMounted(async () => {
 							},
 						})
 					}}
-				</n8n-heading>
+				</N8nHeading>
 			</div>
 			<div :class="$style.runsHeaderButtons">
-				<n8n-icon-button
+				<N8nIconButton
 					:icon="isAllExpanded ? 'chevrons-down-up' : 'chevrons-up-down'"
 					type="secondary"
 					size="medium"
@@ -332,7 +330,7 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<n8n-callout
+		<N8nCallout
 			v-if="
 				!isLoading &&
 				!inputColumns.length &&
@@ -346,10 +344,10 @@ onMounted(async () => {
 			<N8nText size="small" :class="$style.capitalized">
 				{{ locale.baseText('evaluation.runDetail.notice.useSetInputs') }}
 			</N8nText>
-		</n8n-callout>
+		</N8nCallout>
 
 		<div v-if="isLoading" :class="$style.loading">
-			<n8n-loading :loading="true" :rows="5" />
+			<N8nLoading :loading="true" :rows="5" />
 		</div>
 
 		<TestTableBase

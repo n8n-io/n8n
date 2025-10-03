@@ -1,9 +1,8 @@
-import { computed, type ShallowRef } from 'vue';
+import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { watch } from 'vue';
 import { useLogsStore } from '@/stores/logs.store';
 import { useResizablePanel } from '@/composables/useResizablePanel';
-import { usePiPWindow } from '@/features/logs/composables/usePiPWindow';
+import { usePopOutWindow } from '@/features/logs/composables/usePopOutWindow';
 import {
 	LOGS_PANEL_STATE,
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
@@ -11,9 +10,13 @@ import {
 	LOCAL_STORAGE_PANEL_WIDTH,
 } from '@/features/logs/logs.constants';
 
+const INITIAL_POPUP_HEIGHT = 400;
+const COLLAPSED_PANEL_HEIGHT = 32;
+
 export function useLogsPanelLayout(
-	pipContainer: Readonly<ShallowRef<HTMLElement | null>>,
-	pipContent: Readonly<ShallowRef<HTMLElement | null>>,
+	workflowName: ComputedRef<string>,
+	popOutContainer: Readonly<ShallowRef<HTMLElement | null>>,
+	popOutContent: Readonly<ShallowRef<HTMLElement | null>>,
 	container: Readonly<ShallowRef<HTMLElement | null>>,
 	logsContainer: Readonly<ShallowRef<HTMLElement | null>>,
 ) {
@@ -51,13 +54,16 @@ export function useLogsPanelLayout(
 			: resizer.isResizing.value && resizer.size.value > 0,
 	);
 	const isCollapsingDetailsPanel = computed(() => overviewPanelResizer.isFullSize.value);
+	const popOutWindowTitle = computed(() => `Logs - ${workflowName.value}`);
+	const shouldPopOut = computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING);
 
-	const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
-		initialHeight: 400,
+	const { canPopOut, isPoppedOut, popOutWindow } = usePopOutWindow({
+		title: popOutWindowTitle,
+		initialHeight: INITIAL_POPUP_HEIGHT,
 		initialWidth: window.document.body.offsetWidth * 0.8,
-		container: pipContainer,
-		content: pipContent,
-		shouldPopOut: computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING),
+		container: popOutContainer,
+		content: popOutContent,
+		shouldPopOut,
 		onRequestClose: () => {
 			if (!isOpen.value) {
 				return;
@@ -101,18 +107,30 @@ export function useLogsPanelLayout(
 	}
 
 	watch(
-		[() => logsStore.state, resizer.size],
+		[() => logsStore.state, resizer.size, isPoppedOut],
 		([state, height]) => {
-			logsStore.setHeight(
+			const updatedHeight =
 				state === LOGS_PANEL_STATE.FLOATING
 					? 0
 					: state === LOGS_PANEL_STATE.ATTACHED
 						? height
-						: 32 /* collapsed panel height */,
-			);
+						: COLLAPSED_PANEL_HEIGHT;
+
+			if (state === LOGS_PANEL_STATE.FLOATING) {
+				popOutWindow?.value?.document.documentElement.style.setProperty(
+					'--logs-panel-height',
+					'100vh',
+				);
+			} else {
+				document.documentElement.style.setProperty('--logs-panel-height', `${updatedHeight}px`);
+			}
+
+			logsStore.setHeight(updatedHeight);
 		},
 		{ immediate: true },
 	);
+
+	onBeforeUnmount(() => logsStore.setHeight(0));
 
 	return {
 		height: resizer.size,
@@ -123,7 +141,7 @@ export function useLogsPanelLayout(
 		isCollapsingDetailsPanel,
 		isPoppedOut,
 		isOverviewPanelFullWidth: overviewPanelResizer.isFullSize,
-		pipWindow,
+		popOutWindow,
 		onToggleOpen: handleToggleOpen,
 		onPopOut: handlePopOut,
 		onResize: resizer.onResize,

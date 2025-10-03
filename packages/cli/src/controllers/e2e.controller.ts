@@ -2,7 +2,13 @@ import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { SettingsRepository, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
@@ -108,6 +114,9 @@ export class E2EController {
 		[LICENSE_FEATURES.API_KEY_SCOPES]: false,
 		[LICENSE_FEATURES.OIDC]: false,
 		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
+		[LICENSE_FEATURES.WORKFLOW_DIFFS]: false,
+		[LICENSE_FEATURES.CUSTOM_ROLES]: false,
+		[LICENSE_FEATURES.AI_BUILDER]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -304,7 +313,9 @@ export class E2EController {
 				id: uuid(),
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
-				role: 'global:owner',
+				role: {
+					slug: GLOBAL_OWNER_ROLE.slug,
+				},
 			}),
 		];
 
@@ -313,7 +324,9 @@ export class E2EController {
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
-				role: 'global:admin',
+				role: {
+					slug: GLOBAL_ADMIN_ROLE.slug,
+				},
 			}),
 		);
 
@@ -323,7 +336,9 @@ export class E2EController {
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
-					role: 'global:member',
+					role: {
+						slug: GLOBAL_MEMBER_ROLE.slug,
+					},
 				}),
 			);
 		}

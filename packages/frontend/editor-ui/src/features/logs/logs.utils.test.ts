@@ -7,7 +7,6 @@ import {
 } from '@/__tests__/mocks';
 import {
 	createLogTree,
-	deepToRaw,
 	findSelectedLogEntry,
 	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
@@ -27,7 +26,6 @@ import {
 } from './__test__/data';
 import type { LogEntrySelection } from './logs.types';
 import type { IExecutionResponse } from '@/Interface';
-import { isReactive, reactive } from 'vue';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
@@ -1277,28 +1275,122 @@ describe('extractBotResponse', () => {
 		const result = extractBotResponse(resultData, executionId);
 		expect(result).toBeUndefined();
 	});
-});
 
-describe(deepToRaw, () => {
-	it('should convert reactive fields to raw in data with circular structure', () => {
-		const data = reactive({
-			foo: reactive({ bar: {} }),
-			bazz: {},
+	it('should extract response from second output branch when first is empty', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[], // First output branch is empty
+								[{ json: { message: 'Response from second branch' } }], // Second branch has response
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Response from second branch',
+			sender: 'bot',
+			id: executionId,
 		});
+	});
 
-		data.foo.bar = data;
-		data.bazz = data;
+	it('should extract response from second branch when first has empty json', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[{ json: {} }], // First branch has empty json object
+								[{ json: { text: 'Response from second branch' } }], // Second branch has response
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Response from second branch',
+			sender: 'bot',
+			id: executionId,
+		});
+	});
 
-		const raw = deepToRaw(data);
+	it('should extract response from first available branch when multiple exist', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[], // First branch empty
+								[{ json: {} }], // Second branch has empty object
+								[{ json: { output: 'Response from third branch' } }], // Third branch has response
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Response from third branch',
+			sender: 'bot',
+			id: executionId,
+		});
+	});
 
-		expect(isReactive(data)).toBe(true);
-		expect(isReactive(data.foo)).toBe(true);
-		expect(isReactive(data.foo.bar)).toBe(true);
-		expect(isReactive(data.bazz)).toBe(true);
-		expect(isReactive(raw)).toBe(false);
-		expect(isReactive(raw.foo)).toBe(false);
-		expect(isReactive(raw.foo.bar)).toBe(false);
-		expect(isReactive(raw.bazz)).toBe(false);
+	it('should use response from first branch when multiple branches have valid text', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[{ json: { text: 'First branch response' } }],
+								[{ json: { text: 'Second branch response' } }],
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'First branch response',
+			sender: 'bot',
+			id: executionId,
+		});
 	});
 });
 

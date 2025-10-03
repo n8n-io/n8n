@@ -5,12 +5,14 @@ import type {
 	INodeTypeDescription,
 	INodeExecutionData,
 } from 'n8n-workflow';
+import { metricRequiresModelConnection } from 'n8n-workflow'; // See packages/workflow/src/evaluation-helpers.ts
 
 import {
 	setCheckIfEvaluatingProperties,
 	setInputsProperties,
 	setMetricsProperties,
 	setOutputProperties,
+	sourcePicker,
 } from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions, credentialTest } from '../methods';
@@ -29,7 +31,7 @@ export class Evaluation implements INodeType {
 		icon: 'fa:check-double',
 		name: 'evaluation',
 		group: ['transform'],
-		version: [4.6, 4.7],
+		version: [4.6, 4.7, 4.8],
 		description: 'Runs an evaluation',
 		eventTriggerDescription: '',
 		subtitle: '={{$parameter["operation"]}}',
@@ -37,7 +39,8 @@ export class Evaluation implements INodeType {
 			name: 'Evaluation',
 			color: '#c3c9d5',
 		},
-		inputs: `={{(${getInputConnectionTypes})($parameter)}}`,
+		// Pass function explicitly since expression context doesn't allow imports in getInputConnectionTypes
+		inputs: `={{(${getInputConnectionTypes})($parameter, ${metricRequiresModelConnection})}}`,
 		outputs: `={{(${getOutputConnectionTypes})($parameter)}}`,
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
@@ -91,7 +94,28 @@ export class Evaluation implements INodeType {
 				],
 				default: 'setOutputs',
 			},
-			authentication,
+			{
+				...sourcePicker,
+				default: 'dataTable',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 4.8 } }], operation: ['setOutputs'] },
+				},
+			},
+			{
+				...sourcePicker,
+				default: 'googleSheets',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { lte: 4.7 } }], operation: ['setOutputs'] },
+				},
+			},
+			{
+				...authentication,
+				displayOptions: {
+					hide: {
+						source: ['dataTable'],
+					},
+				},
+			},
 			...setInputsProperties,
 			...setOutputProperties,
 			...setMetricsProperties,

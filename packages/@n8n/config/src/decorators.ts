@@ -75,12 +75,15 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 						config[key] = new Date(timestamp);
 					}
 				} else if (type === String) {
-					config[key] = value;
+					config[key] = value.trim().replace(/^(['"])(.*)\1$/, '$2');
 				} else {
 					config[key] = new (type as Constructable)(value);
 				}
 			}
 		}
+
+		if (typeof config.sanitize === 'function') config.sanitize();
+
 		return config;
 	};
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return

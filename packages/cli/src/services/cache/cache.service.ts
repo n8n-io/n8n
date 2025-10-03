@@ -40,9 +40,12 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = this.globalConfig.redis.prefix;
-			const prefix = redisClientService.toValidPrefix(
-				`${prefixBase}:${this.globalConfig.cache.redis.prefix}:`,
-			);
+			const cachePrefix = this.globalConfig.cache.redis.prefix;
+
+			// For cluster mode, we need to ensure proper hash tagging: {n8n:cache}:
+			// instead of {n8n:cache:} to keep the colon outside the hash tag
+			const hashTagPart = `${prefixBase}:${cachePrefix}`;
+			const prefix = redisClientService.toValidPrefix(hashTagPart) + ':';
 
 			const redisClient = redisClientService.createClient({
 				type: 'cache(n8n)',

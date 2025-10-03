@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import type { CredentialsEntity, User } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import { type Response } from 'express';
@@ -46,7 +46,7 @@ describe('OAuth2CredentialController', () => {
 		id: '123',
 		password: 'password',
 		authIdentities: [],
-		role: 'global:owner',
+		role: GLOBAL_OWNER_ROLE,
 	});
 	const credential = mock<CredentialsEntity>({
 		id: '1',

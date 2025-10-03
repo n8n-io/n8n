@@ -8,7 +8,7 @@ import type {
 import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
@@ -20,6 +20,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 import { MfaRequiredError } from '@n8n/rest-api-client';
+import { useCalloutHelpers } from './composables/useCalloutHelpers';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -47,24 +48,30 @@ const SettingsLogStreamingView = async () => await import('./views/SettingsLogSt
 const SetupView = async () => await import('./views/SetupView.vue');
 const SigninView = async () => await import('./views/SigninView.vue');
 const SignupView = async () => await import('./views/SignupView.vue');
-const TemplatesCollectionView = async () => await import('@/views/TemplatesCollectionView.vue');
-const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflowView.vue');
+const TemplatesCollectionView = async () =>
+	await import('@/features/templates/views/TemplatesCollectionView.vue');
+const TemplatesWorkflowView = async () =>
+	await import('@/features/templates/views/TemplatesWorkflowView.vue');
 const SetupWorkflowFromTemplateView = async () =>
-	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
-const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
+	await import('@/features/templates/views/SetupWorkflowFromTemplateView.vue');
+const TemplatesSearchView = async () =>
+	await import('@/features/templates/views/TemplatesSearchView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
 const SignoutView = async () => await import('@/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () => await import('./views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
+const SettingsExternalSecrets = async () =>
+	await import('@/features/externalSecrets/views/SettingsExternalSecrets.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 const EvaluationsView = async () => await import('@/views/Evaluations.ee/EvaluationsView.vue');
 const EvaluationRootView = async () =>
 	await import('@/views/Evaluations.ee/EvaluationsRootView.vue');
+const PrebuiltAgentTemplatesView = async () =>
+	await import('@/views/PrebuiltAgentTemplatesView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -104,6 +111,29 @@ export const routes: RouteRecordRaw[] = [
 			},
 			getRedirect: getTemplatesRedirect,
 			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/templates/agents',
+		name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
+		components: {
+			default: PrebuiltAgentTemplatesView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: getTemplatesRedirect,
+			middleware: ['authenticated'],
+		},
+		beforeEnter: (_to, _from, next) => {
+			const calloutHelpers = useCalloutHelpers();
+			const templatesStore = useTemplatesStore();
+
+			if (!calloutHelpers.isPreBuiltAgentsCalloutVisible.value) {
+				window.location.href = templatesStore.websiteTemplateRepositoryURL;
+			} else {
+				next();
+			}
 		},
 	},
 	// Following two routes are kept in-app:
@@ -788,7 +818,8 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		 */
 
 		await initializeCore();
-		await initializeAuthenticatedFeatures();
+		// Pass undefined for first param to use default
+		await initializeAuthenticatedFeatures(undefined, to.name as string);
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once

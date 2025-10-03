@@ -1,5 +1,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
+import { getProxyAgent } from '@utils/httpProxyAgent';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodePropertyOptions,
@@ -9,9 +11,6 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -337,6 +336,16 @@ export class LmChatAnthropic implements INodeType {
 				},
 			},
 		});
+
+		// Some Anthropic models do not support Langchain default of -1 for topP so we need to unset it
+		if (options.topP === undefined) {
+			delete model.topP;
+		}
+
+		// If topP is set to a value and temperature is not, unset default Langchain temperature
+		if (options.topP !== undefined && options.temperature === undefined) {
+			delete model.temperature;
+		}
 
 		return {
 			response: model,

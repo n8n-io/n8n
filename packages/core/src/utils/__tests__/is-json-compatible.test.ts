@@ -100,12 +100,6 @@ describe('isJsonCompatible', () => {
 			errorMessage: 'is NaN, which is not JSON-compatible',
 		},
 		{
-			name: 'undefined',
-			value: { undefined },
-			errorPath: 'value.undefined',
-			errorMessage: 'is of unknown type (undefined) with value undefined',
-		},
-		{
 			name: 'an object with symbol keys',
 			value: { [Symbol.for('key')]: 1 },
 			errorPath: 'value.Symbol(key)',
@@ -125,6 +119,7 @@ describe('isJsonCompatible', () => {
 	const objectRef = {};
 	test.each([
 		{ name: 'null', value: { null: null } },
+		{ name: 'undefined', value: { noValue: undefined } },
 		{ name: 'an array of primitives', value: { array: [1, 'string', true, false] } },
 		{
 			name: 'an object without a prototype chain',

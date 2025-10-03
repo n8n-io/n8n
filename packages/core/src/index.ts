@@ -13,6 +13,6 @@ export * from './nodes-loader';
 export * from './utils';
 export { WorkflowHasIssuesError } from './errors/workflow-has-issues.error';
 
-export * from './interfaces';
+export type * from './interfaces';
 export * from './node-execute-functions';
 export { NodeExecuteFunctions };

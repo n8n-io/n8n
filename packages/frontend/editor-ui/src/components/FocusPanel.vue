@@ -1,8 +1,16 @@
 <script setup lang="ts">
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CssEditor from '@/components/CssEditor/CssEditor.vue';
+import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
-import { computed, nextTick, ref, watch, toRef } from 'vue';
+import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -21,19 +29,35 @@ import {
 	type CodeNodeEditorLanguage,
 	type EditorType,
 	HTML_NODE_TYPE,
+	type INodeProperties,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
-import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useThrottleFn } from '@vueuse/core';
-import { useStyles } from '@/composables/useStyles';
+import { useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useVueFlow } from '@vue-flow/core';
+import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type CanvasNode, CanvasNodeRenderType } from '@/types';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
+import {
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nRadioButtons,
+	N8nResizeWrapper,
+	N8nText,
+} from '@n8n/design-system';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -43,11 +67,13 @@ const props = defineProps<{
 const emit = defineEmits<{
 	focus: [];
 	saveKeyboardShortcut: [event: KeyboardEvent];
+	contextMenuAction: [action: ContextMenuAction, nodeIds: string[]];
 }>();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
+const wrapperRef = useTemplateRef('wrapper');
 
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
@@ -57,16 +83,18 @@ const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
+const experimentalNdvStore = useExperimentalNdvStore();
+const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
-const { debounce } = useDebounce();
-const styles = useStyles();
+const vueFlow = useVueFlow(workflowsStore.workflowId);
+const activeElement = useActiveElement();
+const { renameNode } = useCanvasOperations();
 
-const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
-const resolvedParameter = computed(() =>
-	focusedNodeParameter.value && focusPanelStore.isRichParameter(focusedNodeParameter.value)
-		? focusedNodeParameter.value
-		: undefined,
-);
+useTelemetryContext({ view_shown: 'focus_panel' });
+
+const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
+
+const inputValue = ref<string>('');
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
@@ -99,30 +127,35 @@ const isDisplayed = computed(() => {
 	);
 });
 
+const node = computed<INodeUi | undefined>(() => {
+	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {
+		return resolvedParameter.value?.node;
+	}
+
+	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
+
+	return selected?.data?.render.type === CanvasNodeRenderType.Default
+		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		: undefined;
+});
+const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
+
 const isExecutable = computed(() => {
-	if (!resolvedParameter.value) return false;
+	if (!node.value) return false;
 
 	if (!isDisplayed.value) return false;
 
 	const foreignCredentials = nodeHelpers.getForeignCredentialsIfSharingEnabled(
-		resolvedParameter.value.node.credentials,
+		node.value.credentials,
 	);
-	return nodeHelpers.isNodeExecutable(
-		resolvedParameter.value.node,
-		!props.isCanvasReadOnly,
-		foreignCredentials,
-	);
+	return nodeHelpers.isNodeExecutable(node.value, !props.isCanvasReadOnly, foreignCredentials);
 });
-
-const node = computed(() => resolvedParameter.value?.node);
 
 const { workflowRunData } = useExecutionData({ node });
 
 const hasNodeRun = computed(() => {
 	if (!node.value) return true;
-	const parentNode = workflowsStore
-		.getCurrentWorkflow()
-		.getParentNodes(node.value.name, 'main', 1)[0];
+	const parentNode = workflowsStore.workflowObject.getParentNodes(node.value.name, 'main', 1)[0];
 	return Boolean(
 		parentNode &&
 			workflowRunData.value &&
@@ -130,9 +163,9 @@ const hasNodeRun = computed(() => {
 	);
 });
 
-function getTypeOption<T>(optionName: string): T | undefined {
+function getTypeOption<T extends keyof NonNullable<INodeProperties['typeOptions']>>(optionName: T) {
 	return resolvedParameter.value
-		? getParameterTypeOption<T>(resolvedParameter.value.parameter, optionName)
+		? getParameterTypeOption(resolvedParameter.value.parameter, optionName)
 		: undefined;
 }
 
@@ -151,7 +184,7 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	return getTypeOption('editorLanguage') ?? 'javaScript';
 });
 
-const editorRows = computed(() => getTypeOption<number>('rows'));
+const editorRows = computed(() => getTypeOption('rows'));
 
 const isToolNode = computed(() =>
 	resolvedParameter.value ? nodeTypesStore.isToolNode(resolvedParameter.value?.node.type) : false,
@@ -195,6 +228,20 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 });
 
 const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
+
+const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
+
+const emptyTitle = computed(() =>
+	experimentalNdvStore.isNdvInFocusPanelEnabled
+		? locale.baseText('nodeView.focusPanel.v2.noParameters.title')
+		: locale.baseText('nodeView.focusPanel.noParameters.title'),
+);
+
+const emptySubtitle = computed(() =>
+	experimentalNdvStore.isNdvInFocusPanelEnabled
+		? locale.baseText('nodeView.focusPanel.v2.noParameters.subtitle')
+		: locale.baseText('nodeView.focusPanel.noParameters.subtitle'),
+);
 
 const { resolvedExpression } = useResolvedExpression({
 	expression,
@@ -277,6 +324,17 @@ function optionSelected(command: string) {
 }
 
 function closeFocusPanel() {
+	if (experimentalNdvStore.isNdvInFocusPanelEnabled && resolvedParameter.value) {
+		focusPanelStore.unsetParameters();
+
+		telemetry.track('User removed focused param', {
+			source: 'closeIcon',
+			parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		});
+
+		return;
+	}
+
 	telemetry.track('User closed focus panel', {
 		source: 'closeIcon',
 		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
@@ -292,7 +350,10 @@ function onExecute() {
 	);
 }
 
-const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
+function onInputChange(val: string) {
+	inputValue.value = val;
+	valueChanged(val);
+}
 
 // Wait for editor to mount before focusing
 function focusWithDelay() {
@@ -335,27 +396,91 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	() => resolvedParameter.value,
+	(newValue) => {
+		if (newValue) {
+			const value = newValue.value;
+			if (typeof value === 'string' && value !== inputValue.value) {
+				inputValue.value = value;
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+watch(activeElement, (active) => {
+	if (!node.value || !active || !wrapperRef.value?.contains(active)) {
+		return;
+	}
+
+	const path = active.closest('.parameter-input')?.getAttribute('data-parameter-path');
+
+	if (!path) {
+		return;
+	}
+
+	telemetry.track('User focused focus panel', {
+		node_id: node.value.id,
+		node_type: node.value.type,
+		parameter_path: path,
+	});
+});
+
 function onResize(event: ResizeData) {
 	focusPanelStore.updateWidth(event.width);
 }
 
 const onResizeThrottle = useThrottleFn(onResize, 10);
+
+function onOpenNdv() {
+	if (node.value) {
+		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
+	}
+}
+
+function onRenameNode(value: string) {
+	if (node.value) {
+		void renameNode(node.value.name, value);
+	}
+}
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
+	<div
+		v-if="focusPanelActive"
+		ref="wrapper"
+		data-test-id="focus-panel"
+		:class="[
+			$style.wrapper,
+			'ignore-key-press-canvas',
+			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },
+		]"
+		@keydown.stop
+	>
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
 			:min-width="300"
-			:max-width="1000"
+			:max-width="experimentalNdvStore.isNdvInFocusPanelEnabled ? undefined : 1000"
 			:grid-size="8"
-			:style="{ width: `${focusPanelWidth}px`, zIndex: styles.APP_Z_INDEXES.FOCUS_PANEL }"
+			:style="{ width: `${focusPanelWidth}px` }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
-				<div v-if="resolvedParameter" :class="$style.content">
-					<div :class="$style.tabHeader">
+				<ExperimentalFocusPanelHeader
+					v-if="experimentalNdvStore.isNdvInFocusPanelEnabled && node && !multipleNodesSelected"
+					:node="node"
+					:parameter="resolvedParameter?.parameter"
+					:is-executable="isExecutable"
+					:read-only="isCanvasReadOnly"
+					@execute="onExecute"
+					@open-ndv="onOpenNdv"
+					@clear-parameter="closeFocusPanel"
+					@rename-node="onRenameNode"
+				/>
+				<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
+					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
 							<N8nText color="text-dark" size="small">
 								{{ resolvedParameter.parameter.displayName }}
@@ -414,119 +539,127 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							<ExpressionEditorModalInput
 								v-else-if="expressionModeEnabled"
 								ref="inputField"
-								:model-value="resolvedParameter.value"
+								v-model="inputValue"
 								:class="$style.editor"
 								:is-read-only="isReadOnly"
 								:path="resolvedParameter.parameterPath"
 								data-test-id="expression-modal-input"
 								:target-node-parameter-context="targetNodeParameterContext"
-								@change="valueChangedDebounced($event.value)"
+								@change="onInputChange($event.value)"
 							/>
 							<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
 								<CodeNodeEditor
 									v-if="editorType === 'codeNodeEditor'"
 									:id="resolvedParameter.parameterPath"
 									ref="inputField"
+									v-model="inputValue"
 									:class="$style.heightFull"
 									:mode="codeEditorMode"
-									:model-value="resolvedParameter.value"
 									:default-value="resolvedParameter.parameter.default"
 									:language="editorLanguage"
 									:is-read-only="isReadOnly"
 									:target-node-parameter-context="targetNodeParameterContext"
 									fill-parent
 									:disable-ask-ai="true"
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<HtmlEditor
 									v-else-if="editorType === 'htmlEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									:disable-expression-coloring="!isHtmlNode"
 									:disable-expression-completions="!isHtmlNode"
 									fullscreen
 									:target-node-parameter-context="targetNodeParameterContext"
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<CssEditor
 									v-else-if="editorType === 'cssEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
 									:target-node-parameter-context="targetNodeParameterContext"
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<SqlEditor
 									v-else-if="editorType === 'sqlEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:dialect="getTypeOption('sqlDialect')"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
 									:target-node-parameter-context="targetNodeParameterContext"
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<JsEditor
 									v-else-if="editorType === 'jsEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									:posthog-capture="shouldCaptureForPosthog"
 									fill-parent
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<JsonEditor
 									v-else-if="resolvedParameter.parameter.type === 'json'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
 									fill-parent
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<N8nInput
 									v-else
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:class="$style.editor"
 									:readonly="isReadOnly"
 									type="textarea"
 									resize="none"
-									@update:model-value="valueChangedDebounced"
+									@update:model-value="onInputChange"
 								></N8nInput
 							></template>
 						</div>
 					</div>
 				</div>
+				<ExperimentalNodeDetailsDrawer
+					v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
+					:node="node"
+					:node-ids="selectedNodeIds"
+					:is-read-only="isReadOnly"
+					@open-ndv="onOpenNdv"
+					@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
+				/>
 				<div v-else :class="[$style.content, $style.emptyContent]">
-					<div :class="$style.emptyText">
-						<div :class="$style.focusParameterWrapper">
-							<div :class="$style.iconWrapper">
-								<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
-								<N8nIcon
-									:class="$style.pointerIcon"
-									icon="mouse-pointer"
-									color="text-dark"
-									size="large"
-								/>
-							</div>
-							<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
-							<N8nRadioButtons
-								size="small"
-								:model-value="'expression'"
-								:disabled="true"
-								:options="[
-									{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
-									{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
-								]"
+					<div :class="$style.focusParameterWrapper">
+						<div :class="$style.iconWrapper">
+							<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
+							<N8nIcon
+								:class="$style.pointerIcon"
+								icon="mouse-pointer"
+								color="text-dark"
+								size="large"
 							/>
 						</div>
+						<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+						<N8nRadioButtons
+							size="small"
+							:model-value="'expression'"
+							:disabled="true"
+							:options="[
+								{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
+								{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
+							]"
+						/>
+					</div>
+					<div :class="$style.emptyText">
 						<N8nText color="text-base" size="medium" :bold="true">
-							{{ locale.baseText('nodeView.focusPanel.noParameters.title') }}
+							{{ emptyTitle }}
 						</N8nText>
 						<N8nText color="text-base" size="small">
-							{{ locale.baseText('nodeView.focusPanel.noParameters.subtitle') }}
+							{{ emptySubtitle }}
 						</N8nText>
 					</div>
 				</div>
@@ -538,11 +671,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 <style lang="scss" module>
 .wrapper {
 	display: flex;
-	flex-direction: row nowrap;
+	flex-direction: row;
+	flex-wrap: nowrap;
 	border-left: 1px solid var(--color-foreground-base);
 	background: var(--color-background-xlight);
 	overflow-y: hidden;
 	height: 100%;
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 
 .container {
@@ -562,35 +698,39 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 		justify-content: center;
 		align-items: center;
 
+		.isNdvInFocusPanelEnabled & {
+			flex-direction: column-reverse;
+		}
+
 		.emptyText {
 			margin: 0 var(--spacing-xl);
 			display: flex;
 			flex-direction: column;
 			gap: var(--spacing-2xs);
+		}
 
-			.focusParameterWrapper {
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				gap: var(--spacing-2xs);
-				margin-bottom: var(--spacing-m);
+		.focusParameterWrapper {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: var(--spacing-2xs);
+			margin-block: var(--spacing-m);
 
-				.iconWrapper {
-					position: relative;
-					display: inline-block;
-				}
+			.iconWrapper {
+				position: relative;
+				display: inline-block;
+			}
 
-				.pointerIcon {
-					position: absolute;
-					top: 100%;
-					left: 50%;
-					transform: translate(-20%, -30%);
-					pointer-events: none;
-				}
+			.pointerIcon {
+				position: absolute;
+				top: 100%;
+				left: 50%;
+				transform: translate(-20%, -30%);
+				pointer-events: none;
+			}
 
-				:global([class*='_disabled_']) {
-					cursor: default !important;
-				}
+			:global([class*='_disabled_']) {
+				cursor: default !important;
 			}
 		}
 	}
@@ -632,8 +772,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 		}
 
 		.editorContainer {
-			height: 100%;
-			overflow-y: auto;
+			height: 0;
+			flex-grow: 1;
 
 			.editor {
 				display: flex;

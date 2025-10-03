@@ -1,10 +1,11 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
+import { ApplicationError, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 
@@ -44,10 +45,17 @@ describe('ScalingService', () => {
 				queueMetricsInterval: 20,
 			},
 		},
+		executions: {
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
+			},
+		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
 	const jobProcessor = mock<JobProcessor>();
+	const executionRepository = mock<ExecutionRepository>();
 
 	let scalingService: ScalingService;
 
@@ -79,7 +87,7 @@ describe('ScalingService', () => {
 			mock(),
 			jobProcessor,
 			globalConfig,
-			mock(),
+			executionRepository,
 			instanceSettings,
 			mock(),
 		);
@@ -112,7 +120,7 @@ describe('ScalingService', () => {
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
-				expect(scheduleQueueRecoverySpy).toHaveBeenCalled();
+				expect(scheduleQueueRecoverySpy).toHaveBeenCalledWith(0);
 			});
 		});
 
@@ -163,7 +171,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			const concurrency = 5;
 
-			scalingService.setupWorker(concurrency);
+			await scalingService.setupWorker(concurrency);
 
 			expect(queue.process).toHaveBeenCalledWith(JOB_TYPE_NAME, concurrency, expect.any(Function));
 		});
@@ -171,14 +179,14 @@ describe('ScalingService', () => {
 		it('should throw if called on a non-worker instance', async () => {
 			await scalingService.setupQueue();
 
-			expect(() => scalingService.setupWorker(5)).toThrow();
+			await expect(scalingService.setupWorker(5)).rejects.toThrow();
 		});
 
 		it('should throw if called before queue is ready', async () => {
 			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 
-			expect(() => scalingService.setupWorker(5)).toThrow();
+			await expect(scalingService.setupWorker(5)).rejects.toThrow();
 		});
 	});
 
@@ -288,7 +296,7 @@ describe('ScalingService', () => {
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
 			expect(job.discard).toHaveBeenCalled();
-			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
+			expect(job.moveToFailed).toHaveBeenCalledWith(new ManualExecutionCancelledError('123'), true);
 			expect(result).toBe(true);
 		});
 
@@ -351,6 +359,38 @@ describe('ScalingService', () => {
 				type: 'item',
 				content: 'test',
 			});
+		});
+	});
+
+	describe('recoverFromQueue', () => {
+		it('should mark running executions as crashed if they are missing from the queue and queue is empty', async () => {
+			await scalingService.setupQueue();
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['123']);
+			queue.getJobs.mockResolvedValue([]);
+
+			await scalingService.recoverFromQueue();
+
+			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+		});
+
+		it('should mark running executions as crashed if they are missing from the queue and queue is not empty', async () => {
+			await scalingService.setupQueue();
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['123']);
+			queue.getJobs.mockResolvedValue([mock<Job>({ data: { executionId: '321' } })]);
+
+			await scalingService.recoverFromQueue();
+
+			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+		});
+
+		it('should not mark running executions as crashed if they are present in the queue', async () => {
+			await scalingService.setupQueue();
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['123']);
+			queue.getJobs.mockResolvedValue([mock<Job>({ data: { executionId: '123' } })]);
+
+			await scalingService.recoverFromQueue();
+
+			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
 		});
 	});
 });

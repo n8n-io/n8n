@@ -5,8 +5,6 @@ import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
 import {
-	cleanupAppModals,
-	createAppModals,
 	getDropdownItems,
 	getSelectedDropdownValue,
 	mockedStore,
@@ -27,6 +25,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
+import type { EventBus } from '@n8n/utils/dist/event-bus';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -136,11 +135,10 @@ const folder: ChangeLocationSearchResult = {
 
 const mockEventBus = {
 	emit: vi.fn(),
-};
+} as unknown as EventBus;
 
 describe('MoveToFolderModal', () => {
 	beforeEach(() => {
-		createAppModals();
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
 		uiStore.modalsById = {
@@ -183,7 +181,6 @@ describe('MoveToFolderModal', () => {
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

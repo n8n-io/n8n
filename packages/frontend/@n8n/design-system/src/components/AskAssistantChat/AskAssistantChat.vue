@@ -1,20 +1,21 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../types/assistant';
+import { isToolMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
-import N8nIconButton from '../N8nIconButton';
+import N8nPromptInput from '../N8nPromptInput';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
-
-const MAX_CHAT_INPUT_HEIGHT = 100;
 
 interface Props {
 	user?: {
@@ -23,25 +24,31 @@ interface Props {
 	};
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
+	disabled?: boolean;
 	loadingMessage?: string;
 	sessionId?: string;
-	title?: string;
-	placeholder?: string;
+	inputPlaceholder?: string;
 	scrollOnNewMessage?: boolean;
+	showStop?: boolean;
+	creditsQuota?: number;
+	creditsRemaining?: number;
+	showAskOwnerTooltip?: boolean;
+	maxCharacterLength?: number;
 }
 
 const emit = defineEmits<{
 	close: [];
+	stop: [];
 	message: [string, string?, boolean?];
 	codeReplace: [number];
 	codeUndo: [number];
 	feedback: [RatingFeedback];
+	'upgrade-click': [];
 }>();
 
 const onClose = () => emit('close');
 
 const props = withDefaults(defineProps<Props>(), {
-	title: () => useI18n().t('assistantChat.aiAssistantLabel'),
 	user: () => ({
 		firstName: '',
 		lastName: '',
@@ -50,28 +57,122 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingMessage: undefined,
 	sessionId: undefined,
 	scrollOnNewMessage: false,
+	maxCharacterLength: undefined,
+	inputPlaceholder: undefined,
 });
 
-// Ensure all messages have required id and read properties
-const normalizedMessages = computed(() => {
-	return props.messages.map((msg, index) => ({
+function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	return messages.map((msg, index) => ({
 		...msg,
 		id: msg.id || `msg-${index}`,
 		read: msg.read ?? true,
 	}));
+}
+
+// filter out these messages so that tool collapsing works correctly
+function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	return messages.filter(
+		(message) => Boolean(getSupportedMessageComponent(message.type)) || message.type === 'custom',
+	);
+}
+
+function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	const result: ChatUI.AssistantMessage[] = [];
+	let i = 0;
+
+	while (i < messages.length) {
+		const currentMsg = messages[i];
+
+		// If it's not a tool message, add it as-is and continue
+		if (!isToolMessage(currentMsg)) {
+			result.push(currentMsg);
+			i++;
+			continue;
+		}
+
+		// Collect consecutive tool messages with the same toolName
+		const toolMessagesGroup = [currentMsg];
+		let j = i + 1;
+
+		while (j < messages.length) {
+			const nextMsg = messages[j];
+			if (isToolMessage(nextMsg) && nextMsg.toolName === currentMsg.toolName) {
+				toolMessagesGroup.push(nextMsg);
+				j++;
+			} else {
+				break;
+			}
+		}
+
+		// If we have multiple tool messages with the same toolName, collapse them
+		if (toolMessagesGroup.length > 1) {
+			// Determine the status to show based on priority rules
+			const lastMessage = toolMessagesGroup[toolMessagesGroup.length - 1];
+			let titleSource = lastMessage;
+
+			// Check if we have running messages - if so, show the last running one and use its titles
+			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
+			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
+			if (runningMessages.length > 0) {
+				const lastRunning = runningMessages[runningMessages.length - 1];
+				titleSource = lastRunning;
+			} else if (errorMessage) {
+				titleSource = errorMessage;
+			}
+
+			// Combine all updates from all messages in the group
+			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
+
+			// Create collapsed message using last message as base, but with titles from titleSource
+			const collapsedMessage: ChatUI.ToolMessage = {
+				...lastMessage,
+				displayTitle: titleSource.displayTitle,
+				customDisplayTitle:
+					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
+				status: titleSource.status,
+				updates: combinedUpdates,
+			};
+
+			result.push(collapsedMessage);
+		} else {
+			// Single tool message, add as-is
+			result.push(currentMsg);
+		}
+
+		i = j;
+	}
+
+	return result;
+}
+
+// Ensure all messages have required id and read properties, and collapse tool messages
+const normalizedMessages = computed(() => {
+	const normalized = normalizeMessages(props.messages);
+	return collapseToolMessages(filterOutHiddenMessages(normalized));
+});
+
+// Get quickReplies from the last message in the original messages (before filtering)
+const lastMessageQuickReplies = computed(() => {
+	if (!props.messages?.length || props.streaming) return [];
+
+	const lastMessage = props.messages[props.messages.length - 1];
+	return 'quickReplies' in lastMessage && lastMessage.quickReplies?.length
+		? lastMessage.quickReplies
+		: [];
 });
 
 const textInputValue = ref<string>('');
+const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 
-const chatInput = ref<HTMLTextAreaElement | null>(null);
 const messagesRef = ref<HTMLDivElement | null>(null);
+const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
 });
 
 const sendDisabled = computed(() => {
-	return !textInputValue.value || props.streaming || sessionEnded.value;
+	return !textInputValue.value || props.streaming || sessionEnded.value || props.disabled;
 });
 
 const showPlaceholder = computed(() => {
@@ -87,36 +188,51 @@ function onQuickReply(opt: ChatUI.QuickReply) {
 }
 
 function onSendMessage() {
-	if (sendDisabled.value) return;
 	emit('message', textInputValue.value);
 	textInputValue.value = '';
-	if (chatInput.value) {
-		chatInput.value.style.height = 'auto';
-	}
-}
-
-function growInput() {
-	if (!chatInput.value) return;
-	chatInput.value.style.height = 'auto';
-	const scrollHeight = chatInput.value.scrollHeight;
-	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 
 function onRateMessage(feedback: RatingFeedback) {
 	emit('feedback', feedback);
 }
 
+function getScrollViewport(): HTMLElement | null {
+	// The viewport is the parent of messagesRef (ScrollAreaViewport component)
+	return messagesRef.value?.parentElement || null;
+}
+
 function scrollToBottom() {
-	if (messagesRef.value) {
-		messagesRef.value?.scrollTo({
+	const viewport = getScrollViewport();
+	if (viewport && messagesRef.value) {
+		viewport.scrollTo({
 			top: messagesRef.value.scrollHeight,
 			behavior: 'smooth',
 		});
 	}
 }
+
+function isScrolledToBottom(): boolean {
+	const viewport = getScrollViewport();
+	if (!viewport || !messagesRef.value) return false;
+
+	const threshold = 10; // Allow for small rounding errors
+	const isAtBottom =
+		Math.abs(viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight) <= threshold;
+
+	return isAtBottom;
+}
+
+function scrollToBottomImmediate() {
+	const viewport = getScrollViewport();
+	if (viewport && messagesRef.value) {
+		viewport.scrollTop = messagesRef.value.scrollHeight;
+	}
+}
+
 watch(sendDisabled, () => {
-	chatInput.value?.focus();
+	promptInputRef.value?.focusInput();
 });
+
 watch(
 	() => props.messages,
 	async (messages) => {
@@ -124,14 +240,105 @@ watch(
 		if (props.scrollOnNewMessage && messages.length > 0) {
 			// Wait for DOM updates before scrolling
 			await nextTick();
-			// Check if messagesRef is available after nextTick
-			if (messagesRef.value) {
+			// Check if viewport is available after nextTick
+			if (getScrollViewport()) {
 				scrollToBottom();
 			}
 		}
 	},
 	{ immediate: true, deep: true },
 );
+
+// Setup ResizeObserver to maintain scroll position when input height changes
+let resizeObserver: ResizeObserver | null = null;
+let scrollLockActive = false;
+let scrollHandler: (() => void) | null = null;
+
+onMounted(() => {
+	const viewport = getScrollViewport();
+	if (inputWrapperRef.value && viewport && 'ResizeObserver' in window) {
+		// Track user scroll to determine if they want to stay at bottom
+		let userIsAtBottom = true;
+
+		// Create scroll handler function so we can remove it later
+		scrollHandler = () => {
+			if (!scrollLockActive) {
+				userIsAtBottom = isScrolledToBottom();
+			}
+		};
+
+		// Monitor user scrolling
+		viewport.addEventListener('scroll', scrollHandler);
+
+		// Monitor input size changes
+		resizeObserver = new ResizeObserver(() => {
+			// Only maintain scroll if user was at bottom
+			if (userIsAtBottom) {
+				scrollLockActive = true;
+				// Double RAF for layout stability
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						scrollToBottomImmediate();
+						// Check if we're still at bottom after auto-scroll
+						userIsAtBottom = isScrolledToBottom();
+						scrollLockActive = false;
+					});
+				});
+			}
+		});
+
+		resizeObserver.observe(inputWrapperRef.value);
+
+		// Start at bottom
+		scrollToBottomImmediate();
+	}
+});
+
+onUnmounted(() => {
+	// Remove scroll event listener to prevent memory leak
+	const viewport = getScrollViewport();
+	if (scrollHandler && viewport) {
+		viewport.removeEventListener('scroll', scrollHandler);
+		scrollHandler = null;
+	}
+
+	// Disconnect ResizeObserver
+	if (resizeObserver) {
+		resizeObserver.disconnect();
+		resizeObserver = null;
+	}
+});
+
+function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
+	const $style = useCssModule();
+	return {
+		[$style.firstToolMessage]:
+			message.type === 'tool' &&
+			(messageCount === 0 || normalizedMessages.value[messageCount - 1].type !== 'tool'),
+		[$style.lastToolMessage]:
+			message.type === 'tool' &&
+			((messageCount === normalizedMessages.value.length - 1 && !props.loadingMessage) ||
+				(messageCount < normalizedMessages.value.length - 1 &&
+					normalizedMessages.value[messageCount + 1]?.type !== 'tool')),
+	};
+}
+
+function getMessageColor(message: ChatUI.AssistantMessage): string | undefined {
+	if (message.type === 'text' && message.role === 'assistant') {
+		const isTaskAbortedMessage = message.content === t('aiAssistant.builder.streamAbortedMessage');
+		if (isTaskAbortedMessage) {
+			return 'var(--color-text-base)';
+		}
+	}
+	return undefined;
+}
+
+// Expose focusInput method to parent components
+defineExpose({
+	focusInput: () => {
+		promptInputRef.value?.focusInput();
+	},
+});
 </script>
 
 <template>
@@ -139,8 +346,11 @@ watch(
 		<div :class="$style.header">
 			<div :class="$style.chatTitle">
 				<div :class="$style.headerText">
-					<AssistantIcon size="large" />
-					<AssistantText size="large" :text="title" />
+					<div :class="$style.assistantTitle">
+						<AssistantIcon size="large" />
+						<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
+					</div>
+					<span :class="$style.betaTag">{{ t('assistantChat.aiAssistantBetaLabel') }}</span>
 				</div>
 				<slot name="header" />
 			</div>
@@ -149,61 +359,78 @@ watch(
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div
-				v-if="normalizedMessages?.length || loadingMessage"
-				ref="messagesRef"
-				:class="$style.messages"
-			>
-				<div v-if="normalizedMessages?.length">
-					<data
-						v-for="(message, i) in normalizedMessages"
-						:key="message.id"
-						:data-test-id="
-							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
-						"
-					>
-						<MessageWrapper
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-							:streaming="streaming"
-							:is-last-message="i === normalizedMessages.length - 1"
-							@code-replace="() => emit('codeReplace', i)"
-							@code-undo="() => emit('codeUndo', i)"
-							@feedback="onRateMessage"
-						/>
-
-						<div
-							v-if="
-								!streaming &&
-								'quickReplies' in message &&
-								message.quickReplies?.length &&
-								i === normalizedMessages.length - 1
-							"
-							:class="$style.quickReplies"
-						>
-							<div :class="$style.quickRepliesTitle">
-								{{ t('assistantChat.quickRepliesTitle') }}
-							</div>
-							<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
-								<N8nButton
-									v-if="opt.text"
-									type="secondary"
-									size="mini"
-									@click="() => onQuickReply(opt)"
-								>
-									{{ opt.text }}
-								</N8nButton>
-							</div>
-						</div>
-					</data>
-				</div>
-				<div
-					v-if="loadingMessage"
-					:class="{ [$style.message]: true, [$style.loading]: normalizedMessages?.length }"
+			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
+				<N8nScrollArea
+					type="hover"
+					:enable-vertical-scroll="true"
+					:enable-horizontal-scroll="false"
 				>
-					<AssistantLoadingMessage :message="loadingMessage" />
-				</div>
+					<div ref="messagesRef" :class="$style.messagesContent">
+						<div v-if="normalizedMessages?.length">
+							<data
+								v-for="(message, i) in normalizedMessages"
+								:key="message.id"
+								:data-test-id="
+									message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
+								"
+							>
+								<MessageWrapper
+									:message="message"
+									:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
+									:user="user"
+									:streaming="streaming"
+									:is-last-message="i === normalizedMessages.length - 1"
+									:class="getMessageStyles(message, i)"
+									:color="getMessageColor(message)"
+									@code-replace="() => emit('codeReplace', i)"
+									@code-undo="() => emit('codeUndo', i)"
+									@feedback="onRateMessage"
+								>
+									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
+										<slot name="custom-message" v-bind="customMessageProps" />
+									</template>
+								</MessageWrapper>
+
+								<div
+									v-if="lastMessageQuickReplies.length && i === normalizedMessages.length - 1"
+									:class="$style.quickReplies"
+								>
+									<div :class="$style.quickRepliesTitle">
+										{{ t('assistantChat.quickRepliesTitle') }}
+									</div>
+									<div
+										v-for="opt in lastMessageQuickReplies"
+										:key="opt.type"
+										data-test-id="quick-replies"
+									>
+										<N8nButton
+											v-if="opt.text"
+											type="secondary"
+											size="mini"
+											@click="() => onQuickReply(opt)"
+										>
+											{{ opt.text }}
+										</N8nButton>
+									</div>
+								</div>
+							</data>
+							<slot name="messagesFooter" />
+						</div>
+						<div
+							v-if="loadingMessage"
+							:class="{
+								[$style.message]: true,
+								[$style.loading]: normalizedMessages?.length,
+								[$style.firstToolMessage]:
+									normalizedMessages?.length === 0 ||
+									normalizedMessages[normalizedMessages.length - 1].type !== 'tool',
+								[$style.lastToolMessage]: true,
+							}"
+						>
+							<AssistantLoadingMessage :message="loadingMessage" />
+						</div>
+					</div>
+				</N8nScrollArea>
 			</div>
 			<div
 				v-else-if="showPlaceholder"
@@ -232,37 +459,30 @@ watch(
 			</div>
 		</div>
 		<div
+			ref="inputWrapperRef"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
 		>
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
 				<slot name="inputPlaceholder" />
 			</div>
-			<template v-else>
-				<textarea
-					ref="chatInput"
-					v-model="textInputValue"
-					class="ignore-key-press-node-creator ignore-key-press-canvas"
-					:class="{ [$style.disabled]: sessionEnded || streaming }"
-					:disabled="sessionEnded || streaming"
-					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
-					rows="1"
-					wrap="hard"
-					data-test-id="chat-input"
-					@keydown.enter.exact.prevent="onSendMessage"
-					@input.prevent="growInput"
-					@keydown.stop
-				/>
-				<N8nIconButton
-					:class="{ [$style.sendButton]: true }"
-					icon="send"
-					:text="true"
-					size="large"
-					data-test-id="send-message-button"
-					:disabled="sendDisabled"
-					@click="onSendMessage"
-				/>
-			</template>
+			<N8nPromptInput
+				v-else
+				ref="promptInputRef"
+				v-model="textInputValue"
+				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
+				:disabled="sessionEnded || disabled"
+				:streaming="streaming"
+				:credits-quota="creditsQuota"
+				:credits-remaining="creditsRemaining"
+				:show-ask-owner-tooltip="showAskOwnerTooltip"
+				:max-length="maxCharacterLength"
+				:refocus-after-send="true"
+				data-test-id="chat-input"
+				@upgrade-click="emit('upgrade-click')"
+				@submit="onSendMessage"
+				@stop="emit('stop')"
+			/>
 		</div>
 	</div>
 </template>
@@ -273,6 +493,7 @@ watch(
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
+	background-color: var(--color-background-light);
 }
 
 .header {
@@ -293,10 +514,17 @@ watch(
 	}
 }
 
+.betaTag {
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+}
+
 .body {
 	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-top: 0;
+	border-bottom: 0;
 	position: relative;
 
 	pre,
@@ -315,45 +543,38 @@ watch(
 	left: 0;
 	width: 100%;
 	height: 100%;
+}
+
+.messagesContent {
 	padding: var(--spacing-xs);
-	overflow-y: auto;
-
-	@supports not (selector(::-webkit-scrollbar)) {
-		scrollbar-width: thin;
-	}
-	@supports selector(::-webkit-scrollbar) {
-		&::-webkit-scrollbar {
-			width: var(--spacing-2xs);
-		}
-		&::-webkit-scrollbar-thumb {
-			border-radius: var(--spacing-xs);
-			background: var(--color-foreground-dark);
-			border: var(--spacing-5xs) solid white;
-		}
-	}
-
-	& + & {
-		padding-top: 0;
-	}
+	padding-bottom: var(--spacing-xl); // Extra padding for fade area
 }
 
 .message {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-s);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
+}
 
-	&.loading {
-		margin-top: var(--spacing-m);
-	}
+.firstToolMessage {
+	margin-top: var(--spacing-m);
+}
+
+.lastToolMessage {
+	margin-bottom: var(--spacing-l);
 }
 
 .chatTitle {
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-xs);
 }
 
 .headerText {
-	gap: var(--spacing-xs);
+	gap: var(--spacing-3xs);
+}
+
+.assistantTitle {
+	gap: var(--spacing-2xs);
 }
 
 .greeting {
@@ -377,6 +598,7 @@ watch(
 
 .quickReplies {
 	margin-top: var(--spacing-s);
+
 	> * {
 		margin-bottom: var(--spacing-3xs);
 	}
@@ -388,30 +610,24 @@ watch(
 }
 
 .inputWrapper {
-	display: flex;
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
+	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-xs);
+	background-color: transparent;
 	width: 100%;
-	border-top: 0;
+	position: relative;
+	border-left: var(--border-base);
+	border-right: var(--border-base);
 
-	textarea {
-		border: none;
-		background-color: transparent;
-		width: 100%;
-		font-size: var(--spacing-xs);
-		padding: var(--spacing-xs);
-		outline: none;
-		color: var(--color-text-dark);
-		resize: none;
-		font-family: inherit;
-	}
-}
-
-.sendButton {
-	color: var(--color-text-base) !important;
-
-	&[disabled] {
-		color: var(--color-text-light) !important;
+	// Add a gradient fade from the chat to the input
+	&::before {
+		content: '';
+		position: absolute;
+		top: calc(-1 * var(--spacing-m));
+		left: 0;
+		right: var(--spacing-xs);
+		height: var(--spacing-m);
+		background: linear-gradient(to bottom, transparent 0%, var(--color-background-light) 100%);
+		pointer-events: none;
+		z-index: 1;
 	}
 }
 
@@ -421,11 +637,6 @@ watch(
 	* {
 		cursor: not-allowed;
 	}
-}
-
-textarea.disabled {
-	background-color: var(--color-foreground-base);
-	cursor: not-allowed;
 }
 
 .inputPlaceholder {

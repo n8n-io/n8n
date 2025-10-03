@@ -1,7 +1,11 @@
+<script setup lang="ts">
+import { N8nSpinner } from '@n8n/design-system';
+</script>
+
 <template>
 	<div :class="$style.wrapper" data-test-id="node-view-loader">
 		<div :class="$style.spinner">
-			<n8n-spinner />
+			<N8nSpinner />
 		</div>
 	</div>
 </template>

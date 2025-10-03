@@ -1,5 +1,6 @@
+import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/constants';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { EditorView } from '@codemirror/view';
+import { EditorView, tooltips } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 
 /**
@@ -114,6 +115,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		'&.cm-editor': {
 			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
 			borderColor: 'var(--border-color-base)',
+			overflow: 'hidden',
 		},
 		'&.cm-editor.cm-focused': {
 			outline: 'none',
@@ -195,6 +197,10 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			backgroundColor: 'var(--color-background-base)',
 			border: 'var(--border-base)',
 		},
+		'.cm-lintRange-error': {
+			backgroundImage:
+				"url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='6' height='3'%3e%3cpath d='m0 2.5 l2 -1.5 l1 0 l2 1.5 l1 0' stroke='%23F56565' fill='none' stroke-width='.7'/%3e%3c/svg%3e\") !important", // #F56565 is --color-text-danger
+		},
 		'.cm-selectionMatch': {
 			background: 'var(--color-code-selection-highlight)',
 		},
@@ -259,4 +265,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 	}),
 	codeEditorSyntaxHighlighting,
+	tooltips({
+		parent: document.getElementById(CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID) ?? undefined,
+	}),
 ];

@@ -41,6 +41,10 @@ export interface Props {
 	 * Whether to show vertical scrollbar
 	 */
 	enableVerticalScroll?: boolean;
+	/**
+	 * Change the default rendered element for the one passed as a child, merging their props and behavior.
+	 */
+	asChild?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	maxWidth: undefined,
 	enableHorizontalScroll: false,
 	enableVerticalScroll: true,
+	asChild: false,
 });
 
 const viewportStyle = computed(() => {
@@ -72,7 +77,7 @@ const viewportStyle = computed(() => {
 		:scroll-hide-delay="scrollHideDelay"
 		:class="$style.scrollAreaRoot"
 	>
-		<ScrollAreaViewport :class="$style.viewport" :style="viewportStyle">
+		<ScrollAreaViewport :as-child="asChild" :class="$style.viewport" :style="viewportStyle">
 			<slot />
 		</ScrollAreaViewport>
 
@@ -118,6 +123,7 @@ const viewportStyle = computed(() => {
 	padding: var(--spacing-5xs);
 	background: transparent;
 	transition: background 160ms ease-out;
+	pointer-events: none;
 
 	&:hover {
 		background: var(--color-foreground-light);
@@ -138,18 +144,7 @@ const viewportStyle = computed(() => {
 	background: var(--color-foreground-base);
 	border-radius: 4px;
 	position: relative;
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 100%;
-		height: 100%;
-		min-width: 44px;
-		min-height: 44px;
-	}
+	pointer-events: auto;
 
 	&:hover {
 		background: var(--color-foreground-dark);

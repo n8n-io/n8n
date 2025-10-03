@@ -12,6 +12,10 @@ import type {
 } from '@/types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
+import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
+import type { TelemetryContext } from './types/telemetry';
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { WorkflowState } from './composables/useWorkflowState';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -46,6 +50,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
+export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -86,6 +91,9 @@ export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
+export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
+export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
+export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -115,6 +123,9 @@ export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integratio
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
+export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;
+export const ERROR_WORKFLOW_DOCS_URL = `https://${DOCS_DOMAIN}/flow-logic/error-handling/#create-and-set-an-error-workflow`;
+export const TIME_SAVED_DOCS_URL = `https://${DOCS_DOMAIN}/insights/#setting-the-time-saved-by-a-workflow`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 export const N8N_MAIN_GITHUB_REPO_URL = 'https://github.com/n8n-io/n8n';
 
@@ -219,9 +230,16 @@ export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
+export const DATA_STORE_NODE_TYPE = 'n8n-nodes-base.dataTable';
+export const DATA_STORE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
+
+// template categories
+export const TEMPLATE_CATEGORY_AI = 'categories/ai';
+
+export const DATA_STORE_NODES = [DATA_STORE_NODE_TYPE, DATA_STORE_TOOL_NODE_TYPE];
 
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
@@ -242,6 +260,9 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	CODE_NODE_TYPE,
 	AI_CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
+];
+export const MODULE_ENABLED_NODES = [
+	...DATA_STORE_NODES.map((nodeType) => ({ nodeType, module: DATA_STORE_MODULE_NAME })),
 ];
 
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
@@ -282,6 +303,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	CONTEXT_MENU: 'context_menu',
 	ADD_EVALUATION_NODE_BUTTON: 'add_evaluation_node_button',
 	ADD_EVALUATION_TRIGGER_BUTTON: 'add_evaluation_trigger_button',
+	TEMPLATES_CALLOUT: 'templates_callout',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -318,12 +340,24 @@ export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
+export const PRE_BUILT_AGENTS_COLLECTION = 'pre-built-agents-collection';
 
 // Node Connection Types
 export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 	NodeConnectionTypes.AiTool,
 	NodeConnectionTypes.Main,
 ];
+
+// Data Types
+export const DATA_TYPE_ICON_MAP = {
+	['string']: 'type',
+	['number']: 'hash',
+	['boolean']: 'square-check',
+	date: 'calendar',
+	array: 'list',
+	object: 'box',
+	file: 'file',
+} satisfies Record<string, IconName>;
 
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';
@@ -486,20 +520,18 @@ export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
+export const LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS = 'N8N_TURN_OFF_WORKFLOW_SUGGESTIONS';
 export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION_ENABLED';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS_PANEL_SUB_NODE';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
-export const LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS =
-	'N8N_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS';
-export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
-	'N8N_EXPERIMENTAL_DOCKED_NODE_SETTINGS';
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
 export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
 export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
 export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
 	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
+export const LOCAL_STORAGE_RUN_DATA_WORKER = 'N8N_RUN_DATA_WORKER';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
@@ -588,10 +620,10 @@ export const enum VIEWS {
 	SHARED_CREDENTIALS = 'SharedCredentials',
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
+	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
-export const VISIBLE_LOGS_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 
 export const TEST_PIN_DATA = [
 	{
@@ -736,20 +768,38 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
+export const CANVAS_ZOOMED_VIEW_EXPERIMENT = {
+	name: 'canvas_zoomed_view',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const NDV_IN_FOCUS_PANEL_EXPERIMENT = {
+	name: 'ndv_in_focus_panel',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const COMMAND_BAR_EXPERIMENT = {
+	name: 'command_bar',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	name: '029_ndv_ui_overhaul',
 	control: 'control',
 	variant: 'variant',
 };
 
-export const WORKFLOW_BUILDER_EXPERIMENT = {
-	name: '036_workflow_builder_agent',
+export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = {
+	name: '043_workflow_builder_release',
 	control: 'control',
 	variant: 'variant',
 };
 
-export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
-	name: '033_rag_template',
+export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = {
+	name: '036_workflow_builder_agent',
 	control: 'control',
 	variant: 'variant',
 };
@@ -767,12 +817,58 @@ export const TEMPLATE_ONBOARDING_EXPERIMENT = {
 	variantSuggestedTemplates: 'variant-suggested-templates',
 };
 
+export const BATCH_11AUG_EXPERIMENT = {
+	name: '37_onboarding_experiments_batch_aug11',
+	control: 'control',
+	variantReadyToRun: 'variant-ready-to-run-workflows',
+	variantReadyToRun2: 'variant-ready-to-run-workflows_v2',
+	variantReadyToRun3: 'variant-ready-to-run-workflows_v3',
+};
+
+export const PRE_BUILT_AGENTS_EXPERIMENT = {
+	name: '038_pre_built_agents',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const TEMPLATE_RECO_V2 = {
+	name: '039_template_onboarding_v2',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const READY_TO_RUN_V2_EXPERIMENT = {
+	name: '042_ready-to-run-worfklow_v2',
+	control: 'control',
+	variant1: 'variant-1-singlebox',
+	variant2: 'variant-2-twoboxes',
+};
+
+export const READY_TO_RUN_V2_PART2_EXPERIMENT = {
+	name: '045_ready-to-run-worfklow_v2-2',
+	control: 'control',
+	variant3: 'variant-3',
+	variant4: 'variant-4',
+};
+
+export const PERSONALIZED_TEMPLATES_V3 = {
+	name: '044_template_reco_v3',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
-	WORKFLOW_BUILDER_EXPERIMENT.name,
-	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
+	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
+	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
+	BATCH_11AUG_EXPERIMENT.name,
+	PRE_BUILT_AGENTS_EXPERIMENT.name,
+	TEMPLATE_RECO_V2.name,
+	READY_TO_RUN_V2_EXPERIMENT.name,
+	PERSONALIZED_TEMPLATES_V3.name,
+	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
@@ -842,6 +938,7 @@ export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
 export const ASK_AI_SLIDE_OUT_DURATION_MS = 200;
+export const PLAN_APPROVAL_MESSAGE = 'Proceed with the plan';
 
 export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
 
@@ -936,16 +1033,28 @@ export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
-export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window | undefined>>;
-export const ExpressionLocalResolveContextSymbol = Symbol(
-	'ExpressionLocalResolveContext',
-) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
+export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('PopOutWindow');
+export const ExpressionLocalResolveContextSymbol: InjectionKey<
+	ComputedRef<ExpressionLocalResolveContext | undefined>
+> = Symbol('ExpressionLocalResolveContext');
+export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
+export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowState');
 
-/** Auth */
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
+export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';
 
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 
 export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes
 
 export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
+
+/**
+ * Performance Optimizations
+ */
+
+export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
+export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;
+
+export const BINARY_DATA_ACCESS_TOOLTIP =
+	"Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.binary.data }}";

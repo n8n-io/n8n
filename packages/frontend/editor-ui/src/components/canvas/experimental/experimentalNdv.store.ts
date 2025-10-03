@@ -1,7 +1,6 @@
 import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import {
 	type Dimensions,
 	type FitView,
@@ -12,22 +11,28 @@ import {
 	type ZoomTo,
 } from '@vue-flow/core';
 import { CanvasNodeRenderType, type CanvasNodeData } from '@/types';
+import { usePostHog } from '@/stores/posthog.store';
+import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/constants';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
-	const isEnabled = computed(
+	const postHogStore = usePostHog();
+	const isZoomedViewEnabled = computed(
 		() =>
-			!Number.isNaN(settingsStore.experimental__minZoomNodeSettingsInCanvas) &&
-			settingsStore.experimental__minZoomNodeSettingsInCanvas > 0,
+			postHogStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
+			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
 	);
-	const maxCanvasZoom = computed(() =>
-		isEnabled.value ? settingsStore.experimental__minZoomNodeSettingsInCanvas : 4,
+	const isNdvInFocusPanelEnabled = computed(
+		() =>
+			postHogStore.getVariant(NDV_IN_FOCUS_PANEL_EXPERIMENT.name) ===
+			NDV_IN_FOCUS_PANEL_EXPERIMENT.variant,
 	);
+	const maxCanvasZoom = computed(() => (isZoomedViewEnabled.value ? 2 : 4));
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
 	const nodeNameToBeFocused = ref<string | undefined>();
+	const isMapperOpen = ref(false);
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -51,15 +56,18 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function isActive(canvasZoom: number) {
-		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
+		return isZoomedViewEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
 	}
 
 	function setNodeNameToBeFocused(nodeName: string) {
 		nodeNameToBeFocused.value = nodeName;
 	}
 
+	function setMapperOpen(value: boolean) {
+		isMapperOpen.value = value;
+	}
+
 	interface FocusNodeOptions {
-		collapseOthers?: boolean;
 		canvasViewport: ViewportTransform;
 		canvasDimensions: Dimensions;
 		setCenter: SetCenter;
@@ -67,14 +75,9 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 
 	function focusNode(
 		node: GraphNode<CanvasNodeData>,
-		{ collapseOthers = true, canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
+		{ canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
 	) {
-		collapsedNodes.value = collapseOthers
-			? workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>((acc, n) => {
-					acc[n.id] = n.id !== node.id;
-					return acc;
-				}, {})
-			: { ...collapsedNodes.value, [node.id]: false };
+		collapsedNodes.value = { ...collapsedNodes.value, [node.id]: false };
 
 		const topMargin = 80; // pixels
 		const nodeWidth = node.dimensions.width * (isActive(canvasViewport.zoom) ? 1 : 1.5);
@@ -125,7 +128,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			)[0];
 
 		if (toFocus) {
-			focusNode(toFocus, { ...options, collapseOthers: false });
+			focusNode(toFocus, options);
 			return;
 		}
 
@@ -133,11 +136,13 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	return {
-		isEnabled,
+		isZoomedViewEnabled,
+		isNdvInFocusPanelEnabled,
 		maxCanvasZoom,
 		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),
 		nodeNameToBeFocused: computed(() => nodeNameToBeFocused.value),
+		isMapperOpen: computed(() => isMapperOpen.value),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
@@ -145,5 +150,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		toggleZoomMode,
 		focusNode,
 		setNodeNameToBeFocused,
+		setMapperOpen,
 	};
 });

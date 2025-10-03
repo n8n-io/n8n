@@ -32,6 +32,18 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:list',
 	'folder:move',
 	'sourceControl:push',
+	'dataStore:create',
+	'dataStore:delete',
+	'dataStore:read',
+	'dataStore:update',
+	'dataStore:listProject',
+	'dataStore:readRow',
+	'dataStore:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -58,6 +70,13 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'folder:delete',
 	'folder:list',
 	'folder:move',
+	'dataStore:create',
+	'dataStore:delete',
+	'dataStore:read',
+	'dataStore:update',
+	'dataStore:listProject',
+	'dataStore:readRow',
+	'dataStore:writeRow',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -79,6 +98,18 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'folder:update',
 	'folder:delete',
 	'folder:list',
+	'dataStore:create',
+	'dataStore:delete',
+	'dataStore:read',
+	'dataStore:update',
+	'dataStore:listProject',
+	'dataStore:readRow',
+	'dataStore:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -90,4 +121,9 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'workflow:read',
 	'folder:read',
 	'folder:list',
+	'dataStore:listProject',
+	'dataStore:read',
+	'dataStore:readRow',
+	'projectVariable:list',
+	'projectVariable:read',
 ];

@@ -154,7 +154,7 @@ async function setupStore() {
 		}),
 	]);
 	workflowsStore.workflow = workflow as IWorkflowDb;
-	ndvStore.activeNodeName = 'Test Node Name';
+	ndvStore.setActiveNodeName('Test Node Name', 'other');
 
 	return pinia;
 }
@@ -742,6 +742,52 @@ describe('VirtualSchema.vue', () => {
 			expect(headers.length).toBe(2);
 		});
 		expect(container).toMatchSnapshot();
+	});
+
+	it('does not filter single-output connected nodes by outputIndex', async () => {
+		// This test verifies the fix for the issue where nodes with single output connections
+		// were incorrectly being filtered by the current node's outputIndex
+		const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+		vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
+			return {
+				...originalNodeHelpers,
+				getLastRunIndexWithData: vi.fn(() => 0),
+				hasNodeExecuted: vi.fn(() => true),
+				getNodeInputData: vi.fn((node, _, outputIndex) => {
+					// Switch node has data on output 0
+					if (node.name === 'If' && outputIndex === 0) {
+						return [{ json: { id: 1, name: 'John' } }, { json: { id: 2, name: 'Jane' } }];
+					}
+					// No data on output 1
+					if (node.name === 'If' && outputIndex === 1) {
+						return [];
+					}
+					return [];
+				}),
+			};
+		});
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				// If node is connected only via output 0 to the current node
+				nodes: [{ name: 'If', indicies: [0], depth: 2 }],
+				// Even though outputIndex is 1, the If node should still show its data
+				// because it only has a single connection (output 0)
+				outputIndex: 1,
+			},
+		});
+
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent('If');
+			// Should show 2 items from output 0, not filtered by outputIndex: 1
+			expect(headers[0]).toHaveTextContent('2 items');
+
+			const items = getAllByTestId('run-data-schema-item');
+			// Should show the data from output 0
+			expect(items[0]).toHaveTextContent('id1');
+			expect(items[1]).toHaveTextContent('nameJohn');
+		});
 	});
 
 	it('renders schema for loop node done-branch with correct filtering', async () => {

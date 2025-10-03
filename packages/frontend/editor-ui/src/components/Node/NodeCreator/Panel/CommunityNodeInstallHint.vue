@@ -2,8 +2,7 @@
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 
-import { N8nText, N8nIcon } from '@n8n/design-system';
-
+import { N8nIcon, N8nText } from '@n8n/design-system';
 export interface Props {
 	hint: string;
 }

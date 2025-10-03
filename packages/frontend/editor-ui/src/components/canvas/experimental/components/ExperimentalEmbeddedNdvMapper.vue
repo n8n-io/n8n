@@ -1,120 +1,144 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
-import { useCanvas } from '@/composables/useCanvas';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { N8nText } from '@n8n/design-system';
-import { useVueFlow } from '@vue-flow/core';
-import { useActiveElement } from '@vueuse/core';
-import { ElPopover } from 'element-plus';
 import type { Workflow } from 'n8n-workflow';
-import { ref, useTemplateRef, watch } from 'vue';
+import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
+import { useStyles } from '@/composables/useStyles';
+import {
+	onClickOutside,
+	useElementHover,
+	type UseElementHoverOptions,
+	useEventListener,
+} from '@vueuse/core';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
-const { node, container } = defineProps<{
+import { N8nPopoverReka } from '@n8n/design-system';
+type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
+
+const hoverOptions: UseElementHoverOptions = {
+	delayLeave: 200, // should be a positive value, otherwise user cannot click on the mapper
+};
+
+const {
+	node,
+	inputNodeName,
+	reference,
+	visibleOnHover = false,
+} = defineProps<{
 	workflow: Workflow;
 	node: INodeUi;
-	container: HTMLDivElement | null;
-	inputNodeName?: string;
+	inputNodeName: string;
+	visibleOnHover?: boolean;
+	reference: HTMLElement;
 }>();
 
+const state = ref<MapperState>({ isOpen: false });
+const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
-const vf = useVueFlow();
-const { isPaneMoving, viewport } = useCanvas();
-const activeElement = useActiveElement();
+const experimentalNdvStore = useExperimentalNdvStore();
+const contentElRef = computed<HTMLElement | null>(() => contentRef.value?.$el ?? null);
+const { APP_Z_INDEXES } = useStyles();
+const isReferenceHovered = useElementHover(visibleOnHover ? reference : null, hoverOptions);
+const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, hoverOptions);
+const isHovered = computed(() => isReferenceHovered.value || isMapperHovered.value);
 
-const inputPanelRef = useTemplateRef('inputPanel');
-const shouldShowInputPanel = ref(false);
-
-function getShouldShowInputPanel() {
-	const active = activeElement.value;
-
-	if (!active || !container || !container.contains(active)) {
-		return false;
+function handleFocusIn() {
+	if (experimentalNdvStore.isMapperOpen) {
+		// Skip if there's already a mapper opened
+		return;
 	}
 
-	// TODO: find a way to implement this without depending on test ID
-	return (
-		!!active.closest('[data-test-id=inline-expression-editor-input]') ||
-		!!inputPanelRef.value?.$el.contains(active)
-	);
+	state.value = { isOpen: true, closeOnMouseLeave: false };
 }
 
-watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
-	if (active && container?.contains(active)) {
-		shouldShowInputPanel.value = getShouldShowInputPanel();
+function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
+	if (
+		isEventTargetContainedBy(event.target, reference) ||
+		isEventTargetContainedBy(event.target, contentElRef) ||
+		isEventTargetContainedBy(event.relatedTarget, contentElRef)
+	) {
+		// Skip when focus moves between the mapper and its reference element
+		return;
 	}
 
-	if (selected.every((sel) => sel.id !== node.id)) {
-		shouldShowInputPanel.value = false;
+	state.value = { isOpen: false };
+}
+
+watch(isHovered, (hovered) => {
+	if (
+		!visibleOnHover ||
+		(state.value.isOpen && !state.value.closeOnMouseLeave) ||
+		experimentalNdvStore.isMapperOpen
+	) {
+		return;
 	}
+
+	state.value = hovered ? { isOpen: true, closeOnMouseLeave: true } : { isOpen: false };
 });
 
-watch(isPaneMoving, (moving) => {
-	shouldShowInputPanel.value = !moving && getShouldShowInputPanel();
+watch(
+	state,
+	(value) => {
+		experimentalNdvStore.setMapperOpen(value.isOpen && !value.closeOnMouseLeave);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	experimentalNdvStore.setMapperOpen(false);
 });
 
-watch(viewport, () => {
-	shouldShowInputPanel.value = false;
-});
+useEventListener(reference, 'focusin', handleFocusIn);
+useEventListener(reference, 'focusout', handleReferenceFocusOut);
+useEventListener(contentElRef, 'focusin', handleFocusIn);
+
+onClickOutside(contentElRef, handleReferenceFocusOut);
 </script>
 
 <template>
-	<ElPopover
-		:visible="shouldShowInputPanel"
-		placement="left-start"
-		:show-arrow="false"
-		:popper-class="$style.component"
-		:width="360"
-		:offset="8"
-		:append-to="vf.viewportRef?.value"
-		:popper-options="{
-			modifiers: [{ name: 'flip', enabled: false }],
-		}"
+	<N8nPopoverReka
+		:open="state.isOpen"
+		side="left"
+		:side-flip="false"
+		align="start"
+		width="360px"
+		:max-height="`calc(100vh - var(--spacing-s) * 2)`"
+		:reference="reference"
+		:suppress-auto-focus="true"
+		:z-index="APP_Z_INDEXES.NDV + 1"
+		content-class="ignore-key-press-canvas ignore-key-press-node-creator"
 	>
-		<template #reference>
-			<slot />
+		<template #content>
+			<InputPanel
+				ref="content"
+				:tabindex="-1"
+				:class="$style.inputPanel"
+				:workflow-object="workflow"
+				:run-index="0"
+				compact
+				push-ref=""
+				display-mode="schema"
+				disable-display-mode-selection
+				:active-node-name="node.name"
+				:current-node-name="inputNodeName"
+				:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+				:focused-mappable-input="ndvStore.focusedMappableInput"
+				node-not-run-message-variant="simple"
+				:truncate-limit="60"
+				search-shortcut="ctrl+f"
+			/>
 		</template>
-		<InputPanel
-			ref="inputPanel"
-			:tabindex="-1"
-			:class="$style.inputPanel"
-			:workflow="workflow"
-			:run-index="0"
-			compact
-			push-ref=""
-			display-mode="schema"
-			disable-display-mode-selection
-			:active-node-name="node.name"
-			:current-node-name="inputNodeName"
-			:is-mapping-onboarded="ndvStore.isMappingOnboarded"
-			:focused-mappable-input="ndvStore.focusedMappableInput"
-		>
-			<template #header>
-				<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
-					Input
-				</N8nText>
-			</template>
-		</InputPanel>
-	</ElPopover>
+	</N8nPopoverReka>
 </template>
 
 <style lang="scss" module>
-.component {
-	background-color: transparent !important;
-	padding: 0 !important;
-	border: none !important;
-	margin-top: -2px;
-}
-
 .inputPanel {
-	border: var(--border-base);
-	border-width: 1px;
-	background-color: var(--color-background-light);
-	border-radius: var(--border-radius-large);
-	zoom: var(--zoom);
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+	background-color: transparent;
 	padding: var(--spacing-2xs);
 	height: 100%;
+	overflow: auto;
 }
 
 .inputPanelTitle {

@@ -21,6 +21,7 @@ import { i18n } from '@n8n/i18n';
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -54,6 +55,25 @@ const customNodeActionsParsers: {
 			}),
 		);
 	},
+	['n8n-nodes-base.code']: (matchedProperty, nodeTypeDescription) => {
+		if (matchedProperty.name !== 'language') return;
+
+		const languageOptions = matchedProperty.options as INodePropertyOptions[] | undefined;
+		if (!languageOptions) return;
+
+		return languageOptions.map(
+			(option): ActionTypeDescription => ({
+				...getNodeTypeBase(nodeTypeDescription),
+				actionKey: `language_${option.value}`,
+				displayName: `Code in ${option.name}`,
+				description: `Run custom ${option.name} code`,
+				displayOptions: matchedProperty.displayOptions,
+				values: {
+					language: option.value,
+				},
+			}),
+		);
+	},
 };
 
 function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: string) {
@@ -78,6 +98,26 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 
 function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
 	if (nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
+
+	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
+		const languageProperty = nodeTypeDescription.properties.find(
+			(property) =>
+				property.name === 'language' && property.displayOptions?.show?.['@version']?.[0] === 2,
+		);
+
+		if (languageProperty) {
+			const customParsedItems = customNodeActionsParsers[nodeTypeDescription.name]?.(
+				languageProperty,
+				nodeTypeDescription,
+			);
+			if (customParsedItems) {
+				// temporary until native Python runner is GA
+				return useSettingsStore().isNativePythonRunnerEnabled
+					? customParsedItems.filter((item) => item.actionKey !== 'language_python')
+					: customParsedItems.filter((item) => item.actionKey !== 'language_pythonNative');
+			}
+		}
+	}
 
 	const matchedProperty = nodeTypeDescription.properties.find(
 		(property) => property.name?.toLowerCase() === 'operation',

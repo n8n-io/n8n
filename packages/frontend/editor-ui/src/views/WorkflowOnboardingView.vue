@@ -2,7 +2,7 @@
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -66,5 +66,3 @@ onMounted(async () => {
 <template>
 	<div></div>
 </template>
-
-<style lang="scss" module></style>

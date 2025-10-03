@@ -1,0 +1,56 @@
+name: Python CI
+
+on:
+  pull_request:
+    paths:
+      - packages/@n8n/task-runner-python/**
+      - .github/workflows/ci-python.yml
+  push:
+    paths:
+      - packages/@n8n/task-runner-python/**
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/@n8n/task-runner-python
+    steps:
+      - name: Check out project
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
+
+      - name: Install Python
+        run: uv python install 3.13
+
+      - name: Install project dependencies
+        run: just sync-all
+
+      - name: Format check
+        run: just format check
+
+      - name: Typecheck
+        run: just typecheck
+
+      - name: Lint
+        run: just lint
+
+      - name: Python unit tests
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/@n8n/task-runner-python/coverage.xml
+          flags: tests
+          name: task-runner-python
+          fail_ci_if_error: false

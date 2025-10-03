@@ -1,4 +1,6 @@
 // Different LLMConfig type for this file - specific to LLM providers
+import { MAX_OUTPUT_TOKENS } from '@/constants';
+
 interface LLMProviderConfig {
 	apiKey: string;
 	baseUrl?: string;
@@ -45,16 +47,21 @@ export const gpt41 = async (config: LLMProviderConfig) => {
 	});
 };
 
-export const anthropicClaudeSonnet4 = async (config: LLMProviderConfig) => {
+export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await import('@langchain/anthropic');
-	return new ChatAnthropic({
-		model: 'claude-sonnet-4-20250514',
+	const model = new ChatAnthropic({
+		model: 'claude-sonnet-4-5',
 		apiKey: config.apiKey,
 		temperature: 0,
-		maxTokens: 16000,
+		maxTokens: MAX_OUTPUT_TOKENS,
 		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
 			defaultHeaders: config.headers,
 		},
 	});
+
+	// Remove Langchain default topP parameter since Sonnet 4.5 doesn't allow setting both temperature and topP
+	delete model.topP;
+
+	return model;
 };

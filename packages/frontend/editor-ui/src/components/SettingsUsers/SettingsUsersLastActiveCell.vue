@@ -15,5 +15,3 @@ const formattedDate = computed(() =>
 <template>
 	<span>{{ formattedDate }}</span>
 </template>
-
-<style lang="scss" module></style>

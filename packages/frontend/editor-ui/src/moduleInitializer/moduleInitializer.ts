@@ -5,12 +5,14 @@ import { registerResource } from '@/moduleInitializer/resourceRegistry';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { InsightsModule } from '../features/insights/module.descriptor';
+import { MCPModule } from '../features/mcpAccess/module.descriptor';
 import type { FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import * as modalRegistry from '@/moduleInitializer/modalRegistry';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
  */
-const modules: FrontendModuleDescription[] = [InsightsModule, DataStoreModule];
+const modules: FrontendModuleDescription[] = [InsightsModule, DataStoreModule, MCPModule];
 
 /**
  * Initialize modules resources (used in ResourcesListLayout), done in init.ts
@@ -44,6 +46,18 @@ export const registerModuleProjectTabs = () => {
 };
 
 /**
+ * Initialize modules settings sidebar items (used in SettingsSidebar), done in init.ts
+ */
+export const registerModuleSettingsPages = () => {
+	const uiStore = useUIStore();
+	modules.forEach((module) => {
+		if (module.settingsPages && module.settingsPages.length > 0) {
+			uiStore.registerSettingsPages(module.id, module.settingsPages);
+		}
+	});
+};
+
+/**
  * Middleware function to check if a module is available
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,6 +66,19 @@ const checkModuleAvailability = (options: any) => {
 		return true;
 	}
 	return useSettingsStore().isModuleActive(options.to.meta.moduleName);
+};
+
+/**
+ * Initialize module modals, done in init.ts
+ */
+export const registerModuleModals = () => {
+	modules.forEach((module) => {
+		module.modals?.forEach((modalDef) => {
+			modalRegistry.register(modalDef);
+		});
+	});
+	// Subscribe to modal registry changes
+	useUIStore().initializeModalsFromRegistry();
 };
 
 /**
@@ -78,6 +105,8 @@ export const registerModuleRoutes = (router: Router) => {
 
 			if (route.meta?.projectRoute) {
 				router.addRoute(VIEWS.PROJECT_DETAILS, enhancedRoute);
+			} else if (route.meta?.telemetry && route.meta.telemetry.pageCategory === 'settings') {
+				router.addRoute(VIEWS.SETTINGS, enhancedRoute);
 			} else {
 				router.addRoute(enhancedRoute);
 			}

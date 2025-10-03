@@ -9,6 +9,7 @@ import type { NodeFilterType } from '@/Interface';
 import NoResultsIcon from './NoResultsIcon.vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nLink } from '@n8n/design-system';
 export interface Props {
 	showIcon?: boolean;
 	showRequest?: boolean;
@@ -35,13 +36,13 @@ const i18n = useI18n();
 				:class="$style.action"
 			>
 				{{ i18n.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<n8n-link v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
+				<N8nLink v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
 					{{ i18n.baseText('nodeCreator.noResults.httpRequest') }}
-				</n8n-link>
+				</N8nLink>
 
-				<n8n-link v-if="rootView === TRIGGER_NODE_CREATOR_VIEW" @click="$emit('addWebhookNode')">
+				<N8nLink v-if="rootView === TRIGGER_NODE_CREATOR_VIEW" @click="$emit('addWebhookNode')">
 					{{ i18n.baseText('nodeCreator.noResults.webhook') }}
-				</n8n-link>
+				</N8nLink>
 				{{ i18n.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
@@ -49,17 +50,17 @@ const i18n = useI18n();
 		<div v-if="showRequest" :class="$style.request">
 			<p v-text="i18n.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
 			<div>
-				<n8n-link :to="REQUEST_NODE_FORM_URL">
+				<N8nLink :to="REQUEST_NODE_FORM_URL">
 					<span>{{ i18n.baseText('nodeCreator.noResults.requestTheNode') }}</span
 					>&nbsp;
 					<span>
-						<n8n-icon
+						<N8nIcon
 							:class="$style.external"
 							icon="external-link"
 							:title="i18n.baseText('nodeCreator.noResults.requestTheNode')"
 						/>
 					</span>
-				</n8n-link>
+				</N8nLink>
 			</div>
 		</div>
 	</div>

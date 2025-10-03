@@ -8,9 +8,10 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { DataStoreResource } from '@/features/dataStore/types';
-import { fetchDataStores } from '@/features/dataStore/datastore.api';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import type { Mock } from 'vitest';
+import { type Project } from '@/types/projects.types';
 
-vi.mock('@/features/dataStore/datastore.api');
 vi.mock('@/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
@@ -25,7 +26,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 		...actualObj,
 		useI18n: vi.fn(() => ({
 			baseText: vi.fn((key: string) => {
-				if (key === 'dataStore.tab.label') return 'Data Store';
+				if (key === 'dataStore.dataStores') return 'Data Stores';
 				if (key === 'projects.menu.personal') return 'Personal';
 				if (key === 'dataStore.empty.label') return 'No data stores';
 				if (key === 'dataStore.empty.description') return 'No data stores description';
@@ -61,6 +62,7 @@ vi.mock('@/composables/useDocumentTitle', () => ({
 
 const mockDebounce = {
 	callDebounced: vi.fn((fn) => fn()),
+	debounce: vi.fn(),
 };
 vi.mock('@/composables/useDebounce', () => ({
 	useDebounce: vi.fn(() => mockDebounce),
@@ -70,7 +72,7 @@ const router = createRouter({
 	history: createWebHistory(),
 	routes: [
 		{
-			path: '/projects/:projectId/data-stores',
+			path: '/projects/:projectId/data-tables',
 			component: { template: '<div></div>' },
 		},
 		{
@@ -83,6 +85,7 @@ const router = createRouter({
 let pinia: ReturnType<typeof createTestingPinia>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+let dataStoreStore: ReturnType<typeof mockedStore<typeof useDataStoreStore>>;
 
 const renderComponent = createComponentRenderer(DataStoreView, {
 	global: {
@@ -98,14 +101,11 @@ const initialState = {
 	},
 };
 
-const mockFetchDataStores = vi.mocked(fetchDataStores);
-
 const TEST_DATA_STORE: DataStoreResource = {
 	id: '1',
 	name: 'Test Data Store',
-	size: 1024,
-	recordCount: 100,
-	columnCount: 5,
+	sizeBytes: 1024,
+	columns: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 	resourceType: 'datastore',
@@ -115,44 +115,55 @@ const TEST_DATA_STORE: DataStoreResource = {
 describe('DataStoreView', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		await router.push('/projects/test-project/data-stores');
+		await router.push('/projects/test-project/data-tables');
 		await router.isReady();
 
 		pinia = createTestingPinia({ initialState });
 		projectsStore = mockedStore(useProjectsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
+		dataStoreStore = mockedStore(useDataStoreStore);
 
-		mockFetchDataStores.mockResolvedValue({
-			data: [TEST_DATA_STORE],
-			count: 1,
-		});
+		// Mock dataStore store state
+		dataStoreStore.dataStores = [TEST_DATA_STORE];
+		dataStoreStore.totalCount = 1;
+		dataStoreStore.fetchDataStores = vi.fn().mockResolvedValue(undefined);
 
-		projectsStore.getCurrentProjectId = vi.fn(() => 'test-project');
+		projectsStore.currentProjectId = '';
 		sourceControlStore.isProjectShared = vi.fn(() => false);
 	});
 
 	describe('initialization', () => {
-		it('should initialize and fetch data stores', async () => {
+		it('should initialize and load data stores from store', async () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(mockFetchDataStores).toHaveBeenCalledWith(expect.any(Object), 'test-project', {
-				page: 1,
-				pageSize: 25,
-			});
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('', 1, 25);
 			expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();
 		});
 
+		it('should filter by project if not on overview sub page', async () => {
+			(useProjectPages as Mock).mockReturnValue({
+				isOverviewSubPage: false,
+			});
+			projectsStore.currentProjectId = 'test-project';
+			projectsStore.currentProject = {
+				id: 'test-project',
+			} as Project;
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('test-project', 1, 25);
+		});
 		it('should set document title on mount', async () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(mockDocumentTitle.set).toHaveBeenCalledWith('Data Store');
+			expect(mockDocumentTitle.set).toHaveBeenCalledWith('Data Stores');
 		});
 
 		it('should handle initialization error', async () => {
-			const error = new Error('API Error');
-			mockFetchDataStores.mockRejectedValue(error);
+			const error = new Error('Store Error');
+			dataStoreStore.fetchDataStores = vi.fn().mockRejectedValue(error);
 
 			renderComponent({ pinia });
 			await waitAllPromises();
@@ -163,10 +174,8 @@ describe('DataStoreView', () => {
 
 	describe('empty state', () => {
 		beforeEach(() => {
-			mockFetchDataStores.mockResolvedValue({
-				data: [],
-				count: 0,
-			});
+			dataStoreStore.dataStores = [];
+			dataStoreStore.totalCount = 0;
 		});
 
 		it('should show empty state when no data stores exist', async () => {
@@ -208,7 +217,7 @@ describe('DataStoreView', () => {
 			await waitAllPromises();
 
 			// Clear the initial call
-			mockFetchDataStores.mockClear();
+			dataStoreStore.fetchDataStores = vi.fn().mockClear();
 			mockDebounce.callDebounced.mockClear();
 
 			// The component should be rendered and ready to handle pagination
@@ -219,23 +228,18 @@ describe('DataStoreView', () => {
 		});
 
 		it('should update page size on pagination change', async () => {
-			mockFetchDataStores.mockResolvedValue({
-				data: Array.from({ length: 20 }, (_, i) => ({
-					...TEST_DATA_STORE,
-					id: `${i + 1}`,
-					name: `Data Store ${i + 1}`,
-				})),
-				count: 20,
-			});
+			dataStoreStore.dataStores = Array.from({ length: 20 }, (_, i) => ({
+				...TEST_DATA_STORE,
+				id: `${i + 1}`,
+				name: `Data Store ${i + 1}`,
+			}));
+			dataStoreStore.totalCount = 20;
 
 			renderComponent({ pinia });
 			await waitAllPromises();
 
 			// Initial call should use default page size of 25
-			expect(mockFetchDataStores).toHaveBeenCalledWith(expect.any(Object), 'test-project', {
-				page: 1,
-				pageSize: 25,
-			});
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('', 1, 25);
 		});
 	});
 });

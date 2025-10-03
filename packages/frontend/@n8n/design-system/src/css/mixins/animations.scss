@@ -1,0 +1,16 @@
+@mixin shimmer {
+	background: linear-gradient(135deg, #fff, #5e5e5e, #fff);
+	background-clip: text;
+	color: transparent;
+	background-size: 200% 100%;
+	animation: shimmer 2.5s linear infinite;
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}

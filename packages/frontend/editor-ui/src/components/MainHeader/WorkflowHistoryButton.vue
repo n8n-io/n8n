@@ -4,6 +4,7 @@ import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 
+import { N8nIconButton, N8nLink, N8nTooltip } from '@n8n/design-system';
 const locale = useI18n();
 
 const props = defineProps<{
@@ -26,14 +27,13 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 
 <template>
 	<N8nTooltip placement="bottom">
-		<RouterLink :to="workflowHistoryRoute" :class="$style.workflowHistoryButton">
+		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
 				:disabled="isNewWorkflow || !isFeatureEnabled"
 				data-test-id="workflow-history-button"
-				type="tertiary"
+				type="highlight"
 				icon="history"
 				size="medium"
-				text
 			/>
 		</RouterLink>
 		<template #content>
@@ -53,22 +53,3 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 		</template>
 	</N8nTooltip>
 </template>
-
-<style lang="scss" module>
-.workflowHistoryButton {
-	width: 30px;
-	height: 30px;
-	color: var(--color-text-dark);
-	border-radius: var(--border-radius-base);
-
-	&:hover {
-		background-color: var(--color-background-base);
-	}
-
-	:disabled {
-		background: transparent;
-		border: none;
-		opacity: 0.5;
-	}
-}
-</style>

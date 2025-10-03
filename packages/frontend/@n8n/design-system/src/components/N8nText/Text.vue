@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { TextAlign, TextColor, TextSize } from '@n8n/design-system/types/text';
+import type { TextAlign, TextColor, TextSize } from '../../types/text';
 
 interface TextProps {
 	bold?: boolean;

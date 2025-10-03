@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import type { IUser, UserAction } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
-import { DATA_STORE_DETAILS } from '../constants';
+import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import TimeAgo from '@/components/TimeAgo.vue';
 
+import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 type Props = {
 	dataStore: DataStoreResource;
-	actions?: Array<UserAction<IUser>>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
 
 const i18n = useI18n();
+const dataStoreStore = useDataStoreStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
@@ -28,6 +31,11 @@ const dataStoreRoute = computed(() => {
 			id: props.dataStore.id,
 		},
 	};
+});
+
+const getDataStoreSize = computed(() => {
+	const size = dataStoreStore.dataStoreSizes[props.dataStore.id] ?? 0;
+	return size;
 });
 </script>
 <template>
@@ -45,9 +53,9 @@ const dataStoreRoute = computed(() => {
 				</template>
 				<template #header>
 					<div :class="$style['card-header']">
-						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
+						<N8nText tag="h2" bold data-test-id="data-store-card-name">
 							{{ props.dataStore.name }}
-						</N8nHeading>
+						</N8nText>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
@@ -59,19 +67,11 @@ const dataStoreRoute = computed(() => {
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--size']]"
-							data-test-id="folder-card-folder-count"
-						>
-							{{ i18n.baseText('dataStore.card.size', { interpolate: { size: dataStore.size } }) }}
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--record-count']]"
-							data-test-id="data-store-card-record-count"
+							data-test-id="data-store-card-size"
 						>
 							{{
-								i18n.baseText('dataStore.card.row.count', {
-									interpolate: { count: props.dataStore.recordCount },
+								i18n.baseText('dataStore.card.size', {
+									interpolate: { size: getDataStoreSize },
 								})
 							}}
 						</N8nText>
@@ -83,7 +83,7 @@ const dataStoreRoute = computed(() => {
 						>
 							{{
 								i18n.baseText('dataStore.card.column.count', {
-									interpolate: { count: props.dataStore.columnCount },
+									interpolate: { count: props.dataStore.columns.length + 1 },
 								})
 							}}
 						</N8nText>
@@ -109,11 +109,10 @@ const dataStoreRoute = computed(() => {
 				</template>
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
-						<N8nActionToggle
-							v-if="props.actions.length"
-							:actions="props.actions"
-							theme="dark"
-							data-test-id="folder-card-actions"
+						<DataStoreActions
+							:data-store="props.dataStore"
+							:is-read-only="props.readOnly"
+							location="card"
 						/>
 					</div>
 				</template>
@@ -165,8 +164,8 @@ const dataStoreRoute = computed(() => {
 		flex-wrap: wrap;
 	}
 	.info-cell--created,
-	.info-cell--record-count,
-	.info-cell--column-count {
+	.info-cell--column-count,
+	.info-cell--size {
 		display: none;
 	}
 }

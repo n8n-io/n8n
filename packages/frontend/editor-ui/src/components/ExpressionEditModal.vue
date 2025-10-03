@@ -22,10 +22,10 @@ import DraggableTarget from './DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
-import { N8nInput, N8nText } from '@n8n/design-system';
-import { N8nResizeWrapper, type ResizeData } from '@n8n/design-system';
 import { useThrottleFn } from '@vueuse/core';
 
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nInput, N8nResizeWrapper, N8nText, type ResizeData } from '@n8n/design-system';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -66,12 +66,11 @@ const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
 
 const activeNode = computed(() => ndvStore.activeNode);
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflow.value.getParentNodesByDepth(node.name);
+	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
 
 	return nodes.filter(({ name }) => name !== node.name);
 });
@@ -136,7 +135,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<el-dialog
+	<ElDialog
 		width="calc(100% - var(--spacing-3xl))"
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		:class="$style.modal"
@@ -232,7 +231,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				</div>
 			</div>
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style module lang="scss">

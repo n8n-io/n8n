@@ -2,6 +2,7 @@
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
+import { N8nIcon } from '@n8n/design-system';
 export interface Props {
 	placeholder?: string;
 	modelValue?: string;
@@ -53,7 +54,7 @@ defineExpose({
 <template>
 	<div :class="$style.searchContainer" data-test-id="search-bar">
 		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
-			<n8n-icon icon="search" size="small" />
+			<N8nIcon icon="search" size="small" />
 		</div>
 		<div :class="$style.text">
 			<input
@@ -68,7 +69,7 @@ defineExpose({
 			/>
 		</div>
 		<div v-if="modelValue.length > 0" :class="[$style.suffix, $style.clickable]" @click="clear">
-			<n8n-icon size="small" icon="circle-x" />
+			<N8nIcon size="small" icon="circle-x" />
 		</div>
 	</div>
 </template>
@@ -80,7 +81,7 @@ defineExpose({
 	padding: 0 var(--spacing-xs);
 	align-items: center;
 	margin: var(--search-margin, var(--spacing-s));
-	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
+	filter: drop-shadow(0 2px 5px rgba(46, 46, 50, 0.04));
 
 	border: 1px solid $node-creator-border-color;
 	background-color: $node-creator-search-background-color;

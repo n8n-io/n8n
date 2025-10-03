@@ -2,6 +2,7 @@
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
+import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -15,21 +16,23 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionRetryMessage } from '@/utils/executionUtils';
-import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
-import { ElSkeletonItem } from 'element-plus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
 
+import { ElCheckbox, ElSkeletonItem } from 'element-plus';
+import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
 		total?: number;
+		concurrentTotal?: number;
 		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
+		concurrentTotal: 0,
 		estimated: false,
 	},
 );
@@ -75,16 +78,11 @@ const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 
-/**
- * Calculate the number of executions counted towards the production executions concurrency limit.
- * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
- */
-const runningExecutionsCount = computed(() => {
-	return props.executions.filter(
-		(execution) =>
-			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
-	).length;
-});
+// In 'queue' mode concurrency control is applied per worker and returning a global count
+// of concurrent executions would not be meaningful/helpful.
+const showConcurrencyHeader = computed(
+	() => settingsStore.isConcurrencyEnabled && !settingsStore.isQueueModeEnabled,
+);
 
 watch(
 	() => props.executions,
@@ -244,8 +242,8 @@ async function retryOriginalExecution(execution: ExecutionSummary) {
 
 async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 	try {
-		const retryStatus = await executionsStore.retryExecution(execution.id, loadWorkflow);
-		const retryMessage = executionRetryMessage(retryStatus);
+		const retriedExecution = await executionsStore.retryExecution(execution.id, loadWorkflow);
+		const retryMessage = executionRetryMessage(retriedExecution.status);
 
 		if (retryMessage) {
 			toast.showMessage(retryMessage);
@@ -312,8 +310,9 @@ async function deleteExecution(execution: ExecutionSummary) {
 	}
 }
 
-async function onAutoRefreshToggle(value: boolean) {
-	if (value) {
+async function onAutoRefreshToggle(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
+	if (boolValue) {
 		await executionsStore.startAutoRefreshInterval();
 	} else {
 		executionsStore.stopAutoRefreshInterval();
@@ -337,8 +336,8 @@ const goToUpgrade = () => {
 
 			<div style="margin-left: auto">
 				<ConcurrentExecutionsHeader
-					v-if="settingsStore.isConcurrencyEnabled"
-					:running-executions-count="runningExecutionsCount"
+					v-if="showConcurrencyHeader"
+					:running-executions-count="concurrentTotal"
 					:concurrency-cap="settingsStore.concurrency"
 					:is-cloud-deployment="settingsStore.isCloudDeployment"
 					@go-to-upgrade="goToUpgrade"
@@ -455,32 +454,11 @@ const goToUpgrade = () => {
 				</N8nTableBase>
 			</div>
 		</div>
-		<div
-			v-if="selectedCount > 0"
-			:class="$style.selectionOptions"
-			data-test-id="selected-executions-info"
-		>
-			<span>
-				{{
-					i18n.baseText('executionsList.selected', {
-						adjustToNumber: selectedCount,
-						interpolate: { count: `${selectedCount}` },
-					})
-				}}
-			</span>
-			<N8nButton
-				:label="i18n.baseText('generic.delete')"
-				type="tertiary"
-				data-test-id="delete-selected-button"
-				@click="handleDeleteSelected"
-			/>
-			<N8nButton
-				:label="i18n.baseText('executionsList.clearSelection')"
-				type="tertiary"
-				data-test-id="clear-selection-button"
-				@click="handleClearSelection"
-			/>
-		</div>
+		<SelectedItemsInfo
+			:selected-count="selectedCount"
+			@delete-selected="handleDeleteSelected"
+			@clear-selection="handleClearSelection"
+		/>
 	</div>
 </template>
 
@@ -505,25 +483,6 @@ const goToUpgrade = () => {
 	align-items: center;
 	justify-content: flex-start;
 	margin-bottom: var(--spacing-s);
-}
-
-.selectionOptions {
-	display: flex;
-	align-items: center;
-	position: absolute;
-	padding: var(--spacing-2xs);
-	z-index: 2;
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: var(--spacing-3xl);
-	background: var(--execution-selector-background);
-	border-radius: var(--border-radius-base);
-	color: var(--execution-selector-text);
-	font-size: var(--font-size-2xs);
-
-	button {
-		margin-left: var(--spacing-2xs);
-	}
 }
 
 .execTable {
