@@ -1008,28 +1008,6 @@ export type SchemaType =
 
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
-export type UsageState = {
-	loading: boolean;
-	data: {
-		usage: {
-			activeWorkflowTriggers: {
-				limit: number; // -1 for unlimited, from license
-				value: number;
-				warningThreshold: number; // hardcoded value in BE
-			};
-			workflowsHavingEvaluations: {
-				limit: number; // -1 for unlimited, from license
-				value: number;
-			};
-		};
-		license: {
-			planId: string; // community
-			planName: string; // defaults to Community
-		};
-		managementToken?: string;
-	};
-};
-
 export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
