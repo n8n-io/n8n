@@ -2,7 +2,6 @@ import { chatWithAssistant, replaceCode } from '@/api/ai';
 import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 } from '@/constants';
@@ -811,11 +810,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
-		if (
-			!currentSessionId.value ||
-			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-			currentSessionWorkflowId.value === activeWorkflowId
-		) {
+		if (!currentSessionId.value || currentSessionWorkflowId.value === activeWorkflowId) {
 			return;
 		}
 		resetAssistantChat();

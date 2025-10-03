@@ -5,7 +5,6 @@ import {
 	FORM_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -88,7 +87,7 @@ describe('useWorkflowsStore', () => {
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.name).toBe('');
-		expect(workflowsStore.workflow.id).toBe(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		expect(workflowsStore.workflow.id).toBe('');
 	});
 
 	describe('isWaitingExecution', () => {

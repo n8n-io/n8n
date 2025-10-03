@@ -13,7 +13,7 @@ import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { LatestNodeInfo, LogEntry } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
-import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 
@@ -163,7 +163,7 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 	watch(
 		() => workflowsStore.workflowId,
 		(newId) => {
-			if (newId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			if (newId === '') {
 				resetExecutionData();
 			}
 		},

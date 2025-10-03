@@ -6,17 +6,18 @@ import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useRoute } from 'vue-router';
 import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { INodeUi, IUsedCredential } from '@/Interface';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
@@ -43,6 +44,7 @@ const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
+const route = useRoute();
 
 const isWorkflowActive = computed((): boolean => {
 	const activeWorkflows = workflowsStore.activeWorkflows;
@@ -80,12 +82,7 @@ const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
 	return foundTriggers.length > 0 && foundTriggers.length === foundActiveTriggers.length;
 });
 
-const isNewWorkflow = computed(
-	() =>
-		!props.workflowId ||
-		props.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		props.workflowId === 'new',
-);
+const isNewWorkflow = computed(() => isNewWorkflowRoute(route));
 
 const disabled = computed((): boolean => {
 	if (props.isArchived) {

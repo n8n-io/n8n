@@ -12,11 +12,11 @@ import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
 import type { TestRunRecord } from '@/api/evaluation.ee';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { SourceControlPreferences } from '@/types/sourceControl.types';
+import { nanoid } from 'nanoid';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -87,7 +87,7 @@ describe('EvaluationsRootView', () => {
 
 	it('should initialize workflow on mount if not already initialized', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		const uninitializedWorkflow = { ...mockWorkflow, id: PLACEHOLDER_EMPTY_WORKFLOW_ID };
+		const uninitializedWorkflow = { ...mockWorkflow, id: nanoid() };
 		workflowsStore.workflow = uninitializedWorkflow;
 		const newWorkflowId = 'workflow123';
 

@@ -58,9 +58,7 @@ import {
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
-	NEW_WORKFLOW_ID,
 	NODE_CREATOR_OPEN_SOURCES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
@@ -144,6 +142,7 @@ import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/composables/useParentFolder';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
@@ -284,14 +283,13 @@ const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
-const workflowId = computed(() => {
+const workflowId = computed<string>(() => {
 	if (isDemoRoute.value) return 'demo';
-	return route.params.name;
+	return route.params.name as string;
 });
 
 const routeNodeId = computed(() => route.params.nodeId as string | undefined);
 
-const isNewWorkflowRoute = computed(() => 'new' in route.query || isDemoRoute.value);
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
@@ -438,10 +436,11 @@ async function initializeRoute(force = false) {
 			}
 
 			// If there is no workflow id, treat it as a new workflow
-			if (isNewWorkflowRoute.value || !workflowId.value) {
+			if (isNewWorkflowRoute(route) || isDemoRoute.value) {
 				if (route.meta?.nodeView === true) {
 					await initializeWorkspaceForNewWorkflow();
 				}
+
 				return;
 			}
 
@@ -473,7 +472,7 @@ async function initializeWorkspaceForNewWorkflow() {
 	await fetchAndSetParentFolder(parentFolderId);
 
 	uiStore.nodeViewInitialized = true;
-	initializedWorkflowId.value = NEW_WORKFLOW_ID;
+	initializedWorkflowId.value = workflowId.value;
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
@@ -1752,6 +1751,7 @@ function updateNodeRoute(nodeId: string) {
 		void router.replace({
 			name: route.name,
 			params: { name: workflowId.value },
+			query: { ...route.query },
 		});
 	}
 }
@@ -1830,6 +1830,7 @@ watch(
 			await router.replace({
 				name: route.name,
 				params: { name: workflowId.value, nodeId },
+				query: { ...route.query },
 			});
 		}
 	},
@@ -1864,7 +1865,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 			}
 
 			// Make sure workflow id is empty when leaving the editor
-			workflowState.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			workflowState.setWorkflowId(undefined);
 
 			return true;
 		},

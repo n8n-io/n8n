@@ -2,7 +2,7 @@
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/constants';
+import { EVALUATIONS_DOCS_URL } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
@@ -10,6 +10,8 @@ import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useRoute } from 'vue-router';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '@/components/Evaluations.ee/Paywall/EvaluationsPaywall.vue';
@@ -28,6 +30,7 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
+const route = useRoute();
 
 const { initializeWorkspace } = useCanvasOperations();
 
@@ -85,21 +88,19 @@ const { isReady } = useAsyncState(async () => {
 	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
 	if (isAlreadyInitialized) return;
 
-	if (workflowId && workflowId !== 'new') {
+	if (workflowId && !isNewWorkflowRoute(route)) {
 		// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			try {
-				const data = await workflowsStore.fetchWorkflow(workflowId);
+		try {
+			const data = await workflowsStore.fetchWorkflow(workflowId);
 
-				// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
-				if (nodeTypesStore.allNodeTypes.length === 0) {
-					await nodeTypesStore.getNodeTypes();
-				}
-
-				initializeWorkspace(data);
-			} catch (error) {
-				toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
+			// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
+			if (nodeTypesStore.allNodeTypes.length === 0) {
+				await nodeTypesStore.getNodeTypes();
 			}
+
+			initializeWorkspace(data);
+		} catch (error) {
+			toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
 		}
 	}
 }, undefined);

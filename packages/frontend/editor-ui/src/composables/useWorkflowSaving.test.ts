@@ -1,5 +1,5 @@
 import { useUIStore } from '@/stores/ui.store';
-import { MODAL_CANCEL, MODAL_CONFIRM, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -11,6 +11,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { nanoid } from 'nanoid';
 
 const modalConfirmSpy = vi.fn();
 
@@ -210,7 +211,7 @@ describe('useWorkflowSaving', () => {
 			uiStore.stateIsDirty = true;
 
 			const workflowStore = useWorkflowsStore();
-			workflowStore.workflow.id = PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			workflowStore.workflow.id = nanoid();
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');

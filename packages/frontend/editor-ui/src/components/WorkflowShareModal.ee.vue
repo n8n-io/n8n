@@ -4,12 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
-import {
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_SHARE_MODAL_KEY,
-} from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -32,6 +27,8 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
+
 const props = defineProps<{
 	data: {
 		id: string;
@@ -57,9 +54,7 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
 const workflow = ref(
-	data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-		? workflowsStore.workflow
-		: workflowsStore.workflowsById[data.id],
+	isNewWorkflowRoute(route) ? workflowsStore.workflow : workflowsStore.workflowsById[data.id],
 );
 const loading = ref(true);
 const isDirty = ref(false);
@@ -155,7 +150,7 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (isNewWorkflowRoute(route)) {
 			const parentFolderId = route.query.folderId as string | undefined;
 			const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
 			if (!workflowId) {
@@ -214,7 +209,7 @@ const initialize = async () => {
 	if (isSharingEnabled.value) {
 		await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
 
-		if (workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (!isNewWorkflowRoute(route)) {
 			await workflowsStore.fetchWorkflow(workflow.value.id);
 		}
 

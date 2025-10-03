@@ -1,14 +1,16 @@
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WorkflowStateKey } from '@/constants';
+import { WorkflowStateKey } from '@/constants';
 import type { IExecutionResponse } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { inject } from 'vue';
+import { inject, ref } from 'vue';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const uiStore = useUIStore();
+
+	const isNewWorkflow = ref(true);
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
 		if (data?.setStateDirty) {
@@ -56,8 +58,8 @@ export function useWorkflowState() {
 		ws.workflow.active = active;
 	}
 
-	function setWorkflowId(id?: string) {
-		ws.workflow.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+	function setWorkflowId(id: string) {
+		ws.workflow.id = id;
 		ws.workflowObject.id = ws.workflow.id;
 	}
 
@@ -85,7 +87,7 @@ export function useWorkflowState() {
 		resetAllNodesIssues();
 
 		setActive(ws.defaults.active);
-		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
 		setWorkflowSettings({ ...ws.defaults.settings });
 		setWorkflowTagIds([]);
@@ -96,6 +98,7 @@ export function useWorkflowState() {
 	}
 
 	return {
+		isNewWorkflow,
 		resetState,
 		removeAllConnections,
 		removeAllNodes,

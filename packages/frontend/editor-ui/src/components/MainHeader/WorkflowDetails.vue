@@ -16,7 +16,6 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
@@ -62,6 +61,7 @@ import { saveAs } from 'file-saver';
 import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 import {
 	N8nActionDropdown,
@@ -134,7 +134,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
+	return isNewWorkflowRoute(route);
 });
 
 const isWorkflowSaving = computed(() => {
@@ -277,33 +277,13 @@ const currentFolderForBreadcrumbs = computed(() => {
 	return null;
 });
 
-watch(
-	() => props.id,
-	() => {
-		isTagsEditEnabled.value = false;
-		renameInput.value?.forceCancel();
-	},
-);
-
-function getWorkflowId(): string | undefined {
-	let id: string | undefined = undefined;
-	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.id;
-	} else if (route.params.name && route.params.name !== 'new') {
-		id = route.params.name as string;
-	}
-
-	return id;
-}
-
 async function onSaveButtonClick() {
 	// If the workflow is saving, do not allow another save
 	if (isWorkflowSaving.value) {
 		return;
 	}
 
-	const id = getWorkflowId();
-
+	const id = props.id;
 	const name = props.name;
 	const tags = props.tags as string[];
 
@@ -406,7 +386,7 @@ async function onNameSubmit(name: string) {
 	}
 
 	uiStore.addActiveAction('workflowSaving');
-	const id = getWorkflowId();
+	const id = props.id;
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
@@ -620,7 +600,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
-			const workflowId = getWorkflowId();
+			const workflowId = props.id;
 			if (!workflowId) {
 				return;
 			}
@@ -697,9 +677,7 @@ function getToastContent() {
 }
 
 function showCreateWorkflowSuccessToast(id?: string) {
-	const shouldShowToast = !id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id);
-
-	if (!shouldShowToast) return;
+	if (!isNewWorkflow.value) return;
 
 	const { title, toastMessage } = getToastContent();
 

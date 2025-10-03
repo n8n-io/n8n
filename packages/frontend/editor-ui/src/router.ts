@@ -367,9 +367,17 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			middleware: ['authenticated'],
 		},
-		redirect: () => {
+		redirect: (to) => {
 			const id = nanoid();
-			return `/workflow/${id}?new`;
+			return {
+				...to,
+				name: VIEWS.WORKFLOW,
+				params: { name: id },
+				query: {
+					...to.query,
+					new: 'true',
+				},
+			};
 		},
 	},
 	{

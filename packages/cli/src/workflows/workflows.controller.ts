@@ -88,7 +88,6 @@ export class WorkflowsController {
 
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
-		delete req.body.id; // delete if sent
 		// @ts-expect-error: We shouldn't accept this because it can
 		// mess with relations of other workflows
 		delete req.body.shared;

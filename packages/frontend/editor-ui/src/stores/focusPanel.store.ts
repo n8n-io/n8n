@@ -10,7 +10,7 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from './workflows.store';
-import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { LOCAL_STORAGE_FOCUS_PANEL } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
 import { isFromAIOverrideValue } from '@/utils/fromAIOverrideUtils';
@@ -98,20 +98,12 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		isActive,
 		wid = workflowsStore.workflowId,
 		width = undefined,
-		removeEmpty = false,
 	}: {
 		isActive?: boolean;
 		parameters?: FocusedNodeParameter[];
 		wid?: string;
 		width?: number;
-		removeEmpty?: boolean;
 	}) {
-		const focusPanelDataCurrent = focusPanelData.value;
-
-		if (removeEmpty && PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelDataCurrent) {
-			delete focusPanelDataCurrent[PLACEHOLDER_EMPTY_WORKFLOW_ID];
-		}
-
 		focusPanelStorage.value = JSON.stringify({
 			...focusPanelData.value,
 			[wid]: {
@@ -128,16 +120,15 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 
 	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
 	function onNewWorkflowSave(wid: string) {
-		if (!currentFocusPanelData.value || !(PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelData.value)) {
+		if (!currentFocusPanelData.value || !(wid in focusPanelData.value)) {
 			return;
 		}
 
-		const latestWorkflowData = focusPanelData.value[PLACEHOLDER_EMPTY_WORKFLOW_ID];
+		const latestWorkflowData = focusPanelData.value[wid];
 		_setOptions({
 			wid,
 			parameters: latestWorkflowData.parameters,
 			isActive: latestWorkflowData.isActive,
-			removeEmpty: true,
 		});
 	}
 

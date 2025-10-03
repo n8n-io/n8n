@@ -3,13 +3,14 @@ import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, TIME } from '@/constants';
+import { TIME } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 
@@ -90,13 +91,13 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	function notifyWorkflowOpened() {
 		const { workflowId } = workflowsStore;
-		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
+		if (isNewWorkflowRoute(route)) return;
 		pushStore.send({ type: 'workflowOpened', workflowId });
 	}
 
 	function notifyWorkflowClosed() {
 		const { workflowId } = workflowsStore;
-		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
+		if (isNewWorkflowRoute(route)) return;
 		pushStore.send({ type: 'workflowClosed', workflowId });
 
 		collaborators.value = collaborators.value.filter(

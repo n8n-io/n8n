@@ -6,7 +6,6 @@ import { usePushConnection } from '@/composables/usePushConnection';
 import {
 	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
 	MAIN_HEADER_TABS,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
 	VIEWS,
 	N8N_MAIN_GITHUB_REPO_URL,
@@ -38,7 +37,7 @@ const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
-const workflowToReturnTo = ref('');
+const workflowRouteToReturnTo = ref();
 const executionToReturnTo = ref('');
 const dirtyState = ref(false);
 const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, false);
@@ -111,7 +110,7 @@ onBeforeUnmount(() => {
 	pushConnection.terminate();
 });
 
-onMounted(async () => {
+onMounted(() => {
 	dirtyState.value = uiStore.stateIsDirty;
 	syncTabsWithRoute(route);
 });
@@ -137,11 +136,6 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 		if (matchingTab) {
 			activeHeaderTab.value = matchingTab.tab;
 		}
-	}
-
-	// Store the current workflow ID, but only if it's not a new workflow
-	if (to.params.name !== 'new' && typeof to.params.name === 'string') {
-		workflowToReturnTo.value = to.params.name;
 	}
 
 	if (
@@ -175,15 +169,11 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 }
 
 async function navigateToWorkflowView(openInNewTab: boolean) {
-	let routeToNavigateTo: RouteLocationRaw;
-	if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(workflowToReturnTo.value)) {
-		routeToNavigateTo = {
-			name: VIEWS.WORKFLOW,
-			params: { name: workflowToReturnTo.value },
-		};
-	} else {
-		routeToNavigateTo = { name: VIEWS.NEW_WORKFLOW };
-	}
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.WORKFLOW,
+		params: { name: workflowId.value ?? 'new' },
+		query: { ...route.query },
+	};
 
 	if (openInNewTab) {
 		const { href } = router.resolve(routeToNavigateTo);
@@ -198,17 +188,17 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 }
 
 async function navigateToExecutionsView(openInNewTab: boolean) {
-	const routeWorkflowId =
-		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
 	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: routeWorkflowId, executionId: executionToReturnToValue },
+				params: { name: workflowId.value ?? 'new', executionId: executionToReturnToValue },
+				query: { ...route.query },
 			}
 		: {
 				name: VIEWS.EXECUTION_HOME,
-				params: { name: routeWorkflowId },
+				params: { name: workflowId.value ?? 'new' },
+				query: { ...route.query },
 			};
 
 	if (openInNewTab) {
@@ -216,18 +206,18 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 		window.open(href, '_blank');
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
-		workflowToReturnTo.value = workflowId.value;
 		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
 		await router.push(routeToNavigateTo);
 	}
 }
 
 async function navigateToEvaluationsView(openInNewTab: boolean) {
-	const routeWorkflowId =
-		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
 	const routeToNavigateTo: RouteLocationRaw = {
 		name: VIEWS.EVALUATION_EDIT,
-		params: { name: routeWorkflowId },
+		params: { name: workflowId.value ?? 'new' },
+		query: {
+			...route.query,
+		},
 	};
 
 	if (openInNewTab) {
@@ -235,7 +225,6 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 		window.open(href, '_blank');
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
-		workflowToReturnTo.value = workflowId.value;
 		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
 		await router.push(routeToNavigateTo);
 	}

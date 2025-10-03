@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
+import { VIEWS } from '@/constants';
 
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 const router = useRouter();
@@ -20,17 +20,12 @@ const containsTrigger = computed(() => workflowsStore.workflowTriggerNodes.lengt
 
 function onSetupFirstStep(): void {
 	uiStore.addFirstStepOnLoad = true;
-	const workflowRoute = getWorkflowRoute();
-	void router.push(workflowRoute);
-}
 
-function getWorkflowRoute(): { name: string; params: {} } {
-	const workflowId = workflowsStore.workflowId || route.params.name;
-	if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		return { name: VIEWS.NEW_WORKFLOW, params: {} };
-	} else {
-		return { name: VIEWS.WORKFLOW, params: { name: workflowId } };
-	}
+	void router.push({
+		name: VIEWS.WORKFLOW,
+		params: { name: workflowsStore.workflowId },
+		query: { ...route.query },
+	});
 }
 </script>
 

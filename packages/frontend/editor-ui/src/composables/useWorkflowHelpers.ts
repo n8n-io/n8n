@@ -1,8 +1,4 @@
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-} from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 
 import type {
 	IConnections,
@@ -65,6 +61,8 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
+import { useRoute } from 'vue-router';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -542,6 +540,7 @@ export function useWorkflowHelpers() {
 	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
+	const route = useRoute();
 	const documentTitle = useDocumentTitle();
 
 	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
@@ -608,6 +607,7 @@ export function useWorkflowHelpers() {
 		}
 
 		const data: WorkflowData = {
+			id: workflowsStore.workflowId,
 			name: workflowsStore.workflowName,
 			nodes,
 			pinData: workflowsStore.pinnedWorkflowData,
@@ -618,11 +618,6 @@ export function useWorkflowHelpers() {
 			versionId: workflowsStore.workflow.versionId,
 			meta: workflowsStore.workflow.meta,
 		};
-
-		const workflowId = workflowsStore.workflowId;
-		if (workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			data.id = workflowId;
-		}
 
 		return data;
 	}
@@ -952,7 +947,7 @@ export function useWorkflowHelpers() {
 
 		if (
 			workflow?.homeProject?.id === projectsStore.personalProject?.id ||
-			workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
+			isNewWorkflowRoute(route)
 		) {
 			return 'owner';
 		} else if (

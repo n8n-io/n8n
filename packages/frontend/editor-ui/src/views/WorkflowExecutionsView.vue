@@ -9,13 +9,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
-import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { executionRetryMessage } from '@/utils/executionUtils';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
@@ -35,12 +36,7 @@ const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
 
-const workflowId = computed(() => {
-	const workflowIdParam = route.params.name as string;
-	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
-		? undefined
-		: workflowIdParam;
-});
+const workflowId = computed(() => route.params.name as string);
 
 const executionId = computed(() => route.params.executionId as string);
 
@@ -135,18 +131,7 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
-	if (workflowId.value) {
-		// Check if we are loading the Executions tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			try {
-				await workflowsStore.fetchActiveWorkflows();
-				const data = await workflowsStore.fetchWorkflow(workflowId.value);
-				initializeWorkspace(data);
-			} catch (error) {
-				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-			}
-		}
-
+	if (workflowId.value && !isNewWorkflowRoute(route)) {
 		workflow.value = workflowsStore.getWorkflowById(workflowId.value);
 		const workflowData = await workflowsStore.fetchWorkflow(workflow.value.id);
 

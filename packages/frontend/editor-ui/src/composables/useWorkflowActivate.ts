@@ -1,14 +1,10 @@
 import { useStorage } from '@/composables/useStorage';
 
-import {
-	LOCAL_STORAGE_ACTIVATION_FLAG,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_ACTIVE_MODAL_KEY,
-} from '@/constants';
+import { LOCAL_STORAGE_ACTIVATION_FLAG, WORKFLOW_ACTIVE_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
@@ -16,11 +12,13 @@ import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
 
 	const router = useRouter();
+	const route = useRoute();
 	const workflowHelpers = useWorkflowHelpers();
 	const workflowSaving = useWorkflowSaving({ router });
 	const workflowsStore = useWorkflowsStore();
@@ -42,7 +40,7 @@ export function useWorkflowActivate() {
 		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
 
 		let currWorkflowId: string | undefined = workflowId;
-		if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (!currWorkflowId || isNewWorkflowRoute(route)) {
 			const saved = await workflowSaving.saveCurrentWorkflow();
 			if (!saved) {
 				updatingWorkflowActivation.value = false;
@@ -50,10 +48,11 @@ export function useWorkflowActivate() {
 			}
 			currWorkflowId = workflowsStore.workflowId;
 		}
+
 		const isCurrentWorkflow = currWorkflowId === workflowsStore.workflowId;
 
 		const activeWorkflows = workflowsStore.activeWorkflows;
-		const isWorkflowActive = activeWorkflows.includes(currWorkflowId);
+		const isWorkflowActive = activeWorkflows.includes(workflowsStore.workflowId);
 
 		const telemetryPayload = {
 			workflow_id: currWorkflowId,

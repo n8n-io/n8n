@@ -8,7 +8,6 @@ import {
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 } from '@/constants';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -28,6 +27,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useWorkflowState } from './useWorkflowState';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -74,7 +74,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 		switch (response) {
 			case MODAL_CONFIRM:
-				const saved = await saveCurrentWorkflow({}, false);
+				const saved = await saveCurrentWorkflow({}, { redirect: false });
 
 				if (saved) {
 					await npsSurveyStore.fetchPromptsData();
@@ -96,7 +96,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				return;
 			case MODAL_CLOSE:
 				// for new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				if (!isNewWorkflowRoute(router.currentRoute.value)) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -167,8 +167,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 	async function saveCurrentWorkflow(
 		{ id, name, tags }: { id?: string; name?: string; tags?: string[] } = {},
-		redirect = true,
-		forceSave = false,
+		{ redirect = true, forceSave = false, isNew = false } = {},
 	): Promise<boolean> {
 		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 		if (readOnlyEnv) {
@@ -176,12 +175,13 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'name');
+		const currentWorkflowId = id ?? getQueryParam(router.currentRoute.value.params, 'name');
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
-		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
+		const isNewWorkflow = isNewWorkflowRoute(router.currentRoute.value);
+		if (!currentWorkflowId || isNewWorkflow) {
+			return !!(await saveAsNewWorkflow({ id, name, tags, parentFolderId, uiContext }, redirect));
 		}
 
 		// Workflow exists already so update it
@@ -194,7 +194,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			const workflowDataRequest: WorkflowDataUpdate = await getWorkflowDataToSave();
 			// This can happen if the user has another workflow in the browser history and navigates
 			// via the browser back button, encountering our warning dialog with the new route already set
-			if (workflowDataRequest.id !== currentWorkflow) {
+			if (workflowDataRequest.id !== currentWorkflowId) {
 				throw new Error('Attempted to save a workflow different from the current workflow');
 			}
 
@@ -209,7 +209,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 
 			const deactivateReason = await getWorkflowDeactivationInfo(
-				currentWorkflow,
+				currentWorkflowId,
 				workflowDataRequest,
 			);
 
@@ -219,11 +219,11 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				if (workflowsStore.isWorkflowActive) {
 					toast.showMessage(deactivateReason);
 
-					workflowsStore.setWorkflowInactive(currentWorkflow);
+					workflowsStore.setWorkflowInactive(currentWorkflowId);
 				}
 			}
 			const workflowData = await workflowsStore.updateWorkflow(
-				currentWorkflow,
+				currentWorkflowId,
 				workflowDataRequest,
 				forceSave,
 			);
@@ -251,13 +251,13 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 			if (error.errorCode === 100) {
 				telemetry.track('User attempted to save locked workflow', {
-					workflowId: currentWorkflow,
-					sharing_role: getWorkflowProjectRole(currentWorkflow),
+					workflowId: currentWorkflowId,
+					sharing_role: getWorkflowProjectRole(currentWorkflowId),
 				});
 
 				const url = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: currentWorkflow },
+					params: { name: currentWorkflowId },
 				}).href;
 
 				const overwrite = await message.confirm(
@@ -278,7 +278,13 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				);
 
 				if (overwrite === MODAL_CONFIRM) {
-					return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
+					return await saveCurrentWorkflow(
+						{ id, name, tags },
+						{
+							redirect,
+							forceSave: true,
+						},
+					);
 				}
 
 				return false;
@@ -296,6 +302,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 	async function saveAsNewWorkflow(
 		{
+			id,
 			name,
 			tags,
 			resetWebhookUrls,
@@ -305,6 +312,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			uiContext,
 			data,
 		}: {
+			id?: string;
 			name?: string;
 			tags?: string[];
 			resetWebhookUrls?: boolean;
@@ -339,6 +347,10 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 					}
 					return node;
 				});
+			}
+
+			if (id) {
+				workflowDataRequest.id = id;
 			}
 
 			if (name) {

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
-import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { MAX_WORKFLOW_NAME_LENGTH } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
@@ -10,10 +10,11 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 import { N8nButton, N8nInput } from '@n8n/design-system';
 const props = defineProps<{
@@ -29,6 +30,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 const workflowHelpers = useWorkflowHelpers();
 const { showMessage, showError } = useToast();
@@ -88,7 +90,7 @@ const save = async (): Promise<void> => {
 
 	try {
 		let workflowToUpdate: WorkflowDataUpdate | undefined;
-		if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (isNewWorkflowRoute(route)) {
 			const {
 				createdAt,
 				updatedAt,

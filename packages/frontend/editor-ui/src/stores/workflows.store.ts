@@ -123,7 +123,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 };
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
-	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	id: '',
 	...defaults,
 });
 
@@ -571,13 +571,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	): Workflow {
 		const nodeTypes = getNodeTypes();
 
-		let id: string | undefined = workflow.value.id;
-		if (id && id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			id = undefined;
-		}
-
 		return new Workflow({
-			id,
+			id: workflow.value.id,
 			name: workflow.value.name,
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
@@ -759,10 +754,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.name = data.newName;
 		workflowObject.value.name = data.newName;
 
-		if (
-			workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-			workflowsById.value[workflow.value.id]
-		) {
+		if (workflowsById.value[workflow.value.id]) {
 			workflowsById.value[workflow.value.id].name = data.newName;
 		}
 	}
@@ -991,7 +983,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
 			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
 			...(!value.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
-			...(!value.hasOwnProperty('id') ? { id: PLACEHOLDER_EMPTY_WORKFLOW_ID } : {}),
+			...(!value.hasOwnProperty('id') ? { id: '' } : {}),
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
 			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
 		};

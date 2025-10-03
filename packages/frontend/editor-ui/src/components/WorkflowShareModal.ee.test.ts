@@ -9,13 +9,13 @@ import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { nanoid } from 'nanoid';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const query = reactive({});
@@ -112,8 +112,10 @@ describe('WorkflowShareModal.ee.vue', () => {
 	});
 
 	it('should share new, unsaved workflow after saving it first', async () => {
+		const workflowId = nanoid();
+
 		workflowsStore.workflow = {
-			id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+			id: workflowId,
 			name: 'My workflow',
 			active: false,
 			isArchived: false,
@@ -128,7 +130,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
 
 		const props = {
-			data: { id: PLACEHOLDER_EMPTY_WORKFLOW_ID },
+			data: { id: workflowId },
 		};
 		const { getByTestId, getByRole, getByText } = renderComponent({ props });
 

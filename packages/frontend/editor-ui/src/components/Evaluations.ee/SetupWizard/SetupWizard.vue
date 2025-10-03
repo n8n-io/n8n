@@ -3,19 +3,21 @@ import { useI18n } from '@n8n/i18n';
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useUsageStore } from '@/stores/usage.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 defineEmits<{
 	runTest: [];
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
 const evaluationStore = useEvaluationStore();
@@ -74,16 +76,18 @@ const toggleStep = (index: number) => {
 function navigateToWorkflow(
 	action?: 'addEvaluationTrigger' | 'addEvaluationNode' | 'executeEvaluation',
 ) {
-	const routeWorkflowId =
-		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-			? 'new'
-			: workflowsStore.workflow.id;
-
-	void router.push({
-		name: VIEWS.WORKFLOW,
-		params: { name: routeWorkflowId },
-		query: action ? { action } : undefined,
-	});
+	if (isNewWorkflowRoute(route)) {
+		void router.push({
+			name: VIEWS.NEW_WORKFLOW,
+			query: action ? { action } : undefined,
+		});
+	} else {
+		void router.push({
+			name: VIEWS.WORKFLOW,
+			params: { name: workflowsStore.workflow.id },
+			query: action ? { action } : undefined,
+		});
+	}
 }
 
 function onSeePlans() {

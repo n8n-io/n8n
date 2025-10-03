@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
@@ -13,6 +13,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { isNewWorkflowRoute } from '@/utils/routerUtils';
 
 import { N8nInfoAccordion, N8nLink, N8nTooltip } from '@n8n/design-system';
 interface IWorkflowSaveSettings {
@@ -32,6 +33,7 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 const locale = useI18n();
 
@@ -114,11 +116,7 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
 const isNewWorkflow = computed(() => {
-	return (
-		!currentWorkflowId.value ||
-		currentWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		currentWorkflowId.value === 'new'
-	);
+	return isNewWorkflowRoute(route);
 });
 const workflowName = computed(() => workflowsStore.workflowName);
 const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
@@ -168,24 +166,12 @@ function openWorkflowSettings(): void {
 }
 
 async function onSaveWorkflowClick(): Promise<void> {
-	let currentId: string | undefined = undefined;
-	if (currentWorkflowId.value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		currentId = currentWorkflowId.value;
-	} else if (
-		router.currentRoute.value.params.name &&
-		router.currentRoute.value.params.name !== 'new'
-	) {
-		const routeName = router.currentRoute.value.params.name;
-		currentId = Array.isArray(routeName) ? routeName[0] : routeName;
-	}
-	if (!currentId) {
-		return;
-	}
 	const saved = await workflowSaving.saveCurrentWorkflow({
-		id: currentId,
+		id: currentWorkflowId.value,
 		name: workflowName.value,
 		tags: currentWorkflowTagIds.value,
 	});
+
 	if (saved) {
 		await npsSurveyStore.fetchPromptsData();
 	}
