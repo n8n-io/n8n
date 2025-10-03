@@ -222,7 +222,7 @@ function onRateMessage(feedback: RatingFeedback) {
 }
 
 function scrollToBottom() {
-	scrollAreaRef.value?.scrollToBottom(true);
+	scrollAreaRef.value?.scrollToBottom({ smooth: true });
 }
 
 function isScrolledToBottom(): boolean {
@@ -239,7 +239,7 @@ function isScrolledToBottom(): boolean {
 }
 
 function scrollToBottomImmediate() {
-	scrollAreaRef.value?.scrollToBottom(false);
+	scrollAreaRef.value?.scrollToBottom({ smooth: false });
 }
 
 watch(sendDisabled, () => {

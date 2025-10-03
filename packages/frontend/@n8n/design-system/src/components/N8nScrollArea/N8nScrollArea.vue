@@ -6,7 +6,7 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from 'reka-ui';
-import { computed, ref, nextTick } from 'vue';
+import { computed, ref, nextTick, type Ref } from 'vue';
 
 export interface Props {
 	/**
@@ -58,7 +58,12 @@ const props = withDefaults(defineProps<Props>(), {
 	asChild: false,
 });
 
-const rootRef = ref<InstanceType<typeof ScrollAreaRoot>>();
+// Type for the ScrollAreaRoot instance with the viewport property
+interface ScrollAreaRootWithViewport {
+	viewport?: Ref<HTMLElement | undefined> | HTMLElement;
+}
+
+const rootRef = ref<ScrollAreaRootWithViewport>();
 
 const viewportStyle = computed(() => {
 	const style: Record<string, string> = {};
@@ -72,38 +77,57 @@ const viewportStyle = computed(() => {
 });
 
 /**
- * Scrolls the viewport to the bottom
- * @param smooth - Whether to use smooth scrolling animation
+ * Gets the viewport element from the root ref
  */
-async function scrollToBottom(smooth = false) {
+function getViewportElement(): HTMLElement | undefined {
+	if (!rootRef.value?.viewport) return undefined;
+
+	const viewport = rootRef.value.viewport;
+
+	// If it's a Vue ref, unwrap it
+	if (typeof viewport === 'object' && 'value' in viewport) {
+		return viewport.value;
+	}
+
+	// If it's already an HTMLElement, use it directly
+	if (viewport instanceof HTMLElement) {
+		return viewport;
+	}
+
+	return undefined;
+}
+
+/**
+ * Scrolls the viewport to the bottom
+ * @param options - Options for controlling scroll behavior
+ */
+async function scrollToBottom(options: { smooth?: boolean } = {}) {
 	// Wait for DOM updates to ensure content is fully rendered
 	await nextTick();
 
-	// Reka-ui exposes the viewport element directly on the rootRef
-	const viewport = (rootRef.value as any)?.viewport;
+	const viewport = getViewportElement();
 
-	if (viewport && viewport instanceof HTMLElement) {
+	if (viewport) {
 		viewport.scrollTo({
 			top: viewport.scrollHeight,
-			behavior: smooth ? 'smooth' : 'auto',
+			behavior: options.smooth ? 'smooth' : 'auto',
 		});
 	}
 }
 
 /**
  * Scrolls the viewport to the top
- * @param smooth - Whether to use smooth scrolling animation
+ * @param options - Options for controlling scroll behavior
  */
-async function scrollToTop(smooth = false) {
+async function scrollToTop(options: { smooth?: boolean } = {}) {
 	await nextTick();
 
-	// Reka-ui exposes the viewport element directly on the rootRef
-	const viewport = (rootRef.value as any)?.viewport;
+	const viewport = getViewportElement();
 
-	if (viewport && viewport instanceof HTMLElement) {
+	if (viewport) {
 		viewport.scrollTo({
 			top: 0,
-			behavior: smooth ? 'smooth' : 'auto',
+			behavior: options.smooth ? 'smooth' : 'auto',
 		});
 	}
 }
@@ -112,9 +136,9 @@ async function scrollToTop(smooth = false) {
  * Gets the current scroll position
  */
 function getScrollPosition() {
-	const viewport = (rootRef.value as any)?.viewport;
+	const viewport = getViewportElement();
 
-	if (viewport && viewport instanceof HTMLElement) {
+	if (viewport) {
 		return {
 			top: viewport.scrollTop,
 			left: viewport.scrollLeft,
