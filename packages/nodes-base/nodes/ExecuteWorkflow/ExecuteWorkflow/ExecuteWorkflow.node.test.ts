@@ -60,6 +60,20 @@ describe('ExecuteWorkflow', () => {
 				},
 			],
 		]);
+
+		// Verify shouldWait is set correctly
+		expect(executeFunctions.executeWorkflow).toHaveBeenCalledWith(
+			{ id: 'subWorkflowId' },
+			[{ json: { key: 'value' } }],
+			undefined,
+			{
+				parentExecution: {
+					executionId: 'executionId',
+					workflowId: 'workflowId',
+					shouldWait: true,
+				},
+			},
+		);
 	});
 
 	test('should execute workflow in "once" mode and not wait for sub-workflow completion', async () => {
@@ -70,6 +84,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce([]); // workflowInputs.schema
 
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
+		(getWorkflowInfo as jest.Mock).mockResolvedValue({ id: 'subWorkflowId' });
 
 		executeFunctions.executeWorkflow.mockResolvedValue({
 			executionId: 'subExecutionId',
@@ -79,6 +94,21 @@ describe('ExecuteWorkflow', () => {
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
 		expect(result).toEqual([[{ json: { key: 'value' }, index: 0, pairedItem: { item: 0 } }]]);
+
+		// Verify shouldWait is set to false
+		expect(executeFunctions.executeWorkflow).toHaveBeenCalledWith(
+			{ id: 'subWorkflowId' },
+			[{ json: { key: 'value' } }],
+			undefined,
+			{
+				doNotWaitToFinish: true,
+				parentExecution: {
+					executionId: 'executionId',
+					workflowId: 'workflowId',
+					shouldWait: false,
+				},
+			},
+		);
 	});
 
 	test('should handle errors and continue on fail, no items, < 1.3 version', async () => {

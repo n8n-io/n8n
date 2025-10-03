@@ -29,6 +29,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
 	WebhookResponseData,
+	RelatedExecution,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -648,10 +649,7 @@ export async function executeWebhook(
 		const executePromise = activeExecutions.getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
-		if (
-			parentExecution !== undefined &&
-			(parentExecution?.shouldWait === undefined || parentExecution?.shouldWait)
-		) {
+		if (parentExecution && _privateShouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
 			void executePromise.then(() => {
 				const waitTracker = Container.get(WaitTracker);
@@ -901,6 +899,19 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
 	}
 
 	return headers;
+}
+
+/**
+ * Determines if a parent execution should be restarted when a child execution completes.
+ *
+ * ONLY EXPORTED FOR TESTING.
+ *
+ * @param parentExecution - The parent execution metadata, if any
+ * @returns true if the parent should be restarted, false otherwise
+ */
+export function _privateShouldRestartParentExecution(parentExecution: RelatedExecution): boolean {
+	// If shouldWait is undefined, we assume true for backward compatibility
+	return parentExecution.shouldWait === undefined || parentExecution.shouldWait;
 }
 
 /**

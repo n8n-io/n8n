@@ -32,6 +32,7 @@ import {
 	prepareExecutionData,
 	handleHostedChatResponse,
 	_privateGetWebhookErrorMessage,
+	_privateShouldRestartParentExecution,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
@@ -465,5 +466,38 @@ describe('getWebhookErrorMessage', () => {
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
 			'Error: Workflow could not be started',
 		);
+	});
+});
+
+describe('_privateShouldRestartParentExecution', () => {
+	it('should return false when parentExecution is undefined', () => {
+		expect(_privateShouldRestartParentExecution(undefined)).toBe(false);
+	});
+
+	it('should return false when shouldWait is explicitly false', () => {
+		const parentExecution = {
+			executionId: 'parent-exec-id',
+			workflowId: 'parent-workflow-id',
+			shouldWait: false,
+		};
+		expect(_privateShouldRestartParentExecution(parentExecution)).toBe(false);
+	});
+
+	it('should return true when shouldWait is undefined', () => {
+		const parentExecution = {
+			executionId: 'parent-exec-id',
+			workflowId: 'parent-workflow-id',
+			shouldWait: undefined,
+		};
+		expect(_privateShouldRestartParentExecution(parentExecution)).toBe(true);
+	});
+
+	it('should return true when shouldWait is true', () => {
+		const parentExecution = {
+			executionId: 'parent-exec-id',
+			workflowId: 'parent-workflow-id',
+			shouldWait: true,
+		};
+		expect(_privateShouldRestartParentExecution(parentExecution)).toBe(true);
 	});
 });
