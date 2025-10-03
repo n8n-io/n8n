@@ -19,7 +19,7 @@ import {
 	SampleTemplates,
 	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
-} from '@/utils/templates/workflowSamples';
+} from '@/features/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,

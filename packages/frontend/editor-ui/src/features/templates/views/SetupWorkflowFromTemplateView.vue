@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useSetupTemplateStore } from './setupTemplate.store';
-import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
-import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
+import { useSetupTemplateStore } from '../setupTemplate.store';
+import AppsRequiringCredsNotice from '../components/AppsRequiringCredsNotice.vue';
+import SetupTemplateFormStep from '../components/SetupTemplateFormStep.vue';
 import TemplatesView from '@/features/templates/views/TemplatesView.vue';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';

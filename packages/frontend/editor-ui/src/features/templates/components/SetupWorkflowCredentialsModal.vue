@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { useSetupWorkflowCredentialsModalState } from '@/components/SetupWorkflowCredentialsModal/useSetupWorkflowCredentialsModalState';
+import { useSetupWorkflowCredentialsModalState } from '../composables/useSetupWorkflowCredentialsModalState';
 import { useI18n } from '@n8n/i18n';
-import AppsRequiringCredsNotice from '@/views/SetupWorkflowFromTemplateView/AppsRequiringCredsNotice.vue';
-import SetupTemplateFormStep from '@/views/SetupWorkflowFromTemplateView/SetupTemplateFormStep.vue';
+import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
+import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import { onMounted, onUnmounted } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';

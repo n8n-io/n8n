@@ -1,12 +1,12 @@
 import { mock } from 'vitest-mock-extended';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
-import { keyFromCredentialTypeAndName } from '@/utils/templates/templateTransforms';
-import type { IWorkflowTemplateNodeWithCredentials } from '@/utils/templates/templateTransforms';
-import type { CredentialUsages } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+import { keyFromCredentialTypeAndName } from '../utils/templateTransforms';
+import type { IWorkflowTemplateNodeWithCredentials } from '../utils/templateTransforms';
+import type { CredentialUsages } from '../templates.types';
 import {
 	getAppCredentials,
 	groupNodeCredentialsByKey,
-} from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+} from '../composables/useCredentialSetupState';
 import { nodeTypeTelegram, nodeTypeTwitter } from '@/utils/testData/nodeTypeTestData';
 
 const objToMap = <TKey extends string, T>(obj: Record<TKey, T>) => {
