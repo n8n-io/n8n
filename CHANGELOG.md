@@ -7694,4 +7694,4 @@ From [Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/181ba3c
 - **Redis Node:** Add Redis Trigger node and publish operation to regular node ([5c2deb4](https://github.com/n8n-io/n8n/commit/5c2deb468867ec77a05d09ef324d4855210e17d4))
 - **Wordpress Node:** Add Status option to Get All operation of Posts resource ([4d4db7f](https://github.com/n8n-io/n8n/commit/4d4db7f805673758dfb379c9e86e98815f265db2))
 
-> **Note:** for changelogs before 0.167.0, refer to the [Release notes](https://docs.n8n.io/reference/release-notes.html) in the documentation.
+> **Note:** for changelogs before 0.167.0, refer to the [Release notes](https://docs.n8n.io/release-notes/0-x/) in the documentation.
