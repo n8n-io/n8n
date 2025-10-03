@@ -193,6 +193,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	/**
+	 * Toggles between open and closed state for the chat panel.
+	 */
+	async function toggleChat() {
+		if (isAssistantOpen.value) {
+			closeChat();
+		} else {
+			await openChat();
+		}
+	}
+
+	/**
 	 * Updates chat panel width with enforced boundaries.
 	 * Width is clamped between MIN_CHAT_WIDTH (330px) and MAX_CHAT_WIDTH (650px)
 	 * to ensure usability on various screen sizes.
@@ -605,6 +616,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		stopStreaming,
 		closeChat,
 		openChat,
+		toggleChat,
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,

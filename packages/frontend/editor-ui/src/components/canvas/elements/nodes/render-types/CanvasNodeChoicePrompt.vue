@@ -2,6 +2,7 @@
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useBuilderStore } from '@/stores/builder.store';
+import { useAssistantStore } from '@/stores/assistant.store';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon } from '@n8n/design-system';
@@ -21,11 +22,7 @@ function onAddFirstStepClick() {
 }
 
 async function onBuildWithAIClick() {
-	if (builderStore.isAssistantOpen) {
-		builderStore.closeChat();
-	} else {
-		await builderStore.openChat();
-	}
+	await builderStore.toggleChat();
 }
 </script>
 

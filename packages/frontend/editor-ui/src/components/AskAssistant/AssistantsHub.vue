@@ -45,13 +45,13 @@ function onClose() {
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode
-	if (['openChat', 'initErrorHelper', 'initCredHelp'].includes(name)) {
+	if (['toggleChat', 'openChat', 'initErrorHelper', 'initCredHelp'].includes(name)) {
 		isBuildMode.value = false;
 	}
 });
 
 const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
-	if (['openChat', 'sendChatMessage'].includes(name)) {
+	if (['toggleChat', 'openChat', 'sendChatMessage'].includes(name)) {
 		isBuildMode.value = true;
 	}
 });

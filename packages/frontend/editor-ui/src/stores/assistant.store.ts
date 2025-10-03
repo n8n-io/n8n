@@ -149,11 +149,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// As assistant sidebar opens and closes, use window width to calculate the container width
 	// This will prevent animation race conditions from making ndv twitchy
 	function openChat() {
-		if (builderStore.isAIBuilderEnabled) {
-			// If builder is enabled, open it instead of assistant
-			void builderStore.openChat();
-			return;
-		}
 		chatWindowOpen.value = true;
 		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
 		uiStore.appGridDimensions = {
@@ -176,6 +171,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				resetAssistantChat();
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
+	}
+
+	function toggleChat() {
+		if (isAssistantOpen.value) {
+			closeChat();
+		} else {
+			openChat();
+		}
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
@@ -844,8 +847,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isFloatingButtonShown,
 		onNodeExecution,
 		trackUserOpenedAssistant,
-		closeChat,
 		openChat,
+		closeChat,
+		toggleChat,
 		updateWindowWidth,
 		isNodeErrorActive,
 		initErrorHelper,
