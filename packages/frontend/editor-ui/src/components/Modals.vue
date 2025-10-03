@@ -65,7 +65,7 @@ import DeleteFolderModal from '@/components/Folders/DeleteFolderModal.vue';
 import MoveToFolderModal from '@/components/Folders/MoveToFolderModal.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
-import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
+import ExternalSecretsProviderModal from '@/features/externalSecrets/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';

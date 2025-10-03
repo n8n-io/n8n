@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import type { ExternalSecretsProvider } from '@/Interface';
-import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
-import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import type { ExternalSecretsProvider } from '../externalSecrets.types';
+import ExternalSecretsProviderImage from './ExternalSecretsProviderImage.ee.vue';
+import ExternalSecretsProviderConnectionSwitch from './ExternalSecretsProviderConnectionSwitch.ee.vue';
+import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
+import { useExternalSecretsProvider } from '@/features/externalSecrets/composables/useExternalSecretsProvider';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRef } from 'vue';

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ExternalSecretsProvider } from '@/Interface';
+import type { ExternalSecretsProvider } from '../externalSecrets.types';
 import { computed } from 'vue';
 
 import infisical from '../assets/images/infisical.webp';
