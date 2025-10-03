@@ -150,7 +150,7 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
-const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(

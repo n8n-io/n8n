@@ -36,9 +36,6 @@ Object.defineProperty(window, 'open', {
 
 const renderComponent = (modalData = {}) => {
 	const renderer = createComponentRenderer(CommunityPackageInstallModal, {
-		props: {
-			appendToBody: false,
-		},
 		pinia: createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
