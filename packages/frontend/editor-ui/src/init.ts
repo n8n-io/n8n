@@ -36,22 +36,6 @@ export const state = {
 let authenticatedFeaturesInitialized = false;
 
 /**
- * EXP: Ready to run V2
- * Tracks user visits and determines if trial banner should show
- * Returns true if this is not the user's first visit
- */
-function shouldShowTrialBanner(): boolean {
-	const VISIT_COUNT_KEY = 'n8n-trial-visit-count';
-	const currentCount = parseInt(localStorage.getItem(VISIT_COUNT_KEY) ?? '0', 10);
-	const newCount = currentCount + 1;
-
-	localStorage.setItem(VISIT_COUNT_KEY, newCount.toString());
-
-	// Don't show banner on first visit
-	return newCount > 1;
-}
-
-/**
  * Initializes the core application stores and hooks
  * This is called once, when the first route is loaded.
  */
@@ -179,7 +163,7 @@ export async function initializeAuthenticatedFeatures(
 				if (cloudPlanStore.userIsTrialing) {
 					if (cloudPlanStore.trialExpired) {
 						uiStore.pushBannerToStack('TRIAL_OVER');
-					} else if (shouldShowTrialBanner()) {
+					} else {
 						uiStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
