@@ -33,6 +33,11 @@ function isAfterOrSame(dateToCompare: DateValue, referenceDate: DateValue) {
 	return dateToCompare.compare(referenceDate) >= 0;
 }
 
+function isEqual(dateToCompare?: DateValue, referenceDate?: DateValue) {
+	if (!dateToCompare || !referenceDate) return false;
+	return dateToCompare.compare(referenceDate) === 0;
+}
+
 function isValidDateRange({ start, end }: DateRange) {
 	if (!start) return false;
 	if (!end) return false;
@@ -46,7 +51,11 @@ const range = shallowRef<N8nDateRangePickerProps['modelValue']>({
 });
 
 function syncData(isOpen: boolean) {
-	if (isOpen) {
+	if (
+		isOpen &&
+		!isEqual(range.value?.start, props.modelValue.start) &&
+		!isEqual(range.value?.end, props.modelValue.end)
+	) {
 		range.value = {
 			start: props.modelValue.start?.copy(),
 			end: props.modelValue.end?.copy(),
@@ -64,6 +73,12 @@ function syncData(isOpen: boolean) {
 		return;
 	}
 
+	if (
+		isEqual(normalizedRange.start, props.modelValue.start) &&
+		isEqual(normalizedRange.end, props.modelValue.end)
+	) {
+		return;
+	}
 	emit('update:modelValue', normalizedRange);
 }
 const open = ref(false);
@@ -105,7 +120,7 @@ function isActiveRange(presetValue: number) {
 </script>
 
 <template>
-	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value>
+	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value :locale="'en-UK'">
 		<template #trigger>
 			<N8nButton icon="calendar" type="secondary">{{ formattedRange }}</N8nButton>
 		</template>
