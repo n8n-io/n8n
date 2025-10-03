@@ -894,7 +894,7 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-	getN8nVersion(): string;
+	getN8nVersion(): Promise<string>;
 	/** Get the waiting resume url signed with the signature token */
 	getSignedResumeUrl(parameters?: Record<string, string>): string;
 	/** Set requirement in the execution for signature token validation */

@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -217,14 +217,16 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	@Memoized
-	getN8nVersion() {
-		const rootDir = resolve(__dirname, '..', '..', '..', '..', '..');
-		const packageJsonPath = join(rootDir, 'package.json');
-		const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'), {
-			fallbackValue: { version: '0.0.0' },
-		});
-		return packageJson.version;
+	async getN8nVersion() {
+		const fallbackValue = '0.0.0';
+		try {
+			const rootDir = resolve(__dirname, '..', '..', '..', '..', '..');
+			const packageJsonPath = join(rootDir, 'package.json');
+			const packageJson = jsonParse<{ version: string }>(await readFile(packageJsonPath, 'utf8'));
+			return packageJson?.version ?? fallbackValue;
+		} catch {
+			return fallbackValue;
+		}
 	}
 
 	setSignatureValidationRequired() {
