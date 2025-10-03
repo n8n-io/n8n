@@ -10,7 +10,7 @@ import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@n8n/utils/assert';
@@ -586,6 +586,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota.value = quota;
 		creditsClaimed.value = claimed;
 	}
+
+	// Watch for route changes and close chat when leaving enabled views
+	watch(
+		() => route.name,
+		(newRoute) => {
+			// Close the chat window when navigating away from canvas/enabled views
+			if (!ENABLED_VIEWS.includes(newRoute as VIEWS) && chatWindowOpen.value) {
+				chatWindowOpen.value = false;
+			}
+		},
+	);
 
 	// Public API
 	return {
