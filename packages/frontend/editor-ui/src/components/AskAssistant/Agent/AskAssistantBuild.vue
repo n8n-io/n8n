@@ -264,7 +264,6 @@ watch(currentRoute, () => {
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
-			:title="'n8n AI'"
 			:show-stop="true"
 			:scroll-on-new-message="true"
 			:credits-quota="creditsQuota"
