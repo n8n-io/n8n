@@ -434,10 +434,6 @@ async function initializeRoute(force = false) {
 
 			if (!isDemoRoute.value) {
 				await loadCredentials();
-
-				// Fetch builder credits when initializing the route
-				// Only needed if workflow is editable where builder can be used
-				void builderStore.fetchBuilderCredits();
 			}
 
 			// If there is no workflow id, treat it as a new workflow

@@ -9,6 +9,7 @@ import AskAssistantChat from './Chat/AskAssistantChat.vue';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/components/AskAssistant/HubSwitcher.vue';
+
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 
@@ -44,15 +45,13 @@ function onClose() {
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode
-	if (['initErrorHelper', 'initCredHelp', 'openChat'].includes(name)) {
+	if (['openChat', 'initErrorHelper', 'initCredHelp'].includes(name)) {
 		isBuildMode.value = false;
 	}
 });
 
 const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
-	// When assistant is opened from error or credentials help
-	// switch from build mode to chat mode
-	if (name === 'sendChatMessage') {
+	if (['openChat', 'sendChatMessage'].includes(name)) {
 		isBuildMode.value = true;
 	}
 });
@@ -97,6 +96,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 }
+
 .assistantContent {
 	flex: 1;
 	overflow: hidden;
