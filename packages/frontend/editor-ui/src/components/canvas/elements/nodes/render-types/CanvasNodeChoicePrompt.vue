@@ -44,13 +44,17 @@ async function onBuildWithAIClick() {
 
 		<!-- Build with AI Button -->
 		<div :class="$style.option">
-			<button
-				:class="[$style.button, $style.aiButton]"
-				data-test-id="canvas-build-with-ai-button"
-				@click.stop="onBuildWithAIClick"
+			<div
+				:class="[$style.aiButtonHighlight, { [$style.highlighted]: builderStore.isAssistantOpen }]"
 			>
-				<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
-			</button>
+				<button
+					:class="[$style.button, $style.aiButton]"
+					data-test-id="canvas-build-with-ai-button"
+					@click.stop="onBuildWithAIClick"
+				>
+					<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+				</button>
+			</div>
 			<p :class="$style.label">
 				{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWithAI') }}
 			</p>
@@ -72,25 +76,24 @@ async function onBuildWithAIClick() {
 	flex-direction: column;
 	align-items: center;
 	width: 100px;
-
-	&:hover .button svg path {
-		fill: var(--color-primary);
-	}
 }
 
 .button {
 	background: var(--color-foreground-xlight);
 	border: 2px dashed var(--color-foreground-xdark);
-	border-radius: 8px;
+	border-radius: var(--border-radius-large);
 	padding: 0;
 
 	min-width: 100px;
 	min-height: 100px;
 	cursor: pointer;
+}
 
-	&.aiButton {
-		--button-hover-text-color: var(--color-text-base);
-		--button-hover-background-color: var(--color-text-base);
+.aiButtonHighlight {
+	border-radius: var(--border-radius-large);
+
+	&.highlighted {
+		box-shadow: 0 0 0 7px var(--color-canvas-selected);
 	}
 }
 
