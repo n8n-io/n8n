@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, watch, onBeforeMount } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nBadge, N8nButton, N8nInputLabel, N8nLink, N8nPopover } from '@n8n/design-system';
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 const props = withDefaults(
@@ -108,9 +110,9 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-	<n8n-popover trigger="click" width="304" size="large">
+	<N8nPopover trigger="click" width="304" size="large">
 		<template #reference>
-			<n8n-button
+			<N8nButton
 				icon="funnel"
 				type="tertiary"
 				size="small"
@@ -121,26 +123,26 @@ onBeforeMount(async () => {
 				}"
 				data-test-id="resources-list-filters-trigger"
 			>
-				<n8n-badge
+				<N8nBadge
 					v-if="filtersLength > 0"
 					:class="$style['filter-button-count']"
 					data-test-id="resources-list-filters-count"
 					theme="primary"
 				>
 					{{ filtersLength }}
-				</n8n-badge>
+				</N8nBadge>
 				<span v-if="!justIcon" :class="$style['filter-button-text']">
 					{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
 				</span>
-			</n8n-button>
+			</N8nButton>
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
 			<slot :filters="modelValue" :set-key-value="setKeyValue" />
-			<enterprise-edition
+			<EnterpriseEdition
 				v-if="shareable && projectsStore.isProjectHome"
 				:features="[EnterpriseEditionFeature.Sharing]"
 			>
-				<n8n-input-label
+				<N8nInputLabel
 					:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
 					:bold="false"
 					size="small"
@@ -154,14 +156,14 @@ onBeforeMount(async () => {
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 				/>
-			</enterprise-edition>
+			</EnterpriseEdition>
 			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
-				<n8n-link @click="resetFilters">
+				<N8nLink @click="resetFilters">
 					{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
-				</n8n-link>
+				</N8nLink>
 			</div>
 		</div>
-	</n8n-popover>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>

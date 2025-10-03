@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue';
 import type { ProjectRole } from '@n8n/permissions';
-import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
-import { ElRadio } from 'element-plus';
 import { isProjectRole } from '@/utils/typeGuards';
 import type { ProjectMemberData } from '@/types/projects.types';
 
+import { ElRadio } from 'element-plus';
+import { N8nActionDropdown, N8nIcon, N8nText, type ActionDropdownItem } from '@n8n/design-system';
 const props = defineProps<{
 	data: ProjectMemberData;
 	roles: Record<ProjectRole, { label: string; desc: string }>;

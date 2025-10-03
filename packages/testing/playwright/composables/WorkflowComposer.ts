@@ -1,3 +1,4 @@
+import type { Request } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -94,5 +95,17 @@ export class WorkflowComposer {
 		await this.n8n.canvas.clickWorkflowMenu();
 		await this.n8n.canvas.clickImportFromURL();
 		await this.n8n.canvas.clickCancelImportURL();
+	}
+
+	/**
+	 * Saves the current workflow and waits for the POST request to complete
+	 * @returns The Request object containing the save request details
+	 */
+	async saveWorkflowAndWaitForRequest(): Promise<Request> {
+		const saveRequestPromise = this.n8n.page.waitForRequest(
+			(req) => req.url().includes('/rest/workflows') && req.method() === 'POST',
+		);
+		await this.n8n.canvas.clickSaveWorkflowButton();
+		return await saveRequestPromise;
 	}
 }

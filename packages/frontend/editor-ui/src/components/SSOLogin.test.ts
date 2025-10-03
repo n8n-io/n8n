@@ -13,7 +13,7 @@ let ssoStore: ReturnType<typeof useSSOStore>;
 const renderComponent = createComponentRenderer(SSOLogin, {
 	global: {
 		stubs: {
-			'n8n-button': {
+			N8nButton: {
 				template: '<button data-test-id="sso-button"></button>',
 			},
 		},

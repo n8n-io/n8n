@@ -163,7 +163,7 @@ describe('POST /variables', () => {
 	test('should fail to create a new variable and if one with the same key exists', async () => {
 		await createVariable(toCreate.key, toCreate.value);
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
-		expect(response.statusCode).toBe(500);
+		expect(response.statusCode).toBe(400);
 		expect(response.body.data?.key).not.toBe(toCreate.key);
 		expect(response.body.data?.value).not.toBe(toCreate.value);
 	});
@@ -213,9 +213,8 @@ describe('POST /variables', () => {
 	test('should fail if value too long', async () => {
 		const toCreate = {
 			key: 'key',
-			// 256 'a's
-			value:
-				'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+			// 1001 'a's
+			value: Array(1001).fill('a').join(''),
 		};
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(400);

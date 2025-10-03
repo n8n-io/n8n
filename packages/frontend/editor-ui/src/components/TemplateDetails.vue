@@ -17,6 +17,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { N8nLoading, N8nTags, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	template: ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null;
 	blockTitle: string;
@@ -50,7 +51,7 @@ const redirectToSearchPage = (node: ITemplatesNode) => {
 
 <template>
 	<div>
-		<n8n-loading :loading="loading" :rows="5" variant="p" />
+		<N8nLoading :loading="loading" :rows="5" variant="p" />
 
 		<TemplateDetailsBlock
 			v-if="!loading && template && template.nodes.length > 0"
@@ -76,7 +77,7 @@ const redirectToSearchPage = (node: ITemplatesNode) => {
 			v-if="!loading && isFullTemplatesCollection(template) && categoriesAsTags.length > 0"
 			:title="i18n.baseText('template.details.categories')"
 		>
-			<n8n-tags :tags="categoriesAsTags" @click:tag="redirectToCategory" />
+			<N8nTags :tags="categoriesAsTags" @click:tag="redirectToCategory" />
 		</TemplateDetailsBlock>
 
 		<TemplateDetailsBlock
@@ -84,15 +85,15 @@ const redirectToSearchPage = (node: ITemplatesNode) => {
 			:title="i18n.baseText('template.details.details')"
 		>
 			<div :class="$style.text">
-				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
+				<N8nText v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
 					{{ i18n.baseText('template.details.created') }}
 					<TimeAgo :date="template.createdAt" />
 					{{ i18n.baseText('template.details.by') }}
 					{{ template.user ? template.user.username : 'n8n team' }}
-				</n8n-text>
+				</N8nText>
 			</div>
 			<div :class="$style.text">
-				<n8n-text
+				<N8nText
 					v-if="isTemplatesWorkflow(template) && template.totalViews !== 0"
 					size="small"
 					color="text-base"
@@ -100,7 +101,7 @@ const redirectToSearchPage = (node: ITemplatesNode) => {
 					{{ i18n.baseText('template.details.viewed') }}
 					{{ abbreviateNumber(template.totalViews) }}
 					{{ i18n.baseText('template.details.times') }}
-				</n8n-text>
+				</N8nText>
 			</div>
 		</TemplateDetailsBlock>
 	</div>

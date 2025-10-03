@@ -22,7 +22,7 @@ test.describe('Variables', () => {
 	test.describe('licensed', () => {
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.api.enableFeature('variables');
-			await n8n.api.variablesApi.deleteAllVariables();
+			await n8n.api.variables.deleteAllVariables();
 			await n8n.navigate.toVariables();
 		});
 

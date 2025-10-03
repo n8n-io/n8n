@@ -2,6 +2,7 @@
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: { title: string; footerButtonAction: () => void };
@@ -13,21 +14,21 @@ const i18n = useI18n();
 <template>
 	<Modal width="500px" :title="props.data.title" :name="props.modalName">
 		<template #content>
-			<n8n-text>
+			<N8nText>
 				{{ i18n.baseText('executionsList.debug.paywall.content') }}
 				<br />
 				<br />
 				{{ i18n.baseText('executionsList.debug.paywall.subContent') }}
-				<n8n-link :to="i18n.baseText('executionsList.debug.paywall.link.url')" new-window>
+				<N8nLink :to="i18n.baseText('executionsList.debug.paywall.link.url')" new-window>
 					{{ i18n.baseText('executionsList.debug.paywall.link.text') }}
-				</n8n-link>
-			</n8n-text>
+				</N8nLink>
+			</N8nText>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button @click="props.data.footerButtonAction">
+				<N8nButton @click="props.data.footerButtonAction">
 					{{ i18n.baseText('generic.seePlans') }}
-				</n8n-button>
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>

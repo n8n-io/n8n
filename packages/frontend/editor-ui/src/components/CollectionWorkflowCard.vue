@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { N8nCard, N8nLoading } from '@n8n/design-system';
+
 defineProps<{
 	loading: boolean;
 	title?: string;
@@ -6,15 +8,15 @@ defineProps<{
 </script>
 
 <template>
-	<n8n-card :class="$style.card" v-bind="$attrs">
+	<N8nCard :class="$style.card" v-bind="$attrs">
 		<template v-if="!loading && title" #header>
 			<span :class="$style.title" v-text="title" />
 		</template>
-		<n8n-loading :loading="loading" :rows="3" variant="p" />
+		<N8nLoading :loading="loading" :rows="3" variant="p" />
 		<template v-if="!loading" #footer>
 			<slot name="footer" />
 		</template>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>

@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import snakeCase from 'lodash/snakeCase';
 import { useSessionStorage } from '@vueuse/core';
 
-import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
+import { N8nButton, N8nCircleLoader, N8nIcon, N8nInput, N8nTooltip } from '@n8n/design-system';
 import { randomInt } from 'n8n-workflow';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
@@ -25,7 +25,6 @@ import {
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/constants';
 import type { AskAiRequest } from '@/types/assistant.types';
-
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];
@@ -281,7 +280,7 @@ onMounted(() => {
 					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
 				/>
 				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
-					<n8n-icon icon="circle-help" color="text-light" size="large" />{{
+					<N8nIcon icon="circle-help" color="text-light" size="large" />{{
 						i18n.baseText('codeNodeEditor.askAi.help')
 					}}
 				</a>
@@ -289,10 +288,10 @@ onMounted(() => {
 		</div>
 		<div :class="$style.controls">
 			<div v-if="isLoading" :class="$style.loader">
-				<transition name="text-fade-in-out" mode="out-in">
+				<Transition name="text-fade-in-out" mode="out-in">
 					<div :key="loadingPhraseIndex" v-text="loadingString" />
-				</transition>
-				<n8n-circle-loader :radius="8" :progress="loaderProgress" :stroke-width="3" />
+				</Transition>
+				<N8nCircleLoader :radius="8" :progress="loaderProgress" :stroke-width="3" />
 			</div>
 			<N8nTooltip v-else :disabled="isSubmitEnabled">
 				<div>

@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { type Project, ProjectTypes } from '@/types/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
+import { N8nLink, N8nText } from '@n8n/design-system';
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;
@@ -81,12 +83,12 @@ const onProjectMouseUp = () => {
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<n8n-link :to="projectLink" :class="[$style['project-link']]">
+		<N8nLink :to="projectLink" :class="[$style['project-link']]">
 			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
 			<N8nText size="medium" color="text-base" :class="$style['project-label']">
 				{{ projectName }}
 			</N8nText>
-		</n8n-link>
+		</N8nLink>
 	</div>
 </template>
 

@@ -12,6 +12,7 @@ import type { AllRolesMap } from '@n8n/permissions';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { computed, ref, watch } from 'vue';
 
+import { N8nBadge, N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 const locale = useI18n();
 
 type Props = {

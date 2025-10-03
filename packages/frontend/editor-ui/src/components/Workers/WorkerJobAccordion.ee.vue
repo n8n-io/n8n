@@ -3,6 +3,7 @@ import type { RunningJobSummary } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	items: RunningJobSummary[];
 }>();
@@ -30,12 +31,12 @@ function runningSince(started: Date): string {
 					<a :href="'/workflow/' + item.workflowId + '/executions/' + item.executionId">
 						Execution {{ item.executionId }} - {{ item.workflowName }}</a
 					>
-					<n8n-text color="text-base" size="small" align="left">
+					<N8nText color="text-base" size="small" align="left">
 						| Started at:
 						{{ new Date(item.startedAt)?.toLocaleTimeString() }} | Running for
 						{{ runningSince(new Date(item.startedAt)) }}
 						{{ item.retryOf ? `| Retry of: ${item.retryOf}` : '' }} |
-					</n8n-text>
+					</N8nText>
 					<a target="_blank" :href="'/workflow/' + item.workflowId"> (Open workflow)</a>
 				</div>
 			</div>

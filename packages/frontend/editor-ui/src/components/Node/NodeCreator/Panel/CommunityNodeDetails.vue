@@ -1,17 +1,15 @@
 <script setup lang="ts">
+import { useInstallNode } from '@/composables/useInstallNode';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useUsersStore } from '@/stores/users.store';
+import { getNodeIconSource } from '@/utils/nodeIcon';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 import { computed } from 'vue';
 import { useViewStacks } from '../composables/useViewStacks';
-
-import { getNodeIconSource } from '@/utils/nodeIcon';
-
 import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
-
-import { useInstallNode } from '@/composables/useInstallNode';
-import { N8nText } from '@n8n/design-system';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 const {
 	activeViewStack,

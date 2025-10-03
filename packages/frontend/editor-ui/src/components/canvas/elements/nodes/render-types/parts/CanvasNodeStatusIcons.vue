@@ -5,11 +5,11 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
-import { N8nTooltip } from '@n8n/design-system';
 import { useCanvas } from '@/composables/useCanvas';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const {
 	size = 'large',
 	spinnerScrim = false,

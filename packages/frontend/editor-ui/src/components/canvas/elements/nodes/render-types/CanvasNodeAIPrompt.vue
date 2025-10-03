@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import N8nPromptInput from '@n8n/design-system/components/N8nPromptInput/N8nPromptInput.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
@@ -15,6 +14,7 @@ import { MODAL_CONFIRM, NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import type { WorkflowSuggestion } from '@/constants/workflowSuggestions';
 
+import { N8nIcon, N8nPromptInput } from '@n8n/design-system';
 // Composables
 const i18n = useI18n();
 const router = useRouter();
@@ -175,7 +175,7 @@ function onAddNodeClick() {
 				type="button"
 				aria-label="Add node manually"
 			>
-				<n8n-icon icon="plus" :size="40" />
+				<N8nIcon icon="plus" :size="40" />
 			</button>
 			<div :class="$style.startManuallyLabel">
 				<strong :class="$style.startManuallyText">

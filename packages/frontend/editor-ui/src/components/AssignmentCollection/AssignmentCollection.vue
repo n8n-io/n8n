@@ -20,6 +20,7 @@ import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/comp
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
+import { N8nInputLabel } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
@@ -135,7 +136,7 @@ function optionSelected(action: string) {
 		:class="{ [$style.assignmentCollection]: true, [$style.empty]: empty }"
 		:data-test-id="`assignment-collection-${parameter.name}`"
 	>
-		<n8n-input-label
+		<N8nInputLabel
 			:label="parameter.displayName"
 			:show-expression-selector="false"
 			size="small"
@@ -152,7 +153,7 @@ function optionSelected(action: string) {
 					@update:model-value="optionSelected"
 				/>
 			</template>
-		</n8n-input-label>
+		</N8nInputLabel>
 
 		<ExperimentalEmbeddedNdvMapper
 			v-if="

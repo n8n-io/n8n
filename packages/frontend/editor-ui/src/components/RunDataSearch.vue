@@ -8,6 +8,7 @@ import { useEventListener } from '@vueuse/core';
 import { PopOutWindowKey } from '@/constants';
 import { type SearchShortcut } from '@/types';
 
+import { N8nIcon, N8nInput } from '@n8n/design-system';
 type Props = {
 	modelValue: string;
 	paneType?: NodePanelType;
@@ -161,7 +162,7 @@ watch(
 </script>
 
 <template>
-	<n8n-input
+	<N8nInput
 		ref="inputRef"
 		data-test-id="ndv-search"
 		:class="{
@@ -177,9 +178,9 @@ watch(
 		@blur="onBlur"
 	>
 		<template #prefix>
-			<n8n-icon :class="$style.ioSearchIcon" icon="search" size="large" />
+			<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
 		</template>
-	</n8n-input>
+	</N8nInput>
 </template>
 
 <style lang="scss" module>

@@ -33,12 +33,14 @@ import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import InlineExpressionTip from '@/components/InlineExpressionEditor/InlineExpressionTip.vue';
 import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
+import WorkflowSelectorParameterInput from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,
@@ -74,7 +76,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useElementSize } from '@vueuse/core';
@@ -94,6 +95,8 @@ import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/comp
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/stores/projects.store';
 
+import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
+import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -1329,7 +1332,7 @@ onUpdated(async () => {
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<el-dialog
+				<ElDialog
 					width="calc(100% - var(--spacing-3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
@@ -1399,7 +1402,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
-				</el-dialog>
+				</ElDialog>
 
 				<TextEdit
 					:dialog-visible="textEditDialogVisible"
@@ -1610,7 +1613,7 @@ onUpdated(async () => {
 			</div>
 
 			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-				<el-color-picker
+				<ElColorPicker
 					size="small"
 					class="color-picker"
 					:model-value="displayValue"
@@ -1634,13 +1637,19 @@ onUpdated(async () => {
 				/>
 			</div>
 
-			<el-date-picker
+			<ElDatePicker
 				v-else-if="parameter.type === 'dateTime'"
 				ref="inputField"
 				v-model="tempValue"
 				type="datetime"
 				value-format="YYYY-MM-DDTHH:mm:ss"
-				:size="inputSize"
+				:size="
+					inputSize === 'mini'
+						? 'small'
+						: inputSize === 'xlarge' || inputSize === 'medium'
+							? 'large'
+							: inputSize
+				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				:placeholder="
@@ -1776,7 +1785,7 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
-			<el-switch
+			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
 				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"

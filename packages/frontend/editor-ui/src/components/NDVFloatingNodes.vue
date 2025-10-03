@@ -8,6 +8,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 
+import { N8nTooltip } from '@n8n/design-system';
 interface Props {
 	rootNode: INodeUi;
 }
@@ -45,13 +46,11 @@ function moveNodeDirection(direction: FloatingNodePosition) {
 
 function onKeyDown(e: KeyboardEvent) {
 	if (e.shiftKey && e.altKey && (e.ctrlKey || e.metaKey)) {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		const mapper = {
 			ArrowUp: FloatingNodePosition.top,
 			ArrowRight: FloatingNodePosition.right,
 			ArrowLeft: FloatingNodePosition.left,
 		};
-		/* eslint-enable @typescript-eslint/naming-convention */
 
 		const matchingDirection = mapper[e.key as keyof typeof mapper] || null;
 		if (matchingDirection) {
@@ -123,7 +122,7 @@ defineExpose({
 			:class="[$style.nodesList, $style[connectionGroup]]"
 		>
 			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
-				<n8n-tooltip
+				<N8nTooltip
 					v-if="node && nodeType"
 					:key="node.name"
 					:placement="tooltipPositionMapper[connectionGroup]"
@@ -147,7 +146,7 @@ defineExpose({
 							circle
 						/>
 					</li>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</template>
 		</ul>
 	</aside>

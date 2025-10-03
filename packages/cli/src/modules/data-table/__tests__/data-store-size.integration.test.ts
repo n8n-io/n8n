@@ -69,7 +69,7 @@ describe('Data Store Size Tests', () => {
 			mockFindDataTablesSize.mockRestore();
 		});
 
-		it('should prevent updateRow when size limit exceeded', async () => {
+		it('should prevent updateRows when size limit exceeded', async () => {
 			// ARRANGE
 			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
 			dataStoreSizeValidator.reset();
@@ -88,7 +88,7 @@ describe('Data Store Size Tests', () => {
 
 			// ACT & ASSERT
 			await expect(
-				dataStoreService.updateRow(dataStoreId, project1.id, {
+				dataStoreService.updateRows(dataStoreId, project1.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
@@ -389,7 +389,7 @@ describe('Data Store Size Tests', () => {
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(2);
 
 			// Update data (should reset cache again)
-			await dataStoreService.updateRow(dataStore.id, project1.id, {
+			await dataStoreService.updateRows(dataStore.id, project1.id, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'data', condition: 'eq', value: 'test' }],

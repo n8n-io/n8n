@@ -45,12 +45,10 @@ test.describe('Inline expression editor', () => {
 
 			// Should switch back to fixed with backspace on empty expression
 			await n8n.ndv.clearExpressionEditor('value');
-			const parameterInput = n8n.ndv.getParameterInput('value');
+			const parameterInput = n8n.ndv.getParameterInput('value').getByRole('textbox');
 			await parameterInput.click();
 			await parameterInput.focus();
 			await parameterInput.press('Backspace');
-			// eslint-disable-next-line playwright/no-wait-for-timeout
-			await n8n.page.waitForTimeout(1000);
 			await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeHidden();
 		});
 	});

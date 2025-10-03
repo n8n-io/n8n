@@ -3,7 +3,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { CanvasNodeHandleKey } from '@/constants';
 import { ref } from 'vue';
-import { CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode, type CanvasElementPortWithRenderData } from '@/types';
+import { Position } from '@vue-flow/core';
 
 const renderComponent = createComponentRenderer(CanvasHandleRenderer);
 
@@ -18,7 +19,7 @@ describe('CanvasHandleRenderer', () => {
 				mode: CanvasConnectionMode.Input,
 				type: NodeConnectionTypes.Main,
 				index: 0,
-				position: 'left',
+				position: Position.Left,
 				offset: { left: '10px', top: '10px' },
 				label: 'Main Input',
 			},
@@ -39,8 +40,8 @@ describe('CanvasHandleRenderer', () => {
 				mode: CanvasConnectionMode.Output,
 				type: NodeConnectionTypes.Main,
 				index: 0,
-				position: 'right',
-				offset: { right: '10px', bottom: '10px' },
+				position: Position.Right,
+				offset: { right: '10px', bottom: '10px' } as CanvasElementPortWithRenderData['offset'],
 				label: 'Main Output',
 			},
 			global: {
@@ -60,7 +61,7 @@ describe('CanvasHandleRenderer', () => {
 				mode: CanvasConnectionMode.Input,
 				type: NodeConnectionTypes.AiTool,
 				index: 0,
-				position: 'top',
+				position: Position.Top,
 				offset: { top: '10px', left: '5px' },
 				label: 'AI Tool Input',
 			},
@@ -79,10 +80,10 @@ describe('CanvasHandleRenderer', () => {
 		const label = 'Test Label';
 		const { getByText } = renderComponent({
 			props: {
-				mode: 'input',
+				mode: CanvasConnectionMode.Input,
 				type: NodeConnectionTypes.AiTool,
 				index: 0,
-				position: 'top',
+				position: Position.Top,
 				offset: { top: '10px', left: '5px' },
 				label,
 			},

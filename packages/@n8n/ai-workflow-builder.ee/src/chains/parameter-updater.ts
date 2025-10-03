@@ -88,6 +88,7 @@ export const createParameterUpdaterChain = (
 			{
 				type: 'text',
 				text: systemPromptContent,
+				cache_control: { type: 'ephemeral' },
 			},
 		],
 	});
@@ -98,6 +99,7 @@ export const createParameterUpdaterChain = (
 				{
 					type: 'text',
 					text: nodeDefinitionPrompt,
+					cache_control: { type: 'ephemeral' },
 				},
 				{
 					type: 'text',

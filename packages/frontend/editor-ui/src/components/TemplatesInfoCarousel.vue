@@ -5,6 +5,7 @@ import Card from '@/components/CollectionWorkflowCard.vue';
 import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
 import { VueAgile } from 'vue-agile';
 
+import { N8nIcon } from '@n8n/design-system';
 type SliderRef = InstanceType<typeof VueAgile>;
 
 const props = withDefaults(
@@ -125,14 +126,14 @@ onBeforeMount(() => {
 			:class="{ [$style.leftButton]: true }"
 			@click="scrollLeft"
 		>
-			<n8n-icon icon="chevron-left" />
+			<N8nIcon icon="chevron-left" />
 		</button>
 		<button
 			v-show="showNavigation && !scrollEnd"
 			:class="{ [$style.rightButton]: true }"
 			@click="scrollRight"
 		>
-			<n8n-icon icon="chevron-right" />
+			<N8nIcon icon="chevron-right" />
 		</button>
 	</div>
 </template>
