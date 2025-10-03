@@ -44,7 +44,6 @@ export const enum CanvasNodeRenderType {
 	Default = 'default',
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
-	AIPrompt = 'n8n-nodes-base.aiPrompt',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
 }
 

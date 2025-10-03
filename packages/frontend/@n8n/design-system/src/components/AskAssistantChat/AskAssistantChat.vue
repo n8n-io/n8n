@@ -196,9 +196,15 @@ function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
 	return event?.type === 'event' && event?.eventName === 'end-session';
 }
 
-function onSuggestionClick(suggestion: WorkflowSuggestion) {
-	// Send the suggestion prompt as a message
-	emit('message', suggestion.prompt);
+async function onSuggestionClick(suggestion: WorkflowSuggestion) {
+	// Populate the input field with the suggestion so user can edit before submitting
+	textInputValue.value = suggestion.prompt;
+	// Wait for the input to update its height before focusing
+	await nextTick();
+	// Wait one more frame to ensure DOM is fully updated
+	await new Promise(requestAnimationFrame);
+	// Focus the input so user can edit it
+	promptInputRef.value?.focusInput();
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
