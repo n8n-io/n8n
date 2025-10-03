@@ -15,7 +15,6 @@ import { computed, ref } from 'vue';
 import { ElCheckbox } from 'element-plus';
 import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 
-
 interface ModalData {
 	packageName?: string;
 	disableInput?: boolean;
