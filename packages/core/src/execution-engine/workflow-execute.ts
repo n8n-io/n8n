@@ -1587,6 +1587,7 @@ export class WorkflowExecute {
 				this.updateTaskStatusesToCancelled();
 				this.abortController.abort();
 				const fullRunData = this.getFullRunData(startedAt);
+				void hooks.runHook('sendChunk', [{ type: 'end' }]);
 				void hooks.runHook('workflowExecuteAfter', [fullRunData]);
 			});
 
@@ -1595,6 +1596,7 @@ export class WorkflowExecute {
 				try {
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
+						await hooks.runHook('sendChunk', [{ type: 'begin' }]);
 					}
 				} catch (error) {
 					const e = error as unknown as ExecutionBaseError;
@@ -1713,6 +1715,18 @@ export class WorkflowExecute {
 						node: executionNode.name,
 						workflowId: workflow.id,
 					});
+					await hooks.runHook('sendChunk', [
+						{
+							type: 'node-execute-before',
+							metadata: {
+								nodeId: executionNode.id,
+								nodeName: executionNode.name,
+								nodeType: executionNode.type,
+								runIndex,
+								timestamp: Date.now(),
+							},
+						},
+					]);
 					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					let maxTries = 1;
 					if (executionData.node.retryOnFail === true) {
@@ -1906,6 +1920,7 @@ export class WorkflowExecute {
 								metadata: {
 									nodeId: executionNode.id,
 									nodeName: executionNode.name,
+									nodeType: executionNode.type,
 									runIndex,
 									itemIndex: 0,
 								},
@@ -1934,6 +1949,18 @@ export class WorkflowExecute {
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
 							if (!this.isCancelled) {
+								await hooks.runHook('sendChunk', [
+									{
+										type: 'node-execute-after',
+										metadata: {
+											nodeId: executionNode.id,
+											nodeName: executionNode.name,
+											nodeType: executionNode.type,
+											runIndex,
+											timestamp: Date.now(),
+										},
+									},
+								]);
 								await hooks.runHook('nodeExecuteAfter', [
 									executionNode.name,
 									taskData,
@@ -1980,6 +2007,18 @@ export class WorkflowExecute {
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 
 					if (this.runExecutionData.waitTill) {
+						await hooks.runHook('sendChunk', [
+							{
+								type: 'node-execute-after',
+								metadata: {
+									nodeId: executionNode.id,
+									nodeName: executionNode.name,
+									nodeType: executionNode.type,
+									runIndex,
+									timestamp: Date.now(),
+								},
+							},
+						]);
 						await hooks.runHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -1999,6 +2038,18 @@ export class WorkflowExecute {
 					) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.
+						await hooks.runHook('sendChunk', [
+							{
+								type: 'node-execute-after',
+								metadata: {
+									nodeId: executionNode.id,
+									nodeName: executionNode.name,
+									nodeType: executionNode.type,
+									runIndex,
+									timestamp: Date.now(),
+								},
+							},
+						]);
 						await hooks.runHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -2110,6 +2161,18 @@ export class WorkflowExecute {
 					// Execute hooks now to make sure that all hooks are executed properly
 					// Await is needed to make sure that we don't fall into concurrency problems
 					// When saving node execution data
+					await hooks.runHook('sendChunk', [
+						{
+							type: 'node-execute-after',
+							metadata: {
+								nodeId: executionNode.id,
+								nodeName: executionNode.name,
+								nodeType: executionNode.type,
+								runIndex,
+								timestamp: Date.now(),
+							},
+						},
+					]);
 					await hooks.runHook('nodeExecuteAfter', [
 						executionNode.name,
 						taskData,
@@ -2313,6 +2376,7 @@ export class WorkflowExecute {
 
 					this.moveNodeMetadata();
 
+					await hooks.runHook('sendChunk', [{ type: 'end' }]);
 					await hooks
 						.runHook('workflowExecuteAfter', [fullRunData, newStaticData])
 						.catch((error) => {
@@ -2449,6 +2513,7 @@ export class WorkflowExecute {
 		this.moveNodeMetadata();
 		// Prevent from running the hook if the error is an abort error as it was already handled
 		if (!this.isCancelled) {
+			await this.additionalData.hooks?.runHook('sendChunk', [{ type: 'end' }]);
 			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
 				fullRunData,
 				newStaticData,

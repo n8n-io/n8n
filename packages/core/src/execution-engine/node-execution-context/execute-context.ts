@@ -155,6 +155,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		const metadata = {
 			nodeId: node.id,
 			nodeName: node.name,
+			nodeType: node.type,
 			itemIndex,
 			runIndex: this.runIndex,
 			timestamp: Date.now(),

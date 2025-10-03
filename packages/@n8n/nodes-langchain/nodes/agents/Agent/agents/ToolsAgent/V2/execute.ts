@@ -93,7 +93,6 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
-	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
@@ -125,6 +124,7 @@ async function processEventStream(
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
 						for (const toolCall of output.tool_calls) {
+							ctx.sendChunk('tool-call-start', itemIndex, toolCall.name);
 							agentResult.intermediateSteps!.push({
 								action: {
 									tool: toolCall.name,
@@ -150,6 +150,7 @@ async function processEventStream(
 						(step) => !step.observation && step.action.tool === event.name,
 					);
 					if (matchingStep) {
+						ctx.sendChunk('tool-call-end', itemIndex, toolData.output);
 						matchingStep.observation = toolData.output;
 					}
 				}
@@ -158,7 +159,6 @@ async function processEventStream(
 				break;
 		}
 	}
-	ctx.sendChunk('end', itemIndex);
 
 	return agentResult;
 }

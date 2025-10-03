@@ -3077,15 +3077,24 @@ export type IPersonalizationSurveyAnswersV4 = {
 	reportedSourceOther?: string | null;
 };
 
-export type ChunkType = 'begin' | 'item' | 'end' | 'error';
+export type ChunkType =
+	| 'begin'
+	| 'item'
+	| 'end'
+	| 'error'
+	| 'tool-call-start'
+	| 'tool-call-end'
+	| 'node-execute-before'
+	| 'node-execute-after';
 export interface StructuredChunk {
 	type: ChunkType;
 	content?: string;
-	metadata: {
+	metadata?: {
 		nodeId: string;
 		nodeName: string;
+		nodeType: string;
 		runIndex: number;
-		itemIndex: number;
+		itemIndex?: number;
 		timestamp: number;
 	};
 }
