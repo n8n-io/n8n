@@ -13,9 +13,9 @@ import type {
 } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 
-import { NodeExecutionContext } from '../node-execution-context';
-
 import { InstanceSettings } from '@/instance-settings';
+
+import { NodeExecutionContext } from '../node-execution-context';
 
 class TestContext extends NodeExecutionContext {}
 
