@@ -16,6 +16,7 @@ import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import type { WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+
 const emit = defineEmits<{
 	close: [];
 }>();
@@ -34,6 +35,7 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
+const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -264,11 +266,18 @@ watch(
 watch(currentRoute, () => {
 	onNewWorkflow();
 });
+
+defineExpose({
+	focusInput: () => {
+		n8nChatRef.value?.focusInput();
+	},
+});
 </script>
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
 		<N8nAskAssistantChat
+			ref="n8nChatRef"
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"

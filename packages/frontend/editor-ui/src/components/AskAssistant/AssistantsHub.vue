@@ -13,6 +13,9 @@ import HubSwitcher from '@/components/AskAssistant/HubSwitcher.vue';
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 
+const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
+const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
+
 const isBuildMode = ref(builderStore.isAIBuilderEnabled);
 
 const chatWidth = computed(() => {
@@ -42,6 +45,14 @@ function onClose() {
 	assistantStore.closeChat();
 }
 
+function onSlideEnterComplete() {
+	if (isBuildMode.value) {
+		askAssistantBuildRef.value?.focusInput();
+	} else {
+		askAssistantChatRef.value?.focusInput();
+	}
+}
+
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode
@@ -63,7 +74,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<SlideTransition>
+	<SlideTransition @after-enter="onSlideEnterComplete">
 		<N8nResizeWrapper
 			v-show="builderStore.isAssistantOpen || assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
@@ -74,12 +85,12 @@ onBeforeUnmount(() => {
 		>
 			<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
 				<div :class="$style.assistantContent">
-					<AskAssistantBuild v-if="isBuildMode" @close="onClose">
+					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
 						<template #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>
 					</AskAssistantBuild>
-					<AskAssistantChat v-else @close="onClose">
+					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
 						<!-- Header switcher is only visible when AIBuilder is enabled -->
 						<template v-if="builderStore.isAIBuilderEnabled" #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />

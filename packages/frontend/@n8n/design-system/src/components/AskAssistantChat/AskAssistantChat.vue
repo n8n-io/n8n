@@ -357,7 +357,6 @@ function getMessageColor(message: ChatUI.AssistantMessage): string | undefined {
 	return undefined;
 }
 
-// Expose focusInput method to parent components
 defineExpose({
 	focusInput: () => {
 		promptInputRef.value?.focusInput();
