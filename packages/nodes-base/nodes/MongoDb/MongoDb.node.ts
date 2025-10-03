@@ -487,6 +487,7 @@ export class MongoDb implements INodeType {
 					try {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
+						const indexType = this.getNodeParameter('indexType', i) as string;
 						const definition = JSON.parse(
 							this.getNodeParameter('indexDefinition', i) as string,
 						) as Record<string, unknown>;
@@ -494,6 +495,7 @@ export class MongoDb implements INodeType {
 						await mdb.collection(collection).createSearchIndex({
 							name: indexName,
 							definition,
+							type: indexType,
 						});
 
 						returnData.push({
