@@ -335,7 +335,7 @@ describe('GoogleSheet', () => {
 				{},
 				{
 					valueRenderOption: valueRenderMode,
-					dateTimeRenderOption: dateTimeRenderOption,
+					dateTimeRenderOption,
 				},
 			);
 		});
@@ -490,11 +490,11 @@ describe('GoogleSheet', () => {
 	describe('appendData', () => {
 		beforeEach(() => {
 			// Mock getData to return existing data
-			(apiRequest.call as jest.Mock).mockImplementation((_, method, _url) => {
+			(apiRequest.call as jest.Mock).mockImplementation(async (_, method, _url) => {
 				if (method === 'GET') {
-					return Promise.resolve({ values: [['existing', 'row']] });
+					return { values: [['existing', 'row']] };
 				}
-				return Promise.resolve({ range: 'Sheet1!A2:B2' });
+				return { range: 'Sheet1!A2:B2' };
 			});
 		});
 
