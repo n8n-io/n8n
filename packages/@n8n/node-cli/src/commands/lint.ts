@@ -4,9 +4,13 @@ import path from 'node:path';
 import picocolors from 'picocolors';
 
 import { ChildProcessError, runCommand } from '../utils/child-process';
+import { suggestCloudSupportCommand } from '../utils/command-suggestions';
 import { getPackageJson } from '../utils/package';
-import { detectPackageManager } from '../utils/package-manager';
 import { ensureN8nPackage } from '../utils/prompts';
+
+function isNodeErrnoException(error: unknown): error is NodeJS.ErrnoException {
+	return error instanceof Error && 'code' in error;
+}
 
 export default class Lint extends Command {
 	static override description =
@@ -86,27 +90,25 @@ export default class Lint extends Command {
 			const normalizedExpected = expectedConfig.replace(/\s+/g, ' ').trim();
 
 			if (normalizedCurrent !== normalizedExpected) {
-				const packageManager = (await detectPackageManager()) ?? 'npm';
-				const execCommand = packageManager === 'npm' ? 'npx' : packageManager;
+				const enableCommand = await suggestCloudSupportCommand('enable');
 
 				this.log(`${picocolors.red('Strict mode violation:')} ${picocolors.cyan('eslint.config.mjs')} has been modified from the default configuration.
 
 ${picocolors.dim('Expected:')}
 ${picocolors.gray(expectedConfig)}
 
-To restore default config: ${picocolors.cyan(`${execCommand} n8n-node cloud-support enable`)}
+To restore default config: ${enableCommand}
 To disable strict mode: set ${picocolors.yellow('"strict": false')} in ${picocolors.cyan('package.json')} under the ${picocolors.yellow('"n8n"')} section.`);
 				process.exit(1);
 			}
 		} catch (error: unknown) {
-			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-				const packageManager = (await detectPackageManager()) ?? 'npm';
-				const execCommand = packageManager === 'npm' ? 'npx' : packageManager;
+			if (isNodeErrnoException(error) && error.code === 'ENOENT') {
+				const enableCommand = await suggestCloudSupportCommand('enable');
 
 				this.log(
 					`${picocolors.red('Strict mode violation:')} ${picocolors.cyan('eslint.config.mjs')} not found. Expected default configuration.
 
-To create default config: ${picocolors.cyan(`${execCommand} n8n-node cloud-support enable`)}`,
+To create default config: ${enableCommand}`,
 				);
 				process.exit(1);
 			}
@@ -116,15 +118,14 @@ To create default config: ${picocolors.cyan(`${execCommand} n8n-node cloud-suppo
 
 	private async handleLintErrors(eslintOutput: string): Promise<void> {
 		if (this.containsCloudOnlyErrors(eslintOutput)) {
-			const packageManager = (await detectPackageManager()) ?? 'npm';
-			const execCommand = packageManager === 'npm' ? 'npx' : packageManager;
+			const disableCommand = await suggestCloudSupportCommand('disable');
 
 			this.log(`${picocolors.yellow('⚠️  n8n Cloud compatibility issues detected')}
 
 These lint failures prevent verification to n8n Cloud.
 
 To disable cloud compatibility checks:
-  ${picocolors.cyan(`${execCommand} n8n-node cloud-support disable`)}
+  ${disableCommand}
 
 ${picocolors.dim(`Note: This will switch to ${picocolors.magenta('configWithoutCloudSupport')} and disable strict mode`)}`);
 		}

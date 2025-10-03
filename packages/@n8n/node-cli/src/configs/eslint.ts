@@ -1,5 +1,3 @@
-// Included with peer dependency eslint
-// eslint-disable-next-line import-x/no-extraneous-dependencies
 import eslint from '@eslint/js';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 import { globalIgnores } from 'eslint/config';

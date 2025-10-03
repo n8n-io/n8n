@@ -4,8 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import picocolors from 'picocolors';
 
+import { suggestCloudSupportCommand, suggestLintCommand } from '../utils/command-suggestions';
 import { getPackageJson, updatePackageJson } from '../utils/package';
-import { detectPackageManager } from '../utils/package-manager';
 import { ensureN8nPackage, onCancel, withCancelHandler } from '../utils/prompts';
 
 export default class CloudSupport extends Command {
@@ -49,9 +49,8 @@ export default class CloudSupport extends Command {
 		await this.updateStrictMode(workingDir, true);
 		log.success(`Enabled strict mode in ${picocolors.cyan('package.json')}`);
 
-		const packageManager = (await detectPackageManager()) ?? 'npm';
-		const execCommand = packageManager === 'npm' ? 'npm run' : packageManager;
-		outro(`Cloud support enabled. Run "${execCommand} lint" to check compliance.`);
+		const lintCommand = await suggestLintCommand();
+		outro(`Cloud support enabled. Run "${lintCommand}" to check compliance.`);
 	}
 
 	private async disableCloudSupport(workingDir: string): Promise<void> {
@@ -149,12 +148,12 @@ export default configWithoutCloudSupport;
   • Status: ${picocolors.red('NOT eligible')} for n8n Cloud verification`);
 			}
 
-			const packageManager = (await detectPackageManager()) ?? 'npm';
-			const execCommand = packageManager === 'npm' ? 'npx' : packageManager;
+			const enableCommand = await suggestCloudSupportCommand('enable');
+			const disableCommand = await suggestCloudSupportCommand('disable');
 
 			log.info(`Available commands:
-  • ${picocolors.cyan(`${execCommand} n8n-node cloud-support enable`)}  - Enable cloud support
-  • ${picocolors.cyan(`${execCommand} n8n-node cloud-support disable`)} - Disable cloud support`);
+  • ${enableCommand}  - Enable cloud support
+  • ${disableCommand} - Disable cloud support`);
 
 			outro('Use the commands above to change cloud support settings');
 		} catch (error) {

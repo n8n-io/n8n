@@ -10,6 +10,7 @@
 	"include": ["src/**/*.ts"],
 	"exclude": [
 		"src/**/*.test.ts",
+		"src/test-utils/**/*",
 		"src/template/templates/**/template",
 		"src/template/templates/shared"
 	]
