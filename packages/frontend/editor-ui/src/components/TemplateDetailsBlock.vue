@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { N8nHeading } from '@n8n/design-system';
+
 defineProps<{
 	title: string;
 }>();
@@ -7,7 +9,7 @@ defineProps<{
 <template>
 	<div :class="$style.block">
 		<div :class="$style.header">
-			<n8n-heading tag="h3" size="small" color="text-base">{{ title }}</n8n-heading>
+			<N8nHeading tag="h3" size="small" color="text-base">{{ title }}</N8nHeading>
 		</div>
 		<div :class="$style.content">
 			<slot></slot>

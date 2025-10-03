@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
+import { N8nButton, N8nInput } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	isActive: boolean;
@@ -163,7 +164,7 @@ onMounted(async () => {
 	>
 		<template #content>
 			<div :class="$style.content">
-				<n8n-input
+				<N8nInput
 					ref="nameInputRef"
 					v-model="name"
 					:placeholder="i18n.baseText('duplicateWorkflowDialog.enterWorkflowName')"
@@ -183,13 +184,13 @@ onMounted(async () => {
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					:loading="isSaving"
 					:label="i18n.baseText('duplicateWorkflowDialog.save')"
 					float="right"
 					@click="save"
 				/>
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					:disabled="isSaving"
 					:label="i18n.baseText('duplicateWorkflowDialog.cancel')"

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
-import { N8nLoading } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { INodeParameterResourceLocator, NodeParameterValue } from 'n8n-workflow';
+import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
+import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
 type Props = {
-	modelValue?: NodeParameterValue;
+	modelValue?: INodeParameterResourceLocator;
 	resources?: IResourceLocatorResultExpanded[];
 	show?: boolean;
 	filterable?: boolean;
@@ -21,10 +21,8 @@ type Props = {
 	errorView?: boolean;
 	filterRequired?: boolean;
 	width?: number;
+	allowNewResources?: { label?: string };
 	eventBus?: EventBus;
-	allowNewResources?: {
-		label?: string;
-	};
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -60,14 +58,14 @@ const itemsRef = ref<HTMLDivElement[]>([]);
 
 const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 	const seen = new Set();
-	const { selected, notSelected } = props.resources.reduce(
+	const result = props.resources.reduce(
 		(acc, item: IResourceLocatorResultExpanded) => {
 			if (seen.has(item.value)) {
 				return acc;
 			}
 			seen.add(item.value);
 
-			if (props.modelValue && item.value === props.modelValue) {
+			if (props.modelValue && item.value === props.modelValue.value) {
 				acc.selected = item;
 			} else if (!item.isArchived) {
 				// Archived items are not shown in the list unless selected
@@ -82,11 +80,22 @@ const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 		},
 	);
 
-	if (selected) {
-		return [selected, ...notSelected];
+	// Resources are paginated, so the currently selected one may not actually be
+	// in the list.
+	// If that's the case we'll render the cached value.
+	if (result.selected === null && props.modelValue?.cachedResultName && props.modelValue.value) {
+		result.selected = {
+			name: props.modelValue.cachedResultName,
+			value: props.modelValue.value,
+			url: props.modelValue.cachedResultUrl,
+		};
 	}
 
-	return notSelected;
+	if (result.selected) {
+		return [result.selected, ...result.notSelected];
+	}
+
+	return result.notSelected;
 });
 
 watch(
@@ -105,12 +114,6 @@ watch(
 	},
 );
 
-watch(
-	() => props.loading,
-	() => {
-		setTimeout(() => onResultsEnd(), 0); // in case of filtering
-	},
-);
 onMounted(() => {
 	props.eventBus.on('keyDown', onKeyDown);
 });
@@ -197,7 +200,7 @@ function onItemHoverLeave() {
 }
 
 function onResultsEnd() {
-	if (props.loading || !props.loading) {
+	if (props.loading || !props.hasMore) {
 		return;
 	}
 
@@ -219,24 +222,28 @@ defineExpose({ isWithinDropdown });
 </script>
 
 <template>
-	<n8n-popover
+	<N8nPopover
 		placement="bottom"
-		:width="width"
+		:width="props.width"
 		:popper-class="$style.popover"
-		:visible="show"
+		:visible="props.show"
 		:teleported="false"
 		data-test-id="resource-locator-dropdown"
 	>
-		<div v-if="errorView" :class="$style.messageContainer">
+		<div v-if="props.errorView" :class="$style.messageContainer">
 			<slot name="error"></slot>
 		</div>
-		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
+		<div
+			v-if="props.filterable && !props.errorView"
+			:class="$style.searchInput"
+			@keydown="onKeyDown"
+		>
 			<N8nInput
 				ref="searchRef"
-				:model-value="filter"
+				:model-value="props.filter"
 				:clearable="true"
 				:placeholder="
-					allowNewResources.label
+					props.allowNewResources.label
 						? i18n.baseText('resourceLocator.placeholder.searchOrCreate')
 						: i18n.baseText('resourceLocator.placeholder.search')
 				"
@@ -244,27 +251,35 @@ defineExpose({ isWithinDropdown });
 				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
-					<n8n-icon :class="$style.searchIcon" icon="search" />
+					<N8nIcon :class="$style.searchIcon" icon="search" />
 				</template>
 			</N8nInput>
 		</div>
-		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
+		<div
+			v-if="props.filterRequired && !props.filter && !props.errorView && !props.loading"
+			:class="$style.searchRequired"
+		>
 			{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
-			v-else-if="!errorView && !allowNewResources.label && sortedResources.length === 0 && !loading"
+			v-else-if="
+				!props.errorView &&
+				!props.allowNewResources.label &&
+				sortedResources.length === 0 &&
+				!props.loading
+			"
 			:class="$style.messageContainer"
 		>
 			{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
 		<div
-			v-else-if="!errorView"
+			v-else-if="!props.errorView"
 			ref="resultsContainerRef"
 			:class="$style.container"
 			@scroll="onResultsEnd"
 		>
 			<div
-				v-if="allowNewResources.label"
+				v-if="props.allowNewResources.label"
 				key="addResourceKey"
 				ref="itemsRef"
 				data-test-id="rlc-item-add-resource"
@@ -277,8 +292,8 @@ defineExpose({ isWithinDropdown });
 				@click="() => emit('addResourceClick')"
 			>
 				<div :class="$style.resourceNameContainer">
-					<span :class="$style.addResourceText">{{ allowNewResources.label }}</span>
-					<n8n-icon :class="$style.addResourceIcon" icon="plus" />
+					<span :class="$style.addResourceText">{{ props.allowNewResources.label }}</span>
+					<N8nIcon :class="$style.addResourceIcon" icon="plus" />
 				</div>
 			</div>
 			<div
@@ -287,7 +302,7 @@ defineExpose({ isWithinDropdown });
 				ref="itemsRef"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === modelValue,
+					[$style.selected]: result.value === props.modelValue?.value,
 					[$style.hovering]: hoverIndex === i + 1,
 				}"
 				data-test-id="rlc-item"
@@ -304,7 +319,7 @@ defineExpose({ isWithinDropdown });
 					</span>
 				</div>
 				<div :class="$style.urlLink">
-					<n8n-icon
+					<N8nIcon
 						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
 						icon="external-link"
 						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
@@ -312,7 +327,7 @@ defineExpose({ isWithinDropdown });
 					/>
 				</div>
 			</div>
-			<div v-if="loading && !errorView">
+			<div v-if="props.loading && !props.errorView">
 				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
 					<N8nLoading :class="$style.loader" variant="p" :rows="1" />
 				</div>
@@ -321,7 +336,7 @@ defineExpose({ isWithinDropdown });
 		<template #reference>
 			<slot />
 		</template>
-	</n8n-popover>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>
@@ -424,11 +439,16 @@ defineExpose({ isWithinDropdown });
 }
 
 .resourceNameContainer {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size-2xs);
+	min-width: 0;
+	align-self: center;
+}
+
+.resourceNameContainer > :first-child {
 	overflow: hidden;
 	text-overflow: ellipsis;
-	display: inline-block;
-	align-self: center;
 }
 
 .searchIcon {

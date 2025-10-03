@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
 
+import { N8nIcon, N8nPopover } from '@n8n/design-system';
 const emit = defineEmits<{
 	update: [color: number];
 }>();
@@ -71,8 +72,9 @@ onBeforeUnmount(() => {
 				:class="$style.option"
 				data-test-id="change-sticky-color"
 				:title="i18n.baseText('node.changeColor')"
+				@click.stop
 			>
-				<N8nIcon icon="palette" />
+				<N8nIcon size="small" icon="palette" />
 			</div>
 		</template>
 		<div :class="$style.content">

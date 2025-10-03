@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import upperFirst from 'lodash/upperFirst';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
@@ -12,6 +12,8 @@ import { getSubtreeTotalConsumedTokens, hasSubExecution } from '@/features/logs/
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
+import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;

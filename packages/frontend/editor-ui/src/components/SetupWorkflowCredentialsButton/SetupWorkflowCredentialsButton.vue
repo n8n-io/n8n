@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/utils/nodes/nodeTransforms';
 
+import { N8nButton } from '@n8n/design-system';
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -58,7 +59,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<n8n-button
+	<N8nButton
 		v-if="showButton"
 		:label="i18n.baseText('nodeView.setupTemplate')"
 		data-test-id="setup-credentials-button"

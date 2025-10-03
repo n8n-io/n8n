@@ -1,20 +1,19 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref, nextTick } from 'vue';
-import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
+import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import type { ChatUI, RatingFeedback } from '@n8n/design-system/types/assistant';
+import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
-import type { NodesPlanMessageType } from './NodesPlanMessage.vue';
-import NodesPlanMessage from './NodesPlanMessage.vue';
-import { PLAN_APPROVAL_MESSAGE } from '@/constants';
+import ExecuteMessage from './ExecuteMessage.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 const emit = defineEmits<{
 	close: [];
 }>();
@@ -27,20 +26,43 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
+const { goToUpgrade } = usePageRedirectionHelper();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
-const planStatus = ref<'pending' | 'approved' | 'rejected'>();
-const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
+const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
-const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
+const loadingMessage = computed(() => {
+	// Check if we have any running tool messages visible in the chat
+	const hasVisibleRunningTools = builderStore.getRunningTools(builderStore.chatMessages).length > 0;
+	// Don't show loading message if tools are already visible and running
+	// to avoid duplicate display (tool messages show their own status)
+	if (hasVisibleRunningTools) {
+		return undefined;
+	}
+
+	return builderStore.assistantThinkingMessage;
+});
 const currentRoute = computed(() => route.name);
+const showExecuteMessage = computed(() => {
+	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
+		(msg) => msg.type === 'workflow-updated',
+	);
+	return (
+		!builderStore.streaming &&
+		workflowsStore.workflow.nodes.length > 0 &&
+		builderUpdatedWorkflowMessageIndex > -1
+	);
+});
+const creditsQuota = computed(() => builderStore.creditsQuota);
+const creditsRemaining = computed(() => builderStore.creditsRemaining);
+const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -60,6 +82,7 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
+	workflowUpdated.value = undefined;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -79,38 +102,81 @@ function onFeedback(feedback: RatingFeedback) {
 	}
 }
 
-function isNodesPlanMessage(message: ChatUI.AssistantMessage): message is NodesPlanMessageType {
-	return (
-		message.type === 'custom' && message.customType === 'nodesPlan' && Array.isArray(message.data)
-	);
+function dedupeToolNames(toolNames: string[]): string[] {
+	return [...new Set(toolNames)];
 }
 
-function onApprovePlan() {
-	planStatus.value = 'approved';
+function trackWorkflowModifications() {
+	if (workflowUpdated.value) {
+		// Track tool usage for telemetry
+		const newToolMessages = builderStore.toolMessages.filter(
+			(toolMsg) =>
+				toolMsg.status !== 'running' &&
+				toolMsg.toolCallId &&
+				!trackedTools.value.has(toolMsg.toolCallId),
+		);
 
-	telemetry.track('User clicked Approve plan', {
-		session_id: builderStore.trackingSessionId,
-	});
+		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
+		telemetry.track('Workflow modified by builder', {
+			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			session_id: builderStore.trackingSessionId,
+			start_workflow_json: workflowUpdated.value.start,
+			end_workflow_json: workflowUpdated.value.end,
+			workflow_id: workflowsStore.workflowId,
+		});
 
-	void onUserMessage(PLAN_APPROVAL_MESSAGE);
+		workflowUpdated.value = undefined;
+	}
 }
 
-function onRequestChanges() {
-	planStatus.value = 'rejected';
+function onWorkflowExecuted() {
+	const executionData = workflowsStore.workflowExecutionData;
+	const executionStatus = executionData?.status ?? 'unknown';
+	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
+	const errorNodeType = errorNodeName
+		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		: undefined;
 
-	telemetry.track('User clicked Request changes', {
-		session_id: builderStore.trackingSessionId,
+	if (!executionData) {
+		builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.noExecutionData'),
+			type: 'execution',
+			executionStatus: 'error',
+			errorMessage: 'Workflow execution data missing after run attempt.',
+		});
+		return;
+	}
+
+	if (executionStatus === 'success') {
+		builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
+			type: 'execution',
+			executionStatus,
+		});
+		return;
+	}
+
+	const executionError = executionData.data?.resultData.error?.message ?? 'Unknown error';
+	const scopedErrorMessage = errorNodeName
+		? i18n.baseText('aiAssistant.builder.executeMessage.executionFailedOnNode', {
+				interpolate: {
+					nodeName: errorNodeName,
+					errorMessage: executionError,
+				},
+			})
+		: i18n.baseText('aiAssistant.builder.executeMessage.executionFailed', {
+				interpolate: { errorMessage: executionError },
+			});
+
+	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
+
+	builderStore.sendChatMessage({
+		text: scopedErrorMessage,
+		type: 'execution',
+		errorMessage: executionError,
+		errorNodeType,
+		executionStatus: failureStatus,
 	});
-
-	// Focus the input after rejecting the plan
-	void nextTick(() => {
-		assistantChatRef.value?.focusInput();
-	});
-}
-
-function shouldShowPlanControls(message: NodesPlanMessageType) {
-	const planMessageIndex = builderStore.chatMessages.findIndex((msg) => msg.id === message.id);
-	return planMessageIndex === builderStore.chatMessages.length - 1;
 }
 
 // Watch for workflow updates and apply them
@@ -125,7 +191,8 @@ watch(
 				if (msg.id && isWorkflowUpdatedMessage(msg)) {
 					processedWorkflowUpdates.value.add(msg.id);
 
-					const currentWorkflowJson = builderStore.getWorkflowSnapshot();
+					const originalWorkflowJson =
+						workflowUpdated.value?.start ?? builderStore.getWorkflowSnapshot();
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
@@ -135,34 +202,16 @@ watch(
 							tidyUp: true,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
+							trackEvents: false,
 						});
 
-						// Track tool usage for telemetry
-						const newToolMessages = builderStore.toolMessages.filter(
-							(toolMsg) =>
-								toolMsg.status !== 'running' &&
-								toolMsg.toolCallId &&
-								!trackedTools.value.has(toolMsg.toolCallId),
-						);
-
-						newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-
-						telemetry.track('Workflow modified by builder', {
-							tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
-							session_id: builderStore.trackingSessionId,
-							start_workflow_json: currentWorkflowJson,
-							end_workflow_json: msg.codeSnippet,
-							workflow_id: workflowsStore.workflowId,
-						});
+						workflowUpdated.value = {
+							start: originalWorkflowJson,
+							end: msg.codeSnippet,
+						};
 					}
 				}
 			});
-
-		// Check if last message is a plan message and if so, whether to show controls
-		const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
-		if (lastMessage && isNodesPlanMessage(lastMessage)) {
-			planStatus.value = 'pending';
-		}
 	},
 	{ deep: true },
 );
@@ -171,10 +220,14 @@ watch(
 // we want to save the workflow
 watch(
 	() => builderStore.streaming,
-	async () => {
+	async (isStreaming) => {
+		if (!isStreaming) {
+			trackWorkflowModifications();
+		}
+
 		if (
 			builderStore.initialGeneration &&
-			!builderStore.streaming &&
+			!isStreaming &&
 			workflowsStore.workflow.nodes.length > 0
 		) {
 			// Check if the generation completed successfully (no error or cancellation)
@@ -182,7 +235,10 @@ watch(
 			const successful =
 				lastMessage &&
 				lastMessage.type !== 'error' &&
-				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+				!(
+					lastMessage.type === 'text' &&
+					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
+				);
 
 			builderStore.initialGeneration = false;
 
@@ -202,43 +258,37 @@ watch(currentRoute, () => {
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
-		<AskAssistantChat
-			ref="assistantChatRef"
+		<N8nAskAssistantChat
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
-			:disabled="planStatus === 'pending'"
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
 			:show-stop="true"
 			:scroll-on-new-message="true"
-			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
-			:max-length="1000"
+			:credits-quota="creditsQuota"
+			:credits-remaining="creditsRemaining"
+			:show-ask-owner-tooltip="showAskOwnerTooltip"
+			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
+			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.stopStreaming"
 		>
 			<template #header>
 				<slot name="header" />
 			</template>
-			<template #custom-message="{ message, ...props }">
-				<NodesPlanMessage
-					v-if="message.customType === 'nodesPlan' && isNodesPlanMessage(message)"
-					:message="message"
-					:show-controls="shouldShowPlanControls(message)"
-					v-bind="props"
-					@approve-plan="onApprovePlan"
-					@request-changes="onRequestChanges"
-				/>
+			<template #messagesFooter>
+				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
-				<n8n-text :class="$style.topText">{{
-					i18n.baseText('aiAssistant.builder.placeholder')
-				}}</n8n-text>
+				<N8nText :class="$style.topText"
+					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
+				</N8nText>
 			</template>
-		</AskAssistantChat>
+		</N8nAskAssistantChat>
 	</div>
 </template>
 
@@ -261,6 +311,7 @@ watch(currentRoute, () => {
 	padding: var(--spacing-xs);
 	border: 0;
 }
+
 .newWorkflowText {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);

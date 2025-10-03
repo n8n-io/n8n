@@ -4,6 +4,7 @@ import TemplateCard from './TemplateCard.vue';
 import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nHeading } from '@n8n/design-system';
 interface Props {
 	workflows?: ITemplatesWorkflow[];
 	infiniteScrollEnabled?: boolean;
@@ -78,11 +79,11 @@ function onUseWorkflow(event: MouseEvent, id: number) {
 <template>
 	<div v-if="loading || workflows.length" :class="$style.list">
 		<div v-if="!simpleView" :class="$style.header">
-			<n8n-heading :bold="true" size="medium" color="text-light">
+			<N8nHeading :bold="true" size="medium" color="text-light">
 				{{ i18n.baseText('templates.workflows') }}
 				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
-			</n8n-heading>
+			</N8nHeading>
 		</div>
 		<div :class="$style.container">
 			<TemplateCard

@@ -2,20 +2,21 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
 import ProjectBreadcrumb from './ProjectBreadcrumb.vue';
 import { ProjectTypes } from '@/types/projects.types';
-import type { Project } from '@vue-flow/core';
+import { createTestProject } from '@/__tests__/data/projects';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
 		baseText: vi.fn((key) => {
 			if (key === 'projects.menu.personal') return 'Personal';
+			if (key === 'projects.menu.shared') return 'Shared with you';
 			return key;
 		}),
 	}),
 }));
 
 const mockComponents = {
-	'n8n-link': {
+	N8nLink: {
 		template: '<a :href="to"><slot /></a>',
 		props: ['to'],
 	},
@@ -40,11 +41,11 @@ describe('ProjectBreadcrumb', () => {
 	it('Renders personal project info correctly', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'user');
@@ -54,12 +55,12 @@ describe('ProjectBreadcrumb', () => {
 	it('Renders team project info correctly', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Team Project',
 					type: ProjectTypes.Team,
 					icon: { type: 'icon', value: 'folder' },
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'folder');
@@ -69,12 +70,12 @@ describe('ProjectBreadcrumb', () => {
 	it('Renders team project emoji icon correctly', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Team Project',
 					type: ProjectTypes.Team,
 					icon: { type: 'emoji', value: '🔥' },
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		expect(getByTestId('project-icon')).toHaveAttribute('data-icon', '🔥');
@@ -84,11 +85,11 @@ describe('ProjectBreadcrumb', () => {
 	it('emits hover event', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		await fireEvent.mouseEnter(getByTestId('home-project'));
@@ -99,11 +100,11 @@ describe('ProjectBreadcrumb', () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
 				isDragging: true,
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		await fireEvent.mouseUp(getByTestId('home-project'));
@@ -114,14 +115,76 @@ describe('ProjectBreadcrumb', () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
 				isDragging: false,
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		await fireEvent.mouseUp(getByTestId('home-project'));
 		expect(emitted('projectDrop')).toBeFalsy();
+	});
+
+	describe('Shared context', () => {
+		it('renders shared project with share icon when isShared is true', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					isShared: true,
+				},
+			});
+			expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'share');
+			expect(getByTestId('project-label')).toHaveTextContent('Shared with you');
+		});
+
+		it('renders shared project even with currentProject provided when isShared is true', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					isShared: true,
+					currentProject: createTestProject({
+						id: '1',
+						name: 'Some Project',
+						type: ProjectTypes.Personal,
+					}),
+				},
+			});
+			expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'share');
+			expect(getByTestId('project-label')).toHaveTextContent('Shared with you');
+		});
+
+		it('generates correct link for shared project', () => {
+			const { container } = renderComponent({
+				props: {
+					isShared: true,
+				},
+			});
+			const link = container.querySelector('a');
+			expect(link).toHaveAttribute('href', '/shared');
+		});
+
+		it('generates project link when not shared and currentProject exists', () => {
+			const { container } = renderComponent({
+				props: {
+					isShared: false,
+					currentProject: createTestProject({
+						id: 'project-123',
+						name: 'My Project',
+						type: ProjectTypes.Team,
+					}),
+				},
+			});
+			const link = container.querySelector('a');
+			expect(link).toHaveAttribute('href', '/projects/project-123');
+		});
+
+		it('generates home link when not shared and no currentProject', () => {
+			const { container } = renderComponent({
+				props: {
+					isShared: false,
+				},
+			});
+			const link = container.querySelector('a');
+			expect(link).toHaveAttribute('href', '/home');
+		});
 	});
 });

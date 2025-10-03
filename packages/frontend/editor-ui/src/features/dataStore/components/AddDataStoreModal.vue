@@ -8,6 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import Modal from '@/components/Modal.vue';
 type Props = {
 	modalName: string;
 };
@@ -69,17 +71,18 @@ const redirectToDataStores = () => {
 <template>
 	<Modal :name="props.modalName" :center="true" width="540px" :before-close="redirectToDataStores">
 		<template #header>
-			<h2>{{ i18n.baseText('dataStore.add.title') }}</h2>
+			<div :class="$style.header">
+				<h2>{{ i18n.baseText('dataStore.add.title') }}</h2>
+			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<p>{{ i18n.baseText('dataStore.add.description') }}</p>
-				<n8n-input-label
+				<N8nInputLabel
 					:label="i18n.baseText('dataStore.add.input.name.label')"
 					:required="true"
 					input-name="dataStoreName"
 				>
-					<n8n-input
+					<N8nInput
 						ref="inputRef"
 						v-model="dataStoreName"
 						type="text"
@@ -88,18 +91,18 @@ const redirectToDataStores = () => {
 						name="dataStoreName"
 						@keyup.enter="onSubmit"
 					/>
-				</n8n-input-label>
+				</N8nInputLabel>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					:disabled="!dataStoreName"
-					:label="i18n.baseText('dataStore.add.button.label')"
+					:label="i18n.baseText('generic.create')"
 					data-test-id="confirm-add-data-store-button"
 					@click="onSubmit"
 				/>
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="cancel-add-data-store-button"
@@ -111,10 +114,13 @@ const redirectToDataStores = () => {
 </template>
 
 <style module lang="scss">
+.header {
+	margin-bottom: var(--spacing-xs);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
 }
 
 .footer {

@@ -2,13 +2,13 @@ import {
 	AddDataStoreRowsDto,
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
-	DeleteDataStoreRowsQueryDto,
+	DeleteDataTableRowsDto,
 	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
 	UpdateDataTableRowDto,
-	UpsertDataStoreRowsDto,
+	UpsertDataStoreRowDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -22,6 +22,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { DataStoreRowReturn } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -33,8 +34,8 @@ import { DataStoreColumnNameConflictError } from './errors/data-store-column-nam
 import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
+import { DataStoreSystemColumnNameConflictError } from './errors/data-store-system-column-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
-import { DataStoreRowReturn } from 'n8n-workflow';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataStoreController {
@@ -150,7 +151,10 @@ export class DataStoreController {
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreColumnNameConflictError) {
+			} else if (
+				e instanceof DataStoreColumnNameConflictError ||
+				e instanceof DataStoreSystemColumnNameConflictError
+			) {
 				throw new ConflictError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -238,11 +242,11 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
-	async appendDataStoreRows<T extends boolean | undefined>(
+	async appendDataStoreRows<T extends DataStoreRowReturn | undefined>(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		dataStoreId: string,
-		dto: AddDataStoreRowsDto & { returnData?: T },
+		dto: AddDataStoreRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
@@ -257,7 +261,7 @@ export class DataStoreController {
 				dataStoreId,
 				req.params.projectId,
 				dto.data,
-				dto.returnData,
+				dto.returnType,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
@@ -274,18 +278,42 @@ export class DataStoreController {
 
 	@Post('/:dataStoreId/upsert')
 	@ProjectScope('dataStore:writeRow')
-	async upsertDataStoreRows(
+	async upsertDataStoreRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpsertDataStoreRowsDto,
+		@Body dto: UpsertDataStoreRowDto,
 	) {
 		try {
-			return await this.dataStoreService.upsertRows(
+			// because of strict overloads, we need separate paths
+			const dryRun = dto.dryRun;
+			if (dryRun) {
+				return await this.dataStoreService.upsertRow(
+					dataStoreId,
+					req.params.projectId,
+					dto,
+					true, // we want to always return data for dry runs
+					dryRun,
+				);
+			}
+
+			const returnData = dto.returnData;
+			if (returnData) {
+				return await this.dataStoreService.upsertRow(
+					dataStoreId,
+					req.params.projectId,
+					dto,
+					returnData,
+					dryRun,
+				);
+			}
+
+			return await this.dataStoreService.upsertRow(
 				dataStoreId,
 				req.params.projectId,
 				dto,
-				dto.returnData,
+				returnData,
+				dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
@@ -302,18 +330,42 @@ export class DataStoreController {
 
 	@Patch('/:dataStoreId/rows')
 	@ProjectScope('dataStore:writeRow')
-	async updateDataStoreRow(
+	async updateDataStoreRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: UpdateDataTableRowDto,
 	) {
 		try {
-			return await this.dataStoreService.updateRow(
+			// because of strict overloads, we need separate paths
+			const dryRun = dto.dryRun;
+			if (dryRun) {
+				return await this.dataStoreService.updateRows(
+					dataStoreId,
+					req.params.projectId,
+					dto,
+					true, // we want to always return data for dry runs
+					dryRun,
+				);
+			}
+
+			const returnData = dto.returnData;
+			if (returnData) {
+				return await this.dataStoreService.updateRows(
+					dataStoreId,
+					req.params.projectId,
+					dto,
+					returnData,
+					dryRun,
+				);
+			}
+
+			return await this.dataStoreService.updateRows(
 				dataStoreId,
 				req.params.projectId,
 				dto,
-				dto.returnData,
+				returnData,
+				dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
@@ -328,20 +380,26 @@ export class DataStoreController {
 		}
 	}
 
-	@Delete('/:dataStoreId/rows')
+	@Delete('/:dataTableId/rows')
 	@ProjectScope('dataStore:writeRow')
-	async deleteDataStoreRows(
+	async deleteDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Query dto: DeleteDataStoreRowsQueryDto,
+		@Param('dataTableId') dataTableId: string,
+		@Query dto: DeleteDataTableRowsDto,
 	) {
 		try {
-			const { ids } = dto;
-			return await this.dataStoreService.deleteRows(dataStoreId, req.params.projectId, ids);
+			return await this.dataStoreService.deleteRows(
+				dataTableId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreValidationError) {
+				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
 			} else {

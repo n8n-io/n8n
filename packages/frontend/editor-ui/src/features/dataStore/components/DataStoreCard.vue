@@ -4,7 +4,10 @@ import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import TimeAgo from '@/components/TimeAgo.vue';
 
+import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 type Props = {
 	dataStore: DataStoreResource;
 	readOnly?: boolean;
@@ -12,6 +15,7 @@ type Props = {
 };
 
 const i18n = useI18n();
+const dataStoreStore = useDataStoreStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
@@ -28,6 +32,11 @@ const dataStoreRoute = computed(() => {
 		},
 	};
 });
+
+const getDataStoreSize = computed(() => {
+	const size = dataStoreStore.dataStoreSizes[props.dataStore.id] ?? 0;
+	return size;
+});
 </script>
 <template>
 	<div data-test-id="data-store-card">
@@ -43,10 +52,10 @@ const dataStoreRoute = computed(() => {
 					/>
 				</template>
 				<template #header>
-					<div :class="$style['card-header']" @click.prevent>
-						<n8n-text tag="h2" bold data-test-id="data-store-card-name">
+					<div :class="$style['card-header']">
+						<N8nText tag="h2" bold data-test-id="data-store-card-name">
 							{{ props.dataStore.name }}
-						</n8n-text>
+						</N8nText>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
@@ -54,6 +63,18 @@ const dataStoreRoute = computed(() => {
 				</template>
 				<template #footer>
 					<div :class="$style['card-footer']">
+						<N8nText
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--size']]"
+							data-test-id="data-store-card-size"
+						>
+							{{
+								i18n.baseText('dataStore.card.size', {
+									interpolate: { size: getDataStoreSize },
+								})
+							}}
+						</N8nText>
 						<N8nText
 							size="small"
 							color="text-light"
@@ -143,7 +164,8 @@ const dataStoreRoute = computed(() => {
 		flex-wrap: wrap;
 	}
 	.info-cell--created,
-	.info-cell--column-count {
+	.info-cell--column-count,
+	.info-cell--size {
 		display: none;
 	}
 }

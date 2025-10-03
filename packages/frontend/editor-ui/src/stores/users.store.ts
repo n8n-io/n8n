@@ -36,8 +36,9 @@ const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
+const _isAdmin = (user: IUserResponse | null) => user?.role === ROLE.Admin;
 
-type LoginHook = (user: CurrentUserResponse) => void;
+export type LoginHook = (user: CurrentUserResponse) => void;
 type LogoutHook = () => void;
 
 export const useUsersStore = defineStore(STORES.USERS, () => {
@@ -69,6 +70,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const isInstanceOwner = computed(() => _isInstanceOwner(currentUser.value));
 
+	const isAdmin = computed(() => _isAdmin(currentUser.value));
+
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
@@ -78,6 +81,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const isEasyAIWorkflowOnboardingDone = computed(() =>
 		Boolean(currentUser.value?.settings?.easyAIWorkflowOnboarded),
 	);
+
+	const canUserUpdateVersion = computed(() => {
+		return isInstanceOwner.value;
+	});
 
 	const setEasyAIWorkflowOnboardingDone = () => {
 		if (currentUser.value?.settings) {
@@ -441,11 +448,13 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		userActivated,
 		isDefaultUser,
 		isInstanceOwner,
+		isAdmin,
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
+		canUserUpdateVersion,
 		usersLimitNotReached,
 		addUsers,
 		loginWithCookie,

@@ -3,11 +3,11 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { useSettingsStore } from '@/stores/settings.store';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import ParameterInputFull from './ParameterInputFull.vue';
 import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNodeProperties } from '@/__tests__/mocks';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 
@@ -44,7 +44,6 @@ beforeEach(() => {
 		} as never,
 		isEnterpriseFeatureEnabled: { externalSecrets: false } as never,
 	};
-	createAppModals();
 });
 
 vi.mock('@/stores/ndv.store', () => {
@@ -70,22 +69,17 @@ const renderComponent = createComponentRenderer(ParameterInputFull, {
 	props: {
 		path: 'myParam',
 		value: '',
-		parameter: {
+		parameter: createTestNodeProperties({
 			displayName: 'My Param',
 			name: 'myParam',
 			type: 'string',
-		},
+		}),
 	},
 });
 
 describe('ParameterInputFull.vue', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		createAppModals();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
 	});
 
 	it('should render basic parameter', async () => {

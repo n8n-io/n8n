@@ -19,11 +19,16 @@ import type {
 	IUsedCredential,
 } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import Modal from '@/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
+import ProjectMoveResourceModalCredentialsList from '@/components/Projects/ProjectMoveResourceModalCredentialsList.vue';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
  */
@@ -350,11 +355,11 @@ onMounted(async () => {
 			>
 				{{ descriptionMessage }}
 			</p>
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 				<div :class="$style.block">
-					<n8n-text color="text-dark">
+					<N8nText color="text-dark">
 						{{ i18n.baseText('folders.move.modal.project.label') }}
-					</n8n-text>
+					</N8nText>
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
@@ -388,12 +393,12 @@ onMounted(async () => {
 						</span>
 					</N8nText>
 				</div>
-			</enterprise-edition>
+			</EnterpriseEdition>
 			<template v-if="selectedProject && isFolderSelectable">
 				<div :class="$style.block">
-					<n8n-text color="text-dark">
+					<N8nText color="text-dark">
 						{{ i18n.baseText('folders.move.modal.folder.label') }}
-					</n8n-text>
+					</N8nText>
 					<MoveToFolderDropdown
 						ref="moveToFolderDropdown"
 						:selected-location="selectedFolder"
@@ -471,14 +476,14 @@ onMounted(async () => {
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					float="right"
 					data-test-id="cancel-move-folder-button"
 					@click="close"
 				/>
-				<n8n-button
+				<N8nButton
 					:disabled="!selectedFolder && isFolderSelectable"
 					:label="
 						i18n.baseText('folders.move.modal.confirm', {

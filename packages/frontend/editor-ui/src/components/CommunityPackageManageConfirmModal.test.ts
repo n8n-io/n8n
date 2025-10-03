@@ -1,7 +1,7 @@
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
-import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -65,13 +65,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 
 	beforeEach(() => {
-		createAppModals();
-
 		nodeTypesStore = useNodeTypesStore();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
 	});
 
 	it('should call nodeTypesStore methods and update latestVerifiedVersion on mount', async () => {
@@ -151,7 +145,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 			},
 			global: {
 				stubs: {
-					'router-link': {
+					RouterLink: {
 						template: '<a><slot /></a>',
 					},
 				},

@@ -39,7 +39,7 @@ describe('ImportService', () => {
 
 		const credentialsRepository = Container.get(CredentialsRepository);
 
-		importService = new ImportService(mock(), credentialsRepository, tagRepository);
+		importService = new ImportService(mock(), credentialsRepository, tagRepository, mock(), mock());
 	});
 
 	afterEach(async () => {

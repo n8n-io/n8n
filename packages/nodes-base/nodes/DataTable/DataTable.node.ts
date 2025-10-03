@@ -29,6 +29,16 @@ export class DataTable implements INodeType {
 		hidden: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		hints: [
+			{
+				message: 'The selected data table has no columns.',
+				displayCondition:
+					'={{ $parameter.dataTableId !== "" && $parameter?.columns?.mappingMode === "defineBelow" && !$parameter?.columns?.schema?.length }}',
+				whenToDisplay: 'beforeExecution',
+				location: 'ndv',
+				type: 'info',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Resource',

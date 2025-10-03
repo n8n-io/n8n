@@ -46,6 +46,7 @@ import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-M
 import { CreateTestMetricTable1732271325258 } from './1732271325258-CreateTestMetricTable';
 import { AddStatsColumnsToTestRun1736172058779 } from './1736172058779-AddStatsColumnsToTestRun';
 import { FixTestDefinitionPrimaryKey1739873751194 } from './1739873751194-FixTestDefinitionPrimaryKey';
+import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -96,6 +97,7 @@ import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-Remove
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
+import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 
@@ -199,4 +201,6 @@ export const mysqlMigrations: Migration[] = [
 	RemoveOldRoleColumn1750252139170,
 	ReplaceDataStoreTablesWithDataTables1754475614602,
 	LinkRoleToProjectRelationTable1753953244168,
+	AddTimestampsToRoleAndRoleIndexes1756906557570,
+	AddProjectIdToVariableTable1758794506893,
 ];

@@ -7,6 +7,7 @@ import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 
+import { ElTag } from 'element-plus';
 interface TagsContainerProps {
 	tagIds: string[];
 	tagsById: { [id: string]: ITag };
@@ -136,7 +137,7 @@ onBeforeUnmount(() => {
 				:class="{ clickable: !tag.hidden }"
 				@click="(e) => onClick(e, tag)"
 			>
-				<el-tag
+				<ElTag
 					v-if="tag.isCount"
 					:title="tag.title"
 					type="info"
@@ -145,7 +146,7 @@ onBeforeUnmount(() => {
 					:disable-transitions="true"
 				>
 					{{ tag.name }}
-				</el-tag>
+				</ElTag>
 				<IntersectionObserved
 					v-else
 					:class="{ hideTag: tag.hidden }"
@@ -153,15 +154,15 @@ onBeforeUnmount(() => {
 					:enabled="responsive"
 					:event-bus="intersectionEventBus"
 				>
-					<el-tag
+					<ElTag
 						:title="tag.name"
 						type="info"
-						size="mini"
+						size="small"
 						:class="{ hoverable }"
 						:disable-transitions="true"
 					>
 						{{ tag.name }}
-					</el-tag>
+					</ElTag>
 				</IntersectionObserved>
 			</span>
 		</span>

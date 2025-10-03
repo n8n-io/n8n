@@ -35,6 +35,48 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Creates a workflow in a project with optional folder placement (Uses Internal API not public API)
+	 * @param project - Required project ID where the workflow will be created
+	 * @param options - Optional configuration for workflow creation
+	 * @param options.folder - Optional folder ID to place the workflow in
+	 * @param options.name - Optional workflow name. If not provided, generates a unique name using nanoid
+	 * @returns Object containing the name and ID of the created workflow
+	 */
+	async createInProject(
+		project: string,
+		options?: {
+			folder?: string;
+			name?: string;
+		},
+	): Promise<{ name: string; id: string }> {
+		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
+
+		const workflow = {
+			name: workflowName,
+			nodes: [],
+			connections: {},
+			settings: {},
+			active: false,
+			projectId: project,
+			...(options?.folder && { parentFolderId: options.folder }),
+		};
+
+		const response = await this.api.request.post('/rest/workflows', { data: workflow });
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to create workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		const workflowData = result.data ?? result;
+
+		return {
+			name: workflowName,
+			id: workflowData.id,
+		};
+	}
+
 	async setActive(workflowId: string, active: boolean) {
 		const response = await this.api.request.patch(`/rest/workflows/${workflowId}?forceSave=true`, {
 			data: { active },
@@ -91,9 +133,12 @@ export class WorkflowApiHelper {
 	 */
 	async createWorkflowFromDefinition(
 		workflow: IWorkflowBase,
-		options?: { webhookPrefix?: string; idLength?: number },
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const { webhookPath, webhookId } = this.makeWorkflowUnique(workflow, options);
+		const { makeUnique = true, ...rest } = options ?? {};
+		const { webhookPath, webhookId } = makeUnique
+			? this.makeWorkflowUnique(workflow, rest)
+			: { webhookPath: undefined, webhookId: undefined };
 		const createdWorkflow = await this.createWorkflow(workflow);
 		const workflowId: string = String(createdWorkflow.id);
 
@@ -112,7 +157,7 @@ export class WorkflowApiHelper {
 	 */
 	async importWorkflow(
 		fileName: string,
-		options?: { webhookPrefix?: string; idLength?: number },
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const workflowDefinition: IWorkflowBase = JSON.parse(
 			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),

@@ -5,6 +5,7 @@ from typing import Dict, Optional, Any, Callable, Awaitable
 from urllib.parse import urlparse
 import websockets
 import random
+from src.errors import TaskCancelledError
 
 
 from src.config.task_runner_config import TaskRunnerConfig
@@ -97,6 +98,10 @@ class TaskRunner:
             f"ws://{websocket_host}{TASK_BROKER_WS_PATH}?id={self.runner_id}"
         )
 
+    @property
+    def running_tasks_count(self) -> int:
+        return len(self.running_tasks)
+
     async def start(self) -> None:
         if self.config.is_auto_shutdown_enabled and not self.on_idle_timeout:
             raise NoIdleTimeoutHandlerError(self.config.auto_shutdown_timeout)
@@ -155,7 +160,7 @@ class TaskRunner:
 
         timeout = self.config.graceful_shutdown_timeout
         self.logger.debug(
-            f"Waiting for {len(self.running_tasks)} tasks to complete (timeout: {timeout}s)..."
+            f"Waiting for {self.running_tasks_count} tasks to complete (timeout: {timeout}s)..."
         )
 
         start_time = time.time()
@@ -164,14 +169,14 @@ class TaskRunner:
 
         if self.running_tasks:
             self.logger.warning(
-                f"Timed out waiting for {len(self.running_tasks)} tasks to complete"
+                f"Timed out waiting for {self.running_tasks_count} tasks to complete"
             )
 
     async def _terminate_tasks(self):
         if not self.running_tasks:
             return
 
-        self.logger.warning(f"Terminating {len(self.running_tasks)} tasks...")
+        self.logger.warning(f"Terminating {self.running_tasks_count} tasks...")
 
         tasks_to_terminate = [
             asyncio.to_thread(self.executor.stop_process, task_state.process)
@@ -196,6 +201,8 @@ class TaskRunner:
             try:
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
+            except websockets.ConnectionClosedOK:
+                break
             except Exception as e:
                 self.logger.error(f"Error handling message: {e}")
 
@@ -237,7 +244,7 @@ class TaskRunner:
             await self._send_message(response)
             return
 
-        if len(self.running_tasks) >= self.config.max_concurrency:
+        if self.running_tasks_count >= self.config.max_concurrency:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
                 reason=TASK_REJECTED_REASON_AT_CAPACITY,
@@ -298,7 +305,8 @@ class TaskRunner:
 
             task_state.process = process
 
-            result, print_args = self.executor.execute_process(
+            result, print_args, result_size_bytes = await asyncio.to_thread(
+                self.executor.execute_process,
                 process=process,
                 queue=queue,
                 task_timeout=self.config.task_timeout,
@@ -317,13 +325,22 @@ class TaskRunner:
                 LOG_TASK_COMPLETE.format(
                     task_id=task_id,
                     duration=self._get_duration(start_time),
+                    result_size=self._get_result_size(result_size_bytes),
                     **task_state.context(),
                 )
             )
 
+        except TaskCancelledError as e:
+            response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
+            await self._send_message(response)
+
         except Exception as e:
             self.logger.error(f"Task {task_id} failed", exc_info=True)
-            response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
+            error = {
+                "message": getattr(e, "message", str(e)),
+                "description": getattr(e, "description", ""),
+            }
+            response = RunnerTaskError(task_id=task_id, error=error)
             await self._send_message(response)
 
         finally:
@@ -366,6 +383,8 @@ class TaskRunner:
         serialized = self.serde.serialize_runner_message(message)
         await self.websocket_connection.send(serialized)
 
+    # ========== Formatting ==========
+
     def _get_duration(self, start_time: float) -> str:
         elapsed = time.time() - start_time
 
@@ -376,6 +395,14 @@ class TaskRunner:
             return f"{int(elapsed)}s"
 
         return f"{int(elapsed) // 60}m"
+
+    def _get_result_size(self, size_bytes: int) -> str:
+        if size_bytes < 1024:
+            return f"{size_bytes} bytes"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.1f} KB"
+        else:
+            return f"{size_bytes / (1024 * 1024):.1f} MB"
 
     # ========== Offers ==========
 
@@ -403,7 +430,7 @@ class TaskRunner:
             self.open_offers.pop(offer_id, None)
 
         offers_to_send = self.config.max_concurrency - (
-            len(self.open_offers) + len(self.running_tasks)
+            len(self.open_offers) + self.running_tasks_count
         )
 
         for _ in range(offers_to_send):
@@ -442,7 +469,7 @@ class TaskRunner:
         try:
             await asyncio.sleep(self.config.auto_shutdown_timeout)
 
-            if len(self.running_tasks) > 0:
+            if self.running_tasks_count > 0:
                 return
 
             assert self.on_idle_timeout is not None  # validated at start()

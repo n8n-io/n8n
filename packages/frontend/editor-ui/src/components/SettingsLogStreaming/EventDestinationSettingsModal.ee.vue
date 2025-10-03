@@ -49,7 +49,17 @@ import {
 	syslogModalDescription,
 } from './descriptions.ee';
 import { useElementSize } from '@vueuse/core';
-import { N8nInlineTextEdit, N8nText } from '@n8n/design-system';
+
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nInlineTextEdit,
+	N8nInputLabel,
+	N8nMenuItem,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -316,7 +326,7 @@ async function saveDestination() {
 				? `${nodeParameters.value.__type}`
 				: 'unknown'
 		)
-			.replace('$$MessageEventBusDestination', '')
+			.replace('$MessageEventBusDestination', '')
 			.toLowerCase();
 
 		const isComplete = () => {
@@ -394,7 +404,7 @@ const { width } = useElementSize(defNameRef);
 						}}</N8nText>
 					</div>
 					<div :class="$style.destinationActions">
-						<n8n-button
+						<N8nButton
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
@@ -409,7 +419,7 @@ const { width } = useElementSize(defNameRef);
 							@click="sendTestEvent"
 						/>
 						<template v-if="canManageLogStreaming">
-							<n8n-icon-button
+							<N8nIconButton
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
@@ -435,7 +445,7 @@ const { width } = useElementSize(defNameRef);
 		<template #content>
 			<div :class="$style.container">
 				<template v-if="isTypeAbstract">
-					<n8n-input-label
+					<N8nInputLabel
 						:class="$style.typeSelector"
 						:label="i18n.baseText('settings.log-streaming.selecttype')"
 						:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
@@ -443,7 +453,7 @@ const { width } = useElementSize(defNameRef);
 						size="medium"
 						:underline="false"
 					>
-						<n8n-select
+						<N8nSelect
 							ref="typeSelectRef"
 							:model-value="typeSelectValue"
 							:placeholder="typeSelectPlaceholder"
@@ -451,28 +461,34 @@ const { width } = useElementSize(defNameRef);
 							name="name"
 							@update:model-value="onTypeSelectInput"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="option in typeSelectOptions || []"
 								:key="option.value"
 								:value="option.value"
 								:label="i18n.baseText(option.label)"
 							/>
-						</n8n-select>
+						</N8nSelect>
 						<div class="mt-m text-right">
-							<n8n-button
+							<N8nButton
 								size="large"
 								data-test-id="select-destination-button"
 								:disabled="!typeSelectValue"
 								@click="onContinueAddClicked"
 							>
 								{{ i18n.baseText(`settings.log-streaming.continue`) }}
-							</n8n-button>
+							</N8nButton>
 						</div>
-					</n8n-input-label>
+					</N8nInputLabel>
 				</template>
 				<template v-else>
 					<div :class="$style.sidebar">
-						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
+						<N8nMenuItem
+							v-for="item in sidebarItems"
+							:key="item.id"
+							:item="item"
+							:active="activeTab === item.id"
+							@click="() => onTabSelect(item.id)"
+						/>
 					</div>
 					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
 						<template v-if="isTypeWebhook">
@@ -508,7 +524,7 @@ const { width } = useElementSize(defNameRef);
 					</div>
 					<div v-if="activeTab === 'events'" :class="$style.mainContent">
 						<div class="">
-							<n8n-input-label
+							<N8nInputLabel
 								class="mb-m mt-m"
 								:label="i18n.baseText('settings.log-streaming.tab.events.title')"
 								:bold="true"

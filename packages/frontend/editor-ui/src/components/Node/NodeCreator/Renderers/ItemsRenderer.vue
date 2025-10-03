@@ -15,6 +15,7 @@ import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import OpenTemplateItem from '../ItemTypes/OpenTemplateItem.vue';
 
+import { N8nLoading } from '@n8n/design-system';
 export interface Props {
 	elements?: INodeCreateElement[];
 	activeIndex?: number;
@@ -215,7 +216,7 @@ watch(
 					/>
 				</div>
 			</div>
-			<n8n-loading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
+			<N8nLoading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
 		</div>
 	</div>
 	<div v-else :class="$style.empty">

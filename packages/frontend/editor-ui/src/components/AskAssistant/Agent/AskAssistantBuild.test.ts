@@ -1,4 +1,15 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { defineComponent, h } from 'vue';
+
+// Type for Vue component instance with setup state
+interface VueComponentInstance {
+	__vueParentComponent?: {
+		setupState?: {
+			onUserMessage?: (message: string) => Promise<void>;
+			showAskOwnerTooltip?: boolean;
+		};
+	};
+}
 
 // Mock workflow saving first before any other imports
 const saveCurrentWorkflowMock = vi.hoisted(() => vi.fn());
@@ -9,6 +20,64 @@ vi.mock('@/composables/useWorkflowSaving', () => ({
 		setDocumentTitle: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
+	}),
+}));
+
+// Mock AskAssistantChat component
+vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', () => ({
+	default: defineComponent({
+		name: 'AskAssistantChat',
+		props: [
+			'user',
+			'messages',
+			'streaming',
+			'loadingMessage',
+			'creditsQuota',
+			'creditsRemaining',
+			'showAskOwnerTooltip',
+		],
+		emits: ['message', 'feedback', 'stop', 'upgrade-click'],
+		setup(props, { emit, expose }) {
+			const feedbackText = { value: '' };
+
+			const sendMessage = (message: string) => {
+				emit('message', message);
+			};
+			expose({ sendMessage });
+
+			// Create a more realistic mock that includes rating buttons when needed
+			return () => {
+				const lastMessage = props.messages?.[props.messages.length - 1];
+				const showRating = lastMessage?.showRating;
+
+				return h('div', { 'data-test-id': 'mocked-assistant-chat' }, [
+					showRating
+						? [
+								h('button', {
+									'data-test-id': 'message-thumbs-up-button',
+									onClick: () => emit('feedback', { rating: 'up' }),
+								}),
+								h('button', {
+									'data-test-id': 'message-thumbs-down-button',
+									onClick: () => {
+										emit('feedback', { rating: 'down' });
+									},
+								}),
+								h('input', {
+									'data-test-id': 'message-feedback-input',
+									onInput: (e: Event) => {
+										feedbackText.value = (e.target as HTMLInputElement).value;
+									},
+								}),
+								h('button', {
+									'data-test-id': 'message-submit-feedback-button',
+									onClick: () => emit('feedback', { rating: 'down', feedback: feedbackText.value }),
+								}),
+							]
+						: null,
+				]);
+			};
+		},
 	}),
 }));
 
@@ -26,7 +95,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
-import { PLAN_APPROVAL_MESSAGE } from '@/constants';
+import { useUsersStore } from '@/stores/users.store';
 
 vi.mock('@/event-bus', () => ({
 	nodeViewEventBus: {
@@ -68,6 +137,14 @@ vi.mock('vue-router', () => {
 	};
 });
 
+// Mock usePageRedirectionHelper
+const goToUpgradeMock = vi.fn();
+vi.mock('@/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: () => ({
+		goToUpgrade: goToUpgradeMock,
+	}),
+}));
+
 const workflowPrompt = 'Create a workflow';
 describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
@@ -90,6 +167,17 @@ describe('AskAssistantBuild', () => {
 					streaming: false,
 					assistantThinkingMessage: undefined,
 					workflowPrompt,
+					creditsQuota: -1,
+					creditsRemaining: 0,
+				},
+				[STORES.USERS]: {
+					currentUser: {
+						id: '1',
+						firstName: 'Test',
+						lastName: 'User',
+						email: 'test@example.com',
+					},
+					isInstanceOwner: true,
 				},
 			},
 		});
@@ -106,18 +194,19 @@ describe('AskAssistantBuild', () => {
 			.fn()
 			.mockReturnValue({ success: true, workflowData: {}, newNodeIds: [] });
 		builderStore.getWorkflowSnapshot = vi.fn().mockReturnValue('{}');
+		builderStore.getRunningTools = vi.fn().mockReturnValue([]);
 		builderStore.workflowMessages = [];
 		builderStore.toolMessages = [];
 		builderStore.workflowPrompt = workflowPrompt;
 		builderStore.trackingSessionId = 'app_session_id';
-
 		workflowsStore.workflowId = 'abc123';
 	});
 
 	describe('rendering', () => {
 		it('should render component correctly', () => {
 			const { getByTestId } = renderComponent();
-			expect(getByTestId('ask-assistant-chat')).toBeInTheDocument();
+			// The wrapper div has the data-test-id, but we verify the mocked chat is rendered
+			expect(getByTestId('mocked-assistant-chat')).toBeInTheDocument();
 		});
 
 		it('should pass correct props to AskAssistantChat component', () => {
@@ -127,21 +216,48 @@ describe('AskAssistantBuild', () => {
 			expect(builderStore.sendChatMessage).not.toHaveBeenCalled();
 			expect(builderStore.addAssistantMessages).not.toHaveBeenCalled();
 		});
+
+		it('should show ask owner tooltip when user is not instance owner', () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.isInstanceOwner = false;
+
+			const { container } = renderComponent();
+
+			// Get the component instance
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const showAskOwnerTooltip = vm?.setupState?.showAskOwnerTooltip;
+
+			expect(showAskOwnerTooltip).toBe(true);
+		});
+
+		it('should not show ask owner tooltip when user is instance owner', () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.isInstanceOwner = true;
+
+			const { container } = renderComponent();
+
+			// Get the component instance
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const showAskOwnerTooltip = vm?.setupState?.showAskOwnerTooltip;
+
+			expect(showAskOwnerTooltip).toBe(false);
+		});
 	});
 
 	describe('user message handling', () => {
 		it('should initialize builder chat when a user sends a message', async () => {
-			const { getByTestId } = renderComponent();
+			// Mock empty workflow to ensure initialGeneration is true
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.isNewWorkflow = false;
 
+			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
 
-			// Type message into the chat input
-			const chatInput = getByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-
-			// Click the send button
-			const sendButton = getByTestId('send-message-button');
-			sendButton.click();
+			// Find the component instance and directly call the onUserMessage handler
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			await flushPromises();
 
@@ -174,7 +290,7 @@ describe('AskAssistantBuild', () => {
 							content: 'Wat',
 							read: true,
 							showRating: true,
-							ratingStyle: 'regular',
+							ratingStyle: 'minimal',
 						},
 					],
 				});
@@ -328,14 +444,17 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send initial message to start generation
 			const testMessage = 'Create a workflow to send emails';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
+
+			await flushPromises();
 
 			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
 				initialGeneration: true,
@@ -399,14 +518,17 @@ describe('AskAssistantBuild', () => {
 			});
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send message to modify existing workflow
 			const testMessage = 'Add an HTTP node';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
+
+			await flushPromises();
 
 			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
 				initialGeneration: false,
@@ -455,16 +577,16 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send initial message
 			const testMessage = 'Create a workflow';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
-			// The component should have set initialGeneration to true since workflow was empty
 			await flushPromises();
 
 			// Simulate streaming starts
@@ -509,14 +631,15 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send initial message
 			const testMessage = 'Create a workflow';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true });
@@ -539,11 +662,17 @@ describe('AskAssistantBuild', () => {
 				},
 			});
 
-			// User cancels generation - this adds a "[Task aborted]" message
+			// User cancels generation - this adds a locale message for aborted task
+			// In tests, i18n.baseText returns the key itself
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: testMessage },
-					{ id: '2', role: 'assistant', type: 'text', content: '[Task aborted]' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'text',
+						content: 'aiAssistant.builder.streamAbortedMessage',
+					},
 				],
 			});
 
@@ -560,14 +689,15 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.isNewWorkflow = true;
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send initial message
 			const testMessage = 'Create a workflow';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			await flushPromises();
 
@@ -589,14 +719,15 @@ describe('AskAssistantBuild', () => {
 				],
 			});
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send new message in existing session
 			const testMessage = 'Add email nodes';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true, initialGeneration: true });
@@ -656,7 +787,7 @@ describe('AskAssistantBuild', () => {
 			});
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// User manually deletes all nodes (simulated by clearing workflow)
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
@@ -664,10 +795,13 @@ describe('AskAssistantBuild', () => {
 
 			// Send message to generate new workflow
 			const testMessage = 'Create a new workflow';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
+
+			await flushPromises();
 
 			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
 				initialGeneration: true,
@@ -721,14 +855,15 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send message
 			const testMessage = 'Create a workflow';
-			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true });
@@ -877,10 +1012,16 @@ describe('AskAssistantBuild', () => {
 			});
 
 			// Add cancellation message to chat
+			// In tests, i18n.baseText returns the key itself
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
-					{ id: '2', role: 'assistant', type: 'text', content: '[Task aborted]' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'text',
+						content: 'aiAssistant.builder.streamAbortedMessage',
+					},
 				],
 			});
 
@@ -978,381 +1119,202 @@ describe('AskAssistantBuild', () => {
 		});
 	});
 
-	describe('NodesPlan message handling', () => {
-		it('should render plan messages with appropriate controls', async () => {
-			const nodesPlanMessage = {
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Here is my plan:',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'To fetch data from an API',
-					},
-				],
-			};
+	it('should handle multiple canvas generations correctly', async () => {
+		const originalWorkflow = {
+			nodes: [],
+			connections: {},
+		};
+		builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(originalWorkflow));
 
-			const regularMessage = {
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'text' as const,
-				content: 'Regular message',
-			};
-
-			// First test with regular message - should not show plan controls
-			builderStore.$patch({
-				chatMessages: [regularMessage],
-			});
-
-			const { queryByText } = renderComponent();
-			await flushPromises();
-
-			// Regular message should not have plan controls
-			expect(queryByText('aiAssistant.builder.plan.approve')).not.toBeInTheDocument();
-
-			// Now test with plan message
-			builderStore.$patch({
-				chatMessages: [nodesPlanMessage],
-			});
-			await flushPromises();
-
-			// Plan message should have controls
-			expect(queryByText('aiAssistant.builder.plan.approve')).toBeInTheDocument();
-		});
-
-		it('should handle plan approval correctly', async () => {
-			// Setup: empty workflow so initialGeneration is true
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			const nodesPlanMessage = {
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Here is my plan:',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'To fetch data from an API',
-					},
-				],
-			};
-
-			builderStore.$patch({
-				chatMessages: [nodesPlanMessage],
-			});
-
-			const { getByText } = renderComponent();
-			await flushPromises();
-
-			// Find and click the approve button
-			const approveButton = getByText('aiAssistant.builder.plan.approve');
-			await fireEvent.click(approveButton);
-			await flushPromises();
-
-			// Verify that sendChatMessage was called with approval message
-			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
-				text: PLAN_APPROVAL_MESSAGE,
-				initialGeneration: true,
-			});
-		});
-
-		it('should handle plan rejection correctly', async () => {
-			const nodesPlanMessage = {
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Here is my plan:',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'To fetch data from an API',
-					},
-				],
-			};
-
-			builderStore.$patch({
-				chatMessages: [nodesPlanMessage],
-			});
-
-			const { getByText, queryByText } = renderComponent();
-			await flushPromises();
-
-			// Find and click the reject button
-			const rejectButton = getByText('aiAssistant.builder.plan.reject');
-			await fireEvent.click(rejectButton);
-			await flushPromises();
-
-			// Verify plan controls are hidden after rejection
-			expect(queryByText('aiAssistant.builder.plan.approve')).not.toBeInTheDocument();
-			expect(queryByText('aiAssistant.builder.plan.reject')).not.toBeInTheDocument();
-		});
-
-		it('should show plan controls only for the last plan message', async () => {
-			const planMessage1 = {
-				id: 'plan1',
-				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'First plan:',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'First plan',
-					},
-				],
-			};
-
-			const textMessage = {
-				id: 'text1',
-				role: 'assistant' as const,
-				type: 'text' as const,
-				content: 'Some text',
-			};
-
-			const planMessage2 = {
-				id: 'plan2',
-				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Second plan:',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.emailSend',
-						nodeName: 'Send Email',
-						reasoning: 'Second plan',
-					},
-				],
-			};
-
-			// First set just the first plan message
-			builderStore.$patch({
-				chatMessages: [planMessage1],
-			});
-
-			const { queryByText } = renderComponent();
-			await flushPromises();
-
-			// First plan should show controls when it's alone
-			expect(queryByText('aiAssistant.builder.plan.approve')).toBeInTheDocument();
-
-			// Now add more messages
-			builderStore.$patch({
-				chatMessages: [planMessage1, textMessage, planMessage2],
-			});
-			await flushPromises();
-
-			// Now only the last plan message should have visible controls
-			// We check this by seeing that approve button is still there (from plan2)
-			expect(queryByText('aiAssistant.builder.plan.approve')).toBeInTheDocument();
-		});
-	});
-
-	describe('Plan status management in workflow messages watcher', () => {
-		it('should disable chat when plan is pending and enable after action', async () => {
-			// Add a nodes plan message as the last message
-			const nodesPlanMessage = {
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Plan message',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'To fetch data',
-					},
-				],
-			};
-
-			builderStore.$patch({
-				chatMessages: [nodesPlanMessage],
-			});
-
-			// Also need to mock workflowMessages getter
-			builderStore.workflowMessages = [];
-
-			const { getByText, queryByRole } = renderComponent();
-			await flushPromises();
-
-			// Trigger the watcher by updating workflowMessages
-			builderStore.workflowMessages = [
+		const intermediaryWorkflow = {
+			nodes: [
 				{
-					id: faker.string.uuid(),
-					role: 'assistant' as const,
-					type: 'workflow-updated' as const,
-					codeSnippet: '{}',
-				},
-			];
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
+				} as INodeUi,
+			],
+			connections: {},
+		};
 
-			await flushPromises();
-
-			// Chat should be disabled while plan is pending
-			const chatInput = queryByRole('textbox');
-			expect(chatInput).toHaveAttribute('disabled');
-
-			// Approve the plan
-			const approveButton = getByText('aiAssistant.builder.plan.approve');
-			await fireEvent.click(approveButton);
-			await flushPromises();
-
-			// Chat should be enabled after approval
-			const chatInputAfter = queryByRole('textbox');
-			expect(chatInputAfter).not.toHaveAttribute('disabled');
-		});
-
-		it('should not disable chat when last message is not a nodes plan', async () => {
-			// Add a regular text message as the last message
-			const textMessage = {
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'text' as const,
-				content: 'Regular message',
-			};
-
-			builderStore.$patch({
-				chatMessages: [textMessage],
-			});
-
-			// Mock workflowMessages getter
-			builderStore.workflowMessages = [];
-
-			const { queryByRole } = renderComponent();
-			await flushPromises();
-
-			// Trigger the watcher
-			builderStore.workflowMessages = [
+		const finalWorkflow = {
+			nodes: [
 				{
-					id: faker.string.uuid(),
-					role: 'assistant' as const,
-					type: 'workflow-updated' as const,
-					codeSnippet: '{}',
-				},
-			];
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
+				} as INodeUi,
 
-			await flushPromises();
-
-			// Chat should remain enabled
-			const chatInput = queryByRole('textbox');
-			expect(chatInput).not.toHaveAttribute('disabled');
-		});
-	});
-
-	describe('Disabled state when plan is pending', () => {
-		it('should disable chat input when plan status is pending', async () => {
-			const nodesPlanMessage = {
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Plan message',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'To fetch data',
-					},
-				],
-			};
-
-			builderStore.$patch({
-				chatMessages: [nodesPlanMessage],
-			});
-
-			// Mock workflowMessages getter
-			builderStore.workflowMessages = [];
-
-			const { queryByRole } = renderComponent();
-			await flushPromises();
-
-			// Trigger workflow message update to set planStatus to pending
-			builderStore.workflowMessages = [
 				{
-					id: faker.string.uuid(),
-					role: 'assistant' as const,
-					type: 'workflow-updated' as const,
-					codeSnippet: '{}',
+					id: 'node2',
+					name: 'HttpReuqest',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
+				} as INodeUi,
+			],
+			connections: {},
+		};
+		workflowsStore.$patch({
+			workflow: originalWorkflow,
+		});
+
+		renderComponent();
+
+		builderStore.$patch({ streaming: true });
+		await flushPromises();
+
+		// Trigger the watcher by updating workflowMessages
+		builderStore.workflowMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'workflow-updated' as const,
+				codeSnippet: JSON.stringify(intermediaryWorkflow),
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'workflow-updated' as const,
+				codeSnippet: JSON.stringify(finalWorkflow),
+			},
+		];
+
+		const toolCallId1_1 = '1234';
+		const toolCallId1_2 = '3333';
+		const toolCallId2 = '4567';
+		const toolCallId3 = '8901';
+
+		builderStore.toolMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_1,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_2,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'second-tool',
+				toolCallId: toolCallId2,
+				status: 'running',
+				updates: [],
+			},
+		];
+
+		builderStore.$patch({ streaming: false });
+		await flushPromises();
+
+		expect(trackMock).toHaveBeenCalledOnce();
+		expect(trackMock).toHaveBeenCalledWith('Workflow modified by builder', {
+			end_workflow_json: JSON.stringify(finalWorkflow),
+			session_id: 'app_session_id',
+			start_workflow_json: JSON.stringify(originalWorkflow),
+			// first-tool is added once, even though it completed twice
+			// second-tool is ignored because it's running
+			tools_called: ['first-tool'],
+			workflow_id: 'abc123',
+		});
+
+		trackMock.mockClear();
+
+		builderStore.$patch({ streaming: true });
+
+		await flushPromises();
+		// second run after new messages
+		const updatedWorkflow2 = {
+			...finalWorkflow,
+			nodes: [
+				...finalWorkflow.nodes,
+				{
+					id: 'node1',
+					name: 'Updated',
+					type: 'n8n-nodes-base.updated',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
 				},
-			];
-
-			await flushPromises();
-
-			const chatInput = queryByRole('textbox');
-			expect(chatInput).toHaveAttribute('disabled');
-		});
-
-		it('should enable chat input after plan approval', async () => {
-			const nodesPlanMessage = {
+			],
+		};
+		builderStore.workflowMessages = [
+			{
 				id: faker.string.uuid(),
 				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Plan message',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'To fetch data',
-					},
-				],
-			};
+				type: 'workflow-updated' as const,
+				codeSnippet: JSON.stringify(updatedWorkflow2),
+			},
+		];
 
-			builderStore.$patch({
-				chatMessages: [nodesPlanMessage],
-			});
-
-			const { queryByRole, getByText } = renderComponent();
-			await flushPromises();
-
-			// Click approve button
-			const approveButton = getByText('aiAssistant.builder.plan.approve');
-			await fireEvent.click(approveButton);
-			await flushPromises();
-
-			// Chat should be enabled after approval
-			const chatInput = queryByRole('textbox');
-			expect(chatInput).not.toHaveAttribute('disabled');
-		});
-
-		it('should enable chat input after plan rejection', async () => {
-			const nodesPlanMessage = {
+		builderStore.toolMessages = [
+			{
 				id: faker.string.uuid(),
 				role: 'assistant' as const,
-				type: 'custom' as const,
-				customType: 'nodesPlan',
-				message: 'Plan message',
-				data: [
-					{
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeName: 'HTTP Request',
-						reasoning: 'To fetch data',
-					},
-				],
-			};
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_1,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_2,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'second-tool',
+				toolCallId: toolCallId2,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'third-tool',
+				toolCallId: toolCallId3,
+				status: 'completed',
+				updates: [],
+			},
+		];
 
-			builderStore.$patch({
-				chatMessages: [nodesPlanMessage],
-			});
+		builderStore.$patch({ streaming: false });
+		await flushPromises();
 
-			const { queryByRole, getByText } = renderComponent();
-			await flushPromises();
-
-			// Click reject button
-			const rejectButton = getByText('aiAssistant.builder.plan.reject');
-			await fireEvent.click(rejectButton);
-			await flushPromises();
-
-			// Chat should be enabled after rejection
-			const chatInput = queryByRole('textbox');
-			expect(chatInput).not.toHaveAttribute('disabled');
+		expect(trackMock).toHaveBeenCalledOnce();
+		expect(trackMock).toHaveBeenCalledWith('Workflow modified by builder', {
+			end_workflow_json: JSON.stringify(updatedWorkflow2),
+			session_id: 'app_session_id',
+			start_workflow_json: JSON.stringify(originalWorkflow),
+			// first-tool is ignored, because it was tracked in first run (same tool call id)
+			tools_called: ['second-tool', 'third-tool'],
+			workflow_id: 'abc123',
 		});
 	});
 });

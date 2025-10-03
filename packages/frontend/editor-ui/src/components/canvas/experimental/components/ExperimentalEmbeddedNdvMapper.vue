@@ -1,91 +1,141 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
-import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { N8nPopover } from '@n8n/design-system';
-import { useVueFlow } from '@vue-flow/core';
-import { watchOnce } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
-import { computed, inject, ref, useTemplateRef } from 'vue';
+import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
+import { useStyles } from '@/composables/useStyles';
+import {
+	onClickOutside,
+	useElementHover,
+	type UseElementHoverOptions,
+	useEventListener,
+} from '@vueuse/core';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
-const { node, inputNodeName, visible, virtualRef } = defineProps<{
+import { N8nPopoverReka } from '@n8n/design-system';
+type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
+
+const hoverOptions: UseElementHoverOptions = {
+	delayLeave: 200, // should be a positive value, otherwise user cannot click on the mapper
+};
+
+const {
+	node,
+	inputNodeName,
+	reference,
+	visibleOnHover = false,
+} = defineProps<{
 	workflow: Workflow;
 	node: INodeUi;
 	inputNodeName: string;
-	visible: boolean;
-	virtualRef: HTMLElement | undefined;
+	visibleOnHover?: boolean;
+	reference: HTMLElement;
 }>();
 
+const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
-const vf = useVueFlow();
-const canvas = inject(CanvasKey, undefined);
-const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
-const isOnceVisible = ref(isVisible.value);
+const experimentalNdvStore = useExperimentalNdvStore();
+const contentElRef = computed<HTMLElement | null>(() => contentRef.value?.$el ?? null);
+const { APP_Z_INDEXES } = useStyles();
+const isReferenceHovered = useElementHover(visibleOnHover ? reference : null, hoverOptions);
+const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, hoverOptions);
+const isHovered = computed(() => isReferenceHovered.value || isMapperHovered.value);
 
-watchOnce(isVisible, (value) => {
-	isOnceVisible.value = isOnceVisible.value || value;
+function handleFocusIn() {
+	if (experimentalNdvStore.isMapperOpen) {
+		// Skip if there's already a mapper opened
+		return;
+	}
+
+	state.value = { isOpen: true, closeOnMouseLeave: false };
+}
+
+function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
+	if (
+		isEventTargetContainedBy(event.target, reference) ||
+		isEventTargetContainedBy(event.target, contentElRef) ||
+		isEventTargetContainedBy(event.relatedTarget, contentElRef)
+	) {
+		// Skip when focus moves between the mapper and its reference element
+		return;
+	}
+
+	state.value = { isOpen: false };
+}
+
+watch(isHovered, (hovered) => {
+	if (
+		!visibleOnHover ||
+		(state.value.isOpen && !state.value.closeOnMouseLeave) ||
+		experimentalNdvStore.isMapperOpen
+	) {
+		return;
+	}
+
+	state.value = hovered ? { isOpen: true, closeOnMouseLeave: true } : { isOpen: false };
 });
 
-defineExpose({
-	contentRef: computed<HTMLElement>(() => contentRef.value?.$el ?? null),
+watch(
+	state,
+	(value) => {
+		experimentalNdvStore.setMapperOpen(value.isOpen && !value.closeOnMouseLeave);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	experimentalNdvStore.setMapperOpen(false);
 });
+
+useEventListener(reference, 'focusin', handleFocusIn);
+useEventListener(reference, 'focusout', handleReferenceFocusOut);
+useEventListener(contentElRef, 'focusin', handleFocusIn);
+
+onClickOutside(contentElRef, handleReferenceFocusOut);
 </script>
 
 <template>
-	<N8nPopover
-		:visible="isVisible"
-		placement="left"
-		:show-arrow="false"
-		:popper-class="`${$style.component} ignore-key-press-canvas`"
-		:width="360"
-		:offset="8"
-		append-to="body"
-		:popper-options="{
-			modifiers: [{ name: 'flip', enabled: false }],
-		}"
-		:persistent="isOnceVisible /* works like lazy initialization */"
-		virtual-triggering
-		:virtual-ref="virtualRef"
+	<N8nPopoverReka
+		:open="state.isOpen"
+		side="left"
+		:side-flip="false"
+		align="start"
+		width="360px"
+		:max-height="`calc(100vh - var(--spacing-s) * 2)`"
+		:reference="reference"
+		:suppress-auto-focus="true"
+		:z-index="APP_Z_INDEXES.NDV + 1"
+		content-class="ignore-key-press-canvas ignore-key-press-node-creator"
 	>
-		<InputPanel
-			ref="content"
-			:tabindex="-1"
-			:class="$style.inputPanel"
-			:style="{
-				maxHeight: `calc(${vf.viewportRef.value?.offsetHeight ?? 0}px - var(--spacing-s) * 2)`,
-			}"
-			:workflow-object="workflow"
-			:run-index="0"
-			compact
-			push-ref=""
-			display-mode="schema"
-			disable-display-mode-selection
-			:active-node-name="node.name"
-			:current-node-name="inputNodeName"
-			:is-mapping-onboarded="ndvStore.isMappingOnboarded"
-			:focused-mappable-input="ndvStore.focusedMappableInput"
-			node-not-run-message-variant="simple"
-		/>
-	</N8nPopover>
+		<template #content>
+			<InputPanel
+				ref="content"
+				:tabindex="-1"
+				:class="$style.inputPanel"
+				:workflow-object="workflow"
+				:run-index="0"
+				compact
+				push-ref=""
+				display-mode="schema"
+				disable-display-mode-selection
+				:active-node-name="node.name"
+				:current-node-name="inputNodeName"
+				:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+				:focused-mappable-input="ndvStore.focusedMappableInput"
+				node-not-run-message-variant="simple"
+				:truncate-limit="60"
+				search-shortcut="ctrl+f"
+			/>
+		</template>
+	</N8nPopoverReka>
 </template>
 
 <style lang="scss" module>
-.component {
-	background-color: transparent !important;
-	padding: var(--spacing-s) 0 !important;
-	border: none !important;
-	box-shadow: none !important;
-	margin-top: -2px;
-}
-
 .inputPanel {
-	border: var(--border-base);
-	border-width: 1px;
-	background-color: var(--color-background-light);
-	border-radius: var(--border-radius-large);
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+	background-color: transparent;
 	padding: var(--spacing-2xs);
 	height: 100%;
 	overflow: auto;

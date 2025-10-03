@@ -11,6 +11,8 @@ import type {
 	ResourceLocatorModes,
 } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
+import DraggableTarget from '@/components/DraggableTarget.vue';
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '@/components/ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';
@@ -24,7 +26,9 @@ import { VIEWS } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_TRIGGER_ID, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { useToast } from '@/composables/useToast';
 
+import { N8nIcon, N8nInput, N8nLink, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
@@ -69,6 +73,7 @@ const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
 const telemetry = useTelemetry();
+const toast = useToast();
 
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
@@ -88,15 +93,15 @@ const { onDocumentVisible } = useDocumentVisibility();
 const {
 	hasMoreWorkflowsToLoad,
 	isLoadingResources,
-	filteredResources,
 	searchFilter,
 	onSearchFilter,
 	getWorkflowName,
 	applyDefaultExecuteWorkflowNodeName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
-	reloadWorkflows,
+	workflowDbToResourceMapper,
 	getWorkflowUrl,
+	workflowsResources,
 } = useWorkflowResourcesLocator(router);
 
 const currentProjectName = computed(() => {
@@ -161,6 +166,7 @@ function onInputChange(workflowId: NodeParameterValue): void {
 		__rl: true,
 		value: workflowId,
 		mode: selectedMode.value,
+		cachedResultUrl: getWorkflowUrl(workflowId),
 	};
 	if (isListMode.value) {
 		const resource = workflowsStore.getWorkflowById(workflowId);
@@ -262,34 +268,44 @@ onClickOutside(dropdown, () => {
 });
 
 const onAddResourceClicked = async () => {
-	const projectId = projectStore.currentProjectId;
-	const sampleWorkflow = props.sampleWorkflow;
-	const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
-	const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
-		(w) => w.name && new RegExp(workflowName).test(w.name),
-	);
+	try {
+		const projectId = projectStore.currentProjectId;
+		const sampleWorkflow = props.sampleWorkflow;
+		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
+		const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+			(w) => w.name && new RegExp(workflowName).test(w.name),
+		);
 
-	const workflow: WorkflowDataCreate = {
-		...sampleWorkflow,
-		name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
-	};
-	if (projectId) {
-		workflow.projectId = projectId;
+		const workflow: WorkflowDataCreate = {
+			...sampleWorkflow,
+			name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
+		};
+		if (projectId) {
+			workflow.projectId = projectId;
+		}
+		telemetry.track('User clicked create new sub-workflow button', {});
+
+		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
+		});
+		workflowsResources.value.push(workflowDbToResourceMapper(newWorkflow));
+		emit('update:modelValue', {
+			__rl: true,
+			value: newWorkflow.id,
+			mode: selectedMode.value,
+			cachedResultName: newWorkflow.name,
+			cachedResultUrl: getWorkflowUrl(newWorkflow.id),
+		});
+		hideDropdown();
+
+		window.open(href, '_blank');
+
+		emit('workflowCreated', newWorkflow.id);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error.subworkflowCreationFailed'));
 	}
-	telemetry.track('User clicked create new sub-workflow button', {});
-
-	const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
-	const { href } = router.resolve({
-		name: VIEWS.WORKFLOW,
-		params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
-	});
-	await reloadWorkflows();
-	onInputChange(newWorkflow.id);
-	hideDropdown();
-
-	window.open(href, '_blank');
-
-	emit('workflowCreated', newWorkflow.id);
 };
 </script>
 <template>
@@ -303,7 +319,7 @@ const onAddResourceClicked = async () => {
 			:show="isDropdownVisible"
 			:filterable="true"
 			:filter-required="false"
-			:resources="filteredResources"
+			:resources="workflowsResources"
 			:loading="isLoadingResources"
 			:filter="searchFilter"
 			:has-more="hasMoreWorkflowsToLoad"
@@ -313,7 +329,7 @@ const onAddResourceClicked = async () => {
 			}"
 			:width="width"
 			:event-bus="eventBus"
-			:model-value="modelValue.value"
+			:model-value="modelValue"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
@@ -321,9 +337,9 @@ const onAddResourceClicked = async () => {
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
-					<n8n-text color="text-dark" align="center" tag="div">
+					<N8nText color="text-dark" align="center" tag="div">
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 			</template>
 			<div
@@ -340,7 +356,7 @@ const onAddResourceClicked = async () => {
 					}"
 				/>
 				<div :class="$style.modeSelector">
-					<n8n-select
+					<N8nSelect
 						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
@@ -348,7 +364,7 @@ const onAddResourceClicked = async () => {
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSwitched"
 					>
-						<n8n-option
+						<N8nOption
 							v-for="mode in supportedModes"
 							:key="mode.name"
 							:value="mode.name"
@@ -361,8 +377,8 @@ const onAddResourceClicked = async () => {
 							"
 						>
 							{{ getModeLabel(mode) }}
-						</n8n-option>
-					</n8n-select>
+						</N8nOption>
+					</N8nSelect>
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
@@ -391,7 +407,7 @@ const onAddResourceClicked = async () => {
 									@update:model-value="onInputChange"
 									@modal-opener-click="emit('modalOpenerClick')"
 								/>
-								<n8n-input
+								<N8nInput
 									v-else
 									ref="input"
 									:class="{ [$style.selectInput]: isListMode }"
@@ -417,7 +433,7 @@ const onAddResourceClicked = async () => {
 											}"
 										/>
 									</template>
-								</n8n-input>
+								</N8nInput>
 							</div>
 						</template>
 					</DraggableTarget>
@@ -432,9 +448,9 @@ const onAddResourceClicked = async () => {
 						:class="$style.openResourceLink"
 						data-test-id="rlc-open-resource-link"
 					>
-						<n8n-link theme="text" @click.stop="openWorkflow()">
-							<n8n-icon icon="external-link" :title="'Open resource link'" />
-						</n8n-link>
+						<N8nLink theme="text" @click.stop="openWorkflow()">
+							<N8nIcon icon="external-link" :title="'Open resource link'" />
+						</N8nLink>
 					</div>
 				</div>
 			</div>

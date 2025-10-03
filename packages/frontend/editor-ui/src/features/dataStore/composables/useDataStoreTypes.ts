@@ -1,22 +1,16 @@
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type {
 	AGGridCellType,
 	DataStoreColumnType,
 	DataStoreValue,
 } from '@/features/dataStore/datastore.types';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
-
-/* eslint-disable id-denylist */
-const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
-	string: 'type',
-	number: 'hash',
-	boolean: 'toggle-right',
-	date: 'calendar',
-} as const;
-/* eslint-enable id-denylist */
+import { ResponseError } from '@n8n/rest-api-client';
+import { useI18n } from '@n8n/i18n';
+import { DATA_TYPE_ICON_MAP } from '@/constants';
 
 export const useDataStoreTypes = () => {
-	const getIconForType = (type: DataStoreColumnType) => COLUMN_TYPE_ICONS[type];
+	const getIconForType = (type: DataStoreColumnType) => DATA_TYPE_ICON_MAP[type];
+	const i18n = useI18n();
 
 	/**
 	 * Maps a DataStoreColumnType to an AGGridCellType.
@@ -57,10 +51,33 @@ export const useDataStoreTypes = () => {
 		}
 	};
 
+	const getAddColumnError = (error: unknown): { httpStatus: number; message: string } => {
+		const DEFAULT_HTTP_STATUS = 500;
+		const DEFAULT_MESSAGE = i18n.baseText('generic.unknownError');
+
+		if (error instanceof ResponseError) {
+			return {
+				httpStatus: error.httpStatusCode ?? 500,
+				message: error.message,
+			};
+		}
+		if (error instanceof Error) {
+			return {
+				httpStatus: DEFAULT_HTTP_STATUS,
+				message: error.message,
+			};
+		}
+		return {
+			httpStatus: DEFAULT_HTTP_STATUS,
+			message: DEFAULT_MESSAGE,
+		};
+	};
+
 	return {
 		getIconForType,
 		mapToAGCellType,
 		mapToDataStoreColumnType,
 		getDefaultValueForType,
+		getAddColumnError,
 	};
 };

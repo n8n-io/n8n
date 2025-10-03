@@ -25,12 +25,14 @@ const props = withDefaults(
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 		executing?: boolean;
+		suppressInteraction?: boolean;
 	}>(),
 	{
 		id: 'canvas',
 		eventBus: () => createEventBus<CanvasEventBusEvents>(),
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
+		suppressInteraction: false,
 	},
 );
 
@@ -77,13 +79,14 @@ defineExpose({
 		<div id="canvas" :class="$style.canvas">
 			<Canvas
 				v-if="workflow"
-				ref="canvas"
 				:id="id"
+				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:executing="executing"
+				:suppress-interaction="suppressInteraction"
 				v-bind="$attrs"
 			/>
 		</div>

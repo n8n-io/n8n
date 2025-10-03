@@ -129,10 +129,12 @@ export class FrontendService {
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
+			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
 			isNativePythonRunnerEnabled:
-				this.globalConfig.taskRunners.enabled && process.env.N8N_NATIVE_PYTHON_RUNNER === 'true',
+				this.globalConfig.taskRunners.enabled &&
+				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -182,6 +184,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			dataTables: {
+				maxSize: this.globalConfig.dataTable.maxSize,
+			},
 			publicApi: {
 				enabled: isApiEnabled(),
 				latestVersion: 1,
@@ -195,6 +200,7 @@ export class FrontendService {
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
+				setup: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
@@ -259,6 +265,9 @@ export class FrontendService {
 			askAi: {
 				enabled: false,
 			},
+			aiBuilder: {
+				enabled: false,
+			},
 			aiCredits: {
 				enabled: false,
 				credits: 0,
@@ -276,7 +285,6 @@ export class FrontendService {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
 			easyAIWorkflowOnboarded: false,
-			partialExecution: this.globalConfig.partialExecutions,
 			folders: {
 				enabled: false,
 			},
@@ -339,6 +347,7 @@ export class FrontendService {
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 		const isAskAiEnabled = this.license.isAskAiEnabled();
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
+		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -403,6 +412,7 @@ export class FrontendService {
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
+			this.settings.aiAssistant.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
 		if (isAskAiEnabled) {
@@ -413,6 +423,8 @@ export class FrontendService {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
+
+		this.settings.aiBuilder.enabled = isAiBuilderEnabled;
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 

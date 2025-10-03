@@ -4,7 +4,7 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
-import { renderComponent } from '@/__tests__/render';
+import { renderComponent, type RenderOptions } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
@@ -13,7 +13,7 @@ import type { INodeUi } from '@/Interface';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
-const DEFAULT_SETUP = {
+const DEFAULT_SETUP: RenderOptions<typeof SqlEditor> = {
 	props: {
 		dialect: 'PostgreSQL',
 		isReadOnly: false,
@@ -194,21 +194,10 @@ describe('SqlEditor.vue', () => {
 		await focusEditor(container);
 		await userEvent.click(getByTestId(EXPRESSION_OUTPUT_TEST_ID));
 
-		await waitFor(() =>
-			expect(
-				queryByTestId(EXPRESSION_OUTPUT_TEST_ID)?.closest('[aria-hidden=false]'),
-			).toBeInTheDocument(),
-		);
+		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).toBeInTheDocument());
 
 		// Does hide output when clicking outside the container
 		await userEvent.click(baseElement);
-
-		// NOTE: in testing, popover persists regardless of persist option.
-		// See https://github.com/element-plus/element-plus/blob/2.4.3/packages/components/tooltip/src/content.vue#L83-L90
-		await waitFor(() =>
-			expect(
-				queryByTestId(EXPRESSION_OUTPUT_TEST_ID)?.closest('[aria-hidden=true]'),
-			).toBeInTheDocument(),
-		);
+		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).not.toBeInTheDocument());
 	});
 });

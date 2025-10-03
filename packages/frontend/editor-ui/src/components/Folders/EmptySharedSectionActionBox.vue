@@ -5,6 +5,7 @@ import type { Project } from '@/types/projects.types';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { N8nActionBox } from '@n8n/design-system';
 type Props = {
 	personalProject: Project;
 	resourceType?: 'workflows' | 'credentials';
@@ -37,7 +38,7 @@ const onPersonalLinkClick = (event: MouseEvent) => {
 </script>
 
 <template>
-	<n8n-action-box
+	<N8nActionBox
 		data-test-id="empty-shared-action-box"
 		:heading="heading"
 		:description="i18n.baseText('workflows.empty.shared-with-me.link')"

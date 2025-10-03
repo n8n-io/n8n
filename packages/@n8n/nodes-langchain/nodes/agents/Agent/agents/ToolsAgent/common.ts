@@ -229,10 +229,22 @@ export const getAgentStepsParser =
 			if (finalResponse instanceof Object) {
 				if ('output' in finalResponse) {
 					try {
-						// If the output is an object, we will try to parse it as JSON
-						// this is because parser expects stringified JSON object like { "output": { .... } }
-						// so we try to parse the output before wrapping it and then stringify it
-						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+						const parsedOutput = jsonParse<Record<string, unknown>>(finalResponse.output);
+						// Check if the parsed output already has the expected structure
+						// If it already has { output: ... }, use it as-is to avoid double wrapping
+						// Otherwise, wrap it in { output: ... } as expected by the parser
+						if (
+							parsedOutput !== null &&
+							typeof parsedOutput === 'object' &&
+							'output' in parsedOutput &&
+							Object.keys(parsedOutput).length === 1
+						) {
+							// Already has the expected structure, use as-is
+							parserInput = JSON.stringify(parsedOutput);
+						} else {
+							// Needs wrapping for the parser
+							parserInput = JSON.stringify({ output: parsedOutput });
+						}
 					} catch (error) {
 						// Fallback to the raw output if parsing fails.
 						parserInput = finalResponse.output;

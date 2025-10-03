@@ -2,7 +2,9 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
+import ColumnHeader, {
+	type HeaderParamsWithDelete,
+} from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 
 // Mock N8nActionDropdown to make it easy to trigger item selection
 vi.mock('@n8n/design-system', async (importOriginal) => {
@@ -36,10 +38,19 @@ const renderComponent = createComponentRenderer(ColumnHeader, {
 	props: {
 		params: {
 			displayName: 'My Column',
-			column: { getColId: () => 'col-1', getColDef: () => ({ cellDataType: 'string' }) },
+			column: {
+				getColId: () => 'col-1',
+				getColDef: () => ({ cellDataType: 'string' }),
+				getSort: () => null,
+			},
 			onDelete: onDeleteMock,
 			allowMenuActions: true,
-		},
+			api: {
+				getFilterModel: vi.fn().mockReturnValue({}),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			},
+		} as unknown as HeaderParamsWithDelete,
 	},
 });
 
