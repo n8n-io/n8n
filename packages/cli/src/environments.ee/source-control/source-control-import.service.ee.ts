@@ -567,7 +567,10 @@ export class SourceControlImportService {
 		});
 	}
 
-	async getLocalProjectsFromDb(
+	/**
+	 * Fetches team projects from the database that are accessible to the context user
+	 */
+	async getLocalTeamProjectsFromDb(
 		context: SourceControlContext,
 	): Promise<ExportableProjectWithFileName[]> {
 		const localProjects = await this.projectRepository.find({
@@ -583,7 +586,10 @@ export class SourceControlImportService {
 		);
 	}
 
-	async getAllLocalProjectsFromDb(): Promise<ExportableProjectWithFileName[]> {
+	/**
+	 * Fetches all team projects from the database, regardless of the context user's access
+	 */
+	async getAllTeamLocalProjectsFromDb(): Promise<ExportableProjectWithFileName[]> {
 		const localProjects = await this.projectRepository.find({
 			select: ['id', 'name', 'description', 'icon', 'type'],
 			where: {

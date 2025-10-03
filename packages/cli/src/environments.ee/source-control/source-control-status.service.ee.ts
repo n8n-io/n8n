@@ -630,14 +630,14 @@ export class SourceControlStatusService {
 	) {
 		const projectsRemote =
 			await this.sourceControlImportService.getRemoteProjectsFromFiles(context);
-		const projectsLocal = await this.sourceControlImportService.getLocalProjectsFromDb(context);
+		const projectsLocal = await this.sourceControlImportService.getLocalTeamProjectsFromDb(context);
 
 		let outOfScopeProjects: ExportableProjectWithFileName[] = [];
 
 		if (!context.hasAccessToAllProjects()) {
 			// we need to query for all projects in the DB to hide possible deletions,
 			// when a project went out of scope locally
-			outOfScopeProjects = await this.sourceControlImportService.getAllLocalProjectsFromDb();
+			outOfScopeProjects = await this.sourceControlImportService.getAllTeamLocalProjectsFromDb();
 			outOfScopeProjects = outOfScopeProjects.filter(
 				(project) => !projectsLocal.some((local) => local.id === project.id),
 			);
