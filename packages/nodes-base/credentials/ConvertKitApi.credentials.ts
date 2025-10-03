@@ -28,7 +28,7 @@ export class ConvertKitApi implements ICredentialType {
 
 	async authenticate(credentials: ICredentialDataDecryptedObject, options: IHttpRequestOptions) {
 		// it's a webhook so include the api secret on the body
-		if ((options.url as string).includes('/automations/hooks')) {
+		if (options.url.includes('/automations/hooks')) {
 			options.body = options.body || {};
 			if (typeof options.body === 'object') {
 				(options.body as IDataObject).api_secret = credentials.apiSecret as string;
