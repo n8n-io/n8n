@@ -3194,3 +3194,5 @@ export interface StructuredChunk {
 		timestamp: number;
 	};
 }
+
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

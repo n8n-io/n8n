@@ -90,7 +90,7 @@ import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
@@ -124,7 +124,7 @@ import {
 	shouldIgnoreCanvasShortcut,
 } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
+import { getSampleWorkflowByTemplateId } from '@/features/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -163,8 +163,7 @@ const LazyNodeDetailsViewV2 = defineAsyncComponent(
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
-	async () =>
-		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
+	async () => await import('@/features/templates/components/SetupWorkflowCredentialsButton.vue'),
 );
 
 const $style = useCssModule();
