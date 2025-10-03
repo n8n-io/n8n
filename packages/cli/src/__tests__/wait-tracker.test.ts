@@ -168,7 +168,7 @@ describe('WaitTracker', () => {
 				return { parentExecution, postExecutePromise };
 			};
 
-			it('should also resume parent execution once sub-workflow finishes (default behavior)', async () => {
+			it('should resume parent execution once sub-workflow finishes by default', async () => {
 				const { parentExecution, postExecutePromise } = setupParentExecutionTest(undefined);
 
 				await waitTracker.startExecution(execution.id);
@@ -213,7 +213,7 @@ describe('WaitTracker', () => {
 				);
 			});
 
-			it('should not resume parent execution when shouldWait is false', async () => {
+			it('should not resume parent execution when shouldResume is false', async () => {
 				const { postExecutePromise } = setupParentExecutionTest(false);
 
 				await waitTracker.startExecution(execution.id);
@@ -227,7 +227,7 @@ describe('WaitTracker', () => {
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			});
 
-			it('should resume parent execution when shouldWait is true', async () => {
+			it('should resume parent execution when shouldResume is true', async () => {
 				const { parentExecution, postExecutePromise } = setupParentExecutionTest(true);
 
 				await waitTracker.startExecution(execution.id);
