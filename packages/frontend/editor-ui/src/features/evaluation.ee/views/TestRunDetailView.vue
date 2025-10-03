@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import type { TestCaseExecutionRecord } from '@/api/evaluation.ee';
-import type { TestTableColumn } from '@/components/Evaluations.ee/shared/TestTableBase.vue';
-import TestTableBase from '@/components/Evaluations.ee/shared/TestTableBase.vue';
+import type { TestCaseExecutionRecord } from '../evaluation.api';
+import type { TestTableColumn } from '../components/shared/TestTableBase.vue';
+import TestTableBase from '../components/shared/TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '../evaluation.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
-import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
-import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
+import { statusDictionary, getErrorBaseKey } from '../evaluation.constants';
 import { ElScrollbar } from 'element-plus';
 import {
 	N8nCallout,
@@ -32,7 +31,7 @@ import {
 	getDefaultOrderedColumns,
 	getTestCasesColumns,
 	getTestTableHeaders,
-} from './utils';
+} from '../evaluation.utils';
 import {
 	useWorkflowSettingsCache,
 	type UserEvaluationPreferences,

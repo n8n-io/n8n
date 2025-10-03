@@ -1,5 +1,5 @@
 import type { ChartData, ChartOptions } from 'chart.js';
-import type { TestRunRecord } from '@/api/evaluation.ee';
+import type { TestRunRecord } from '../evaluation.api';
 import dateFormat from 'dateformat';
 import { useCssVar } from '@vueuse/core';
 

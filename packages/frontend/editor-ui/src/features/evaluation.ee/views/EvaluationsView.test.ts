@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import EvaluationsView from '@/views/Evaluations.ee/EvaluationsView.vue';
+import EvaluationsView from './EvaluationsView.vue';
 
 import { mockedStore } from '@/__tests__/utils';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '../evaluation.store';
 import userEvent from '@testing-library/user-event';
-import type { TestRunRecord } from '@/api/evaluation.ee';
+import type { TestRunRecord } from '../evaluation.api';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', () => {

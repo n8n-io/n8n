@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends object">
-import { SHORT_TABLE_CELL_MIN_WIDTH } from '@/views/Evaluations.ee/utils';
+import { SHORT_TABLE_CELL_MIN_WIDTH } from '../../evaluation.utils';
 import type { ColumnCls, TableInstance } from 'element-plus';
 import isEqual from 'lodash/isEqual';
 import { nextTick, ref, useCssModule, watch } from 'vue';
