@@ -107,11 +107,14 @@ async function scrollToBottom(options: { smooth?: boolean } = {}) {
 
 	const viewport = getViewportElement();
 
-	if (viewport) {
+	if (viewport && typeof viewport.scrollTo === 'function') {
 		viewport.scrollTo({
 			top: viewport.scrollHeight,
 			behavior: options.smooth ? 'smooth' : 'auto',
 		});
+	} else if (viewport) {
+		// Fallback for test environments or browsers that don't support scrollTo
+		viewport.scrollTop = viewport.scrollHeight;
 	}
 }
 
@@ -124,11 +127,14 @@ async function scrollToTop(options: { smooth?: boolean } = {}) {
 
 	const viewport = getViewportElement();
 
-	if (viewport) {
+	if (viewport && typeof viewport.scrollTo === 'function') {
 		viewport.scrollTo({
 			top: 0,
 			behavior: options.smooth ? 'smooth' : 'auto',
 		});
+	} else if (viewport) {
+		// Fallback for test environments or browsers that don't support scrollTo
+		viewport.scrollTop = 0;
 	}
 }
 
