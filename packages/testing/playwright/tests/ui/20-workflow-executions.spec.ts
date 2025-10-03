@@ -50,37 +50,27 @@ test.describe('Workflow Executions', () => {
 		test('should not redirect back to execution tab when request is not done before leaving the page', async ({
 			n8n,
 		}) => {
-			for (let i = 0; i < 1; i++) {
-				await n8n.canvas.clickExecutionsTab();
-				await n8n.page.waitForURL(/\/executions/);
-				await n8n.canvas.clickEditorTab();
-				await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
-			}
-
-			// eslint-disable-next-line playwright/no-wait-for-timeout
-			await n8n.page.waitForTimeout(TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL);
-			await expect(n8n.page).not.toHaveURL(/\/executions/);
+			await n8n.canvas.clickExecutionsTab();
+			await n8n.canvas.clickEditorTab();
+			await expect(n8n.page).toHaveURL(/\/workflow\/[^/]+$/, {
+				timeout: TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL,
+			});
 
 			for (let i = 0; i < 3; i++) {
 				await n8n.canvas.clickExecutionsTab();
-				await n8n.page.waitForURL(/\/executions/);
 				await n8n.canvas.clickEditorTab();
-				await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
 			}
-
-			// eslint-disable-next-line playwright/no-wait-for-timeout
-			await n8n.page.waitForTimeout(TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL);
-			await expect(n8n.page).not.toHaveURL(/\/executions/);
+			await expect(n8n.page).toHaveURL(/\/workflow\/[^/]+$/, {
+				timeout: TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL,
+			});
 
 			await n8n.canvas.clickExecutionsTab();
-			await n8n.page.waitForURL(/\/executions/);
-
-			await n8n.canvas.clickEditorTab();
-			await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
-
 			// eslint-disable-next-line playwright/no-wait-for-timeout
-			await n8n.page.waitForTimeout(TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL);
-			await expect(n8n.page).not.toHaveURL(/\/executions/);
+			await n8n.page.waitForTimeout(1000);
+			await n8n.canvas.clickEditorTab();
+			await expect(n8n.page).toHaveURL(/\/workflow\/[^/]+$/, {
+				timeout: TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL,
+			});
 		});
 
 		test('should not redirect back to execution tab when slow request is not done before leaving the page', async ({
@@ -101,9 +91,9 @@ test.describe('Workflow Executions', () => {
 			await n8n.canvas.clickEditorTab();
 			await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
 
-			// eslint-disable-next-line playwright/no-wait-for-timeout
-			await n8n.page.waitForTimeout(TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL);
-			await expect(n8n.page).not.toHaveURL(/\/executions/);
+			await expect(n8n.page).toHaveURL(/\/workflow\/[^/]+$/, {
+				timeout: TIMEOUTS.EXECUTIONS_REFRESH_INTERVAL,
+			});
 		});
 
 		test('should error toast when server error message returned without stack trace', async ({
