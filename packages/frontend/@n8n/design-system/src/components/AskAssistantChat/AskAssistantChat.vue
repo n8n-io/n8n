@@ -277,60 +277,83 @@ watch(
 let resizeObserver: ResizeObserver | null = null;
 let scrollLockActive = false;
 let scrollHandler: (() => void) | null = null;
+let userIsAtBottom = true;
 
-onMounted(() => {
+function setupInputObservers() {
 	const viewport = getScrollViewport();
-	if (inputWrapperRef.value && viewport && 'ResizeObserver' in window) {
-		// Track user scroll to determine if they want to stay at bottom
-		let userIsAtBottom = true;
-
-		// Create scroll handler function so we can remove it later
-		scrollHandler = () => {
-			if (!scrollLockActive) {
-				userIsAtBottom = isScrolledToBottom();
-			}
-		};
-
-		// Monitor user scrolling
-		viewport.addEventListener('scroll', scrollHandler);
-
-		// Monitor input size changes
-		resizeObserver = new ResizeObserver(() => {
-			// Only maintain scroll if user was at bottom
-			if (userIsAtBottom) {
-				scrollLockActive = true;
-				// Double RAF for layout stability
-				requestAnimationFrame(() => {
-					requestAnimationFrame(() => {
-						scrollToBottomImmediate();
-						// Check if we're still at bottom after auto-scroll
-						userIsAtBottom = isScrolledToBottom();
-						scrollLockActive = false;
-					});
-				});
-			}
-		});
-
-		resizeObserver.observe(inputWrapperRef.value);
-
-		// Start at bottom
-		scrollToBottomImmediate();
+	if (!inputWrapperRef.value || !viewport || !('ResizeObserver' in window)) {
+		return;
 	}
-});
 
-onUnmounted(() => {
-	// Remove scroll event listener to prevent memory leak
+	// Clean up any existing observers first
+	cleanupInputObservers();
+
+	// Reset state
+	userIsAtBottom = true;
+
+	// Create scroll handler function so we can remove it later
+	scrollHandler = () => {
+		if (!scrollLockActive) {
+			userIsAtBottom = isScrolledToBottom();
+		}
+	};
+
+	// Monitor user scrolling
+	viewport.addEventListener('scroll', scrollHandler);
+
+	// Monitor input size changes
+	resizeObserver = new ResizeObserver(() => {
+		// Only maintain scroll if user was at bottom
+		if (userIsAtBottom) {
+			scrollLockActive = true;
+			// Double RAF for layout stability
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					scrollToBottomImmediate();
+					// Check if we're still at bottom after auto-scroll
+					userIsAtBottom = isScrolledToBottom();
+					scrollLockActive = false;
+				});
+			});
+		}
+	});
+
+	resizeObserver.observe(inputWrapperRef.value);
+
+	// Start at bottom
+	scrollToBottomImmediate();
+}
+
+function cleanupInputObservers() {
 	const viewport = getScrollViewport();
 	if (scrollHandler && viewport) {
 		viewport.removeEventListener('scroll', scrollHandler);
 		scrollHandler = null;
 	}
-
-	// Disconnect ResizeObserver
 	if (resizeObserver) {
 		resizeObserver.disconnect();
 		resizeObserver = null;
 	}
+}
+
+// Watch for when the input becomes available and set up observers
+watch(
+	showBottomInput,
+	async (isShown) => {
+		if (isShown) {
+			// Wait for the input to be mounted in the DOM
+			await nextTick();
+			setupInputObservers();
+		} else {
+			// Clean up when input is hidden
+			cleanupInputObservers();
+		}
+	},
+	{ immediate: true },
+);
+
+onUnmounted(() => {
+	cleanupInputObservers();
 });
 
 function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {

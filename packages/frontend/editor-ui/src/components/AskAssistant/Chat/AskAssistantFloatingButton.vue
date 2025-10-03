@@ -27,17 +27,17 @@ const lastUnread = computed(() => {
 });
 
 const onClick = async () => {
+	if (builderStore.isAIBuilderEnabled) {
+		await builderStore.toggleChat();
+	} else {
+		assistantStore.toggleChat();
+	}
 	if (builderStore.isAssistantOpen || assistantStore.isAssistantOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
 		});
-	}
-	if (builderStore.isAIBuilderEnabled) {
-		await builderStore.toggleChat();
-	} else {
-		assistantStore.toggleChat();
 	}
 };
 </script>
