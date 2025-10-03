@@ -301,11 +301,11 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	}
 
 	.selected & {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color-background-base);
 	}
 
 	.treeNode:hover:not(.selected) & {
-		background-color: var(--color-foreground-light);
+		background-color: var(--color-background-medium);
 	}
 }
 
