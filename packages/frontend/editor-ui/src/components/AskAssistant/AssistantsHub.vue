@@ -31,12 +31,33 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
 }
 
-function toggleAssistantMode() {
+async function toggleAssistantMode() {
+	const wasOpen = builderStore.isAssistantOpen || assistantStore.isAssistantOpen;
+	const switchingToBuild = !isBuildMode.value;
+
 	isBuildMode.value = !isBuildMode.value;
-	if (isBuildMode.value) {
-		void builderStore.openChat();
+
+	if (wasOpen) {
+		// If chat is already open, just toggle the window flags without reloading
+		if (switchingToBuild) {
+			// Load sessions first if builder has no messages
+			if (builderStore.chatMessages.length === 0) {
+				await builderStore.fetchBuilderCredits();
+				await builderStore.loadSessions();
+			}
+			builderStore.chatWindowOpen = true;
+			assistantStore.chatWindowOpen = false;
+		} else {
+			assistantStore.chatWindowOpen = true;
+			builderStore.chatWindowOpen = false;
+		}
 	} else {
-		assistantStore.openChat();
+		// Opening from closed state - use full open logic
+		if (isBuildMode.value) {
+			await builderStore.openChat();
+		} else {
+			assistantStore.openChat();
+		}
 	}
 }
 
