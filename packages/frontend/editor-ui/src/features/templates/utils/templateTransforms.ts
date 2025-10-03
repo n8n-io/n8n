@@ -5,7 +5,7 @@ import type {
 
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
-import type { NormalizedTemplateNodeCredentials } from '@/utils/templates/templateTypes';
+import type { NormalizedTemplateNodeCredentials } from '../templates.types';
 import type {
 	INodeCredentialDescription,
 	INodeCredentials,

@@ -1,63 +1,24 @@
 import type { Ref } from 'vue';
 import { computed, ref } from 'vue';
-import type { ICredentialsResponse, INodeUi } from '@/Interface';
+import type { ICredentialsResponse } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
-import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
+import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
-} from '@/utils/templates/templateTransforms';
-import type { INodeCredentialDescription, INodeCredentialsDetails } from 'n8n-workflow';
+} from '../utils/templateTransforms';
+import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
 import sortBy from 'lodash/sortBy';
-
-//#region Types
-
-export type NodeCredentials = {
-	[key: string]: string | INodeCredentialsDetails;
-};
-
-/**
- * Node that can either be in a workflow or in a template workflow. These
- * have a bit different shape and this type is used to represent both.
- */
-export type BaseNode = Pick<
-	INodeUi,
-	'name' | 'parameters' | 'position' | 'type' | 'typeVersion'
-> & {
-	credentials?: NodeCredentials;
-};
-
-export type NodeWithCredentials<TNode extends BaseNode> = TNode & {
-	credentials: NodeCredentials;
-};
-
-export type NodeWithRequiredCredential<TNode extends BaseNode> = {
-	node: TNode;
-	requiredCredentials: INodeCredentialDescription[];
-};
-
-export type CredentialUsages<TNode extends BaseNode = BaseNode> = {
-	/**
-	 * Key is a combination of the credential name and the credential type name,
-	 * e.g. "twitter-twitterOAuth1Api"
-	 */
-	key: TemplateCredentialKey;
-	credentialName: string;
-	credentialType: string;
-	nodeTypeName: string;
-	usedBy: TNode[];
-};
-
-export type AppCredentials<TNode extends BaseNode> = {
-	appName: string;
-	credentials: Array<CredentialUsages<TNode>>;
-};
-
-//#endregion Types
+import type {
+	AppCredentials,
+	BaseNode,
+	CredentialUsages,
+	NodeWithRequiredCredential,
+} from '../templates.types';
 
 //#region Getters
 

@@ -9,10 +9,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { VIEWS } from '@/constants';
-import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
+import { createWorkflowFromTemplate } from './utils/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useCredentialSetupState } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+import { useCredentialSetupState } from './composables/useCredentialSetupState';
 import { tryToParseNumber } from '@/utils/typesUtils';
 
 export type NodeAndType = {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useTemplatesStore } from '@/features/templates/templates.store';
-import { useTemplateWorkflow } from '@/utils/templates/templateActions';
+import { useTemplateWorkflow } from '@/features/templates/utils/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRoute, useRouter } from 'vue-router';

@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import SetupWorkflowCredentialsButton from '@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue';
+import SetupWorkflowCredentialsButton from './SetupWorkflowCredentialsButton.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';

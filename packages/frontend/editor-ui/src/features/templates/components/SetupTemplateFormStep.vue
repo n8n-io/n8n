@@ -6,13 +6,10 @@ import IconSuccess from './IconSuccess.vue';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type {
-	BaseNode,
-	CredentialUsages,
-} from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+import type { BaseNode, CredentialUsages } from '../templates.types';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
+import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { I18nT } from 'vue-i18n';
 
 import { N8nHeading } from '@n8n/design-system';

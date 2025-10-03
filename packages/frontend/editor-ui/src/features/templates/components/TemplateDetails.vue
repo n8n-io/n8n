@@ -10,9 +10,9 @@ import type {
 	ITemplatesWorkflow,
 } from '@n8n/rest-api-client/api/templates';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
-import { useTemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '../templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
+import { isFullTemplatesCollection, isTemplatesWorkflow } from '../utils/typeGuards';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';

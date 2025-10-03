@@ -3,8 +3,8 @@ import type { INodeCredentialsDetails } from 'n8n-workflow';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
-import { useCredentialSetupState } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+import type { TemplateCredentialKey } from '../utils/templateTransforms';
+import { useCredentialSetupState } from './useCredentialSetupState';
 
 export const useSetupWorkflowCredentialsModalState = () => {
 	const workflowsStore = useWorkflowsStore();
