@@ -106,7 +106,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'associatedCompany',
 				type: 'multiOptions',
 				description:
-					'Whether to include specific Associated Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Associated Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -117,7 +117,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'associatedVids',
 				type: 'multiOptions',
 				description:
-					'Whether to include specific Associated Vid in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Associated Vid in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
@@ -505,7 +505,7 @@ export const dealFields: INodeProperties[] = [
 								},
 								default: [],
 								description:
-									'Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Include',
@@ -641,7 +641,7 @@ export const dealFields: INodeProperties[] = [
 								},
 								default: [],
 								description:
-									'Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Include',
@@ -1017,7 +1017,7 @@ export const dealFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. choose from the list, or specify ids using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',

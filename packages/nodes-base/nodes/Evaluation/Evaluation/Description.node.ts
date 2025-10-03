@@ -352,7 +352,7 @@ export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName:
 			'Metrics measure the quality of an execution. They will be displayed in the ‘evaluations’ tab, not on the Google Sheet or Data table.',
-		//			"Calculate the score(s) for the evaluation, then map them into this node. They will be displayed in the ‘evaluations’ tab, not the Google Sheet. <a href='https://docs.n8n.io/advanced-ai/evaluations/metric-based-evaluations/#2-calculate-metrics' target='_blank'>View metric examples</a>",
+		//			"Calculate the score(s) for the evaluation, then map them into this node. They will be displayed in the ‘evaluations’ tab, not the Google Sheet. <a href='https://docs.n8n.io/advanced-ai/evaluations/metric-based-evaluations/#2-calculate-metrics' target='_blank'>view metric examples</a>",
 		name: 'notice',
 		type: 'notice',
 		default: '',
@@ -433,7 +433,7 @@ export const setMetricsProperties: INodeProperties[] = [
 	...promptFieldForMetric('helpfulness', HELPFULNESS_PROMPT),
 	{
 		displayName:
-			"Calculate the custom metrics before this node, then map them below. <a href='https://docs.n8n.io/advanced-ai/evaluations/metric-based-evaluations/#2-calculate-metrics' target='_blank'>View metric examples</a>",
+			"Calculate the custom metrics before this node, then map them below. <a href='https://docs.n8n.io/advanced-ai/evaluations/metric-based-evaluations/#2-calculate-metrics' target='_blank'>view metric examples</a>",
 		name: 'notice',
 		type: 'notice',
 		default: '',
