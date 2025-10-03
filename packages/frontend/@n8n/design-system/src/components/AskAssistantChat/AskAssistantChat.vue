@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useCssModule, watch } 
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
-import type { ChatUI, RatingFeedback } from '../../types/assistant';
+import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
 import { isToolMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
@@ -13,6 +13,7 @@ import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPromptInput from '../N8nPromptInput';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
@@ -35,6 +36,7 @@ interface Props {
 	creditsRemaining?: number;
 	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
+	suggestions?: WorkflowSuggestion[];
 }
 
 const emit = defineEmits<{
@@ -181,8 +183,22 @@ const showPlaceholder = computed(() => {
 	return !props.messages?.length && !props.loadingMessage && !props.sessionId;
 });
 
+const showSuggestions = computed(() => {
+	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
+});
+
+const showBottomInput = computed(() => {
+	// Hide bottom input when showing suggestions (blank state with suggestions)
+	return !showSuggestions.value;
+});
+
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
 	return event?.type === 'event' && event?.eventName === 'end-session';
+}
+
+function onSuggestionClick(suggestion: WorkflowSuggestion) {
+	// Send the suggestion prompt as a message
+	emit('message', suggestion.prompt);
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
@@ -436,7 +452,34 @@ defineExpose({
 				:class="$style.placeholder"
 				data-test-id="placeholder-message"
 			>
-				<div v-if="$slots.placeholder" :class="$style.info">
+				<div v-if="showSuggestions" :class="$style.suggestionsContainer">
+					<N8nPromptInputSuggestions
+						:suggestions="suggestions"
+						:disabled="disabled"
+						:streaming="streaming"
+						@suggestion-click="onSuggestionClick"
+					>
+						<template #prompt-input>
+							<N8nPromptInput
+								ref="promptInputRef"
+								v-model="textInputValue"
+								:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
+								:disabled="disabled"
+								:streaming="streaming"
+								:credits-quota="creditsQuota"
+								:credits-remaining="creditsRemaining"
+								:show-ask-owner-tooltip="showAskOwnerTooltip"
+								:max-length="maxCharacterLength"
+								:min-lines="2"
+								data-test-id="chat-suggestions-input"
+								@upgrade-click="emit('upgrade-click')"
+								@submit="onSendMessage"
+								@stop="emit('stop')"
+							/>
+						</template>
+					</N8nPromptInputSuggestions>
+				</div>
+				<div v-else-if="$slots.placeholder" :class="$style.info">
 					<slot name="placeholder" />
 				</div>
 				<template v-else>
@@ -458,6 +501,7 @@ defineExpose({
 			</div>
 		</div>
 		<div
+			v-if="showBottomInput"
 			ref="inputWrapperRef"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
@@ -528,6 +572,19 @@ defineExpose({
 
 .placeholder {
 	padding: var(--spacing-s);
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.suggestionsContainer {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+	height: 100%;
+	padding: 0;
 }
 
 .messages {
