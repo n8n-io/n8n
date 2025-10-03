@@ -494,6 +494,7 @@ describe('VariablesService', () => {
 					key: 'VAR1',
 					type: 'string',
 					value: 'value2',
+					projectId: null,
 				}),
 			).rejects.toThrow('You are not allowed to move this variable to the global scope');
 		});
@@ -591,6 +592,7 @@ describe('VariablesService', () => {
 					key: 'VAR2',
 					type: 'string',
 					value: 'value1',
+					projectId: null,
 				}),
 			).rejects.toThrow('A global variable with key "VAR2" already exists');
 		});
