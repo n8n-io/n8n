@@ -160,7 +160,8 @@
 	<script>
 		let interval = 1000;
 		let timeoutId;
-		const redirectUrl = "{{redirectUrl}}";
+		const anchor = document.getElementById("redirectUrl");
+		const redirectUrl = anchor ? anchor.href : "";
 		const checkExecutionStatus = async () => {
 			if (!interval) return;
 
