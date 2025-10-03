@@ -5,18 +5,18 @@ export const usageStateSchema = z.object({
 	data: z.object({
 		usage: z.object({
 			activeWorkflowTriggers: z.object({
-				limit: z.number(),
+				limit: z.number(), // -1 for unlimited, from license
 				value: z.number(),
 				warningThreshold: z.number(),
 			}),
 			workflowsHavingEvaluations: z.object({
-				limit: z.number(),
+				limit: z.number(), // -1 for unlimited, from license
 				value: z.number(),
 			}),
 		}),
 		license: z.object({
-			planId: z.string(),
-			planName: z.string(),
+			planId: z.string(), // community
+			planName: z.string(), // defaults to Community
 		}),
 		managementToken: z.string().optional(),
 	}),
