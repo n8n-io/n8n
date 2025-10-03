@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import { WorkflowOperationError } from 'n8n-workflow';
+import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -125,7 +125,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -152,7 +155,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -221,7 +227,10 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(stopInRegularModeSpy).not.toHaveBeenCalled();
-					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+						execution.id,
+						expect.any(ManualExecutionCancelledError),
+					);
 					expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();

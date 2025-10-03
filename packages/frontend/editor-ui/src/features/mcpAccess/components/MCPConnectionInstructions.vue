@@ -2,8 +2,16 @@
 import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
+import {
+	N8nButton,
+	N8nInfoAccordion,
+	N8nLink,
+	N8nMarkdown,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 
-const MCP_ENDPOINT = 'rest/mcp-control/http';
+const MCP_ENDPOINT = 'mcp-server/http';
 // TODO: Update once docs page is ready
 const DOCS_URL = 'https://docs.n8n.io/';
 
@@ -64,14 +72,22 @@ const fullServerUrl = computed(() => {
 					</span>
 					<span :class="$style.url">
 						<code>{{ fullServerUrl }}</code>
-						<N8nButton
-							v-if="isSupported"
-							type="tertiary"
-							:icon="copied ? 'check' : 'copy'"
-							:square="true"
-							:class="$style['copy-url-button']"
-							@click="copy(fullServerUrl)"
-						/>
+						<N8nTooltip
+							:disables="!isSupported"
+							:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+							placement="right"
+						>
+							<div :class="$style['copy-url-wrapper']">
+								<N8nButton
+									v-if="isSupported"
+									type="tertiary"
+									:icon="copied ? 'clipboard-check' : 'clipboard'"
+									:square="true"
+									:class="$style['copy-url-button']"
+									@click="copy(fullServerUrl)"
+								/>
+							</div>
+						</N8nTooltip>
 					</span>
 				</div>
 			</li>
@@ -90,14 +106,19 @@ const fullServerUrl = computed(() => {
 			<N8nInfoAccordion :title="i18n.baseText('settings.mcp.instructions.json')">
 				<template #customContent>
 					<N8nMarkdown :content="connectionCode"></N8nMarkdown>
-					<N8nButton
-						v-if="isSupported"
-						type="tertiary"
-						:icon="copied ? 'check' : 'copy'"
-						:square="true"
-						:class="$style['copy-json-button']"
-						@click="copy(connectionString)"
-					/>
+					<N8nTooltip
+						:disables="!isSupported"
+						:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+					>
+						<N8nButton
+							v-if="isSupported"
+							type="tertiary"
+							:icon="copied ? 'clipboard-check' : 'clipboard'"
+							:square="true"
+							:class="$style['copy-json-button']"
+							@click="copy(connectionString)"
+						/>
+					</N8nTooltip>
 				</template>
 			</N8nInfoAccordion>
 		</div>
@@ -135,23 +156,33 @@ const fullServerUrl = computed(() => {
 
 	.url {
 		display: flex;
-		align-items: center;
+		align-items: stretch;
 		gap: var(--spacing-2xs);
-		padding-left: var(--spacing-3xs);
 		background: var(--color-background-xlight);
 		border: var(--border-base);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-s);
 		overflow: hidden;
 
-		.copy-url-button {
-			border: none;
-			border-radius: 0;
+		code {
+			text-overflow: ellipsis;
+			overflow: hidden;
+			white-space: pre;
+			padding: var(--spacing-2xs) var(--spacing-3xs);
+		}
+
+		.copy-url-wrapper {
+			display: flex;
+			align-items: center;
 			border-left: var(--border-base);
 		}
 
+		.copy-url-button {
+			border: none;
+			border-radius: 0;
+		}
+
 		@media screen and (max-width: 820px) {
-			display: block;
 			word-wrap: break-word;
 			margin-top: var(--spacing-2xs);
 		}
@@ -180,7 +211,7 @@ const fullServerUrl = computed(() => {
 .copy-json-button {
 	position: absolute;
 	top: var(--spacing-xl);
-	right: var(--spacing-xl);
+	right: var(--spacing-2xl);
 	display: none;
 }
 </style>

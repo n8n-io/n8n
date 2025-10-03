@@ -33,6 +33,14 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
+
 const renderComponent = createComponentRenderer(CommunityPlusEnrollmentModal, {
 	global: {
 		stubs: {

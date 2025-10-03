@@ -53,10 +53,21 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
-import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
 import { useProjectsStore } from '@/stores/projects.store';
+import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
+import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
+import ParameterOverrideSelectableList from '@/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 
+import {
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nNotice,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 /**
  * Regular expression to check if the error message contains credential-related phrases.
  */
@@ -620,6 +631,12 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 	emit('update:modelValue', params);
 }
 
+function onInputMouseDown(event: MouseEvent): void {
+	if (isListMode.value) {
+		event.preventDefault();
+	}
+}
+
 function onModeSelected(value: string): void {
 	if (typeof props.modelValue !== 'object') {
 		emit('update:modelValue', { __rl: true, value: props.modelValue, mode: value });
@@ -1094,7 +1111,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
-									@mousedown.prevent
+									@mousedown="onInputMouseDown"
 								>
 									<template v-if="isListMode" #suffix>
 										<i

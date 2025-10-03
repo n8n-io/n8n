@@ -1,7 +1,15 @@
 <script setup lang="ts">
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CssEditor from '@/components/CssEditor/CssEditor.vue';
+import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
 import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -42,6 +50,14 @@ import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/types';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
+import {
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nRadioButtons,
+	N8nResizeWrapper,
+	N8nText,
+} from '@n8n/design-system';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{

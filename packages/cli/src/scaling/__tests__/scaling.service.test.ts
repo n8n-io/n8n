@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
+import { ApplicationError, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 
@@ -171,7 +171,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			const concurrency = 5;
 
-			scalingService.setupWorker(concurrency);
+			await scalingService.setupWorker(concurrency);
 
 			expect(queue.process).toHaveBeenCalledWith(JOB_TYPE_NAME, concurrency, expect.any(Function));
 		});
@@ -179,14 +179,14 @@ describe('ScalingService', () => {
 		it('should throw if called on a non-worker instance', async () => {
 			await scalingService.setupQueue();
 
-			expect(() => scalingService.setupWorker(5)).toThrow();
+			await expect(scalingService.setupWorker(5)).rejects.toThrow();
 		});
 
 		it('should throw if called before queue is ready', async () => {
 			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 
-			expect(() => scalingService.setupWorker(5)).toThrow();
+			await expect(scalingService.setupWorker(5)).rejects.toThrow();
 		});
 	});
 
@@ -296,7 +296,7 @@ describe('ScalingService', () => {
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
 			expect(job.discard).toHaveBeenCalled();
-			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
+			expect(job.moveToFailed).toHaveBeenCalledWith(new ManualExecutionCancelledError('123'), true);
 			expect(result).toBe(true);
 		});
 

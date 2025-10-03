@@ -21,11 +21,22 @@ import {
 	workflowActivated,
 	workflowDeactivated,
 } from '@/composables/usePushConnection/handlers';
+import { injectWorkflowState, type WorkflowState } from '@/composables/useWorkflowState';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
 
-export function usePushConnection(options: { router: ReturnType<typeof useRouter> }) {
+export function usePushConnection({
+	router,
+	workflowState,
+}: {
+	router: ReturnType<typeof useRouter>;
+	workflowState?: WorkflowState;
+}) {
 	const pushStore = usePushConnectionStore();
+	const options = {
+		router,
+		workflowState: workflowState ?? injectWorkflowState(),
+	};
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
 
@@ -49,9 +60,9 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 	async function processEvent(event: PushMessage) {
 		switch (event.type) {
 			case 'testWebhookDeleted':
-				return await testWebhookDeleted(event);
+				return await testWebhookDeleted(event, options);
 			case 'testWebhookReceived':
-				return await testWebhookReceived(event);
+				return await testWebhookReceived(event, options);
 			case 'reloadNodeType':
 				return await reloadNodeType(event);
 			case 'removeNodeType':
@@ -65,13 +76,13 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 			case 'nodeExecuteAfterData':
 				return await nodeExecuteAfterData(event);
 			case 'executionStarted':
-				return await executionStarted(event);
+				return await executionStarted(event, options);
 			case 'sendWorkerStatusMessage':
 				return await sendWorkerStatusMessage(event);
 			case 'sendConsoleMessage':
 				return await sendConsoleMessage(event);
 			case 'workflowFailedToActivate':
-				return await workflowFailedToActivate(event);
+				return await workflowFailedToActivate(event, options);
 			case 'executionFinished':
 				return await executionFinished(event, options);
 			case 'executionRecovered':

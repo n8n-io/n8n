@@ -40,6 +40,7 @@ import { useDataStoreOperations } from '@/features/dataStore/composables/useData
 import { useDataStoreColumnFilters } from '@/features/dataStore/composables/useDataStoreColumnFilters';
 import { useI18n } from '@n8n/i18n';
 
+import { ElPagination } from 'element-plus';
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
 	ValidationModule, // This module allows us to see AG Grid errors in browser console
@@ -217,7 +218,7 @@ defineExpose({
 					:page-sizes="pageSizeOptions"
 					layout="total, prev, pager, next, sizes"
 					@update:current-page="setCurrentPage"
-					@size-change="setPageSize"
+					@size-change="(val: number) => setPageSize(val as 10 | 20 | 50)"
 				/>
 			</div>
 		</div>

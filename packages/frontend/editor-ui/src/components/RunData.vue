@@ -61,23 +61,8 @@ import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
-import {
-	N8nBlockUi,
-	N8nButton,
-	N8nCallout,
-	N8nIconButton,
-	N8nInfoTip,
-	N8nLink,
-	N8nOption,
-	N8nSelect,
-	N8nSpinner,
-	N8nTabs,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from './ViewSubExecution.vue';
@@ -92,6 +77,20 @@ import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import { type SearchShortcut } from '@/types';
 
+import {
+	N8nBlockUi,
+	N8nButton,
+	N8nCallout,
+	N8nIconButton,
+	N8nInfoTip,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nSpinner,
+	N8nTabs,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );
@@ -234,7 +233,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
 
@@ -1664,6 +1662,18 @@ defineExpose({ enterEditMode });
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="[$style.center, $style.executingMessage]"
+			>
+				<div v-if="!props.compact" :class="$style.spinner">
+					<N8nSpinner type="ring" />
+				</div>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
@@ -1718,24 +1728,6 @@ defineExpose({ enterEditMode });
 					</N8nLink>
 				</N8nText>
 			</div>
-
-			<div
-				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
-				:class="$style.center"
-			>
-				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
-				<N8nText color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.loading') }}
-				</N8nText>
-			</div>
-
-			<NDVEmptyState
-				v-else-if="isTrimmedManualExecutionDataItem"
-				:class="$style.center"
-				:title="i18n.baseText('runData.trimmedData.title')"
-			>
-				{{ i18n.baseText('runData.trimmedData.message') }}
-			</NDVEmptyState>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>

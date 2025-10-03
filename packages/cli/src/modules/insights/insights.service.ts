@@ -1,7 +1,8 @@
-import { type InsightsSummary, type InsightsDateRange } from '@n8n/api-types';
+import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
@@ -31,6 +32,9 @@ export class InsightsService {
 		return {
 			summary: this.licenseState.isInsightsSummaryLicensed(),
 			dashboard: this.licenseState.isInsightsDashboardLicensed(),
+			/**
+			 * @deprecated the frontend should not rely on this anymore since users can select custom ranges
+			 */
 			dateRanges: this.getAvailableDateRanges(),
 		};
 	}
@@ -61,11 +65,17 @@ export class InsightsService {
 	}
 
 	async getInsightsSummary({
-		periodLengthInDays,
+		startDate,
+		endDate,
 		projectId,
-	}: { periodLengthInDays: number; projectId?: string }): Promise<InsightsSummary> {
+	}: {
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+	}): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
-			periodLengthInDays,
+			startDate,
+			endDate,
 			projectId,
 		});
 
@@ -149,20 +159,23 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
-		maxAgeInDays,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
 		projectId,
+		startDate,
+		endDate,
 	}: {
-		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
 		projectId?: string;
+		startDate: Date;
+		endDate: Date;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
-			maxAgeInDays,
+			startDate,
+			endDate,
 			skip,
 			take,
 			sortBy,
@@ -176,22 +189,24 @@ export class InsightsService {
 	}
 
 	async getInsightsByTime({
-		maxAgeInDays,
-		periodUnit,
 		// Default to all insight types
 		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
 		projectId,
+		startDate,
+		endDate,
 	}: {
-		maxAgeInDays: number;
-		periodUnit: PeriodUnit;
 		insightTypes?: TypeUnit[];
 		projectId?: string;
+		startDate: Date;
+		endDate: Date;
 	}) {
+		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
-			maxAgeInDays,
 			periodUnit,
 			insightTypes,
 			projectId,
+			startDate,
+			endDate,
 		});
 
 		return rows.map((r) => {
@@ -219,26 +234,60 @@ export class InsightsService {
 		});
 	}
 
-	getMaxAgeInDaysAndGranularity(
-		dateRangeKey: InsightsDateRange['key'],
-	): InsightsDateRange & { maxAgeInDays: number } {
-		const dateRange = this.getAvailableDateRanges().find((range) => range.key === dateRangeKey);
+	/**
+	 * Checks if the selected date range is compliant with the license
+	 *
+	 * - If the granularity is 'hour', checks if the license allows hourly data access
+	 * - Checks if the start date is within the allowed history range
+	 *
+	 * @throws {UserError} if the license does not allow the selected date range
+	 */
+	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
+		// we use `startOf('day')` because the license limits are based on full days
+		const today = DateTime.now().startOf('day');
+		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
+		const daysToStartDate = today.diff(startDateStartOfDay, 'days').days;
 
-		if (!dateRange) {
-			// Not supposed to happen if we trust the dateRangeKey type
-			throw new UserError('The selected date range is not available');
+		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
+
+		const maxHistoryInDays =
+			this.licenseState.getInsightsMaxHistory() === -1
+				? Number.MAX_SAFE_INTEGER
+				: this.licenseState.getInsightsMaxHistory();
+		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
+
+		if (granularity === 'hour' && !isHourlyDateLicensed) {
+			throw new UserError('Hourly data is not available with your current license');
 		}
 
-		if (!dateRange.licensed) {
+		if (maxHistoryInDays < daysToStartDate) {
 			throw new UserError(
-				'The selected date range exceeds the maximum history allowed by your license.',
+				'The selected date range exceeds the maximum history allowed by your license',
 			);
 		}
+	}
 
-		return { ...dateRange, maxAgeInDays: keyRangeToDays[dateRangeKey] };
+	private getDateFiltersGranularity({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): PeriodUnit {
+		const startDateTime = DateTime.fromJSDate(startDate);
+		const endDateTime = DateTime.fromJSDate(endDate);
+		const differenceInDays = endDateTime.diff(startDateTime, 'days').days;
+
+		if (differenceInDays <= 1) {
+			return 'hour';
+		}
+
+		if (differenceInDays <= 30) {
+			return 'day';
+		}
+
+		return 'week';
 	}
 
 	/**
+	 * @deprecated Users can now select custom date ranges
 	 * Returns the available date ranges with their license authorization and time granularity
 	 * when grouped by time.
 	 */

@@ -41,6 +41,10 @@ export interface Props {
 	 * Whether to show vertical scrollbar
 	 */
 	enableVerticalScroll?: boolean;
+	/**
+	 * Change the default rendered element for the one passed as a child, merging their props and behavior.
+	 */
+	asChild?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	maxWidth: undefined,
 	enableHorizontalScroll: false,
 	enableVerticalScroll: true,
+	asChild: false,
 });
 
 const viewportStyle = computed(() => {
@@ -72,7 +77,7 @@ const viewportStyle = computed(() => {
 		:scroll-hide-delay="scrollHideDelay"
 		:class="$style.scrollAreaRoot"
 	>
-		<ScrollAreaViewport :class="$style.viewport" :style="viewportStyle">
+		<ScrollAreaViewport :as-child="asChild" :class="$style.viewport" :style="viewportStyle">
 			<slot />
 		</ScrollAreaViewport>
 

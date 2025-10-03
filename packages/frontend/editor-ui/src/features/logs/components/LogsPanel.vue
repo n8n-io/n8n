@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { nextTick, computed, useTemplateRef, ref } from 'vue';
-import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/features/logs/composables/useChatState';
 import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
 import ChatMessagesPanel from '@/features/logs/components/ChatMessagesPanel.vue';
@@ -18,6 +17,7 @@ import { type KeyMap } from '@/composables/useKeybindings';
 import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const container = useTemplateRef('container');

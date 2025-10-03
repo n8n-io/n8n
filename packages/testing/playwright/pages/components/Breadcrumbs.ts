@@ -29,4 +29,18 @@ export class Breadcrumbs {
 	getActionToggleDropdown(resourceName: string) {
 		return this.page.getByTestId('action-toggle-dropdown').getByTestId(`action-${resourceName}`);
 	}
+
+	getFolderBreadcrumbsActionToggle() {
+		return this.page.getByTestId('folder-breadcrumbs-actions');
+	}
+
+	/**
+	 * Rename the current breadcrumb by activating inline edit mode
+	 * @param newName - The new name for the breadcrumb item
+	 */
+	async renameCurrentBreadcrumb(newName: string) {
+		await this.getCurrentBreadcrumb().getByTestId('inline-edit-preview').click();
+		await this.getCurrentBreadcrumb().getByTestId('inline-edit-input').fill(newName);
+		await this.page.keyboard.press('Enter');
+	}
 }

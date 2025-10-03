@@ -15,6 +15,17 @@ import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nCallout,
+	N8nCheckbox,
+	N8nColorPicker,
+	N8nFormInput,
+	N8nHeading,
+	N8nNotice,
+	N8nTooltip,
+} from '@n8n/design-system';
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
