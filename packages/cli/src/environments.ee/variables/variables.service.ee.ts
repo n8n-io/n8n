@@ -1,4 +1,4 @@
-import { CreateVariableRequestDto } from '@n8n/api-types';
+import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
@@ -7,6 +7,7 @@ import { hasGlobalScope, Scope } from '@n8n/permissions';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
@@ -167,8 +168,10 @@ export class VariablesService {
 		}
 	}
 
-	async validateUniqueVariable(key: string, projectId?: string) {
-		const existingVariablesByKey = (await this.getAllCached()).filter((v) => v.key === key);
+	async validateUniqueVariable(key: string, projectId?: string, id?: string) {
+		const existingVariablesByKey = (await this.getAllCached()).filter(
+			(v) => v.key === key && (!id || v.id !== id),
+		);
 		// If variable is global, check that it does not already exist with the same key
 		if (!projectId && existingVariablesByKey.find((v) => !v.project)) {
 			throw new VariableCountLimitReachedError(
@@ -215,8 +218,11 @@ export class VariablesService {
 		return saveResult;
 	}
 
-	async update(user: User, id: string, variable: CreateVariableRequestDto): Promise<Variables> {
+	async update(user: User, id: string, variable: UpdateVariableRequestDto): Promise<Variables> {
 		const existingVariable = await this.getCached(id);
+		if (!existingVariable) {
+			throw new NotFoundError(`Variable with id ${id} not found`);
+		}
 
 		const userHasRightOnExistingVariable = await this.isAuthorizedForVariable(
 			user,
@@ -236,12 +242,14 @@ export class VariablesService {
 			);
 			if (!userHasRightOnNewProject) {
 				throw new ForbiddenError(
-					'You are not allowed to move this variable to the specified project',
+					`You are not allowed to move this variable to ${variable.projectId ? 'the specified project' : 'the global scope'}`,
 				);
 			}
 		}
 
-		// TODO: implement guards when changing variable projectId or moving from global to project variable or vice versa
+		if (variable.key) {
+			await this.validateUniqueVariable(variable.key, variable.projectId, id);
+		}
 
 		await this.variablesRepository.update(id, {
 			key: variable.key,
