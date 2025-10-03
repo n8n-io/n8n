@@ -13,10 +13,7 @@ import type { OracleDBNodeOptions, OracleDBNodeCredentials } from '../helpers/in
 // used for thick mode to call initOracleClient API only once.
 let initializeDriverMode = false;
 
-const getOracleDBConfig = (
-	credentials: OracleDBNodeCredentials,
-	_options: OracleDBNodeOptions = {},
-) => {
+const getOracleDBConfig = (credentials: OracleDBNodeCredentials) => {
 	const { useThickMode, useSSL, ...dbConfig } = credentials;
 	return dbConfig;
 };
@@ -28,7 +25,7 @@ export async function configureOracleDB(
 ): Promise<oracledb.Pool> {
 	const poolManager = ConnectionPoolManager.getInstance(this.logger);
 	const fallBackHandler = async (abortController: AbortController): Promise<oracledb.Pool> => {
-		const dbConfig = getOracleDBConfig(credentials, options);
+		const dbConfig = getOracleDBConfig(credentials);
 
 		if (credentials.useThickMode) {
 			if (!initializeDriverMode) {

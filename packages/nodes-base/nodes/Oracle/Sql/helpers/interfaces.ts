@@ -66,11 +66,9 @@ export type OracleDBNodeOptions = {
 };
 
 export type OracleDBNodeCredentials = {
-	accessToken?: any;
 	connectionString: string | undefined;
 	connectionClass?: string;
 	connectTimeout?: number;
-	configDir?: string;
 	useThickMode: boolean;
 	useSSL: boolean;
 	expireTime?: number;

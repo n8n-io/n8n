@@ -200,11 +200,13 @@ export async function execute(
 
 			if (dataMode === 'autoMapInputData') {
 				item = items[i].json;
+
+				// Column refresh is needed only for 'autoMapInputData'
+				tableSchema = await updateTableSchema(pool, tableSchema, schema, table, i);
 			} else if (dataMode === 'defineBelow') {
 				item = this.getNodeParameter('columns.value', i) as IDataObject;
 			}
 
-			tableSchema = await updateTableSchema(pool, tableSchema, schema, table, i);
 			const columnMetaDataObject = getColumnMap(tableSchema);
 			const inputColumns = Object.keys(item);
 			let query = `INSERT INTO ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
