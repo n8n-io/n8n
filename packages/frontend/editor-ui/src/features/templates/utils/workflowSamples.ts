@@ -1,20 +1,20 @@
 import { ApplicationError, type INodeTypeNameVersion } from 'n8n-workflow';
 import type { WorkflowDataWithTemplateId } from '@/Interface';
-import { isWorkflowDataWithTemplateId } from '@/utils/templates/typeGuards';
+import { isWorkflowDataWithTemplateId } from './typeGuards';
 /* eslint-disable import-x/extensions */
-import easyAiStarterJson from '@/utils/templates/samples/easy_ai_starter.json';
-import ragStarterJson from '@/utils/templates/samples/rag_starter.json';
-import emailTriageAgentWithGmailJson from '@/utils/templates/samples/agents/email_triage_agent_with_gmail.json';
-import jokeAgentWithHttpToolJson from '@/utils/templates/samples/agents/joke_agent_with_http_tool.json';
-import knowledgeStoreAgentWithGoogleDriveJson from '@/utils/templates/samples/agents/knowledge_store_agent_with_google_drive.json';
-import taskManagementAgentWithGoogleSheetsJson from '@/utils/templates/samples/agents/task_management_agent_with_google_sheets.json';
-import voiceAssistantAgentJson from '@/utils/templates/samples/agents/voice-agent.json';
-import calendarAgentJson from '@/utils/templates/samples/agents/calendar-agent.json';
-import buildYourFirstAiAgentJson from '@/utils/templates/samples/tutorial/build_your_first_ai_agent.json';
-import jsonBasicsJson from '@/utils/templates/samples/tutorial/json_basics.json';
-import expressionsTutorialJson from '@/utils/templates/samples/tutorial/expressions_tutorial.json';
-import workflowLogicJson from '@/utils/templates/samples/tutorial/workflow_logic.json';
-import apiFundamentalsJson from '@/utils/templates/samples/tutorial/api_fundamentals.json';
+import easyAiStarterJson from './samples/easy_ai_starter.json';
+import ragStarterJson from './samples/rag_starter.json';
+import emailTriageAgentWithGmailJson from './samples/agents/email_triage_agent_with_gmail.json';
+import jokeAgentWithHttpToolJson from './samples/agents/joke_agent_with_http_tool.json';
+import knowledgeStoreAgentWithGoogleDriveJson from './samples/agents/knowledge_store_agent_with_google_drive.json';
+import taskManagementAgentWithGoogleSheetsJson from './samples/agents/task_management_agent_with_google_sheets.json';
+import voiceAssistantAgentJson from './samples/agents/voice-agent.json';
+import calendarAgentJson from './samples/agents/calendar-agent.json';
+import buildYourFirstAiAgentJson from './samples/tutorial/build_your_first_ai_agent.json';
+import jsonBasicsJson from './samples/tutorial/json_basics.json';
+import expressionsTutorialJson from './samples/tutorial/expressions_tutorial.json';
+import workflowLogicJson from './samples/tutorial/workflow_logic.json';
+import apiFundamentalsJson from './samples/tutorial/api_fundamentals.json';
 /* eslint-enable import-x/extensions */
 
 const getWorkflowJson = (json: unknown): WorkflowDataWithTemplateId => {

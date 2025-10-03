@@ -60,7 +60,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { getEasyAiWorkflowJson } from '@/utils/templates/workflowSamples';
+import { getEasyAiWorkflowJson } from '@/features/templates/utils/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,

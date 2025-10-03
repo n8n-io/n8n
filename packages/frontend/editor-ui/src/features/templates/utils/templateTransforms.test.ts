@@ -3,7 +3,7 @@ import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	keyFromCredentialTypeAndName,
 	replaceAllTemplateNodeCredentials,
-} from '@/utils/templates/templateTransforms';
+} from './templateTransforms';
 
 describe('templateTransforms', () => {
 	describe('replaceAllTemplateNodeCredentials', () => {

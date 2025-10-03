@@ -11,7 +11,7 @@ import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { TemplatesStore } from '@/features/templates/templates.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
-import { useTemplateWorkflow } from '@/utils/templates/templateActions';
+import { useTemplateWorkflow } from './templateActions';
 import { nodeTypeTelegram } from '@/utils/testData/nodeTypeTestData';
 
 const testTemplate1 = mock<ITemplatesWorkflowFull>({

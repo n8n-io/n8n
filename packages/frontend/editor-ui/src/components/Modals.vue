@@ -77,7 +77,7 @@ import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import PreBuiltAgentsModal from '@/components/PreBuiltAgentsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
-import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
+import SetupWorkflowCredentialsModal from '@/features/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';

@@ -2,10 +2,7 @@
 import { computed } from 'vue';
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useI18n } from '@n8n/i18n';
-import type {
-	AppCredentials,
-	BaseNode,
-} from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+import type { AppCredentials, BaseNode } from '../templates.types';
 import { I18nT } from 'vue-i18n';
 
 import { N8nNotice } from '@n8n/design-system';
