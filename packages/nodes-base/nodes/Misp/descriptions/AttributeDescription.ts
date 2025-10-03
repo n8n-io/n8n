@@ -318,7 +318,7 @@ export const attributeFields: INodeProperties[] = [
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. use only for when <code>sharing group</code> is selected in <code>distribution</code>.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},

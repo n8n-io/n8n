@@ -10,7 +10,7 @@ const commonDescription: INodeProperties = {
 	},
 	default: '',
 	description:
-		'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">learn more</a>.',
+		'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 	noDataExpression: true,
 };
 
@@ -63,7 +63,7 @@ export const javascriptCodeDescription: INodeProperties[] = [
 	...v2Properties,
 	{
 		displayName:
-			'Type <code>$</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
+			'Type <code>$</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {
