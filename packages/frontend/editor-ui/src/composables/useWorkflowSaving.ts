@@ -25,7 +25,7 @@ import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { injectWorkflowState } from './useWorkflowState';
 

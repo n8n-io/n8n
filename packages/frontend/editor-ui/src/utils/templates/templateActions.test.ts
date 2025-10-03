@@ -9,8 +9,8 @@ import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates'
 import { Telemetry } from '@/plugins/telemetry';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { TemplatesStore } from '@/stores/templates.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import type { TemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { nodeTypeTelegram } from '@/utils/testData/nodeTypeTestData';
 

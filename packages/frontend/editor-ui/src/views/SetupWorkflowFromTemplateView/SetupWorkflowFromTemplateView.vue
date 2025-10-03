@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useSetupTemplateStore } from './setupTemplate.store';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
-import TemplatesView from '../TemplatesView.vue';
+import TemplatesView from '@/features/templates/views/TemplatesView.vue';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 
