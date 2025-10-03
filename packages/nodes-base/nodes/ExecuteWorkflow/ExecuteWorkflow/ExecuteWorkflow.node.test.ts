@@ -61,7 +61,7 @@ describe('ExecuteWorkflow', () => {
 			],
 		]);
 
-		// Verify shouldWait is set correctly
+		// Verify shouldResume is set correctly
 		expect(executeFunctions.executeWorkflow).toHaveBeenCalledWith(
 			{ id: 'subWorkflowId' },
 			[{ json: { key: 'value' } }],
@@ -70,7 +70,7 @@ describe('ExecuteWorkflow', () => {
 				parentExecution: {
 					executionId: 'executionId',
 					workflowId: 'workflowId',
-					shouldWait: true,
+					shouldResume: true,
 				},
 			},
 		);
@@ -95,7 +95,7 @@ describe('ExecuteWorkflow', () => {
 
 		expect(result).toEqual([[{ json: { key: 'value' }, index: 0, pairedItem: { item: 0 } }]]);
 
-		// Verify shouldWait is set to false
+		// Verify shouldResume is set to false
 		expect(executeFunctions.executeWorkflow).toHaveBeenCalledWith(
 			{ id: 'subWorkflowId' },
 			[{ json: { key: 'value' } }],
@@ -105,7 +105,7 @@ describe('ExecuteWorkflow', () => {
 				parentExecution: {
 					executionId: 'executionId',
 					workflowId: 'workflowId',
-					shouldWait: false,
+					shouldResume: false,
 				},
 			},
 		);
