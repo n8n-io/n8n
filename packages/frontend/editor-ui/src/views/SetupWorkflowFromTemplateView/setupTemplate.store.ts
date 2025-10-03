@@ -4,7 +4,7 @@ import type { Router } from 'vue-router';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
