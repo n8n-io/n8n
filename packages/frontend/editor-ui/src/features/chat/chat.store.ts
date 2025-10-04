@@ -10,7 +10,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const models = ref<string[]>([]);
 	const loadingModels = ref(false);
 
-	const isStreaming = ref(false);
+	const isResponding = ref(false);
 	const chatMessages = ref<ChatMessage[]>([]);
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
@@ -62,15 +62,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function onStreamDone() {
 		// No-op for now
 		console.log('Streaming done!');
-		isStreaming.value = false;
+		isResponding.value = false;
 	}
 
 	function onStreamError(e: Error) {
 		console.error('Streaming error:', e);
-		isStreaming.value = false;
+		isResponding.value = false;
 	}
 
-	const initChat = (message: string) => {
+	const askAI = (message: string, sessionId: string) => {
 		const messageId = uuidv4();
 		addUserMessage(message, messageId);
 
@@ -80,6 +80,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			{
 				model: 'gpt-4',
 				messageId,
+				sessionId,
 				message,
 			},
 			onStreamMessage,
@@ -93,8 +94,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		setModels,
 		fetchChatModels,
-		initChat,
-		isStreaming,
+		askAI,
+		isResponding,
 		chatMessages,
 		assistantMessages,
 		usersMessages,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
 import { N8nHeading, N8nIcon, N8nText, N8nScrollArea } from '@n8n/design-system';
@@ -24,6 +25,7 @@ type Suggestion = {
 };
 
 const message = ref('');
+const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
@@ -86,8 +88,8 @@ watch(
 );
 
 function onSubmit() {
-	if (!message.value.trim() || chatStore.isStreaming) return;
-	chatStore.initChat(message.value);
+	if (!message.value.trim() || chatStore.isResponding) return;
+	chatStore.askAI(message.value, sessionId.value);
 	message.value = '';
 }
 
@@ -209,7 +211,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 								</div>
 
 								<!-- Typing indicator while streaming -->
-								<div v-if="chatStore.isStreaming" :class="[$style.message, $style.assistant]">
+								<div v-if="chatStore.isResponding" :class="[$style.message, $style.assistant]">
 									<div :class="$style.avatar">
 										<N8nIcon icon="sparkles" width="20" height="20" />
 									</div>
@@ -231,7 +233,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							type="text"
 							:placeholder="'Message GPT-4'"
 							autocomplete="off"
-							:disabled="chatStore.isStreaming"
+							:disabled="chatStore.isResponding"
 						/>
 
 						<div :class="$style.actions">
@@ -239,7 +241,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 								:class="$style.iconBtn"
 								type="button"
 								title="Attach"
-								:disabled="chatStore.isStreaming"
+								:disabled="chatStore.isResponding"
 								@click="onAttach"
 							>
 								<N8nIcon icon="paperclip" width="20" height="20" />
@@ -248,7 +250,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 								:class="$style.iconBtn"
 								type="button"
 								title="Voice"
-								:disabled="chatStore.isStreaming"
+								:disabled="chatStore.isResponding"
 								@click="onMic"
 							>
 								<N8nIcon icon="mic" width="20" height="20" />
@@ -256,15 +258,17 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							<button
 								:class="$style.sendBtn"
 								type="submit"
-								:disabled="chatStore.isStreaming || !message.trim()"
+								:disabled="chatStore.isResponding || !message.trim()"
 							>
-								<span v-if="!chatStore.isStreaming">Send</span>
+								<span v-if="!chatStore.isResponding">Send</span>
 								<span v-else>…</span>
 							</button>
 						</div>
 					</div>
 					<N8nText :class="$style.disclaimer" color="text-light" size="small">
 						AI may make mistakes. Check important info.
+						<br />
+						{{ sessionId }}
 					</N8nText>
 				</form>
 			</section>

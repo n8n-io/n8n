@@ -1,5 +1,7 @@
 export interface ChatPayload {
-	messageId: string;
 	message: string;
+	userId: string;
+	messageId: string;
+	sessionId: string;
 	model: string;
 }

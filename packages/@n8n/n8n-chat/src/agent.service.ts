@@ -1,6 +1,7 @@
+import { InMemoryChatMessageHistory } from '@langchain/core/chat_history';
 import type { AIMessageChunk } from '@langchain/core/messages';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import type { RunnableConfig } from '@langchain/core/runnables';
+import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
+import { RunnableWithMessageHistory } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import { ChatOpenAI } from '@langchain/openai';
@@ -17,6 +18,9 @@ export interface OpenAiChatAgentConfig {
 
 export interface ChatPayload {
 	message: string;
+	userId: string;
+	messageId: string;
+	sessionId: string;
 	model: string;
 }
 
@@ -24,75 +28,77 @@ export class OpenAiChatAgent {
 	private apiKey: string;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
+	private sessions: Map<string, InMemoryChatMessageHistory>;
 
 	constructor(config: OpenAiChatAgentConfig) {
 		this.apiKey = config.apiKey;
 		this.logger = config.logger;
 		this.tracer = config.tracer;
+
+		// TODO: Better session management, maybe keys by userId + conversationId?
+		this.sessions = new Map<string, InMemoryChatMessageHistory>();
 	}
 
-	async *ask(payload: ChatPayload, userId: string, messageId: string, abortSignal?: AbortSignal) {
-		const conversationId = crypto.randomUUID(); // TODO: receive this when conversation continues
+	async *ask(payload: ChatPayload, abortSignal?: AbortSignal) {
+		const { runnable, streamConfig } = this.setupModelAndConfigs(payload, abortSignal);
 
-		const { agent, streamConfig } = this.setupAgentAndConfigs(
-			payload,
-			userId,
-			conversationId,
-			abortSignal,
-		);
+		const input = payload.message;
+		const system = 'You are a helpful AI assistant.';
+		const prompt = ChatPromptTemplate.fromMessages([
+			['system', '{system}'],
+			new MessagesPlaceholder('history'),
+			['human', '{input}'],
+		]);
+
+		const chain = prompt.pipe(runnable);
+
+		const withHistory = new RunnableWithMessageHistory({
+			runnable: chain,
+			getMessageHistory: (sessionId: string) => {
+				if (!this.sessions.has(sessionId)) {
+					this.sessions.set(sessionId, new InMemoryChatMessageHistory());
+				}
+
+				return this.sessions.get(sessionId)!;
+			},
+			inputMessagesKey: 'input',
+			historyMessagesKey: 'history',
+		});
 
 		try {
-			const stream = await this.createAgentStream(payload, streamConfig, agent);
-			yield* this.processAgentStream(stream, agent, messageId);
+			const stream = await withHistory.stream({ system, input }, streamConfig);
+
+			yield* this.processAgentStream(stream, runnable, payload.messageId);
 		} catch (error: unknown) {
 			this.handleStreamError(error);
 		}
 	}
 
-	private setupAgentAndConfigs(
-		payload: ChatPayload,
-		userId: string,
-		conversationId: string,
+	private setupModelAndConfigs(
+		{ model, message, userId, sessionId }: ChatPayload,
 		abortSignal?: AbortSignal,
 	) {
 		this.logger?.debug(
-			`Starting chat with model ${payload.model} for user ${userId}: ${payload.message}`,
+			`Starting chat with model ${model} for user ${userId} (${sessionId}): ${message}`,
 		);
 
-		const agent = new ChatOpenAI({
-			model: payload.model,
+		const runnable = new ChatOpenAI({
+			model,
 			temperature: 0.2,
 			apiKey: this.apiKey,
 		});
 
-		// TOOD: Do we want a session manager?
-		const threadId = `${userId}-${conversationId}`;
-		const threadConfig: RunnableConfig = {
-			configurable: {
-				thread_id: threadId,
-			},
-		};
 		const streamConfig = {
-			...threadConfig,
+			configurable: {
+				sessionId,
+			},
 			streamMode: ['updates', 'custom'],
 			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
 		};
 
-		return { agent, threadConfig, streamConfig };
-	}
-
-	private async createAgentStream(
-		payload: ChatPayload,
-		streamConfig: RunnableConfig,
-		agent: ChatOpenAI,
-	) {
-		const prompt = 'You are a helpful AI agent.';
-		return await agent.stream(
-			[new SystemMessage(prompt), new HumanMessage({ content: payload.message })],
-			streamConfig,
-		);
+		return { runnable, streamConfig };
 	}
 
 	private handleStreamError(error: unknown): never {

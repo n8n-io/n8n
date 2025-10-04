@@ -36,7 +36,10 @@ export class ChatHubController {
 			res.on('close', handleClose);
 
 			const messageId = crypto.randomUUID();
-			const aiResponse = this.chatService.ask(payload, req.user, messageId, signal);
+			const aiResponse = this.chatService.ask(
+				{ ...payload, userId: req.user.id, messageId },
+				signal,
+			);
 
 			res.header('Content-type', 'application/json-lines').flush();
 

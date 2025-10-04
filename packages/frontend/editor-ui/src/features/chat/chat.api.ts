@@ -10,7 +10,7 @@ export const fetchChatModelsApi = async (context: IRestApiContext, provider: 'op
 export const messageChatApi = (
 	ctx: IRestApiContext,
 	provider: 'openai',
-	payload: { model: string; messageId: string; message: string },
+	payload: { model: string; messageId: string; sessionId: string; message: string },
 	onMessageUpdated: (data: StreamOutput) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
