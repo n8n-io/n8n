@@ -24,7 +24,8 @@ type Suggestion = {
 };
 
 const message = ref('');
-const threadRef = ref<HTMLDivElement | null>(null);
+const messagesRef = ref<HTMLDivElement | null>(null);
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
 const suggestions = ref<Suggestion[]>([
 	{
@@ -51,13 +52,37 @@ const suggestions = ref<Suggestion[]>([
 
 const hasMessages = computed(() => chatStore.chatMessages.length > 0);
 
+const scrollOnNewMessage = ref(true);
+
+function getScrollViewport(): HTMLElement | null {
+	const root = scrollAreaRef.value?.$el as HTMLElement | undefined;
+	return root?.querySelector('[data-reka-scroll-area-viewport]') as HTMLElement | null;
+}
+
+function scrollToBottom() {
+	const viewport = getScrollViewport();
+	if (viewport && messagesRef.value) {
+		viewport.scrollTo({
+			top: messagesRef.value.scrollHeight,
+			behavior: 'smooth',
+		});
+	}
+}
+
 watch(
-	() => chatStore.chatMessages.length,
-	async () => {
-		await nextTick();
-		if (threadRef.value) threadRef.value.scrollTop = threadRef.value.scrollHeight;
+	() => chatStore.chatMessages,
+	async (messages) => {
+		// Check if the last message is user and scroll to bottom of the chat
+		if (scrollOnNewMessage.value && messages.length > 0) {
+			// Wait for DOM updates before scrolling
+			await nextTick();
+			// Check if viewport is available after nextTick
+			if (getScrollViewport()) {
+				scrollToBottom();
+			}
+		}
 	},
-	{ immediate: true },
+	{ immediate: true, deep: true },
 );
 
 function onSubmit() {
@@ -67,17 +92,12 @@ function onSubmit() {
 }
 
 function onSuggestionClick(s: Suggestion) {
-	console.log('Suggestion clicked', s.title);
-	message.value = `${s.title}: ${s.subtitle}`;
+	message.value = `${s.title} ${s.subtitle}`;
 }
 
-function onAttach() {
-	console.log('Attach clicked');
-}
+function onAttach() {}
 
-function onMic() {
-	console.log('Mic clicked');
-}
+function onMic() {}
 
 function messageText(msg: ChatMessage) {
 	return msg.type === 'message' ? msg.text : `**Error:** ${msg.content}`;
@@ -148,8 +168,14 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 				<!-- Chat thread -->
 				<template v-else>
 					<div :class="$style.threadContainer">
-						<N8nScrollArea :class="$style.threadWrap">
-							<div ref="threadRef" :class="$style.thread" role="log" aria-live="polite">
+						<N8nScrollArea
+							ref="scrollAreaRef"
+							type="hover"
+							:enable-vertical-scroll="true"
+							:enable-horizontal-scroll="false"
+							:class="$style.threadWrap"
+						>
+							<div ref="messagesRef" :class="$style.thread" role="log" aria-live="polite">
 								<div
 									v-for="m in chatStore.chatMessages"
 									:key="m.id"
@@ -174,7 +200,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 										}"
 									>
 										<VueMarkdown
-											:class="$style.markdown"
+											:class="$style.chatMessageMarkdown"
 											:source="messageText(m)"
 											:options="markdownOptions"
 											:plugins="[linksNewTabPlugin]"
@@ -257,18 +283,15 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	min-height: 0;
 }
 
+.centered {
+	justify-content: center;
+}
+
 .section {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-
-	flex: 1;
-	min-height: 0;
 	gap: var(--spacing-l);
-}
-
-.centered {
-	justify-content: center;
 }
 
 .fullHeight {
@@ -384,6 +407,10 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 		> *:last-child {
 			margin-bottom: 0;
+		}
+
+		p {
+			margin: var(--spacing-xs) 0;
 		}
 
 		pre {
@@ -505,9 +532,5 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	margin-top: var(--spacing-xs);
 	color: var(--color-text-lighter);
 	text-align: center;
-}
-
-.chat {
-	width: 100%;
 }
 </style>
