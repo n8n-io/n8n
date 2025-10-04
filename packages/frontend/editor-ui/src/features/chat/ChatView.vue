@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import hljs from 'highlight.js/lib/core';
 
-import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nText, N8nScrollArea } from '@n8n/design-system';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ChatMessage } from './chat.types';
+import VueMarkdown from 'vue-markdown-render';
+import markdownLink from 'markdown-it-link-attributes';
+import type MarkdownIt from 'markdown-it';
 
 const i18n = useI18n();
 const chatStore = useChatStore();
@@ -75,16 +79,47 @@ function onMic() {
 	console.log('Mic clicked');
 }
 
-function displayText(msg: ChatMessage) {
-	return msg.type === 'message' ? msg.text : msg.content;
+function messageText(msg: ChatMessage) {
+	return msg.type === 'message' ? msg.text : `**Error:** ${msg.content}`;
 }
+
+const markdownOptions = {
+	highlight(str: string, lang: string) {
+		if (lang && hljs.getLanguage(lang)) {
+			try {
+				return hljs.highlight(str, { language: lang }).value;
+			} catch {}
+		}
+
+		return ''; // use external default escaping
+	},
+};
+
+const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	vueMarkdownItInstance.use(markdownLink, {
+		attrs: {
+			target: '_blank',
+			rel: 'noopener',
+		},
+	});
+};
 </script>
 
 <template>
 	<PageViewLayout>
-		<div :class="$style.content">
-			<section :class="$style.section">
-				<div :class="$style.header">
+		<div
+			:class="{
+				[$style.content]: true,
+				[$style.centered]: !hasMessages,
+			}"
+		>
+			<section
+				:class="{
+					[$style.section]: true,
+					[$style.fullHeight]: hasMessages,
+				}"
+			>
+				<div v-if="!hasMessages" :class="$style.header">
 					<N8nHeading tag="h2" bold size="xlarge">
 						{{
 							`Good morning, ${userStore.currentUser?.firstName ?? userStore.currentUser?.fullName ?? 'User'}!`
@@ -92,7 +127,6 @@ function displayText(msg: ChatMessage) {
 					</N8nHeading>
 				</div>
 
-				<!-- Suggestions only when thread is empty -->
 				<div v-if="!hasMessages" :class="$style.suggestions">
 					<button
 						v-for="s in suggestions"
@@ -101,46 +135,66 @@ function displayText(msg: ChatMessage) {
 						:class="$style.card"
 						@click="onSuggestionClick(s)"
 					>
-						<div :class="$style.cardIcon" aria-hidden="true">{{ s.icon }}</div>
+						<div :class="$style.cardIcon" aria-hidden="true">
+							<N8nText size="xlarge">{{ s.icon }}</N8nText>
+						</div>
 						<div :class="$style.cardText">
-							<div :class="$style.cardTitle">{{ s.title }}</div>
-							<div :class="$style.cardSubtitle">{{ s.subtitle }}</div>
+							<N8nText bold color="text-dark">{{ s.title }}</N8nText>
+							<N8nText color="text-base">{{ s.subtitle }}</N8nText>
 						</div>
 					</button>
 				</div>
 
 				<!-- Chat thread -->
-				<!-- TODO: N8nScrollArea -->
-				<div v-else :class="$style.threadWrap">
-					<div ref="threadRef" :class="$style.thread" role="log" aria-live="polite">
-						<div
-							v-for="m in chatStore.chatMessages"
-							:key="m.id"
-							:class="[
-								$style.message,
-								m.role === 'user' ? $style.user : $style.assistant,
-								m.type === 'error' && $style.error,
-							]"
-						>
-							<div :class="$style.avatar">
-								<N8nIcon :icon="m.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
-							</div>
-							<div :class="$style.bubble">
-								<pre :class="$style.text">{{ displayText(m) }}</pre>
-							</div>
-						</div>
+				<template v-else>
+					<div :class="$style.threadContainer">
+						<N8nScrollArea :class="$style.threadWrap">
+							<div ref="threadRef" :class="$style.thread" role="log" aria-live="polite">
+								<div
+									v-for="m in chatStore.chatMessages"
+									:key="m.id"
+									:class="[
+										$style.message,
+										m.role === 'user' ? $style.user : $style.assistant,
+										m.type === 'error' && $style.error,
+									]"
+								>
+									<div :class="$style.avatar">
+										<N8nIcon
+											:icon="m.role === 'user' ? 'user' : 'sparkles'"
+											width="20"
+											height="20"
+										/>
+									</div>
+									<div
+										:class="{
+											[$style.chatMessage]: true,
+											[$style.chatMessageFromUser]: m.role === 'user',
+											[$style.chatMessageFromAssistant]: m.role === 'assistant',
+										}"
+									>
+										<VueMarkdown
+											:class="$style.markdown"
+											:source="messageText(m)"
+											:options="markdownOptions"
+											:plugins="[linksNewTabPlugin]"
+										/>
+									</div>
+								</div>
 
-						<!-- Typing indicator while streaming -->
-						<div v-if="chatStore.isStreaming" :class="[$style.message, $style.assistant]">
-							<div :class="$style.avatar">
-								<N8nIcon icon="sparkles" width="20" height="20" />
+								<!-- Typing indicator while streaming -->
+								<div v-if="chatStore.isStreaming" :class="[$style.message, $style.assistant]">
+									<div :class="$style.avatar">
+										<N8nIcon icon="sparkles" width="20" height="20" />
+									</div>
+									<div :class="$style.bubble">
+										<span :class="$style.typing"><i></i><i></i><i></i></span>
+									</div>
+								</div>
 							</div>
-							<div :class="$style.bubble">
-								<span :class="$style.typing"><i></i><i></i><i></i></span>
-							</div>
-						</div>
+						</N8nScrollArea>
 					</div>
-				</div>
+				</template>
 
 				<!-- Prompt -->
 				<form :class="$style.prompt" @submit.prevent="onSubmit">
@@ -183,7 +237,9 @@ function displayText(msg: ChatMessage) {
 							</button>
 						</div>
 					</div>
-					<p :class="$style.disclaimer">AI may make mistakes. Check important info.</p>
+					<N8nText :class="$style.disclaimer" color="text-light" size="small">
+						AI may make mistakes. Check important info.
+					</N8nText>
 				</form>
 			</section>
 		</div>
@@ -196,6 +252,28 @@ function displayText(msg: ChatMessage) {
 	flex-direction: column;
 	gap: var(--spacing-m);
 	padding-bottom: var(--spacing-l);
+
+	height: 100%;
+	min-height: 0;
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+
+	flex: 1;
+	min-height: 0;
+	gap: var(--spacing-l);
+}
+
+.centered {
+	justify-content: center;
+}
+
+.fullHeight {
+	flex: 1;
+	min-height: 0;
 }
 
 .header {
@@ -204,19 +282,12 @@ function displayText(msg: ChatMessage) {
 	align-items: center;
 }
 
-.section {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing-l);
-}
-
 /* Suggestions */
 .suggestions {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(220px, 1fr));
 	gap: var(--spacing-m);
-	width: min(960px, 90vw);
+	width: min(960px, 90%);
 	margin-top: var(--spacing-m);
 }
 @media (max-width: 800px) {
@@ -230,7 +301,7 @@ function displayText(msg: ChatMessage) {
 	gap: var(--spacing-s);
 	padding: var(--spacing-m);
 	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-light);
+	background: var(--color-background-base);
 	border-radius: var(--border-radius-large);
 	text-align: left;
 	cursor: pointer;
@@ -244,32 +315,30 @@ function displayText(msg: ChatMessage) {
 	background: rgba(124, 58, 237, 0.04);
 }
 .cardIcon {
-	font-size: 20px;
-	line-height: 1;
+	height: 100%;
+	display: flex;
+	align-items: center;
 }
 .cardText {
 	display: grid;
 	gap: 2px;
 }
-.cardTitle {
-	font-weight: 600;
-	color: var(--color-text-dark);
-}
-.cardSubtitle {
-	font-size: 0.9rem;
-	color: var(--color-text-light);
+
+.threadWrap {
+	flex: 1;
+	height: 100%;
+	min-height: 0;
 }
 
-/* Thread */
-.threadWrap {
-	width: min(960px, 90vw);
+.threadContainer {
+	width: min(960px, 90%);
+	flex: 1;
+	min-height: 0;
+	display: flex;
 }
+
 .thread {
-	max-height: 60vh;
-	overflow-y: auto;
 	padding: var(--spacing-m);
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-large);
 	background: var(--color-background-light);
 }
 
@@ -288,30 +357,46 @@ function displayText(msg: ChatMessage) {
 	background: var(--color-background-xlight);
 	color: var(--color-text-light);
 }
-.bubble {
-	padding: 12px 14px;
-	border-radius: 14px;
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-xlight);
-}
 
-.user .bubble {
-	background: rgba(124, 58, 237, 0.08);
-	border-color: rgba(124, 58, 237, 0.25);
-}
-.assistant .bubble {
-	background: var(--color-background-xlight);
-}
-.error .bubble {
-	border-color: #ef4444;
-	background: rgba(239, 68, 68, 0.06);
-}
+.chatMessage {
+	display: block;
+	position: relative;
+	max-width: fit-content;
+	padding: var(--spacing-m);
+	border-radius: var(--border-radius-large);
 
-.text {
-	margin: 0;
-	font-family: inherit;
-	white-space: pre-wrap;
-	word-break: break-word;
+	&.chatMessageFromAssistant {
+		background-color: var(--color-background-base);
+	}
+
+	&.chatMessageFromUser {
+		background-color: var(--color-background-medium);
+	}
+
+	> .chatMessageMarkdown {
+		display: block;
+		box-sizing: border-box;
+		font-size: inherit;
+
+		> *:first-child {
+			margin-top: 0;
+		}
+
+		> *:last-child {
+			margin-bottom: 0;
+		}
+
+		pre {
+			font-family: inherit;
+			font-size: inherit;
+			margin: 0;
+			white-space: pre-wrap;
+			box-sizing: border-box;
+			padding: var(--chat--spacing);
+			background: var(--chat--message--pre--background);
+			border-radius: var(--chat--border-radius);
+		}
+	}
 }
 
 /* Typing indicator */
@@ -352,7 +437,7 @@ function displayText(msg: ChatMessage) {
 	display: grid;
 	place-items: center;
 	width: 100%;
-	margin-top: var(--spacing-xl);
+	margin-top: var(--spacing-m);
 }
 .inputWrap {
 	position: relative;
@@ -418,7 +503,6 @@ function displayText(msg: ChatMessage) {
 
 .disclaimer {
 	margin-top: var(--spacing-xs);
-	font-size: 0.8rem;
 	color: var(--color-text-lighter);
 	text-align: center;
 }
