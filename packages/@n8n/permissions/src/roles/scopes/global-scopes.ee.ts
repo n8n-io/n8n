@@ -62,6 +62,11 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'variable:update',
 	'variable:delete',
 	'variable:list',
+	'projectVariable:create',
+	'projectVariable:read',
+	'projectVariable:update',
+	'projectVariable:delete',
+	'projectVariable:list',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -86,6 +91,9 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'oidc:manage',
 	'dataStore:list',
 	'role:manage',
+	'mcp:manage',
+	'mcpApiKey:create',
+	'mcpApiKey:rotate',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -106,4 +114,6 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'variable:list',
 	'variable:read',
 	'dataStore:list',
+	'mcpApiKey:create',
+	'mcpApiKey:rotate',
 ];

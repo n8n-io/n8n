@@ -1,4 +1,4 @@
-import { type Logger } from '@n8n/backend-common';
+import { safeJoinPath, type Logger } from '@n8n/backend-common';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -12,6 +12,10 @@ import type { CredentialsRepository, TagRepository } from '@n8n/db';
 jest.mock('fs/promises');
 
 jest.mock('@/utils/compression.util');
+
+jest.mock('@n8n/backend-common', () => ({
+	safeJoinPath: jest.fn(),
+}));
 
 // Mock @n8n/db
 jest.mock('@n8n/db', () => ({
@@ -229,6 +233,10 @@ describe('ImportService', () => {
 			const mockFiles = ['user.jsonl', 'workflowentity.jsonl', 'migrations.jsonl'];
 
 			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			jest
+				.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/user.jsonl')
+				.mockReturnValueOnce('/test/input/workflowentity.jsonl');
 
 			const result = await importService.getImportMetadata('/test/input');
 
@@ -245,6 +253,11 @@ describe('ImportService', () => {
 			const mockFiles = ['user.jsonl', 'user.2.jsonl', 'user.3.jsonl'];
 
 			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			jest
+				.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/user.jsonl')
+				.mockReturnValueOnce('/test/input/user.2.jsonl')
+				.mockReturnValueOnce('/test/input/user.3.jsonl');
 
 			const result = await importService.getImportMetadata('/test/input');
 
@@ -297,6 +310,8 @@ describe('ImportService', () => {
 			const mockFiles = ['user.jsonl', 'migrations.jsonl'];
 
 			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+
+			jest.mocked(safeJoinPath).mockReturnValue('/test/input/user.jsonl');
 
 			const result = await importService.getImportMetadata('/test/input');
 
@@ -384,6 +399,10 @@ describe('ImportService', () => {
 				tableNames: ['user'],
 			};
 
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockReturnValue(['INSERT COMMAND', { data: 'data' }]);
+
 			const mockEntities = [{ id: 1, name: 'Test User' }];
 			const mockContent = JSON.stringify(mockEntities[0]);
 			jest.mocked(readFile).mockResolvedValue(mockContent);
@@ -396,7 +415,7 @@ describe('ImportService', () => {
 			);
 
 			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
-			expect(mockEntityManager.insert).toHaveBeenCalledWith('user', mockEntities);
+			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
 		});
 
 		it('should handle empty input directory', async () => {
@@ -749,11 +768,7 @@ describe('ImportService', () => {
 				decompressFolder: mockDecompressFolder,
 			}));
 
-			// Mock path.join
-			const mockPathJoin = jest.fn().mockReturnValue(entitiesZipPath);
-			jest.doMock('path', () => ({
-				join: mockPathJoin,
-			}));
+			jest.mocked(safeJoinPath).mockReturnValue(entitiesZipPath);
 
 			// @ts-expect-error For testing purposes
 			await importService.decompressEntitiesZip(inputDir);

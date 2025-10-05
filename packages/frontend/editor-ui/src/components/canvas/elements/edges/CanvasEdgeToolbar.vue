@@ -4,6 +4,7 @@ import { computed, useCssModule } from 'vue';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { N8nIconButton } from '@n8n/design-system';
 const emit = defineEmits<{
 	add: [];
 	delete: [];

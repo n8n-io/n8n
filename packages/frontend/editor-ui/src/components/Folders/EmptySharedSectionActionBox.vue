@@ -5,6 +5,7 @@ import type { Project } from '@/types/projects.types';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { N8nActionBox } from '@n8n/design-system';
 type Props = {
 	personalProject: Project;
 	resourceType?: 'workflows' | 'credentials';

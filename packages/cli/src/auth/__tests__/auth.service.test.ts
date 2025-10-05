@@ -15,7 +15,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
-import type { ErrorReporter } from 'n8n-core';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -36,7 +35,6 @@ describe('AuthService', () => {
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
-	const errorReporter = mock<ErrorReporter>();
 	const authService = new AuthService(
 		globalConfig,
 		mock(),
@@ -46,7 +44,6 @@ describe('AuthService', () => {
 		userRepository,
 		invalidAuthTokenRepository,
 		mfaService,
-		errorReporter,
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');

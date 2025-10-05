@@ -13,7 +13,7 @@ import {
 
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -22,6 +22,7 @@ import { computed, useTemplateRef } from 'vue';
 
 import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
+import { N8nTooltip } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	path: string;

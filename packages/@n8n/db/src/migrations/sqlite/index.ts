@@ -1,3 +1,4 @@
+import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -95,6 +96,7 @@ import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/175
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
 import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
+import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -193,6 +195,8 @@ const sqliteMigrations: Migration[] = [
 	ReplaceDataStoreTablesWithDataTables1754475614602,
 	LinkRoleToProjectRelationTable1753953244168,
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
+	AddProjectIdToVariableTable1758794506893,
+	AddAudienceColumnToApiKeys1758731786132,
 ];
 
 export { sqliteMigrations };
