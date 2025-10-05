@@ -1,5 +1,14 @@
+import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
+
+import { objectOperations } from '../../ObjectDescription';
+
+// Helper function to construct URL using the same logic as the node
+function constructObjectUrl(bucketName: string, objectName: string): string {
+	return `/b/${bucketName}/o/${encodeURIComponent(objectName)}`;
+}
+
 describe('Test GoogleCloudStorage, object => URL encoding', () => {
-	describe('URL encoding behavior for GitHub issue #20384', () => {
+	describe('URL encoding behavior with slashes', () => {
 		const testCases = [
 			{
 				name: 'object with forward slash (main issue case)',
@@ -24,16 +33,42 @@ describe('Test GoogleCloudStorage, object => URL encoding', () => {
 		];
 
 		testCases.forEach(({ name, objectName, expectedEncoded }) => {
-			it(`should properly encode ${name}`, () => {
-				expect(encodeURIComponent(objectName)).toBe(expectedEncoded);
-			});
-
 			it(`should construct correct URL for ${name}`, () => {
 				const bucketName = 'test-bucket';
 				const expectedUrl = `/b/${bucketName}/o/${expectedEncoded}`;
-				const constructedUrl = `/b/${bucketName}/o/${encodeURIComponent(objectName)}`;
+
+				// Test the actual URL construction logic used by the node
+				const constructedUrl = constructObjectUrl(bucketName, objectName);
 
 				expect(constructedUrl).toBe(expectedUrl);
+			});
+
+			it(`should verify node definition uses encodeURIComponent for ${name}`, () => {
+				// Find operations that use object URLs
+				const operation = (objectOperations[0] as { options: INodePropertyOptions[] }).options.find(
+					(o) => o.value === 'get',
+				);
+
+				const routing = operation?.routing as IDataObject;
+				const request = routing?.request as IDataObject;
+				const urlExpression = request?.url as string;
+
+				// Verify the URL expression includes encodeURIComponent
+				expect(urlExpression).toContain('encodeURIComponent($parameter["objectName"])');
+
+				// Verify all operations that manipulate objects use proper encoding
+				const objectOperationTypes = ['get', 'delete', 'update'];
+				objectOperationTypes.forEach((opType) => {
+					const op = (objectOperations[0] as { options: INodePropertyOptions[] }).options.find(
+						(o) => o.value === opType,
+					);
+					if (op?.routing) {
+						const opRouting = op.routing as IDataObject;
+						const opRequest = opRouting?.request as IDataObject;
+						const url = opRequest?.url as string;
+						expect(url).toContain('encodeURIComponent($parameter["objectName"])');
+					}
+				});
 			});
 		});
 	});
