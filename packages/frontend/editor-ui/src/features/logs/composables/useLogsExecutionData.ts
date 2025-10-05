@@ -15,6 +15,7 @@ import type { LatestNodeInfo, LogEntry } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
 import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 // useThrottle with reactive timeout support
 function useThrottle<T>(state: Ref<T>, timeout: ComputedRef<number>) {
@@ -31,6 +32,7 @@ function useThrottle<T>(state: Ref<T>, timeout: ComputedRef<number>) {
 export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const toast = useToast();
 
 	const state = ref<
@@ -95,7 +97,7 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 
 	function resetExecutionData() {
 		state.value = undefined;
-		workflowsStore.setWorkflowExecutionData(null);
+		workflowState.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 	}
 

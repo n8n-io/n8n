@@ -9,7 +9,10 @@ export async function withTransaction<T>(
 	manager: EntityManager,
 	trx: Tx,
 	run: (em: EntityManager) => Promise<T>,
+	beginTransaction: boolean = true,
 ): Promise<T> {
 	if (trx) return await run(trx);
-	return await manager.transaction(run);
+	if (beginTransaction) return await manager.transaction(run);
+
+	return await run(manager);
 }

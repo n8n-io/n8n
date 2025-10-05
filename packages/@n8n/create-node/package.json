@@ -1,6 +1,6 @@
 {
   "name": "@n8n/create-node",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Official CLI to create new community nodes for n8n",
   "bin": {
     "create-node": "bin/create-node.cjs"

@@ -1,6 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { Variables, Project, TagEntity, User, WorkflowTagMapping } from '@n8n/db';
+import type {
+	Variables,
+	Project,
+	TagEntity,
+	User,
+	WorkflowTagMapping,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	SharedCredentials,
 	CredentialsRepository,
@@ -39,6 +46,7 @@ import type {
 	StatusExportableCredential,
 } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
+import type { ExportableProject } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
 import type { StatusResourceOwner, RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
@@ -517,7 +525,6 @@ export class SourceControlImportService {
 
 	async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
-		const workflowManager = this.activeWorkflowManager;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
 			fields: ['id', 'name', 'versionId', 'active'],
@@ -536,9 +543,11 @@ export class SourceControlImportService {
 		// We must iterate over the array and run the whole process workflow by workflow
 		for (const candidate of candidates) {
 			this.logger.debug(`Parsing workflow file ${candidate.file}`);
+
 			const importedWorkflow = jsonParse<IWorkflowToImport>(
 				await fsReadFile(candidate.file, { encoding: 'utf8' }),
 			);
+
 			if (!importedWorkflow?.id) {
 				continue;
 			}
@@ -589,26 +598,7 @@ export class SourceControlImportService {
 			}
 
 			if (existingWorkflow?.active) {
-				try {
-					// remove active pre-import workflow
-					this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-					await workflowManager.remove(existingWorkflow.id);
-
-					if (importedWorkflow.active) {
-						// try activating the imported workflow
-						this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-						await workflowManager.add(existingWorkflow.id, 'activate');
-					}
-				} catch (e) {
-					const error = ensureError(e);
-					this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
-				} finally {
-					// update the versionId of the workflow to match the imported workflow
-					await this.workflowRepository.update(
-						{ id: existingWorkflow.id },
-						{ versionId: importedWorkflow.versionId },
-					);
-				}
+				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
 			}
 
 			importWorkflowsResult.push({
@@ -616,10 +606,37 @@ export class SourceControlImportService {
 				name: candidate.file,
 			});
 		}
+
 		return importWorkflowsResult.filter((e) => e !== undefined) as Array<{
 			id: string;
 			name: string;
 		}>;
+	}
+
+	private async activateImportedWorkflow({
+		existingWorkflow,
+		importedWorkflow,
+	}: { existingWorkflow: WorkflowEntity; importedWorkflow: IWorkflowToImport }) {
+		try {
+			// remove active pre-import workflow
+			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
+			await this.activeWorkflowManager.remove(existingWorkflow.id);
+
+			if (importedWorkflow.active) {
+				// try activating the imported workflow
+				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+			}
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
+		} finally {
+			// update the versionId of the workflow to match the imported workflow
+			await this.workflowRepository.update(
+				{ id: existingWorkflow.id },
+				{ versionId: importedWorkflow.versionId },
+			);
+		}
 	}
 
 	async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
@@ -883,6 +900,62 @@ export class SourceControlImportService {
 		return result;
 	}
 
+	/**
+	 * Reads project files candidates from the work folder and imports them into the database.
+	 *
+	 * Only team projects are supported.
+	 * Personal project are not supported because they are not stable across instances
+	 * (different ids across instances).
+	 */
+	async importTeamProjectsFromWorkFolder(candidates: SourceControlledFile[]) {
+		const importResults = [];
+
+		for (const candidate of candidates) {
+			try {
+				this.logger.debug(`Importing project file ${candidate.file}`);
+				const project = jsonParse<ExportableProject>(
+					await fsReadFile(candidate.file, { encoding: 'utf8' }),
+				);
+
+				// Ensure that only team owned projects are imported as we can't resolve owners for personal projects
+				// This is a safety check as only team owned projects should be exported in the first place
+				if (
+					typeof project.owner !== 'object' ||
+					project.owner.type !== 'team' ||
+					project.owner.teamId !== project.id
+				) {
+					this.logger.warn(`Project ${project.id} has inconsistent owner data, skipping`);
+					continue;
+				}
+
+				// Upsert team project with metadata only
+				await this.projectRepository.upsert(
+					{
+						id: project.id,
+						name: project.name,
+						icon: project.icon,
+						description: project.description,
+						type: 'team',
+					},
+					['id'],
+				);
+
+				this.logger.info(`Imported team project: ${project.name}`);
+				importResults.push({
+					id: project.id,
+					name: project.name,
+				});
+			} catch (error) {
+				const errorMessage = ensureError(error);
+				this.logger.error(`Failed to import project from file ${candidate.file}`, {
+					error: errorMessage,
+				});
+			}
+		}
+
+		return importResults;
+	}
+
 	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
 			await this.workflowService.delete(user, candidate.id, true);
@@ -927,6 +1000,7 @@ export class SourceControlImportService {
 			let teamProject = await this.projectRepository.findOne({
 				where: { id: owner.teamId },
 			});
+
 			if (!teamProject) {
 				try {
 					teamProject = await this.projectRepository.save(

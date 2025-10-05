@@ -27,6 +27,18 @@ async def broker():
     await broker.stop()
 
 
+@pytest_asyncio.fixture
+async def manager_with_stdlib_wildcard():
+    manager = TaskRunnerManager(
+        custom_env={
+            "N8N_RUNNERS_STDLIB_ALLOW": "*",
+        }
+    )
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
 def create_task_settings(
     code: str,
     node_mode: str,

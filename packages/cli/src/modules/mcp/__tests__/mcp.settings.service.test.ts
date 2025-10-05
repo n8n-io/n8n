@@ -1,6 +1,8 @@
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
+import type { CacheService } from '@/services/cache/cache.service';
+
 import { McpSettingsService } from '../mcp.settings.service';
 
 describe('McpSettingsService', () => {
@@ -8,13 +10,15 @@ describe('McpSettingsService', () => {
 	let findByKey: jest.Mock<Promise<Settings | null>, [string]>;
 	let upsert: jest.Mock;
 	let settingsRepository: SettingsRepository;
+	const cacheService = mock<CacheService>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		findByKey = jest.fn<Promise<Settings | null>, [string]>();
 		upsert = jest.fn();
 		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
-		service = new McpSettingsService(settingsRepository);
+
+		service = new McpSettingsService(settingsRepository, cacheService);
 	});
 
 	describe('getEnabled', () => {
