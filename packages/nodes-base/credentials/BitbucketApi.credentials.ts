@@ -21,5 +21,16 @@ export class BitbucketApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		/**
+		 * @deprecated App password will stop working after June 9th 2026. Use API token for new credentials.
+		 */
+		{
+			displayName: 'App Password',
+			hint: 'App Passwords will be disabled after June 8th 2026',
+			name: 'appPassword',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+		},
 	];
 }

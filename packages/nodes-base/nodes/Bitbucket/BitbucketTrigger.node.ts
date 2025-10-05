@@ -1,3 +1,4 @@
+import isEmpty from 'lodash/isEmpty';
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -144,12 +145,15 @@ export class BitbucketTrigger implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
+				const password: string = (
+					!isEmpty(credentials!.apiToken) ? credentials!.apiToken : credentials!.appPassword
+				) as string;
 
 				const options: IRequestOptions = {
 					method: 'GET',
 					auth: {
 						user: credentials!.email as string,
-						password: credentials!.apiToken as string,
+						password,
 					},
 					uri: 'https://api.bitbucket.org/2.0/user',
 					json: true,
