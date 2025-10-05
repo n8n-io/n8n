@@ -44,28 +44,33 @@ describe('Test GoogleCloudStorage, object => URL encoding', () => {
 			});
 
 			it(`should verify node definition uses encodeURIComponent for ${name}`, () => {
-				// Find operations that use object URLs
-				const operation = (objectOperations[0] as { options: INodePropertyOptions[] }).options.find(
-					(o) => o.value === 'get',
+				// Find the operation property that contains all the operation options
+				const operationProperty = objectOperations.find(
+					(prop) => prop.name === 'operation' && prop.type === 'options',
 				);
+
+				expect(operationProperty).toBeDefined();
+				expect(operationProperty?.options).toBeDefined();
+
+				// Find operations that use object URLs
+				const operation = operationProperty?.options?.find((o) => o.value === 'get');
 
 				const routing = operation?.routing as IDataObject;
 				const request = routing?.request as IDataObject;
 				const urlExpression = request?.url as string;
 
-				// Verify the URL expression includes encodeURIComponent
+				// Verify the URL expression includes encodeURIComponent with proper template literal syntax
 				expect(urlExpression).toContain('encodeURIComponent($parameter["objectName"])');
 
 				// Verify all operations that manipulate objects use proper encoding
 				const objectOperationTypes = ['get', 'delete', 'update'];
 				objectOperationTypes.forEach((opType) => {
-					const op = (objectOperations[0] as { options: INodePropertyOptions[] }).options.find(
-						(o) => o.value === opType,
-					);
+					const op = operationProperty?.options?.find((o) => o.value === opType);
 					if (op?.routing) {
 						const opRouting = op.routing as IDataObject;
 						const opRequest = opRouting?.request as IDataObject;
 						const url = opRequest?.url as string;
+						// Check that the URL contains the encodeURIComponent call within the template literal
 						expect(url).toContain('encodeURIComponent($parameter["objectName"])');
 					}
 				});
