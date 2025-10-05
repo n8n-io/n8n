@@ -246,6 +246,8 @@ export function prepareFormData({
 			const hiddenDefault = input.defaultValue === '' ? field.fieldValue : input.defaultValue;
 			if (typeof hiddenDefault === 'string') {
 				input.hiddenValue = hiddenDefault;
+			} else if (typeof hiddenDefault === 'number' || typeof hiddenDefault === 'boolean') {
+				input.hiddenValue = String(hiddenDefault);
 			}
 		} else {
 			input.isInput = true;
