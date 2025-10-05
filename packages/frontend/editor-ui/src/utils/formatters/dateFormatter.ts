@@ -52,17 +52,6 @@ export const formatTimeAgo = (fullDate: Date | string): string => {
 	}
 };
 
-/**
- * Format a date for UI display, with optional IANA timezone.
- * If timeZone is provided we'll use Intl.DateTimeFormat to ensure the displayed time
- * matches that timezone (e.g. 'Asia/Beirut'). If not provided, we fall back to the
- * existing `dateformat` behaviour so other parts of the app are unaffected.
- *
- * @param fullDate Date | string | number
- * @param timeZone optional IANA timezone e.g. 'Asia/Beirut'
- * @param locale optional locale string e.g. 'en-US'
- * @returns { date: string, time: string } similar to convertToDisplayDateComponents
- */
 export const formatDateForUI = (
 	fullDate: Date | string | number | null | undefined,
 	timeZone?: string,
@@ -72,23 +61,46 @@ export const formatDateForUI = (
 		return { date: '', time: '' };
 	}
 
-	const d = new Date(fullDate as any);
+	// Narrow input first instead of using `as any`
+	if (typeof fullDate !== 'string' && typeof fullDate !== 'number' && !(fullDate instanceof Date)) {
+		return { date: 'Invalid Date', time: '' };
+	}
+
+	const d = new Date(fullDate);
+
 	if (Number.isNaN(d.getTime())) {
 		return { date: 'Invalid Date', time: '' };
 	}
 
-	// If timezone is provided, use Intl.DateTimeFormat for consistent TZ-aware formatting
+	// Helper to get year in a timezone (falls back to local year)
+	const getYearInTZ = (date: Date, tz?: string, loc?: string) => {
+		if (!tz) return date.getFullYear();
+		try {
+			const parts = new Intl.DateTimeFormat(loc ?? undefined, {
+				timeZone: tz,
+				year: 'numeric',
+			}).formatToParts(date);
+			const yearStr = parts.find((p) => p.type === 'year')?.value;
+			return yearStr ? Number(yearStr) : date.getFullYear();
+		} catch {
+			// If Intl/timezone fails, fall back to local year
+			return date.getFullYear();
+		}
+	};
+
+	// If timezone provided, produce TZ-aware strings (Intl handles formatting)
 	if (timeZone) {
 		try {
-			// date part (short month + day [+ year if not current year])
-			const includeYear = d.getFullYear() !== new Date().getFullYear();
+			// include year if the display year (in target timezone) differs from current year in that same timezone
+			const includeYear =
+				getYearInTZ(d, timeZone, locale) !== getYearInTZ(new Date(), timeZone, locale);
+
 			const dateOpts: Intl.DateTimeFormatOptions = {
 				year: includeYear ? 'numeric' : undefined,
 				month: 'short',
 				day: 'numeric',
 			};
 
-			// time part (hour & minute, 12-hour with AM/PM)
 			const timeOpts: Intl.DateTimeFormatOptions = {
 				hour: 'numeric',
 				minute: '2-digit',
@@ -107,11 +119,11 @@ export const formatDateForUI = (
 
 			return { date: dateStr, time: timeStr };
 		} catch (err) {
-			// fall through to fallback formatting if Intl fails for any reason
+			// fall through to fallback below
 		}
 	}
 
-	// Fallback: reuse existing dateformat masks (keeps previous behaviours intact)
+	// Fallback: keep existing dateformat behaviour
 	const mask = `mmm d${d.getFullYear() === new Date().getFullYear() ? '' : ', yyyy'}#HH:MM:ss`;
 	const formattedDate = dateformat(d, mask);
 	const [date, time] = formattedDate.split('#');
