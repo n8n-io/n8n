@@ -13,7 +13,7 @@ import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { LatestNodeInfo, LogEntry } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
-import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '../../../composables/useThrottleWithReactiveDelay';
@@ -29,7 +29,8 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 		| undefined
 	>();
 	const updateInterval = computed(() =>
-		Object.keys(state.value?.startData ?? {}).length > 1
+		workflowsStore.workflowExecutionData?.status === 'running' &&
+		Object.keys(workflowsStore.workflowExecutionData.data?.resultData.runData ?? {}).length > 1
 			? LOGS_EXECUTION_DATA_THROTTLE_DURATION
 			: 0,
 	);
@@ -120,6 +121,7 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 	watch(
 		// Fields that should trigger update
 		[
+			() => workflowsStore.workflowId,
 			() => workflowsStore.workflowExecutionData?.id,
 			() => workflowsStore.workflowExecutionData?.workflowData.id,
 			() => workflowsStore.workflowExecutionData?.status,
@@ -127,9 +129,9 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 			() => workflowsStore.workflowExecutionStartedData,
 		],
 		useThrottleFn(
-			([executionId], [previousExecutionId]) => {
+			([workflowId, executionId], [previousWorkflowId, previousExecutionId]) => {
 				state.value =
-					workflowsStore.workflowExecutionData === null
+					workflowId !== previousWorkflowId || workflowsStore.workflowExecutionData === null
 						? undefined
 						: {
 								response: copyExecutionData(workflowsStore.workflowExecutionData),
@@ -147,15 +149,6 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 			true,
 		),
 		{ immediate: true },
-	);
-
-	watch(
-		() => workflowsStore.workflowId,
-		(newId) => {
-			if (newId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				resetExecutionData();
-			}
-		},
 	);
 
 	return {
