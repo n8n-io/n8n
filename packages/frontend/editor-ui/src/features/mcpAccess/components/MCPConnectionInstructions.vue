@@ -2,7 +2,15 @@
 import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nInfoAccordion, N8nMarkdown, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInfoAccordion,
+	N8nInfoTip,
+	N8nMarkdown,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { ApiKey } from '@n8n/api-types';
 import ConnectionParameter from './ConnectionParameter.vue';
 
@@ -61,46 +69,56 @@ const fullServerUrl = computed(() => {
 
 <template>
 	<div :class="$style.container">
-		<ol :class="$style.instructions">
-			<li>
-				<div :class="$style.item">
-					<span :class="$style.label">
-						{{ i18n.baseText('settings.mcp.instructions.enableAccess') }}
-					</span>
-				</div>
-			</li>
-			<li>
-				<div :class="$style.item">
-					<span :class="$style.label">
-						{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
-					</span>
-					<ConnectionParameter :value="fullServerUrl" />
-				</div>
-			</li>
-			<li>
-				<div :class="$style.item">
-					<span :class="$style.label">
-						{{ i18n.baseText('settings.mcp.instructions.apiKey.label') }}:
-					</span>
-					<ConnectionParameter
-						:value="props.apiKey.apiKey"
-						:max-width="400"
-						:allow-copy="!isKeyRedacted"
-					>
-						<template #customActions>
-							<N8nTooltip :content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')">
-								<N8nButton
-									type="tertiary"
-									icon="refresh"
-									:square="true"
-									@click="emit('rotateKey')"
-								/>
-							</N8nTooltip>
-						</template>
-					</ConnectionParameter>
-				</div>
-			</li>
-		</ol>
+		<div>
+			<ol :class="$style.instructions">
+				<li>
+					<div :class="$style.item">
+						<span :class="$style.label">
+							{{ i18n.baseText('settings.mcp.instructions.enableAccess') }}
+						</span>
+					</div>
+				</li>
+				<li>
+					<div :class="$style.item">
+						<span :class="$style.label">
+							{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
+						</span>
+						<ConnectionParameter :value="fullServerUrl" />
+					</div>
+				</li>
+				<li>
+					<div :class="$style.item">
+						<span :class="$style.label">
+							{{ i18n.baseText('settings.mcp.instructions.apiKey.label') }}:
+						</span>
+						<ConnectionParameter
+							:value="props.apiKey.apiKey"
+							:max-width="400"
+							:allow-copy="!isKeyRedacted"
+						>
+							<template #customActions>
+								<N8nTooltip :content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')">
+									<N8nButton
+										type="tertiary"
+										icon="refresh"
+										:square="true"
+										@click="emit('rotateKey')"
+									/>
+								</N8nTooltip>
+							</template>
+						</ConnectionParameter>
+						<N8nInfoTip type="tooltip" tooltip-placement="right">
+							{{ i18n.baseText('settings.mcp.instructions.apiKey.tip') }}
+						</N8nInfoTip>
+					</div>
+				</li>
+			</ol>
+			<N8nNotice
+				v-if="!isKeyRedacted"
+				theme="warning"
+				:content="i18n.baseText('settings.mcp.newKey.notice')"
+			/>
+		</div>
 		<div :class="$style.connectionString">
 			<N8nInfoAccordion :title="i18n.baseText('settings.mcp.instructions.json')">
 				<template #customContent>
@@ -142,6 +160,10 @@ const fullServerUrl = computed(() => {
 	gap: var(--spacing-xs);
 	padding-left: var(--spacing-l);
 	margin: var(--spacing-s);
+
+	li {
+		min-height: var(--spacing-l);
+	}
 
 	.item {
 		display: flex;
