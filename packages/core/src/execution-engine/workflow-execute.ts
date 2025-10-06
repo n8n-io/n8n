@@ -1653,7 +1653,12 @@ export class WorkflowExecute {
 									// from, which is critical for maintaining correct data
 									// lineage when nodes need to manipulate the item tracking
 									// chain.
-									if (typeof item.pairedItem === 'object' && 'sourceOverwrite' in item.pairedItem) {
+									const isToolExecution = !!executionData.metadata?.preserveSourceOverwrite;
+									if (
+										isToolExecution &&
+										typeof item.pairedItem === 'object' &&
+										'sourceOverwrite' in item.pairedItem
+									) {
 										return {
 											...item,
 											pairedItem: {
