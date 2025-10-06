@@ -6,7 +6,7 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from 'reka-ui';
-import { computed } from 'vue';
+import { computed, ref, nextTick, type Ref } from 'vue';
 
 export interface Props {
 	/**
@@ -58,6 +58,13 @@ const props = withDefaults(defineProps<Props>(), {
 	asChild: false,
 });
 
+// Type for the ScrollAreaRoot instance with the viewport property
+interface ScrollAreaRootWithViewport {
+	viewport?: Ref<HTMLElement | undefined> | HTMLElement;
+}
+
+const rootRef = ref<ScrollAreaRootWithViewport>();
+
 const viewportStyle = computed(() => {
 	const style: Record<string, string> = {};
 	if (props.maxHeight) {
@@ -68,10 +75,96 @@ const viewportStyle = computed(() => {
 	}
 	return style;
 });
+
+/**
+ * Gets the viewport element from the root ref
+ */
+function getViewportElement(): HTMLElement | undefined {
+	if (!rootRef.value?.viewport) return undefined;
+
+	const viewport = rootRef.value.viewport;
+
+	// If it's a Vue ref, unwrap it
+	if (typeof viewport === 'object' && 'value' in viewport) {
+		return viewport.value;
+	}
+
+	// If it's already an HTMLElement, use it directly
+	if (viewport instanceof HTMLElement) {
+		return viewport;
+	}
+
+	return undefined;
+}
+
+/**
+ * Scrolls the viewport to the bottom
+ * @param options - Options for controlling scroll behavior
+ */
+async function scrollToBottom(options: { smooth?: boolean } = {}) {
+	// Wait for DOM updates to ensure content is fully rendered
+	await nextTick();
+
+	const viewport = getViewportElement();
+
+	if (viewport && typeof viewport.scrollTo === 'function') {
+		viewport.scrollTo({
+			top: viewport.scrollHeight,
+			behavior: options.smooth ? 'smooth' : 'auto',
+		});
+	} else if (viewport) {
+		// Fallback for test environments or browsers that don't support scrollTo
+		viewport.scrollTop = viewport.scrollHeight;
+	}
+}
+
+/**
+ * Scrolls the viewport to the top
+ * @param options - Options for controlling scroll behavior
+ */
+async function scrollToTop(options: { smooth?: boolean } = {}) {
+	await nextTick();
+
+	const viewport = getViewportElement();
+
+	if (viewport && typeof viewport.scrollTo === 'function') {
+		viewport.scrollTo({
+			top: 0,
+			behavior: options.smooth ? 'smooth' : 'auto',
+		});
+	} else if (viewport) {
+		// Fallback for test environments or browsers that don't support scrollTo
+		viewport.scrollTop = 0;
+	}
+}
+
+/**
+ * Gets the current scroll position
+ */
+function getScrollPosition() {
+	const viewport = getViewportElement();
+
+	if (viewport) {
+		return {
+			top: viewport.scrollTop,
+			left: viewport.scrollLeft,
+			height: viewport.scrollHeight,
+			width: viewport.scrollWidth,
+		};
+	}
+	return null;
+}
+
+defineExpose({
+	scrollToBottom,
+	scrollToTop,
+	getScrollPosition,
+});
 </script>
 
 <template>
 	<ScrollAreaRoot
+		ref="rootRef"
 		:type="type"
 		:dir="dir"
 		:scroll-hide-delay="scrollHideDelay"

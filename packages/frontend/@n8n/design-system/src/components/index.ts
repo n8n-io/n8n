@@ -66,6 +66,7 @@ export { default as N8nUserStack } from './N8nUserStack';
 export { default as N8nUserInfo } from './N8nUserInfo';
 export { default as N8nUserSelect } from './N8nUserSelect';
 export { default as N8nUsersList } from './N8nUsersList';
+export { default as N8nPromptInputSuggestions } from './N8nPromptInputSuggestions';
 export { default as N8nResizeObserver } from './ResizeObserver';
 export { N8nKeyboardShortcut } from './N8nKeyboardShortcut';
 export { default as N8nIconPicker } from './N8nIconPicker';

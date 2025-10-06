@@ -200,9 +200,12 @@ function adjustHeight() {
 
 watch(
 	() => props.modelValue,
-	(newValue) => {
+	async (newValue) => {
 		textValue.value = newValue || '';
-		void nextTick(() => adjustHeight());
+		await nextTick();
+		// Wait for an additional animation frame to ensure DOM has fully updated
+		await new Promise(requestAnimationFrame);
+		adjustHeight();
 	},
 );
 
