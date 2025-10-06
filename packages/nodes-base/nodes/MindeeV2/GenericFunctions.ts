@@ -109,7 +109,8 @@ export async function pollMindee(
 
 	for (let i = 0; i < pollingTimeoutCounter; i++) {
 		if (
-			serverResponse.error ||
+			serverResponse.status ||
+			serverResponse.detail ||
 			(serverResponse?.job as IDataObject).error ||
 			jobStatus === 'Failed'
 		) {
