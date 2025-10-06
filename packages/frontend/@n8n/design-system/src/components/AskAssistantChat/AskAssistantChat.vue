@@ -264,8 +264,13 @@ let resizeObserver: ResizeObserver | null = null;
 let scrollLockActive = false;
 let scrollHandler: (() => void) | null = null;
 let userIsAtBottom = true;
+let isMounted = true;
 
 function setupInputObservers() {
+	if (!isMounted) {
+		return;
+	}
+
 	if (!inputWrapperRef.value || !scrollAreaRef.value || !('ResizeObserver' in window)) {
 		return;
 	}
@@ -292,12 +297,22 @@ function setupInputObservers() {
 
 	// Monitor input size changes
 	resizeObserver = new ResizeObserver(() => {
+		if (!isMounted) {
+			return;
+		}
+
 		// Only maintain scroll if user was at bottom
 		if (userIsAtBottom) {
 			scrollLockActive = true;
 			// Double RAF for layout stability
 			requestAnimationFrame(() => {
+				if (!isMounted) {
+					return;
+				}
 				requestAnimationFrame(() => {
+					if (!isMounted) {
+						return;
+					}
 					scrollToBottomImmediate();
 					// Check if we're still at bottom after auto-scroll
 					userIsAtBottom = isScrolledToBottom();
@@ -342,6 +357,7 @@ watch(
 );
 
 onUnmounted(() => {
+	isMounted = false;
 	cleanupInputObservers();
 });
 
