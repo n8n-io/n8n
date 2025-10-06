@@ -2,13 +2,20 @@
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useBuilderStore } from '@/stores/builder.store';
+import { useChatWindowStore } from '@/stores/chatWindow.store';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 import { N8nIcon } from '@n8n/design-system';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const builderStore = useBuilderStore();
+const chatWindowStore = useChatWindowStore();
 const i18n = useI18n();
+
+const isChatWindowOpen = computed(
+	() => chatWindowStore.isOpen && chatWindowStore.isBuilderModeActive,
+);
 
 const onAddFirstStepClick = () => {
 	if (nodeCreatorStore.isCreateNodeActive) {
@@ -21,7 +28,11 @@ const onAddFirstStepClick = () => {
 };
 
 async function onBuildWithAIClick() {
-	await builderStore.toggleChat();
+	chatWindowStore.toggle('builder');
+	if (chatWindowStore.isOpen && builderStore.chatMessages.length === 0) {
+		await builderStore.fetchBuilderCredits();
+		await builderStore.loadSessions();
+	}
 }
 </script>
 
@@ -55,12 +66,7 @@ async function onBuildWithAIClick() {
 
 		<!-- Build with AI Button -->
 		<div :class="$style.option">
-			<div
-				:class="[
-					$style.selectedButtonHighlight,
-					{ [$style.highlighted]: builderStore.isAssistantOpen },
-				]"
-			>
+			<div :class="[$style.selectedButtonHighlight, { [$style.highlighted]: isChatWindowOpen }]">
 				<button
 					:class="[$style.button]"
 					data-test-id="canvas-build-with-ai-button"

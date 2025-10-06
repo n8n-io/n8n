@@ -30,6 +30,7 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { useChatWindowStore } from './chatWindow.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
@@ -47,12 +48,11 @@ export const ENABLED_VIEWS = [
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
-	const chatWidth = ref<number>(DEFAULT_CHAT_WIDTH);
+	const chatWindowStore = useChatWindowStore();
 
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
-	const chatWindowOpen = ref<boolean>(false);
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
@@ -102,7 +102,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		return !sessionStarted || sessionExplicitlyEnded;
 	});
 
-	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
+	const isAssistantOpen = computed(
+		() => canShowAssistant.value && chatWindowStore.isOpen && chatWindowStore.isAssistantModeActive,
+	);
 
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
@@ -147,23 +149,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// As assistant sidebar opens and closes, use window width to calculate the container width
 	// This will prevent animation race conditions from making ndv twitchy
 	function openChat() {
-		chatWindowOpen.value = true;
+		chatWindowStore.open('assistant');
 		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatWidth.value,
-		};
 	}
 
 	function closeChat() {
-		chatWindowOpen.value = false;
+		chatWindowStore.close();
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
 		// Has to wait for longer than SlideTransition duration
 		setTimeout(() => {
-			uiStore.appGridDimensions = {
-				...uiStore.appGridDimensions,
-				width: window.innerWidth,
-			};
 			// If session has ended, reset the chat
 			if (isSessionEnded.value) {
 				resetAssistantChat();
@@ -172,7 +166,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function toggleChat() {
-		if (isAssistantOpen.value) {
+		if (chatWindowStore.isOpen) {
 			closeChat();
 		} else {
 			openChat();
@@ -180,7 +174,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
-		const read = chatWindowOpen.value;
+		const read = chatWindowStore.isOpen && chatWindowStore.isAssistantModeActive;
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
@@ -243,7 +237,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function updateWindowWidth(width: number) {
-		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
+		const clampedWidth = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
+		chatWindowStore.updateWidth(clampedWidth);
 	}
 
 	function isNodeErrorActive(context: ChatRequest.ErrorContext) {
@@ -827,6 +822,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			workflowExecutionDataStale.value = true;
 		},
 		{ immediate: true },
+	);
+
+	// Computed properties for backward compatibility
+	const chatWidth = computed(() => chatWindowStore.width);
+	const chatWindowOpen = computed(
+		() => chatWindowStore.isOpen && chatWindowStore.isAssistantModeActive,
 	);
 
 	return {

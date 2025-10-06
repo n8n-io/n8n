@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useChatWindowStore } from '@/stores/chatWindow.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
@@ -12,19 +13,16 @@ import HubSwitcher from '@/components/AskAssistant/HubSwitcher.vue';
 
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
+const chatWindowStore = useChatWindowStore();
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
-const isBuildMode = ref(builderStore.isAIBuilderEnabled);
-
-const chatWidth = computed(() => {
-	return isBuildMode.value ? builderStore.chatWidth : assistantStore.chatWidth;
-});
+const isBuildMode = computed(() => chatWindowStore.isBuilderModeActive);
+const chatWidth = computed(() => chatWindowStore.width);
 
 function onResize(data: { direction: string; x: number; width: number }) {
-	builderStore.updateWindowWidth(data.width);
-	assistantStore.updateWindowWidth(data.width);
+	chatWindowStore.updateWidth(data.width);
 }
 
 function onResizeDebounced(data: { direction: string; x: number; width: number }) {
@@ -32,38 +30,35 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 }
 
 async function toggleAssistantMode() {
-	const wasOpen = builderStore.isAssistantOpen || assistantStore.isAssistantOpen;
+	const wasOpen = chatWindowStore.isOpen;
 	const switchingToBuild = !isBuildMode.value;
-
-	isBuildMode.value = !isBuildMode.value;
+	const newMode = switchingToBuild ? 'builder' : 'assistant';
 
 	if (wasOpen) {
-		// If chat is already open, just toggle the window flags without reloading
+		// If chat is already open, just switch the mode
+		chatWindowStore.switchMode(newMode);
+
 		if (switchingToBuild) {
 			// Load sessions first if builder has no messages
 			if (builderStore.chatMessages.length === 0) {
 				await builderStore.fetchBuilderCredits();
 				await builderStore.loadSessions();
 			}
-			builderStore.chatWindowOpen = true;
-			assistantStore.chatWindowOpen = false;
-		} else {
-			assistantStore.chatWindowOpen = true;
-			builderStore.chatWindowOpen = false;
 		}
 	} else {
 		// Opening from closed state - use full open logic
-		if (isBuildMode.value) {
-			await builderStore.openChat();
+		if (switchingToBuild) {
+			chatWindowStore.open('builder');
+			await builderStore.fetchBuilderCredits();
+			await builderStore.loadSessions();
 		} else {
-			assistantStore.openChat();
+			chatWindowStore.open('assistant');
 		}
 	}
 }
 
 function onClose() {
-	builderStore.closeChat();
-	assistantStore.closeChat();
+	chatWindowStore.close();
 }
 
 function onSlideEnterComplete() {
@@ -78,13 +73,13 @@ const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode
 	if (['toggleChat', 'openChat', 'initErrorHelper', 'initCredHelp'].includes(name)) {
-		isBuildMode.value = false;
+		chatWindowStore.switchMode('assistant');
 	}
 });
 
 const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
 	if (['toggleChat', 'openChat', 'sendChatMessage'].includes(name)) {
-		isBuildMode.value = true;
+		chatWindowStore.switchMode('builder');
 	}
 });
 

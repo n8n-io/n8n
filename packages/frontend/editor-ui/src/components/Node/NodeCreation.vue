@@ -21,6 +21,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
+import { useChatWindowStore } from '@/stores/chatWindow.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
@@ -50,6 +51,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
+const chatWindowStore = useChatWindowStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -99,11 +101,15 @@ function toggleFocusPanel() {
 
 async function onAskAssistantButtonClick() {
 	if (builderStore.isAIBuilderEnabled) {
-		await builderStore.toggleChat();
+		chatWindowStore.toggle('builder');
+		if (chatWindowStore.isOpen && builderStore.chatMessages.length === 0) {
+			await builderStore.fetchBuilderCredits();
+			await builderStore.loadSessions();
+		}
 	} else {
-		assistantStore.toggleChat();
+		chatWindowStore.toggle('assistant');
 	}
-	if (builderStore.isAssistantOpen || assistantStore.isAssistantOpen) {
+	if (chatWindowStore.isOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',

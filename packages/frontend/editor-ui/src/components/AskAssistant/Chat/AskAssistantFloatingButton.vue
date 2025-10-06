@@ -3,12 +3,14 @@ import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
+import { useChatWindowStore } from '@/stores/chatWindow.store';
 import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
 
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
+const chatWindowStore = useChatWindowStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
 
@@ -28,11 +30,21 @@ const lastUnread = computed(() => {
 
 const onClick = async () => {
 	if (builderStore.isAIBuilderEnabled) {
-		await builderStore.toggleChat();
+		// Toggle with appropriate mode based on current state
+		if (chatWindowStore.isOpen && chatWindowStore.isBuilderModeActive) {
+			chatWindowStore.close();
+		} else {
+			chatWindowStore.open('builder');
+			if (builderStore.chatMessages.length === 0) {
+				await builderStore.fetchBuilderCredits();
+				await builderStore.loadSessions();
+			}
+		}
 	} else {
-		assistantStore.toggleChat();
+		// For assistant-only mode
+		chatWindowStore.toggle('assistant');
 	}
-	if (builderStore.isAssistantOpen || assistantStore.isAssistantOpen) {
+	if (chatWindowStore.isOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',

@@ -24,6 +24,7 @@ export const STORES = {
 	COLLABORATION: 'collaboration',
 	ASSISTANT: 'assistant',
 	BUILDER: 'builder',
+	CHAT_WINDOW: 'chatWindow',
 	BECOME_TEMPLATE_CREATOR: 'becomeTemplateCreator',
 	PROJECTS: 'projects',
 	API_KEYS: 'apiKeys',

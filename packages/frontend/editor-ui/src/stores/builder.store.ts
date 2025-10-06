@@ -1,10 +1,10 @@
 import type { VIEWS } from '@/constants';
 import {
 	DEFAULT_NEW_WORKFLOW_NAME,
-	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
+	ASK_AI_SLIDE_OUT_DURATION_MS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -16,9 +16,8 @@ import { useSettingsStore } from './settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
-import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import { MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
 import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
@@ -33,15 +32,15 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { useCredentialsStore } from './credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/utils/typesUtils';
+import { useChatWindowStore } from './chatWindow.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
-	const chatWidth = ref<number>(DEFAULT_CHAT_WIDTH);
+	const chatWindowStore = useChatWindowStore();
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
-	const chatWindowOpen = ref<boolean>(false);
 	const streaming = ref<boolean>(false);
 	const assistantThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
@@ -54,7 +53,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
-	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
@@ -95,7 +93,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
-	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
+	const isAssistantOpen = computed(
+		() => canShowAssistant.value && chatWindowStore.isOpen && chatWindowStore.isBuilderModeActive,
+	);
 
 	const isAIBuilderEnabled = computed(() => {
 		// Check license first
@@ -163,32 +163,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value = [];
 		await fetchBuilderCredits();
 		await loadSessions();
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatWidth.value,
-		};
-		chatWindowOpen.value = true;
+		chatWindowStore.open('builder');
 	}
 
 	/**
-	 * Closes the chat panel with a delayed viewport restoration.
-	 * The delay (ASK_AI_SLIDE_OUT_DURATION_MS + 50ms) ensures the slide-out animation
-	 * completes before expanding the canvas, preventing visual jarring.
-	 * Messages remain in memory.
+	 * Closes the chat panel and wait for slide to complete to clear memory.
 	 */
 	function closeChat() {
-		chatWindowOpen.value = false;
-		// Looks smoother if we wait for slide animation to finish before updating the grid width
-		// Has to wait for longer than SlideTransition duration
+		chatWindowStore.close();
 		setTimeout(() => {
-			if (!window) {
-				return; // for unit testing
-			}
-
-			uiStore.appGridDimensions = {
-				...uiStore.appGridDimensions,
-				width: window.innerWidth,
-			};
+			resetBuilderChat();
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
@@ -196,7 +180,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Toggles between open and closed state for the chat panel.
 	 */
 	async function toggleChat() {
-		if (isAssistantOpen.value) {
+		if (chatWindowStore.isOpen) {
 			closeChat();
 		} else {
 			await openChat();
@@ -209,7 +193,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * to ensure usability on various screen sizes.
 	 */
 	function updateWindowWidth(width: number) {
-		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
+		const clampedWidth = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
+		chatWindowStore.updateWidth(clampedWidth);
 	}
 
 	// Message handling functions
@@ -592,10 +577,20 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		() => route.name,
 		(newRoute) => {
 			// Close the chat window when navigating away from canvas/enabled views
-			if (!ENABLED_VIEWS.includes(newRoute as VIEWS) && chatWindowOpen.value) {
-				chatWindowOpen.value = false;
+			if (
+				!ENABLED_VIEWS.includes(newRoute as VIEWS) &&
+				chatWindowStore.isOpen &&
+				chatWindowStore.isBuilderModeActive
+			) {
+				chatWindowStore.close();
 			}
 		},
+	);
+
+	// Computed properties for backward compatibility
+	const chatWidth = computed(() => chatWindowStore.width);
+	const chatWindowOpen = computed(
+		() => chatWindowStore.isOpen && chatWindowStore.isBuilderModeActive,
 	);
 
 	// Public API
