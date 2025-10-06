@@ -17,6 +17,9 @@
 					"__rl": true,
 					"value": "123",
 					"mode": "id"
+				},
+				"options": {
+					"deletePermanently": true
 				}
 			},
 			"type": "n8n-nodes-base.googleDrive",

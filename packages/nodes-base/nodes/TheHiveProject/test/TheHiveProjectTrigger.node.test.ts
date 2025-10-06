@@ -12,7 +12,7 @@ describe('TheHiveProjectTrigger', () => {
 					_type: 'Alert',
 					title: 'Test Alert',
 					description: 'Test alert description',
-					severity: 2,
+					severity: '2',
 					date: 1698753600000,
 					tags: ['malware', 'test'],
 					tlp: 2,
@@ -65,7 +65,7 @@ describe('TheHiveProjectTrigger', () => {
 					_type: 'Case',
 					title: 'Test Case',
 					description: 'Test case description',
-					severity: 1,
+					severity: '1',
 					status: 'Open',
 				},
 			};
@@ -92,7 +92,7 @@ describe('TheHiveProjectTrigger', () => {
 				action: 'Create',
 				objectType: 'Alert',
 				object: {
-					severity: 2,
+					severity: '2',
 					title: 'High Priority Alert',
 				},
 			};
@@ -106,7 +106,7 @@ describe('TheHiveProjectTrigger', () => {
 								{
 									field: 'object.severity',
 									operator: 'equal',
-                        value: '2',
+									value: '2',
 								},
 							],
 						},
@@ -125,7 +125,7 @@ describe('TheHiveProjectTrigger', () => {
 				action: 'Create',
 				objectType: 'Alert',
 				object: {
-					severity: 1,
+					severity: '1',
 					title: 'Low Priority Alert',
 				},
 			};
@@ -139,7 +139,7 @@ describe('TheHiveProjectTrigger', () => {
 								{
 									field: 'object.severity',
 									operator: 'equal',
-									value: 2,
+									value: '2',
 								},
 							],
 						},
@@ -157,7 +157,7 @@ describe('TheHiveProjectTrigger', () => {
 				action: 'Create',
 				objectType: 'Alert',
 				object: {
-					severity: 1,
+					severity: '1',
 					title: 'Low Priority Alert',
 				},
 			};
@@ -171,7 +171,7 @@ describe('TheHiveProjectTrigger', () => {
 								{
 									field: 'object.severity',
 									operator: 'notEqual',
-									value: 2,
+									value: '2',
 								},
 							],
 						},
@@ -391,7 +391,7 @@ describe('TheHiveProjectTrigger', () => {
 					_type: 'Case',
 					title: 'Test Case',
 					description: 'Test case description',
-					severity: 1,
+					severity: '1',
 					status: 'Open',
 					tags: ['investigation'],
 				},
