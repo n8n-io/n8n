@@ -16,7 +16,7 @@ import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constan
 import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
-} from './data-store.types';
+} from './data-table.types';
 import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
