@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { EnvironmentVariable } from '@/Interface';
-import * as environmentsApi from '@/api/environments.ee';
+import type { EnvironmentVariable } from './environments.types';
+import * as environmentsApi from './environments.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ExpressionError } from 'n8n-workflow';
 
