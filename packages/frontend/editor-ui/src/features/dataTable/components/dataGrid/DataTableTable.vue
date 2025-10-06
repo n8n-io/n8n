@@ -7,30 +7,8 @@ import type {
 } from '@/features/dataTable/dataTable.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent } from 'ag-grid-community';
-import {
-	ModuleRegistry,
-	ClientSideRowModelModule,
-	TextEditorModule,
-	LargeTextEditorModule,
-	ColumnAutoSizeModule,
-	CheckboxEditorModule,
-	NumberEditorModule,
-	RowSelectionModule,
-	RenderApiModule,
-	DateEditorModule,
-	ClientSideRowModelApiModule,
-	ValidationModule,
-	UndoRedoEditModule,
-	CellStyleModule,
-	ScrollApiModule,
-	PinnedRowModule,
-	ColumnApiModule,
-	TextFilterModule,
-	NumberFilterModule,
-	DateFilterModule,
-	EventApiModule,
-} from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataTable/components/dataGrid/n8nTheme';
+import { registerAgGridModulesOnce } from '@/features/dataTable/components/dataGrid/registerAgGridModulesOnce';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
 import { DATA_TABLE_HEADER_HEIGHT, DATA_TABLE_ROW_HEIGHT } from '@/features/dataTable/constants';
 import { useDataTablePagination } from '@/features/dataTable/composables/useDataTablePagination';
@@ -41,29 +19,7 @@ import { useDataTableColumnFilters } from '@/features/dataTable/composables/useD
 import { useI18n } from '@n8n/i18n';
 
 import { ElPagination } from 'element-plus';
-// Register only the modules we actually use
-ModuleRegistry.registerModules([
-	ValidationModule, // This module allows us to see AG Grid errors in browser console
-	ClientSideRowModelModule,
-	TextEditorModule,
-	LargeTextEditorModule,
-	ColumnAutoSizeModule,
-	CheckboxEditorModule,
-	NumberEditorModule,
-	RowSelectionModule,
-	RenderApiModule,
-	DateEditorModule,
-	ClientSideRowModelApiModule,
-	UndoRedoEditModule,
-	CellStyleModule,
-	PinnedRowModule,
-	ScrollApiModule,
-	ColumnApiModule,
-	TextFilterModule,
-	NumberFilterModule,
-	DateFilterModule,
-	EventApiModule,
-]);
+registerAgGridModulesOnce();
 
 type Props = {
 	dataTable: DataTable;
@@ -88,10 +44,9 @@ const dataTableGridBase = useDataTableGridBase({
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
+const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
 	gridApi: dataTableGridBase.gridApi,
 	colDefs: dataTableGridBase.colDefs,
-	setGridData: dataTableGridBase.setGridData,
 });
 
 const {
@@ -155,7 +110,6 @@ const initialize = async (params: GridReadyEvent) => {
 	dataTableGridBase.onGridReady(params);
 	dataTableGridBase.loadColumns(props.dataTable.columns);
 	await dataTableOperations.fetchDataTableRows();
-	initializeFilters();
 };
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;

@@ -47,6 +47,7 @@ import {
 	getBooleanColumnFilterOptions,
 } from '@/features/dataTable/utils/columnUtils';
 import { useI18n } from '@n8n/i18n';
+import { GRID_FILTER_CONFIG } from '@/features/dataTable/utils/filterMappings';
 
 export const useDataTableGridBase = ({
 	gridContainerRef,
@@ -85,6 +86,7 @@ export const useDataTableGridBase = ({
 		if (gridContainerRef.value) {
 			params.api.setGridOption('popupParent', gridContainerRef.value);
 		}
+		params.api.setGridOption('defaultColDef', GRID_FILTER_CONFIG.defaultColDef);
 	};
 
 	const setGridData = ({
@@ -136,6 +138,7 @@ export const useDataTableGridBase = ({
 		const columnDef: ColDef = {
 			colId: col.id,
 			field: col.name,
+			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
 			headerName: col.name,
 			sortable: true,
 			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
@@ -230,7 +233,6 @@ export const useDataTableGridBase = ({
 				{
 					editable: false,
 					sortable: true,
-					filter: false,
 					suppressMovable: true,
 					lockPosition: true,
 					minWidth: DATA_TABLE_ID_COLUMN_WIDTH,

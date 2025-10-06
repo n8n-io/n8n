@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, type Ref } from 'vue';
 import { useDataTableColumnFilters } from '../useDataTableColumnFilters';
 import type { ColDef, GridApi } from 'ag-grid-community';
+import { GRID_FILTER_CONFIG } from '../utils/filterMappings';
 
 describe('useDataTableColumnFilters', () => {
 	let mockGridApi: GridApi;
@@ -24,7 +25,7 @@ describe('useDataTableColumnFilters', () => {
 	});
 
 	describe('initializeFilters', () => {
-		it('should disable filters for special columns', () => {
+		it('should set defaultColDef only and not mutate colDefs', () => {
 			const gridApi = ref(mockGridApi);
 			const { initializeFilters } = useDataTableColumnFilters({
 				gridApi,
@@ -34,14 +35,16 @@ describe('useDataTableColumnFilters', () => {
 
 			initializeFilters();
 
-			const expectedColDefs = [
+			expect(mockGridApi.setGridOption).toHaveBeenCalledWith(
+				'defaultColDef',
+				GRID_FILTER_CONFIG.defaultColDef,
+			);
+			expect(colDefs.value).toEqual([
 				{ field: 'name', colId: 'name' },
 				{ field: 'age', colId: 'age' },
-				{ field: 'add-column', colId: 'add-column', filter: false },
-			];
-
-			expect(colDefs.value).toEqual(expectedColDefs);
-			expect(mockSetGridData).toHaveBeenCalledWith({ colDefs: expectedColDefs });
+				{ field: 'add-column', colId: 'add-column' },
+			]);
+			expect(mockSetGridData).not.toHaveBeenCalled();
 		});
 	});
 

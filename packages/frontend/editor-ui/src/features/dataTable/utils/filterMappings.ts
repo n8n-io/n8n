@@ -1,8 +1,7 @@
+import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataTable/constants';
 import type { BackendFilterCondition, FilterOperation } from '../types/dataTableFilters.types';
 
-export const SPECIAL_COLUMNS = ['add-column', 'ag-Grid-SelectionColumn'] as const;
-export const isSpecialColumn = (value: unknown): value is (typeof SPECIAL_COLUMNS)[number] =>
-	typeof value === 'string' && (SPECIAL_COLUMNS as readonly string[]).includes(value);
+export const SPECIAL_COLUMNS = [DEFAULT_ID_COLUMN_NAME, 'add-column', 'ag-Grid-SelectionColumn'];
 export const MAX_CONDITIONS = 1;
 
 export const GRID_FILTER_CONFIG = {
