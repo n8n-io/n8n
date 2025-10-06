@@ -644,7 +644,7 @@ export class SourceControlStatusService {
 		}
 
 		const projectsMissingInLocal = projectsRemote
-			.filter((remote) => projectsLocal.findIndex((local) => local.id === remote.id) === -1)
+			.filter((remote) => !projectsLocal.some((local) => local.id === remote.id))
 			.filter(
 				// If we have out of scope projects, these are projects that are not
 				// visible locally, but exist locally and are available in remote
@@ -653,7 +653,7 @@ export class SourceControlStatusService {
 			);
 
 		const projectsMissingInRemote = projectsLocal.filter(
-			(local) => projectsRemote.findIndex((remote) => remote.id === local.id) === -1,
+			(local) => !projectsRemote.some((remote) => remote.id === local.id),
 		);
 
 		const projectsModifiedInEither: ExportableProjectWithFileName[] = [];
