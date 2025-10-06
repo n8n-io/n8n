@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '../evaluation.store';
 import TestRunDetailView from './TestRunDetailView.vue';
-import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
+import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
 import type { IWorkflowDb } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 

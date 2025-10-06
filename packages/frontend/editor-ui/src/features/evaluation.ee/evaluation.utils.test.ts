@@ -5,8 +5,8 @@ import {
 	getDefaultOrderedColumns,
 	getTestCasesColumns,
 	getTestTableHeaders,
-} from './utils';
-import type { TestCaseExecutionRecord } from '@/api/evaluation.ee';
+} from './evaluation.utils';
+import type { TestCaseExecutionRecord } from './evaluation.api';
 
 describe('utils', () => {
 	describe('applyCachedSortOrder', () => {

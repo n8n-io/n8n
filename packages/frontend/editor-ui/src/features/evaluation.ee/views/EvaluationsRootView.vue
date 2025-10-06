@@ -7,13 +7,13 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '../evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 import { computed, watch } from 'vue';
-import EvaluationsPaywall from '@/components/Evaluations.ee/Paywall/EvaluationsPaywall.vue';
-import SetupWizard from '@/components/Evaluations.ee/SetupWizard/SetupWizard.vue';
+import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
+import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
 
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{

@@ -18,7 +18,6 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from './composables/useCalloutHelpers';
 
@@ -67,9 +66,12 @@ const SettingsExternalSecrets = async () =>
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
-const EvaluationsView = async () => await import('@/views/Evaluations.ee/EvaluationsView.vue');
+const EvaluationsView = async () =>
+	await import('@/features/evaluation.ee/views/EvaluationsView.vue');
+const TestRunDetailView = async () =>
+	await import('@/features/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
-	await import('@/views/Evaluations.ee/EvaluationsRootView.vue');
+	await import('@/features/evaluation.ee/views/EvaluationsRootView.vue');
 const PrebuiltAgentTemplatesView = async () =>
 	await import('@/views/PrebuiltAgentTemplatesView.vue');
 
