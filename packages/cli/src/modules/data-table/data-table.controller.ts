@@ -42,7 +42,7 @@ export class DataTableController {
 	constructor(private readonly dataTableService: DataTableService) {}
 
 	@Post('/')
-	@ProjectScope('dataStore:create')
+	@ProjectScope('dataTable:create')
 	async createDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -62,7 +62,7 @@ export class DataTableController {
 	}
 
 	@Get('/')
-	@ProjectScope('dataStore:listProject')
+	@ProjectScope('dataTable:listProject')
 	async listProjectDataTables(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -76,7 +76,7 @@ export class DataTableController {
 	}
 
 	@Patch('/:dataTableId')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async updateDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -99,7 +99,7 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId')
-	@ProjectScope('dataStore:delete')
+	@ProjectScope('dataTable:delete')
 	async deleteDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -119,7 +119,7 @@ export class DataTableController {
 	}
 
 	@Get('/:dataTableId/columns')
-	@ProjectScope('dataStore:read')
+	@ProjectScope('dataTable:read')
 	async getColumns(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -139,7 +139,7 @@ export class DataTableController {
 	}
 
 	@Post('/:dataTableId/columns')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async addColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -165,7 +165,7 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId/columns/:columnId')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async deleteColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -186,7 +186,7 @@ export class DataTableController {
 	}
 
 	@Patch('/:dataTableId/columns/:columnId/move')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async moveColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -215,7 +215,7 @@ export class DataTableController {
 	}
 
 	@Get('/:dataTableId/rows')
-	@ProjectScope('dataStore:readRow')
+	@ProjectScope('dataTable:readRow')
 	async getDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -249,7 +249,7 @@ export class DataTableController {
 		dto: AddDataTableRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataTableRowReturn : Pick<DataTableRowReturn, 'id'>>>;
 	@Post('/:dataTableId/insert')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async appendDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -277,7 +277,7 @@ export class DataTableController {
 	}
 
 	@Post('/:dataTableId/upsert')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async upsertDataTableRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -329,7 +329,7 @@ export class DataTableController {
 	}
 
 	@Patch('/:dataTableId/rows')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async updateDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -381,7 +381,7 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId/rows')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async deleteDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
