@@ -1,18 +1,69 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { type ApiKey, type AuthenticatedRequest } from '@n8n/db';
+import { type ApiKey, type AuthenticatedRequest, WorkflowEntity, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
+import { type INode } from 'n8n-workflow';
 
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-const createReq = (body: unknown): AuthenticatedRequest =>
-	({ body }) as unknown as AuthenticatedRequest;
+const createReq = (
+	body: unknown,
+	overrides: Partial<AuthenticatedRequest> = {},
+): AuthenticatedRequest => ({ body, ...overrides }) as unknown as AuthenticatedRequest;
+
+const createRole = () =>
+	Object.assign(new Role(), {
+		slug: 'member',
+		displayName: 'Member',
+		description: null,
+		systemRole: false,
+		roleType: 'global' as const,
+		projectRelations: [],
+		scopes: [],
+	});
+
+const createUser = (overrides: Partial<User> = {}) =>
+	Object.assign(
+		new User(),
+		{
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+			password: null,
+			personalizationAnswers: null,
+			settings: null,
+			role: createRole(),
+			authIdentities: [],
+			apiKeys: [],
+			sharedWorkflows: [],
+			sharedCredentials: [],
+			projectRelations: [],
+			disabled: false,
+			mfaEnabled: false,
+			mfaSecret: null,
+			mfaRecoveryCodes: [],
+			lastActiveAt: null,
+			isPending: false,
+		},
+		overrides,
+	);
+
+const createRes = () => {
+	const res = mock<Response>();
+	res.status.mockReturnThis();
+	res.json.mockReturnThis();
+	return res;
+};
 
 describe('McpSettingsController', () => {
 	const logger = mock<Logger>();
@@ -35,6 +86,10 @@ describe('McpSettingsController', () => {
 		controller = Container.get(McpSettingsController);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	describe('updateSettings', () => {
 		test('disables MCP access correctly', async () => {
 			const req = createReq({ mcpAccessEnabled: false });
@@ -42,7 +97,7 @@ describe('McpSettingsController', () => {
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
-			const res = new Response();
+			const res = createRes();
 			const result = await controller.updateSettings(req, res, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
@@ -56,7 +111,7 @@ describe('McpSettingsController', () => {
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
-			const res = new Response();
+			const res = createRes();
 			const result = await controller.updateSettings(req, res, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
@@ -72,7 +127,7 @@ describe('McpSettingsController', () => {
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockRejectedValue(error);
 
-			const res = new Response();
+			const res = createRes();
 			const result = await controller.updateSettings(req, res, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
@@ -90,7 +145,7 @@ describe('McpSettingsController', () => {
 	});
 
 	describe('getApiKeyForMcpServer', () => {
-		const mockUser = { id: 'user123', role: { slug: 'member' } };
+		const mockUser = createUser({ id: 'user123', email: 'user123@example.com' });
 		const mockApiKey = {
 			id: 'api-key-123',
 			key: 'mcp-key-abc123',
@@ -99,7 +154,7 @@ describe('McpSettingsController', () => {
 		} as unknown as ApiKey;
 
 		test('returns API key from getOrCreateApiKey', async () => {
-			const req = { user: mockUser } as AuthenticatedRequest;
+			const req = createReq({}, { user: mockUser });
 			mcpServerApiKeyService.getOrCreateApiKey.mockResolvedValue(mockApiKey);
 
 			const result = await controller.getApiKeyForMcpServer(req);
@@ -110,7 +165,7 @@ describe('McpSettingsController', () => {
 	});
 
 	describe('rotateApiKeyForMcpServer', () => {
-		const mockUser = { id: 'user123', role: { slug: 'member' } };
+		const mockUser = createUser({ id: 'user123', email: 'user123@example.com' });
 		const mockApiKey = {
 			id: 'api-key-123',
 			key: 'mcp-key-abc123',
@@ -119,7 +174,7 @@ describe('McpSettingsController', () => {
 		} as unknown as ApiKey;
 
 		test('successfully rotates API key', async () => {
-			const req = { user: mockUser } as AuthenticatedRequest;
+			const req = createReq({}, { user: mockUser });
 
 			mcpServerApiKeyService.rotateMcpServerApiKey.mockResolvedValue(mockApiKey);
 
@@ -127,6 +182,150 @@ describe('McpSettingsController', () => {
 
 			expect(mcpServerApiKeyService.rotateMcpServerApiKey).toHaveBeenCalledWith(mockUser);
 			expect(result).toEqual(mockApiKey);
+		});
+	});
+
+	describe('toggleWorkflowMCPAccess', () => {
+		const user = createUser();
+		const workflowId = 'workflow-1';
+
+		const createWebhookNode = (overrides: Partial<INode> = {}): INode => ({
+			id: 'node-1',
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...overrides,
+		});
+
+		const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => {
+			const entity = new WorkflowEntity();
+			entity.id = workflowId;
+			entity.active = true;
+			entity.nodes = [createWebhookNode()];
+			entity.settings = { saveManualExecutions: true };
+			entity.versionId = 'current-version-id';
+			return Object.assign(entity, overrides);
+		};
+
+		test('throws when workflow cannot be accessed', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+			const req = createReq({}, { user });
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
+					availableInMCP: true,
+				}),
+			).rejects.toThrow(
+				new NotFoundError(
+					'Could not load the workflow - you can only access workflows available to you',
+				),
+			);
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
+		test('rejects enabling MCP for inactive workflows', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ active: false }),
+			);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: true,
+				}),
+			).rejects.toThrow(
+				new BadRequestError('Only active workflows can be made available in the MCP'),
+			);
+
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
+		test('rejects enabling MCP without active webhook nodes', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({
+					nodes: [
+						createWebhookNode({ disabled: true }),
+						{
+							id: 'node-2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [10, 10],
+							parameters: {},
+						},
+					],
+				}),
+			);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: true,
+				}),
+			).rejects.toThrow(
+				new BadRequestError('Only workflows with active webhooks can be made available in the MCP'),
+			);
+
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
+		test('persists MCP availability when validation passes', async () => {
+			const workflow = createWorkflow();
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: true },
+				versionId: 'updated-version-id',
+			} as unknown as WorkflowEntity);
+
+			const req = createReq({}, { user });
+			const response = await controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
+				availableInMCP: true,
+			});
+
+			expect(workflowService.update).toHaveBeenCalledTimes(1);
+			const updateArgs = workflowService.update.mock.calls[0];
+			expect(updateArgs[0]).toEqual(user);
+			expect(updateArgs[1]).toBeInstanceOf(WorkflowEntity);
+			expect(updateArgs[1].settings).toEqual({ saveManualExecutions: true, availableInMCP: true });
+			expect(updateArgs[1].versionId).toEqual('current-version-id');
+			expect(updateArgs[2]).toEqual(workflowId);
+			expect(updateArgs[5]).toEqual(true);
+
+			expect(response).toEqual({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: true },
+				versionId: 'updated-version-id',
+			});
+		});
+
+		test('allows disabling MCP access without validations', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ active: false }),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: false },
+				versionId: 'client-version',
+			} as unknown as WorkflowEntity);
+
+			const req = createReq({}, { user });
+			const response = await controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
+				availableInMCP: false,
+				versionId: 'client-version',
+			});
+
+			expect(workflowService.update).toHaveBeenCalledTimes(1);
+			expect(workflowService.update.mock.calls[0][1].settings).toEqual({
+				saveManualExecutions: true,
+				availableInMCP: false,
+			});
+
+			expect(response).toEqual({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: false },
+				versionId: 'client-version',
+			});
 		});
 	});
 });
