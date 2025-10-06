@@ -762,14 +762,10 @@ export class SourceControlStatusService {
 		local: ExportableProjectWithFileName,
 		remote: ExportableProjectWithFileName,
 	): boolean {
-		const isIconModified =
-			!remote.icon && !!local.icon
-				? true
-				: !!remote.icon && !local.icon
-					? true
-					: !!remote.icon && !!local.icon
-						? remote.icon.type !== local.icon.type || remote.icon.value !== local.icon.value
-						: false;
+		const isIconModified = this.isProjectIconModified({
+			localIcon: local.icon,
+			remoteIcon: remote.icon,
+		});
 
 		return (
 			isIconModified ||
@@ -777,5 +773,25 @@ export class SourceControlStatusService {
 			remote.name !== local.name ||
 			remote.description !== local.description
 		);
+	}
+
+	private isProjectIconModified({
+		localIcon,
+		remoteIcon,
+	}: {
+		localIcon: ExportableProjectWithFileName['icon'];
+		remoteIcon: ExportableProjectWithFileName['icon'];
+	}): boolean {
+		// If one has an icon and the other doesn't, it's modified
+		if (!remoteIcon && !!localIcon) return true;
+		if (!!remoteIcon && !localIcon) return true;
+
+		// If both have icons, compare their properties
+		if (!!remoteIcon && !!localIcon) {
+			return remoteIcon.type !== localIcon.type || remoteIcon.value !== localIcon.value;
+		}
+
+		// Neither has an icon, so no modification
+		return false;
 	}
 }
