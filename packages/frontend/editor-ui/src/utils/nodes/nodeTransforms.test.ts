@@ -72,11 +72,6 @@ describe('getParameterDisplayableOptions', () => {
 			{
 				name: 'Option 3',
 				value: 'option3',
-				disabledOptions: {
-					show: {
-						testParam: ['disableValue'],
-					},
-				},
 			},
 			{
 				name: 'Option 4',
@@ -149,10 +144,10 @@ describe('getParameterDisplayableOptions', () => {
 			);
 		});
 
-		it('should return options without displayOptions or disabledOptions unchanged', () => {
+		it('should return options without displayOptions unchanged', () => {
 			const result = getParameterDisplayableOptions(testOptions, mockNode);
 
-			// Option 1 has no displayOptions or disabledOptions, so it should be included
+			// Option 1 has no displayOptions, so it should be included
 			expect(result).toContainEqual(testOptions[0]);
 		});
 
@@ -166,28 +161,11 @@ describe('getParameterDisplayableOptions', () => {
 
 			// Should include options without displayOptions
 			expect(result).toContainEqual(testOptions[0]); // Option 1 - no displayOptions
-			expect(result).toContainEqual(testOptions[2]); // Option 3 - has disabledOptions, not displayOptions
+			expect(result).toContainEqual(testOptions[2]); // Option 3 - no displayOptions
 
 			// Should exclude options with displayOptions when displayParameter returns false
 			expect(result).not.toContainEqual(testOptions[1]); // Option 2 - has displayOptions
 			expect(result).not.toContainEqual(testOptions[3]); // Option 4 - has displayOptions
-		});
-
-		it('should filter options based on disabledOptions when displayParameter returns false', () => {
-			// Mock displayParameter to return false for options with disabledOptions
-			vi.mocked(NodeHelpers.displayParameter).mockImplementation((_nodeParameters, option) => {
-				return !option.disabledOptions;
-			});
-
-			const result = getParameterDisplayableOptions(testOptions, mockNode);
-
-			// Should include options without disabledOptions
-			expect(result).toContainEqual(testOptions[0]); // Option 1 - no disabledOptions
-			expect(result).toContainEqual(testOptions[1]); // Option 2 - has displayOptions, not disabledOptions
-			expect(result).toContainEqual(testOptions[3]); // Option 4 - has displayOptions, not disabledOptions
-
-			// Should exclude options with disabledOptions when displayParameter returns false
-			expect(result).not.toContainEqual(testOptions[2]); // Option 3 - has disabledOptions
 		});
 
 		it('should call displayParameter with correct parameters for displayOptions', () => {
@@ -213,20 +191,6 @@ describe('getParameterDisplayableOptions', () => {
 			);
 		});
 
-		it('should call displayParameter with correct parameters for disabledOptions', () => {
-			getParameterDisplayableOptions(testOptions, mockNode);
-
-			// Should be called for options with disabledOptions
-			expect(NodeHelpers.displayParameter).toHaveBeenCalledWith(
-				{ testParam: 'testValue' },
-				testOptions[2],
-				mockNode,
-				mockNodeType,
-				undefined,
-				'disabledOptions',
-			);
-		});
-
 		it('should use fallback parameters when getNodeParameters returns null', () => {
 			vi.mocked(NodeHelpers.getNodeParameters).mockReturnValue(null);
 
@@ -241,25 +205,6 @@ describe('getParameterDisplayableOptions', () => {
 				undefined,
 				expect.any(String),
 			);
-		});
-
-		it('should handle mixed displayOptions and disabledOptions correctly', () => {
-			// Mock displayParameter to return true for displayOptions and false for disabledOptions
-			vi.mocked(NodeHelpers.displayParameter).mockImplementation(
-				(_nodeParameters, _option, _node, _nodeType, _path, displayKey) => {
-					return displayKey === 'displayOptions';
-				},
-			);
-
-			const result = getParameterDisplayableOptions(testOptions, mockNode);
-
-			// Should include options without conditions and options with displayOptions (returning true)
-			expect(result).toContainEqual(testOptions[0]); // Option 1 - no conditions
-			expect(result).toContainEqual(testOptions[1]); // Option 2 - displayOptions returning true
-			expect(result).toContainEqual(testOptions[3]); // Option 4 - displayOptions returning true
-
-			// Should exclude options with disabledOptions (returning false)
-			expect(result).not.toContainEqual(testOptions[2]); // Option 3 - disabledOptions returning false
 		});
 
 		it('should handle empty options array', () => {
@@ -284,39 +229,6 @@ describe('getParameterDisplayableOptions', () => {
 	});
 
 	describe('edge cases', () => {
-		it('should handle options with both displayOptions and disabledOptions', () => {
-			const optionWithBoth: INodePropertyOptions = {
-				name: 'Option with both',
-				value: 'optionBoth',
-				displayOptions: {
-					show: {
-						testParam: ['showValue'],
-					},
-				},
-				disabledOptions: {
-					show: {
-						testParam: ['disableValue'],
-					},
-				},
-			};
-
-			vi.mocked(NodeHelpers.displayParameter).mockReturnValue(true);
-
-			const result = getParameterDisplayableOptions([optionWithBoth], mockNode);
-
-			// Should use disabledOptions when both are present (based on the implementation)
-			expect(NodeHelpers.displayParameter).toHaveBeenCalledWith(
-				{ testParam: 'testValue' },
-				optionWithBoth,
-				mockNode,
-				mockNodeType,
-				undefined,
-				'disabledOptions',
-			);
-
-			expect(result).toContainEqual(optionWithBoth);
-		});
-
 		it('should handle complex node parameters', () => {
 			const complexNode = {
 				...mockNode,

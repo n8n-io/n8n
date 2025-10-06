@@ -131,14 +131,14 @@ export function getParameterDisplayableOptions(
 
 	return options.filter((option) => {
 		if (!option.displayOptions && !option.disabledOptions) return true;
-		const displayKey = option.disabledOptions ? 'disabledOptions' : 'displayOptions';
+
 		return NodeHelpers.displayParameter(
 			nodeParameters,
 			option,
 			node,
 			nodeType,
 			undefined,
-			displayKey,
+			'displayOptions',
 		);
 	});
 }

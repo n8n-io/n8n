@@ -1621,7 +1621,9 @@ export interface INodePropertyOptions {
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
 	displayOptions?: IDisplayOptions;
-	disabledOptions?: IDisplayOptions;
+	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
+	// it needs to be implemented, if needed
+	disabledOptions?: undefined;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
