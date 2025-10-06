@@ -1,4 +1,4 @@
-import type { IConnection, INode } from 'n8n-workflow';
+import type { IConnections, INode, IRun } from 'n8n-workflow';
 import { createDeferredPromise, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
 import * as Helpers from '@test/helpers';
@@ -20,7 +20,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			},
 		];
 
-		const connections: { [key: string]: IConnection } = {
+		const connections: IConnections = {
 			'Split In Batches': {
 				main: [
 					// Done output (index 0) connects back to own input - INVALID
@@ -38,7 +38,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			nodeTypes,
 		});
 
-		const waitPromise = createDeferredPromise();
+		const waitPromise = createDeferredPromise<IRun>();
 		const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
@@ -61,7 +61,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			},
 		];
 
-		const connections: { [key: string]: IConnection } = {
+		const connections: IConnections = {
 			'Split In Batches': {
 				main: [
 					[], // Done output (index 0) - no connection
@@ -79,7 +79,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			nodeTypes,
 		});
 
-		const waitPromise = createDeferredPromise();
+		const waitPromise = createDeferredPromise<IRun>();
 		const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
@@ -101,11 +101,11 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			},
 		];
 
-		const connections: { [key: string]: IConnection } = {
+		const connections: IConnections = {
 			'Split In Batches': {
 				main: [
 					// Done output (index 0) - no connection - VALID
-					undefined,
+					null,
 					[],
 				],
 			},
@@ -119,7 +119,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			nodeTypes,
 		});
 
-		const waitPromise = createDeferredPromise();
+		const waitPromise = createDeferredPromise<IRun>();
 		const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
