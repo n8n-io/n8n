@@ -497,7 +497,7 @@ defineExpose({
 							<N8nPromptInput
 								ref="promptInputRef"
 								v-model="textInputValue"
-								:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
+								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
 								:disabled="disabled"
 								:streaming="streaming"
 								:credits-quota="creditsQuota"
