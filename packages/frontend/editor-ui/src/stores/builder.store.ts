@@ -98,6 +98,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
 	const isAIBuilderEnabled = computed(() => {
+		// Check license first
+		if (!settings.isAiBuilderEnabled) {
+			return false;
+		}
+
 		const releaseExperimentVariant = posthogStore.getVariant(
 			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 		);

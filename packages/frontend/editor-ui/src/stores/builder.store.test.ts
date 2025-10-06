@@ -455,8 +455,26 @@ describe('AI Builder store', () => {
 	});
 
 	describe('isAIBuilderEnabled computed property', () => {
-		it('should return true when release experiment is set to variant', () => {
+		it('should return false when license does not have aiBuilder feature', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			expect(builderStore.isAIBuilderEnabled).toBe(false);
+		});
+
+		it('should return true when license has aiBuilder and release experiment is set to variant', () => {
+			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
@@ -466,8 +484,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 
-		it('should return true when release experiment is control but deprecated experiment is variant', () => {
+		it('should return true when license has aiBuilder and release experiment is control but deprecated experiment is variant', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
@@ -477,8 +498,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 
-		it('should return false when both experiments are set to control', () => {
+		it('should return false when license has aiBuilder but both experiments are set to control', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
@@ -488,8 +512,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(false);
 		});
 
-		it('should prioritize release experiment over deprecated experiment', () => {
+		it('should prioritize release experiment over deprecated experiment when license has aiBuilder', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
