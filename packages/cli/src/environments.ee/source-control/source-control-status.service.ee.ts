@@ -637,7 +637,7 @@ export class SourceControlStatusService {
 		if (!context.hasAccessToAllProjects()) {
 			// we need to query for all projects in the DB to hide possible deletions,
 			// when a project went out of scope locally
-			outOfScopeProjects = await this.sourceControlImportService.getAllTeamLocalProjectsFromDb();
+			outOfScopeProjects = await this.sourceControlImportService.getLocalTeamProjectsFromDb();
 			outOfScopeProjects = outOfScopeProjects.filter(
 				(project) => !projectsLocal.some((local) => local.id === project.id),
 			);

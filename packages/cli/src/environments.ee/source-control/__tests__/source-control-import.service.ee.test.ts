@@ -685,9 +685,7 @@ describe('SourceControlImportService', () => {
 					},
 				});
 			});
-		});
 
-		describe('getAllTeamLocalProjectsFromDb', () => {
 			it('should return all team projects', async () => {
 				// ARRANGE
 				const mockProjectData1: Project = mock<Project>({
@@ -703,7 +701,7 @@ describe('SourceControlImportService', () => {
 				projectRepository.find.mockResolvedValue([mockProjectData1]);
 
 				// ACT
-				const result = await service.getAllTeamLocalProjectsFromDb();
+				const result = await service.getLocalTeamProjectsFromDb();
 
 				// ASSERT
 

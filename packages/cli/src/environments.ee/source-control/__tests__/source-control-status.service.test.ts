@@ -86,7 +86,6 @@ describe('getStatus', () => {
 		// projects
 		sourceControlImportService.getRemoteProjectsFromFiles.mockResolvedValue([]);
 		sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([]);
-		sourceControlImportService.getAllTeamLocalProjectsFromDb.mockResolvedValue([]);
 
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
@@ -358,11 +357,12 @@ describe('getStatus', () => {
 			hiddenLocal?: ExportableProjectWithFileName[];
 		}) => {
 			sourceControlImportService.getRemoteProjectsFromFiles.mockResolvedValue(remote);
-			sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue(local);
-			sourceControlImportService.getAllTeamLocalProjectsFromDb.mockResolvedValue([
-				...local,
-				...hiddenLocal,
-			]);
+			sourceControlImportService.getLocalTeamProjectsFromDb.mockImplementation(async (context) => {
+				if (context) {
+					return local;
+				}
+				return [...local, ...hiddenLocal];
+			});
 		};
 
 		it('should return empty arrays when no projects exist locally or remotely', async () => {

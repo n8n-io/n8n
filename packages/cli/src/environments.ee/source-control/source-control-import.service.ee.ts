@@ -7,6 +7,7 @@ import type {
 	User,
 	WorkflowTagMapping,
 	WorkflowEntity,
+	FindOptionsWhere,
 } from '@n8n/db';
 import {
 	SharedCredentials,
@@ -569,32 +570,23 @@ export class SourceControlImportService {
 
 	/**
 	 * Fetches team projects from the database that are accessible to the context user
+	 * If context is not provided, it will return all team projects, regardless of the context user's access
 	 */
 	async getLocalTeamProjectsFromDb(
-		context: SourceControlContext,
+		context?: SourceControlContext,
 	): Promise<ExportableProjectWithFileName[]> {
-		const localProjects = await this.projectRepository.find({
-			select: ['id', 'name', 'description', 'icon', 'type'],
-			where: {
+		let where: FindOptionsWhere<Project> = { type: 'team' };
+
+		if (context) {
+			where = {
 				type: 'team',
 				...(this.sourceControlScopedService.getProjectsWithPushScopeByContextFilter(context) ?? {}),
-			},
-		});
+			};
+		}
 
-		return localProjects.map((local) =>
-			this.mapProjectEntityToExportableProjectWithFileName(local),
-		);
-	}
-
-	/**
-	 * Fetches all team projects from the database, regardless of the context user's access
-	 */
-	async getAllTeamLocalProjectsFromDb(): Promise<ExportableProjectWithFileName[]> {
 		const localProjects = await this.projectRepository.find({
 			select: ['id', 'name', 'description', 'icon', 'type'],
-			where: {
-				type: 'team',
-			},
+			where,
 		});
 
 		return localProjects.map((local) =>
