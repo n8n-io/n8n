@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import VariablesForm from '@/components/VariablesForm.vue';
-import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
+import VariablesForm from '../components/VariablesForm.vue';
+import VariablesUsageBadge from '../components/VariablesUsageBadge.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '../environments.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -15,13 +15,8 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import type {
-	BaseFilters,
-	Resource,
-	VariableResource,
-	DatatableColumn,
-	EnvironmentVariable,
-} from '@/Interface';
+import type { BaseFilters, Resource, VariableResource, DatatableColumn } from '@/Interface';
+import type { EnvironmentVariable } from '../environments.types';
 
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
