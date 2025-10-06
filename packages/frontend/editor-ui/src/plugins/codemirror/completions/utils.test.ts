@@ -11,6 +11,7 @@ import {
 	expressionWithFirstItem,
 	stripExcessParens,
 	isAllowedInDotNotation,
+	dotBracketToBracket,
 } from './utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -217,6 +218,20 @@ describe('completion utils', () => {
 		it('should return false for keys starting with numbers', () => {
 			expect(isAllowedInDotNotation('123key')).toBe(false);
 			expect(isAllowedInDotNotation('0invalid')).toBe(false);
+		});
+	});
+
+	describe('dotBracketToBracket', () => {
+		it('should replace .[ with [', () => {
+			expect(dotBracketToBracket('$.[')).toBe('$[');
+		});
+
+		it('should replace .[/ with [/', () => {
+			expect(dotBracketToBracket('$.[/')).toBe('$[/');
+		});
+
+		it('should replace .[a with [a', () => {
+			expect(dotBracketToBracket('$.[a')).toBe('$[a');
 		});
 	});
 });

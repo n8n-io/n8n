@@ -54,6 +54,7 @@ import {
 	sortCompletionsAlpha,
 	splitBaseTail,
 	stripExcessParens,
+	applyBracketAccess,
 } from './utils';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/utils/expressions';
@@ -1153,7 +1154,8 @@ export const secretOptions = (base: string) => {
 		}
 		return Object.entries(resolved).map(([secret, value]) =>
 			createCompletionOption({
-				name: secret,
+				// AWS Secrets can contain a `/` in the key, so we need to apply bracket access in that situation
+				name: /\//.test(secret) ? applyBracketAccess(secret) : secret,
 				doc: {
 					name: secret,
 					returnType: typeof value,
