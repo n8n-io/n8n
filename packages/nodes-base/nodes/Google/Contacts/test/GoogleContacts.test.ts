@@ -207,10 +207,10 @@ describe('Google Contacts', () => {
 		beforeAll(() => {
 			const mock = nock('https://people.googleapis.com/v1');
 
-			// Mock cache warmup requests with more permissive matching
+			// Mock cache warmup requests with specific empty query
 			mock
 				.get('/people:searchContacts')
-				.query(true) // Match any query parameters
+				.query((actualQuery) => actualQuery.query === '')
 				.reply(200, {
 					results: [],
 				})

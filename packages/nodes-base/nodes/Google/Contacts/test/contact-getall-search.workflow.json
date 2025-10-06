@@ -33,7 +33,23 @@
 		}
 	],
 	"pinData": {
-		"Get All Contacts Search": []
+		"Get All Contacts Search": [
+			{
+				"json": {
+					"resourceName": "people/c123456789",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": {
+						"displayName": "John Doe",
+						"familyName": "Doe",
+						"givenName": "John"
+					},
+					"emailAddresses": {
+						"work": ["john@example.com"]
+					},
+					"contactId": "c123456789"
+				}
+			}
+		]
 	},
 	"connections": {
 		"When clicking 'Execute Workflow'": {

@@ -1,4 +1,5 @@
 {
+	"_comment": "This workflow tests basic file upload functionality with small embedded binary data. It uses the regular upload path (not resumable), as resumable uploads require binary data with an 'id' field which is not easily testable in workflow tests. Large file upload functionality is covered by dedicated unit tests.",
 	"name": "Google Drive V2 File Upload Basic Test",
 	"nodes": [
 		{
@@ -14,13 +15,13 @@
 				"resource": "file",
 				"operation": "upload",
 				"inputDataFieldName": "data",
-				"name": "test-document.txt"
+				"name": "small-file.pdf"
 			},
 			"type": "n8n-nodes-base.googleDrive",
 			"typeVersion": 3,
 			"position": [200, 0],
 			"id": "file-upload-basic",
-			"name": "Upload File Basic",
+			"name": "Upload Small File",
 			"credentials": {
 				"googleDriveOAuth2Api": {
 					"id": "test-credential-id",
@@ -30,18 +31,27 @@
 		}
 	],
 	"pinData": {
-		"Upload File Basic": [
+		"When clicking 'Execute Workflow'": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "JVBERi0xLjQKJcfsj6IKNSAwIG9iago8PAovTGVuZ3RoIDYgMCBSCi9GaWx0ZXIgL0ZsYXRlRGVjb2RlCj4+CnN0cmVhbQp4nEWQwQrCMBBE",
+						"mimeType": "application/pdf",
+						"fileName": "small-file.pdf"
+					}
+				}
+			}
+		],
+		"Upload Small File": [
 			{
 				"json": {
 					"id": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
-					"name": "test-document.txt",
-					"mimeType": "text/plain",
-					"parents": ["1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"],
-					"size": "1024",
+					"name": "small-file.pdf",
+					"mimeType": "application/pdf",
+					"size": "64",
 					"createdTime": "2024-01-01T00:00:00.000Z",
-					"modifiedTime": "2024-01-01T00:00:00.000Z",
-					"webViewLink": "https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view?usp=drivesdk",
-					"webContentLink": "https://drive.google.com/uc?id=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms&export=download"
+					"modifiedTime": "2024-01-01T00:00:00.000Z"
 				}
 			}
 		]
@@ -51,7 +61,7 @@
 			"main": [
 				[
 					{
-						"node": "Upload File Basic",
+						"node": "Upload Large File",
 						"type": "main",
 						"index": 0
 					}
