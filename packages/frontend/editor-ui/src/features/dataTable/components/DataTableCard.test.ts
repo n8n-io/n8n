@@ -2,8 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import DataTableCard from '@/features/dataTable/components/DataTableCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { DataTableResource } from '@/features/dataTable/types';
-import type { UserAction } from '@/Interface';
-import type { IUser } from '@n8n/rest-api-client/api/users';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -38,10 +36,6 @@ const DEFAULT_DATA_TABLE: DataTableResource = {
 const renderComponent = createComponentRenderer(DataTableCard, {
 	props: {
 		dataTable: DEFAULT_DATA_TABLE,
-		actions: [
-			{ label: 'Open', value: 'open', disabled: false },
-			{ label: 'Delete', value: 'delete', disabled: false },
-		] as const satisfies Array<UserAction<IUser>>,
 		readOnly: false,
 		showOwnershipBadge: false,
 	},
