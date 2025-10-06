@@ -1,7 +1,7 @@
 import { STREAM_SEPARATOR } from '@/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Body, GlobalScope } from '@n8n/decorators';
-import type { StreamOutput } from '@n8n/n8n-chat';
+import type { StreamOutput } from '@n8n/chat-hub';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 

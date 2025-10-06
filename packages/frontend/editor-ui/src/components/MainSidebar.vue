@@ -28,7 +28,7 @@ import {
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
-import { CHAT_VIEW } from '@/features/chat/constants';
+import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';

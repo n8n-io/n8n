@@ -5,10 +5,10 @@ import { CHAT_VIEW } from './constants';
 const i18n = useI18n();
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const ChatView = async () => await import('@/features/chat/ChatView.vue');
+const ChatView = async () => await import('@/features/chatHub/ChatView.vue');
 
 export const ChatModule: FrontendModuleDescription = {
-	id: 'chat',
+	id: 'chat-hub',
 	name: 'Chat',
 	description: 'Interact with various LLM models or your n8n AI agents.',
 	icon: 'chat',

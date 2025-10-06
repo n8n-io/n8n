@@ -6,9 +6,9 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { InsightsModule } from '../features/insights/module.descriptor';
 import { MCPModule } from '../features/mcpAccess/module.descriptor';
+import { ChatModule } from '@/features/chatHub/module.descriptor';
 import type { FrontendModuleDescription } from '@/moduleInitializer/module.types';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
-import { ChatModule } from '@/features/chat/module.descriptor';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.

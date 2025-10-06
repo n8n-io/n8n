@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/n8n-chat",
+  "name": "@n8n/chat-hub",
   "version": "0.1.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
