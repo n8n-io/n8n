@@ -54,7 +54,6 @@ import {
 	sortCompletionsAlpha,
 	splitBaseTail,
 	stripExcessParens,
-	applyBracketAccess,
 } from './utils';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/utils/expressions';
@@ -1152,18 +1151,25 @@ export const secretOptions = (base: string) => {
 		if (typeof resolved !== 'object') {
 			return [];
 		}
-		return Object.entries(resolved).map(([secret, value]) =>
-			createCompletionOption({
-				// AWS Secrets can contain a `/` in the key, so we need to apply bracket access in that situation
-				name: /\//.test(secret) ? applyBracketAccess(secret) : secret,
+		return Object.entries(resolved).map(([secret, value]) => {
+			const needsBracketAccess = /\//.test(secret);
+			const option = createCompletionOption({
+				name: secret,
 				doc: {
 					name: secret,
 					returnType: typeof value,
 					description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
 					docURL: i18n.baseText('settings.externalSecrets.docs'),
 				},
-			}),
-		);
+			});
+
+			// Override the apply handler for keys that need bracket access
+			if (needsBracketAccess) {
+				option.apply = applyBracketAccessCompletion;
+			}
+
+			return option;
+		});
 	} catch {
 		return [];
 	}
