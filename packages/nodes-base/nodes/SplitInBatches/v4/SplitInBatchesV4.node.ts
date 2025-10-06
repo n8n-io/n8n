@@ -226,7 +226,17 @@ export class SplitInBatchesV4 implements INodeType {
 			limitFactor?: number;
 			maxReinitializations?: number;
 		};
-		if (options.disableInfiniteLoopProtection === true) return;
+		if (options.disableInfiniteLoopProtection === true) {
+			// Check if environment variable allows disabling protection
+			const allowDisable = process.env.N8N_ALLOW_DISABLE_LOOP_PROTECTION === 'true';
+			if (!allowDisable) {
+				throw new NodeOperationError(
+					executeFunctions.getNode(),
+					'Disabling infinite loop protection requires setting N8N_ALLOW_DISABLE_LOOP_PROTECTION=true environment variable. This is a dangerous option that can cause system instability.',
+				);
+			}
+			return;
+		}
 
 		const currentCount = SplitInBatchesV4.executionCounters.get(globalKey) || 0;
 		const newCount = currentCount + 1;

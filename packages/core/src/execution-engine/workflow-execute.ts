@@ -1648,7 +1648,7 @@ export class WorkflowExecute {
 
 					// Original loop detection: check for immediate consecutive execution
 					if (currentExecutionTry === lastExecutionTry) {
-						throw new OperationalError(
+						throw new ApplicationError(
 							'Stopped execution because it seems to be in an endless loop',
 						);
 					}
