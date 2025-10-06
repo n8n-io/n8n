@@ -15,7 +15,7 @@ export class SplitInBatches extends VersionedNodeType {
 			iconColor: 'dark-green',
 			group: ['organization'],
 			description: 'Split data into batches and iterate over each batch',
-			defaultVersion: 3,
+			defaultVersion: 4,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

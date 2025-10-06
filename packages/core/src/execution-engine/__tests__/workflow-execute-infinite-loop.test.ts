@@ -43,7 +43,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 		expect(() => {
-			workflowExecute.processRunExecutionData(workflowInstance);
+			void workflowExecute.processRunExecutionData(workflowInstance);
 		}).toThrow(
 			'Stopped execution: Loop Over Items (Split in Batches) node has its "done" output connected back to its own input',
 		);
@@ -85,7 +85,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 
 		// Should not throw
 		expect(() => {
-			workflowExecute.processRunExecutionData(workflowInstance);
+			void workflowExecute.processRunExecutionData(workflowInstance);
 		}).not.toThrow();
 	});
 
@@ -125,7 +125,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 
 		// Should not throw
 		expect(() => {
-			workflowExecute.processRunExecutionData(workflowInstance);
+			void workflowExecute.processRunExecutionData(workflowInstance);
 		}).not.toThrow();
 	});
 });
