@@ -519,6 +519,22 @@ describe('waitingNodeTooltip', () => {
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
+
+	it('should return raw waitingNodeTooltip when no workflow is provided', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'SendWait',
+			type: 'n8n-nodes-base.sendWait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				operation: 'sendAndWait',
+			},
+		};
+
+		// Test without workflow - should return the raw tooltip string
+		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
+	});
 });
 
 const executionErrorFactory = (error: Record<string, unknown>) =>

@@ -196,6 +196,8 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: 
 				);
 
 				return String(tooltip);
+			} else if (waitingNodeTooltip) {
+				return waitingNodeTooltip;
 			}
 		}
 	} catch (error) {
