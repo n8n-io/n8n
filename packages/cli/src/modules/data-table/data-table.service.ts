@@ -47,7 +47,7 @@ export class DataTableService {
 	constructor(
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
-		private readonly dataStoreRowsRepository: DataTableRowsRepository,
+		private readonly dataTableRowsRepository: DataTableRowsRepository,
 		private readonly logger: Logger,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -158,7 +158,7 @@ export class DataTableService {
 			if (dto.filter) {
 				this.validateAndTransformFilters(dto.filter, columns);
 			}
-			const result = await this.dataStoreRowsRepository.getManyAndCount(
+			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
 				dto,
 				columns,
@@ -196,7 +196,7 @@ export class DataTableService {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
 			this.validateRowsWithColumns(rows, columns);
 
-			return await this.dataStoreRowsRepository.insertRows(
+			return await this.dataTableRowsRepository.insertRows(
 				dataTableId,
 				rows,
 				columns,
@@ -246,7 +246,7 @@ export class DataTableService {
 			this.validateUpdateParams(dto, columns);
 
 			if (dryRun) {
-				return await this.dataStoreRowsRepository.dryRunUpsertRow(
+				return await this.dataTableRowsRepository.dryRunUpsertRow(
 					dataTableId,
 					dto.data,
 					dto.filter,
@@ -255,7 +255,7 @@ export class DataTableService {
 				);
 			}
 
-			const updated = await this.dataStoreRowsRepository.updateRows(
+			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				dto.data,
 				dto.filter,
@@ -269,7 +269,7 @@ export class DataTableService {
 			}
 
 			// No rows were updated, so insert a new one
-			const inserted = await this.dataStoreRowsRepository.insertRows(
+			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
 				[dto.data],
 				columns,
@@ -343,7 +343,7 @@ export class DataTableService {
 			this.validateUpdateParams(dto, columns);
 
 			if (dryRun) {
-				return await this.dataStoreRowsRepository.dryRunUpdateRows(
+				return await this.dataTableRowsRepository.dryRunUpdateRows(
 					dataTableId,
 					dto.data,
 					dto.filter,
@@ -352,7 +352,7 @@ export class DataTableService {
 				);
 			}
 
-			return await this.dataStoreRowsRepository.updateRows(
+			return await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				dto.data,
 				dto.filter,
@@ -410,7 +410,7 @@ export class DataTableService {
 
 			this.validateAndTransformFilters(dto.filter, columns);
 
-			return await this.dataStoreRowsRepository.deleteRows(
+			return await this.dataTableRowsRepository.deleteRows(
 				dataTableId,
 				columns,
 				dto.filter,
