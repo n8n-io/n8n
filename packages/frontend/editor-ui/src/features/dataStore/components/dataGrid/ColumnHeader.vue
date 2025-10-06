@@ -170,6 +170,7 @@ onUnmounted(() => {
 
 		<N8nIconButton
 			v-show="isFilterButtonVisible"
+			data-test-id="data-store-column-header-filter-button"
 			icon="funnel"
 			type="tertiary"
 			text

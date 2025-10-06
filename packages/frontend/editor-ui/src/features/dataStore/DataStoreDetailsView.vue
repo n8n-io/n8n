@@ -123,9 +123,11 @@ onMounted(async () => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
-					<N8nButton @click="dataStoreTableRef?.addRow">{{
-						i18n.baseText('dataStore.addRow.label')
-					}}</N8nButton>
+					<N8nButton
+						data-test-id="data-store-header-add-row-button"
+						@click="dataStoreTableRef?.addRow"
+						>{{ i18n.baseText('dataStore.addRow.label') }}</N8nButton
+					>
 					<AddColumnButton
 						:use-text-trigger="true"
 						:popover-id="'ds-details-add-column-popover'"
