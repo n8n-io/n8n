@@ -121,7 +121,6 @@ describe('useCanvasMapping', () => {
 
 	describe('nodes', () => {
 		it('should map nodes to canvas nodes', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const manualTriggerNode = mockNode({
 				name: 'Manual Trigger',
 				type: MANUAL_TRIGGER_NODE_TYPE,
@@ -239,7 +238,6 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should handle execution state', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const manualTriggerNode = mockNode({
 				name: 'Manual Trigger',
 				type: MANUAL_TRIGGER_NODE_TYPE,

@@ -39,7 +39,6 @@ import type {
 	INodeUi,
 	IWorkflowDb,
 	TargetItem,
-	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -57,14 +56,13 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { injectWorkflowState, WorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;

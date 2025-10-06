@@ -176,7 +176,6 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowHelpers = useWorkflowHelpers();
 const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
 

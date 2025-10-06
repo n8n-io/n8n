@@ -245,7 +245,6 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
-	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.workflowObject;
 
 	const workflowSettings = workflowsStore.workflowSettings;
