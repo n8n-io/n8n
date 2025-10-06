@@ -223,7 +223,10 @@
 
 	@include mixins.e(link-btn) {
 		@include button.button-small();
-		margin-right: var(--spacing-2xs);
+
+		& {
+			margin-right: var(--spacing-2xs);
+		}
 	}
 }
 

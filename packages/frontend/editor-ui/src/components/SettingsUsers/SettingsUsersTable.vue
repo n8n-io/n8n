@@ -2,20 +2,22 @@
 import { computed, ref } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nUserInfo,
-	N8nDataTableServer,
-	type UserAction,
-	type ActionDropdownItem,
-} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import type { IUser } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from '@/components/SettingsUsers/SettingsUsersProjectsCell.vue';
 import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersActionsCell.vue';
+import SettingsUsersLastActiveCell from '@/components/SettingsUsers/SettingsUsersLastActiveCell.vue';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
+import {
+	N8nDataTableServer,
+	N8nText,
+	N8nUserInfo,
+	type ActionDropdownItem,
+	type UserAction,
+} from '@n8n/design-system';
 type Item = UsersList['items'][number];
 
 const i18n = useI18n();
@@ -53,6 +55,17 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.accountType'),
 		key: 'role',
+	},
+	{
+		title: i18n.baseText('settings.users.table.header.lastActive'),
+		key: 'lastActiveAt',
+		value(row) {
+			return {
+				...row,
+				// TODO: Fix N8nDataTableServer so it doesn't break sorting when `value` is of mixed type (for example, string or null)
+				lastActiveAt: row.lastActiveAt ?? '',
+			};
+		},
 	},
 	{
 		title: i18n.baseText('settings.users.table.header.2fa'),
@@ -97,7 +110,7 @@ const roles = computed<Record<Role, { label: string; desc: string }>>(() => ({
 	},
 	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
 }));
-const roleActions = computed<ActionDropdownItem[]>(() => [
+const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 	{
 		id: ROLE.Member,
 		label: i18n.baseText('auth.roles.member'),
@@ -105,11 +118,6 @@ const roleActions = computed<ActionDropdownItem[]>(() => [
 	{
 		id: ROLE.Admin,
 		label: i18n.baseText('auth.roles.admin'),
-	},
-	{
-		id: 'delete',
-		label: i18n.baseText('settings.users.table.row.deleteUser'),
-		divided: true,
 	},
 ]);
 
@@ -126,11 +134,7 @@ const filterActions = (user: UsersList['items'][number]) => {
 };
 
 const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
-	if (role === 'delete') {
-		emit('action', { action: 'delete', userId });
-	} else {
-		emit('update:role', { role: role as Role, userId });
-	}
+	emit('update:role', { role: role as Role, userId });
 };
 </script>
 
@@ -160,6 +164,9 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 				/>
 				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default].label }}</N8nText>
 			</template>
+			<template #[`item.lastActiveAt`]="{ item }">
+				<SettingsUsersLastActiveCell :data="item" />
+			</template>
 			<template #[`item.projects`]="{ item }">
 				<SettingsUsersProjectsCell :data="item" />
 			</template>
@@ -173,5 +180,3 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 		</N8nDataTableServer>
 	</div>
 </template>
-
-<style lang="scss" module></style>

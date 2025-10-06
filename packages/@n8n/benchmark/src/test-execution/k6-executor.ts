@@ -79,6 +79,7 @@ export function handleSummary(data) {
 			cwd: runDirPath,
 			env: {
 				API_BASE_URL: this.opts.n8nApiBaseUrl,
+				DATA_TABLE_ID: scenario.dataTableId,
 				K6_CLOUD_TOKEN: this.opts.k6ApiToken,
 			},
 			stdio: 'inherit',

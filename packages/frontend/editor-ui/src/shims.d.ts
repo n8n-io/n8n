@@ -1,9 +1,11 @@
+/// <reference types="vite/client" />
 /// <reference types="vite-plugin-comlink/client" />
 
 import type { VNode, ComponentPublicInstance } from 'vue';
 import type { PartialDeep } from 'type-fest';
 import type { ExternalHooks } from '@/types/externalHooks';
 import type { FrontendSettings } from '@n8n/api-types';
+import type { Plugin as PrettierPlugin } from 'prettier';
 
 export {};
 
@@ -21,7 +23,6 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
-		sentry?: { dsn?: string; environment: string; release: string; serverName?: string };
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;
@@ -38,4 +39,10 @@ declare global {
 	interface Array<T> {
 		findLast(predicate: (value: T, index: number, obj: T[]) => unknown, thisArg?: any): T;
 	}
+}
+
+declare module 'prettier/plugins/estree' {
+	const plugin: PrettierPlugin;
+	export = plugin;
+	export default plugin;
 }

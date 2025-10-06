@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import type { ButtonType } from '@n8n/design-system';
 
+import { N8nButton } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		saved: boolean;
@@ -45,7 +46,7 @@ const shortcutTooltipLabel = computed(() => {
 				:shortcut="{ keys: ['s'], metaKey: true }"
 				placement="bottom"
 			>
-				<n8n-button
+				<N8nButton
 					:label="saveButtonLabel"
 					:loading="isSaving"
 					:disabled="disabled"
@@ -53,7 +54,7 @@ const shortcutTooltipLabel = computed(() => {
 					:type="type"
 				/>
 			</KeyboardShortcutTooltip>
-			<n8n-button
+			<N8nButton
 				v-else
 				:label="saveButtonLabel"
 				:loading="isSaving"

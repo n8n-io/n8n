@@ -7,7 +7,8 @@ import { ProjectTypes } from '@/types/projects.types';
 import type { CredentialsResource, FolderResource, WorkflowResource } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	resource: WorkflowResource | CredentialsResource | FolderResource;
 	resourceType: ResourceType;
@@ -153,32 +154,34 @@ const projectLocation = computed(() => {
 </script>
 <template>
 	<div :class="{ [$style.wrapper]: true, [$style['no-border']]: showBadgeBorder }" v-bind="$attrs">
-		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0" placement="top">
+		<N8nTooltip
+			v-if="badgeText"
+			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0"
+			placement="top"
+		>
 			<N8nBadge
-				v-if="badgeText"
 				:class="[$style.badge, $style.projectBadge]"
 				theme="tertiary"
 				data-test-id="card-badge"
 				:show-border="showBadgeBorder"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
-				<router-link v-if="projectLocation" :to="projectLocation">
-					<span v-n8n-truncate:20="badgeText" />
-				</router-link>
-				<span v-else v-n8n-truncate:20="badgeText" />
+				<RouterLink v-if="projectLocation" :to="projectLocation">
+					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
+				</RouterLink>
+				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
 			</N8nBadge>
 			<template #content>
 				{{ badgeTooltip }}
 			</template>
 		</N8nTooltip>
 		<slot />
-		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0" placement="top">
-			<div
-				v-if="numberOfMembersInHomeTeamProject"
-				:class="$style['count-badge']"
-				theme="tertiary"
-				bold
-			>
+		<N8nTooltip
+			v-if="numberOfMembersInHomeTeamProject"
+			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0"
+			placement="top"
+		>
+			<div :class="$style['count-badge']" theme="tertiary" bold>
 				+{{ numberOfMembersInHomeTeamProject }}
 			</div>
 			<template #content>
@@ -227,5 +230,9 @@ const projectLocation = computed(() => {
 	color: var(--color-text-base);
 	border-left: var(--border-base);
 	line-height: var(--font-line-height-regular);
+}
+
+.nowrap {
+	white-space: nowrap !important;
 }
 </style>

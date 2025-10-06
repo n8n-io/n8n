@@ -55,6 +55,14 @@ export class RssFeedRead implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Custom Fields',
+						name: 'customFields',
+						type: 'string',
+						default: '',
+						description:
+							'A comma-separated list of custom fields to include in the output. For example, "author, contentSnippet".',
+					},
+					{
 						displayName: 'Ignore SSL Issues (Insecure)',
 						name: 'ignoreSSL',
 						type: 'boolean',
@@ -111,6 +119,13 @@ export class RssFeedRead implements INodeType {
 					};
 				}
 
+				if (options.customFields) {
+					const customFields = options.customFields as string;
+					parserOptions.customFields = {
+						item: customFields.split(',').map((field) => field.trim()),
+					};
+				}
+
 				const parser = new Parser(parserOptions);
 
 				let feed: Parser.Output<IDataObject>;
@@ -132,13 +147,12 @@ export class RssFeedRead implements INodeType {
 					});
 				}
 
-				// For now we just take the items and ignore everything else
 				if (feed.items) {
 					const feedItems = (feed.items as IDataObject[]).map((item) => ({
 						json: item,
 					})) as INodeExecutionData[];
 
-					const itemData = fallbackPairedItems || [{ item: i }];
+					const itemData = fallbackPairedItems ?? [{ item: i }];
 
 					const executionData = this.helpers.constructExecutionMetaData(feedItems, {
 						itemData,
@@ -150,7 +164,7 @@ export class RssFeedRead implements INodeType {
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: { error: error.message },
-						pairedItem: fallbackPairedItems || [{ item: i }],
+						pairedItem: fallbackPairedItems ?? [{ item: i }],
 					});
 					continue;
 				}

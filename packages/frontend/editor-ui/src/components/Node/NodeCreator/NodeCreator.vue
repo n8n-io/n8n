@@ -13,9 +13,16 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 import { useAssistantStore } from '@/stores/assistant.store';
-import N8nIconButton from '@n8n/design-system/components/N8nIconButton/IconButton.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
+import { onClickOutside } from '@vueuse/core';
+
+import { N8nIconButton } from '@n8n/design-system';
+// elements that should not trigger onClickOutside
+const OUTSIDE_CLICK_WHITELIST = [
+	// different modals
+	'.el-overlay-dialog',
+];
 
 export interface Props {
 	active?: boolean;
@@ -151,6 +158,14 @@ const { nodeCreator } = toRefs(state);
 onBeforeUnmount(() => {
 	unBindOnMouseUpOutside();
 });
+
+onClickOutside(
+	nodeCreator,
+	() => {
+		emit('closeNodeCreator');
+	},
+	{ ignore: OUTSIDE_CLICK_WHITELIST },
+);
 </script>
 
 <template>

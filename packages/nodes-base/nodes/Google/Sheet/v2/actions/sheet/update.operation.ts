@@ -168,13 +168,48 @@ export const description: SheetProperties = [
 				},
 				addAllFields: true,
 				multiKeyMatch: false,
+				allowEmptyValues: true,
 			},
 		},
 		displayOptions: {
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				'@version': [{ _cnd: { gte: 4 } }],
+				'@version': [{ _cnd: { gte: 4.7 } }],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['update'],
+				'@version': [{ _cnd: { between: { from: 4, to: 4.6 } } }],
 			},
 			hide: {
 				...untilSheetSelected,

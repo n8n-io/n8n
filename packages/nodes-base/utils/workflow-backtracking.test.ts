@@ -6,7 +6,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
-import { previousTaskData, findPairedItemTroughWorkflowData } from './workflow-backtracking';
+import { previousTaskData, findPairedItemThroughWorkflowData } from './workflow-backtracking';
 
 describe('backtracking.ts', () => {
 	describe('previousTaskData', () => {
@@ -186,7 +186,7 @@ describe('backtracking.ts', () => {
 		});
 	});
 
-	describe('findPairedItemTroughWorkflowData', () => {
+	describe('findPairedItemThroughWorkflowData', () => {
 		it('should return undefined when lastNodeExecuted is undefined', () => {
 			const workflowRunData: IRunExecutionData = {
 				resultData: {
@@ -199,7 +199,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
@@ -216,7 +216,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
@@ -235,7 +235,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
@@ -254,7 +254,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
@@ -281,7 +281,7 @@ describe('backtracking.ts', () => {
 				pairedItem: expectedPairedItem,
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(expectedPairedItem);
 		});
@@ -319,7 +319,7 @@ describe('backtracking.ts', () => {
 				},
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -355,7 +355,7 @@ describe('backtracking.ts', () => {
 				},
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -401,7 +401,7 @@ describe('backtracking.ts', () => {
 				},
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 5);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 5);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -446,7 +446,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -489,7 +489,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -524,7 +524,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});

@@ -3,7 +3,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { onBeforeUnmount, onMounted } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { ElDrawer } from 'element-plus';
-
 const props = withDefaults(
 	defineProps<{
 		name: string;
@@ -95,7 +94,7 @@ onBeforeUnmount(() => {
 <style lang="scss">
 .el-drawer__header {
 	margin: 0;
-	padding: 30px 30px 0 30px;
+	padding: 30px 30px 0;
 }
 
 .el-drawer__body {

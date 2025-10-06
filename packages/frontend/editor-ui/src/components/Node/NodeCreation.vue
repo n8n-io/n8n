@@ -1,17 +1,15 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { computed, defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
-	FOCUS_PANEL_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import { usePostHog } from '@/stores/posthog.store';
 import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
@@ -19,13 +17,17 @@ import type {
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useBuilderStore } from '@/stores/builder.store';
+
+import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 type Props = {
 	nodeViewScale: number;
 	createNodeActive?: boolean;
+	focusPanelActive: boolean;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -44,15 +46,12 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
-const posthogStore = usePostHog();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 
 const { getAddedNodesAndConnections } = useActions();
-
-const isOpenFocusPanelButtonVisible = computed(() => {
-	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
-});
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -86,15 +85,31 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	closeNodeCreator(true);
 }
 
-function onAskAssistantButtonClick() {
-	if (!assistantStore.chatWindowOpen)
+function toggleFocusPanel() {
+	focusPanelStore.toggleFocusPanel();
+
+	telemetry.track(
+		focusPanelStore.focusPanelActive ? 'User opened focus panel' : 'User closed focus panel',
+		{
+			source: 'canvasButton',
+			parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		},
+	);
+}
+
+async function onAskAssistantButtonClick() {
+	if (builderStore.isAIBuilderEnabled) {
+		await builderStore.toggleChat();
+	} else {
+		assistantStore.toggleChat();
+	}
+	if (builderStore.isAssistantOpen || assistantStore.isAssistantOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
 		});
-
-	assistantStore.toggleChatOpen();
+	}
 }
 </script>
 
@@ -105,7 +120,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['Tab'] }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				size="large"
 				icon="plus"
 				type="tertiary"
@@ -118,7 +133,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['s'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				size="large"
 				type="tertiary"
 				icon="sticky-note"
@@ -127,22 +142,23 @@ function onAskAssistantButtonClick() {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			v-if="isOpenFocusPanelButtonVisible"
 			:label="i18n.baseText('nodeView.openFocusPanel')"
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="list"
-				@click="focusPanelStore.toggleFocusPanel"
+				icon="panel-right"
+				:class="focusPanelActive ? $style.activeButton : ''"
+				:active="focusPanelActive"
+				data-test-id="toggle-focus-panel-button"
+				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<n8n-tooltip placement="left">
+		<N8nTooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
-			<n8n-button
-				v-if="assistantStore.canShowAssistantButtonsOnCanvas"
+			<N8nButton
 				type="tertiary"
 				size="large"
 				square
@@ -152,11 +168,11 @@ function onAskAssistantButtonClick() {
 			>
 				<template #default>
 					<div>
-						<AssistantIcon size="large" />
+						<N8nAssistantIcon size="large" />
 					</div>
 				</template>
-			</n8n-button>
-		</n8n-tooltip>
+			</N8nButton>
+		</N8nTooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
@@ -187,5 +203,9 @@ function onAskAssistantButtonClick() {
 	svg {
 		display: block;
 	}
+}
+
+.activeButton {
+	background-color: var(--button-hover-background-color) !important;
 }
 </style>

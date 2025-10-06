@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 defineProps<{
 	entityType: 'credential' | 'workflow';
 }>();
@@ -11,7 +11,7 @@ const locale = useI18n();
 
 <template>
 	<div class="entity-not-found-view">
-		<N8nCard style="" class="entity-card">
+		<N8nCard class="entity-card">
 			<div class="text-center mb-l">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"

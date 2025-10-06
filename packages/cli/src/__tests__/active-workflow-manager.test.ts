@@ -98,9 +98,9 @@ describe('ActiveWorkflowManager', () => {
 				expect(result).toBe(true);
 			});
 
-			test('should return `false` for `leadershipChange`', () => {
+			test('should return `true` for `leadershipChange`', () => {
 				const result = activeWorkflowManager.shouldAddWebhooks('leadershipChange');
-				expect(result).toBe(false);
+				expect(result).toBe(true);
 			});
 
 			test('should return `true` for `update` or `activate`', () => {
@@ -146,6 +146,23 @@ describe('ActiveWorkflowManager', () => {
 					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
 				},
 			);
+		});
+	});
+
+	describe('addActiveWorkflows', () => {
+		test('should prevent concurrent activations', async () => {
+			const getAllActiveIds = jest.spyOn(workflowRepository, 'getAllActiveIds');
+
+			workflowRepository.getAllActiveIds.mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(() => resolve(['workflow-1']), 50)),
+			);
+
+			await Promise.all([
+				activeWorkflowManager.addActiveWorkflows('init'),
+				activeWorkflowManager.addActiveWorkflows('leadershipChange'),
+			]);
+
+			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
 		});
 	});
 });

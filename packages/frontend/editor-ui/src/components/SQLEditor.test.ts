@@ -4,7 +4,7 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
-import { renderComponent } from '@/__tests__/render';
+import { renderComponent, type RenderOptions } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
@@ -13,7 +13,7 @@ import type { INodeUi } from '@/Interface';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
-const DEFAULT_SETUP = {
+const DEFAULT_SETUP: RenderOptions<typeof SqlEditor> = {
 	props: {
 		dialect: 'PostgreSQL',
 		isReadOnly: false,
@@ -55,6 +55,14 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.NDV]: {
 					activeNodeName: 'Test Node',
+					hasInputData: true,
+					isInputPanelEmpty: false,
+					isOutputPanelEmpty: false,
+					ndvInputDataWithPinnedData: [],
+					getHoveringItem: undefined,
+					expressionOutputItemIndex: 0,
+					isTableHoverOnboarded: false,
+					setHighlightDraggables: vi.fn(),
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
@@ -185,6 +193,7 @@ describe('SqlEditor.vue', () => {
 		// Does not hide output when clicking inside the output
 		await focusEditor(container);
 		await userEvent.click(getByTestId(EXPRESSION_OUTPUT_TEST_ID));
+
 		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).toBeInTheDocument());
 
 		// Does hide output when clicking outside the container

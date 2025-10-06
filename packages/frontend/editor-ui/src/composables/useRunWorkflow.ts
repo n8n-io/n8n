@@ -1,6 +1,7 @@
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
+	IExecutionsStopData,
 	IStartRunData,
 	IWorkflowDb,
 } from '@/Interface';
@@ -45,6 +46,8 @@ import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
+import { computed } from 'vue';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -60,9 +63,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
+
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
@@ -89,24 +95,24 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		workflowsStore.subWorkflowExecutionError = null;
 
 		// Set the execution as started, but still waiting for the execution to be retrieved
-		workflowsStore.setActiveExecutionId(null);
+		workflowState.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			workflowsStore.setActiveExecutionId(undefined);
+			workflowState.setActiveExecutionId(undefined);
 			throw error;
 		}
 
 		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
 		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
-			workflowsStore.setActiveExecutionId(response.executionId);
+			workflowState.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
-			workflowsStore.setActiveExecutionId(undefined);
+			workflowState.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
@@ -128,15 +134,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return;
 		}
 
-		const workflow = workflowHelpers.getCurrentWorkflow();
-
 		toast.clearAllStickyNotifications();
 
 		try {
 			// Get the direct parents of the node
 			let directParentNodes: string[] = [];
 			if (options.destinationNode !== undefined) {
-				directParentNodes = workflow.getParentNodes(
+				directParentNodes = workflowObject.value.getParentNodes(
 					options.destinationNode,
 					NodeConnectionTypes.Main,
 					-1,
@@ -155,7 +159,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				workflow,
+				workflowObject.value,
 			);
 
 			const { startNodeNames } = consolidatedData;
@@ -163,7 +167,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				? workflowsStore.getNodeByName(options.destinationNode)?.type
 				: '';
 
-			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
 			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
@@ -177,10 +180,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
 				// starts execution from downstream nodes of trigger node
 				startNodeNames.push(
-					...workflow.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
+					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
-				newRunData = { [options.triggerNode]: [options.nodeData] };
-				executedNode = options.triggerNode;
 			} else if (options.destinationNode) {
 				executedNode = options.destinationNode;
 			}
@@ -199,7 +200,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage'
 			) {
-				const startNode = workflow.getStartNode(options.destinationNode);
+				const startNode = workflowObject.value.getStartNode(options.destinationNode);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
 					// Check if the chat node has input data or pin data
 					const chatHasInputData =
@@ -243,7 +244,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
-			const version = settingsStore.partialExecutionVersion;
 
 			// TODO: this will be redundant once we cleanup the partial execution v1
 			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
@@ -251,8 +251,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// Find for each start node the source data
 					let sourceData = get(runData, [name, 0, 'source', 0], null);
 					if (sourceData === null) {
-						const parentNodes = workflow.getParentNodes(name, NodeConnectionTypes.Main, 1);
+						const parentNodes = workflowObject.value.getParentNodes(
+							name,
+							NodeConnectionTypes.Main,
+							1,
+						);
 						const executeData = workflowHelpers.executeData(
+							workflowObject.value.connectionsBySourceNode,
 							parentNodes,
 							name,
 							NodeConnectionTypes.Main,
@@ -303,17 +308,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const startRunData: IStartRunData = {
 				workflowData,
-				// With the new partial execution version the backend decides what run
-				// data to use and what to ignore.
-				runData: !isPartialExecution
-					? // if it's a full execution we don't want to send any run data
-						undefined
-					: version === 2
-						? // With the new partial execution version the backend decides
-							//what run data to use and what to ignore.
-							(runData ?? undefined)
-						: // for v0 we send the run data the FE constructed
-							newRunData,
+				runData: isPartialExecution
+					? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
+					: undefined, // if it's a full execution we don't want to send any run data
 				startNodes,
 				triggerToStartFrom,
 			};
@@ -321,8 +318,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (workflow.id && nodeId && version === 2) {
-					const agentRequest = agentRequestStore.getAgentRequest(workflow.id, nodeId);
+				if (workflowObject.value.id && nodeId) {
+					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
 					if (agentRequest) {
 						startRunData.agentRequest = {
@@ -354,7 +351,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				createdAt: new Date(),
 				startedAt: new Date(),
 				stoppedAt: undefined,
-				workflowId: workflow.id,
+				workflowId: workflowObject.value.id,
 				executedNode,
 				triggerNode: triggerToStartFrom?.name,
 				data: {
@@ -373,10 +370,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					...workflowData,
 				} as IWorkflowDb,
 			};
-			workflowsStore.setWorkflowExecutionData(executionData);
+			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			workflowHelpers.setDocumentTitle(workflow.name as string, 'EXECUTING');
+			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 
@@ -410,8 +407,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			return runWorkflowApiResponse;
 		} catch (error) {
-			workflowsStore.setWorkflowExecutionData(null);
-			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
+			workflowState.setWorkflowExecutionData(null);
+			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -470,12 +467,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	async function stopCurrentExecution() {
 		const executionId = workflowsStore.activeExecutionId;
+		let stopData: IExecutionsStopData | undefined;
+
 		if (!executionId) {
 			return;
 		}
 
 		try {
-			await executionsStore.stopCurrentExecution(executionId);
+			stopData = await executionsStore.stopCurrentExecution(executionId);
 		} catch (error) {
 			// Execution stop might fail when the execution has already finished. Let's treat this here.
 			const execution = await workflowsStore.getExecution(executionId);
@@ -497,7 +496,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IExecutionResponse;
-				workflowsStore.setWorkflowExecutionData(executedData);
+				workflowState.setWorkflowExecutionData(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),
@@ -512,7 +511,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				async () => {
 					const execution = await workflowsStore.getExecution(executionId);
 					if (!['running', 'waiting'].includes(execution?.status as string)) {
-						workflowsStore.markExecutionAsStopped();
+						workflowsStore.markExecutionAsStopped(stopData);
 						return true;
 					}
 
@@ -523,7 +522,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			);
 
 			if (!markedAsStopped) {
-				workflowsStore.markExecutionAsStopped();
+				workflowsStore.markExecutionAsStopped(stopData);
 			}
 		}
 	}
@@ -538,11 +537,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}
 
 	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
-		const workflow = workflowHelpers.getCurrentWorkflow();
-
 		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 			const telemetryPayload = {
-				workflow_id: workflow.id,
+				workflow_id: workflowObject.value.id,
 				node_graph_string: JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(
 						workflowData as IWorkflowBase,

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { computed, useCssModule } from 'vue';
+import CanvasHandleRectangle from '@/components/canvas/elements/handles/render-types/parts/CanvasHandleRectangle.vue';
 
 const $style = useCssModule();
 
@@ -33,7 +34,8 @@ const handleClasses = 'target';
 	position: absolute;
 	top: 50%;
 	left: calc(var(--spacing-xs) * -1);
-	transform: translate(-100%, -50%);
+	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1)) translate(-100%, 0);
+	transform-origin: center left;
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
 	background: var(--color-canvas-label-background);

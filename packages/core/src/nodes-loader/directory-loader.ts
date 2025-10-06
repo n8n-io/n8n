@@ -80,6 +80,8 @@ export abstract class DirectoryLoader {
 
 	protected readonly logger = Container.get(Logger);
 
+	protected removeNonIncludedNodes = false;
+
 	constructor(
 		readonly directory: string,
 		protected excludeNodes: string[] = [],
@@ -92,6 +94,8 @@ export abstract class DirectoryLoader {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (error.code !== 'ENOENT') throw error;
 		}
+
+		this.removeNonIncludedNodes = this.includeNodes.length > 0;
 	}
 
 	abstract packageName: string;
@@ -133,7 +137,7 @@ export abstract class DirectoryLoader {
 
 		const nodeType = tempNode.description.name;
 
-		if (this.includeNodes.length && !this.includeNodes.includes(nodeType)) {
+		if (this.removeNonIncludedNodes && !this.includeNodes.includes(nodeType)) {
 			return;
 		}
 

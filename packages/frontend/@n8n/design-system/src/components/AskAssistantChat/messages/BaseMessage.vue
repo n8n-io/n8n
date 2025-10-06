@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import MessageRating from './MessageRating.vue';
 import { useI18n } from '../../../composables/useI18n';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import AssistantAvatar from '../../AskAssistantAvatar/AssistantAvatar.vue';
 import N8nAvatar from '../../N8nAvatar';
 
@@ -16,9 +17,18 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	feedback: [RatingFeedback];
+}>();
+
 const { t } = useI18n();
 
 const isUserMessage = computed(() => props.message.role === 'user');
+
+function onRate(rating: RatingFeedback) {
+	emit('feedback', rating);
+}
 </script>
 
 <template>
@@ -37,12 +47,18 @@ const isUserMessage = computed(() => props.message.role === 'user');
 			</template>
 		</div>
 		<slot></slot>
+		<MessageRating
+			v-if="message.showRating && !isUserMessage"
+			:style="message.ratingStyle"
+			:show-feedback="message.showFeedback"
+			@feedback="onRate"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .message {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-s);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
 }

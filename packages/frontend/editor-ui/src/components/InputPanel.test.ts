@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '../__tests__/utils';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 
 vi.mock('vue-router', () => {
 	return {
@@ -54,6 +55,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 
 	const workflow = createTestWorkflow({ nodes, connections });
 	const workflowStore = useWorkflowsStore();
+	const workflowState = useWorkflowState();
 
 	workflowStore.setWorkflow(workflow);
 
@@ -62,7 +64,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	}
 
 	if (runData) {
-		workflowStore.setWorkflowExecutionData({
+		workflowState.setWorkflowExecutionData({
 			id: '',
 			workflowData: {
 				id: '',
@@ -97,7 +99,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			runIndex: 0,
 			currentNodeName: nodes[0].name,
 			activeNodeName: nodes[1].name,
-			workflow: workflowObject,
+			workflowObject,
 			displayMode: 'schema',
 			focusedMappableInput: '',
 			isMappingOnboarded: false,

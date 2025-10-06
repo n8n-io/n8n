@@ -1,0 +1,41 @@
+check:
+    just lint
+    just format-check
+    just typecheck
+
+run:
+    uv run python -m src.main
+
+sync:
+    uv sync --group dev
+
+sync-all:
+    uv sync --all-extras --group dev
+
+lint:
+    uv run ruff check
+
+lintfix:
+    uv run ruff check --fix
+
+format:
+    uv run ruff format
+
+format-check:
+    uv run ruff format --check
+
+test:
+    uv run pytest
+
+test-cov:
+    uv run pytest --cov=src --cov-report=term-missing
+
+test-v:
+    uv run pytest -vv
+
+typecheck:
+    uv run ty check src/
+
+# For debugging only, start the runner with a manually fetched grant token.
+debug:
+    GRANT_TOKEN=$(curl -s -X POST http://127.0.0.1:5679/runners/auth -H "Content-Type: application/json" -d '{"token":"test"}' | jq -r '.data.token') && N8N_RUNNERS_GRANT_TOKEN="$GRANT_TOKEN" just run

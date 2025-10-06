@@ -58,5 +58,3 @@ const chartData = computed<ChartData<'bar'>>(() => {
 <template>
 	<Bar data-test-id="insights-chart-failure-rate" :data="chartData" :options="chartOptions" />
 </template>
-
-<style lang="scss" module></style>

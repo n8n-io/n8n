@@ -260,7 +260,7 @@ export class LmOpenAi implements INodeType {
 		}
 
 		const model = new OpenAI({
-			openAIApiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,
 			configuration,

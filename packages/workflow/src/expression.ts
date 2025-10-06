@@ -1,6 +1,6 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
@@ -310,8 +310,6 @@ export class Expression {
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
-
 			if (returnValue.name === 'DateTime')
 				throw new ApplicationError('this is a DateTime, please access its methods');
 

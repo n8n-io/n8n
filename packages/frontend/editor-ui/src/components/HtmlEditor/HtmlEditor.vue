@@ -7,9 +7,10 @@ import {
 	foldGutter,
 	indentOnInput,
 } from '@codemirror/language';
-import { Prec } from '@codemirror/state';
+import { Prec, EditorState } from '@codemirror/state';
 import {
 	dropCursor,
+	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
@@ -35,19 +36,23 @@ import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
-import { nonTakenRanges } from './utils';
+import { nonTakenRanges, pasteHandler } from './utils';
+import type { TargetNodeParameterContext } from '@/Interface';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
 type Props = {
 	modelValue: string;
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
+	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -64,6 +69,7 @@ const extensions = computed(() => [
 	]),
 	autoCloseTags,
 	expressionCloseBrackets(),
+	pasteSanitizer(),
 	Prec.highest(keymap.of(editorKeymap)),
 	indentOnInput(),
 	codeEditorTheme({
@@ -80,6 +86,7 @@ const extensions = computed(() => [
 	indentOnInput(),
 	highlightActiveLine(),
 	mappingDropCursor(),
+	...(props.isReadOnly ? [EditorState.readOnly.of(true)] : []),
 ]);
 const {
 	editor: editorRef,
@@ -89,6 +96,7 @@ const {
 	editorRef: htmlEditor,
 	editorValue: () => props.modelValue,
 	extensions,
+	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
 	},
@@ -223,6 +231,12 @@ async function formatHtml() {
 
 	editor.dispatch({
 		changes: { from: 0, to: editor.state.doc.length, insert: formatted.join('\n\n') },
+	});
+}
+
+function pasteSanitizer() {
+	return EditorView.domEventHandlers({
+		paste: pasteHandler,
 	});
 }
 

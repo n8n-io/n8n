@@ -195,7 +195,10 @@ export class ActiveWorkflowManager {
 				await this.webhookService.storeWebhook(webhook);
 				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
-				if (activation === 'init' && error.name === 'QueryFailedError') {
+				if (
+					['init', 'leadershipChange'].includes(activation) &&
+					error.name === 'QueryFailedError'
+				) {
 					// n8n does not remove the registered webhooks on exit.
 					// This means that further initializations will always fail
 					// when inserting to database. This is why we ignore this error
@@ -418,30 +421,42 @@ export class ActiveWorkflowManager {
 		executeErrorWorkflow(workflowData, fullRunData, mode);
 	}
 
+	private isActivationInProgress = false;
+
 	/**
 	 * Register as active in memory all workflows stored as `active`,
 	 * only on instance init or (in multi-main setup) on leadership change.
 	 */
 	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
-		const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
-
-		if (dbWorkflowIds.length === 0) return;
-
-		if (this.instanceSettings.isLeader) {
-			this.logger.info('Start Active Workflows:');
+		if (this.isActivationInProgress) {
+			this.logger.debug(`Skipping activation - already in progress for mode: ${activationMode}`);
+			return;
 		}
 
-		const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
+		this.isActivationInProgress = true;
+		try {
+			const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
 
-		for (const batch of batches) {
-			const activationPromises = batch.map(async (dbWorkflowId) => {
-				await this.activateWorkflow(dbWorkflowId, activationMode);
-			});
+			if (dbWorkflowIds.length === 0) return;
 
-			await Promise.all(activationPromises);
+			if (this.instanceSettings.isLeader) {
+				this.logger.info('Start Active Workflows:');
+			}
+
+			const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
+
+			for (const batch of batches) {
+				const activationPromises = batch.map(async (dbWorkflowId) => {
+					await this.activateWorkflow(dbWorkflowId, activationMode);
+				});
+
+				await Promise.all(activationPromises);
+			}
+
+			this.logger.debug('Finished activating all workflows');
+		} finally {
+			this.isActivationInProgress = false;
 		}
-
-		this.logger.debug('Finished activating all workflows');
 	}
 
 	private async activateWorkflow(
@@ -960,9 +975,7 @@ export class ActiveWorkflowManager {
 		// to prevent issues with users upgrading from a version < 1.15, where the webhook entity
 		// was cleared on shutdown to anything past 1.28.0, where we stopped populating it on init,
 		// causing all webhooks to break
-		if (activationMode === 'init') return true;
-
-		if (activationMode === 'leadershipChange') return false;
+		if (['init', 'leadershipChange'].includes(activationMode)) return true;
 
 		return this.instanceSettings.isLeader; // 'update' or 'activate'
 	}

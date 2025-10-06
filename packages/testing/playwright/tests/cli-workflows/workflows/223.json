@@ -1,0 +1,57 @@
+{
+	"createdAt": "2021-07-02T10:27:33.975Z",
+	"updatedAt": "2021-07-09T11:10:22.318Z",
+	"id": "223",
+	"name": "LingvaNex:Translate",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "61781654-9992-4dd9-8224-943ecf740806"
+		},
+		{
+			"parameters": {
+				"text": "automation",
+				"translateTo": "de_DE",
+				"options": {
+					"from": "en_US"
+				}
+			},
+			"name": "LingvaNex",
+			"type": "n8n-nodes-base.lingvaNex",
+			"typeVersion": 1,
+			"position": [500, 300],
+			"credentials": {
+				"lingvaNexApi": {
+					"id": "216",
+					"name": "LingvaNex API creds"
+				}
+			},
+			"id": "68e11f02-34e0-47d6-a175-81abf5002b28"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "LingvaNex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

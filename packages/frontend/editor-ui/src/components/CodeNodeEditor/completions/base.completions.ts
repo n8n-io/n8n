@@ -1,5 +1,6 @@
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
-import { addInfoRenderer, addVarType } from '../utils';
+import { addInfoRenderer } from '../utils';
+import { addVarType } from '@/features/environments.ee/completions/variables.completions';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';

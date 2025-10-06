@@ -13,6 +13,7 @@ import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import { useUIStore } from '@/stores/ui.store';
 import { useThrottleFn } from '@vueuse/core';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
 const MIN_PANEL_WIDTH = 310;
@@ -456,7 +457,7 @@ function onDragEnd() {
 
 	&.dragging {
 		border-color: var(--color-primary);
-		box-shadow: 0px 6px 16px rgba(255, 74, 51, 0.15);
+		box-shadow: 0 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
 

@@ -2,8 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
-import type { UserAction } from '@n8n/design-system';
-import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import type { TabOptions, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -19,14 +18,24 @@ import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useUIStore } from '@/stores/ui.store';
+import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
 
+import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+
 const projectPages = useProjectPages();
+
+const props = defineProps<{
+	hasActiveCallouts?: boolean;
+}>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -46,10 +55,10 @@ const headerIcon = computed((): IconOrEmoji => {
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		if (projectPages.isOverviewSubPage) {
-			return i18n.baseText('projects.menu.overview');
-		} else if (projectPages.isSharedSubPage) {
+		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
+		} else if (projectPages.isOverviewSubPage) {
+			return i18n.baseText('projects.menu.overview');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -83,10 +92,28 @@ const showFolders = computed(() => {
 	);
 });
 
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
+	// Determine the type of tab based on the current project page
+	let tabType: 'shared' | 'overview' | 'project';
+	if (projectPages.isSharedSubPage) {
+		tabType = 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		tabType = 'overview';
+	} else {
+		tabType = 'project';
+	}
+	// Only pick up tabs from active modules
+	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
+		settingsStore.isModuleActive,
+	);
+	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+});
+
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
+	DATA_STORE: 'dataStore',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -119,6 +146,18 @@ const menu = computed(() => {
 				!getResourcePermissions(homeProject.value?.scopes).folder.create,
 		});
 	}
+
+	if (settingsStore.isDataTableFeatureEnabled) {
+		// TODO: this should probably be moved to the module descriptor as a setting
+		items.push({
+			value: ACTION_TYPES.DATA_STORE,
+			label: i18n.baseText('dataStore.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
+		});
+	}
+
 	return items;
 });
 
@@ -128,6 +167,37 @@ const showProjectIcon = computed(() => {
 	);
 });
 
+function isCredentialsListView(routeName: string) {
+	const CREDENTIAL_VIEWS: string[] = [
+		VIEWS.PROJECTS_CREDENTIALS,
+		VIEWS.CREDENTIALS,
+		VIEWS.SHARED_CREDENTIALS,
+	];
+
+	return CREDENTIAL_VIEWS.includes(routeName);
+}
+
+function isWorkflowListView(routeName: string) {
+	const WORKFLOWS_VIEWS: string[] = [
+		VIEWS.PROJECTS_WORKFLOWS,
+		VIEWS.WORKFLOWS,
+		VIEWS.SHARED_WORKFLOWS,
+		VIEWS.PROJECTS_FOLDERS,
+	];
+
+	return WORKFLOWS_VIEWS.includes(routeName);
+}
+
+function getUIContext(routeName: string) {
+	if (isCredentialsListView(routeName)) {
+		return 'credentials_list';
+	} else if (isWorkflowListView(routeName)) {
+		return 'workflow_list';
+	} else {
+		return;
+	}
+}
+
 const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
@@ -135,6 +205,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			query: {
 				projectId,
 				parentFolderId: route.params.folderId as string,
+				uiContext: getUIContext(route.name?.toString() ?? ''),
 			},
 		});
 	},
@@ -145,30 +216,47 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 				projectId,
 				credentialId: 'create',
 			},
+			query: {
+				uiContext: getUIContext(route.name?.toString() ?? ''),
+			},
 		});
 	},
-	[ACTION_TYPES.FOLDER]: async () => {
+	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
+	},
+	[ACTION_TYPES.DATA_STORE]: (projectId: string) => {
+		void router.push({
+			name: PROJECT_DATA_STORES,
+			params: { projectId, new: 'new' },
+		});
 	},
 } as const;
 
 const pageType = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		return 'overview';
 	} else {
 		return 'project';
 	}
 });
 
 const sectionDescription = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
+	} else if (projectPages.isOverviewSubPage) {
+		return i18n.baseText(
+			settingsStore.isDataTableFeatureEnabled
+				? 'projects.header.overview.subtitleWithDataTables'
+				: 'projects.header.overview.subtitle',
+		);
 	} else if (isPersonalProject.value) {
-		return i18n.baseText('projects.header.personal.subtitle');
+		return i18n.baseText(
+			settingsStore.isDataTableFeatureEnabled
+				? 'projects.header.personal.subtitleWithDataTables'
+				: 'projects.header.personal.subtitle',
+		);
 	}
 
 	return null;
@@ -220,6 +308,7 @@ const onSelect = (action: string) => {
 	if (!homeProject.value) {
 		return;
 	}
+
 	executableAction(homeProject.value.id);
 };
 </script>
@@ -257,18 +346,21 @@ const onSelect = (action: string) => {
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
-					<ProjectCreateResource
-						data-test-id="add-resource-buttons"
-						:actions="menu"
-						:disabled="sourceControlStore.preferences.branchReadOnly"
-						@action="onSelect"
-					>
-						<N8nButton
-							data-test-id="add-resource-workflow"
-							v-bind="createWorkflowButton"
-							@click="onSelect(ACTION_TYPES.WORKFLOW)"
-						/>
-					</ProjectCreateResource>
+					<div style="display: flex; gap: var(--spacing-xs); align-items: center">
+						<ReadyToRunV2Button :has-active-callouts="props.hasActiveCallouts" />
+						<ProjectCreateResource
+							data-test-id="add-resource-buttons"
+							:actions="menu"
+							:disabled="sourceControlStore.preferences.branchReadOnly"
+							@action="onSelect"
+						>
+							<N8nButton
+								data-test-id="add-resource-workflow"
+								v-bind="createWorkflowButton"
+								@click="onSelect(ACTION_TYPES.WORKFLOW)"
+							/>
+						</ProjectCreateResource>
+					</div>
 				</N8nTooltip>
 			</div>
 		</div>
@@ -278,6 +370,7 @@ const onSelect = (action: string) => {
 				:page-type="pageType"
 				:show-executions="!projectPages.isSharedSubPage"
 				:show-settings="showSettings"
+				:additional-tabs="customProjectTabs"
 			/>
 		</div>
 	</div>
@@ -288,7 +381,7 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing-m);
+	padding-bottom: var(--spacing-l);
 	min-height: var(--spacing-3xl);
 }
 

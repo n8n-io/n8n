@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import type { RouteLocationRaw } from 'vue-router';
 
-import type { TextSize } from '@n8n/design-system/types/text';
-
+import type { TextSize } from '../../types/text';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
 
@@ -15,6 +14,7 @@ interface LinkProps {
 	bold?: boolean;
 	underline?: boolean;
 	theme?: (typeof THEME)[number];
+	title?: string;
 }
 
 defineOptions({ name: 'N8nLink' });
@@ -28,7 +28,7 @@ withDefaults(defineProps<LinkProps>(), {
 </script>
 
 <template>
-	<N8nRoute :to="to" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
+	<N8nRoute :to="to" :title="title" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
 		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
 			<N8nText :size="size" :bold="bold">
 				<slot></slot>
@@ -38,14 +38,14 @@ withDefaults(defineProps<LinkProps>(), {
 </template>
 
 <style lang="scss" module>
-@import '../../utils';
-@import '../../css/common/var';
+@use '../../utils';
+@use '../../css/common/var';
 
 .primary {
-	color: $link-color;
+	color: var.$link-color;
 
 	&:active {
-		color: $link-color-active;
+		color: var.$link-color-active;
 	}
 }
 
@@ -53,11 +53,11 @@ withDefaults(defineProps<LinkProps>(), {
 	color: var(--color-text-base);
 
 	&:hover {
-		color: $link-color;
+		color: var.$link-color;
 	}
 
 	&:active {
-		color: $link-color-active;
+		color: var.$link-color-active;
 	}
 }
 

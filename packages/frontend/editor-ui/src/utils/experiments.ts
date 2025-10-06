@@ -4,6 +4,10 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
+/*
+ * Extra template links
+ */
+
 export const isExtraTemplateLinksExperimentEnabled = () => {
 	return (
 		usePostHog().getVariant(EXTRA_TEMPLATE_LINKS_EXPERIMENT.name) ===

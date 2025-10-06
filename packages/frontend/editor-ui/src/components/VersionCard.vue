@@ -80,7 +80,7 @@ const nodeName = (node: VersionNode): string => {
 	text-decoration: none;
 
 	&:hover {
-		box-shadow: 0px 2px 10px $version-card-box-shadow-color;
+		box-shadow: 0 2px 10px $version-card-box-shadow-color;
 	}
 }
 
@@ -112,7 +112,7 @@ const nodeName = (node: VersionNode): string => {
 .divider {
 	border-bottom: $version-card-border;
 	width: 100%;
-	margin: 10px 0 15px 0;
+	margin: 10px 0 15px;
 }
 
 .description {

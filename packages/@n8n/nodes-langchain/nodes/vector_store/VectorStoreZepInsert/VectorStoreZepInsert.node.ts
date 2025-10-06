@@ -64,6 +64,12 @@ export class VectorStoreZepInsert implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
+				displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Collection Name',
 				name: 'collectionName',
 				type: 'string',

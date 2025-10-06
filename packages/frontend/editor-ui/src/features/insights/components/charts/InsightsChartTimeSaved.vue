@@ -79,5 +79,3 @@ const chartData = computed<ChartData<'line'>>(() => {
 		:plugins="[Filler]"
 	/>
 </template>
-
-<style lang="scss" module></style>

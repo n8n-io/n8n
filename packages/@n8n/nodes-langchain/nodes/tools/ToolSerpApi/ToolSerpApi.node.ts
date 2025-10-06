@@ -1,14 +1,23 @@
 import { SerpAPI } from '@langchain/community/tools/serpapi';
 import {
+	type IExecuteFunctions,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+async function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions, itemIndex: number) {
+	const credentials = await ctx.getCredentials('serpApi');
+
+	const options = ctx.getNodeParameter('options', itemIndex) as object;
+
+	return new SerpAPI(credentials.apiKey as string, options);
+}
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,12 +123,26 @@ export class ToolSerpApi implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('serpApi');
-
-		const options = this.getNodeParameter('options', itemIndex) as object;
-
 		return {
-			response: logWrapper(new SerpAPI(credentials.apiKey as string, options), this),
+			response: logWrapper(await getTool(this, itemIndex), this),
 		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const inputData = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
+			const tool = await getTool(this, itemIndex);
+			const query = inputData[itemIndex];
+			const result = await tool.invoke(query);
+			returnData.push({
+				json: {
+					response: result,
+				},
+				pairedItem: { item: itemIndex },
+			});
+		}
+
+		return [returnData];
 	}
 }

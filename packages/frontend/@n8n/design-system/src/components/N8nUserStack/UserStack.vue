@@ -2,8 +2,7 @@
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { computed } from 'vue';
 
-import type { IUser, UserStackGroups } from '@n8n/design-system/types';
-
+import type { IUser, UserStackGroups } from '../../types';
 import N8nAvatar from '../N8nAvatar';
 import N8nUserInfo from '../N8nUserInfo';
 
@@ -182,7 +181,7 @@ ul.user-stack-list {
 	border: 1px solid var(--border-color-light);
 	border-radius: var(--border-radius-base);
 	padding: var(--spacing-5xs) 0;
-	box-shadow: 0px 2px 8px 0px #441c171a;
+	box-shadow: 0 2px 8px 0 #441c171a;
 	background-color: var(--color-background-xlight);
 }
 </style>

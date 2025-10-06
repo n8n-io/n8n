@@ -83,7 +83,8 @@ import {
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
-import type { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
+import type { IFormInputs } from '@/Interface';
+import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/stores/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
@@ -95,6 +96,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { getResourcePermissions } from '@n8n/permissions';
 
+import { N8nButton, N8nFormInputs } from '@n8n/design-system';
 const SURVEY_VERSION = 'v4';
 
 const externalHooks = useExternalHooks();
@@ -619,7 +621,7 @@ const onSubmit = async (values: object) => {
 	>
 		<template #content>
 			<div :class="$style.container">
-				<n8n-form-inputs
+				<N8nFormInputs
 					v-model="formValues"
 					:inputs="survey"
 					:column-view="true"
@@ -632,7 +634,7 @@ const onSubmit = async (values: object) => {
 		</template>
 		<template #footer>
 			<div>
-				<n8n-button
+				<N8nButton
 					:loading="isSaving"
 					:label="i18n.baseText('personalizationModal.getStarted')"
 					float="right"

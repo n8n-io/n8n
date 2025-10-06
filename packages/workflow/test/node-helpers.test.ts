@@ -3416,6 +3416,104 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is not an object or is an array',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as an array instead of an object
+						values: [] as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is a string',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as a string
+						values: 'invalid value' as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
@@ -5276,8 +5374,8 @@ describe('NodeHelpers', () => {
 
 		it.each([
 			['Create a new user', true],
-			['Test Node', true],
-			['Test Node1', true],
+			['Test Node', false],
+			['Test Node1', false],
 			['Create a new user5', true],
 			['Create a new user in Test Node5', false],
 			['Create a new user 5', false],
@@ -5532,6 +5630,44 @@ describe('NodeHelpers', () => {
 			// Assert
 			expect(result).toBe('Create user in Test Node');
 		});
+
+		test.each([
+			['javaScript', 'Code in JavaScript'],
+			['python', 'Code in Python (Beta)'],
+			['pythonNative', 'Code in Python (Native) (Beta)'],
+		])(
+			'should return action-based name for Code node with %s language',
+			(language, expectedAction) => {
+				mockNodeTypeDescription.name = 'n8n-nodes-base.code';
+				mockNodeTypeDescription.properties = [
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{
+								name: 'JavaScript',
+								value: 'javaScript',
+								action: 'Code in JavaScript',
+							},
+							{
+								name: 'Python (Beta)',
+								value: 'python',
+								action: 'Code in Python (Beta)',
+							},
+							{
+								name: 'Python (Native) (Beta)',
+								value: 'pythonNative',
+								action: 'Code in Python (Native) (Beta)',
+							},
+						],
+						default: 'javaScript',
+					},
+				];
+				const result = makeNodeName({ language }, mockNodeTypeDescription);
+				expect(result).toBe(expectedAction);
+			},
+		);
 	});
 	describe('isTool', () => {
 		it('should return true for a node with AiTool output', () => {

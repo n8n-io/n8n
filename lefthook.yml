@@ -14,3 +14,15 @@ pre-commit:
       skip:
         - merge
         - rebase
+    styles_check:
+      glob: 'packages/**/*.{scss,sass,vue}'
+      run: pnpm lint:styles:fix
+      skip:
+        - merge
+        - rebase
+    actionlint_check:
+      glob: '.github/workflows/*.{yml,yaml}'
+      run: actionlint {staged_files}
+      skip:
+        - merge
+        - rebase

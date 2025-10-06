@@ -14,7 +14,6 @@ import {
 	type RelatedExecution,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
-import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash/get';
@@ -193,24 +192,7 @@ function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 	return subTree[subTree.length - 1];
 }
 
-export function createLogTree(
-	workflow: Workflow,
-	response: IExecutionResponse,
-	workflows: Record<string, Workflow> = {},
-	subWorkflowData: Record<string, IRunExecutionData> = {},
-) {
-	return createLogTreeRec({
-		parent: undefined,
-		ancestorRunIndexes: [],
-		executionId: response.id,
-		workflow,
-		workflows,
-		data: response.data ?? { resultData: { runData: {} } },
-		subWorkflowData,
-	});
-}
-
-function createLogTreeRec(context: LogTreeCreationContext) {
+function createLogTreeRec(context: LogTreeCreationContext): LogEntry[] {
 	const runData = context.data.resultData.runData;
 
 	return Object.entries(runData)
@@ -257,6 +239,23 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 			getTreeNodeData(node, task, nodeHasMultipleRuns ? runIndex : undefined, context),
 		)
 		.sort(sortLogEntries);
+}
+
+export function createLogTree(
+	workflow: Workflow,
+	response: IExecutionResponse,
+	workflows: Record<string, Workflow> = {},
+	subWorkflowData: Record<string, IRunExecutionData> = {},
+): LogEntry[] {
+	return createLogTreeRec({
+		parent: undefined,
+		ancestorRunIndexes: [],
+		executionId: response.id,
+		workflow,
+		workflows,
+		data: response.data ?? { resultData: { runData: {} } },
+		subWorkflowData,
+	});
 }
 
 export function findLogEntryRec(
@@ -310,44 +309,6 @@ export function findSelectedLogEntry(
 			return found;
 		}
 	}
-}
-
-export function deepToRaw<T>(sourceObj: T): T {
-	const seen = new WeakMap();
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const objectIterator = (input: any): any => {
-		if (seen.has(input)) {
-			return input;
-		}
-
-		if (input !== null && typeof input === 'object') {
-			seen.set(input, true);
-		}
-
-		if (Array.isArray(input)) {
-			return input.map((item) => objectIterator(item));
-		}
-
-		if (isRef(input) || isReactive(input) || isProxy(input)) {
-			return objectIterator(toRaw(input));
-		}
-
-		if (
-			input !== null &&
-			typeof input === 'object' &&
-			Object.getPrototypeOf(input) === Object.prototype
-		) {
-			return Object.keys(input).reduce((acc, key) => {
-				acc[key as keyof typeof acc] = objectIterator(input[key]);
-				return acc;
-			}, {} as T);
-		}
-
-		return input;
-	};
-
-	return objectIterator(sourceObj);
 }
 
 export function flattenLogEntries(
@@ -541,8 +502,24 @@ export function extractBotResponse(
 	if (get(nodeResponseData, 'error')) {
 		responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 	} else {
-		const responseData = get(nodeResponseData, 'data.main[0][0].json');
-		const text = extractResponseText(responseData) ?? emptyText;
+		// Check all output branches for response data, not just the first one
+		const mainOutputs = get(nodeResponseData, 'data.main');
+		let text: string | undefined;
+
+		if (mainOutputs && Array.isArray(mainOutputs)) {
+			for (const branch of mainOutputs) {
+				if (branch?.[0]?.json) {
+					const responseData = branch[0].json;
+					text = extractResponseText(responseData);
+					if (text) {
+						break; // Found a valid response, stop searching
+					}
+				}
+			}
+		}
+
+		// Fall back to emptyText if no valid response found
+		text = text ?? emptyText;
 
 		if (!text) {
 			return undefined;
@@ -565,7 +542,7 @@ function extractResponseText(responseData?: IDataObject): string | undefined {
 	}
 
 	// Paths where the response message might be located
-	const paths = ['output', 'text', 'response.text'];
+	const paths = ['output', 'text', 'response.text', 'message'];
 	const matchedPath = paths.find((path) => get(responseData, path));
 
 	if (!matchedPath) return JSON.stringify(responseData, null, 2);
@@ -599,10 +576,57 @@ export function restoreChatHistory(
 	return [...(userMessage ? [userMessage] : []), ...(botMessage ? [botMessage] : [])];
 }
 
+export async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+
+			reader.onerror = () =>
+				reject(new Error(`Error reading file: ${reader.error?.message ?? 'Unknown error'}`));
+
+			reader.readAsDataURL(file);
+		});
+	});
+
+	return await Promise.all(filePromises);
+}
+
 export function isSubNodeLog(logEntry: LogEntry): boolean {
 	return logEntry.parent !== undefined && logEntry.parent.executionId === logEntry.executionId;
 }
 
 export function isPlaceholderLog(treeNode: LogEntry): boolean {
 	return treeNode.runData === undefined;
+}
+
+/**
+ * Creates a copy of execution data just deep enough to keeps logs immutable and not reactive.
+ * We deliberately avoid full deep copy here for performance reason.
+ *
+ * TODO: use shallowRef() for execution data in workflows store to make this unnecessary.
+ */
+export function copyExecutionData(executionData: IExecutionResponse): IExecutionResponse {
+	return {
+		...executionData,
+		data: {
+			...executionData.data,
+			resultData: {
+				...executionData.data?.resultData,
+				runData: Object.fromEntries(
+					Object.entries(executionData.data?.resultData.runData ?? {}).map(([k, v]) => [k, [...v]]),
+				),
+			},
+		},
+	};
 }

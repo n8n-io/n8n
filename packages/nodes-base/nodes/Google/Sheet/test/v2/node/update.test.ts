@@ -319,3 +319,150 @@ describe('Google Sheet - Update 4.6', () => {
 		);
 	});
 });
+
+describe('Google Sheet - Update v4.6 vs v4.7 Behavior', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+	let mockGoogleSheet: MockProxy<GoogleSheet>;
+
+	afterEach(() => {
+		jest.resetAllMocks();
+	});
+
+	it('v4.6: empty string in UI gets filtered out, field not sent to backend', async () => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockGoogleSheet = mock<GoogleSheet>();
+		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.6 }));
+		mockGoogleSheet.batchUpdate.mockResolvedValueOnce([]);
+
+		mockExecuteFunctions.getInputData.mockReturnValueOnce([
+			{
+				json: {},
+				pairedItem: { item: 0, input: undefined },
+			},
+		]);
+
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+			const params: { [key: string]: string | object } = {
+				options: {},
+				'options.cellFormat': 'USER_ENTERED',
+				'columns.matchingColumns': ['id'],
+				'columns.mappingMode': 'defineBelow',
+				'columns.value': {
+					id: 1,
+					name: 'John',
+					// email field is NOT present here because user typed '' in UI
+					// and v4.6 frontend filtered it out (allowEmptyStrings: false)
+				},
+			};
+			return params[parameterName];
+		});
+
+		mockGoogleSheet.getData.mockResolvedValueOnce([
+			['id', 'name', 'email'],
+			['1', 'Old Name', 'old@email.com'],
+		]);
+
+		mockGoogleSheet.getColumnValues.mockResolvedValueOnce(['1']);
+
+		mockGoogleSheet.prepareDataForUpdateOrUpsert.mockResolvedValueOnce({
+			updateData: [
+				{
+					range: 'Sheet1!B2',
+					values: [['John']],
+				},
+				// No update for email column - it keeps its old value
+			],
+			appendData: [],
+		});
+
+		await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1');
+
+		// v4.6: Only name field is updated, email is not included in the update
+		expect(mockGoogleSheet.prepareDataForUpdateOrUpsert).toHaveBeenCalledWith({
+			inputData: [
+				{
+					id: 1,
+					name: 'John',
+					// email is NOT in the inputData, so cell keeps old value
+				},
+			],
+			indexKey: 'id',
+			range: 'Sheet1!A:Z',
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			valueRenderMode: 'UNFORMATTED_VALUE',
+			columnNamesList: [['id', 'name', 'email']],
+			columnValuesList: ['1'],
+		});
+	});
+
+	it('v4.7: empty string in UI is preserved and sent to backend to clear cell', async () => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockGoogleSheet = mock<GoogleSheet>();
+		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.7 }));
+		mockGoogleSheet.batchUpdate.mockResolvedValueOnce([]);
+
+		mockExecuteFunctions.getInputData.mockReturnValueOnce([
+			{
+				json: {},
+				pairedItem: { item: 0, input: undefined },
+			},
+		]);
+
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+			const params: { [key: string]: string | object } = {
+				options: {},
+				'options.cellFormat': 'USER_ENTERED',
+				'columns.matchingColumns': ['id'],
+				'columns.mappingMode': 'defineBelow',
+				'columns.value': {
+					id: 1,
+					name: 'John',
+					email: '', // Empty string is preserved in v4.7 (allowEmptyStrings: true)
+				},
+			};
+			return params[parameterName];
+		});
+
+		mockGoogleSheet.getData.mockResolvedValueOnce([
+			['id', 'name', 'email'],
+			['1', 'Old Name', 'old@email.com'],
+		]);
+
+		mockGoogleSheet.getColumnValues.mockResolvedValueOnce(['1']);
+
+		mockGoogleSheet.prepareDataForUpdateOrUpsert.mockResolvedValueOnce({
+			updateData: [
+				{
+					range: 'Sheet1!B2',
+					values: [['John']],
+				},
+				{
+					range: 'Sheet1!C2',
+					values: [['']],
+				},
+			],
+			appendData: [],
+		});
+
+		await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1');
+
+		// v4.7: Both name and email fields are updated, email is cleared with empty string
+		expect(mockGoogleSheet.prepareDataForUpdateOrUpsert).toHaveBeenCalledWith({
+			inputData: [
+				{
+					id: 1,
+					name: 'John',
+					email: '', // Empty string is preserved and will clear the cell
+				},
+			],
+			indexKey: 'id',
+			range: 'Sheet1!A:Z',
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			valueRenderMode: 'UNFORMATTED_VALUE',
+			columnNamesList: [['id', 'name', 'email']],
+			columnValuesList: ['1'],
+		});
+	});
+});

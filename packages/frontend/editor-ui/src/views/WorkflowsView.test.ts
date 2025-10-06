@@ -1,9 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import * as usersApi from '@/api/users';
+import * as usersApi from '@n8n/rest-api-client/api/users';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { VIEWS } from '@/constants';
-import type { IUser, WorkflowListResource } from '@/Interface';
+import type { WorkflowListResource } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -21,7 +22,7 @@ import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 vi.mock('@/api/projects.api');
-vi.mock('@/api/users');
+vi.mock('@n8n/rest-api-client/api/users');
 vi.mock('@/api/sourceControl');
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
@@ -69,7 +70,7 @@ const router = createRouter({
 	],
 });
 
-vi.mock('@/api/usage', () => ({
+vi.mock('@n8n/rest-api-client/api/usage', () => ({
 	getLicense: vi.fn(),
 }));
 
@@ -396,6 +397,19 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
 		});
+
+		it('should show archived only hint', async () => {
+			foldersStore.totalWorkflowCount = 1;
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const showArchivedLink = getByTestId('show-archived-link');
+			expect(showArchivedLink).toBeInTheDocument();
+
+			await userEvent.click(showArchivedLink);
+			expect(router.currentRoute.value.query).toStrictEqual({ showArchived: 'true' });
+		});
 	});
 
 	describe('source control', () => {
@@ -484,13 +498,6 @@ describe('Folders', () => {
 		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 		const { getByTestId } = renderComponent({
 			pinia,
-			global: {
-				stubs: {
-					'router-link': {
-						template: '<div data-test-id="folder-card"><slot /></div>',
-					},
-				},
-			},
 		});
 		await waitAllPromises();
 		expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();

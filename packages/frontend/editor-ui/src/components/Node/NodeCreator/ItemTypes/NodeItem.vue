@@ -17,12 +17,12 @@ import OfficialIcon from 'virtual:icons/mdi/verified';
 import { useNodeType } from '@/composables/useNodeType';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useI18n } from '@n8n/i18n';
 import { isNodePreviewKey, removePreviewToken, shouldShowCommunityNodeDetails } from '../utils';
 
+import { N8nIcon, N8nNodeCreatorNode, N8nTooltip } from '@n8n/design-system';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	subcategory?: string;
@@ -131,6 +131,9 @@ const tag = computed(() => {
 	if (description.value.toLowerCase().includes('deprecated')) {
 		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
 	}
+	if (props.nodeType.name.includes('dataTable')) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.beta'), type: 'info' };
+	}
 	return undefined;
 });
 
@@ -179,7 +182,11 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	>
 		<template #icon>
 			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
+			<NodeIcon
+				:class="$style.nodeIcon"
+				:node-type="nodeType"
+				color-default="var(--color-foreground-xdark)"
+			/>
 		</template>
 
 		<template v-if="isOfficial" #extraDetails>
@@ -212,7 +219,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						@click="onCommunityNodeTooltipClick"
 					/>
 				</template>
-				<n8n-icon size="small" :class="$style.icon" icon="box" />
+				<N8nIcon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
 		</template>
 		<template #dragContent>
@@ -222,7 +229,13 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 				:class="$style.draggable"
 				:style="draggableStyle"
 			>
-				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
+				<NodeIcon
+					:node-type="nodeType"
+					:size="40"
+					:shrink="false"
+					color-default="var(--color-foreground-xdark)"
+					@click.capture.stop
+				/>
 			</div>
 		</template>
 	</N8nNodeCreatorNode>

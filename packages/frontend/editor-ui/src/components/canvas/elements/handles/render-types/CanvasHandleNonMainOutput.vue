@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { computed, useCssModule } from 'vue';
+import CanvasHandleDiamond from '@/components/canvas/elements/handles/render-types/parts/CanvasHandleDiamond.vue';
 
 const $style = useCssModule();
 const { label, isRequired } = useCanvasNodeHandle();
@@ -32,7 +33,7 @@ const classes = computed(() => ({
 	position: absolute;
 	top: -20px;
 	left: 50%;
-	transform: translate(-50%, 0);
+	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
 	font-size: var(--font-size-2xs);
 	color: var(--node-type-supplemental-color);
 	background: var(--color-canvas-label-background);

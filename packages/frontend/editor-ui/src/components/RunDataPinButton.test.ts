@@ -4,10 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { STORES } from '@n8n/stores';
+import type { usePinnedData } from '@/composables/usePinnedData';
 
 const renderComponent = createComponentRenderer(RunDataPinButton, {
 	global: {
-		stubs: ['font-awesome-icon'],
+		stubs: ['FontAwesomeIcon'],
 		plugins: [
 			createTestingPinia({
 				initialState: {
@@ -31,7 +32,7 @@ const renderComponent = createComponentRenderer(RunDataPinButton, {
 		dataPinningDocsUrl: '',
 		pinnedData: {
 			hasData: { value: false },
-		},
+		} as ReturnType<typeof usePinnedData>,
 		disabled: false,
 	},
 });
@@ -137,7 +138,7 @@ describe('RunDataPinButton.vue', () => {
 			props: {
 				pinnedData: {
 					hasData: { value: true },
-				},
+				} as ReturnType<typeof usePinnedData>,
 			},
 		});
 		// Should show 'Unpin data' tooltip and emit togglePinData event

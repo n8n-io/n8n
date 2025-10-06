@@ -1,17 +1,22 @@
 import type { Project, User, ProjectRelation } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ProjectRole } from '@n8n/permissions';
+import type { AssignableProjectRole } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 
 import { randomName } from '../random';
 
-export const linkUserToProject = async (user: User, project: Project, role: ProjectRole) => {
+export const linkUserToProject = async (
+	user: User,
+	project: Project,
+	role: AssignableProjectRole,
+) => {
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 	await projectRelationRepository.save(
 		projectRelationRepository.create({
 			projectId: project.id,
 			userId: user.id,
-			role,
+			role: { slug: role },
 		}),
 	);
 };
@@ -41,7 +46,7 @@ export const getPersonalProject = async (user: User): Promise<Project> => {
 		where: {
 			projectRelations: {
 				userId: user.id,
-				role: 'project:personalOwner',
+				role: { slug: PROJECT_OWNER_ROLE_SLUG },
 			},
 			type: 'personal',
 		},
@@ -61,19 +66,20 @@ export const getProjectRelations = async ({
 }: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
 	return await Container.get(ProjectRelationRepository).find({
 		where: { projectId, userId, role },
+		relations: { role: true },
 	});
 };
 
 export const getProjectRoleForUser = async (
 	projectId: string,
 	userId: string,
-): Promise<ProjectRole | undefined> => {
+): Promise<AssignableProjectRole | undefined> => {
 	return (
 		await Container.get(ProjectRelationRepository).findOne({
-			select: ['role'],
 			where: { projectId, userId },
+			relations: { role: true },
 		})
-	)?.role;
+	)?.role?.slug;
 };
 
 export const getAllProjectRelations = async ({
@@ -81,5 +87,6 @@ export const getAllProjectRelations = async ({
 }: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
 	return await Container.get(ProjectRelationRepository).find({
 		where: { projectId },
+		relations: { role: true },
 	});
 };

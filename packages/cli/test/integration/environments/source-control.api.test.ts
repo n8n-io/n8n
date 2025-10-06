@@ -1,6 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
@@ -24,7 +24,7 @@ const testServer = utils.setupTestServer({
 let sourceControlPreferencesService: SourceControlPreferencesService;
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	sourceControlPreferencesService = Container.get(SourceControlPreferencesService);

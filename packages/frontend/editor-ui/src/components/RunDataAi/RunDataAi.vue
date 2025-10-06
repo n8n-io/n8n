@@ -13,15 +13,16 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
-import { ElTree } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { Workflow } from 'n8n-workflow';
 
+import { ElTree } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 export interface Props {
 	node: INodeUi;
 	runIndex?: number;
 	slim?: boolean;
-	workflow: Workflow;
+	workflowObject: Workflow;
 }
 const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
@@ -31,11 +32,20 @@ const selectedRun: Ref<IAiData[]> = ref([]);
 const i18n = useI18n();
 
 const aiData = computed<AIResult[]>(() =>
-	createAiData(props.node.name, props.workflow, workflowsStore.getWorkflowResultDataByNodeName),
+	createAiData(
+		props.node.name,
+		props.workflowObject.connectionsBySourceNode,
+		workflowsStore.getWorkflowResultDataByNodeName,
+	),
 );
 
 const executionTree = computed<TreeNode[]>(() =>
-	getTreeNodeData(props.node.name, props.workflow, aiData.value, props.runIndex),
+	getTreeNodeData(
+		props.node.name,
+		props.workflowObject.connectionsBySourceNode,
+		aiData.value,
+		props.runIndex,
+	),
 );
 
 function isTreeNodeSelected(node: TreeNode) {
@@ -117,9 +127,9 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								:class="$style.treeToggle"
 								@click="toggleTreeItem(currentNode)"
 							>
-								<n8n-icon :icon="currentNode.expanded ? 'chevron-down' : 'chevron-right'" />
+								<N8nIcon :icon="currentNode.expanded ? 'chevron-down' : 'chevron-right'" />
 							</button>
-							<n8n-tooltip :disabled="!slim" placement="right">
+							<N8nTooltip :disabled="!slim" placement="right">
 								<template #content>
 									{{ currentNode.label }}
 								</template>
@@ -131,14 +141,14 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 									/>
 									<span v-if="!slim" v-text="currentNode.label" />
 								</span>
-							</n8n-tooltip>
+							</N8nTooltip>
 						</div>
 					</template>
 				</ElTree>
 			</div>
 			<div :class="$style.runData">
 				<div v-if="selectedRun.length === 0" :class="$style.empty">
-					<n8n-text size="large">
+					<N8nText size="large">
 						{{
 							i18n.baseText('ndv.output.ai.empty', {
 								interpolate: {
@@ -146,7 +156,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								},
 							})
 						}}
-					</n8n-text>
+					</N8nText>
 				</div>
 				<div
 					v-for="(data, index) in selectedRun"

@@ -13,11 +13,12 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nIcon, N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
@@ -78,6 +79,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const {
@@ -269,7 +271,7 @@ function getValueToRender(value: unknown): string {
 		return i18n.baseText('runData.emptyObject');
 	}
 	if (value === null || value === undefined) {
-		return `[${value}]`;
+		return `${value}`;
 	}
 	if (value === true || value === false || typeof value === 'number') {
 		return value.toString();
@@ -323,6 +325,7 @@ function onDragEnd(column: string, src: string, depth = '0') {
 			src_view: 'table',
 			src_element: src,
 			success: false,
+			view_shown: telemetryContext.view_shown,
 			...mappingTelemetry,
 		};
 
@@ -515,6 +518,7 @@ watch(
 						@mouseleave="onMouseLeaveCell"
 					>
 						<N8nTooltip
+							v-if="tableData.metadata.data[index1]"
 							:content="
 								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
@@ -526,7 +530,6 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
@@ -618,7 +621,7 @@ watch(
 											/>
 										</N8nTooltip>
 										<div v-if="mappingEnabled" :class="$style.dragButton">
-											<n8n-icon icon="grip-vertical" />
+											<N8nIcon icon="grip-vertical" />
 										</div>
 									</div>
 								</template>
@@ -644,7 +647,7 @@ watch(
 								</div>
 							</template>
 							<span>
-								<n8n-icon :class="$style['warningTooltip']" icon="triangle-alert" />
+								<N8nIcon :class="$style['warningTooltip']" icon="triangle-alert" />
 								{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</N8nTooltip>
@@ -681,6 +684,7 @@ watch(
 						@mouseleave="onMouseLeaveCell"
 					>
 						<N8nTooltip
+							v-if="tableData.metadata.data[index1]"
 							:content="
 								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
@@ -692,7 +696,6 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
@@ -957,6 +960,7 @@ th.isCollapsingColumn + th {
 
 .empty {
 	color: var(--color-danger);
+	font-style: italic;
 }
 
 .limitColWidth {

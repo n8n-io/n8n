@@ -1,0 +1,55 @@
+{
+	"createdAt": "2021-03-15T08:20:13.922Z",
+	"updatedAt": "2021-03-15T08:20:13.922Z",
+	"id": "133",
+	"name": "Twilio:SMS:send",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "b7004365-30c6-4792-80ca-7c9ee2eb87a4"
+		},
+		{
+			"parameters": {
+				"from": "+15005550006",
+				"to": "+15005550006",
+				"message": "=Message{{Date.now()}}"
+			},
+			"name": "Twilio",
+			"type": "n8n-nodes-base.twilio",
+			"typeVersion": 1,
+			"position": [550, 300],
+			"credentials": {
+				"twilioApi": {
+					"id": "101",
+					"name": "Twilio API creds"
+				}
+			},
+			"id": "6f7e0239-82e7-4b9a-85f2-39ed23ff28b8"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Twilio",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

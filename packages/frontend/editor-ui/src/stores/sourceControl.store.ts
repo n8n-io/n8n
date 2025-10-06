@@ -30,6 +30,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		connected: false,
 		publicKey: '',
 		keyGeneratorType: 'ed25519',
+		connectionType: 'ssh',
 	});
 
 	const state = reactive<{
@@ -102,6 +103,10 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.getAggregatedStatus(rootStore.restApiContext);
 	};
 
+	const getRemoteWorkflow = async (workflowId: string) => {
+		return await vcApi.getRemoteWorkflow(rootStore.restApiContext, workflowId);
+	};
+
 	return {
 		isEnterpriseSourceControlEnabled,
 		state,
@@ -117,6 +122,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		disconnect,
 		getStatus,
 		getAggregatedStatus,
+		getRemoteWorkflow,
 		sshKeyTypesWithLabel,
 	};
 });

@@ -2,10 +2,10 @@
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nText } from '@n8n/design-system';
-import { ElDialog } from 'element-plus';
 import { computed } from 'vue';
 
+import { N8nButton, N8nText } from '@n8n/design-system';
+import { ElDialog } from 'element-plus';
 const model = defineModel<boolean>();
 const i18n = useI18n();
 
@@ -45,7 +45,7 @@ const perks = computed(() =>
 					{{ i18n.baseText('insights.upgradeModal.button.dismiss') }}
 				</N8nButton>
 				<N8nButton type="primary" @click="goToUpgrade">
-					{{ i18n.baseText('insights.upgradeModal.button.upgrade') }}
+					{{ i18n.baseText('generic.upgrade') }}
 				</N8nButton>
 			</div>
 		</template>

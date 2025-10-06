@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
+import NodeSettingsHint from '@/components/NodeSettingsHint.vue';
 import type {
 	IBinaryData,
 	IConnectedNode,
@@ -16,21 +16,10 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import {
-	parseErrorMetadata,
-	NodeConnectionTypes,
-	NodeHelpers,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-} from 'n8n-workflow';
+import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IRunDataDisplayMode,
-	ITab,
-	NodePanelType,
-} from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -72,6 +61,22 @@ import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
+import { storeToRefs } from 'pinia';
+import { useRoute } from 'vue-router';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { asyncComputed } from '@vueuse/core';
+import ViewSubExecution from './ViewSubExecution.vue';
+import RunDataItemCount from '@/components/RunDataItemCount.vue';
+import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
+import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
+import { parseAiContent } from '@/utils/aiUtils';
+import { usePostHog } from '@/stores/posthog.store';
+import { I18nT } from 'vue-i18n';
+import RunDataBinary from '@/components/RunDataBinary.vue';
+import { hasTrimmedRunData } from '@/utils/executionUtils';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import { type SearchShortcut } from '@/types';
+
 import {
 	N8nBlockUi,
 	N8nButton,
@@ -86,19 +91,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
-import { asyncComputed } from '@vueuse/core';
-import ViewSubExecution from './ViewSubExecution.vue';
-import RunDataItemCount from '@/components/RunDataItemCount.vue';
-import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
-import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
-import { parseAiContent } from '@/utils/aiUtils';
-import { usePostHog } from '@/stores/posthog.store';
-import { I18nT } from 'vue-i18n';
-
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );
@@ -124,7 +116,7 @@ export type EnterEditModeArgs = {
 };
 
 type Props = {
-	workflow: Workflow;
+	workflowObject: Workflow;
 	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	tooMuchDataTitle: string;
@@ -143,7 +135,7 @@ type Props = {
 	distanceFromActive?: number;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
@@ -151,10 +143,13 @@ type Props = {
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
+	showActionsOnHover?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
+	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -163,7 +158,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideOutputs: undefined,
 	distanceFromActive: 0,
 	blockUI: false,
-	isPaneActive: false,
+	searchShortcut: undefined,
 	isProductionExecutionPreview: false,
 	mappingEnabled: false,
 	isExecuting: false,
@@ -174,7 +169,9 @@ const props = withDefaults(defineProps<Props>(), {
 	disableEdit: false,
 	disablePin: false,
 	disableHoverHighlight: false,
+	disableSettingsHint: false,
 	compact: false,
+	showActionsOnHover: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
 	disableAiContent: false,
@@ -184,6 +181,7 @@ defineSlots<{
 	content: {};
 	'callout-message': {};
 	header: {};
+	'header-end': (props: InstanceType<typeof RunDataItemCount>['$props']) => unknown;
 	'input-select': {};
 	'before-data': {};
 	'run-info': {};
@@ -212,6 +210,7 @@ const emit = defineEmits<{
 	];
 	displayModeChange: [IRunDataDisplayMode];
 	collapsingTableColumnChanged: [columnName: string | null];
+	captureWheelDataContainer: [WheelEvent];
 }>();
 
 const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
@@ -219,7 +218,6 @@ const dataSize = ref(0);
 const showData = ref(false);
 const userEnabledShowData = ref(false);
 const outputIndex = ref(0);
-const binaryDataDisplayVisible = ref(false);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -235,7 +233,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
 
@@ -302,10 +299,6 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const isTrimmedManualExecutionDataItem = computed(
-	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
-);
-
 const subworkflowExecutionError = computed(() => {
 	if (!node.value) return null;
 	return {
@@ -318,7 +311,7 @@ const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflow
 
 // Sub-nodes may wish to display the parent node error as it can contain additional metadata
 const parentNodeError = computed(() => {
-	const parentNode = props.workflow.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
+	const parentNode = props.workflowObject.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
 	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
 });
 const workflowRunErrorAsNodeError = computed(() => {
@@ -362,6 +355,10 @@ const dataCount = computed(() =>
 	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
 );
 
+const isTrimmedManualExecutionDataItem = computed(() =>
+	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
+);
+
 const unfilteredDataCount = computed(() =>
 	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
 );
@@ -391,6 +388,9 @@ const maxOutputIndex = computed(() => {
 	return 0;
 });
 const currentPageOffset = computed(() => pageSize.value * (currentPage.value - 1));
+const showBranchSwitch = computed(
+	() => maxOutputIndex.value > 0 && branches.value.length > 1 && !displaysMultipleNodes.value,
+);
 const maxRunIndex = computed(() => {
 	if (!node.value) {
 		return 0;
@@ -407,6 +407,29 @@ const maxRunIndex = computed(() => {
 	}
 
 	return 0;
+});
+
+const runSelectorOptionsCount = computed(() => {
+	if (!node.value) {
+		return 0;
+	}
+
+	const runData: IRunData | null = workflowRunData.value;
+
+	if (!runData?.hasOwnProperty(node.value.name)) {
+		return 0;
+	}
+
+	// If there is branch selector – we show all runs in the run selector
+	if (showBranchSwitch.value) {
+		return maxRunIndex.value + 1;
+	}
+
+	// If there is only one branch - we show only the runs containing the data in the connected branch
+	return runData[node.value.name].filter((nodeRun) => {
+		const nodeOutput = nodeRun?.data?.[connectionType.value]?.[currentOutputIndex.value];
+		return nodeOutput && nodeOutput?.length > 0;
+	}).length;
 });
 
 const rawInputData = computed(() =>
@@ -512,12 +535,12 @@ const showIoSearchNoMatchContent = computed(
 );
 
 const parentNodeOutputData = computed(() => {
-	const parentNode = props.workflow.getParentNodesByDepth(node.value?.name ?? '')[0];
+	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
 	let parentNodeData: INodeExecutionData[] = [];
 
 	if (parentNode?.name) {
 		parentNodeData = nodeHelpers.getNodeInputData(
-			props.workflow.getNode(parentNode?.name),
+			props.workflowObject.getNode(parentNode?.name),
 			props.runIndex,
 			outputIndex.value,
 			'input',
@@ -529,8 +552,8 @@ const parentNodeOutputData = computed(() => {
 });
 
 const parentNodePinnedData = computed(() => {
-	const parentNode = props.workflow.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return props.workflow.pinData?.[parentNode?.name || ''] ?? [];
+	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
+	return props.workflowObject.pinData?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(() => {
@@ -635,6 +658,10 @@ const hasParsedAiContent = computed(() =>
 	parsedAiContent.value.some((prr) => prr.parsedContent?.parsed),
 );
 
+const binaryDataDisplayVisible = computed(
+	() => binaryDataDisplayData.value !== null && props.displayMode === 'binary',
+);
+
 function setInputBranchIndex(value: number) {
 	if (props.paneType === 'input') {
 		outputIndex.value = value;
@@ -646,9 +673,10 @@ watch(node, (newNode, prevNode) => {
 	init();
 });
 
-watch(hasNodeRun, () => {
-	if (props.paneType === 'output') setDisplayMode();
-	else {
+watch([hasNodeRun, isTrimmedManualExecutionDataItem], () => {
+	if (props.paneType === 'output') {
+		setDisplayMode();
+	} else {
 		// InputPanel relies on the outputIndex to check if we have data
 		outputIndex.value = determineInitialOutputIndex();
 	}
@@ -720,7 +748,6 @@ onMounted(() => {
 	});
 
 	if (props.paneType === 'output') {
-		setDisplayMode();
 		activatePane();
 	}
 
@@ -746,10 +773,14 @@ onBeforeUnmount(() => {
 
 function getResolvedNodeOutputs() {
 	if (node.value && nodeType.value) {
-		const workflowNode = props.workflow.getNode(node.value.name);
+		const workflowNode = props.workflowObject.getNode(node.value.name);
 
 		if (workflowNode) {
-			const outputs = NodeHelpers.getNodeOutputs(props.workflow, workflowNode, nodeType.value);
+			const outputs = NodeHelpers.getNodeOutputs(
+				props.workflowObject,
+				workflowNode,
+				nodeType.value,
+			);
 			return outputs;
 		}
 	}
@@ -781,13 +812,14 @@ function shouldHintBeDisplayed(hint: NodeHint): boolean {
 
 	return true;
 }
-function getNodeHints(): NodeHint[] {
+
+const nodeHints = computed<NodeHint[]>(() => {
 	try {
 		if (node.value && nodeType.value) {
-			const workflowNode = props.workflow.getNode(node.value.name);
+			const workflowNode = props.workflowObject.getNode(node.value.name);
 
 			if (workflowNode) {
-				const nodeHints = nodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
+				const hints = nodeHelpers.getNodeHints(props.workflowObject, workflowNode, nodeType.value, {
 					runExecutionData: workflowExecution.value ?? null,
 					runIndex: props.runIndex,
 					connectionInputData: parentNodeOutputData.value,
@@ -804,12 +836,13 @@ function getNodeHints(): NodeHint[] {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					workflow: props.workflow,
+					nodes: props.workflowObject.nodes,
+					connections: props.workflowObject.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
 				});
 
-				return executionHints.value.concat(nodeHints, genericHints).filter(shouldHintBeDisplayed);
+				return executionHints.value.concat(hints, genericHints).filter(shouldHintBeDisplayed);
 			}
 		}
 	} catch (error) {
@@ -817,7 +850,7 @@ function getNodeHints(): NodeHint[] {
 	}
 
 	return [];
-}
+});
 
 function onItemHover(itemIndex: number | null) {
 	if (itemIndex === null) {
@@ -1130,7 +1163,7 @@ function getRunLabel(option: number) {
 		: '';
 
 	const itemsLabel = itemsCount > 0 ? ` (${items}${subexecutions})` : '';
-	return option + i18n.baseText('ndv.output.of') + (maxRunIndex.value + 1) + itemsLabel;
+	return option + i18n.baseText('ndv.output.of') + runSelectorOptionsCount.value + itemsLabel;
 }
 
 function getRawInputData(
@@ -1231,38 +1264,17 @@ function init() {
 	if (isNDVV2.value) {
 		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
 	}
-}
 
-function closeBinaryDataDisplay() {
-	binaryDataDisplayVisible.value = false;
-	binaryDataDisplayData.value = null;
-}
-
-function isViewable(index: number, key: string | number): boolean {
-	const { mimeType } = binaryData.value[index][key];
-	return ViewableMimeTypes.includes(mimeType);
-}
-
-function isDownloadable(index: number, key: string | number): boolean {
-	const { mimeType, fileName } = binaryData.value[index][key];
-	return !!(mimeType && fileName);
-}
-
-async function downloadBinaryData(index: number, key: string | number) {
-	const { id, data, fileName, fileExtension, mimeType } = binaryData.value[index][key];
-
-	if (id) {
-		const url = workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-		saveAs(url, [fileName, fileExtension].join('.'));
-		return;
-	} else {
-		const bufferString = 'data:' + mimeType + ';base64,' + data;
-		const blob = await fetch(bufferString).then(async (d) => await d.blob());
-		saveAs(blob, fileName);
+	if (props.paneType === 'output') {
+		setDisplayMode();
 	}
 }
 
-async function downloadJsonData() {
+function closeBinaryDataDisplay() {
+	binaryDataDisplayData.value = null;
+}
+
+function downloadJsonData() {
 	const fileName = (node.value?.name ?? '').replace(/[^\w\d]/g, '_');
 	const blob = new Blob([JSON.stringify(rawInputData.value, null, 2)], {
 		type: 'application/json',
@@ -1273,7 +1285,6 @@ async function downloadJsonData() {
 
 function displayBinaryData(index: number, key: string | number) {
 	const { data, mimeType } = binaryData.value[index][key];
-	binaryDataDisplayVisible.value = true;
 
 	binaryDataDisplayData.value = {
 		node: node.value?.name,
@@ -1330,21 +1341,21 @@ function enableNode() {
 			name: node.value.name,
 			properties: {
 				disabled: !node.value.disabled,
-			} as IDataObject,
-		} as INodeUpdatePropertiesInformation;
+			},
+		};
 
 		workflowsStore.updateNodeProperties(updateInformation);
 	}
 }
 
+const shouldDisplayHtml = computed(
+	() =>
+		node.value?.type === HTML_NODE_TYPE &&
+		node.value.parameters.operation === 'generateHtmlTemplate',
+);
+
 function setDisplayMode() {
-	if (!activeNode.value) return;
-
-	const shouldDisplayHtml =
-		activeNode.value.type === HTML_NODE_TYPE &&
-		activeNode.value.parameters.operation === 'generateHtmlTemplate';
-
-	if (shouldDisplayHtml) {
+	if (shouldDisplayHtml.value) {
 		emit('displayModeChange', 'html');
 	}
 }
@@ -1366,7 +1377,11 @@ defineExpose({ enterEditMode });
 		:class="[
 			'run-data',
 			$style.container,
-			{ [$style['ndv-v2']]: isNDVV2, [$style.compact]: compact },
+			{
+				[$style['ndv-v2']]: isNDVV2,
+				[$style.compact]: compact,
+				[$style.showActionsOnHover]: showActionsOnHover && !search,
+			},
 		]"
 		@mouseover="activatePane"
 	>
@@ -1409,13 +1424,6 @@ defineExpose({ enterEditMode });
 			</template>
 		</N8nCallout>
 
-		<BinaryDataDisplay
-			v-if="binaryDataDisplayData"
-			:window-visible="binaryDataDisplayVisible"
-			:display-data="binaryDataDisplayData"
-			@close="closeBinaryDataDisplay"
-		/>
-
 		<div :class="$style.header">
 			<div :class="$style.title">
 				<slot name="header"></slot>
@@ -1434,7 +1442,7 @@ defineExpose({ enterEditMode });
 						:class="$style.search"
 						:pane-type="paneType"
 						:display-mode="displayMode"
-						:is-area-active="isPaneActive"
+						:shortcut="searchShortcut"
 						@focus="activatePane"
 					/>
 				</Suspense>
@@ -1461,10 +1469,7 @@ defineExpose({ enterEditMode });
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
 					:pane-type="paneType"
-					:node-generates-html="
-						activeNode?.type === HTML_NODE_TYPE &&
-						activeNode.parameters.operation === 'generateHtmlTemplate'
-					"
+					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
@@ -1509,129 +1514,143 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
+			<slot name="header-end" v-bind="itemsCountProps" />
 		</div>
 
-		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
-			<slot name="input-select"></slot>
-		</div>
-
-		<div
-			v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
-			v-show="!editMode.enabled"
-			:class="$style.runSelector"
-		>
-			<div :class="$style.runSelectorInner">
-				<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
-
-				<N8nSelect
-					:model-value="runIndex"
-					:class="$style.runSelectorSelect"
-					size="small"
-					teleported
-					data-test-id="run-selector"
-					@update:model-value="onRunIndexChange"
-					@click.stop
-				>
-					<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
-					<N8nOption
-						v-for="option in maxRunIndex + 1"
-						:key="option"
-						:label="getRunLabel(option)"
-						:value="option - 1"
-					></N8nOption>
-				</N8nSelect>
-
-				<N8nTooltip v-if="canLinkRuns" placement="right">
-					<template #content>
-						{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
-					</template>
-					<N8nIconButton
-						:icon="linkedRuns ? 'unlink' : 'link'"
-						:class="['linkRun', linkedRuns ? 'linked' : '']"
-						text
-						type="tertiary"
-						size="small"
-						data-test-id="link-run"
-						@click="toggleLinkRuns"
-					/>
-				</N8nTooltip>
-
-				<slot name="run-info"></slot>
+		<div v-show="!binaryDataDisplayVisible">
+			<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
+				<slot name="input-select"></slot>
 			</div>
-			<ViewSubExecution
-				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
-				:task-metadata="activeTaskMetadata"
-				:display-mode="displayMode"
+
+			<div
+				v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
+				v-show="!editMode.enabled"
+				:class="$style.runSelector"
+			>
+				<div :class="$style.runSelectorInner">
+					<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
+
+					<N8nSelect
+						:model-value="runIndex"
+						:class="$style.runSelectorSelect"
+						size="small"
+						teleported
+						data-test-id="run-selector"
+						@update:model-value="onRunIndexChange"
+						@click.stop
+					>
+						<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
+						<N8nOption
+							v-for="option in runSelectorOptionsCount"
+							:key="option"
+							:label="getRunLabel(option)"
+							:value="option - 1"
+							data-test-id="run-selection-option"
+						></N8nOption>
+					</N8nSelect>
+
+					<N8nTooltip v-if="canLinkRuns" placement="right">
+						<template #content>
+							{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+						</template>
+						<N8nIconButton
+							:icon="linkedRuns ? 'unlink' : 'link'"
+							:class="['linkRun', linkedRuns ? 'linked' : '']"
+							text
+							type="tertiary"
+							size="small"
+							data-test-id="link-run"
+							@click="toggleLinkRuns"
+						/>
+					</N8nTooltip>
+
+					<slot name="run-info"></slot>
+				</div>
+				<ViewSubExecution
+					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+					:task-metadata="activeTaskMetadata"
+					:display-mode="displayMode"
+				/>
+			</div>
+
+			<slot v-if="!displaysMultipleNodes" name="before-data" />
+
+			<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
+				<N8nCallout theme="info" data-test-id="run-data-callout">
+					<slot name="callout-message">
+						<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
+					</slot>
+				</N8nCallout>
+			</div>
+			<NodeSettingsHint
+				v-if="!props.disableSettingsHint && props.paneType === 'output'"
+				:node="node"
 			/>
-		</div>
-
-		<slot v-if="!displaysMultipleNodes" name="before-data" />
-
-		<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
-			<N8nCallout theme="info" data-test-id="run-data-callout">
-				<slot name="callout-message">
-					<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
-				</slot>
+			<N8nCallout
+				v-for="hint in nodeHints"
+				:key="hint.message"
+				:class="$style.hintCallout"
+				:theme="hint.type || 'info'"
+				data-test-id="node-hint"
+			>
+				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 			</N8nCallout>
-		</div>
 
-		<N8nCallout
-			v-for="hint in getNodeHints()"
-			:key="hint.message"
-			:class="$style.hintCallout"
-			:theme="hint.type || 'info'"
-			data-test-id="node-hint"
-		>
-			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
-		</N8nCallout>
+			<div v-if="showBranchSwitch" :class="$style.outputs" data-test-id="branches">
+				<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
+				<ViewSubExecution
+					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+					:task-metadata="activeTaskMetadata"
+					:display-mode="displayMode"
+				/>
 
-		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
-			:class="$style.outputs"
-			data-test-id="branches"
-		>
-			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
-			<ViewSubExecution
-				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
-				:task-metadata="activeTaskMetadata"
-				:display-mode="displayMode"
-			/>
+				<div :class="$style.tabs">
+					<N8nTabs
+						size="small"
+						:model-value="currentOutputIndex"
+						:options="branches"
+						@update:model-value="onBranchChange"
+					/>
+				</div>
+			</div>
 
-			<div :class="$style.tabs">
-				<N8nTabs
-					size="small"
-					:model-value="currentOutputIndex"
-					:options="branches"
-					@update:model-value="onBranchChange"
+			<div
+				v-else-if="
+					!props.compact &&
+					hasNodeRun &&
+					!isSearchInSchemaView &&
+					((dataCount > 0 && maxRunIndex === 0) || search) &&
+					!isArtificialRecoveredEventItem &&
+					!displaysMultipleNodes
+				"
+				v-show="!editMode.enabled"
+				:class="$style.itemsCount"
+				data-test-id="ndv-items-count"
+			>
+				<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
+
+				<RunDataItemCount v-bind="itemsCountProps" />
+				<ViewSubExecution
+					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+					:task-metadata="activeTaskMetadata"
+					:display-mode="displayMode"
 				/>
 			</div>
 		</div>
 
 		<div
-			v-else-if="
-				!props.compact &&
-				hasNodeRun &&
-				!isSearchInSchemaView &&
-				((dataCount > 0 && maxRunIndex === 0) || search) &&
-				!isArtificialRecoveredEventItem &&
-				!displaysMultipleNodes
-			"
-			v-show="!editMode.enabled"
-			:class="$style.itemsCount"
-			data-test-id="ndv-items-count"
+			ref="dataContainerRef"
+			:class="$style.dataContainer"
+			data-test-id="ndv-data-container"
+			@wheel.capture="emit('captureWheelDataContainer', $event)"
 		>
-			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
-
-			<RunDataItemCount v-bind="itemsCountProps" />
-			<ViewSubExecution
-				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
-				:task-metadata="activeTaskMetadata"
-				:display-mode="displayMode"
+			<BinaryDataDisplay
+				v-if="binaryDataDisplayData"
+				:window-visible="binaryDataDisplayVisible"
+				:display-data="binaryDataDisplayData"
+				@close="closeBinaryDataDisplay"
 			/>
-		</div>
 
-		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
 			<div
 				v-if="isExecuting && !isWaitNodeWaiting"
 				:class="[$style.center, $style.executingMessage]"
@@ -1641,6 +1660,18 @@ defineExpose({ enterEditMode });
 					<N8nSpinner type="ring" />
 				</div>
 				<N8nText>{{ executingMessage }}</N8nText>
+			</div>
+
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="[$style.center, $style.executingMessage]"
+			>
+				<div v-if="!props.compact" :class="$style.spinner">
+					<N8nSpinner type="ring" />
+				</div>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
@@ -1698,37 +1729,20 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div
-				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
-				:class="$style.center"
-			>
-				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
-				<N8nText color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.loading') }}
-				</N8nText>
-			</div>
-
-			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
-				<N8nText bold color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.title') }}
-				</N8nText>
-				<N8nText>
-					{{ i18n.baseText('runData.trimmedData.message') }}
-				</N8nText>
-			</div>
-
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
-				<N8nText v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
-					{{
+				<NDVEmptyState
+					v-if="isPaneTypeInput"
+					:class="$style.center"
+					:title="
 						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
 							interpolate: { nodeName: node?.name ?? '' },
 						})
-					}}
-				</N8nText>
+					"
+				/>
 				<div v-else-if="$slots['content']">
 					<NodeErrorView
 						v-if="workflowRunErrorAsNodeError"
@@ -1756,18 +1770,15 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.center"
 			>
-				<div v-if="search">
-					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-					<N8nText>
-						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-							<template #link>
-								<a href="#" @click="onSearchClear">
-									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-								</a>
-							</template>
-						</I18nT>
-					</N8nText>
-				</div>
+				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
+					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+						<template #link>
+							<a href="#" @click.prevent="onSearchClear">
+								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</I18nT>
+				</NDVEmptyState>
 				<N8nText v-else>
 					{{ noDataInBranchMessage }}
 				</N8nText>
@@ -1785,16 +1796,15 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-data-size-warning"
 				:class="$style.center"
 			>
-				<N8nText :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</N8nText>
-				<N8nText align="center" tag="div"
-					><span
+				<NDVEmptyState :title="tooMuchDataTitle">
+					<span
 						v-n8n-html="
 							i18n.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})
 						"
-					></span
-				></N8nText>
+					/>
+				</NDVEmptyState>
 
 				<N8nButton
 					outline
@@ -1830,18 +1840,19 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
-				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-				<N8nText>
-					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-						<template #link>
-							<a href="#" @click="onSearchClear">
-								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-							</a>
-						</template>
-					</I18nT>
-				</N8nText>
-			</div>
+			<NDVEmptyState
+				v-else-if="showIoSearchNoMatchContent"
+				:class="$style.center"
+				:title="i18n.baseText('ndv.search.noMatch.title')"
+			>
+				<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+					<template #link>
+						<a href="#" @click="onSearchClear">
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+						</a>
+					</template>
+				</I18nT>
+			</NDVEmptyState>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
 				<LazyRunDataTable
@@ -1907,95 +1918,17 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:class="$style.schema"
 					:compact="props.compact"
+					:truncate-limit="props.truncateLimit"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
 
-			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
-				<N8nText align="center" tag="div">{{ i18n.baseText('runData.noBinaryDataFound') }}</N8nText>
-			</div>
+			<RunDataBinary
+				v-else-if="displayMode === 'binary'"
+				:binary-data="binaryData"
+				@preview="displayBinaryData"
+			/>
 
-			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
-				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-					<div v-if="binaryData.length > 1" :class="$style.binaryIndex">
-						<div>
-							{{ index + 1 }}
-						</div>
-					</div>
-
-					<div :class="$style.binaryRow">
-						<div
-							v-for="(binaryData, key) in binaryDataEntry"
-							:key="index + '_' + key"
-							:class="$style.binaryCell"
-						>
-							<div :data-test-id="'ndv-binary-data_' + index">
-								<div :class="$style.binaryHeader">
-									{{ key }}
-								</div>
-								<div v-if="binaryData.fileName">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.fileName') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
-								</div>
-								<div v-if="binaryData.directory">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.directory') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
-								</div>
-								<div v-if="binaryData.fileExtension">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.fileExtension') }}:</N8nText
-										>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
-								</div>
-								<div v-if="binaryData.mimeType">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.mimeType') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
-								</div>
-								<div v-if="binaryData.fileSize">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.fileSize') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
-								</div>
-
-								<div :class="$style.binaryButtonContainer">
-									<N8nButton
-										v-if="isViewable(index, key)"
-										size="small"
-										:label="i18n.baseText('runData.showBinaryData')"
-										data-test-id="ndv-view-binary-data"
-										@click="displayBinaryData(index, key)"
-									/>
-									<N8nButton
-										v-if="isDownloadable(index, key)"
-										size="small"
-										type="secondary"
-										:label="i18n.baseText('runData.downloadBinaryData')"
-										data-test-id="ndv-download-binary-data"
-										@click="downloadBinaryData(index, key)"
-									/>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
 			<div v-else-if="!hasNodeRun" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
@@ -2186,67 +2119,6 @@ defineExpose({ enterEditMode });
 	margin-left: auto;
 }
 
-.binaryIndex {
-	display: block;
-	padding: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
-
-	> * {
-		display: inline-block;
-		width: 30px;
-		height: 30px;
-		line-height: 30px;
-		border-radius: var(--border-radius-base);
-		text-align: center;
-		background-color: var(--color-foreground-xdark);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text-xlight);
-	}
-}
-
-.binaryRow {
-	display: inline-flex;
-	font-size: var(--font-size-2xs);
-}
-
-.binaryCell {
-	display: inline-block;
-	width: 300px;
-	overflow: hidden;
-	background-color: var(--color-foreground-xlight);
-	margin-right: var(--ndv-spacing);
-	margin-bottom: var(--ndv-spacing);
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
-	padding: var(--ndv-spacing);
-}
-
-.binaryHeader {
-	color: $color-primary;
-	font-weight: var(--font-weight-bold);
-	font-size: 1.2em;
-	padding-bottom: var(--spacing-2xs);
-	margin-bottom: var(--spacing-2xs);
-	border-bottom: 1px solid var(--color-text-light);
-}
-
-.binaryButtonContainer {
-	margin-top: 1.5em;
-	display: flex;
-	flex-direction: row;
-	justify-content: center;
-
-	> * {
-		flex-grow: 0;
-		margin-right: var(--spacing-3xs);
-	}
-}
-
-.binaryValue {
-	white-space: initial;
-	word-wrap: break-word;
-}
-
 .displayModes {
 	display: flex;
 	justify-content: flex-end;
@@ -2257,15 +2129,20 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
-		visibility: hidden;
+	}
+
+	.showActionsOnHover & {
+		/* Using opacity instead of visibility so that search input can get focused through keyboard shortcut */
+		opacity: 0;
 
 		:global(.el-input__prefix) {
 			transition-duration: 0ms;
 		}
 	}
 
-	.compact:hover & {
-		visibility: visible;
+	.showActionsOnHover:focus-within &,
+	.showActionsOnHover:hover & {
+		opacity: 1;
 	}
 }
 
@@ -2274,15 +2151,15 @@ defineExpose({ enterEditMode });
 }
 
 .spinner {
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--ndv-spacing);
+
 	* {
 		color: var(--color-primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
-
-	display: flex;
-	justify-content: center;
-	margin-bottom: var(--ndv-spacing);
 }
 
 .editMode {
@@ -2345,6 +2222,42 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--ndv-spacing);
+}
+
+.messageSection {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.singleIcon {
+	flex-direction: row;
+	align-items: center;
+}
+
+.multipleIcons {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing-2xs, 8px);
+}
+
+.multipleIcons .iconStack {
+	margin-right: 0;
+	margin-bottom: 0;
+}
+
+.iconStack {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs, 4px);
+	flex-shrink: 0;
+	margin-right: var(--spacing-xs);
+}
+
+.icon {
+	color: var(--color-callout-info-icon);
+	line-height: 1;
+	font-size: var(--font-size-xs);
 }
 
 .executingMessage {

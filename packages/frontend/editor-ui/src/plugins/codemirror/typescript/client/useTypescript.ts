@@ -2,7 +2,7 @@ import { useDataSchema } from '@/composables/useDataSchema';
 import { useDebounce } from '@/composables/useDebounce';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/plugins/codemirror/completions/utils';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { forceParse } from '@/utils/forceParse';
@@ -50,9 +50,11 @@ export function useTypescript(
 				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
 				variables: useEnvironmentsStore().variables.map((v) => v.key),
 				inputNodeNames: activeNodeName
-					? workflowsStore
-							.getCurrentWorkflow()
-							.getParentNodes(activeNodeName, NodeConnectionTypes.Main, 1)
+					? workflowsStore.workflowObject.getParentNodes(
+							activeNodeName,
+							NodeConnectionTypes.Main,
+							1,
+						)
 					: [],
 				mode: toValue(mode),
 			},

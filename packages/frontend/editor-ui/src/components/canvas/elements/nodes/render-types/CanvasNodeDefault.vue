@@ -5,9 +5,14 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import CanvasNodeSettingsIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.vue';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import CanvasNodeTooltip from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTooltip.vue';
+import CanvasNodeDisabledStrikeThrough from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeDisabledStrikeThrough.vue';
+import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -17,7 +22,7 @@ const emit = defineEmits<{
 	activate: [id: string, event: MouseEvent];
 }>();
 
-const { initialized, viewport } = useCanvas();
+const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
 const {
 	id,
 	label,
@@ -34,7 +39,7 @@ const {
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
-	hasIssues,
+	hasExecutionErrors,
 	render,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
@@ -44,17 +49,16 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 		connections,
 	});
 
+const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
-
-const experimentalNdvStore = useExperimentalNdvStore();
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
-		[$style.success]: hasRunData.value,
-		[$style.error]: hasIssues.value,
+		[$style.success]: hasRunData.value && executionStatus.value === 'success',
+		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
 		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value || executionWaitingForNext.value,
@@ -74,6 +78,7 @@ const nodeSize = computed(() =>
 		mainInputs.value.length,
 		mainOutputs.value.length,
 		nonMainInputs.value.length,
+		isExperimentalNdvActive.value,
 	),
 );
 
@@ -133,7 +138,7 @@ function onActivate(event: MouseEvent) {
 
 <template>
 	<ExperimentalInPlaceNodeSettings
-		v-if="experimentalNdvStore.isActive(viewport.zoom)"
+		v-if="isExperimentalNdvActive"
 		:node-id="id"
 		:class="classes"
 		:style="styles"
@@ -155,6 +160,13 @@ function onActivate(event: MouseEvent) {
 			:shrink="false"
 			:disabled="isDisabled"
 			:class="$style.icon"
+		/>
+		<CanvasNodeSettingsIcons
+			v-if="
+				!renderOptions.configuration &&
+				!isDisabled &&
+				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+			"
 		/>
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
@@ -260,7 +272,8 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.selected {
-		box-shadow: 0 0 0 8px var(--color-canvas-selected-transparent);
+		box-shadow: 0 0 0 calc(8px * var(--canvas-zoom-compensation-factor, 1))
+			var(--color-canvas-selected-transparent);
 	}
 
 	&.success {

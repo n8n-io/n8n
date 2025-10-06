@@ -50,19 +50,22 @@ import {
 } from 'vue';
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
-import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
+import { languageFacet } from '../plugins/codemirror/format';
 import debounce from 'lodash/debounce';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 import type { TargetNodeParameterContext } from '@/Interface';
+import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
 	html: {};
 	javaScript: { mode: CodeExecutionMode };
 	python: { mode: CodeExecutionMode };
+	pythonNative: { mode: CodeExecutionMode };
 };
 
-export const useCodeEditor = <L extends CodeEditorLanguage>({
+export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 	editorRef,
 	editorValue,
 	language,
@@ -116,7 +119,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		targetNodeParameterContext,
 	);
 
-	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
+	function getInitialLanguageExtensions(lang: CodeNodeLanguageOption): Extension[] {
 		switch (lang) {
 			case 'javaScript':
 				return [javascript()];
@@ -128,7 +131,9 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	async function getFullLanguageExtensions(): Promise<Extension[]> {
 		if (!editor.value) return [];
 		const lang = toValue(language);
-		const langExtensions: Extension[] = [languageFacet.of(lang)];
+		const langExtensions: Extension[] = [
+			languageFacet.of(lang === 'pythonNative' ? 'python' : lang),
+		];
 
 		switch (lang) {
 			case 'javaScript': {
@@ -136,9 +141,10 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				langExtensions.push(tsExtension);
 				break;
 			}
-			case 'python': {
+			case 'python':
+			case 'pythonNative': {
 				const pythonAutocomplete = useCompleter(mode, editor.value ?? null).autocompletionExtension(
-					'python',
+					lang,
 				);
 				langExtensions.push([python(), pythonAutocomplete]);
 				break;
@@ -192,7 +198,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	}
 
 	function blurOnClickOutside(event: MouseEvent) {
-		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
+		if (!dragging.value && !isEventTargetContainedBy(event.target, editor.value?.dom)) {
 			blur();
 		}
 		dragging.value = false;

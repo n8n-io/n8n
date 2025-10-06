@@ -2,6 +2,7 @@
 import CanvasHandlePlus from '@/components/canvas/elements/handles/render-types/parts/CanvasHandlePlus.vue';
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { computed, ref, useCssModule } from 'vue';
+import CanvasHandleDiamond from '@/components/canvas/elements/handles/render-types/parts/CanvasHandleDiamond.vue';
 
 const emit = defineEmits<{
 	add: [];
@@ -72,7 +73,7 @@ function onClickAdd() {
 	position: absolute;
 	top: 20px;
 	left: 50%;
-	transform: translate(-50%, 0);
+	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
 	font-size: var(--font-size-2xs);
 	color: var(--node-type-supplemental-color);
 	background: var(--color-canvas-label-background);

@@ -17,14 +17,31 @@ import { useJsonFieldCompletions } from './completions/jsonField.completions';
 import { useLuxonCompletions } from './completions/luxon.completions';
 import { usePrevNodeCompletions } from './completions/prevNode.completions';
 import { useRequireCompletions } from './completions/require.completions';
-import { useVariablesCompletions } from './completions/variables.completions';
+import { useVariablesCompletions } from '@/features/environments.ee/completions/variables.completions';
 import { useWorkflowCompletions } from './completions/workflow.completions';
 
 export const useCompleter = (
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	editor: MaybeRefOrGetter<EditorView | null>,
 ) => {
-	function autocompletionExtension(language: 'javaScript' | 'python'): Extension {
+	function autocompletionExtension(language: 'javaScript' | 'python' | 'pythonNative'): Extension {
+		if (language === 'pythonNative') {
+			const completions = (context: CompletionContext): CompletionResult | null => {
+				const word = context.matchBefore(/\w*/);
+				if (!word) return null;
+
+				const options = [];
+
+				const label = toValue(mode) === 'runOnceForEachItem' ? '_item' : '_items';
+				options.push({ label, type: 'variable' });
+				options.push({ label: 'print', type: 'function' });
+
+				return { from: word.from, options };
+			};
+
+			return autocompletion({ icons: false, override: [completions] });
+		}
+
 		// Base completions
 		const { baseCompletions, itemCompletions, nodeSelectorCompletions } = useBaseCompletions(
 			toValue(mode),

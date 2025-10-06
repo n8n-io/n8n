@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import {
-	NodeConnectionTypes,
-	type IRunData,
-	type IRunExecutionData,
-	type Workflow,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, type IRunData, type Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
@@ -18,15 +13,17 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import { N8nRadioButtons, N8nText } from '@n8n/design-system';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
+import { useExecutionData } from '@/composables/useExecutionData';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
+import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -41,7 +38,7 @@ type OutputTypeKey = keyof typeof OUTPUT_TYPE;
 type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 type Props = {
-	workflow: Workflow;
+	workflowObject: Workflow;
 	runIndex: number;
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;
@@ -83,7 +80,6 @@ const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
-const settings = useSettingsStore();
 const { dirtinessByName } = useNodeDirtiness();
 
 // Composables
@@ -111,6 +107,7 @@ const collapsingColumnName = ref<string | null>(null);
 const node = computed(() => {
 	return ndvStore.activeNode ?? undefined;
 });
+const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
@@ -122,7 +119,7 @@ const hasAiMetadata = computed(() => {
 	}
 
 	if (node.value) {
-		const connectedSubNodes = props.workflow.getParentNodes(node.value.name, 'ALL_NON_MAIN');
+		const connectedSubNodes = props.workflowObject.getParentNodes(node.value.name, 'ALL_NON_MAIN');
 		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
 
 		return resultData && Array.isArray(resultData) && resultData.length > 0;
@@ -148,29 +145,6 @@ const isNodeRunning = computed(() => {
 });
 
 const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-
-const workflowExecution = computed(() => {
-	return workflowsStore.getWorkflowExecution;
-});
-
-const workflowRunData = computed(() => {
-	if (workflowExecution.value === null) {
-		return null;
-	}
-	const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
-	if (!executionData?.resultData?.runData) {
-		return null;
-	}
-	return executionData.resultData.runData;
-});
-
-const hasNodeRun = computed(() => {
-	if (workflowsStore.subWorkflowExecutionError) return true;
-
-	return Boolean(
-		node.value && workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name),
-	);
-});
 
 const runTaskData = computed(() => {
 	if (!node.value || workflowExecution.value === null) {
@@ -213,16 +187,7 @@ const staleData = computed(() => {
 		return false;
 	}
 
-	if (settings.partialExecutionVersion === 2) {
-		return dirtinessByName.value[node.value.name] === CanvasNodeDirtiness.PARAMETERS_UPDATED;
-	}
-
-	const updatedAt = workflowsStore.getParametersLastUpdate(node.value.name);
-	if (!updatedAt || !runTaskData.value) {
-		return false;
-	}
-	const runAt = runTaskData.value.startTime;
-	return updatedAt > runAt;
+	return dirtinessByName.value[node.value.name] === CanvasNodeDirtiness.PARAMETERS_UPDATED;
 });
 
 const outputPanelEditMode = computed(() => {
@@ -241,7 +206,7 @@ const allToolsWereUnusedNotice = computed(() => {
 	// as it likely ends up unactionable noise to the user
 	if (pinnedData.hasData.value) return undefined;
 
-	const toolsAvailable = props.workflow.getParentNodes(
+	const toolsAvailable = props.workflowObject.getParentNodes(
 		node.value.name,
 		NodeConnectionTypes.AiTool,
 		1,
@@ -332,9 +297,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 <template>
 	<RunData
 		ref="runDataRef"
-		:class="$style.runData"
+		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
 		:node="node"
-		:workflow="workflow"
+		:workflow-object="workflowObject"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="canLinkRuns"
@@ -345,7 +310,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:push-ref="pushRef"
 		:block-u-i="blockUI"
 		:is-production-execution-preview="isProductionExecutionPreview"
-		:is-pane-active="isPaneActive"
+		:search-shortcut="isPaneActive ? '/' : undefined"
 		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
@@ -412,7 +377,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					<template v-else #icon>
 						<N8nIcon icon="arrow-right-from-line" size="xlarge" />
 					</template>
-					<template #description>
+					<template #default>
 						<I18nT
 							tag="span"
 							:keypath="
@@ -446,9 +411,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			</template>
 
 			<template v-else>
-				<N8nText v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
-					i18n.baseText('ndv.output.waitingToRun')
-				}}</N8nText>
+				<div v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">
+					<div :class="$style.spinner">
+						<N8nSpinner type="ring" />
+					</div>
+					<N8nText>
+						{{ i18n.baseText('ndv.output.waitingToRun') }}
+					</N8nText>
+				</div>
 				<N8nText v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 					<template v-if="isSubNodeType">
 						{{ i18n.baseText('ndv.output.runNodeHintSubNode') }}
@@ -468,36 +438,27 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		</template>
 
 		<template #node-waiting>
-			<N8nText :bold="true" color="text-dark" size="large">
-				{{ i18n.baseText('ndv.output.waitNodeWaiting.title') }}
-			</N8nText>
-			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
+			<NDVEmptyState :title="i18n.baseText('ndv.output.waitNodeWaiting.title')" wide>
+				<span v-n8n-html="waitingNodeTooltip(node)" />
+			</NDVEmptyState>
 		</template>
 
 		<template #no-output-data>
-			<N8nText :bold="true" color="text-dark" size="large">{{
-				i18n.baseText('ndv.output.noOutputData.title')
-			}}</N8nText>
-			<N8nText>
+			<NDVEmptyState :title="i18n.baseText('ndv.output.noOutputData.title')">
 				{{ i18n.baseText('ndv.output.noOutputData.message') }}
 				<a @click="openSettings">{{ i18n.baseText('ndv.output.noOutputData.message.settings') }}</a>
 				{{ i18n.baseText('ndv.output.noOutputData.message.settingsOption') }}
-			</N8nText>
+			</NDVEmptyState>
 		</template>
 
 		<template v-if="outputMode === 'logs' && node" #content>
-			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
+			<RunDataAi :node="node" :run-index="runIndex" :workflow-object="workflowObject" />
 		</template>
 
 		<template #recovered-artificial-output-data>
-			<div :class="$style.recoveredOutputData">
-				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')
-				}}</N8nText>
-				<N8nText>
-					{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
-				</N8nText>
-			</div>
+			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
+				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+			</NDVEmptyState>
 		</template>
 
 		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>
@@ -515,6 +476,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 }
 .runData {
 	background-color: var(--color-run-data-background);
+}
+
+.runDataV2 {
+	background-color: var(--color-ndvv2-run-data-background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing-4xs);
@@ -558,20 +523,22 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	}
 }
 
-.recoveredOutputData {
-	margin: auto;
-	max-width: 250px;
-	text-align: center;
-
-	> *:first-child {
-		margin-bottom: var(--spacing-m);
-	}
-}
-
 .link {
 	display: inline;
 	padding: 0;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
+}
+
+.spinner {
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--ndv-spacing);
+
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
 }
 </style>
