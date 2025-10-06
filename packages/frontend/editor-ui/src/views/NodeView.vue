@@ -144,6 +144,7 @@ import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/composables/useParentFolder';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
@@ -206,6 +207,7 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const communityNodesStore = useCommunityNodesStore();
 
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
@@ -349,6 +351,10 @@ async function initializeData() {
 
 	if (nodeTypesStore.allNodeTypes.length === 0) {
 		loadPromises.push(nodeTypesStore.getNodeTypes());
+	}
+
+	if (!communityNodesStore.packagesFetched) {
+		loadPromises.push(communityNodesStore.fetchInstalledPackages());
 	}
 
 	try {

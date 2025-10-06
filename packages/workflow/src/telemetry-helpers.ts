@@ -38,6 +38,7 @@ import type {
 	ITaskData,
 	IRun,
 	INodeParameterResourceLocator,
+	CommunityPackageMap,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters } from './node-helpers';
@@ -169,6 +170,7 @@ function getNumberOfItemsInRuns(runs: ITaskData[]): number {
 export function generateNodesGraph(
 	workflow: Partial<IWorkflowBase>,
 	nodeTypes: INodeTypes,
+	installedNodes: CommunityPackageMap,
 	options?: {
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
@@ -535,6 +537,11 @@ export function generateNodesGraph(
 			if (node.type === MERGE_NODE_TYPE && node.parameters?.operation === 'combineBySql') {
 				nodeItem.sql = node.parameters?.query as string;
 			}
+		}
+
+		const packageName = node.type.split('.')[0];
+		if (installedNodes[packageName]) {
+			nodeItem.package_version = installedNodes[packageName].installedVersion;
 		}
 
 		nodeGraph.nodes[index.toString()] = nodeItem;

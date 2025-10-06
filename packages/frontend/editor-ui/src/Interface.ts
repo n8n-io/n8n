@@ -27,7 +27,6 @@ import type {
 	IRunData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
-	PublicInstalledPackage,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
@@ -42,6 +41,7 @@ import type {
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
+	CommunityPackageMap,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -772,10 +772,6 @@ export interface IUsedCredential {
 
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
-}
-
-export interface CommunityPackageMap {
-	[name: string]: PublicInstalledPackage;
 }
 
 export interface ICredentialTypeMap {

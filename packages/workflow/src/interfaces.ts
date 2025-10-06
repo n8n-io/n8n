@@ -2864,6 +2864,7 @@ export interface INodeGraphItem {
 	items_total?: number;
 	metric_names?: string[];
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
+	package_version?: string; // only for community nodes
 }
 
 export interface INodeNameIndex {
@@ -2898,6 +2899,10 @@ export type PublicInstalledPackage = {
 	updateAvailable?: string;
 	failedLoading?: boolean;
 };
+
+export interface CommunityPackageMap {
+	[name: string]: PublicInstalledPackage;
+}
 
 export type PublicInstalledNode = {
 	name: string;

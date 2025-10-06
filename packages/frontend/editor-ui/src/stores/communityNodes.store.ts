@@ -1,8 +1,7 @@
 import * as communityNodesApi from '@n8n/rest-api-client/api/communityNodes';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { PublicInstalledPackage } from 'n8n-workflow';
-import type { CommunityPackageMap } from '@/Interface';
+import type { PublicInstalledPackage, CommunityPackageMap } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import { computed, ref } from 'vue';
 
@@ -11,6 +10,7 @@ const LOADER_DELAY = 300;
 export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => {
 	const availablePackageCount = ref(-1);
 	const installedPackages = ref<CommunityPackageMap>({});
+	const packagesFetched = ref(false);
 
 	// Stores
 
@@ -40,6 +40,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 			},
 			{},
 		);
+		packagesFetched.value = true;
 	};
 
 	const fetchInstalledPackages = async (): Promise<void> => {
@@ -115,5 +116,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		uninstallPackage,
 		updatePackage,
 		setInstalledPackages,
+		packagesFetched,
 	};
 });

@@ -9,7 +9,12 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
+import type {
+	CommunityPackageMap,
+	ExecutionStatus,
+	INodesGraphResult,
+	ITelemetryTrackProperties,
+} from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
@@ -25,6 +30,7 @@ import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shar
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { InstalledPackagesRepository } from '@/modules/community-packages/installed-packages.repository';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
@@ -40,6 +46,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly installedPackagesRepository: InstalledPackagesRepository,
 	) {
 		super(eventService);
 	}
@@ -80,11 +87,11 @@ export class TelemetryEventRelay extends EventRelay {
 			'ldap-settings-updated': (event) => this.ldapSettingsUpdated(event),
 			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
-			'workflow-created': (event) => this.workflowCreated(event),
+			'workflow-created': async (event) => await this.workflowCreated(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
-			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
+			'workflow-sharing-updated': async (event) => await this.workflowSharingUpdated(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'server-started': async () => await this.serverStarted(),
 			'session-started': (event) => this.sessionStarted(event),
@@ -113,6 +120,14 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 		});
+	}
+
+	private async getInstalledPackagesMap(): Promise<CommunityPackageMap> {
+		const installedPackages = await this.installedPackagesRepository.find();
+		return installedPackages.reduce<CommunityPackageMap>((acc, installedPackage) => {
+			acc[installedPackage.packageName] = installedPackage;
+			return acc;
+		}, {});
 	}
 
 	// #endregion
@@ -524,7 +539,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Workflow
 
-	private workflowCreated({
+	private async workflowCreated({
 		user,
 		workflow,
 		publicApi,
@@ -532,7 +547,11 @@ export class TelemetryEventRelay extends EventRelay {
 		projectType,
 		uiContext,
 	}: RelayEventMap['workflow-created']) {
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(
+			workflow,
+			this.nodeTypes,
+			await this.getInstalledPackagesMap(),
+		);
 
 		this.telemetry.track('User created workflow', {
 			user_id: user.id,
@@ -573,7 +592,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowSharingUpdated({
+	private async workflowSharingUpdated({
 		workflowId,
 		userIdSharer,
 		userIdList,
@@ -588,9 +607,14 @@ export class TelemetryEventRelay extends EventRelay {
 	private async workflowSaved({ user, workflow, publicApi }: RelayEventMap['workflow-saved']) {
 		const isCloudDeployment = this.globalConfig.deployment.type === 'cloud';
 
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
-			isCloudDeployment,
-		});
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(
+			workflow,
+			this.nodeTypes,
+			await this.getInstalledPackagesMap(),
+			{
+				isCloudDeployment,
+			},
+		);
 
 		let userRole: 'owner' | 'sharee' | 'member' | undefined = undefined;
 		const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
@@ -697,9 +721,14 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				if (telemetryProperties.is_manual) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
-						runData: runData.data.resultData?.runData,
-					});
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(
+						workflow,
+						this.nodeTypes,
+						await this.getInstalledPackagesMap(),
+						{
+							runData: runData.data.resultData?.runData,
+						},
+					);
 					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
 					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 
@@ -711,9 +740,14 @@ export class TelemetryEventRelay extends EventRelay {
 
 			if (telemetryProperties.is_manual) {
 				if (!nodeGraphResult) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
-						runData: runData.data.resultData?.runData,
-					});
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(
+						workflow,
+						this.nodeTypes,
+						await this.getInstalledPackagesMap(),
+						{
+							runData: runData.data.resultData?.runData,
+						},
+					);
 				}
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
@@ -748,9 +782,14 @@ export class TelemetryEventRelay extends EventRelay {
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
-						runData: runData.data.resultData?.runData,
-					});
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(
+						workflow,
+						this.nodeTypes,
+						await this.getInstalledPackagesMap(),
+						{
+							runData: runData.data.resultData?.runData,
+						},
+					);
 					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 

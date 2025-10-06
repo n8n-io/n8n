@@ -33,6 +33,7 @@ import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } f
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/composables/useWorkflowState';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -280,6 +281,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.workflowObject;
+	const communityNodesStore = useCommunityNodesStore();
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
 
@@ -299,11 +301,11 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 					TelemetryHelpers.generateNodesGraph(
 						workflowData as IWorkflowBase,
 						workflowHelpers.getNodeTypes(),
+						communityNodesStore.installedPackages,
 					).nodeGraph,
 				),
 				workflow_id: workflowsStore.workflowId,
 			};
-
 			if (
 				error.context.nodeCause &&
 				['paired_item_no_info', 'paired_item_invalid_info'].includes(error.context.type as string)
