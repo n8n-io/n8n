@@ -4,7 +4,7 @@ import {
 	runSingleMigration,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { DbConnection, ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -42,21 +42,18 @@ describe('ChangeValueTypesForInsights - insights_raw table', () => {
 			// Create migration context for schema queries
 			const context = createTestMigrationContext(dataSource);
 
-			await Container.get(ProjectRepository).save({
-				id: 'test-project-id',
-				name: 'Test Project',
-				type: 'personal',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
+			// Create prerequisite data for foreign keys using direct SQL
+			const projectTableName = context.escape.tableName('project');
+			await context.queryRunner.query(
+				`INSERT INTO ${projectTableName} (id, name, type, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)`,
+				['test-project-id', 'Test Project', 'personal', new Date(), new Date()],
+			);
 
-			const workflow = Container.get(WorkflowRepository).create({
-				id: 'test-workflow-id',
-				name: 'Test Workflow',
-				active: false,
-			});
-
-			await Container.get(WorkflowRepository).save([workflow]);
+			const workflowTableName = context.escape.tableName('workflow_entity');
+			await context.queryRunner.query(
+				`INSERT INTO ${workflowTableName} (id, name, active, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)`,
+				['test-workflow-id', 'Test Workflow', false, new Date(), new Date()],
+			);
 
 			// Insert test metadata (required for foreign key)
 			const metaTableName = context.escape.tableName('insights_metadata');

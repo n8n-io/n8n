@@ -42,6 +42,8 @@ describe('AddUserRole1234567890 Migration', () => {
 
   it('should add role column to users table', async () => {
     // Insert test data in the OLD schema (before migration)
+    // You should not use Repositories, because these will break after schema changes
+    // over time.
     await dataSource.query(`
       INSERT INTO users (id, email, password)
       VALUES (1, 'test@example.com', 'hashed_password')
