@@ -6,7 +6,7 @@ import { useSourceControlStore } from './sourceControl.store';
 import type { SourceControlPreferences } from './sourceControl.types';
 import type { SourceControlledFile } from '@n8n/api-types';
 
-vi.mock('@/features/sourceControl.ee/sourceControl.api');
+vi.mock('./sourceControl.api');
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
