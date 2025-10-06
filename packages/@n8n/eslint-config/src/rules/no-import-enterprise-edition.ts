@@ -18,9 +18,8 @@ export const NoImportEnterpriseEditionRule = ESLintUtils.RuleCreator.withoutDocs
 		const filename = context.filename;
 		const isEnterpriseEditionFile = filename.includes('.ee/');
 		const isIntegrationTestFile = filename.includes('packages/cli/test/integration/');
-		const isPublicApiFile = filename.includes('packages/cli/src/public-api/');
 
-		if (isEnterpriseEditionFile || isIntegrationTestFile || isPublicApiFile) {
+		if (isEnterpriseEditionFile || isIntegrationTestFile) {
 			return {};
 		}
 
