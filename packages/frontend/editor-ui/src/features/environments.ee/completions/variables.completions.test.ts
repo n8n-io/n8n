@@ -13,7 +13,7 @@ beforeEach(() => {
 
 describe('variablesCompletions', () => {
 	test('should return completions for $vars prefix', () => {
-		vi.spyOn(environmentsStore, 'variables', 'get').mockReturnValue([
+		vi.spyOn(environmentsStore, 'scopedVariables', 'get').mockReturnValue([
 			{ key: 'VAR1', value: 'Value1', id: '1' },
 			{ key: 'VAR2', value: 'Value2', id: '2' },
 		]);
@@ -39,7 +39,7 @@ describe('variablesCompletions', () => {
 	});
 
 	test('should escape special characters in matcher', () => {
-		vi.spyOn(environmentsStore, 'variables', 'get').mockReturnValue([
+		vi.spyOn(environmentsStore, 'scopedVariables', 'get').mockReturnValue([
 			{
 				key: 'VAR1',
 				value: 'Value1',
@@ -55,7 +55,7 @@ describe('variablesCompletions', () => {
 	});
 
 	test('should return completions for custom matcher', () => {
-		vi.spyOn(environmentsStore, 'variables', 'get').mockReturnValue([
+		vi.spyOn(environmentsStore, 'scopedVariables', 'get').mockReturnValue([
 			{
 				key: 'VAR1',
 				value: 'Value1',

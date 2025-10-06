@@ -31,6 +31,14 @@ describe('environments.store', () => {
 			value: 'value3',
 			project: { id: '1', name: 'Project 1' },
 		});
+
+		// Create one variable linked to a another project
+		server.create('variable', {
+			id: '4',
+			key: 'var4',
+			value: 'value4',
+			project: { id: '2', name: 'Project 2' },
+		});
 	});
 
 	beforeEach(() => {
@@ -47,16 +55,18 @@ describe('environments.store', () => {
 				const environmentsStore = useEnvironmentsStore();
 				await environmentsStore.fetchAllVariables();
 
-				expect(environmentsStore.variables).toHaveLength(3);
+				expect(environmentsStore.variables).toHaveLength(4);
+				expect(environmentsStore.scopedVariables).toHaveLength(2);
 			});
 
 			it('should list all variables excluding different project variable', async () => {
 				const environmentsStore = useEnvironmentsStore();
 				const projectStore = useProjectsStore();
-				projectStore.setCurrentProject({ id: '2', name: 'Project 2' } as Project);
+				projectStore.setCurrentProject({ id: '3', name: 'Project 3' } as Project);
 				await environmentsStore.fetchAllVariables();
 
 				expect(environmentsStore.variables).toHaveLength(2);
+				expect(environmentsStore.scopedVariables).toHaveLength(2);
 			});
 
 			it('should list all variables with a current project set matching variable', async () => {
@@ -66,6 +76,7 @@ describe('environments.store', () => {
 				await environmentsStore.fetchAllVariables();
 
 				expect(environmentsStore.variables).toHaveLength(3);
+				expect(environmentsStore.scopedVariables).toHaveLength(3);
 			});
 		});
 
@@ -124,13 +135,14 @@ describe('environments.store', () => {
 			it('should return variables as a key-value object', async () => {
 				const environmentsStore = useEnvironmentsStore();
 				await environmentsStore.fetchAllVariables();
+				const projectStore = useProjectsStore();
+				projectStore.setCurrentProject({ id: '1', name: 'Project 1' } as Project);
 
-				expect(environmentsStore.variablesAsObject).toEqual(
-					environmentsStore.variables.reduce<Record<string, string>>((acc, variable) => {
-						acc[variable.key] = variable.value;
-						return acc;
-					}, {}),
-				);
+				expect(environmentsStore.variablesAsObject).toEqual({
+					ENV_VAR: 'SECRET',
+					var2: 'value2',
+					var3: 'value3',
+				});
 			});
 		});
 	});

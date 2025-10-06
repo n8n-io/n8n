@@ -13,10 +13,18 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	const allVariables = ref<EnvironmentVariable[]>([]);
 	const projectId = computed(() => projectStore.currentProject?.id);
 
-	// Variables that are global or filtered by the current project if set
+	// Global variables plus project-specific ones. Includes all projects if none is selected
 	const variables = computed(() =>
 		allVariables.value.filter(
 			(v) => !v.project || !projectId.value || v.project.id === projectId.value,
+		),
+	);
+
+	// Scoped variables: global variables plus variables for the current project only.
+	// If no project is selected, only global variables are included
+	const scopedVariables = computed(() =>
+		allVariables.value.filter(
+			(v) => !v.project || (!projectId.value && !v.project) || v.project.id === projectId.value,
 		),
 	);
 
@@ -55,7 +63,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	}
 
 	const variablesAsObject = computed(() => {
-		const asObject = variables.value.reduce<Record<string, string | boolean | number>>(
+		const asObject = scopedVariables.value.reduce<Record<string, string | boolean | number>>(
 			(acc, variable) => {
 				acc[variable.key] = variable.value;
 				return acc;
@@ -72,6 +80,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 
 	return {
 		variables,
+		scopedVariables,
 		variablesAsObject,
 		fetchAllVariables,
 		createVariable,

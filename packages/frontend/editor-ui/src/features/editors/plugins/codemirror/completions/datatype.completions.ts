@@ -708,7 +708,7 @@ function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
 
 export const variablesOptions = () => {
 	const environmentsStore = useEnvironmentsStore();
-	const variables = environmentsStore.variables;
+	const variables = environmentsStore.scopedVariables;
 
 	const getDescription = (isGlobal: boolean, isOverridden: boolean, projectName?: string) =>
 		isGlobal
