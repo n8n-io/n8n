@@ -11,7 +11,7 @@ import { useProvideViewportSync } from '@/features/workflow-diff/useViewportSync
 import { NodeDiffStatus, useWorkflowDiff } from '@/features/workflow-diff/useWorkflowDiff';
 import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
