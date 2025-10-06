@@ -19,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 
+import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);

@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/base';
-import { n8nPage } from '../../pages/n8nPage';
+import type { n8nPage } from '../../pages/n8nPage';
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
@@ -18,12 +18,6 @@ async function getCredentialsForProject(n8n: n8nPage, projectId?: string) {
 
 test.describe('Projects', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.api.enableFeature('sharing');
-		await n8n.api.enableFeature('folders');
-		await n8n.api.enableFeature('advancedPermissions');
-		await n8n.api.enableFeature('projectRole:admin');
-		await n8n.api.enableFeature('projectRole:editor');
-		await n8n.api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 	});
 
@@ -64,11 +58,9 @@ test.describe('Projects', () => {
 
 		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
-		const subWorkflowPagePromise = n8n.page.waitForEvent('popup');
-
-		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
-
-		const subn8n = new n8nPage(await subWorkflowPagePromise);
+		const subn8n = await n8n.start.fromNewPage(() =>
+			n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`),
+		);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
@@ -124,8 +116,8 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 
 			// Verify save/cancel buttons are not visible initially (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 
 			// Delete button should always be visible
 			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
@@ -257,8 +249,8 @@ test.describe('Projects', () => {
 			await expect(n8n.projectSettings.getTitle()).toHaveText('Unsaved Changes Test');
 
 			// Initially, save and cancel buttons should not be visible (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 
 			// Make a change to the project name
 			await n8n.projectSettings.fillProjectName('Modified Name');
@@ -274,8 +266,8 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.clickCancelButton();
 
 			// Buttons should not be visible again (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 		});
 
 		test('should display delete project section with warning @auth:owner', async ({ n8n }) => {

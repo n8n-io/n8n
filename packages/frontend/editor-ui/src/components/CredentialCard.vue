@@ -14,6 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/utils/projects.utils';
 import type { CredentialsResource } from '@/Interface';
 
+import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',

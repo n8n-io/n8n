@@ -2,7 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -17,15 +18,29 @@ import {
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
+import {
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import { type INodeTypeDescription } from 'n8n-workflow';
+import type {} from 'n8n-workflow';
+import { mockedStore } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+	i18n: {
+		baseText: (key: string) => key,
+	},
 }));
 
 // Mock useToast
@@ -35,31 +50,25 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
-// Mock the workflows store
-const mockSetWorkflowName = vi.fn();
-const mockRemoveAllConnections = vi.fn();
-const mockRemoveAllNodes = vi.fn();
-const mockWorkflow = {
-	name: DEFAULT_NEW_WORKFLOW_NAME,
-	nodes: [],
-	connections: {},
-};
-
-vi.mock('./workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflow: mockWorkflow,
-		workflowId: 'test-workflow-id',
-		allNodes: [],
-		nodesByName: {},
-		workflowExecutionData: null,
-		setWorkflowName: mockSetWorkflowName,
-		removeAllConnections: mockRemoveAllConnections,
-		removeAllNodes: mockRemoveAllNodes,
-	})),
-}));
+// Mock to inject workflowState
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
+let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+let pinia: ReturnType<typeof createTestingPinia>;
+
+let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
+let getNodeTypeSpy: ReturnType<typeof vi.fn>;
+let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
 
 const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
 
@@ -93,10 +102,12 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+let workflowState: WorkflowState;
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		setActivePinia(createPinia());
+		pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
@@ -110,14 +121,37 @@ describe('AI Builder store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
-		// Reset workflow store mocks
-		mockSetWorkflowName.mockReset();
-		mockRemoveAllConnections.mockReset();
-		mockRemoveAllNodes.mockReset();
-		// Reset workflow to default state
-		mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-		mockWorkflow.nodes = [];
-		mockWorkflow.connections = {};
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		credentialsStore = mockedStore(useCredentialsStore);
+
+		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+		workflowsStore.workflow.nodes = [];
+		workflowsStore.workflow.connections = {};
+		workflowsStore.allNodes = [];
+		workflowsStore.nodesByName = {};
+		workflowsStore.workflowExecutionData = null;
+
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
+		setWorkflowNameSpy = vi.fn().mockImplementation(({ newName }: { newName: string }) => {
+			workflowsStore.workflow.name = newName;
+		});
+		vi.spyOn(workflowState, 'setWorkflowName').mockImplementation(setWorkflowNameSpy);
+
+		getNodeTypeSpy = vi.fn();
+		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);
+
+		getCredentialsByTypeSpy = vi.fn().mockReturnValue([]);
+		vi.spyOn(credentialsStore, 'getCredentialsByType', 'get').mockReturnValue(
+			getCredentialsByTypeSpy,
+		);
+		vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(
+			vi.fn().mockReturnValue(undefined),
+		);
 	});
 
 	afterEach(() => {
@@ -421,8 +455,26 @@ describe('AI Builder store', () => {
 	});
 
 	describe('isAIBuilderEnabled computed property', () => {
-		it('should return true when release experiment is set to variant', () => {
+		it('should return false when license does not have aiBuilder feature', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			expect(builderStore.isAIBuilderEnabled).toBe(false);
+		});
+
+		it('should return true when license has aiBuilder and release experiment is set to variant', () => {
+			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
@@ -432,8 +484,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 
-		it('should return true when release experiment is control but deprecated experiment is variant', () => {
+		it('should return true when license has aiBuilder and release experiment is control but deprecated experiment is variant', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
@@ -443,8 +498,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 
-		it('should return false when both experiments are set to control', () => {
+		it('should return false when license has aiBuilder but both experiments are set to control', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
@@ -454,8 +512,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(false);
 		});
 
-		it('should prioritize release experiment over deprecated experiment', () => {
+		it('should prioritize release experiment over deprecated experiment when license has aiBuilder', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
@@ -662,7 +723,9 @@ describe('AI Builder store', () => {
 			expect(builderStore.chatMessages[0].role).toBe('user');
 			expect(builderStore.chatMessages[1].role).toBe('assistant');
 			expect(builderStore.chatMessages[1].type).toBe('text');
-			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe('[Task aborted]');
+			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
+				'aiAssistant.builder.streamAbortedMessage',
+			);
 
 			// Verify streaming state was reset
 			expect(builderStore.streaming).toBe(false);
@@ -789,7 +852,9 @@ describe('AI Builder store', () => {
 			const assistantMessages = builderStore.chatMessages.filter((msg) => msg.role === 'assistant');
 			expect(assistantMessages).toHaveLength(1);
 			expect(assistantMessages[0].type).toBe('text');
-			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe('[Task aborted]');
+			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe(
+				'aiAssistant.builder.streamAbortedMessage',
+			);
 		});
 	});
 
@@ -855,7 +920,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -879,7 +944,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was called with the generated name
-			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
@@ -892,7 +957,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Set a custom workflow name (not the default)
-			mockWorkflow.name = 'My Custom Workflow';
+			workflowsStore.workflow.name = 'My Custom Workflow';
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -916,7 +981,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should NOT apply generated workflow name when not initial generation', () => {
@@ -926,7 +991,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = false;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -950,7 +1015,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow updates without name property', () => {
@@ -960,7 +1025,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON without a name property
 			const workflowJson = JSON.stringify({
@@ -983,7 +1048,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow names that start with but are not exactly the default name', () => {
@@ -993,7 +1058,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Set workflow name that starts with default but has more text
-			mockWorkflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
+			workflowsStore.workflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -1017,7 +1082,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName WAS called because the name starts with default
-			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
@@ -1047,7 +1112,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// First update with name
 			const workflowJson1 = JSON.stringify({
@@ -1057,7 +1122,7 @@ describe('AI Builder store', () => {
 			});
 
 			builderStore.applyWorkflowUpdate(workflowJson1);
-			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
 
 			// The flag should still be true for subsequent updates in the same generation
 			expect(builderStore.initialGeneration).toBe(true);
@@ -1079,7 +1144,106 @@ describe('AI Builder store', () => {
 			builderStore.applyWorkflowUpdate(workflowJson2);
 
 			// Should not call setWorkflowName again
-			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
+		});
+
+		describe('applyWorkflowUpdate credential defaults', () => {
+			const createTestNodeType = (): INodeTypeDescription => ({
+				displayName: 'Test Node',
+				name: 'n8n-nodes-base.test',
+				description: 'Test node',
+				group: ['trigger'],
+				version: 1,
+				defaults: { name: 'Test Node' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{
+								name: 'API Key',
+								value: 'apiKey',
+							},
+						],
+						default: 'apiKey',
+						required: true,
+					},
+				],
+				credentials: [
+					{
+						name: 'testApi',
+						required: true,
+						displayOptions: {
+							show: {
+								authentication: ['apiKey'],
+							},
+						},
+					},
+				],
+			});
+
+			it('assigns default credentials when available', () => {
+				const builderStore = useBuilderStore();
+				getNodeTypeSpy.mockReturnValue(createTestNodeType());
+				getCredentialsByTypeSpy.mockReturnValue([
+					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
+				]);
+
+				const workflowJson = JSON.stringify({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.test',
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				const result = builderStore.applyWorkflowUpdate(workflowJson);
+				expect(result.success).toBe(true);
+				const [node] = result.workflowData?.nodes ?? [];
+				expect(node.credentials).toEqual({
+					testApi: { id: 'cred-id', name: 'API Credential' },
+				});
+				expect(node.parameters.authentication).toBe('apiKey');
+			});
+
+			it('keeps existing credentials untouched', () => {
+				const builderStore = useBuilderStore();
+				getNodeTypeSpy.mockReturnValue(createTestNodeType());
+				getCredentialsByTypeSpy.mockReturnValue([
+					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
+				]);
+
+				const workflowJson = JSON.stringify({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.test',
+							position: [0, 0],
+							parameters: { authentication: 'apiKey' },
+							credentials: {
+								testApi: { id: 'existing', name: 'Existing Credential' },
+							},
+						},
+					],
+					connections: {},
+				});
+
+				const result = builderStore.applyWorkflowUpdate(workflowJson);
+				expect(result.success).toBe(true);
+				const [node] = result.workflowData?.nodes ?? [];
+				expect(node.credentials).toEqual({
+					testApi: { id: 'existing', name: 'Existing Credential' },
+				});
+			});
 		});
 	});
 

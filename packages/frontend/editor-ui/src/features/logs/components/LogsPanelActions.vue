@@ -2,9 +2,9 @@
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
-import { N8nActionDropdown, N8nIconButton } from '@n8n/design-system';
 import { computed } from 'vue';
 
+import { N8nActionDropdown, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 const {
 	isOpen,
 	isSyncSelectionEnabled: isSyncEnabled,

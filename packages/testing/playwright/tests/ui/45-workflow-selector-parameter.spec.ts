@@ -14,7 +14,7 @@ test.describe('Workflow Selector Parameter @db:reset', () => {
 		];
 
 		for (const { file } of subWorkflows) {
-			await n8n.api.workflowApi.importWorkflow(file);
+			await n8n.api.workflows.importWorkflow(file);
 		}
 
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);

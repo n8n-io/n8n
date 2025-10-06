@@ -25,6 +25,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
+import type { EventBus } from '@n8n/utils/dist/event-bus';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -134,7 +135,7 @@ const folder: ChangeLocationSearchResult = {
 
 const mockEventBus = {
 	emit: vi.fn(),
-};
+} as unknown as EventBus;
 
 describe('MoveToFolderModal', () => {
 	beforeEach(() => {
