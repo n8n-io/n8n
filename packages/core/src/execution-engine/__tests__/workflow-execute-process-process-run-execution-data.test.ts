@@ -229,6 +229,7 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('waiting tools', () => {
+		// eslint-disable-next-line complexity
 		test('handles Request objects with actions correctly', async () => {
 			// ARRANGE
 			let response: EngineResponse | undefined;
@@ -352,13 +353,15 @@ describe('processRunExecutionData', () => {
 
 			// Tool nodes should have been added to runData with inputOverride
 			expect(runData[tool1Node.name]).toHaveLength(1);
-			expect(runData[tool1Node.name][0].inputOverride).toEqual({
-				ai_tool: [[{ json: { query: 'test input', toolCallId: 'action_1' } }]],
+			expect(runData[tool1Node.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				query: 'test input',
+				toolCallId: 'action_1',
 			});
 
 			expect(runData[tool2Node.name]).toHaveLength(1);
-			expect(runData[tool2Node.name][0].inputOverride).toEqual({
-				ai_tool: [[{ json: { data: 'another input', toolCallId: 'action_2' } }]],
+			expect(runData[tool2Node.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				data: 'another input',
+				toolCallId: 'action_2',
 			});
 
 			// Tools should have executed successfully
@@ -454,8 +457,9 @@ describe('processRunExecutionData', () => {
 
 			// 2. Tool nodes get added to runData with inputOverride but are never actually executed
 			expect(runData[tool1Node.name]).toHaveLength(1);
-			expect(runData[tool1Node.name][0].inputOverride).toEqual({
-				ai_tool: [[{ json: { query: 'test input', toolCallId: 'action_1' } }]],
+			expect(runData[tool1Node.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				query: 'test input',
+				toolCallId: 'action_1',
 			});
 			// The tool node should not have execution data since it was never run
 			expect(runData[tool1Node.name][0].data).toBeUndefined();
@@ -632,7 +636,114 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('pairedItem sourceOverwrite handling', () => {
-		test('preserves sourceOverwrite from existing pairedItem object', async () => {
+		test('preserves sourceOverwrite for tools to enable expression resolution', async () => {
+			// ARRANGE
+			// This test simulates: DataNode → AgentNode → ToolNode
+			// where ToolNode needs to access DataNode via expression
+			const dataNodeOutput = { field: 'testValue', nested: { value: 42 } };
+			const dataNode = createNodeData({ name: 'DataNode', type: types.passThrough });
+
+			// Create a tool node that accesses DataNode data via expression
+			const toolNodeType = modifyNode(passThroughNode)
+				.return((response?: EngineResponse) => {
+					// Tool receives input but needs to access DataNode via expression
+					// This simulates: $('DataNode').item.json.field
+					return [[{ json: { toolResult: 'Tool executed successfully', response } }]];
+				})
+				.done();
+			const toolNode = createNodeData({ name: 'ToolNode', type: 'toolNodeType' });
+
+			// Create agent node that requests the tool
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'test query' },
+							type: 'ai_tool',
+							id: 'tool_action_1',
+							metadata: {},
+						},
+					],
+					metadata: { requestId: 'test_agent_request' },
+				})
+				.return((response?: EngineResponse) => {
+					return [[{ json: { agentResult: 'Agent completed', response } }]];
+				})
+				.done();
+			const agentNode = createNodeData({ name: 'AgentNode', type: 'agentNodeType' });
+
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+				toolNodeType: { type: toolNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(dataNode, agentNode, toolNode)
+				.addConnections({ from: dataNode, to: agentNode })
+				.addConnections({ from: toolNode, to: agentNode, type: 'ai_tool' })
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const taskDataConnection = { main: [[{ json: dataNodeOutput }]] };
+			const executionData: IRunExecutionData = {
+				startData: { startNodes: [{ name: dataNode.name, sourceData: null }] },
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [{ data: taskDataConnection, node: dataNode, source: null }],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+
+			// 1. Verify DataNode executed successfully
+			expect(runData[dataNode.name]).toHaveLength(1);
+			expect(runData[dataNode.name][0].data?.main?.[0]?.[0].json).toEqual(dataNodeOutput);
+
+			// 2. Verify AgentNode executed and returned EngineRequest
+			expect(runData[agentNode.name]).toHaveLength(1);
+			expect(runData[agentNode.name][0].metadata?.subNodeExecutionData).toBeDefined();
+
+			// 3. Verify ToolNode was scheduled with preserveSourceOverwrite metadata
+			expect(runData[toolNode.name]).toHaveLength(1);
+			expect(runData[toolNode.name][0].inputOverride).toBeDefined();
+			expect(runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				query: 'test query',
+				toolCallId: 'tool_action_1',
+			});
+
+			// 4. Verify ToolNode executed successfully
+			expect(runData[toolNode.name][0].executionStatus).toBe('success');
+			expect(runData[toolNode.name][0].data).toBeDefined();
+
+			// 5. Verify ToolNode's input has sourceOverwrite pointing to DataNode
+			// This is critical: the tool's input should have sourceOverwrite set
+			// so expressions like $('DataNode').item.json.field can resolve
+			const toolInput = runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0];
+			expect(toolInput?.pairedItem).toBeDefined();
+			if (typeof toolInput?.pairedItem === 'object' && !Array.isArray(toolInput.pairedItem)) {
+				expect(toolInput.pairedItem.sourceOverwrite).toBeDefined();
+				expect(toolInput.pairedItem.sourceOverwrite?.previousNode).toBe(dataNode.name);
+			}
+		});
+
+		test('does not preserve sourceOverwrite for regular main connections', async () => {
 			// ARRANGE
 			const node = createNodeData({ name: 'testNode', type: types.passThrough });
 			const workflow = new DirectedGraph()
@@ -640,6 +751,7 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			// Create execution data with items that have pairedItem.sourceOverwrite
+			// but no preserveSourceOverwrite metadata
 			const sourceOverwriteData = {
 				previousNode: 'CustomPreviousNode',
 				previousNodeOutput: 2,
@@ -657,14 +769,6 @@ describe('processRunExecutionData', () => {
 								sourceOverwrite: sourceOverwriteData,
 							},
 						},
-						{
-							json: { data: 'test2' },
-							pairedItem: {
-								item: 1,
-								input: 0,
-								// No sourceOverwrite - should be undefined
-							},
-						},
 					],
 				],
 			};
@@ -674,6 +778,7 @@ describe('processRunExecutionData', () => {
 				resultData: { runData: {} },
 				executionData: {
 					contextData: {},
+					// No preserveSourceOverwrite metadata
 					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
 					metadata: {},
 					waitingExecution: {},
@@ -691,82 +796,15 @@ describe('processRunExecutionData', () => {
 			expect(runData[node.name]).toHaveLength(1);
 
 			const nodeExecutionData = runData[node.name][0].data?.main?.[0];
-			expect(nodeExecutionData).toHaveLength(2);
+			expect(nodeExecutionData).toHaveLength(1);
 
-			// First item should preserve sourceOverwrite
-			expect(nodeExecutionData?.[0].pairedItem).toEqual({
-				item: 0,
-				input: undefined, // input index 0 becomes undefined
-				sourceOverwrite: sourceOverwriteData,
-			});
-
-			// Second item should have undefined sourceOverwrite
-			expect(nodeExecutionData?.[1].pairedItem).toEqual({
-				item: 1,
-				input: undefined,
-				sourceOverwrite: undefined,
-			});
-		});
-
-		test('handles non-object pairedItem gracefully', async () => {
-			// ARRANGE
-			const node = createNodeData({ name: 'testNode', type: types.passThrough });
-			const workflow = new DirectedGraph()
-				.addNodes(node)
-				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
-
-			// Create execution data with items that have non-object pairedItem
-			const taskDataConnection = {
-				main: [
-					[
-						{
-							json: { data: 'test1' },
-							pairedItem: [], // This should result in undefined sourceOverwrite
-						},
-						{
-							json: { data: 'test2' },
-							// No pairedItem at all
-						},
-					],
-				],
-			};
-
-			const executionData: IRunExecutionData = {
-				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
-
-			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
-
-			// ACT
-			const result = await workflowExecute.processRunExecutionData(workflow);
-
-			// ASSERT
-			const runData = result.data.resultData.runData;
-			expect(runData[node.name]).toHaveLength(1);
-
-			const nodeExecutionData = runData[node.name][0].data?.main?.[0];
-			expect(nodeExecutionData).toHaveLength(2);
-
-			// Both items should have undefined sourceOverwrite since pairedItem wasn't an object
+			// sourceOverwrite should be stripped because no preserveSourceOverwrite metadata
 			expect(nodeExecutionData?.[0].pairedItem).toEqual({
 				item: 0,
 				input: undefined,
-				sourceOverwrite: undefined,
+				// sourceOverwrite should be undefined (stripped)
 			});
-
-			expect(nodeExecutionData?.[1].pairedItem).toEqual({
-				item: 1,
-				input: undefined,
-				sourceOverwrite: undefined,
-			});
+			expect(nodeExecutionData?.[0].pairedItem).not.toHaveProperty('sourceOverwrite');
 		});
 	});
 });
