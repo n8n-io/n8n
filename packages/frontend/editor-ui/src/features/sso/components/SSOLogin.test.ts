@@ -1,8 +1,8 @@
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
-import SSOLogin from '@/components/SSOLogin.vue';
+import SSOLogin from './SSOLogin.vue';
 import { STORES } from '@n8n/stores';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '../sso.store';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';

@@ -6,7 +6,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
-import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '@/stores/sso.store';
+import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
