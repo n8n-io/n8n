@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
 
+import { N8nIcon, N8nPopover } from '@n8n/design-system';
 const emit = defineEmits<{
 	update: [color: number];
 }>();

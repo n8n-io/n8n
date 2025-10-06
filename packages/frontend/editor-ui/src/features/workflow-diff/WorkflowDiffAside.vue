@@ -2,9 +2,9 @@
 import NodeIcon from '@/components/NodeIcon.vue';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nHeading, N8nIconButton, N8nResizeWrapper } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 
+import { N8nHeading, N8nIconButton, N8nResizeWrapper } from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 }>();

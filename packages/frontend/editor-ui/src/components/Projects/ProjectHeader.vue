@@ -3,7 +3,6 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
-import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -23,6 +22,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
 
+import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();

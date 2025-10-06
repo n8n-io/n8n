@@ -20,6 +20,7 @@ import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/comp
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
+import { N8nInputLabel } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;

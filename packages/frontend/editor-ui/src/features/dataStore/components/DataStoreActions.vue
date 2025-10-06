@@ -10,6 +10,7 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nActionToggle } from '@n8n/design-system';
 type Props = {
 	dataStore: DataStore;
 	isReadOnly?: boolean;

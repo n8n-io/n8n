@@ -18,6 +18,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import router from '@/router';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------
 // #region Reactive properties
 // ---------------------------------------------------------------------------

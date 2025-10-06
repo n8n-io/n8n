@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticate,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class OpenWeatherMapApi implements ICredentialType {
 	name = 'openWeatherMapApi';
@@ -16,4 +21,23 @@ export class OpenWeatherMapApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticate = {
+		type: 'generic',
+		properties: {
+			qs: {
+				appid: '={{$credentials.accessToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.openweathermap.org/data/2.5',
+			url: '/weather',
+			qs: {
+				q: 'London',
+			},
+		},
+	};
 }

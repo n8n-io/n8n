@@ -64,7 +64,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import type { BaseTextKey } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import { useSettingsStore } from '@/stores/settings.store';

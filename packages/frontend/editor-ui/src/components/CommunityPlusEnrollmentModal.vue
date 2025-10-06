@@ -2,7 +2,6 @@
 import { ref } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { Validatable, IValidator } from '@n8n/design-system';
-import { N8nFormInput } from '@n8n/design-system';
 import { VALID_EMAIL_REGEX, COMMUNITY_PLUS_DOCS_URL } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
@@ -11,6 +10,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUsersStore } from '@/stores/users.store';
 
+import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data?: {

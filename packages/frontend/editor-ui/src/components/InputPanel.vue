@@ -12,7 +12,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import uniqBy from 'lodash/uniqBy';
-import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
@@ -34,6 +33,7 @@ import { type SearchShortcut } from '@/types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
+import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
