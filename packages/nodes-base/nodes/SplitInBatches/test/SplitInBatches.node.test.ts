@@ -75,7 +75,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 		});
 
 		it('should include proper error message with node name and execution count', () => {
-			// Execute up to 2x the limit (20 for this dataset)
+			// Execute up to 2x the limit (20 for this dataset: 3 batches * 2x tolerance = 6, but max 10, so 10 * 2 = 20)
 			for (let i = 0; i < 20; i++) {
 				SplitInBatchesV4.checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
@@ -88,7 +88,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				expect(error.message).toContain('Infinite loop detected');
 				expect(error.message).toContain('SplitInBatches');
 				expect(error.message).toContain('has executed 21 times');
-				expect(error.message).toContain('exceeding the calculated limit of 10');
+				expect(error.message).toContain('exceeding the calculated limit of 20');
 				expect(error.message).toContain('expected ~3 batches');
 				expect(error.message).toContain(
 					'Check that the "done" output is not connected back to this node\'s input',

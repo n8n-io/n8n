@@ -129,7 +129,10 @@ export class WorkflowExecute {
 			}
 		} catch (error) {
 			// Non-critical cleanup failure - log but don't throw
-			Logger.warn(`Failed to cleanup SplitInBatches counters for execution ${executionId}`, error);
+			Logger.warn(
+				`Failed to cleanup SplitInBatches counters for execution ${executionId}`,
+				error instanceof Error ? { error: error.message } : undefined,
+			);
 		}
 	}
 
