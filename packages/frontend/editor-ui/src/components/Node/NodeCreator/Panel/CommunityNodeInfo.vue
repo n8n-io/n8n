@@ -119,6 +119,7 @@ onMounted(async () => {
 			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 			data-test-id="update-available"
 			:package-name="communityNodeDetails?.packageName"
+			source="node creator panel"
 		/>
 		<div v-else :class="$style.separator"></div>
 		<div :class="$style.info">

@@ -76,6 +76,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/types/projects.types';
 import identity from 'lodash/identity';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -90,6 +91,7 @@ try {
 type UiStore = ReturnType<typeof useUIStore>;
 
 export const useUIStore = defineStore(STORES.UI, () => {
+	const telemetry = useTelemetry();
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
 	const theme = useLocalStorage<ThemeOption>(LOCAL_STORAGE_THEME, savedTheme, {
@@ -496,7 +498,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
-	const openCommunityPackageUpdateConfirmModal = (packageName: string) => {
+	const openCommunityPackageUpdateConfirmModal = (packageName: string, source?: string) => {
+		telemetry.track('user clicked to open community node update modal', {
+			source,
+			package_name: packageName,
+		});
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
 		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);

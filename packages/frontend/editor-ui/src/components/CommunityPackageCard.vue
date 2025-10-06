@@ -82,7 +82,7 @@ async function onAction(value: string) {
 
 function onUpdateClick() {
 	if (!props.communityPackage) return;
-	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName);
+	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName, 'instance settings');
 }
 
 watch(
