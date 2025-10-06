@@ -68,7 +68,7 @@ import { useTemplatesStore } from '@/features/templates/templates.store';
 import type { BaseTextKey } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
 import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from './utils';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
