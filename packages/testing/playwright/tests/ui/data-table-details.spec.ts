@@ -148,7 +148,7 @@ test.describe('Data Table details view', () => {
 		await n8n.goHome();
 
 		testDataTableName = `Data Table ${nanoid(8)}`;
-		await n8n.dataTable.clickDataTableOverviewTab();
+		await n8n.page.goto('projects/home/datatables');
 		await n8n.dataTable.clickAddDataTableAction();
 		await n8n.dataTableComposer.createNewDataTable(testDataTableName);
 	});

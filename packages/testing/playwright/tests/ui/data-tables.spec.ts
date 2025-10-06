@@ -53,7 +53,7 @@ test.describe('Data Table list view', () => {
 	}) => {
 		const TEST_DATA_TABLE_NAME = `Data Table ${nanoid(8)}`;
 
-		await n8n.dataTable.clickDataTableOverviewTab();
+		await n8n.page.goto('projects/home/datatables');
 
 		await n8n.dataTable.clickAddDataTableAction();
 
@@ -122,9 +122,8 @@ test.describe('Data Table list view', () => {
 		const TOTAL_DATA_TABLES = 11;
 		const PAGE_SIZE = 10;
 
-		await n8n.projectComposer.createProject(TEST_PROJECT_NAME);
-		await n8n.sideBar.clickProjectMenuItem(TEST_PROJECT_NAME);
-		await n8n.dataTable.clickDataTableProjectTab();
+		const { projectId } = await n8n.projectComposer.createProject(TEST_PROJECT_NAME);
+		await n8n.page.goto(`projects/${projectId}/datatables`);
 
 		// Create just enough data tables to require pagination
 		for (let i = 0; i < TOTAL_DATA_TABLES; i++) {

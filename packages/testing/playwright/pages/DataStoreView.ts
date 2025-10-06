@@ -81,8 +81,6 @@ export class DataStoreView extends BasePage {
 	}
 
 	async clickAddDataTableAction() {
-		// TODO: figure out why this is needed
-		await this.page.waitForTimeout(3000);
 		await this.addResource.dataStore();
 	}
 

@@ -21,7 +21,8 @@ export class DataTableComposer {
 		source: 'empty-state' | 'header-dropdown',
 	) {
 		await this.n8n.projectComposer.createProject(projectName);
-		await this.n8n.sideBar.clickProjectMenuItem(projectName);
+		const { projectId } = await this.n8n.projectComposer.createProject();
+		await this.n8n.page.goto(`projects/${projectId}/datatables`);
 
 		await this.n8n.dataTable.clickDataTableProjectTab();
 		if (source === 'empty-state') {
@@ -30,7 +31,6 @@ export class DataTableComposer {
 			await this.n8n.dataTable.clickAddDataTableAction();
 		}
 		await this.n8n.dataTableComposer.createNewDataTable(dataTableName);
-		await this.n8n.sideBar.clickProjectMenuItem(projectName);
-		await this.n8n.dataTable.clickDataTableProjectTab();
+		await this.n8n.page.goto(`projects/${projectId}/datatables`);
 	}
 }
