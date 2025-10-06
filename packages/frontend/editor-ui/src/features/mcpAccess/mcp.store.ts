@@ -45,13 +45,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function toggleWorkflowMcpAccess(
 		workflowId: string,
 		availableInMCP: boolean,
-	): Promise<boolean> {
+	): Promise<{
+		id: string;
+		settings: { availableInMCP?: boolean } | undefined;
+		versionId: string;
+	}> {
 		const response = await toggleWorkflowMcpAccessApi(
 			rootStore.restApiContext,
 			workflowId,
 			availableInMCP,
 		);
-		return response.success;
+		return response;
 	}
 
 	return {
