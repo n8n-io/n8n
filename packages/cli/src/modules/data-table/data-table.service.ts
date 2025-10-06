@@ -69,7 +69,7 @@ export class DataTableService {
 		return result;
 	}
 
-	// Updates data store properties (currently limited to renaming)
+	// Updates data table properties (currently limited to renaming)
 	async updateDataTable(dataTableId: string, projectId: string, dto: UpdateDataTableDto) {
 		await this.validateDataTableExists(dataTableId, projectId);
 		await this.validateUniqueName(dto.name, projectId);

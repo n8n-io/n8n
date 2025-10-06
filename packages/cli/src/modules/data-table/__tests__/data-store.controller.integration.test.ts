@@ -66,7 +66,7 @@ beforeEach(async () => {
 });
 
 describe('POST /projects/:projectId/data-tables', () => {
-	test('should not create data store when project does not exist', async () => {
+	test('should not create data table when project does not exist', async () => {
 		const payload = {
 			name: 'Test Data Table',
 			columns: [
@@ -82,7 +82,7 @@ describe('POST /projects/:projectId/data-tables', () => {
 		await authOwnerAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
 	});
 
-	test('should not create data store when name is empty', async () => {
+	test('should not create data table when name is empty', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const payload = {
 			name: '',
@@ -97,7 +97,7 @@ describe('POST /projects/:projectId/data-tables', () => {
 		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(400);
 	});
 
-	test('should not create data store if user has project:viewer role in team project', async () => {
+	test('should not create data table if user has project:viewer role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		await linkUserToProject(member, project, 'project:viewer');
 
@@ -117,7 +117,7 @@ describe('POST /projects/:projectId/data-tables', () => {
 		expect(dataTablesInDb).toHaveLength(0);
 	});
 
-	test("should not create data store in another user's personal project", async () => {
+	test("should not create data table in another user's personal project", async () => {
 		const payload = {
 			name: 'Test Data Table',
 			columns: [
@@ -134,7 +134,7 @@ describe('POST /projects/:projectId/data-tables', () => {
 			.expect(403);
 	});
 
-	test('should create data store if user has project:editor role in team project', async () => {
+	test('should create data table if user has project:editor role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		await linkUserToProject(member, project, 'project:editor');
 
@@ -154,7 +154,7 @@ describe('POST /projects/:projectId/data-tables', () => {
 		expect(dataTablesInDb).toHaveLength(1);
 	});
 
-	test('should create data store if user has project:admin role in team project', async () => {
+	test('should create data table if user has project:admin role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		await linkUserToProject(admin, project, 'project:admin');
 
@@ -174,7 +174,7 @@ describe('POST /projects/:projectId/data-tables', () => {
 		expect(dataTablesInDb).toHaveLength(1);
 	});
 
-	test('should create data store if user is owner in team project', async () => {
+	test('should create data table if user is owner in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 
 		const payload = {
@@ -193,7 +193,7 @@ describe('POST /projects/:projectId/data-tables', () => {
 		expect(dataTablesInDb).toHaveLength(1);
 	});
 
-	test('should create data store in personal project', async () => {
+	test('should create data table in personal project', async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const payload = {
 			name: 'Test Data Table',
@@ -512,7 +512,7 @@ describe('GET /projects/:projectId/data-tables', () => {
 });
 
 describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
-	test('should not update data store when project does not exist', async () => {
+	test('should not update data table when project does not exist', async () => {
 		const payload = {
 			name: 'Updated Data Table Name',
 		};
@@ -523,7 +523,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 			.expect(403);
 	});
 
-	test('should not update data store when data store does not exist', async () => {
+	test('should not update data table when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 
 		const payload = {
@@ -536,7 +536,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 			.expect(404);
 	});
 
-	test('should not update data store when name is empty', async () => {
+	test('should not update data table when name is empty', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project, { name: 'Original Name' });
 
@@ -553,7 +553,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb?.name).toBe('Original Name');
 	});
 
-	test('should not update data store if user has project:viewer role in team project', async () => {
+	test('should not update data table if user has project:viewer role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project, { name: 'Original Name' });
 		await linkUserToProject(member, project, 'project:viewer');
@@ -571,7 +571,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb?.name).toBe('Original Name');
 	});
 
-	test("should not update data store in another user's personal project", async () => {
+	test("should not update data table in another user's personal project", async () => {
 		const dataTable = await createDataTable(ownerProject, { name: 'Original Name' });
 
 		const payload = {
@@ -587,7 +587,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb?.name).toBe('Original Name');
 	});
 
-	test('should update data store if user has project:editor role in team project', async () => {
+	test('should update data table if user has project:editor role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project, { name: 'Original Name' });
 		await linkUserToProject(member, project, 'project:editor');
@@ -605,7 +605,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb?.name).toBe('Updated Data Table Name');
 	});
 
-	test('should update data store if user has project:admin role in team project', async () => {
+	test('should update data table if user has project:admin role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project, { name: 'Original Name' });
 		await linkUserToProject(admin, project, 'project:admin');
@@ -623,7 +623,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb?.name).toBe('Updated Data Table Name');
 	});
 
-	test('should update data store if user is owner in team project', async () => {
+	test('should update data table if user is owner in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project, { name: 'Original Name' });
 
@@ -640,7 +640,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb?.name).toBe('Updated Data Table Name');
 	});
 
-	test('should update data store in personal project', async () => {
+	test('should update data table in personal project', async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const dataTable = await createDataTable(personalProject, { name: 'Original Name' });
 
@@ -659,14 +659,14 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 });
 
 describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
-	test('should not delete data store when project does not exist', async () => {
+	test('should not delete data table when project does not exist', async () => {
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-tables/some-data-store-id')
 			.send({})
 			.expect(403);
 	});
 
-	test('should not delete data store when data store does not exist', async () => {
+	test('should not delete data table when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
@@ -675,7 +675,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 			.expect(404);
 	});
 
-	test('should not delete data store if user has project:viewer role in team project', async () => {
+	test('should not delete data table if user has project:viewer role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project);
 		await linkUserToProject(member, project, 'project:viewer');
@@ -689,7 +689,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb).toBeDefined();
 	});
 
-	test("should not delete data store in another user's personal project", async () => {
+	test("should not delete data table in another user's personal project", async () => {
 		const dataTable = await createDataTable(ownerProject);
 
 		await authMemberAgent
@@ -701,7 +701,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb).toBeDefined();
 	});
 
-	test('should delete data store if user has project:editor role in team project', async () => {
+	test('should delete data table if user has project:editor role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project);
 		await linkUserToProject(member, project, 'project:editor');
@@ -715,7 +715,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb).toBeNull();
 	});
 
-	test('should delete data store if user has project:admin role in team project', async () => {
+	test('should delete data table if user has project:admin role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project);
 		await linkUserToProject(admin, project, 'project:admin');
@@ -729,7 +729,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb).toBeNull();
 	});
 
-	test('should delete data store if user is owner in team project', async () => {
+	test('should delete data table if user is owner in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataTable = await createDataTable(project);
 
@@ -742,7 +742,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		expect(dataTableInDb).toBeNull();
 	});
 
-	test('should delete data store in personal project', async () => {
+	test('should delete data table in personal project', async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const dataTable = await createDataTable(personalProject);
 
@@ -806,7 +806,7 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/columns', () => {
 		await authMemberAgent.get(`/projects/${ownerProject.id}/data-tables`).expect(403);
 	});
 
-	test('should not list columns when data store does not exist', async () => {
+	test('should not list columns when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
@@ -859,7 +859,7 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/columns', () => {
 		expect(response.body.data[0].name).toBe('test_column');
 	});
 
-	test('should list columns from personal project data store', async () => {
+	test('should list columns from personal project data table', async () => {
 		const dataTable = await createDataTable(memberProject, {
 			name: 'Personal Data Table 1',
 			columns: [
@@ -892,7 +892,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/columns', () => {
 			.expect(403);
 	});
 
-	test('should not create column when data store does not exist', async () => {
+	test('should not create column when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 
 		const payload = {
@@ -943,7 +943,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/columns', () => {
 		expect(columnsInDb).toHaveLength(0);
 	});
 
-	test("should not create column in another user's personal project data store", async () => {
+	test("should not create column in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{
@@ -1118,7 +1118,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/columns/:columnId
 			.expect(403);
 	});
 
-	test('should not delete column when data store does not exist', async () => {
+	test('should not delete column when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
@@ -1144,7 +1144,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/columns/:columnId
 			.expect(404);
 	});
 
-	test("should not delete column in another user's personal project data store", async () => {
+	test("should not delete column in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{
@@ -1305,7 +1305,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/
 			.expect(403);
 	});
 
-	test('should not move column when data store does not exist', async () => {
+	test('should not move column when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		const payload = {
 			targetIndex: 1,
@@ -1339,7 +1339,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/
 			.expect(404);
 	});
 
-	test("should not move column in another user's personal project data store", async () => {
+	test("should not move column in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{
@@ -1529,14 +1529,14 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			.expect(403);
 	});
 
-	test('should not list rows when data store does not exist', async () => {
+	test('should not list rows when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		await authOwnerAgent
 			.get(`/projects/${project.id}/data-tables/non-existing-id/rows`)
 			.expect(404);
 	});
 
-	test("should not list rows in another user's personal project data store", async () => {
+	test("should not list rows in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{
@@ -1910,7 +1910,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			.expect(403);
 	});
 
-	test('should not insert rows when data store does not exist', async () => {
+	test('should not insert rows when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		const payload = {
 			data: [
@@ -1928,7 +1928,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			.expect(404);
 	});
 
-	test("should not insert rows in another user's personal project data store", async () => {
+	test("should not insert rows in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{
@@ -2511,7 +2511,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			.expect(403);
 	});
 
-	test('should not delete rows when data store does not exist', async () => {
+	test('should not delete rows when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
@@ -2563,7 +2563,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			.expect(400);
 	});
 
-	test("should not delete rows in another user's personal project data store", async () => {
+	test("should not delete rows in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{
@@ -2877,7 +2877,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.expect(403);
 	});
 
-	test('should not upsert rows when data store does not exist', async () => {
+	test('should not upsert rows when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		const payload = {
 			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
@@ -2890,7 +2890,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.expect(404);
 	});
 
-	test("should not upsert rows in another user's personal project data store", async () => {
+	test("should not upsert rows in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{
@@ -3124,7 +3124,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			.expect(403);
 	});
 
-	test('should not update row when data store does not exist', async () => {
+	test('should not update row when data table does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		const payload = {
 			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
@@ -3137,7 +3137,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			.expect(404);
 	});
 
-	test("should not update row in another user's personal project data store", async () => {
+	test("should not update row in another user's personal project data table", async () => {
 		const dataTable = await createDataTable(ownerProject, {
 			columns: [
 				{ name: 'name', type: 'string' },

@@ -145,7 +145,7 @@ export type DataTablesSizeResult = DataTablesSizeData & {
 	quotaStatus: DataTableSizeStatus;
 };
 
-// APIs for a data store service operating on a specific projectId
+// APIs for a data table service operating on a specific projectId
 export interface IDataTableProjectAggregateService {
 	getProjectId(): string;
 
@@ -155,7 +155,7 @@ export interface IDataTableProjectAggregateService {
 
 	deleteDataTableAll(): Promise<boolean>;
 }
-// APIs for a data store service operating on a specific projectId and dataTableId
+// APIs for a data table service operating on a specific projectId and dataTableId
 export interface IDataTableProjectService {
 	updateDataTable(options: UpdateDataTableOptions): Promise<boolean>;
 

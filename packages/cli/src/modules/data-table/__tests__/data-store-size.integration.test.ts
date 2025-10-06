@@ -28,7 +28,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('Data Store Size Tests', () => {
+describe('Data Table Size Tests', () => {
 	let dataStoreService: DataTableService;
 	let dataStoreRepository: DataTableRepository;
 

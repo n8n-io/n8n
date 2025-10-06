@@ -3,7 +3,7 @@ import { UserError } from 'n8n-workflow';
 export class DataTableColumnNameConflictError extends UserError {
 	constructor(columnName: string, dataStoreName: string) {
 		super(
-			`Data store column with name '${columnName}' already exists in data store '${dataStoreName}'`,
+			`Data table column with name '${columnName}' already exists in data table '${dataStoreName}'`,
 			{
 				level: 'warning',
 			},

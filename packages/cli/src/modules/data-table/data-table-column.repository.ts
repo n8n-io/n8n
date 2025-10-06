@@ -61,7 +61,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			if (existingColumnMatch) {
 				const dataTable = await em.findOneBy(DataTable, { id: dataTableId });
 				if (!dataTable) {
-					throw new UnexpectedError('Data store not found');
+					throw new UnexpectedError('Data table not found');
 				}
 				throw new DataTableColumnNameConflictError(schema.name, dataTable.name);
 			}
