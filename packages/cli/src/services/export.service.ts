@@ -83,7 +83,7 @@ export class ExportService {
 		return systemTablesExported;
 	}
 
-	async exportEntities(outputDir: string) {
+	async exportEntities(outputDir: string, excludedTables: Set<string> = new Set()) {
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 
 		validateDbTypeForExportEntities(this.dataSource.options.type);
@@ -110,6 +110,14 @@ export class ExportService {
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name
 			const tableName = metadata.tableName;
+
+			if (excludedTables.has(tableName)) {
+				this.logger.info(
+					`   💭 Skipping table: ${tableName} (${metadata.name}) as it exists as an exclusion`,
+				);
+				continue;
+			}
+
 			const entityName = metadata.name.toLowerCase();
 
 			this.logger.info(`\n📊 Processing table: ${tableName} (${entityName})`);

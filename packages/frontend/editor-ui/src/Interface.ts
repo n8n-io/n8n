@@ -37,7 +37,6 @@ import type {
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	INodeExecutionData,
-	INodeProperties,
 	NodeConnectionType,
 	StartNodeData,
 	AnnotationVote,
@@ -1008,28 +1007,6 @@ export type SchemaType =
 
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
-export type UsageState = {
-	loading: boolean;
-	data: {
-		usage: {
-			activeWorkflowTriggers: {
-				limit: number; // -1 for unlimited, from license
-				value: number;
-				warningThreshold: number; // hardcoded value in BE
-			};
-			workflowsHavingEvaluations: {
-				limit: number; // -1 for unlimited, from license
-				value: number;
-			};
-		};
-		license: {
-			planId: string; // community
-			planName: string; // defaults to Community
-		};
-		managementToken?: string;
-	};
-};
-
 export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
@@ -1082,27 +1059,6 @@ export interface CloudPlanState {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-export interface ExternalSecretsProviderSecret {
-	key: string;
-}
-
-export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
-
-export type ExternalSecretsProviderProperty = INodeProperties;
-
-export type ExternalSecretsProviderState = 'connected' | 'tested' | 'initializing' | 'error';
-
-export interface ExternalSecretsProvider {
-	icon: string;
-	name: string;
-	displayName: string;
-	connected: boolean;
-	connectedAt: string | false;
-	state: ExternalSecretsProviderState;
-	data?: ExternalSecretsProviderData;
-	properties?: ExternalSecretsProviderProperty[];
-}
 
 export type CloudUpdateLinkSourceType =
 	| 'advanced-permissions'

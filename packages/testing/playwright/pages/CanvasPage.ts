@@ -660,6 +660,15 @@ export class CanvasPage extends BasePage {
 			.click();
 	}
 
+	/**
+	 * Toggle node enabled/disabled state using keyboard shortcut
+	 * @param nodeName - The name of the node to toggle
+	 */
+	async toggleNodeEnabled(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click();
+		await this.page.keyboard.press('d');
+	}
+
 	// Chat open/close buttons (manual chat)
 	async clickManualChatButton(): Promise<void> {
 		await this.page.getByTestId('workflow-chat-button').click();

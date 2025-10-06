@@ -305,7 +305,7 @@ describe('PATCH /variables/:id', () => {
 			createVariable(toModify.key, toModify.value),
 		]);
 		const response = await authOwnerAgent.patch(`/variables/${var1.id}`).send(toModify);
-		expect(response.statusCode).toBe(500);
+		expect(response.statusCode).toBe(400);
 		expect(response.body.data?.key).not.toBe(toModify.key);
 		expect(response.body.data?.value).not.toBe(toModify.value);
 

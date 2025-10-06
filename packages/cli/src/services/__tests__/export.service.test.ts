@@ -47,6 +47,11 @@ describe('ExportService', () => {
 				tableName: 'workflow_entity',
 				columns: [{ databaseName: 'id' }, { databaseName: 'name' }, { databaseName: 'active' }],
 			},
+			{
+				name: 'Execution Data',
+				tableName: 'execution_data',
+				columns: [{ databaseName: 'id' }],
+			},
 		];
 		// @ts-expect-error Accessing private property for testing
 		mockDataSource.options = { type: 'sqlite' };
@@ -122,6 +127,34 @@ describe('ExportService', () => {
 			jest.mocked(readdir).mockResolvedValue([]);
 
 			await exportService.exportEntities(outputDir);
+
+			expect(mockDataSource.query).toHaveBeenCalledTimes(5); // 1 migrations + 3 entity queries
+			expect(appendFile).toHaveBeenCalled();
+		});
+
+		it('should handle multiple pages of data, excluding execution_data', async () => {
+			const outputDir = '/test/output';
+			const mockEntities = Array.from({ length: 500 }, (_, i) => ({
+				id: i + 1,
+				email: `test${i + 1}@example.com`,
+				firstName: `User${i + 1}`,
+			}));
+
+			// Mock the migrations table query to fail (table doesn't exist)
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async (query: string) => {
+					if (query.includes('migrations') && query.includes('COUNT')) {
+						throw new Error('Table not found');
+					}
+					return [];
+				})
+				.mockResolvedValueOnce(mockEntities) // First page for User
+				.mockResolvedValueOnce([]) // Second page for User (empty, end of data)
+				.mockResolvedValueOnce([]); // Workflow entities
+			jest.mocked(readdir).mockResolvedValue([]);
+
+			await exportService.exportEntities(outputDir, new Set(['execution_data']));
 
 			expect(mockDataSource.query).toHaveBeenCalledTimes(4); // 1 migrations + 3 entity queries
 			expect(appendFile).toHaveBeenCalled();
