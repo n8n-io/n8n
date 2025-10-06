@@ -24,6 +24,25 @@ describe('NodeExecutionContext', () => {
 		encryptionKey: 'testEncryptionKey',
 		hmacSignatureSecret: 'testHmacSignatureSecret',
 	});
+	Container.set(InstanceSettings, instanceSettings);
+
+	const node = mock<INode>();
+	const nodeType = mock<INodeType>({ description: mock() });
+	const nodeTypes = mock<INodeTypes>();
+	const expression = mock<Expression>();
+	const workflow = mock<Workflow>({
+		id: '123',
+		name: 'Test Workflow',
+		active: true,
+		nodeTypes,
+		timezone: 'UTC',
+		expression,
+	});
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper: mock(),
+	});
+
+	const mode: WorkflowExecuteMode = 'manual';
 
 	describe('graph introspection API', () => {
 		it('getOutgoingConnections returns outgoing main connections', () => {
@@ -68,25 +87,6 @@ describe('NodeExecutionContext', () => {
 			expect(ctx.getIncomingConnections('X', NodeConnectionTypes.Main)).toEqual([]);
 		});
 	});
-	Container.set(InstanceSettings, instanceSettings);
-
-	const node = mock<INode>();
-	const nodeType = mock<INodeType>({ description: mock() });
-	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
-	const workflow = mock<Workflow>({
-		id: '123',
-		name: 'Test Workflow',
-		active: true,
-		nodeTypes,
-		timezone: 'UTC',
-		expression,
-	});
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({
-		credentialsHelper: mock(),
-	});
-
-	const mode: WorkflowExecuteMode = 'manual';
 	let testContext: TestContext;
 
 	beforeEach(() => {

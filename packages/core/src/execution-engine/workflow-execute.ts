@@ -109,23 +109,13 @@ export class WorkflowExecute {
 	 */
 	private cleanupSplitInBatchesCounters(executionId: string, workflow: Workflow): void {
 		try {
-			// Try both 'splitInBatches' (versioned node) and 'n8n-nodes-base.splitInBatchesV4' (direct type)
-			const nodeTypesToCheck = [
-				{ name: 'splitInBatches', version: 4 },
-				{ name: 'n8n-nodes-base.splitInBatchesV4', version: undefined },
-			];
+			// Get the SplitInBatches v4 node type - use base name 'splitInBatches' with version 4
+			const nodeType = workflow.nodeTypes.getByNameAndVersion('splitInBatches', 4);
 
-			for (const { name, version } of nodeTypesToCheck) {
-				const nodeType = version
-					? workflow.nodeTypes.getByNameAndVersion(name, version)
-					: workflow.nodeTypes.getByName(name);
-
-				if (nodeType && 'cleanupExecutionCounters' in nodeType) {
-					(
-						nodeType as INodeType & { cleanupExecutionCounters: (id: string) => void }
-					).cleanupExecutionCounters(executionId);
-					break; // Only need to cleanup once
-				}
+			if (nodeType && 'cleanupExecutionCounters' in nodeType) {
+				(
+					nodeType as INodeType & { cleanupExecutionCounters: (id: string) => void }
+				).cleanupExecutionCounters(executionId);
 			}
 		} catch (error) {
 			// Non-critical cleanup failure - log but don't throw
