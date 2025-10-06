@@ -216,7 +216,11 @@ onMounted(async () => {
 				<N8nHeading size="medium" :bold="true">
 					{{ i18n.baseText('settings.mcp.connection.info.heading') }}
 				</N8nHeading>
-				<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
+				<MCPConnectionInstructions
+					v-if="apiKey"
+					:base-url="rootStore.urlBaseEditor"
+					:api-key="apiKey"
+				/>
 			</div>
 			<div :class="$style['workflow-list-container']" data-test-id="mcp-workflow-list">
 				<div v-if="workflowsLoading">

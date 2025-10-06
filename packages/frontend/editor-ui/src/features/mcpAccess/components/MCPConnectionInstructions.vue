@@ -10,6 +10,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type { ApiKey } from '@n8n/api-types';
 
 const MCP_ENDPOINT = 'mcp-server/http';
 // TODO: Update once docs page is ready
@@ -17,6 +18,7 @@ const DOCS_URL = 'https://docs.n8n.io/';
 
 type Props = {
 	baseUrl: string;
+	apiKey: ApiKey;
 };
 
 const props = defineProps<Props>();
@@ -37,12 +39,16 @@ const connectionString = computed(() => {
         "--streamableHttp",
         "${props.baseUrl}${MCP_ENDPOINT}",
         "--header",
-        "authorization:Bearer <YOUR_N8N_API_KEY>"
+        "authorization:Bearer ${isKeyRedacted.value ? '<YOUR_ACCESS_TOKEN_HERE>' : props.apiKey.apiKey}"
       ]
     }
   }
 }
 `;
+});
+
+const isKeyRedacted = computed(() => {
+	return props.apiKey.apiKey.includes('******');
 });
 
 // formatted code block for markdown component
@@ -94,11 +100,9 @@ const fullServerUrl = computed(() => {
 			<li>
 				<div :class="$style.item">
 					<span :class="$style.label">
-						{{ i18n.baseText('settings.mcp.instructions.apiKey.part1') }}
-						<N8nLink to="/settings/api">{{ i18n.baseText('generic.apiKey') }}</N8nLink
-						>.
-						{{ i18n.baseText('settings.mcp.instructions.apiKey.part2') }}
+						{{ i18n.baseText('settings.mcp.instructions.apiKey.label') }}:
 					</span>
+					<span>{{ props.apiKey.apiKey }}</span>
 				</div>
 			</li>
 		</ol>
