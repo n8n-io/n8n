@@ -91,6 +91,7 @@ export class ExportService {
 		this.logger.info('\n🚀 Starting entity export...');
 		this.logger.info(`📁 Output directory: ${outputDir}`);
 
+		await rm(outputDir, { recursive: true }).catch(() => {});
 		// Ensure output directory exists
 		await mkdir(outputDir, { recursive: true });
 
