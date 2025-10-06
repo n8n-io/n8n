@@ -787,14 +787,18 @@ describe('ImportService', () => {
 	describe('importWorkflows', () => {
 		beforeEach(() => {
 			// Mock transaction on manager
-			mockCredentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					return await callback(mockEntityManager);
-				}),
-			} as any;
+			Object.defineProperty(mockCredentialsRepository, 'manager', {
+				value: {
+					transaction: jest.fn().mockImplementation(async (callback) => {
+						return await callback(mockEntityManager);
+					}),
+				},
+				writable: true,
+				configurable: true,
+			});
 		});
 
-		it('should remove active workflow from ActiveWorkflowManager before import', async () => {
+		it('should remove active workflow from ActiveWorkflowManager before transaction', async () => {
 			const workflows = [
 				{
 					id: 'workflow-1',
@@ -815,10 +819,21 @@ describe('ImportService', () => {
 				.mockResolvedValue({ identifiers: [{ id: 'workflow-1' }] });
 			mockEntityManager.findOneByOrFail = jest.fn().mockResolvedValue({ id: 'project-1' });
 
+			const transactionMock = mockCredentialsRepository.manager.transaction as jest.Mock;
+			let removeCalledBeforeTransaction = false;
+
+			mockActiveWorkflowManager.remove = jest.fn().mockImplementation(async () => {
+				// Check if transaction hasn't been called yet
+				if (transactionMock.mock.calls.length === 0) {
+					removeCalledBeforeTransaction = true;
+				}
+			});
+
 			await importService.importWorkflows(workflows as any, 'project-1');
 
-			// Verify activeWorkflowManager.remove was called with workflow ID
+			// Verify activeWorkflowManager.remove was called BEFORE transaction
 			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith('workflow-1');
+			expect(removeCalledBeforeTransaction).toBe(true);
 			expect(mockLogger.info).toHaveBeenCalledWith(
 				'Deactivating workflow "Test Workflow". Remember to activate later.',
 			);

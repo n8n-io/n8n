@@ -74,6 +74,14 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
 		}
 
+		// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
+		// This must be done outside the transaction to avoid inconsistent state on rollback
+		for (const workflow of workflows) {
+			if (workflow.id) {
+				await this.activeWorkflowManager.remove(workflow.id);
+			}
+		}
+
 		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
 			for (const workflow of workflows) {
@@ -81,11 +89,6 @@ export class ImportService {
 					workflow.active = false;
 
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
-				}
-
-				// Remove workflow from ActiveWorkflowManager to prevent orphaned trigger listeners
-				if (workflow.id) {
-					await this.activeWorkflowManager.remove(workflow.id);
 				}
 
 				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
