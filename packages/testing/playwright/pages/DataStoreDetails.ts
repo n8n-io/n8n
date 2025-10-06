@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
@@ -39,6 +40,10 @@ export class DataStoreDetails extends BasePage {
 		return this.page.getByTestId('data-store-add-column-trigger-button').first();
 	}
 
+	getAddColumnTableButton() {
+		return this.page.getByTestId('data-store-add-column-trigger-button').last();
+	}
+
 	getAddColumnPopoverContent() {
 		return this.page.getByTestId('add-column-popover-content');
 	}
@@ -65,8 +70,16 @@ export class DataStoreDetails extends BasePage {
 		return colId;
 	}
 
-	async addColumn(name: string, type: 'string' | 'number' | 'boolean' | 'date') {
-		await this.getAddColumnHeaderButton().click();
+	async addColumn(
+		name: string,
+		type: 'string' | 'number' | 'boolean' | 'date',
+		source: 'header' | 'table',
+	) {
+		if (source === 'header') {
+			await this.getAddColumnHeaderButton().click();
+		} else {
+			await this.getAddColumnTableButton().click();
+		}
 		await this.getAddColumnPopoverContent().waitFor({ state: 'visible' });
 
 		const nameInput = this.page
@@ -97,40 +110,12 @@ export class DataStoreDetails extends BasePage {
 		return this.page.locator('[data-test-id="data-store-grid"] .add-row-cell button');
 	}
 
-	getAddColumnTableButton() {
-		return this.page.getByTestId('data-store-add-column-trigger-button').last();
-	}
-
 	async addRow() {
 		await this.getAddRowHeaderButton().click();
 	}
 
 	async addRowFromTable() {
 		await this.getAddRowTableButton().click();
-	}
-
-	async addColumnFromTable(name: string, type: 'string' | 'number' | 'boolean' | 'date') {
-		await this.getAddColumnTableButton().click();
-		await this.getAddColumnPopoverContent().waitFor({ state: 'visible' });
-
-		const nameInput = this.page
-			.getByTestId('add-column-popover-content')
-			.locator('input[type="text"]')
-			.first();
-		await nameInput.fill(name);
-
-		const typeSelect = this.page
-			.getByTestId('add-column-popover-content')
-			.locator('.n8n-select')
-			.first();
-		await typeSelect.click();
-
-		const typeLabel = type === 'date' ? 'datetime' : type;
-		await this.page.getByRole('option', { name: typeLabel, exact: true }).click();
-
-		await this.getAddColumnSubmitButton().click();
-
-		await this.getAddColumnPopoverContent().waitFor({ state: 'hidden' });
 	}
 
 	getDataGrid() {
@@ -211,6 +196,41 @@ export class DataStoreDetails extends BasePage {
 		await filterButton.click();
 	}
 
+	private async openFilterPanelAndWait(columnName: string) {
+		await this.openColumnFilter(columnName);
+		const filterPanel = this.page.locator('.ag-filter');
+		await filterPanel.waitFor({ state: 'visible' });
+		return filterPanel;
+	}
+
+	private async selectPickerOption(label: string) {
+		await this.page.locator('.ag-picker-field-icon').click();
+		await this.page.locator('.ag-select-list-item').filter({ hasText: label }).first().click();
+	}
+
+	private async selectFilterOperator(condition: 'equals' | 'greaterThan' | 'lessThan') {
+		if (condition === 'equals') return;
+		const label = condition === 'greaterThan' ? 'Greater than' : 'Less than';
+		await this.selectPickerOption(label);
+	}
+
+	private async fillFilterValue(
+		filterPanel: Locator,
+		value: string,
+		type: 'text' | 'number' | 'date',
+	) {
+		let input: Locator;
+		if (type === 'number') {
+			input = filterPanel.locator('input[type="number"]').first();
+		} else if (type === 'text') {
+			input = filterPanel.locator('input[type="text"]').first();
+		} else {
+			input = filterPanel.locator('input').first();
+		}
+		await input.fill(value);
+		return input;
+	}
+
 	async clearColumnFilter(columnName: string) {
 		await this.openColumnFilter(columnName);
 		const filterPanel = this.page.locator('.ag-filter');
@@ -234,39 +254,17 @@ export class DataStoreDetails extends BasePage {
 		value: string,
 		condition: 'equals' | 'greaterThan' | 'lessThan' = 'equals',
 	) {
-		await this.openColumnFilter(columnName);
-
-		const filterPanel = this.page.locator('.ag-filter');
-		await filterPanel.waitFor({ state: 'visible' });
-
-		if (condition !== 'equals') {
-			await this.page.locator('.ag-picker-field-icon').click();
-			await this.page
-				.locator('.ag-select-list-item')
-				.filter({ hasText: condition === 'greaterThan' ? 'Greater than' : 'Less than' })
-				.first()
-				.click();
-		}
-
-		const filterInput = filterPanel.locator('input[type="number"]').first();
-		await filterInput.fill(value);
+		const filterPanel = await this.openFilterPanelAndWait(columnName);
+		await this.selectFilterOperator(condition);
+		const filterInput = await this.fillFilterValue(filterPanel, value, 'number');
 		// Wait for the value to be set before pressing Enter
 		await expect(filterInput).toHaveValue(value);
-
 		await this.page.keyboard.press('Enter');
 	}
 
 	async setBooleanFilter(columnName: string, value: boolean) {
-		await this.openColumnFilter(columnName);
-
-		const filterPanel = this.page.locator('.ag-filter');
-		await filterPanel.waitFor({ state: 'visible' });
-
-		await this.page.locator('.ag-picker-field-icon').click();
-		await this.page
-			.locator('.ag-select-list-item')
-			.filter({ hasText: value ? 'True' : 'False' })
-			.click();
+		await this.openFilterPanelAndWait(columnName);
+		await this.selectPickerOption(value ? 'True' : 'False');
 	}
 
 	async setDateFilter(
@@ -274,23 +272,9 @@ export class DataStoreDetails extends BasePage {
 		value: string,
 		condition: 'equals' | 'greaterThan' | 'lessThan' = 'equals',
 	) {
-		await this.openColumnFilter(columnName);
-
-		const filterPanel = this.page.locator('.ag-filter');
-		await filterPanel.waitFor({ state: 'visible' });
-
-		if (condition !== 'equals') {
-			await this.page.locator('.ag-picker-field-icon').click();
-			await this.page
-				.locator('.ag-select-list-item')
-				.filter({ hasText: condition === 'greaterThan' ? 'Greater than' : 'Less than' })
-				.first()
-				.click();
-		}
-
-		const filterInput = filterPanel.locator('input').first();
-		await filterInput.fill(value);
-
+		const filterPanel = await this.openFilterPanelAndWait(columnName);
+		await this.selectFilterOperator(condition);
+		await this.fillFilterValue(filterPanel, value, 'date');
 		await this.page.keyboard.press('Enter');
 	}
 
@@ -325,7 +309,7 @@ export class DataStoreDetails extends BasePage {
 			return isChecked ? 'true' : 'false';
 		} else {
 			const text = await cell.textContent();
-			return text?.trim() || '';
+			return (text ?? '').trim();
 		}
 	}
 

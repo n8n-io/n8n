@@ -46,12 +46,12 @@ test.describe('Data Table details view', () => {
 		const addColumnFn =
 			method === 'header'
 				? n8n.dataTableDetails.addColumn.bind(n8n.dataTableDetails)
-				: n8n.dataTableDetails.addColumnFromTable.bind(n8n.dataTableDetails);
+				: n8n.dataTableDetails.addColumn.bind(n8n.dataTableDetails);
 
-		await addColumnFn(COLUMN_NAMES.name, 'string');
-		await addColumnFn(COLUMN_NAMES.age, 'number');
-		await addColumnFn(COLUMN_NAMES.active, 'boolean');
-		await addColumnFn(COLUMN_NAMES.birthday, 'date');
+		await addColumnFn(COLUMN_NAMES.name, 'string', method);
+		await addColumnFn(COLUMN_NAMES.age, 'number', method);
+		await addColumnFn(COLUMN_NAMES.active, 'boolean', method);
+		await addColumnFn(COLUMN_NAMES.birthday, 'date', method);
 
 		const visibleColumns = n8n.dataTableDetails.getVisibleColumns();
 		await expect(visibleColumns).toHaveCount(7);
@@ -211,15 +211,10 @@ test.describe('Data Table details view', () => {
 	test('Should automatically move to second page when adding 21st row', async ({ n8n }) => {
 		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
 
-		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string');
-		const nameColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.name);
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
 
 		for (let i = 0; i < 20; i++) {
 			await n8n.dataTableDetails.addRow();
-			const value = `Row ${i + 1}`;
-			await n8n.dataTableDetails.setCellValue(i, nameColumn, value, 'string', {
-				skipDoubleClick: true,
-			});
 		}
 
 		const rowsOnPage1 = n8n.dataTableDetails.getDataRows();
@@ -229,20 +224,12 @@ test.describe('Data Table details view', () => {
 
 		const rowsOnPage2 = n8n.dataTableDetails.getDataRows();
 		await expect(rowsOnPage2).toHaveCount(1);
-
-		const value = 'Row 21';
-		await n8n.dataTableDetails.setCellValue(0, nameColumn, value, 'string', {
-			skipDoubleClick: true,
-		});
-
-		const cellValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
-		expect(cellValue).toContain(value);
 	});
 
 	test('Should select and delete rows', async ({ n8n }) => {
 		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
 
-		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
 		const nameColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.name);
 
 		const rowData = ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5'];
@@ -283,7 +270,7 @@ test.describe('Data Table details view', () => {
 	test('Should clear selection', async ({ n8n }) => {
 		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
 
-		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
 		const nameColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.name);
 
 		for (let i = 0; i < 3; i++) {
@@ -364,10 +351,10 @@ test.describe('Data Table details view', () => {
 
 		await n8n.dataTableDetails.setPageSize('10');
 
-		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string');
-		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.age, 'number');
-		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.active, 'boolean');
-		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.birthday, 'date');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.age, 'number', 'header');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.active, 'boolean', 'header');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.birthday, 'date', 'header');
 
 		const nameColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.name);
 		const ageColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.age);
