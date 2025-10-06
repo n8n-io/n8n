@@ -17,7 +17,6 @@ import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePostHog } from './posthog.store';
-import { MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
 import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
@@ -188,13 +187,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	/**
-	 * Updates chat panel width with enforced boundaries.
-	 * Width is clamped between MIN_CHAT_WIDTH (330px) and MAX_CHAT_WIDTH (650px)
-	 * to ensure usability on various screen sizes.
+	 * Updates chat panel width. Width clamping is handled by the chatWindow store.
 	 */
 	function updateWindowWidth(width: number) {
-		const clampedWidth = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
-		chatWindowStore.updateWidth(clampedWidth);
+		chatWindowStore.updateWidth(width);
 	}
 
 	// Message handling functions

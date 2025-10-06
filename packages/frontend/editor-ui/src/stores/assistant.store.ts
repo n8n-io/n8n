@@ -32,9 +32,6 @@ import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import { useChatWindowStore } from './chatWindow.store';
 
-export const MAX_CHAT_WIDTH = 425;
-export const MIN_CHAT_WIDTH = 380;
-export const DEFAULT_CHAT_WIDTH = 400;
 export const ENABLED_VIEWS = [
 	...EDITABLE_CANVAS_VIEWS,
 	VIEWS.EXECUTION_PREVIEW,
@@ -237,8 +234,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function updateWindowWidth(width: number) {
-		const clampedWidth = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
-		chatWindowStore.updateWidth(clampedWidth);
+		chatWindowStore.updateWidth(width);
 	}
 
 	function isNodeErrorActive(context: ChatRequest.ErrorContext) {

@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import {
-	DEFAULT_CHAT_WIDTH,
-	ENABLED_VIEWS,
-	MAX_CHAT_WIDTH,
-	MIN_CHAT_WIDTH,
-	useAssistantStore,
-} from '@/stores/assistant.store';
+import { ENABLED_VIEWS, useAssistantStore } from '@/stores/assistant.store';
+import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from '@/stores/chatWindow.store';
 import { useWorkflowsStore } from './workflows.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { usePostHog } from './posthog.store';

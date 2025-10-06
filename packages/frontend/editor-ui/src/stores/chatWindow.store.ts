@@ -3,7 +3,9 @@ import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useUIStore } from '@/stores/ui.store';
 
-const DEFAULT_CHAT_WIDTH = 330;
+export const MAX_CHAT_WIDTH = 425;
+export const MIN_CHAT_WIDTH = 380;
+export const DEFAULT_CHAT_WIDTH = 400;
 const PANEL_CLOSE_ANIMATION_DURATION = 200;
 
 export type ChatWindowMode = 'assistant' | 'builder';
@@ -57,11 +59,12 @@ export const useChatWindowStore = defineStore(STORES.CHAT_WINDOW, () => {
 	}
 
 	function updateWidth(newWidth: number) {
-		width.value = newWidth;
+		const clampedWidth = Math.min(Math.max(newWidth, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
+		width.value = clampedWidth;
 		if (isOpen.value) {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
-				width: window.innerWidth - newWidth,
+				width: window.innerWidth - clampedWidth,
 			};
 		}
 	}
@@ -82,5 +85,7 @@ export const useChatWindowStore = defineStore(STORES.CHAT_WINDOW, () => {
 		updateWidth,
 		// Constants
 		DEFAULT_CHAT_WIDTH,
+		MIN_CHAT_WIDTH,
+		MAX_CHAT_WIDTH,
 	};
 });
