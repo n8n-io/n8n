@@ -501,7 +501,7 @@ export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
 );
 
 export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
-export const FOLDER_NAME_MAX_LENGTH = 100;
+export const FOLDER_NAME_MAX_LENGTH = 128;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
@@ -844,6 +844,13 @@ export const READY_TO_RUN_V2_EXPERIMENT = {
 	variant2: 'variant-2-twoboxes',
 };
 
+export const READY_TO_RUN_V2_PART2_EXPERIMENT = {
+	name: '045_ready-to-run-worfklow_v2-2',
+	control: 'control',
+	variant3: 'variant-3',
+	variant4: 'variant-4',
+};
+
 export const PERSONALIZED_TEMPLATES_V3 = {
 	name: '044_template_reco_v3',
 	control: 'control',
@@ -861,6 +868,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_EXPERIMENT.name,
 	PERSONALIZED_TEMPLATES_V3.name,
+	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {

@@ -70,7 +70,7 @@ const router = createRouter({
 	],
 });
 
-vi.mock('@/api/usage', () => ({
+vi.mock('@n8n/rest-api-client/api/usage', () => ({
 	getLicense: vi.fn(),
 }));
 

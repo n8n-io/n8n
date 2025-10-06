@@ -52,7 +52,8 @@ export default {
 	'assistantChat.builder.toolRunning': 'Tool still running',
 	'assistantChat.builder.toolError': 'Some tool calls have failed. Agent will retry these.',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
-	'assistantChat.aiAssistantLabel': 'AI Assistant',
+	'assistantChat.aiAssistantLabel': 'n8n AI',
+	'assistantChat.aiAssistantBetaLabel': 'Beta',
 	'assistantChat.aiAssistantName': 'Assistant',
 	'assistantChat.sessionEndMessage.1':
 		'This Assistant session has ended. To start a new session with the Assistant, click an',
