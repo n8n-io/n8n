@@ -52,13 +52,14 @@ function prefixBaseUrl(url: string) {
 export function getNodeIconSource(
 	nodeType?: IconNodeType | string | null,
 ): NodeIconSource | undefined {
+	const nodeTypeStore = useNodeTypesStore();
 	if (!nodeType) return undefined;
 
 	if (typeof nodeType === 'string') {
 		const cleanedNodeType = removePreviewToken(nodeType);
 		const nodeDescription =
-			useNodeTypesStore().communityNodeType(cleanedNodeType)?.nodeDescription ??
-			useNodeTypesStore().getNodeType(cleanedNodeType);
+			nodeTypeStore.communityNodeType(cleanedNodeType)?.nodeDescription ??
+			nodeTypeStore.getNodeType(cleanedNodeType);
 		let url: string | null = null;
 		if (nodeDescription?.iconUrl) {
 			const themedUrl = getThemedValue(nodeDescription.iconUrl, useUIStore().appliedTheme);
