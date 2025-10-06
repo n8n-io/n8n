@@ -1,7 +1,6 @@
 import {
 	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
-	DEFAULT_NEW_WORKFLOW_NAME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
@@ -16,7 +15,6 @@ import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -77,7 +75,6 @@ import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
-import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
@@ -93,7 +90,6 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -692,80 +688,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return await workflowsApi.getWorkflowsWithNodesIncluded(rootStore.restApiContext, nodeTypes);
 	}
 
-	async function getNewWorkflowData(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		let workflowData = {
-			name: '',
-			settings: { ...defaults.settings },
-		};
-		try {
-			const data: IDataObject = {
-				name,
-				projectId,
-				parentFolderId,
-			};
-
-			workflowData = await workflowsApi.getNewWorkflow(
-				rootStore.restApiContext,
-				isEmpty(data) ? undefined : data,
-			);
-		} catch (e) {
-			// in case of error, default to original name
-			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
-		}
-
-		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-
-		return workflowData;
-	}
-
-	async function getNewWorkflowDataAndMakeShareable(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
-		makeNewWorkflowShareable();
-		return workflowData;
-	}
-
-	function makeNewWorkflowShareable() {
-		const { currentProject, personalProject } = useProjectsStore();
-		const homeProject = currentProject ?? personalProject ?? {};
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-
-		workflow.value.homeProject = homeProject as ProjectSharingData;
-		workflow.value.scopes = scopes;
-	}
-
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
-	}
-
-	function resetState() {
-		removeAllConnections({ setStateDirty: false });
-		removeAllNodes({ setStateDirty: false, removePinData: true });
-
-		setWorkflowExecutionData(null);
-		resetAllNodesIssues();
-
-		setActive(defaults.active);
-		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-		setWorkflowName({ newName: '', setStateDirty: false });
-		setWorkflowSettings({ ...defaults.settings });
-		setWorkflowTagIds([]);
-
-		setActiveExecutionId(undefined);
-		executingNode.value.length = 0;
-		executionWaitingForWebhook.value = false;
-	}
-
-	function setWorkflowId(id?: string) {
-		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
-		workflowObject.value.id = workflow.value.id;
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -774,21 +698,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			accu[credential.id] = credential;
 			return accu;
 		}, {});
-	}
-
-	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
-		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-		workflow.value.name = data.newName;
-		workflowObject.value.name = data.newName;
-
-		if (
-			workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-			workflowsById.value[workflow.value.id]
-		) {
-			workflowsById.value[workflow.value.id].name = data.newName;
-		}
 	}
 
 	function setWorkflowVersionId(versionId: string) {
@@ -901,7 +810,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
-			setActive(true);
+			workflow.value.active = true;
 		}
 	}
 
@@ -914,7 +823,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[targetWorkflowId].active = false;
 		}
 		if (targetWorkflowId === workflow.value.id) {
-			setActive(false);
+			workflow.value.active = false;
 		}
 	}
 
@@ -922,10 +831,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const data = await workflowsApi.getActiveWorkflows(rootStore.restApiContext);
 		activeWorkflows.value = data;
 		return data;
-	}
-
-	function setActive(active: boolean) {
-		workflow.value.active = active;
 	}
 
 	function setIsArchived(isArchived: boolean) {
@@ -948,18 +853,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			newName = newWorkflow.name;
 		} catch (e) {}
 		return newName;
-	}
-
-	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		if (workflowResultData?.data?.waitTill) {
-			delete workflowResultData.data.resultData.runData[
-				workflowResultData.data.resultData.lastNodeExecuted as string
-			];
-		}
-		workflowExecutionData.value = workflowResultData;
-		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
-		workflowExecutionResultDataLastUpdate.value = Date.now();
-		workflowExecutionStartedData.value = undefined;
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -995,10 +888,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setPinData(validPinData);
 
 		dataPinningEventBus.emit('pin-data', validPinData);
-	}
-
-	function setWorkflowTagIds(tags: string[]) {
-		workflow.value.tags = tags;
 	}
 
 	function addWorkflowTagIds(tags: string[]) {
@@ -1218,15 +1107,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
-	function removeAllConnections(data: { setStateDirty: boolean }): void {
-		if (data?.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-
-		workflow.value.connections = {};
-		workflowObject.value.setConnections({});
-	}
-
 	function removeAllNodeConnection(
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
@@ -1366,13 +1246,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
-	function resetAllNodesIssues(): boolean {
-		workflow.value.nodes.forEach((node) => {
-			node.issues = undefined;
-		});
-		return true;
-	}
-
 	/**
 	 * @returns `true` if the object was changed
 	 */
@@ -1460,20 +1333,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 		}
-	}
-
-	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
-		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-
-		if (data.removePinData) {
-			workflow.value.pinData = {};
-		}
-
-		workflow.value.nodes.splice(0, workflow.value.nodes.length);
-		workflowObject.value.setNodes(workflow.value.nodes);
-		nodeMetadata.value = {};
 	}
 
 	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
@@ -2045,7 +1904,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionStartedData,
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
-		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
@@ -2113,16 +1971,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchWorkflowsPage,
 		fetchWorkflow,
 		fetchWorkflowsWithNodesIncluded,
-		getNewWorkflowData,
-		makeNewWorkflowShareable,
 		resetWorkflow,
-		resetState,
 		addNodeExecutionStartedData,
 		addExecutingNode,
 		removeExecutingNode,
-		setWorkflowId,
 		setUsedCredentials,
-		setWorkflowName,
 		setWorkflowVersionId,
 		replaceInvalidWorkflowCredentials,
 		setWorkflows,
@@ -2133,14 +1986,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowActive,
 		setWorkflowInactive,
 		fetchActiveWorkflows,
-		setActive,
 		setIsArchived,
 		getDuplicateCurrentWorkflowName,
-		setWorkflowExecutionData,
 		setWorkflowExecutionRunData,
-		setWorkflowSettings,
 		setWorkflowPinData,
-		setWorkflowTagIds,
 		setParentFolder,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
@@ -2152,15 +2001,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		unpinData,
 		addConnection,
 		removeConnection,
-		removeAllConnections,
 		removeAllNodeConnection,
 		renameNodeSelectedAndExecution,
-		resetAllNodesIssues,
 		updateNodeAtIndex,
 		setNodeIssue,
 		addNode,
 		removeNode,
-		removeAllNodes,
 		updateNodeProperties,
 		setNodeValue,
 		setNodeParameters,
@@ -2194,8 +2040,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		markExecutionAsStopped,
 		findNodeByPartialId,
 		getPartialIdForNode,
-		getNewWorkflowDataAndMakeShareable,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
+		defaults,
+		// This is exposed to ease the refactoring to the injected workflowState composable
+		// Please do not use outside this context
+		private: {
+			setWorkflowSettings,
+			setActiveExecutionId,
+		},
 	};
 });

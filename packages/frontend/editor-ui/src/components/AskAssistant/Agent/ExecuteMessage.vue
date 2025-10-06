@@ -53,20 +53,20 @@ const stopExecutionWatcher = () => {
 const ensureExecutionWatcher = () => {
 	if (executionWatcherStop) return;
 
-	let wasRunning = workflowsStore.isWorkflowRunning;
+	const RUNNING_STATES = ['running', 'waiting'];
 
 	executionWatcherStop = watch(
-		() => workflowsStore.isWorkflowRunning,
-		(isRunning) => {
-			if (wasRunning && !isRunning) {
-				stopExecutionWatcher();
-				const wasCancelled = workflowsStore.workflowExecutionData?.status === 'canceled';
+		() => workflowsStore.workflowExecutionData?.status,
+		async (status) => {
+			await nextTick();
 
-				if (!wasCancelled) {
-					emit('workflowExecuted');
-				}
+			if (!status || RUNNING_STATES.includes(status)) return;
+
+			stopExecutionWatcher();
+
+			if (status !== 'canceled') {
+				emit('workflowExecuted');
 			}
-			wasRunning = isRunning;
 		},
 	);
 };

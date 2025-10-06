@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
 import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';

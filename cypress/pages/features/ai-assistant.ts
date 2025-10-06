@@ -48,7 +48,7 @@ export class AIAssistant extends BasePage {
 			cy.disableFeature('aiAssistant');
 		},
 		sendMessage: (message: string) => {
-			this.getters.chatInput().type(message).type('{enter}');
+			this.getters.chatInput().type(message).type('{shift+enter}');
 		},
 		closeChat: () => {
 			this.getters.closeChatButton().click();
