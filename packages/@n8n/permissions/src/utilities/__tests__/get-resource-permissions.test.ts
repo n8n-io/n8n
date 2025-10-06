@@ -34,7 +34,7 @@ describe('permissions', () => {
 			workflowTags: {},
 			folder: {},
 			insights: {},
-			dataStore: {},
+			dataTable: {},
 			mcp: {},
 			mcpApiKey: {},
 			role: {},
@@ -143,7 +143,7 @@ describe('permissions', () => {
 			insights: {
 				list: true,
 			},
-			dataStore: {},
+			dataTable: {},
 			execution: {},
 			workflowTags: {},
 			role: {},
