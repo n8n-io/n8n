@@ -1,5 +1,5 @@
 import { START_NODE_TYPE } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';

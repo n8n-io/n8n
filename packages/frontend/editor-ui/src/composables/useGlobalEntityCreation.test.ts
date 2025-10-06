@@ -8,7 +8,7 @@ import { useToast } from '@/composables/useToast';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/constants';

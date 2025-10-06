@@ -5,7 +5,7 @@ import { N8nCard, N8nHeading, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/stores/users.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useToast } from '@/composables/useToast';
