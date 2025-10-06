@@ -107,6 +107,7 @@ export function useResolvedExpression({
 			toRef(expression),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
+			() => workflowsStore.workflow.name,
 			targetItem,
 		],
 		debouncedUpdateExpression,

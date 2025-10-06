@@ -7,6 +7,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRoute, useRouter } from 'vue-router';
 
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 defineProps<{
 	isCollapsed: boolean;
 }>();

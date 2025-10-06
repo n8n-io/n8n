@@ -13,6 +13,7 @@ import {
 	h,
 	onBeforeUnmount,
 	useTemplateRef,
+	provide,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -67,6 +68,7 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
+	WorkflowStateKey,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -87,8 +89,8 @@ import type {
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
@@ -111,9 +113,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
-import CanvasThinkingPill from '@n8n/design-system/components/CanvasThinkingPill/CanvasThinkingPill.vue';
 import { nodeViewEventBus } from '@/event-bus';
-import { N8nCallout } from '@n8n/design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -124,7 +124,7 @@ import {
 	shouldIgnoreCanvasShortcut,
 } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
+import { getSampleWorkflowByTemplateId } from '@/features/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -142,7 +142,10 @@ import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/s
 import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/composables/useParentFolder';
+
+import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -160,8 +163,7 @@ const LazyNodeDetailsViewV2 = defineAsyncComponent(
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
-	async () =>
-		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
+	async () => await import('@/features/templates/components/SetupWorkflowCredentialsButton.vue'),
 );
 
 const $style = useCssModule();
@@ -204,6 +206,9 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+
+const workflowState = useWorkflowState();
+provide(WorkflowStateKey, workflowState);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -460,7 +465,7 @@ async function initializeWorkspaceForNewWorkflow() {
 
 	const parentFolderId = route.query.parentFolderId as string | undefined;
 
-	await workflowsStore.getNewWorkflowDataAndMakeShareable(
+	await workflowState.getNewWorkflowDataAndMakeShareable(
 		undefined,
 		projectsStore.currentProjectId,
 		parentFolderId,
@@ -843,10 +848,24 @@ async function onOpenRenameNodeModal(id: string) {
 		nameInput?.focus();
 		nameInput?.select();
 
+		let shouldSaveAfterRename = false;
+
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+				e.preventDefault();
+				shouldSaveAfterRename = true;
+				nameInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+			}
+		};
+		nameInput?.addEventListener('keydown', handleKeyDown);
+
 		const promptResponse = await promptResponsePromise;
+
+		nameInput?.removeEventListener('keydown', handleKeyDown);
 
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
+			if (shouldSaveAfterRename) await onSaveWorkflow();
 		}
 	} catch (e) {}
 }
@@ -1450,6 +1469,16 @@ function removeSourceControlEventBindings() {
 }
 
 /**
+ * Command bar
+ * */
+function addCommandBarEventBindings() {
+	canvasEventBus.on('create:sticky', onCreateSticky);
+}
+function removeCommandBarEventBindings() {
+	canvasEventBus.off('create:sticky', onCreateSticky);
+}
+
+/**
  * Post message events
  */
 
@@ -1851,7 +1880,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 			}
 
 			// Make sure workflow id is empty when leaving the editor
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			workflowState.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 			return true;
 		},
@@ -1914,10 +1943,11 @@ onMounted(() => {
 	addBeforeUnloadEventBindings();
 	addImportEventBindings();
 	addExecutionOpenedEventBindings();
+	addCommandBarEventBindings();
 	registerCustomActions();
 });
 
-onActivated(async () => {
+onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
 });
@@ -1934,6 +1964,7 @@ onBeforeUnmount(() => {
 	removeBeforeUnloadEventBindings();
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
+	removeCommandBarEventBindings();
 	unregisterCustomActions();
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
@@ -2057,7 +2088,7 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<CanvasThinkingPill
+			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
 				:class="$style.thinkingPill"
 				show-stop

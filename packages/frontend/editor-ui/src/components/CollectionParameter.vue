@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
@@ -17,6 +18,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
+import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
 	hideDelete?: boolean;

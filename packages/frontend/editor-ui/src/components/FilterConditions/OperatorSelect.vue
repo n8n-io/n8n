@@ -6,6 +6,7 @@ import type { FilterOperator } from './types';
 import { getFilterOperator } from './utils';
 import type { FilterOperatorType } from 'n8n-workflow';
 
+import { N8nIcon, N8nOption, N8nPopover, N8nSelect } from '@n8n/design-system';
 interface Props {
 	selected: string;
 	suggestedType?: FilterOperatorType;

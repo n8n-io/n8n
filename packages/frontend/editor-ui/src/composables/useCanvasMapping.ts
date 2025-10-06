@@ -500,6 +500,8 @@ export function useCanvasMapping({
 						acc[node.id] = i18n.baseText(
 							'node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall',
 						);
+
+						return acc;
 					}
 
 					acc[node.id] = i18n.baseText('node.nodeIsWaitingTill', {
@@ -689,8 +691,8 @@ export function useCanvasMapping({
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
 		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-		const runDataTotal =
-			nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index]?.total ?? 0;
+		const runData = nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index];
+		const runDataTotal = runData?.total ?? 0;
 
 		const sourceTasks = nodeExecutionRunDataById.value[connection.source] ?? [];
 		let lastSourceTask: ITaskData | undefined = sourceTasks[sourceTasks.length - 1];
@@ -699,7 +701,7 @@ export function useCanvasMapping({
 		}
 
 		let status: CanvasConnectionData['status'];
-		if (nodeExecutionRunningById.value[connection.source]) {
+		if (nodeExecutionRunningById.value[connection.source] && runDataTotal === 0) {
 			status = 'running';
 		} else if (
 			nodePinnedDataById.value[connection.source] &&

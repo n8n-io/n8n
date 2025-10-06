@@ -31,7 +31,6 @@ export type IMenuItem = {
 	 */
 	activateOnRouteNames?: string[];
 	activateOnRoutePaths?: string[];
-
 	children?: IMenuElement[];
 	isLoading?: boolean;
 	disabled?: boolean;

@@ -2,12 +2,17 @@ import { DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	DATA_TABLE_SYSTEM_TESTING_COLUMN,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
 import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
+import { DataStoreSystemColumnNameConflictError } from './errors/data-store-system-column-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 
 @Service()
@@ -20,22 +25,34 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 	}
 
 	async getColumns(dataTableId: string, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			const columns = await em
-				.createQueryBuilder(DataTableColumn, 'dsc')
-				.where('dsc.dataTableId = :dataTableId', { dataTableId })
-				.getMany();
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				const columns = await em
+					.createQueryBuilder(DataTableColumn, 'dsc')
+					.where('dsc.dataTableId = :dataTableId', { dataTableId })
+					.getMany();
 
-			// Ensure columns are always returned in the correct order by index,
-			// since the database does not guarantee ordering and TypeORM does not preserve
-			// join order in @OneToMany relations.
-			columns.sort((a, b) => a.index - b.index);
-			return columns;
-		});
+				// Ensure columns are always returned in the correct order by index,
+				// since the database does not guarantee ordering and TypeORM does not preserve
+				// join order in @OneToMany relations.
+				columns.sort((a, b) => a.index - b.index);
+				return columns;
+			},
+			false,
+		);
 	}
 
 	async addColumn(dataTableId: string, schema: DataStoreCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
+			if (DATA_TABLE_SYSTEM_COLUMNS.includes(schema.name)) {
+				throw new DataStoreSystemColumnNameConflictError(schema.name);
+			}
+			if (schema.name === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
+				throw new DataStoreSystemColumnNameConflictError(schema.name, 'testing');
+			}
+
 			const existingColumnMatch = await em.existsBy(DataTableColumn, {
 				name: schema.name,
 				dataTableId,
