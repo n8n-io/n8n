@@ -7,7 +7,7 @@ import EvaluationRootView from './EvaluationsRootView.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useEvaluationStore } from '../evaluation.store';
 import { useUsageStore } from '@/stores/usage.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
@@ -16,7 +16,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
-import type { SourceControlPreferences } from '@/types/sourceControl.types';
+import type { SourceControlPreferences } from '@/features/sourceControl.ee/sourceControl.types';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
