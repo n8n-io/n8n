@@ -5,16 +5,23 @@ import {
 	getAllSharedWorkflows,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ImportService } from '@/services/import.service';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { createMember, createOwner } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
+mockInstance(ActiveWorkflowManager, {
+	remove: jest.fn().mockResolvedValue(undefined),
+});
+
 const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
