@@ -2032,7 +2032,7 @@
 	"settings.mcp.instructions.json": "Or use the following code in your 'mcp.json' file",
 	"settings.mcp.instructions.docs.part1": "For more detailed instructions and examples, have a look at",
 	"settings.mcp.instructions.docs.part2": "our docs",
-	"settings.mcp.instructions.rotateKey.tooltip": "Generate new access token",
+	"settings.mcp.instructions.rotateKey.tooltip": "Generate new token.<br/>This one will be automatically revoked.",
 	"settings.mcp.instructions.apiKey.tip": "Use this as an authorization token. May be named differently in different clients",
 	"settings.mcp.newKey.notice": "Make sure to copy your access token now. You won’t be able to see or copy it again!",
 	"settings.mcp.error.fetching.apiKey": "Error fetching access token",

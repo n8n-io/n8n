@@ -115,7 +115,7 @@ const apiKeyText = computed(() => {
 								<N8nTooltip :content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')">
 									<N8nButton
 										type="tertiary"
-										icon="refresh"
+										icon="refresh-cw"
 										:square="true"
 										@click="emit('rotateKey')"
 									/>
