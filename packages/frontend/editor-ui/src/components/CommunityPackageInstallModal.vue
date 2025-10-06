@@ -30,7 +30,7 @@ const uiStore = useUIStore();
 const modalBus = createEventBus();
 
 const modalData = computed(
-	() => uiStore.modalsById[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY].data as ModalData | undefined,
+	() => uiStore.modalsById[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]?.data as ModalData | undefined,
 );
 const packageName = ref(modalData.value?.packageName ?? '');
 const userAgreed = ref(false);

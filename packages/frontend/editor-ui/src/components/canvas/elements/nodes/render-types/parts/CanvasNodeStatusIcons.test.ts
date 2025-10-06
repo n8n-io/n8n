@@ -161,7 +161,7 @@ describe('CanvasNodeStatusIcons', () => {
 
 		expect(queryByTestId('node-not-installed')).toBeInTheDocument();
 	});
-	it('should render warning icon when node is not installed and route is demo', () => {
+	it('should not render warning icon when node is not installed and route is demo', () => {
 		mockedUseRoute.mockReturnValue({
 			name: VIEWS.DEMO,
 		} as RouteLocationNormalizedLoadedGeneric);
