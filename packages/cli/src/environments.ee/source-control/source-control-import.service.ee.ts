@@ -1075,6 +1075,12 @@ export class SourceControlImportService {
 		}
 	}
 
+	async deleteTeamProjectsNotInWorkfolder(candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.projectRepository.delete(candidate.id);
+		}
+	}
+
 	private async findOrCreateOwnerProject(owner: RemoteResourceOwner): Promise<Project | null> {
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;

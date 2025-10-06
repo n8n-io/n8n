@@ -392,7 +392,10 @@ export class SourceControlService {
 			}
 		}
 
-		// Make sure the folders get processed first as the workflows depend on them
+		// IMPORTANT: Make sure the projects and folders get processed first as the workflows depend on them
+		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
+		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(projectsToBeImported);
+
 		const foldersToBeImported = getNonDeletedResources(statusResult, 'folders')[0];
 		if (foldersToBeImported) {
 			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
@@ -436,6 +439,9 @@ export class SourceControlService {
 
 		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
+
+		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
+		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
 
 		// #region Tracking Information
 		this.eventService.emit(
