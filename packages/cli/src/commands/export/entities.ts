@@ -11,7 +11,12 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Output directory path')
 		.default(safeJoinPath(__dirname, './outputs')),
-	includeLargeDataTables: z.boolean().describe('Include large data tables').default(false),
+	includeExecutionHistoryDataTables: z
+		.boolean()
+		.describe(
+			'Include execution history data tables, these are excluded by default as they can be very large',
+		)
+		.default(false),
 });
 
 @Command({
@@ -21,7 +26,7 @@ const flagsSchema = z.object({
 		'',
 		'--outputDir=./exports',
 		'--outputDir=/path/to/backup',
-		'--includeLargeDataTables=true',
+		'--includeExecutionHistoryDataTables=true',
 	],
 	flagsSchema,
 })
@@ -29,17 +34,17 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 	async run() {
 		const outputDir = this.flags.outputDir;
 
-		const excludedLargeDataTables = new Set<string>();
+		const excludedDataTables = new Set<string>();
 
-		if (!this.flags.includeLargeDataTables) {
-			excludedLargeDataTables.add('execution_annotation_tags');
-			excludedLargeDataTables.add('execution_annotations');
-			excludedLargeDataTables.add('execution_data');
-			excludedLargeDataTables.add('execution_entity');
-			excludedLargeDataTables.add('execution_metadata');
+		if (!this.flags.includeExecutionHistoryDataTables) {
+			excludedDataTables.add('execution_annotation_tags');
+			excludedDataTables.add('execution_annotations');
+			excludedDataTables.add('execution_data');
+			excludedDataTables.add('execution_entity');
+			excludedDataTables.add('execution_metadata');
 		}
 
-		await Container.get(ExportService).exportEntities(outputDir, excludedLargeDataTables);
+		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables);
 	}
 
 	catch(error: Error) {

@@ -39,7 +39,7 @@ describe('ExportEntitiesCommand', () => {
 			// @ts-expect-error Protected property
 			command.flags = {
 				outputDir: './exports',
-				includeLargeDataTables: true,
+				includeExecutionHistoryDataTables: true,
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
