@@ -1,4 +1,4 @@
-import { watch, computed, ref, type ComputedRef, type Ref, shallowRef } from 'vue';
+import { watch, computed, ref, type ComputedRef } from 'vue';
 import { type IExecutionResponse } from '@/Interface';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -16,18 +16,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
-
-// useThrottle with reactive timeout support
-function useThrottle<T>(state: Ref<T>, timeout: ComputedRef<number>) {
-	const throttled = shallowRef(state.value);
-
-	watch(
-		state,
-		useThrottleFn(() => (throttled.value = state.value), timeout, true, true),
-	);
-
-	return throttled;
-}
+import { useThrottleWithReactiveDelay } from '../../../composables/useThrottleWithReactiveDelay';
 
 export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 	const nodeHelpers = useNodeHelpers();
@@ -44,7 +33,7 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 			? LOGS_EXECUTION_DATA_THROTTLE_DURATION
 			: 0,
 	);
-	const throttledState = useThrottle(state, updateInterval);
+	const throttledState = useThrottleWithReactiveDelay(state, updateInterval);
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
 	const subWorkflows = ref<Record<string, Workflow>>({});
 
