@@ -55,12 +55,14 @@ const SetupWorkflowFromTemplateView = async () =>
 	await import('@/features/templates/views/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () =>
 	await import('@/features/templates/views/TemplatesSearchView.vue');
-const VariablesView = async () => await import('@/views/VariablesView.vue');
+const VariablesView = async () =>
+	await import('@/features/environments.ee/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
 const SignoutView = async () => await import('@/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
-const SettingsSourceControl = async () => await import('./views/SettingsSourceControl.vue');
+const SettingsSourceControl = async () =>
+	await import('@/features/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
 	await import('@/features/externalSecrets/views/SettingsExternalSecrets.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');

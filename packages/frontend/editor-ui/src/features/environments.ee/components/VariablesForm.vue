@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
+import type { Rule, RuleGroup } from '@/Interface';
+import type { EnvironmentVariable } from '../environments.types';
 import { useI18n } from '@n8n/i18n';
 import { computed, reactive, ref, toRaw } from 'vue';
 import VariablesUsageBadge from './VariablesUsageBadge.vue';

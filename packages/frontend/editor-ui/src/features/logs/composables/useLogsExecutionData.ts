@@ -11,7 +11,7 @@ import {
 } from '@/features/logs/logs.utils';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
-import type { LatestNodeInfo, LogEntry } from '../logs.types';
+import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
 import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
@@ -29,7 +29,15 @@ function useThrottle<T>(state: Ref<T>, timeout: ComputedRef<number>) {
 	return throttled;
 }
 
-export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
+interface UseLogsExecutionDataOptions {
+	/**
+	 * Enable calculation of log entries. Default: true
+	 */
+	isEnabled?: ComputedRef<boolean>;
+	filter?: ComputedRef<LogTreeFilter>;
+}
+
+export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
@@ -45,17 +53,12 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 			: 0,
 	);
 	const throttledState = useThrottle(state, updateInterval);
+	const throttledWorkflowData = computed(() => throttledState.value?.response.workflowData);
+
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
 	const subWorkflows = ref<Record<string, Workflow>>({});
+	const workflow = ref<Workflow>();
 
-	const workflow = computed(() =>
-		throttledState.value
-			? new Workflow({
-					...throttledState.value.response.workflowData,
-					nodeTypes: workflowsStore.getNodeTypes(),
-				})
-			: undefined,
-	);
 	const latestNodeNameById = computed(() =>
 		Object.values(workflow.value?.nodes ?? {}).reduce<Record<string, LatestNodeInfo>>(
 			(acc, node) => {
@@ -78,7 +81,7 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 	);
 
 	const entries = computed<LogEntry[]>(() => {
-		if (!isEnabled.value || !throttledState.value || !workflow.value) {
+		if ((isEnabled !== undefined && !isEnabled.value) || !throttledState.value || !workflow.value) {
 			return [];
 		}
 
@@ -92,6 +95,7 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 			mergedExecutionData,
 			subWorkflows.value,
 			subWorkflowExecData.value,
+			filter?.value,
 		);
 	});
 
@@ -167,6 +171,18 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 				resetExecutionData();
 			}
 		},
+	);
+
+	// Update workflow object on throttled state changes
+	// NOTE: don't turn the workflow object into a computed! It causes infinite update loop
+	watch(
+		throttledWorkflowData,
+		(data) => {
+			workflow.value = data
+				? new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })
+				: undefined;
+		},
+		{ immediate: true },
 	);
 
 	return {
