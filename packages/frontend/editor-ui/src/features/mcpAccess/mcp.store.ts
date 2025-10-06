@@ -3,7 +3,7 @@ import { MCP_STORE } from './mcp.constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { updateMcpSettings } from '@/features/mcpAccess/mcp.api';
+import { updateMcpSettings, toggleWorkflowMcpAccessApi } from '@/features/mcpAccess/mcp.api';
 import { computed } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isWorkflowListItem } from '@/utils/typeGuards';
@@ -42,9 +42,22 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return updated;
 	}
 
+	async function toggleWorkflowMcpAccess(
+		workflowId: string,
+		availableInMCP: boolean,
+	): Promise<boolean> {
+		const response = await toggleWorkflowMcpAccessApi(
+			rootStore.restApiContext,
+			workflowId,
+			availableInMCP,
+		);
+		return response.success;
+	}
+
 	return {
 		mcpAccessEnabled,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
+		toggleWorkflowMcpAccess,
 	};
 });

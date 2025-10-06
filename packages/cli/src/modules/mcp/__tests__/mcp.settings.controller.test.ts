@@ -8,6 +8,9 @@ import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+
 const createReq = (body: unknown): AuthenticatedRequest =>
 	({ body }) as unknown as AuthenticatedRequest;
 
@@ -16,6 +19,8 @@ describe('McpSettingsController', () => {
 	const moduleRegistry = mockDeep<ModuleRegistry>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
+	const workflowFinderService = mock<WorkflowFinderService>();
+	const workflowService = mock<WorkflowService>();
 
 	let controller: McpSettingsController;
 
@@ -25,6 +30,8 @@ describe('McpSettingsController', () => {
 		Container.set(McpSettingsService, mcpSettingsService);
 		Container.set(ModuleRegistry, moduleRegistry);
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
+		Container.set(WorkflowFinderService, workflowFinderService);
+		Container.set(WorkflowService, workflowService);
 		controller = Container.get(McpSettingsController);
 	});
 

@@ -17,3 +17,18 @@ export async function updateMcpSettings(
 		mcpAccessEnabled: enabled,
 	});
 }
+
+export async function toggleWorkflowMcpAccessApi(
+	context: IRestApiContext,
+	workflowId: string,
+	availableInMCP: boolean,
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/mcp/workflows/${encodeURIComponent(workflowId)}/toggle-access`,
+		{
+			availableInMCP,
+		},
+	);
+}
