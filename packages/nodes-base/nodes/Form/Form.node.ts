@@ -277,6 +277,8 @@ export class Form extends Node {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip:
+			'=Execution will continue when form is submitted on <a href="{{ $execution.resumeFormUrl }}" target="_blank">{{ $execution.resumeFormUrl }}</a>',
 		webhooks: [
 			{
 				name: 'default',

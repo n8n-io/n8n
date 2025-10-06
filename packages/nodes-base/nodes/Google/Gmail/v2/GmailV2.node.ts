@@ -21,6 +21,7 @@ import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	createEmail,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../../../utils/sendAndWait/utils';
 import {
@@ -87,6 +88,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		preBuiltAgentsCallout,

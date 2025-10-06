@@ -264,7 +264,10 @@ const activeNodeType = computed(() => {
 
 const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
-	return parentNode && waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name));
+	return (
+		parentNode &&
+		waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name), props.workflowObject)
+	);
 });
 
 const isNDVV2 = computed(() =>

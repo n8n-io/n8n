@@ -226,6 +226,34 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 
 const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
 
+const waitingTooltip = (
+	parameters: { resume: string; options?: Record<string, string> },
+	resumeUrl: string,
+	formResumeUrl: string,
+) => {
+	const resume = parameters.resume;
+
+	if (['webhook', 'form'].includes(resume as string)) {
+		const { webhookSuffix } = (parameters.options ?? {}) as { webhookSuffix: string };
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+		let message = '';
+		const url = `${resume === 'form' ? formResumeUrl : resumeUrl}${suffix}`;
+
+		if (resume === 'form') {
+			message = 'Execution will continue when form is submitted on ';
+		}
+
+		if (resume === 'webhook') {
+			message = 'Execution will continue when webhook is received on ';
+		}
+
+		return `${message}<a href="${url}" target="_blank">${url}</a>`;
+	}
+
+	return 'Execution will continue when wait time is over';
+};
+
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
 
@@ -244,6 +272,7 @@ export class Wait extends Webhook {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl, $execution.resumeFormUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
