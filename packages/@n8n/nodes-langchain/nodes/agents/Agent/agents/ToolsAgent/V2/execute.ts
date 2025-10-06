@@ -110,7 +110,7 @@ async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
+					ctx.sendChunk({ type: 'item', content: chunkText, itemIndex });
 
 					agentResult.output += chunkText;
 				}
@@ -124,7 +124,15 @@ async function processEventStream(
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
 						for (const toolCall of output.tool_calls) {
-							ctx.sendChunk('tool-call-start', itemIndex, toolCall.name);
+							ctx.sendChunk({
+								type: 'tool-call-start',
+								metadata: {
+									toolName: toolCall.name,
+									toolInput: JSON.stringify(toolCall.args),
+									toolId: toolCall.id,
+									toolType: toolCall.type,
+								},
+							});
 							agentResult.intermediateSteps!.push({
 								action: {
 									tool: toolCall.name,
@@ -150,7 +158,15 @@ async function processEventStream(
 						(step) => !step.observation && step.action.tool === event.name,
 					);
 					if (matchingStep) {
-						ctx.sendChunk('tool-call-end', itemIndex, toolData.output);
+						ctx.sendChunk({
+							type: 'tool-call-end',
+							metadata: {
+								toolName: event.name,
+								toolOutput: JSON.stringify(toolData.output),
+								toolId: matchingStep.action.toolCallId,
+								toolType: matchingStep.action.type,
+							},
+						});
 						matchingStep.observation = toolData.output;
 					}
 				}
