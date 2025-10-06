@@ -259,17 +259,19 @@ export class SplitInBatchesV4 implements INodeType {
 		const maxReinit = Math.max(Number(options.maxReinitializations ?? 10), 1);
 		const likelyStuck = reinitCount >= maxReinit;
 
-		if (newCount > maxExecutions) {
-			// Allow exceeding up to 2x if not likely stuck (re-init count is normal)
-			if (!likelyStuck && newCount <= maxExecutions * 2) return;
+		// Determine actual limit based on stuck detection
+		const actualLimit = likelyStuck ? maxExecutions : maxExecutions * 2;
+
+		if (newCount > actualLimit) {
+			// Prepare error message before cleanup (preserve debugging context)
+			const errorMessage =
+				`Infinite loop detected: SplitInBatches node "${nodeName}" has executed ${newCount} times, exceeding the calculated limit of ${actualLimit} (expected ~${expectedBatches} batches, factor: ${factor}x${likelyStuck ? ', stuck: high reinit count' : ''}). ` +
+				'This indicates an infinite loop. Check that the "done" output is not connected back to this node\'s input.';
 
 			// Clean up all counters before throwing error to avoid stale state
 			SplitInBatchesV4.resetExecutionCount(executeFunctions);
-			throw new NodeOperationError(
-				executeFunctions.getNode(),
-				`Infinite loop detected: SplitInBatches node "${nodeName}" has executed ${newCount} times, exceeding the calculated limit of ${maxExecutions} (expected ~${expectedBatches} batches). ` +
-					'This indicates an infinite loop. Check that the "done" output is not connected back to this node\'s input.',
-			);
+
+			throw new NodeOperationError(executeFunctions.getNode(), errorMessage);
 		}
 	}
 
