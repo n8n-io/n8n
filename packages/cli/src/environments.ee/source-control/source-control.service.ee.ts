@@ -408,6 +408,7 @@ export class SourceControlService {
 			user,
 			workflowsToBeDeleted,
 		);
+
 		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
 		await this.sourceControlImportService.importCredentialsFromWorkFolder(
 			credentialsToBeImported,
