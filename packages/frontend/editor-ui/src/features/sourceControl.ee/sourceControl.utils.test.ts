@@ -4,7 +4,7 @@ import {
 	getPullPriorityByStatus,
 	getPushPriorityByStatus,
 	notifyUserAboutPullWorkFolderOutcome,
-} from './sourceControlUtils';
+} from './sourceControl.utils';
 import type { useToast } from '@/composables/useToast';
 
 import { SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
