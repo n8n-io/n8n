@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "app_id": {
+            "type": "string"
+        },
         "blocks": {
             "type": "array",
             "items": {
@@ -19,6 +22,14 @@
                                     "items": {
                                         "type": "object",
                                         "properties": {
+                                            "style": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "italic": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
                                             "text": {
                                                 "type": "string"
                                             },
@@ -62,5 +73,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 7
 }

@@ -1,10 +1,11 @@
 import { ALPHABET } from '../src/constants';
 import { ApplicationError } from '@n8n/errors';
-import { ExecutionCancelledError } from '../src/errors/execution-cancelled.error';
+import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,
 	jsonStringify,
 	deepCopy,
+	isDomainAllowed,
 	isObjectEmpty,
 	fileTypeFromMimeType,
 	randomInt,
@@ -414,7 +415,7 @@ describe('sleepWithAbort', () => {
 		abortController.abort();
 
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 	});
 
@@ -426,7 +427,7 @@ describe('sleepWithAbort', () => {
 
 		const start = Date.now();
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 		const end = Date.now();
 		const elapsed = end - start;
@@ -453,11 +454,141 @@ describe('sleepWithAbort', () => {
 		const sleepPromise = sleepWithAbort(1000, abortController.signal);
 		setTimeout(() => abortController.abort(), 50);
 
-		await expect(sleepPromise).rejects.toThrow(ExecutionCancelledError);
+		await expect(sleepPromise).rejects.toThrow(ManualExecutionCancelledError);
 
 		// clearTimeout should have been called to clean up
 		expect(clearTimeoutSpy).toHaveBeenCalled();
 
 		clearTimeoutSpy.mockRestore();
+	});
+});
+
+describe('isDomainAllowed', () => {
+	describe('when no allowed domains are specified', () => {
+		it('should allow all domains when allowedDomains is empty', () => {
+			expect(isDomainAllowed('https://example.com', { allowedDomains: '' })).toBe(true);
+		});
+
+		it('should allow all domains when allowedDomains contains only whitespace', () => {
+			expect(isDomainAllowed('https://example.com', { allowedDomains: '   ' })).toBe(true);
+		});
+	});
+
+	describe('in strict validation mode', () => {
+		it('should allow exact domain matches', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should allow domains from a comma-separated list', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'test.com,example.com,other.org',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle whitespace in allowed domains list', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: ' test.com , example.com , other.org ',
+				}),
+			).toBe(true);
+		});
+
+		it('should block non-matching domains', () => {
+			expect(
+				isDomainAllowed('https://malicious.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should block subdomains not set', () => {
+			expect(
+				isDomainAllowed('https://sub.example.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+	});
+
+	describe('with wildcard domains', () => {
+		it('should allow matching wildcard domains', () => {
+			expect(
+				isDomainAllowed('https://test.example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should allow nested subdomains with wildcards', () => {
+			expect(
+				isDomainAllowed('https://deep.nested.example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should block non-matching domains with wildcards', () => {
+			expect(
+				isDomainAllowed('https://example.org', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle invalid URLs safely', () => {
+			expect(
+				isDomainAllowed('not-a-valid-url', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should handle URLs with ports', () => {
+			expect(
+				isDomainAllowed('https://example.com:8080/path', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle URLs with authentication', () => {
+			expect(
+				isDomainAllowed('https://user:pass@example.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle URLs with query parameters and fragments', () => {
+			expect(
+				isDomainAllowed('https://example.com/path?query=test#fragment', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle IP addresses', () => {
+			expect(
+				isDomainAllowed('https://192.168.1.1', {
+					allowedDomains: '192.168.1.1',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty URLs', () => {
+			expect(
+				isDomainAllowed('', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
 	});
 });

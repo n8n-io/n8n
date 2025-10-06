@@ -17,6 +17,7 @@ import {
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '@/Interface';
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
@@ -24,6 +25,23 @@ vi.mock('vue-router', () => ({
 	}),
 	useRouter: vi.fn(),
 	RouterLink: vi.fn(),
+}));
+
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		displayTimer: (timer: number) => timer,
+		baseText: (key: string, options: { interpolate: { count: string } }) => {
+			if (key === 'generic.list.selected') {
+				return `${options.interpolate.count} executions selected`;
+			} else if (key === 'executionsList.retryOf') {
+				return 'Retry of';
+			} else if (key === 'executionsList.successRetry') {
+				return 'Success retry';
+			}
+			return key;
+		},
+	}),
 }));
 
 let settingsStore: MockedStore<typeof useSettingsStore>;
@@ -80,16 +98,13 @@ const renderComponent = createComponentRenderer(ExecutionsList, {
 			},
 		},
 	}),
-	props: {
-		autoRefreshEnabled: false,
-	},
 	global: {
 		mocks: {
 			$route: {
 				params: {},
 			},
 		},
-		stubs: ['font-awesome-icon'],
+		stubs: ['FontAwesomeIcon'],
 	},
 });
 
@@ -109,7 +124,7 @@ describe('GlobalExecutionsList', () => {
 		const { queryAllByTestId, queryByTestId, getByTestId } = renderComponent({
 			props: {
 				executions: [],
-				filters: {},
+				filters: {} as ExecutionFilterType,
 				total: 0,
 				estimated: false,
 			},
@@ -129,10 +144,9 @@ describe('GlobalExecutionsList', () => {
 		async () => {
 			const { getByTestId, getAllByTestId, queryByTestId, rerender } = renderComponent({
 				props: {
-					executions: executionsData[0].results,
+					executions: executionsData[0].results as ExecutionSummaryWithScopes[],
 					total: executionsData[0].count,
-					filteredExecutions: executionsData[0].results,
-					filters: {},
+					filters: {} as ExecutionFilterType,
 					estimated: false,
 				},
 			});
@@ -148,7 +162,7 @@ describe('GlobalExecutionsList', () => {
 				).toBe(10),
 			);
 			expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
-			expect(getByTestId('selected-executions-info').textContent).toContain(10);
+			expect(getByTestId('selected-items-info').textContent).toContain(10);
 
 			await userEvent.click(getByTestId('load-more-button'));
 			await rerender({
@@ -170,7 +184,7 @@ describe('GlobalExecutionsList', () => {
 					el.contains(el.querySelector(':checked')),
 				).length,
 			).toBe(20);
-			expect(getByTestId('selected-executions-info').textContent).toContain(20);
+			expect(getByTestId('selected-items-info').textContent).toContain(20);
 
 			await userEvent.click(getAllByTestId('select-execution-checkbox')[2]);
 			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
@@ -179,7 +193,7 @@ describe('GlobalExecutionsList', () => {
 					el.contains(el.querySelector(':checked')),
 				).length,
 			).toBe(19);
-			expect(getByTestId('selected-executions-info').textContent).toContain(19);
+			expect(getByTestId('selected-items-info').textContent).toContain(19);
 			expect(getByTestId('select-visible-executions-checkbox')).toBeInTheDocument();
 			expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
 		},
@@ -194,10 +208,9 @@ describe('GlobalExecutionsList', () => {
 
 		const { queryAllByText } = renderComponent({
 			props: {
-				executions: executionsData[0].results,
+				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
 				total: executionsData[0].count,
-				filteredExecutions: executionsData[0].results,
-				filters: {},
+				filters: {} as ExecutionFilterType,
 				estimated: false,
 			},
 		});
@@ -211,8 +224,8 @@ describe('GlobalExecutionsList', () => {
 		settingsStore.concurrency = 5;
 		const { getByTestId } = renderComponent({
 			props: {
-				executions: executionsData[0].results,
-				filters: {},
+				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+				filters: {} as ExecutionFilterType,
 			},
 		});
 

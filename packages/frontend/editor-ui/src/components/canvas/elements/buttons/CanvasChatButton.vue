@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { type ButtonProps } from '@n8n/design-system';
+import { N8nButton, type ButtonProps } from '@n8n/design-system';
 
 export type Props = Pick<ButtonProps, 'label' | 'type'>;
 

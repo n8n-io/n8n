@@ -8,7 +8,7 @@ export const WAIT_INDEFINITELY = new Date('3000-01-01T00:00:00.000Z');
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 
-export const CODE_LANGUAGES = ['javaScript', 'python'] as const;
+export const CODE_LANGUAGES = ['javaScript', 'python', 'json', 'html'] as const;
 export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem'] as const;
 
 // Arbitrary value to represent an empty credential value

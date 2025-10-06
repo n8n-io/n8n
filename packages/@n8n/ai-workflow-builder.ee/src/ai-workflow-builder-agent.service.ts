@@ -1,94 +1,119 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { ChatAnthropic } from '@langchain/anthropic';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { Client } from 'langsmith';
+import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import assert from 'assert';
+import { Client as TracingClient } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
-import { LLMServiceError } from './errors';
-import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
-import { WorkflowBuilderAgent, type ChatPayload } from './workflow-builder-agent';
+import { LLMServiceError } from '@/errors';
+import { anthropicClaudeSonnet4 } from '@/llm-config';
+import { SessionManagerService } from '@/session-manager.service';
+import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
+
+type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
 
 @Service()
 export class AiWorkflowBuilderService {
 	private parsedNodeTypes: INodeTypeDescription[] = [];
 
-	private llmSimpleTask: BaseChatModel | undefined;
-
-	private llmComplexTask: BaseChatModel | undefined;
-
-	private tracingClient: Client | undefined;
-
-	private checkpointer = new MemorySaver();
-
-	private agent: WorkflowBuilderAgent | undefined;
+	private sessionManager: SessionManagerService;
 
 	constructor(
 		private readonly nodeTypes: INodeTypes,
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
+		private readonly instanceUrl?: string,
+		private readonly onCreditsUpdated?: OnCreditsUpdated,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
+		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
 	}
 
-	private async setupModels(user?: IUser) {
-		try {
-			if (this.llmSimpleTask && this.llmComplexTask) {
-				return;
-			}
+	private static async getAnthropicClaudeModel({
+		baseUrl,
+		authHeaders = {},
+		apiKey = '-',
+	}: {
+		baseUrl?: string;
+		authHeaders?: Record<string, string>;
+		apiKey?: string;
+	} = {}): Promise<ChatAnthropic> {
+		return await anthropicClaudeSonnet4({
+			baseUrl,
+			apiKey,
+			headers: {
+				...authHeaders,
+				'anthropic-beta': 'prompt-caching-2024-07-31',
+			},
+		});
+	}
 
+	private async getApiProxyAuthHeaders(user: IUser, useDeprecatedCredentials = false) {
+		assert(this.client);
+
+		let authHeaders: { Authorization: string };
+
+		if (useDeprecatedCredentials) {
+			const authResponse = await this.client.generateApiProxyCredentials(user);
+			authHeaders = { Authorization: authResponse.apiKey };
+		} else {
+			const authResponse = await this.client.getBuilderApiProxyToken(user);
+			authHeaders = {
+				Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
+			};
+		}
+
+		return authHeaders;
+	}
+
+	private async setupModels(
+		user: IUser,
+		useDeprecatedCredentials = false,
+	): Promise<{
+		anthropicClaude: ChatAnthropic;
+		tracingClient?: TracingClient;
+		authHeaders?: { Authorization: string };
+	}> {
+		try {
 			// If client is provided, use it for API proxy
-			if (this.client && user) {
-				const authHeaders = await this.client.generateApiProxyCredentials(user);
+			if (this.client) {
+				const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
+
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
 
-				this.llmSimpleTask = await gpt41mini({
-					baseUrl: baseUrl + '/openai',
-					// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
-					apiKey: '-',
-					headers: {
-						Authorization: authHeaders.apiKey,
-					},
-				});
-				this.llmComplexTask = await anthropicClaudeSonnet4({
+				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
 					baseUrl: baseUrl + '/anthropic',
-					apiKey: '-',
-					headers: {
-						Authorization: authHeaders.apiKey,
-						'anthropic-beta': 'prompt-caching-2024-07-31',
-					},
+					authHeaders,
 				});
 
-				this.tracingClient = new Client({
+				const tracingClient = new TracingClient({
 					apiKey: '-',
 					apiUrl: baseUrl + '/langsmith',
 					autoBatchTracing: false,
 					traceBatchConcurrency: 1,
 					fetchOptions: {
 						headers: {
-							Authorization: authHeaders.apiKey,
+							...authHeaders,
 						},
 					},
 				});
-				return;
+
+				return { tracingClient, anthropicClaude, authHeaders };
 			}
+
 			// If base URL is not set, use environment variables
-			this.llmSimpleTask = await gpt41mini({
-				apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
+			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 			});
 
-			this.llmComplexTask = await anthropicClaudeSonnet4({
-				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-				headers: {
-					'anthropic-beta': 'prompt-caching-2024-07-31',
-				},
-			});
+			return { anthropicClaude };
 		} catch (error) {
-			const llmError = new LLMServiceError('Failed to setup LLM models', {
+			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
+			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
 				cause: error,
 				tags: {
 					hasClient: !!this.client,
@@ -143,32 +168,57 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private async getAgent(user?: IUser) {
-		if (!this.llmComplexTask || !this.llmSimpleTask) {
-			await this.setupModels(user);
-		}
+	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
+		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
+			user,
+			useDeprecatedCredentials,
+		);
 
-		if (!this.llmComplexTask || !this.llmSimpleTask) {
-			throw new LLMServiceError('Failed to initialize LLM models');
-		}
-
-		this.agent ??= new WorkflowBuilderAgent({
+		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: this.llmComplexTask,
-			llmComplexTask: this.llmComplexTask,
+			llmSimpleTask: anthropicClaude,
+			llmComplexTask: anthropicClaude,
 			logger: this.logger,
-			checkpointer: this.checkpointer,
-			tracer: this.tracingClient
-				? new LangChainTracer({ client: this.tracingClient, projectName: 'n8n-workflow-builder' })
+			checkpointer: this.sessionManager.getCheckpointer(),
+			tracer: tracingClient
+				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
+			instanceUrl: this.instanceUrl,
+			onGenerationSuccess: async () => {
+				if (!useDeprecatedCredentials) {
+					await this.onGenerationSuccess(user, authHeaders);
+				}
+			},
 		});
 
-		return this.agent;
+		return agent;
 	}
 
-	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user);
+	private async onGenerationSuccess(
+		user?: IUser,
+		authHeaders?: { Authorization: string },
+	): Promise<void> {
+		try {
+			if (this.client) {
+				assert(authHeaders, 'Auth headers must be set when AI Assistant Service client is used');
+				assert(user);
+				const creditsInfo = await this.client.markBuilderSuccess(user, authHeaders);
+
+				// Call the callback with the credits info from the response
+				if (this.onCreditsUpdated && user.id && creditsInfo) {
+					this.onCreditsUpdated(user.id, creditsInfo.creditsQuota, creditsInfo.creditsClaimed);
+				}
+			}
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				this.logger?.error(`Unable to mark generation success ${error.message}`, { error });
+			}
+		}
+	}
+
+	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
+		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;
@@ -176,7 +226,21 @@ export class AiWorkflowBuilderService {
 	}
 
 	async getSessions(workflowId: string | undefined, user?: IUser) {
-		const agent = await this.getAgent(user);
-		return await agent.getSessions(workflowId, user?.id?.toString());
+		const userId = user?.id?.toString();
+		return await this.sessionManager.getSessions(workflowId, userId);
+	}
+
+	async getBuilderInstanceCredits(
+		user: IUser,
+	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
+		if (this.client) {
+			return await this.client.getBuilderInstanceCredits(user);
+		}
+
+		// if using env variables directly instead of ai proxy service
+		return {
+			creditsQuota: -1,
+			creditsClaimed: 0,
+		};
 	}
 }

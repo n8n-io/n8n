@@ -1,17 +1,23 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { User } from '@n8n/db';
 import type {
-	SharedCredentials,
-	SharedWorkflow,
 	FolderRepository,
-	TagRepository,
-	WorkflowTagMappingRepository,
+	Project,
+	ProjectRepository,
+	Role,
+	SharedCredentials,
 	SharedCredentialsRepository,
+	SharedWorkflow,
 	SharedWorkflowRepository,
+	TagEntity,
+	TagRepository,
 	WorkflowRepository,
+	WorkflowTagMapping,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock, captor } from 'jest-mock-extended';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
@@ -23,7 +29,7 @@ import { SourceControlContext } from '../types/source-control-context';
 describe('SourceControlExportService', () => {
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), {
-			role: 'global:admin',
+			role: GLOBAL_ADMIN_ROLE,
 		}),
 	);
 
@@ -32,6 +38,7 @@ describe('SourceControlExportService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const tagRepository = mock<TagRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const variablesService = mock<VariablesService>();
 	const folderRepository = mock<FolderRepository>();
@@ -41,6 +48,7 @@ describe('SourceControlExportService', () => {
 		mock(),
 		variablesService,
 		tagRepository,
+		projectRepository,
 		sharedCredentialsRepository,
 		sharedWorkflowRepository,
 		workflowRepository,
@@ -83,7 +91,7 @@ describe('SourceControlExportService', () => {
 						type: 'personal',
 						projectRelations: [
 							{
-								role: 'project:personalOwner',
+								role: PROJECT_OWNER_ROLE,
 								user: mock({ email: 'user@example.com' }),
 							},
 						],
@@ -181,27 +189,62 @@ describe('SourceControlExportService', () => {
 	describe('exportTagsToWorkFolder', () => {
 		it('should export tags to work folder', async () => {
 			// Arrange
-			tagRepository.find.mockResolvedValue([mock()]);
-			workflowTagMappingRepository.find.mockResolvedValue([mock()]);
+			const mockTag = mock<TagEntity>({
+				id: 'tag1',
+				name: 'Tag 1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const mockWorkflow = mock<WorkflowTagMapping>({
+				tagId: 'tag1',
+				workflowId: 'workflow1',
+			});
+			tagRepository.find.mockResolvedValue([mockTag]);
+			workflowTagMappingRepository.find.mockResolvedValue([mockWorkflow]);
+			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
 			const result = await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify(
+					{
+						tags: [
+							{
+								id: mockTag.id,
+								name: mockTag.name,
+							},
+						],
+						mappings: [mockWorkflow],
+					},
+					null,
+					2,
+				),
+			);
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
 		});
 
-		it('should not export empty tags', async () => {
+		it('should clear tags file and export it when there are no tags', async () => {
 			// Arrange
 			tagRepository.find.mockResolvedValue([]);
+			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
 			const result = await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify({ tags: [], mappings: [] }, null, 2),
+			);
 			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
 		});
 	});
 
@@ -268,7 +311,7 @@ describe('SourceControlExportService', () => {
 				mock<SharedWorkflow>({
 					project: mock({
 						type: 'personal',
-						projectRelations: [{ role: 'project:personalOwner', user: mock() }],
+						projectRelations: [{ role: PROJECT_OWNER_ROLE, user: mock() }],
 					}),
 					workflow: mock(),
 				}),
@@ -300,6 +343,128 @@ describe('SourceControlExportService', () => {
 			// Act & Assert
 			await expect(service.exportWorkflowsToWorkFolder([mock()])).rejects.toThrow(
 				'Workflow "TestWorkflow" (ID: test-workflow-id) has no owner',
+			);
+		});
+	});
+
+	describe('exportProjectsToWorkFolder', () => {
+		it('should export projects to work folder', async () => {
+			// Arrange
+			const candidates = [
+				mock<SourceControlledFile>({ id: 'project-id-1' }),
+				mock<SourceControlledFile>({ id: 'project-id-2' }),
+			];
+
+			const project1 = mock<Project>({
+				id: 'project-id-1',
+				name: 'Project 1',
+				icon: { type: 'icon', value: 'icon.png' },
+				description: 'A test project',
+				type: 'personal',
+				projectRelations: [
+					{
+						role: mock<Role>({
+							slug: PROJECT_OWNER_ROLE_SLUG,
+						}),
+						user: mock<User>({ email: 'owner@example.com' }),
+					},
+				],
+			});
+			const project2 = mock<Project>({
+				id: 'project-id-2',
+				name: 'Team Project',
+				icon: { type: 'icon', value: 'team-icon.png' },
+				description: 'A team project',
+				type: 'team',
+				projectRelations: [
+					{
+						role: mock<Role>({
+							slug: PROJECT_ADMIN_ROLE_SLUG,
+						}),
+						user: mock<User>({ email: 'admin@example.com' }),
+					},
+				],
+			});
+
+			const expectedProject1Json = JSON.stringify(
+				{
+					id: project1.id,
+					name: project1.name,
+					icon: project1.icon,
+					description: project1.description,
+					owner: {
+						type: 'personal',
+						projectId: project1.id,
+						projectName: project1.name,
+						personalEmail: 'owner@example.com',
+					},
+				},
+				null,
+				2,
+			);
+			const expectedProject2Json = JSON.stringify(
+				{
+					id: project2.id,
+					name: project2.name,
+					icon: project2.icon,
+					description: project2.description,
+					owner: {
+						type: 'team',
+						teamId: project2.id,
+						teamName: project2.name,
+					},
+				},
+				null,
+				2,
+			);
+
+			projectRepository.find.mockResolvedValue([project1, project2]);
+
+			// Act
+			const result = await service.exportProjectsToWorkFolder(candidates);
+
+			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-1.json',
+				expectedProject1Json,
+			);
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-2.json',
+				expectedProject2Json,
+			);
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(2);
+			expect(result.files).toEqual(
+				expect.arrayContaining([
+					{
+						id: 'project-id-1',
+						name: '/mock/n8n/git/projects/project-id-1.json',
+					},
+					{
+						id: 'project-id-2',
+						name: '/mock/n8n/git/projects/project-id-2.json',
+					},
+				]),
+			);
+		});
+
+		it('should throw an error if personal project has no owner', async () => {
+			// Arrange
+			const mockProject = mock<Project>({
+				id: 'project-id-2',
+				name: 'Project 2',
+				icon: { type: 'icon', value: 'icon2.png' },
+				description: 'A test project without owner',
+				type: 'personal',
+				projectRelations: [],
+			});
+			const candidates = [mock<SourceControlledFile>({ id: 'project-id-2' })];
+
+			projectRepository.find.mockResolvedValue([mockProject]);
+
+			// Act & Assert
+			await expect(service.exportProjectsToWorkFolder(candidates)).rejects.toThrow(
+				'Project Project 2 has no owner',
 			);
 		});
 	});

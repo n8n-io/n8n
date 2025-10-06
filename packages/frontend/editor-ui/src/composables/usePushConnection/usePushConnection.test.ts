@@ -1,6 +1,10 @@
 import { usePushConnection } from '@/composables/usePushConnection';
-import { testWebhookReceived } from '@/composables/usePushConnection/handlers';
+import {
+	testWebhookReceived,
+	builderCreditsUpdated,
+} from '@/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
+import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
 import { useRouter } from 'vue-router';
 import type { OnPushMessageHandler } from '@/stores/pushConnection.store';
 
@@ -22,6 +26,7 @@ vi.mock('@/composables/usePushConnection/handlers', () => ({
 	nodeDescriptionUpdated: vi.fn(),
 	nodeExecuteBefore: vi.fn(),
 	nodeExecuteAfter: vi.fn(),
+	nodeExecuteAfterData: vi.fn(),
 	executionStarted: vi.fn(),
 	executionWaiting: vi.fn(),
 	sendWorkerStatusMessage: vi.fn(),
@@ -32,6 +37,7 @@ vi.mock('@/composables/usePushConnection/handlers', () => ({
 	workflowActivated: vi.fn(),
 	workflowDeactivated: vi.fn(),
 	collaboratorsChanged: vi.fn(),
+	builderCreditsUpdated: vi.fn(),
 }));
 
 vi.mock('vue-router', async () => {
@@ -89,5 +95,31 @@ describe('usePushConnection composable', () => {
 		pushConnection.terminate();
 
 		expect(removeEventListener).toHaveBeenCalledTimes(1);
+	});
+
+	it('should handle updateBuilderCredits event correctly', async () => {
+		pushConnection.initialize();
+
+		// Get the event callback which was registered via addEventListener.
+		const handler = addEventListener.mock.calls[0][0];
+
+		// Create a test event for updateBuilderCredits.
+		const testEvent: BuilderCreditsPushMessage = {
+			type: 'updateBuilderCredits',
+			data: {
+				creditsQuota: 1000,
+				creditsClaimed: 250,
+			},
+		};
+
+		// Call the event callback with our test event.
+		handler(testEvent);
+
+		// Allow any microtasks to complete.
+		await Promise.resolve();
+
+		// Verify that the correct handler was called.
+		expect(builderCreditsUpdated).toHaveBeenCalledTimes(1);
+		expect(builderCreditsUpdated).toHaveBeenCalledWith(testEvent);
 	});
 });

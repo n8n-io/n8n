@@ -25,6 +25,7 @@ import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
 
+import { N8nButton, N8nInputLabel } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	value: FilterValue;
@@ -36,7 +37,13 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
-	valueChanged: [value: { name: string; node: string; value: FilterValue }];
+	valueChanged: [
+		value: {
+			name: string;
+			node: string;
+			value: FilterValue;
+		},
+	];
 }>();
 
 const i18n = useI18n();
@@ -120,6 +127,14 @@ watch(
 	},
 );
 
+watch(
+	() => state.paramValue,
+	() => {
+		debouncedEmitChange();
+	},
+	{ deep: true },
+);
+
 function emitChange() {
 	emit('valueChanged', {
 		name: props.path,
@@ -130,22 +145,18 @@ function emitChange() {
 
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
-	debouncedEmitChange();
 }
 
 function onConditionUpdate(index: number, value: FilterConditionValue): void {
 	state.paramValue.conditions[index] = value;
-	debouncedEmitChange();
 }
 
 function onCombinatorChange(combinator: FilterTypeCombinator): void {
 	state.paramValue.combinator = combinator;
-	debouncedEmitChange();
 }
 
 function onConditionRemove(index: number): void {
 	state.paramValue.conditions.splice(index, 1);
-	debouncedEmitChange();
 }
 
 function getIssues(index: number): string[] {
@@ -158,7 +169,7 @@ function getIssues(index: number): string[] {
 		:class="{ [$style.filter]: true, [$style.single]: singleCondition }"
 		:data-test-id="`filter-${parameter.name}`"
 	>
-		<n8n-input-label
+		<N8nInputLabel
 			v-if="!singleCondition"
 			:label="parameter.displayName"
 			:underline="true"
@@ -167,7 +178,7 @@ function getIssues(index: number): string[] {
 			size="small"
 			color="text-dark"
 		>
-		</n8n-input-label>
+		</N8nInputLabel>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<Draggable
@@ -207,7 +218,7 @@ function getIssues(index: number): string[] {
 				</Draggable>
 			</div>
 			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
-				<n8n-button
+				<N8nButton
 					type="tertiary"
 					block
 					:class="$style.addCondition"

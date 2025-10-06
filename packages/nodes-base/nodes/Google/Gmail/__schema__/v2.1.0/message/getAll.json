@@ -56,9 +56,6 @@
                 "dkim-signature": {
                     "type": "string"
                 },
-                "feedback-id": {
-                    "type": "string"
-                },
                 "from": {
                     "type": "string"
                 },
@@ -72,9 +69,6 @@
                     "type": "string"
                 },
                 "received-spf": {
-                    "type": "string"
-                },
-                "reply-to": {
                     "type": "string"
                 },
                 "return-path": {
@@ -147,5 +141,5 @@
             }
         }
     },
-    "version": 4
+    "version": 6
 }

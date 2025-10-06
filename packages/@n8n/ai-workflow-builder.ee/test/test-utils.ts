@@ -44,7 +44,7 @@ export const createNode = (overrides: Partial<INode> = {}): INode => ({
 
 // Simple workflow builder
 export const createWorkflow = (nodes: INode[] = []): SimpleWorkflow => {
-	const workflow: SimpleWorkflow = { nodes, connections: {} };
+	const workflow: SimpleWorkflow = { nodes, connections: {}, name: 'Test workflow' };
 	return workflow;
 };
 

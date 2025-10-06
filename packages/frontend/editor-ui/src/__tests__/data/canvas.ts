@@ -28,7 +28,7 @@ export function createCanvasNodeData({
 	outputs = [],
 	connections = { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 	execution = { running: false },
-	issues = { items: [], visible: false },
+	issues = { execution: [], validation: [], visible: false },
 	pinnedData = { count: 0, visible: false },
 	runData = { outputMap: {}, iterations: 0, visible: false },
 	render = {
@@ -92,7 +92,10 @@ export function createCanvasGraphNode({
 		isParent: false,
 		selected: false,
 		resizing: false,
-		handleBounds: {},
+		handleBounds: {
+			source: null,
+			target: null,
+		},
 		events: {},
 		data: createCanvasNodeData({ id, type, ...data }),
 		...rest,

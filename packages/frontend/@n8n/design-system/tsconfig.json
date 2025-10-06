@@ -17,5 +17,5 @@
 			"@n8n/utils*": ["../../../@n8n/utils/src*"]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue"]
+	"include": ["src/**/*.ts", "src/**/*.vue", ".storybook/**/*.ts"]
 }

@@ -44,10 +44,27 @@ const projectTabsSpy = vi.fn().mockReturnValue({
 	render: vi.fn(),
 });
 
+const ProjectCreateResourceStub = {
+	props: {
+		actions: Array,
+	},
+	template: `
+		<div>
+			<div data-test-id="add-resource"><button role="button"></button></div>
+			<button data-test-id="add-resource-workflow" @click="$emit('action', 'workflow')">Workflow</button>
+			<button data-test-id="action-credential" @click="$emit('action', 'credential')">Credentials</button>
+			<div data-test-id="add-resource-actions" >
+				<button v-for="action in $props.actions" :key="action.value"></button>
+			</div>
+		</div>
+	`,
+};
+
 const renderComponent = createComponentRenderer(ProjectHeader, {
 	global: {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
+			ProjectCreateResource: ProjectCreateResourceStub,
 		},
 	},
 });
@@ -69,6 +86,7 @@ describe('ProjectHeader', () => {
 
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };
+		settingsStore.isDataTableFeatureEnabled = true;
 
 		// Setup default moduleTabs structure
 		uiStore.moduleTabs = {
@@ -105,6 +123,7 @@ describe('ProjectHeader', () => {
 	});
 
 	it('Overview: should render the correct title and subtitle', async () => {
+		settingsStore.isDataTableFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		const { getByTestId, rerender } = renderComponent();
 		const overviewSubtitle = 'All the workflows, credentials and executions you have access to';
@@ -128,6 +147,7 @@ describe('ProjectHeader', () => {
 	});
 
 	it('Personal: should render the correct title and subtitle', async () => {
+		settingsStore.isDataTableFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 		const { getByTestId, rerender } = renderComponent();
@@ -248,13 +268,15 @@ describe('ProjectHeader', () => {
 
 			await userEvent.click(getByTestId('action-credential'));
 
-			expect(mockPush).toHaveBeenCalledWith({
-				name: VIEWS.PROJECTS_CREDENTIALS,
-				params: {
-					projectId: project.id,
-					credentialId: 'create',
-				},
-			});
+			expect(mockPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.PROJECTS_CREDENTIALS,
+					params: {
+						projectId: project.id,
+						credentialId: 'create',
+					},
+				}),
+			);
 		});
 	});
 
@@ -434,6 +456,23 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
+		});
+	});
+
+	describe('ProjectCreateResource', () => {
+		it('should render menu items', () => {
+			const { getByTestId } = renderComponent();
+			const actionsContainer = getByTestId('add-resource-actions');
+			expect(actionsContainer).toBeInTheDocument();
+			expect(actionsContainer.children).toHaveLength(2);
+		});
+
+		it('should not render datastore menu item if data store feature is disabled', () => {
+			settingsStore.isDataTableFeatureEnabled = false;
+			const { getByTestId } = renderComponent();
+			const actionsContainer = getByTestId('add-resource-actions');
+			expect(actionsContainer).toBeInTheDocument();
+			expect(actionsContainer.children).toHaveLength(1);
 		});
 	});
 });

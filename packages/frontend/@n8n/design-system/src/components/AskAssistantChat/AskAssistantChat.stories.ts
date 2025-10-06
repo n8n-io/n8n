@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import AskAssistantChat from './AskAssistantChat.vue';
 import type { ChatUI } from '../../types/assistant';
@@ -632,6 +632,110 @@ ToolMessageError.args = {
 			],
 			read: false,
 		},
+	]),
+};
+
+const SEARCH_FILES_TOOL_CALL_COMPLETED: ChatUI.AssistantMessage = {
+	id: '128',
+	type: 'tool',
+	role: 'assistant',
+	toolName: 'search_files',
+	toolCallId: 'call_456',
+	status: 'completed',
+	displayTitle: 'Searching files',
+	customDisplayTitle: 'Searching for Reddit node',
+	updates: [
+		{
+			type: 'input',
+			data: {
+				pattern: '*.vue',
+				directory: '/src',
+			},
+			timestamp: new Date().toISOString(),
+		},
+		{
+			type: 'progress',
+			data: { message: 'Searching for Vue files...' },
+			timestamp: new Date().toISOString(),
+		},
+		{
+			type: 'output',
+			data: {
+				files: ['/src/components/Button.vue', '/src/components/Modal.vue', '/src/views/Home.vue'],
+				count: 3,
+			},
+			timestamp: new Date().toISOString(),
+		},
+	],
+	read: false,
+};
+
+const SEARCH_FILES_TOOL_CALL_COMPLETED_2: ChatUI.AssistantMessage = {
+	...SEARCH_FILES_TOOL_CALL_COMPLETED,
+	displayTitle: 'Searching nodes',
+	customDisplayTitle: 'Searching for Spotify node',
+};
+
+const SEARCH_FILES_TOOL_CALL_RUNNING: ChatUI.AssistantMessage = {
+	...SEARCH_FILES_TOOL_CALL_COMPLETED,
+	status: 'running',
+	customDisplayTitle: 'Searching for Open AI nodes',
+};
+
+const SEARCH_FILES_TOOL_CALL_RUNNING_2: ChatUI.AssistantMessage = {
+	...SEARCH_FILES_TOOL_CALL_COMPLETED,
+	status: 'running',
+	customDisplayTitle: 'Searching for Slack node',
+};
+
+const SEARCH_FILES_TOOL_CALL_ERROR: ChatUI.AssistantMessage = {
+	...SEARCH_FILES_TOOL_CALL_COMPLETED,
+	status: 'error',
+	customDisplayTitle: 'Searching for Power node',
+};
+
+const SEARCH_FILES_TOOL_CALL_ERROR_2: ChatUI.AssistantMessage = {
+	...SEARCH_FILES_TOOL_CALL_COMPLETED,
+	status: 'error',
+	customDisplayTitle: 'Searching for n8n node',
+};
+
+function getMessage(content: string): ChatUI.AssistantMessage {
+	return {
+		id: '130',
+		type: 'text',
+		role: 'user',
+		content,
+		read: true,
+	};
+}
+
+export const ToolMessageMultiple = Template.bind({});
+ToolMessageMultiple.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		getMessage('Collapse multiple consecutive completed tool calls into one'),
+		SEARCH_FILES_TOOL_CALL_COMPLETED,
+		SEARCH_FILES_TOOL_CALL_COMPLETED_2,
+		getMessage('Collapse multiple consecutive completed and running tool calls into one'),
+		SEARCH_FILES_TOOL_CALL_COMPLETED,
+		SEARCH_FILES_TOOL_CALL_RUNNING,
+		SEARCH_FILES_TOOL_CALL_RUNNING_2,
+		getMessage('Collapse multiple consecutive error and running tool calls into running'),
+		SEARCH_FILES_TOOL_CALL_ERROR,
+		SEARCH_FILES_TOOL_CALL_RUNNING,
+		getMessage('Collapse multiple consecutive error and completed tool calls into completed'),
+		SEARCH_FILES_TOOL_CALL_ERROR,
+		SEARCH_FILES_TOOL_CALL_COMPLETED,
+		getMessage('Collapse multiple consecutive running tool calls into one running'),
+		SEARCH_FILES_TOOL_CALL_RUNNING,
+		SEARCH_FILES_TOOL_CALL_RUNNING_2,
+		getMessage('Collapse multiple consecutive error tool calls into one error'),
+		SEARCH_FILES_TOOL_CALL_ERROR,
+		SEARCH_FILES_TOOL_CALL_ERROR_2,
 	]),
 };
 

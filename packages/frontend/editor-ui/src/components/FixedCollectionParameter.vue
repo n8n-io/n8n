@@ -1,21 +1,18 @@
 <script lang="ts" setup>
 import type { IUpdateInformation } from '@/Interface';
 
-import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nIconButton,
-	N8nSelect,
-	N8nOption,
-	N8nInputLabel,
-	N8nText,
-	N8nButton,
-} from '@n8n/design-system';
 import ParameterInputList from './ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -23,6 +20,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 const locale = useI18n();
 
 export type Props = {
@@ -229,6 +234,10 @@ const trackWorkflowInputFieldAdded = () => {
 		node_id: ndvStore.activeNode?.id,
 	});
 };
+
+function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
+	return mutableValues.value[property.name]?.indexOf(item) ?? -1;
+}
 </script>
 
 <template>
@@ -257,8 +266,8 @@ const trackWorkflowInputFieldAdded = () => {
 			/>
 			<div v-if="multipleValues">
 				<Draggable
-					:item-key="property.name"
 					v-model="mutableValues[property.name]"
+					:item-key="(item: INodeParameters) => getItemKey(item, property)"
 					handle=".drag-handle"
 					drag-class="dragging"
 					ghost-class="ghost"

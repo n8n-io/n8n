@@ -1,11 +1,14 @@
 import type { SamlPreferences } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
-import { SettingsRepository, UserRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
 import https from 'https';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
@@ -30,7 +33,7 @@ import {
 import { SamlValidator } from './saml-validator';
 import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
-import { isSsoJustInTimeProvisioningEnabled } from '../sso-helpers';
+import { isSsoJustInTimeProvisioningEnabled, reloadAuthenticationMethod } from '../sso-helpers';
 
 @Service()
 export class SamlService {
@@ -80,6 +83,7 @@ export class SamlService {
 		private readonly validator: SamlValidator,
 		private readonly userRepository: UserRepository,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init(): Promise<void> {
@@ -197,9 +201,14 @@ export class SamlService {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
+
+			if (!isValidEmail(lowerCasedEmail)) {
+				throw new BadRequestError('Invalid email format');
+			}
+
 			const user = await this.userRepository.findOne({
 				where: { email: lowerCasedEmail },
-				relations: ['authIdentities'],
+				relations: ['authIdentities', 'role'],
 			});
 			if (user) {
 				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
@@ -242,9 +251,46 @@ export class SamlService {
 		};
 	}
 
+	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
+		}
+	}
+
+	private isReloading = false;
+
+	@OnPubSubEvent('reload-saml-config')
+	async reload(): Promise<void> {
+		if (this.isReloading) {
+			this.logger.warn('SAML configuration reload already in progress');
+			return;
+		}
+		this.isReloading = true;
+		try {
+			this.logger.debug('SAML configuration changed, starting to load it from the database');
+			await this.loadFromDbAndApplySamlPreferences(true, false);
+
+			await reloadAuthenticationMethod();
+
+			const samlLoginEnabled = isSamlLoginEnabled();
+
+			this.logger.debug(`SAML login is now ${samlLoginEnabled ? 'enabled' : 'disabled'}.`);
+
+			Container.get(GlobalConfig).sso.saml.loginEnabled = samlLoginEnabled;
+		} catch (error) {
+			this.logger.error('SAML configuration changed, failed to reload SAML configuration', {
+				error,
+			});
+		} finally {
+			this.isReloading = false;
+		}
+	}
+
 	async setSamlPreferences(
 		prefs: Partial<SamlPreferences>,
 		tryFallback: boolean = false,
+		broadcastReload: boolean = true,
 	): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
 		const previousMetadataUrl = this._samlPreferences.metadataUrl;
@@ -299,6 +345,10 @@ export class SamlService {
 		}
 		this.getIdentityProviderInstance(true);
 		const result = await this.saveSamlPreferencesToDb();
+
+		if (broadcastReload) {
+			await this.broadcastReloadSAMLConfigurationCommand();
+		}
 		return result;
 	}
 
@@ -327,7 +377,10 @@ export class SamlService {
 		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
 	}
 
-	async loadFromDbAndApplySamlPreferences(apply = true): Promise<SamlPreferences | undefined> {
+	async loadFromDbAndApplySamlPreferences(
+		apply = true,
+		broadcastReload: boolean = true,
+	): Promise<SamlPreferences | undefined> {
 		const samlPreferences = await this.settingsRepository.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
@@ -335,7 +388,7 @@ export class SamlService {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
 			if (prefs) {
 				if (apply) {
-					await this.setSamlPreferences(prefs, true);
+					await this.setSamlPreferences(prefs, true, broadcastReload);
 				} else {
 					await this.loadPreferencesWithoutValidation(prefs);
 				}

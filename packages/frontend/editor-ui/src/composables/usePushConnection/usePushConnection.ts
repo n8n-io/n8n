@@ -3,6 +3,7 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import {
+	builderCreditsUpdated,
 	testWebhookDeleted,
 	testWebhookReceived,
 	reloadNodeType,
@@ -10,6 +11,7 @@ import {
 	nodeDescriptionUpdated,
 	nodeExecuteBefore,
 	nodeExecuteAfter,
+	nodeExecuteAfterData,
 	executionStarted,
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
@@ -60,6 +62,8 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 				return await nodeExecuteBefore(event);
 			case 'nodeExecuteAfter':
 				return await nodeExecuteAfter(event);
+			case 'nodeExecuteAfterData':
+				return await nodeExecuteAfterData(event);
 			case 'executionStarted':
 				return await executionStarted(event);
 			case 'sendWorkerStatusMessage':
@@ -76,6 +80,8 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 				return await workflowActivated(event);
 			case 'workflowDeactivated':
 				return await workflowDeactivated(event);
+			case 'updateBuilderCredits':
+				return await builderCreditsUpdated(event);
 		}
 	}
 

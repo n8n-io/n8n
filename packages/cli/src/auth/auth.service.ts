@@ -1,16 +1,17 @@
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
+import { ErrorReporter } from 'n8n-core';
 
 import config from '@/config';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -38,6 +39,21 @@ interface PasswordResetToken {
 	hash: string;
 }
 
+interface CreateAuthMiddlewareOptions {
+	/**
+	 * If true, MFA is not enforced
+	 */
+	allowSkipMFA: boolean;
+	/**
+	 * If true, authentication becomes optional in preview mode
+	 */
+	allowSkipPreviewAuth?: boolean;
+	/**
+	 * If true, the middleware will check for an API key in the Authorization header
+	 */
+	apiKeyAuth?: boolean;
+}
+
 @Service()
 export class AuthService {
 	// The browser-id check needs to be skipped on these endpoints
@@ -52,6 +68,7 @@ export class AuthService {
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
@@ -65,11 +82,25 @@ export class AuthService {
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
+
+			// Skip browser ID check for type files
+			'/types/nodes.json',
+			'/types/credentials.json',
 		];
 	}
 
-	createAuthMiddleware(allowSkipMFA: boolean) {
+	createAuthMiddleware({
+		allowSkipMFA,
+		allowSkipPreviewAuth,
+		apiKeyAuth,
+	}: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
+			if (apiKeyAuth) {
+				await this.checkAPIKey(req, res, next);
+				return;
+			}
+
 			const token = req.cookies[AUTH_COOKIE_NAME];
 			if (token) {
 				try {
@@ -77,7 +108,6 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
-
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
 						if (user.mfaEnabled) {
@@ -103,9 +133,73 @@ export class AuthService {
 				}
 			}
 
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const shouldSkipAuth = allowSkipPreviewAuth && isPreviewMode;
+
 			if (req.user) next();
+			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
+	}
+
+	extractAPIKeyFromHeader(headerValue: string) {
+		if (!headerValue.startsWith('Bearer')) {
+			throw new AuthError('Invalid authorization header format');
+		}
+		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
+		if (apiKeyMatch) {
+			return apiKeyMatch[1];
+		}
+		throw new AuthError('Invalid authorization header format');
+	}
+
+	async checkAPIKey(req: AuthenticatedRequest, response: Response, next: NextFunction) {
+		const headerValue = req.headers['authorization'];
+		if (!headerValue || typeof headerValue !== 'string') {
+			response.status(401).json({ status: 'error', message: 'API key is required' });
+			return;
+		}
+		try {
+			const apiKey = this.extractAPIKeyFromHeader(headerValue);
+
+			const keyOwner = await this.userRepository.findByApiKey(apiKey);
+
+			if (!keyOwner) {
+				response.status(401).json({ status: 'error', message: 'Invalid API key' });
+				return;
+			}
+
+			if (keyOwner.disabled) {
+				response.status(403).json({ status: 'error', message: 'User is disabled' });
+				return;
+			}
+			req.user = keyOwner;
+
+			// If API key looks like a JWT, verify it to ensure it's not expired
+			// Legacy API keys (e.g. starting with "n8n_api_") are not JWTs and skip verification
+			const decoded = this.jwtService.decode(apiKey);
+			if (decoded) {
+				try {
+					this.jwtService.verify(apiKey);
+				} catch (e) {
+					if (e instanceof TokenExpiredError || e instanceof JsonWebTokenError) {
+						response.status(401).json({ status: 'error', message: 'Invalid API key' });
+						return;
+					}
+					this.errorReporter.error(e);
+					throw e;
+				}
+			}
+
+			next();
+		} catch (error) {
+			if (error instanceof AuthError) {
+				response.status(401).json({ status: 'error', message: 'Invalid API key' });
+			} else {
+				this.errorReporter.error(error);
+				response.status(500).json({ status: 'error', message: 'Internal server error' });
+			}
+		}
 	}
 
 	clearCookie(res: Response) {
@@ -134,7 +228,7 @@ export class AuthService {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role !== 'global:owner' &&
+			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&
 			!isWithinUsersLimit
 		) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
@@ -174,6 +268,7 @@ export class AuthService {
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
 			where: { id: jwtPayload.id },
+			relations: ['role'],
 		});
 
 		if (
@@ -237,7 +332,7 @@ export class AuthService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'role'],
 		});
 
 		if (!user) {

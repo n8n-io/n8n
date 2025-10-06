@@ -9,6 +9,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const loadingService = useLoadingService();
 
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
+
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const aiNodes = computed<INodeUi[]>(() =>
 		nodes.value.filter(

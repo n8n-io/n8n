@@ -10,14 +10,13 @@ import {
 	sleep,
 	jsonStringify,
 	ensureError,
-	ExecutionCancelledError,
 	UnexpectedError,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { assertNever } from '@/utils';
@@ -74,18 +73,18 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
+		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery(0);
 
 		this.scheduleQueueMetrics();
 
 		this.logger.debug('Queue setup completed');
 	}
 
-	setupWorker(concurrency: number) {
+	async setupWorker(concurrency: number) {
 		this.assertWorker();
 		this.assertQueue();
 
-		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+		await this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				this.eventService.emit('job-dequeued', {
 					executionId: job.data.executionId,
@@ -231,7 +230,7 @@ export class ScalingService {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
 				await job.discard(); // prevent retries
-				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
+				await job.moveToFailed(new ManualExecutionCancelledError(job.data.executionId), true); // remove from queue
 				return true;
 			}
 
@@ -441,8 +440,8 @@ export class ScalingService {
 	// #region Queue recovery
 
 	private readonly queueRecoveryContext: QueueRecoveryContext = {
-		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
-		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
+		batchSize: this.globalConfig.executions.queueRecovery.batchSize,
+		waitMs: this.globalConfig.executions.queueRecovery.interval * 60 * 1000,
 	};
 
 	@OnLeaderTakeover()
@@ -460,6 +459,8 @@ export class ScalingService {
 				this.scheduleQueueRecovery();
 			}
 		}, waitMs);
+
+		if (waitMs === 0) return;
 
 		const wait = [this.queueRecoveryContext.waitMs / Time.minutes.toMilliseconds, 'min'].join(' ');
 
@@ -479,7 +480,7 @@ export class ScalingService {
 	 * Mark in-progress executions as `crashed` if stored in DB as `new` or `running`
 	 * but absent from the queue. Return time until next recovery cycle.
 	 */
-	private async recoverFromQueue() {
+	async recoverFromQueue() {
 		const { waitMs, batchSize } = this.queueRecoveryContext;
 
 		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
@@ -490,16 +491,9 @@ export class ScalingService {
 		}
 
 		const runningJobs = await this.findJobsByStatus(['active', 'waiting']);
-
 		const queuedIds = new Set(runningJobs.map((job) => job.data.executionId));
 
-		if (queuedIds.size === 0) {
-			this.logger.debug('Completed queue recovery check, no dangling executions');
-			return waitMs;
-		}
-
 		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
-
 		if (danglingIds.length === 0) {
 			this.logger.debug('Completed queue recovery check, no dangling executions');
 			return waitMs;

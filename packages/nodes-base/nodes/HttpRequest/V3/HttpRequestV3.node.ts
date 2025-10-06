@@ -12,6 +12,7 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -21,6 +22,7 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	sleep,
+	isDomainAllowed,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -180,6 +182,70 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 				}
 
+				const url = this.getNodeParameter('url', itemIndex) as string;
+
+				if (!url.startsWith('http://') && !url.startsWith('https://')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Invalid URL: ${url}. URL must start with "http" or "https".`,
+					);
+				}
+
+				const checkDomainRestrictions = async (
+					credentialData: ICredentialDataDecryptedObject,
+					url: string,
+					credentialType?: string,
+				) => {
+					if (credentialData.allowedHttpRequestDomains === 'domains') {
+						const allowedDomains = credentialData.allowedDomains as string;
+
+						if (!allowedDomains || allowedDomains.trim() === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No allowed domains specified. Configure allowed domains or change restriction setting.',
+							);
+						}
+
+						if (!isDomainAllowed(url, { allowedDomains })) {
+							const credentialInfo = credentialType ? ` (${credentialType})` : '';
+							throw new NodeOperationError(
+								this.getNode(),
+								`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
+									`Only the following domains are allowed: ${allowedDomains}`,
+							);
+						}
+					} else if (credentialData.allowedHttpRequestDomains === 'none') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'This credential is configured to prevent use within an HTTP Request node',
+						);
+					}
+				};
+
+				if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
+				if (httpBearerAuth) await checkDomainRestrictions(httpBearerAuth, url);
+				if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
+				if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
+				if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
+				if (httpCustomAuth) await checkDomainRestrictions(httpCustomAuth, url);
+				if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
+				if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
+
+				if (nodeCredentialType) {
+					try {
+						const credentialData = await this.getCredentials(nodeCredentialType, itemIndex);
+						await checkDomainRestrictions(credentialData, url, nodeCredentialType);
+					} catch (error) {
+						if (
+							error.message?.includes('Domain not allowed') ||
+							error.message?.includes('configured to prevent') ||
+							error.message?.includes('No allowed domains specified')
+						) {
+							throw error;
+						}
+					}
+				}
+
 				const provideSslCertificates = this.getNodeParameter(
 					'provideSslCertificates',
 					itemIndex,
@@ -256,8 +322,6 @@ export class HttpRequestV3 implements INodeType {
 				};
 
 				responseFileName = response?.response?.outputPropertyName;
-
-				const url = this.getNodeParameter('url', itemIndex) as string;
 
 				const responseFormat = response?.response?.responseFormat || 'autodetect';
 
@@ -748,276 +812,289 @@ export class HttpRequestV3 implements INodeType {
 
 		let responseData: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			responseData = promisesResponses.shift();
+			try {
+				responseData = promisesResponses.shift();
 
-			if (errorItems[itemIndex]) {
-				returnItems.push({
-					json: { error: errorItems[itemIndex] },
-					pairedItem: { item: itemIndex },
-				});
-
-				continue;
-			}
-
-			if (responseData!.status !== 'fulfilled') {
-				if (responseData.reason.statusCode === 429) {
-					responseData.reason.message =
-						"Try spacing your requests out using the batching settings under 'Options'";
-				}
-				if (!this.continueOnFail()) {
-					if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
-						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
-					}
-
-					let error;
-					if (responseData?.reason instanceof NodeApiError) {
-						error = responseData.reason;
-						set(error, 'context.itemIndex', itemIndex);
-					} else {
-						const errorData = (
-							responseData.reason ? responseData.reason : responseData
-						) as JsonObject;
-						error = new NodeApiError(this.getNode(), errorData, { itemIndex });
-					}
-
-					set(error, 'context.request', sanitizedRequests[itemIndex]);
-
-					throw error;
-				} else {
-					removeCircularRefs(responseData.reason as JsonObject);
-					// Return the actual reason as error
+				if (errorItems[itemIndex]) {
 					returnItems.push({
-						json: {
-							error: responseData.reason,
-						},
-						pairedItem: {
-							item: itemIndex,
-						},
+						json: { error: errorItems[itemIndex] },
+						pairedItem: { item: itemIndex },
 					});
+
 					continue;
 				}
-			}
 
-			let responses: any[];
-			if (Array.isArray(responseData.value)) {
-				responses = responseData.value;
-			} else {
-				responses = [responseData.value];
-			}
-
-			let responseFormat = this.getNodeParameter(
-				'options.response.response.responseFormat',
-				0,
-				'autodetect',
-			) as string;
-
-			fullResponse = this.getNodeParameter(
-				'options.response.response.fullResponse',
-				0,
-				false,
-			) as boolean;
-
-			// eslint-disable-next-line prefer-const
-			for (let [index, response] of Object.entries(responses)) {
-				if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
-
-				if (this.getMode() === 'manual' && index === '0') {
-					// For manual executions save the first response in the context
-					// so that we can use it in the frontend and so make it easier for
-					// the users to create the required pagination expressions
-					const nodeContext = this.getContext('node');
-					if (pagination && pagination.paginationMode !== 'off') {
-						nodeContext.response = responseData.value[0];
-					} else {
-						nodeContext.response = responseData.value;
+				if (responseData!.status !== 'fulfilled') {
+					if (responseData.reason.statusCode === 429) {
+						responseData.reason.message =
+							"Try spacing your requests out using the batching settings under 'Options'";
 					}
-				}
-
-				const responseContentType = response.headers['content-type'] ?? '';
-				if (autoDetectResponseFormat) {
-					if (responseContentType.includes('application/json')) {
-						responseFormat = 'json';
-						if (!response.__bodyResolved) {
-							const neverError = this.getNodeParameter(
-								'options.response.response.neverError',
-								0,
-								false,
-							) as boolean;
-
-							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
-							response.body = jsonParse(data, {
-								...(neverError
-									? { fallbackValue: {} }
-									: { errorMessage: 'Invalid JSON in response body' }),
-							});
-						}
-					} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
-						responseFormat = 'file';
-					} else {
-						responseFormat = 'text';
-						if (!response.__bodyResolved) {
-							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
-							response.body = !data ? undefined : data;
-						}
-					}
-				}
-				// This is a no-op outside of tool usage
-				const optimizeResponse = configureResponseOptimizer(this, itemIndex);
-
-				if (autoDetectResponseFormat && !fullResponse) {
-					delete response.headers;
-					delete response.statusCode;
-					delete response.statusMessage;
-				}
-				if (!fullResponse) {
-					response = optimizeResponse(response.body);
-				} else {
-					response.body = optimizeResponse(response.body);
-				}
-				if (responseFormat === 'file') {
-					const outputPropertyName = this.getNodeParameter(
-						'options.response.response.outputPropertyName',
-						0,
-						'data',
-					) as string;
-
-					const newItem: INodeExecutionData = {
-						json: {},
-						binary: {},
-						pairedItem: {
-							item: itemIndex,
-						},
-					};
-
-					if (items[itemIndex].binary !== undefined) {
-						// Create a shallow copy of the binary data so that the old
-						// data references which do not get changed still stay behind
-						// but the incoming data does not get changed.
-						Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
-					}
-
-					let binaryData: Buffer | Readable;
-					if (fullResponse) {
-						const returnItem: IDataObject = {};
-						for (const property of fullResponseProperties) {
-							if (property === 'body') {
-								continue;
-							}
-							returnItem[property] = response[property];
+					if (!this.continueOnFail()) {
+						if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
+							responseData.reason.error = Buffer.from(
+								responseData.reason.error as Buffer,
+							).toString();
 						}
 
-						newItem.json = returnItem;
-						binaryData = response?.body;
-					} else {
-						newItem.json = items[itemIndex].json;
-						binaryData = response;
-					}
-					const preparedBinaryData = await this.helpers.prepareBinaryData(
-						binaryData,
-						undefined,
-						mimeTypeFromResponse(responseContentType),
-					);
-
-					preparedBinaryData.fileName = setFilename(
-						preparedBinaryData,
-						requestOptions,
-						responseFileName,
-					);
-
-					newItem.binary![outputPropertyName] = preparedBinaryData;
-
-					returnItems.push(newItem);
-				} else if (responseFormat === 'text') {
-					const outputPropertyName = this.getNodeParameter(
-						'options.response.response.outputPropertyName',
-						0,
-						'data',
-					) as string;
-					if (fullResponse) {
-						const returnItem: IDataObject = {};
-						for (const property of fullResponseProperties) {
-							if (property === 'body') {
-								returnItem[outputPropertyName] = toText(response[property]);
-								continue;
-							}
-							returnItem[property] = response[property];
+						let error;
+						if (responseData?.reason instanceof NodeApiError) {
+							error = responseData.reason;
+							set(error, 'context.itemIndex', itemIndex);
+						} else {
+							const errorData = (
+								responseData.reason ? responseData.reason : responseData
+							) as JsonObject;
+							error = new NodeApiError(this.getNode(), errorData, { itemIndex });
 						}
-						returnItems.push({
-							json: returnItem,
-							pairedItem: {
-								item: itemIndex,
-							},
-						});
+
+						set(error, 'context.request', sanitizedRequests[itemIndex]);
+
+						throw error;
 					} else {
+						removeCircularRefs(responseData.reason as JsonObject);
+						// Return the actual reason as error
 						returnItems.push({
 							json: {
-								[outputPropertyName]: toText(response),
+								error: responseData.reason,
 							},
 							pairedItem: {
 								item: itemIndex,
 							},
 						});
+						continue;
 					}
-				} else {
-					// responseFormat: 'json'
-					if (fullResponse) {
-						const returnItem: IDataObject = {};
-						for (const property of fullResponseProperties) {
-							returnItem[property] = response[property];
-						}
+				}
 
-						if (responseFormat === 'json' && typeof returnItem.body === 'string') {
-							try {
-								returnItem.body = JSON.parse(returnItem.body);
-							} catch (error) {
-								throw new NodeOperationError(
-									this.getNode(),
-									'Response body is not valid JSON. Change "Response Format" to "Text"',
-									{ itemIndex },
-								);
+				let responses: any[];
+				if (Array.isArray(responseData.value)) {
+					responses = responseData.value;
+				} else {
+					responses = [responseData.value];
+				}
+
+				let responseFormat = this.getNodeParameter(
+					'options.response.response.responseFormat',
+					0,
+					'autodetect',
+				) as string;
+
+				fullResponse = this.getNodeParameter(
+					'options.response.response.fullResponse',
+					0,
+					false,
+				) as boolean;
+
+				// eslint-disable-next-line prefer-const
+				for (let [index, response] of Object.entries(responses)) {
+					if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
+
+					if (this.getMode() === 'manual' && index === '0') {
+						// For manual executions save the first response in the context
+						// so that we can use it in the frontend and so make it easier for
+						// the users to create the required pagination expressions
+						const nodeContext = this.getContext('node');
+						if (pagination && pagination.paginationMode !== 'off') {
+							nodeContext.response = responseData.value[0];
+						} else {
+							nodeContext.response = responseData.value;
+						}
+					}
+
+					const responseContentType = response.headers['content-type'] ?? '';
+					if (autoDetectResponseFormat) {
+						if (responseContentType.includes('application/json')) {
+							responseFormat = 'json';
+							if (!response.__bodyResolved) {
+								const neverError = this.getNodeParameter(
+									'options.response.response.neverError',
+									0,
+									false,
+								) as boolean;
+
+								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+								response.body = jsonParse(data, {
+									...(neverError
+										? { fallbackValue: {} }
+										: { errorMessage: 'Invalid JSON in response body' }),
+								});
+							}
+						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
+							responseFormat = 'file';
+						} else {
+							responseFormat = 'text';
+							if (!response.__bodyResolved) {
+								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+								response.body = !data ? undefined : data;
 							}
 						}
+					}
+					// This is a no-op outside of tool usage
+					const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
-						returnItems.push({
-							json: returnItem,
+					if (autoDetectResponseFormat && !fullResponse) {
+						delete response.headers;
+						delete response.statusCode;
+						delete response.statusMessage;
+					}
+					if (!fullResponse) {
+						response = optimizeResponse(response.body);
+					} else {
+						response.body = optimizeResponse(response.body);
+					}
+					if (responseFormat === 'file') {
+						const outputPropertyName = this.getNodeParameter(
+							'options.response.response.outputPropertyName',
+							0,
+							'data',
+						) as string;
+
+						const newItem: INodeExecutionData = {
+							json: {},
+							binary: {},
 							pairedItem: {
 								item: itemIndex,
 							},
-						});
-					} else {
-						if (responseFormat === 'json' && typeof response === 'string') {
-							try {
-								if (typeof response !== 'object') {
-									response = JSON.parse(response);
-								}
-							} catch (error) {
-								throw new NodeOperationError(
-									this.getNode(),
-									'Response body is not valid JSON. Change "Response Format" to "Text"',
-									{ itemIndex },
-								);
-							}
+						};
+
+						if (items[itemIndex].binary !== undefined) {
+							// Create a shallow copy of the binary data so that the old
+							// data references which do not get changed still stay behind
+							// but the incoming data does not get changed.
+							Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
 						}
 
-						if (Array.isArray(response)) {
-							response.forEach((item) =>
-								returnItems.push({
-									json: item,
-									pairedItem: {
-										item: itemIndex,
-									},
-								}),
-							);
+						let binaryData: Buffer | Readable;
+						if (fullResponse) {
+							const returnItem: IDataObject = {};
+							for (const property of fullResponseProperties) {
+								if (property === 'body') {
+									continue;
+								}
+								returnItem[property] = response[property];
+							}
+
+							newItem.json = returnItem;
+							binaryData = response?.body;
+						} else {
+							newItem.json = items[itemIndex].json;
+							binaryData = response;
+						}
+						const preparedBinaryData = await this.helpers.prepareBinaryData(
+							binaryData,
+							undefined,
+							mimeTypeFromResponse(responseContentType),
+						);
+
+						preparedBinaryData.fileName = setFilename(
+							preparedBinaryData,
+							requestOptions,
+							responseFileName,
+						);
+
+						newItem.binary![outputPropertyName] = preparedBinaryData;
+
+						returnItems.push(newItem);
+					} else if (responseFormat === 'text') {
+						const outputPropertyName = this.getNodeParameter(
+							'options.response.response.outputPropertyName',
+							0,
+							'data',
+						) as string;
+						if (fullResponse) {
+							const returnItem: IDataObject = {};
+							for (const property of fullResponseProperties) {
+								if (property === 'body') {
+									returnItem[outputPropertyName] = toText(response[property]);
+									continue;
+								}
+								returnItem[property] = response[property];
+							}
+							returnItems.push({
+								json: returnItem,
+								pairedItem: {
+									item: itemIndex,
+								},
+							});
 						} else {
 							returnItems.push({
-								json: response,
+								json: {
+									[outputPropertyName]: toText(response),
+								},
 								pairedItem: {
 									item: itemIndex,
 								},
 							});
 						}
+					} else {
+						// responseFormat: 'json'
+						if (fullResponse) {
+							const returnItem: IDataObject = {};
+							for (const property of fullResponseProperties) {
+								returnItem[property] = response[property];
+							}
+
+							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
+								try {
+									returnItem.body = JSON.parse(returnItem.body);
+								} catch (error) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'Response body is not valid JSON. Change "Response Format" to "Text"',
+										{ itemIndex },
+									);
+								}
+							}
+
+							returnItems.push({
+								json: returnItem,
+								pairedItem: {
+									item: itemIndex,
+								},
+							});
+						} else {
+							if (responseFormat === 'json' && typeof response === 'string') {
+								try {
+									if (typeof response !== 'object') {
+										response = JSON.parse(response);
+									}
+								} catch (error) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'Response body is not valid JSON. Change "Response Format" to "Text"',
+										{ itemIndex },
+									);
+								}
+							}
+
+							if (Array.isArray(response)) {
+								response.forEach((item) =>
+									returnItems.push({
+										json: item,
+										pairedItem: {
+											item: itemIndex,
+										},
+									}),
+								);
+							} else {
+								returnItems.push({
+									json: response,
+									pairedItem: {
+										item: itemIndex,
+									},
+								});
+							}
+						}
 					}
 				}
+			} catch (error) {
+				if (!this.continueOnFail()) throw error;
+
+				returnItems.push({
+					json: { error: error.message },
+					pairedItem: { item: itemIndex },
+				});
+
+				continue;
 			}
 		}
 

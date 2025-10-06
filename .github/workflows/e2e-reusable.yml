@@ -17,11 +17,6 @@ on:
         required: false
         default: 'e2e/*'
         type: string
-      record:
-        description: 'Record test run.'
-        required: false
-        default: true
-        type: boolean
       parallel:
         description: 'Run tests in parallel.'
         required: false
@@ -30,16 +25,13 @@ on:
       containers:
         description: 'Number of containers to run tests in.'
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]'
+        default: '[1, 2, 3, 4, 5]'
         type: string
       pr_number:
         description: 'PR number to run tests for.'
         required: false
         type: number
     secrets:
-      CYPRESS_RECORD_KEY:
-        description: 'Cypress record key.'
-        required: true
       CURRENTS_RECORD_KEY:
         description: 'Currents record key.'
         required: true
@@ -76,15 +68,10 @@ jobs:
           start: pnpm start
           wait-on: 'http://localhost:5678'
           wait-on-timeout: 120
-          record: ${{ inputs.record }}
-          parallel: ${{ inputs.spec == 'e2e/*' && inputs.parallel || false }}
-          # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
-          # in the same parent workflow
-          ci-build-id: ${{ github.run_id }}-${{ github.run_attempt }}
-          spec: '${{ inputs.spec }}'
+          record: false
+          spec: ${{ inputs.spec == 'e2e/*' && format('e2e/group{0}/**/*.cy.ts', matrix.containers) || inputs.spec }}
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
-          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}

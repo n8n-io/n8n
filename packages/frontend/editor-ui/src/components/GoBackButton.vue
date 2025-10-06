@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon } from '@n8n/design-system';
 const router = useRouter();
 const i18n = useI18n();
 
@@ -12,7 +13,7 @@ const navigateTo = () => {
 
 <template>
 	<div :class="$style.wrapper" @click="navigateTo">
-		<n8n-icon :class="$style.icon" icon="arrow-left" />
+		<N8nIcon :class="$style.icon" icon="arrow-left" />
 		<div :class="$style.text" v-text="i18n.baseText('template.buttons.goBackButton')" />
 	</div>
 </template>

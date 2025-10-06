@@ -1,65 +1,67 @@
 <script setup lang="ts">
-import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type {
-	INodeParameters,
-	NodeConnectionType,
-	NodeParameterValue,
-	INodeCredentialDescription,
-	PublicInstalledPackage,
-} from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+import type {
+	INodeCredentialDescription,
+	INodeParameters,
+	NodeConnectionType,
+	NodeParameterValue,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL, NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
+import { BASE_NODE_SURVEY_URL } from '@/constants';
 
-import ParameterInputList from '@/components/ParameterInputList.vue';
+import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
-import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import get from 'lodash/get';
 
-import NodeExecuteButton from './NodeExecuteButton.vue';
-import {
-	collectSettings,
-	createCommonNodeSettings,
-	nameIsParameter,
-	getNodeSettingsInitialValues,
-	collectParametersByTab,
-} from '@/utils/nodeSettingsUtils';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useHistoryStore } from '@/stores/history.store';
-import { RenameNodeCommand } from '@/models/history';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { useUsersStore } from '@/stores/users.store';
-import type { EventBus } from '@n8n/utils/event-bus';
+import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import NodeActionsList from '@/components/NodeActionsList.vue';
+import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@n8n/i18n';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
-import { ProjectTypes } from '@/types/projects.types';
-import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { usePostHog } from '@/stores/posthog.store';
-import { useResizeObserver } from '@vueuse/core';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
-import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
-import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
+import NodeStorageLimitCallout from '@/features/dataStore/components/NodeStorageLimitCallout.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
+import { RenameNodeCommand } from '@/models/history';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import NodeActionsList from '@/components/NodeActionsList.vue';
-import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+import { ProjectTypes } from '@/types/projects.types';
+import {
+	collectParametersByTab,
+	collectSettings,
+	createCommonNodeSettings,
+	getNodeSettingsInitialValues,
+	nameIsParameter,
+} from '@/utils/nodeSettingsUtils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { useResizeObserver } from '@vueuse/core';
+import CommunityNodeFooter from '@/components/Node/NodeCreator/Panel/CommunityNodeFooter.vue';
+import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
+import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		eventBus?: EventBus;
@@ -75,12 +77,20 @@ const props = withDefaults(
 		subTitle?: string;
 		extraTabsClassName?: string;
 		extraParameterWrapperClassName?: string;
+		isNdvV2?: boolean;
+		hideExecute?: boolean;
+		hideDocs?: boolean;
+		hideSubConnections?: boolean;
 	}>(),
 	{
 		inputSize: 0,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
+		isNdvV2: false,
+		hideExecute: false,
+		hideDocs: true,
+		hideSubConnections: false,
 	},
 );
 
@@ -108,7 +118,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
-const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -136,8 +145,6 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
-const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
-
 const currentWorkflow = computed(
 	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
@@ -155,6 +162,9 @@ const nodeType = computed(() =>
 );
 
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
+
+const nodeTypeName = computed(() => node.value?.type);
+const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -251,13 +261,6 @@ const credentialOwnerName = computed(() => {
 
 	return credentialsStore.getCredentialOwnerName(credential);
 });
-
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
 
 const featureRequestUrl = computed(() => {
 	if (!nodeType.value) {
@@ -541,10 +544,6 @@ onMounted(async () => {
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
-
-	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
-		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(packageName.value);
-	}
 });
 
 onBeforeUnmount(() => {
@@ -611,7 +610,7 @@ function handleSelectAction(params: INodeParameters) {
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNDVV2" :class="$style.header">
+		<div v-else-if="!isNdvV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -648,9 +647,10 @@ function handleSelectAction(params: INodeParameters) {
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
+			:hide-docs="props.hideDocs"
 			:push-ref="pushRef"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"
@@ -666,7 +666,7 @@ function handleSelectAction(params: INodeParameters) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				{ 'ndv-v2': isNDVV2 },
+				{ 'ndv-v2': isNdvV2 },
 				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
@@ -681,6 +681,7 @@ function handleSelectAction(params: INodeParameters) {
 				"
 			/>
 			<FreeAiCreditsCallout />
+			<NodeStorageLimitCallout />
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -746,8 +747,10 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isCommunityNode && installedPackage?.updateAvailable"
+					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 					data-test-id="update-available"
+					:package-name="packageName"
+					style="margin-top: var(--spacing-s)"
 				/>
 				<ParameterInputList
 					:parameters="parametersByTab.settings"
@@ -782,7 +785,7 @@ function handleSelectAction(params: INodeParameters) {
 				</div>
 			</div>
 			<div
-				v-if="isNDVV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
 				:class="$style.featureRequest"
 			>
 				<a target="_blank" @click="onFeatureRequestClick">
@@ -792,7 +795,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.isEmbeddedInCanvas"
+			v-if="node && !hideSubConnections"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
@@ -822,7 +825,7 @@ function handleSelectAction(params: INodeParameters) {
 		gap: var(--spacing-4xs);
 		margin-top: var(--spacing-xl);
 
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
 		color: var(--color-text-light);
 	}

@@ -1,35 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "_links": {
-            "type": "object",
-            "properties": {
-                "git": {
-                    "type": "string"
-                },
-                "html": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "string"
-                }
-            }
-        },
-        "content": {
-            "type": "string"
-        },
-        "encoding": {
-            "type": "string"
-        },
-        "git_url": {
-            "type": "string"
-        },
-        "html_url": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
         "path": {
             "type": "string"
         },
@@ -46,5 +17,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

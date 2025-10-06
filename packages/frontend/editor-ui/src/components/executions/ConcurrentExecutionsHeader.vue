@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	runningExecutionsCount: number;
 	concurrencyCap: number;
@@ -42,8 +43,8 @@ const headerText = computed(() => {
 
 <template>
 	<div data-test-id="concurrent-executions-header">
-		<n8n-text>{{ headerText }}</n8n-text>
-		<n8n-tooltip>
+		<N8nText>{{ headerText }}</N8nText>
+		<N8nTooltip>
 			<template #content>
 				<div :class="$style.tooltip">
 					{{ tooltipText }}
@@ -65,8 +66,8 @@ const headerText = computed(() => {
 					>
 				</div>
 			</template>
-			<n8n-icon icon="info" class="ml-2xs" />
-		</n8n-tooltip>
+			<N8nIcon icon="info" class="ml-2xs" />
+		</N8nTooltip>
 	</div>
 </template>
 

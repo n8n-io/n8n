@@ -17,7 +17,7 @@ import {
 	defaultNodeDescriptions,
 	mockNodes,
 } from '@/__tests__/mocks';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
+import type { Workflow } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -48,7 +48,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 
 	if (isActiveNode) {
-		ndvStore.activeNodeName = node.name;
+		ndvStore.setActiveNodeName(node.name, 'other');
 	}
 
 	await useSettingsStore().getSettings();
@@ -56,7 +56,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	return {
 		pinia,
-		workflowObject: workflowsStore.workflowObject,
+		workflowObject: workflowsStore.workflowObject as Workflow,
 		nodeName: node.name,
 	};
 }
@@ -68,12 +68,7 @@ describe('NodeDetailsView', () => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -86,8 +81,6 @@ describe('NodeDetailsView', () => {
 
 		const renderComponent = createComponentRenderer(NodeDetailsView, {
 			props: {
-				teleported: false,
-				appendToBody: false,
 				workflowObject,
 			},
 			global: {
@@ -112,8 +105,6 @@ describe('NodeDetailsView', () => {
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
-					teleported: false,
-					appendToBody: false,
 					workflowObject,
 				},
 				global: {
@@ -152,12 +143,10 @@ describe('NodeDetailsView', () => {
 
 		test('should unregister keydown listener on unmount', async () => {
 			const { pinia, workflowObject, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(pinia);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
-					teleported: false,
-					appendToBody: false,
 					workflowObject,
 				},
 				global: {
@@ -173,7 +162,7 @@ describe('NodeDetailsView', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = nodeName;
+			ndvStore.setActiveNodeName(nodeName, 'other');
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 			await waitFor(() => expect(queryByTestId('ndv-modal')).toBeInTheDocument());
@@ -197,8 +186,6 @@ describe('NodeDetailsView', () => {
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
-					teleported: false,
-					appendToBody: false,
 					workflowObject,
 				},
 				global: {

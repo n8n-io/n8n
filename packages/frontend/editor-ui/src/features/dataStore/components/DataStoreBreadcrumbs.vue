@@ -5,11 +5,14 @@ import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useRouter } from 'vue-router';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
-import { DATA_STORE_VIEW } from '@/features/dataStore/constants';
+import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
+import { telemetry } from '@/plugins/telemetry';
 
-const BREADCRUMBS_SEPARATOR = '›';
+import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
+import ProjectBreadcrumb from '@/components/Folders/ProjectBreadcrumb.vue';
+const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataStore: DataStore;
@@ -17,7 +20,7 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const renameInput = useTemplateRef('renameInput');
+const renameInput = useTemplateRef<{ forceFocus: () => void }>('renameInput');
 
 const dataStoreStore = useDataStoreStore();
 
@@ -39,7 +42,7 @@ const breadcrumbs = computed<PathItem[]>(() => {
 		{
 			id: 'datastores',
 			label: i18n.baseText('dataStore.dataStores'),
-			href: `/projects/${project.value.id}/datastores`,
+			href: `/projects/${project.value.id}/datatables`,
 		},
 	];
 });
@@ -51,7 +54,10 @@ const onItemClicked = async (item: PathItem) => {
 };
 
 const onDelete = async () => {
-	await router.push({ name: DATA_STORE_VIEW, params: { projectId: props.dataStore.projectId } });
+	await router.push({
+		name: PROJECT_DATA_STORES,
+		params: { projectId: props.dataStore.projectId },
+	});
 };
 
 const onRename = async () => {
@@ -74,6 +80,10 @@ const onNameSubmit = async (name: string) => {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
 		editableName.value = name;
+		telemetry.track('User renamed data table', {
+			data_table_id: props.dataStore.id,
+			data_table_project_id: props.dataStore.projectId,
+		});
 	} catch (error) {
 		// Revert to original name if rename fails
 		editableName.value = props.dataStore.name;
@@ -91,9 +101,10 @@ watch(
 
 <template>
 	<div :class="$style['data-store-breadcrumbs']">
-		<n8n-breadcrumbs
+		<N8nBreadcrumbs
 			:items="breadcrumbs"
 			:separator="BREADCRUMBS_SEPARATOR"
+			:highlight-last-item="false"
 			@item-selected="onItemClicked"
 		>
 			<template #prepend>
@@ -113,9 +124,14 @@ watch(
 					@update:model-value="onNameSubmit"
 				/>
 			</template>
-		</n8n-breadcrumbs>
+		</N8nBreadcrumbs>
 		<div :class="$style['data-store-actions']">
-			<DataStoreActions :data-store="props.dataStore" @rename="onRename" @on-deleted="onDelete" />
+			<DataStoreActions
+				:data-store="props.dataStore"
+				location="breadcrumbs"
+				@rename="onRename"
+				@on-deleted="onDelete"
+			/>
 		</div>
 	</div>
 </template>
@@ -123,11 +139,12 @@ watch(
 <style lang="scss" module>
 .data-store-breadcrumbs {
 	display: flex;
-	align-items: end;
+	align-items: center;
 }
 
 .data-store-actions {
 	position: relative;
+	top: var(--spacing-5xs);
 }
 
 .separator {

@@ -192,24 +192,7 @@ function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 	return subTree[subTree.length - 1];
 }
 
-export function createLogTree(
-	workflow: Workflow,
-	response: IExecutionResponse,
-	workflows: Record<string, Workflow> = {},
-	subWorkflowData: Record<string, IRunExecutionData> = {},
-) {
-	return createLogTreeRec({
-		parent: undefined,
-		ancestorRunIndexes: [],
-		executionId: response.id,
-		workflow,
-		workflows,
-		data: response.data ?? { resultData: { runData: {} } },
-		subWorkflowData,
-	});
-}
-
-function createLogTreeRec(context: LogTreeCreationContext) {
+function createLogTreeRec(context: LogTreeCreationContext): LogEntry[] {
 	const runData = context.data.resultData.runData;
 
 	return Object.entries(runData)
@@ -256,6 +239,23 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 			getTreeNodeData(node, task, nodeHasMultipleRuns ? runIndex : undefined, context),
 		)
 		.sort(sortLogEntries);
+}
+
+export function createLogTree(
+	workflow: Workflow,
+	response: IExecutionResponse,
+	workflows: Record<string, Workflow> = {},
+	subWorkflowData: Record<string, IRunExecutionData> = {},
+): LogEntry[] {
+	return createLogTreeRec({
+		parent: undefined,
+		ancestorRunIndexes: [],
+		executionId: response.id,
+		workflow,
+		workflows,
+		data: response.data ?? { resultData: { runData: {} } },
+		subWorkflowData,
+	});
 }
 
 export function findLogEntryRec(
@@ -502,8 +502,24 @@ export function extractBotResponse(
 	if (get(nodeResponseData, 'error')) {
 		responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 	} else {
-		const responseData = get(nodeResponseData, 'data.main[0][0].json');
-		const text = extractResponseText(responseData) ?? emptyText;
+		// Check all output branches for response data, not just the first one
+		const mainOutputs = get(nodeResponseData, 'data.main');
+		let text: string | undefined;
+
+		if (mainOutputs && Array.isArray(mainOutputs)) {
+			for (const branch of mainOutputs) {
+				if (branch?.[0]?.json) {
+					const responseData = branch[0].json;
+					text = extractResponseText(responseData);
+					if (text) {
+						break; // Found a valid response, stop searching
+					}
+				}
+			}
+		}
+
+		// Fall back to emptyText if no valid response found
+		text = text ?? emptyText;
 
 		if (!text) {
 			return undefined;
@@ -592,4 +608,25 @@ export function isSubNodeLog(logEntry: LogEntry): boolean {
 
 export function isPlaceholderLog(treeNode: LogEntry): boolean {
 	return treeNode.runData === undefined;
+}
+
+/**
+ * Creates a copy of execution data just deep enough to keeps logs immutable and not reactive.
+ * We deliberately avoid full deep copy here for performance reason.
+ *
+ * TODO: use shallowRef() for execution data in workflows store to make this unnecessary.
+ */
+export function copyExecutionData(executionData: IExecutionResponse): IExecutionResponse {
+	return {
+		...executionData,
+		data: {
+			...executionData.data,
+			resultData: {
+				...executionData.data?.resultData,
+				runData: Object.fromEntries(
+					Object.entries(executionData.data?.resultData.runData ?? {}).map(([k, v]) => [k, [...v]]),
+				),
+			},
+		},
+	};
 }

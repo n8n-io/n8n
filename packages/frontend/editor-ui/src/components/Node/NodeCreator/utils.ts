@@ -29,6 +29,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
+import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@n8n/i18n';
 import sortBy from 'lodash/sortBy';
@@ -122,7 +123,11 @@ export function removeTrailingTrigger(searchFilter: string) {
 	return searchFilter;
 }
 
-export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
+export function searchNodes(
+	searchFilter: string,
+	items: INodeCreateElement[],
+	additionalFactors = {},
+) {
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	if (!askAiEnabled) {
 		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
@@ -131,12 +136,12 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
-	// Please update the snapshots per the README next to the the snapshots if you modify items significantly.
-	const result = (sublimeSearch<INodeCreateElement>(trimmedFilter, items) || []).map(
-		({ item }) => item,
-	);
+	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
+	const searchResults = sublimeSearch<INodeCreateElement>(trimmedFilter, items) || [];
 
-	return result;
+	const reRankedResults = reRankSearchResults(searchResults, additionalFactors);
+
+	return reRankedResults.map(({ item }) => item);
 }
 
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
@@ -337,6 +342,7 @@ export function getRagStarterCallout(): OpenTemplateElement {
 // Callout without a divider
 export function getPreBuiltAgentsCallout(): ViewCreateElement {
 	return {
+		uuid: uuidv4(),
 		key: PRE_BUILT_AGENTS_COLLECTION,
 		type: 'view',
 		properties: {
@@ -355,6 +361,7 @@ export function getPreBuiltAgentsCallout(): ViewCreateElement {
 // Callout with divider after it
 export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 	return {
+		uuid: uuidv4(),
 		key: PRE_BUILT_AGENTS_COLLECTION,
 		type: 'link',
 		properties: {
@@ -373,6 +380,7 @@ export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 
 export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {
 	return {
+		uuid: 'ai_templates_root',
 		key: 'ai_templates_root',
 		type: 'link',
 		properties: {
@@ -424,7 +432,12 @@ export function getActiveViewCallouts(
 			results.push(getPreBuiltAgentsCalloutWithDivider());
 		} else if ([AI_CATEGORY_MEMORY, AI_CATEGORY_TOOLS].includes(title)) {
 			results.push(getPreBuiltAgentsCallout());
-		} else if (title === 'Google Calendar' || title === 'Telegram') {
+		} else if (title === 'Google Calendar') {
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.CalendarAgent, templates);
+			if (templateLink) {
+				results.push(templateLink);
+			}
+		} else if (title === 'Telegram') {
 			const templateLink = getTemplateLink(PrebuiltAgentTemplates.VoiceAssistantAgent, templates);
 			if (templateLink) {
 				results.push(templateLink);

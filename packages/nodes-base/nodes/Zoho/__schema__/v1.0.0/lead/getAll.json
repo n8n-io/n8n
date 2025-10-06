@@ -82,20 +82,6 @@
         "$state": {
             "type": "string"
         },
-        "Created_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "Created_Time": {
             "type": "string"
         },
@@ -111,23 +97,6 @@
         "Locked__s": {
             "type": "boolean"
         },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
         "Owner": {
             "type": "object",
             "properties": {
@@ -142,20 +111,12 @@
                 }
             }
         },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
+        "Unsubscribed_Mode": {
+            "type": "null"
+        },
+        "Unsubscribed_Time": {
+            "type": "null"
         }
     },
-    "version": 4
+    "version": 6
 }

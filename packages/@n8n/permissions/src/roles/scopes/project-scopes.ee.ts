@@ -36,7 +36,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'dataStore:delete',
 	'dataStore:read',
 	'dataStore:update',
-	'dataStore:list',
+	'dataStore:listProject',
 	'dataStore:readRow',
 	'dataStore:writeRow',
 ];
@@ -69,7 +69,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataStore:delete',
 	'dataStore:read',
 	'dataStore:update',
-	'dataStore:list',
+	'dataStore:listProject',
 	'dataStore:readRow',
 	'dataStore:writeRow',
 ];
@@ -97,7 +97,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'dataStore:delete',
 	'dataStore:read',
 	'dataStore:update',
-	'dataStore:list',
+	'dataStore:listProject',
 	'dataStore:readRow',
 	'dataStore:writeRow',
 ];
@@ -111,7 +111,7 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'workflow:read',
 	'folder:read',
 	'folder:list',
-	'dataStore:list',
+	'dataStore:listProject',
 	'dataStore:read',
 	'dataStore:readRow',
 ];

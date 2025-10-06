@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IFormInputs } from '@/Interface';
+import type { IFormInputs, InputAutocompletePropType } from '@/Interface';
 import Logo from '@/components/Logo/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
@@ -12,6 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
 
+import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------
 // #region Props
 // ---------------------------------------------------------------------------
@@ -33,6 +34,7 @@ const showRecoveryCodeForm = ref(false);
 const verifyingMfaCode = ref(false);
 const formError = ref('');
 const { reportError } = toRefs(props);
+const mfaFormRef = ref<{ $el?: HTMLElement } | null>(null);
 
 // ---------------------------------------------------------------------------
 // #region Composable
@@ -64,6 +66,7 @@ const formField = (
 	placeholder: string,
 	maxlength: number,
 	focus = true,
+	autocomplete: InputAutocompletePropType = 'off',
 ) => {
 	return {
 		name,
@@ -75,6 +78,7 @@ const formField = (
 			capitalize: true,
 			validateOnBlur: false,
 			focusInitially: focus,
+			autocomplete,
 		},
 	};
 };
@@ -97,6 +101,7 @@ const onBackClick = () => {
 	hasAnyChanges.value = true;
 	formInputs.value = [mfaCodeFieldWithDefaults()];
 	emit('onBackClick', MFA_FORM.MFA_RECOVERY_CODE);
+	focusMfaCodeAfterPasswordManager();
 };
 
 const onSubmit = (formData: unknown) => {
@@ -106,6 +111,19 @@ const onSubmit = (formData: unknown) => {
 		? i18.baseText('mfa.code.invalid')
 		: i18.baseText('mfa.recovery.invalid');
 	emit('submit', data);
+};
+
+const focusMfaCodeAfterPasswordManager = () => {
+	setTimeout(() => {
+		if (mfaFormRef.value) {
+			const container = mfaFormRef.value.$el;
+			if (!container) return;
+			const inputElement = container.querySelector('input[name="mfaCode"]') as HTMLInputElement;
+			if (inputElement) {
+				inputElement.focus();
+			}
+		}
+	}, 200);
 };
 
 const onInput = ({ target: { value, name } }: { target: { value: string; name: string } }) => {
@@ -149,6 +167,8 @@ const mfaCodeFieldWithDefaults = () => {
 		i18.baseText('mfa.code.input.label'),
 		i18.baseText('mfa.code.input.placeholder'),
 		MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
+		false,
+		'one-time-code',
 	);
 };
 
@@ -168,6 +188,8 @@ const {
 
 onMounted(() => {
 	formInputs.value = [mfaCodeFieldWithDefaults()];
+
+	focusMfaCodeAfterPasswordManager();
 });
 
 // #endregion
@@ -176,17 +198,18 @@ onMounted(() => {
 <template>
 	<div :class="$style.container">
 		<Logo location="authView" :release-channel="releaseChannel" />
-		<n8n-card>
+		<N8nCard>
 			<div :class="$style.headerContainer">
-				<n8n-heading size="xlarge" color="text-dark">{{
+				<N8nHeading size="xlarge" color="text-dark">{{
 					showRecoveryCodeForm
 						? i18.baseText('mfa.recovery.modal.title')
 						: i18.baseText('mfa.code.modal.title')
-				}}</n8n-heading>
+				}}</N8nHeading>
 			</div>
 			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
-				<n8n-form-inputs
+				<N8nFormInputs
 					v-if="formInputs"
+					ref="mfaFormRef"
 					data-test-id="mfa-login-form"
 					:inputs="formInputs"
 					:event-bus="formBus"
@@ -194,7 +217,7 @@ onMounted(() => {
 					@submit="onSubmit"
 				/>
 				<div :class="$style.infoBox">
-					<n8n-text
+					<N8nText
 						v-if="!showRecoveryCodeForm && !reportError"
 						size="small"
 						color="text-base"
@@ -202,9 +225,9 @@ onMounted(() => {
 						>{{ i18.baseText('mfa.code.input.info') }}
 						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
 							i18.baseText('mfa.code.input.info.action')
-						}}</a></n8n-text
+						}}</a></N8nText
 					>
-					<n8n-text v-if="reportError" color="danger" size="small"
+					<N8nText v-if="reportError" color="danger" size="small"
 						>{{ formError }}
 						<a
 							v-if="!showRecoveryCodeForm"
@@ -213,11 +236,11 @@ onMounted(() => {
 						>
 							{{ i18.baseText('mfa.recovery.input.info.action') }}</a
 						>
-					</n8n-text>
+					</N8nText>
 				</div>
 			</div>
 			<div>
-				<n8n-button
+				<N8nButton
 					float="right"
 					:loading="verifyingMfaCode"
 					:label="
@@ -229,7 +252,7 @@ onMounted(() => {
 					:disabled="!hasAnyChanges"
 					@click="onSaveClick"
 				/>
-				<n8n-button
+				<N8nButton
 					float="left"
 					:label="i18.baseText('mfa.button.back')"
 					size="large"
@@ -237,7 +260,7 @@ onMounted(() => {
 					@click="onBackClick"
 				/>
 			</div>
-		</n8n-card>
+		</N8nCard>
 	</div>
 </template>
 

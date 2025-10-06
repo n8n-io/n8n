@@ -296,6 +296,7 @@ export type WorkflowResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
+	settings?: Partial<IWorkflowSettings>;
 };
 
 export type VariableResource = BaseResource & {
@@ -344,7 +345,7 @@ export type SortingAndPaginationUpdates = {
 
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
-	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
+	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
 };
@@ -495,6 +496,7 @@ export interface IExecutionsListResponse {
 	count: number;
 	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;
+	concurrentExecutionsCount: number;
 }
 
 export interface IExecutionsCurrentSummaryExtended {
@@ -568,6 +570,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	availableInMCP?: boolean;
 }
 
 export interface ITimeoutHMS {
@@ -733,6 +736,7 @@ export type NodeTypeSelectedPayload = {
 	parameters?: {
 		resource?: string;
 		operation?: string;
+		language?: string;
 	};
 	actionName?: string;
 };
@@ -765,24 +769,6 @@ export interface IUsedCredential {
 	currentUserHasAccess: boolean;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
-}
-
-export interface WorkflowsState {
-	activeWorkflows: string[];
-	activeWorkflowExecution: ExecutionSummary | null;
-	currentWorkflowExecutions: ExecutionSummary[];
-	activeExecutionId: string | null;
-	executingNode: string[];
-	executionWaitingForWebhook: boolean;
-	nodeMetadata: NodeMetadataMap;
-	subWorkflowExecutionError: Error | null;
-	usedCredentials: Record<string, IUsedCredential>;
-	workflow: IWorkflowDb;
-	workflowExecutionData: IExecutionResponse | null;
-	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
-	workflowsById: IWorkflowsMap;
-	chatMessages: string[];
-	isInDebugMode?: boolean;
 }
 
 export interface NodeMetadataMap {
@@ -841,48 +827,6 @@ export interface TargetItem {
 	itemIndex: number;
 	runIndex: number;
 	outputIndex: number;
-}
-
-export interface NDVState {
-	activeNodeName: string | null;
-	mainPanelDimensions: { [key: string]: { [key: string]: number } };
-	pushRef: string;
-	input: {
-		displayMode: IRunDataDisplayMode;
-		nodeName?: string;
-		run?: number;
-		branch?: number;
-		data: {
-			isEmpty: boolean;
-		};
-	};
-	output: {
-		branch?: number;
-		displayMode: IRunDataDisplayMode;
-		data: {
-			isEmpty: boolean;
-		};
-		editMode: {
-			enabled: boolean;
-			value: string;
-		};
-	};
-	focusedMappableInput: string;
-	focusedInputPath: string;
-	mappingTelemetry: { [key: string]: string | number | boolean };
-	hoveringItem: null | TargetItem;
-	expressionOutputItemIndex: number;
-	draggable: {
-		isDragging: boolean;
-		type: string;
-		data: string;
-		dimensions: DOMRect | null;
-		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
-	};
-	isMappingOnboarded: boolean;
-	isTableHoverOnboarded: boolean;
-	isAutocompleteOnboarded: boolean;
-	highlightDraggables: boolean;
 }
 
 export type TargetNodeParameterContext = {
@@ -1183,7 +1127,9 @@ export type CloudUpdateLinkSourceType =
 	| 'rbac'
 	| 'debug'
 	| 'insights'
-	| 'evaluations';
+	| 'evaluations'
+	| 'ai-builder-sidebar'
+	| 'ai-builder-canvas';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1208,7 +1154,8 @@ export type UTMCampaign =
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
 	| 'upgrade-insights'
-	| 'upgrade-evaluations';
+	| 'upgrade-evaluations'
+	| 'upgrade-builder';
 
 export type N8nBanners = {
 	[key in BannerName]: {

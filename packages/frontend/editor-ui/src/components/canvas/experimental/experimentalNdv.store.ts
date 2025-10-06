@@ -12,21 +12,27 @@ import {
 } from '@vue-flow/core';
 import { CanvasNodeRenderType, type CanvasNodeData } from '@/types';
 import { usePostHog } from '@/stores/posthog.store';
-import { CANVAS_ZOOMED_VIEW_EXPERIMENT } from '@/constants';
+import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/constants';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
 	const postHogStore = usePostHog();
-	const isEnabled = computed(
+	const isZoomedViewEnabled = computed(
 		() =>
 			postHogStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
 			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
 	);
-	const maxCanvasZoom = computed(() => (isEnabled.value ? 2 : 4));
+	const isNdvInFocusPanelEnabled = computed(
+		() =>
+			postHogStore.getVariant(NDV_IN_FOCUS_PANEL_EXPERIMENT.name) ===
+			NDV_IN_FOCUS_PANEL_EXPERIMENT.variant,
+	);
+	const maxCanvasZoom = computed(() => (isZoomedViewEnabled.value ? 2 : 4));
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
 	const nodeNameToBeFocused = ref<string | undefined>();
+	const isMapperOpen = ref(false);
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -50,11 +56,15 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function isActive(canvasZoom: number) {
-		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
+		return isZoomedViewEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
 	}
 
 	function setNodeNameToBeFocused(nodeName: string) {
 		nodeNameToBeFocused.value = nodeName;
+	}
+
+	function setMapperOpen(value: boolean) {
+		isMapperOpen.value = value;
 	}
 
 	interface FocusNodeOptions {
@@ -83,8 +93,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			{
 				duration: 200,
 				zoom: maxCanvasZoom.value,
-				// TODO: restore when re-upgrading vue-flow to >= 1.45
-				// interpolate: 'linear',
+				interpolate: 'linear',
 			},
 		);
 	}
@@ -102,19 +111,11 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	function toggleZoomMode(options: ToggleZoomModeOptions) {
 		if (isActive(options.canvasViewport.zoom)) {
 			if (previousViewport.value === undefined) {
-				void options.fitView({
-					duration: 200,
-					// TODO: restore when re-upgrading vue-flow to >= 1.45
-					// interpolate: 'linear',
-				});
+				void options.fitView({ duration: 200, interpolate: 'linear' });
 				return;
 			}
 
-			void options.setViewport(previousViewport.value, {
-				duration: 200,
-				// TODO: restore when re-upgrading vue-flow to >= 1.45
-				// interpolate: 'linear'
-			});
+			void options.setViewport(previousViewport.value, { duration: 200, interpolate: 'linear' });
 			return;
 		}
 
@@ -131,19 +132,17 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			return;
 		}
 
-		void options.zoomTo(maxCanvasZoom.value, {
-			duration: 200,
-			// TODO: restore when re-upgrading vue-flow to >= 1.45
-			// interpolate: 'linear',
-		});
+		void options.zoomTo(maxCanvasZoom.value, { duration: 200, interpolate: 'linear' });
 	}
 
 	return {
-		isEnabled,
+		isZoomedViewEnabled,
+		isNdvInFocusPanelEnabled,
 		maxCanvasZoom,
 		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),
 		nodeNameToBeFocused: computed(() => nodeNameToBeFocused.value),
+		isMapperOpen: computed(() => isMapperOpen.value),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
@@ -151,5 +150,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		toggleZoomMode,
 		focusNode,
 		setNodeNameToBeFocused,
+		setMapperOpen,
 	};
 });

@@ -37,3 +37,10 @@ compiled
 packages/cli/src/modules/my-feature
 .secrets
 packages/testing/**/.cursor/rules/
+.venv
+.ruff_cache
+__pycache__
+packages/cli/THIRD_PARTY_LICENSES.md
+.coverage
+.nyc_output
+packages/cli/src/commands/export/outputs

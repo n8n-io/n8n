@@ -10,6 +10,7 @@ import {
 	NodeConnectionTypes,
 	metricRequiresModelConnection,
 	DEFAULT_EVALUATION_METRIC,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -87,12 +88,22 @@ export class TestRunnerService {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
 
-		if (
-			!triggerNode.credentials ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.documentId) ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.sheetName)
-		) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: triggerNode.name });
+		const { parameters, credentials, name, typeVersion } = triggerNode;
+		const source = parameters?.source
+			? (parameters.source as string)
+			: typeVersion >= 4.7
+				? 'dataTable'
+				: 'googleSheets';
+
+		const isConfigured =
+			source === 'dataTable'
+				? checkNodeParameterNotEmpty(parameters?.dataTableId)
+				: !!credentials &&
+					checkNodeParameterNotEmpty(parameters?.documentId) &&
+					checkNodeParameterNotEmpty(parameters?.sheetName);
+
+		if (!isConfigured) {
+			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: name });
 		}
 
 		if (triggerNode?.disabled) {
@@ -242,7 +253,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -258,7 +268,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -272,7 +281,10 @@ export class TestRunnerService {
 
 		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {
-			this.activeExecutions.stopExecution(executionId);
+			this.activeExecutions.stopExecution(
+				executionId,
+				new ManualExecutionCancelledError(executionId),
+			);
 		});
 
 		// Wait for the execution to finish
@@ -319,7 +331,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			executionData: {
 				startData: {
 					destinationNode: triggerNode.name,
@@ -329,7 +340,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},

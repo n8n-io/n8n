@@ -3,7 +3,7 @@ import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
-import { cleanupAppModals, createAppModals, retry, mockedStore } from '@/__tests__/utils';
+import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { ICredentialsResponse } from '@/Interface';
 import { within } from '@testing-library/vue';
@@ -212,21 +212,13 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 describe('CredentialEdit', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
 	test('shows the save button when credentialId is null', async () => {
 		const { queryByTestId } = renderComponent({
 			props: {
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'new',
 			},
@@ -238,9 +230,6 @@ describe('CredentialEdit', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
 				activeId: '123', // credentialId will be set to this value in edit mode
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'edit',
 			},
@@ -260,9 +249,6 @@ describe('CredentialEdit', () => {
 		const { queryByText } = renderComponent({
 			props: {
 				activeId: '123', // credentialId will be set to this value in edit mode
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'edit',
 			},
@@ -285,9 +271,6 @@ describe('CredentialEdit', () => {
 		const { queryByText } = renderComponent({
 			props: {
 				activeId: '123', // credentialId will be set to this value in edit mode
-				isTesting: false,
-				isSaving: false,
-				hasUnsavedChanges: false,
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'edit',
 			},

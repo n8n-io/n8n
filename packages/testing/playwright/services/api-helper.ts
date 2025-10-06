@@ -9,6 +9,11 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { CredentialApiHelper } from './credential-api-helper';
+import { ProjectApiHelper } from './project-api-helper';
+import { UserApiHelper } from './user-api-helper';
+import { VariablesApiHelper } from './variables-api-helper';
+import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
 	id: string;
@@ -30,10 +35,20 @@ const DB_TAGS = {
 } as const;
 
 export class ApiHelpers {
-	private request: APIRequestContext;
+	request: APIRequestContext;
+	workflows: WorkflowApiHelper;
+	projects: ProjectApiHelper;
+	credentials: CredentialApiHelper;
+	variables: VariablesApiHelper;
+	users: UserApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
+		this.workflows = new WorkflowApiHelper(this);
+		this.projects = new ProjectApiHelper(this);
+		this.credentials = new CredentialApiHelper(this);
+		this.variables = new VariablesApiHelper(this);
+		this.users = new UserApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -124,6 +139,10 @@ export class ApiHelpers {
 		return await this.loginAndSetCookies(credentials);
 	}
 
+	async login(credentials: { email: string; password: string }): Promise<LoginResponseData> {
+		return await this.loginAndSetCookies(credentials);
+	}
+
 	// ===== CONFIGURATION METHODS =====
 
 	async setFeature(feature: string, enabled: boolean): Promise<void> {
@@ -210,6 +229,7 @@ export class ApiHelpers {
 				emailOrLdapLoginId: credentials.email,
 				password: credentials.password,
 			},
+			maxRetries: 3,
 		});
 
 		if (!response.ok()) {
