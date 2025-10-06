@@ -3797,11 +3797,12 @@ describe('useCanvasOperations', () => {
 			});
 
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: true });
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: newParameters,
 			});
@@ -3831,11 +3832,12 @@ describe('useCanvasOperations', () => {
 			});
 
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: false });
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: newParameters,
 			});
@@ -3850,11 +3852,12 @@ describe('useCanvasOperations', () => {
 			const newParameters = { param1: 'value2' };
 
 			workflowsStore.getNodeById.mockReturnValue(undefined);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters);
 
-			expect(workflowsStore.setNodeParameters).not.toHaveBeenCalled();
+			expect(setNodeParameters).not.toHaveBeenCalled();
 		});
 
 		it('should handle bulk tracking when replacing parameters for multiple nodes', () => {
@@ -3882,6 +3885,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			workflowsStore.getNodeById.mockReturnValueOnce(node1).mockReturnValueOnce(node2);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId1, currentParameters1, newParameters1, {
@@ -3895,7 +3899,7 @@ describe('useCanvasOperations', () => {
 
 			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
 			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledTimes(2);
+			expect(setNodeParameters).toHaveBeenCalledTimes(2);
 		});
 
 		it('should revert replaced node parameters', async () => {
@@ -3913,11 +3917,12 @@ describe('useCanvasOperations', () => {
 			});
 
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { revertReplaceNodeParameters } = useCanvasOperations();
 			await revertReplaceNodeParameters(nodeId, currentParameters, newParameters);
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: currentParameters,
 			});

@@ -30,6 +30,7 @@ import { useUIStore } from '@/stores/ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
@@ -681,7 +682,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function updateParameters(nodeName: string, parameters: INodeParameters) {
+	function updateParameters(
+		workflowState: WorkflowState,
+		nodeName: string,
+		parameters: INodeParameters,
+	) {
 		if (ndvStore.activeNodeName === nodeName) {
 			Object.keys(parameters).forEach((key) => {
 				const update: IUpdateInformation = {
@@ -693,7 +698,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				ndvEventBus.emit('updateParameterValue', update);
 			});
 		} else {
-			workflowsStore.setNodeParameters(
+			workflowState.setNodeParameters(
 				{
 					name: nodeName,
 					value: parameters,
@@ -713,7 +718,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, {} as INodeParameters);
 	}
 
-	async function applyCodeDiff(index: number) {
+	async function applyCodeDiff(workflowState: WorkflowState, index: number) {
 		const codeDiffMessage = chatMessages.value[index];
 		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
 			throw new Error('No code diff to apply');
@@ -732,7 +737,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			const cached = suggestions.value[suggestionId];
 			if (cached) {
-				updateParameters(activeNode.name, cached.suggested);
+				updateParameters(workflowState, activeNode.name, cached.suggested);
 			} else {
 				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
 					suggestionId: codeDiffMessage.suggestionId,
@@ -743,7 +748,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
 					suggested,
 				};
-				updateParameters(activeNode.name, suggested);
+				updateParameters(workflowState, activeNode.name, suggested);
 			}
 
 			codeDiffMessage.replaced = true;
@@ -756,7 +761,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		codeDiffMessage.replacing = false;
 	}
 
-	async function undoCodeDiff(index: number) {
+	async function undoCodeDiff(workflowState: WorkflowState, index: number) {
 		const codeDiffMessage = chatMessages.value[index];
 		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
 			throw new Error('No code diff to apply');
@@ -777,7 +782,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			assert(activeNode);
 
 			const suggested = suggestion.previous;
-			updateParameters(activeNode.name, suggested);
+			updateParameters(workflowState, activeNode.name, suggested);
 
 			codeDiffMessage.replaced = false;
 			codeNodeEditorEventBus.emit('codeDiffApplied');

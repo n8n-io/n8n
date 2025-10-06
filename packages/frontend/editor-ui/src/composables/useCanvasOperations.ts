@@ -281,7 +281,7 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
-		workflowsStore.setNodeParameters({
+		workflowState.setNodeParameters({
 			name: node.name,
 			value: newParameters,
 		});
@@ -573,7 +573,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		workflowsStore.setNodeParameters(
+		workflowState.setNodeParameters(
 			{
 				name: node.name,
 				value: parameters as NodeParameterValueType,

@@ -1286,6 +1286,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function addNode(nodeData: INodeUi): void {
+		// @TODO(ckolb): Reminder to refactor useActions:setAddedNodeActionParameters
+		// which listens to this function being called, when this is moved to workflowState soon
+
 		if (!nodeData.hasOwnProperty('name')) {
 			// All nodes have to have a name
 			// TODO: Check if there is an error or whatever that is supposed to be returned
@@ -1365,57 +1368,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (changed && !excludeKeys.includes(updateInformation.key)) {
 			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
-		}
-	}
-
-	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex === -1) {
-			throw new Error(
-				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
-			);
-		}
-
-		const node = workflow.value.nodes[nodeIndex];
-
-		const newParameters =
-			!!append && isObject(updateInformation.value)
-				? { ...node.parameters, ...updateInformation.value }
-				: updateInformation.value;
-
-		const changed = updateNodeAtIndex(nodeIndex, {
-			parameters: newParameters as INodeParameters,
-		});
-
-		if (changed) {
-			uiStore.stateIsDirty = true;
-			nodeMetadata.value[node.name].parametersLastUpdatedAt = Date.now();
-		}
-	}
-
-	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
-		const latestNode = findLast(
-			workflow.value.nodes,
-			(node) => node.type === updateInformation.key,
-		) as INodeUi;
-		const nodeType = useNodeTypesStore().getNodeType(latestNode.type);
-		if (!nodeType) return;
-
-		const nodeParams = NodeHelpers.getNodeParameters(
-			nodeType.properties,
-			updateInformation.value as INodeParameters,
-			true,
-			false,
-			latestNode,
-			nodeType,
-		);
-
-		if (latestNode) {
-			setNodeParameters({ value: nodeParams, name: latestNode.name }, true);
 		}
 	}
 
@@ -1964,8 +1916,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNode,
 		updateNodeProperties,
 		setNodeValue,
-		setNodeParameters,
-		setLastNodeParameters,
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,
