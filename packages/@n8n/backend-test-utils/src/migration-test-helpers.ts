@@ -1,21 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
-import { type DatabaseType, DbConnection, wrapMigration, type Migration } from '@n8n/db';
+import { type DatabaseType, DbConnection, type Migration } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type QueryRunner } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-async function reinitializeDataSource(): Promise<void> {
+async function reinitializeDataConnection(): Promise<void> {
 	await Container.get(DbConnection).close();
 	await Container.get(DbConnection).init();
-}
-
-/**
- * Wrap migrations.
- */
-function wrapMigrations(migrations: Migration[]): void {
-	for (const migration of migrations) {
-		wrapMigration(migration);
-	}
 }
 
 /**
@@ -87,17 +78,14 @@ export async function initDbUpToMigration(beforeMigrationName: string): Promise<
 
 	try {
 		// Need to reinitialize the data source to rebuild the migrations
-		await reinitializeDataSource();
-		// Wrap and run migrations
-		wrapMigrations(migrationsToRun);
-		await dataSource.runMigrations({
-			transaction: 'each',
-		});
+		await reinitializeDataConnection();
+		// Run migrations
+		await Container.get(DbConnection).migrate();
 	} finally {
 		// Restore full migrations array
 		(dataSource.options as { migrations: Migration[] }).migrations = allMigrations;
 		// Need to reinitialize the data source to rebuild the migrations
-		await reinitializeDataSource();
+		await reinitializeDataConnection();
 	}
 }
 
@@ -123,15 +111,13 @@ export async function runSingleMigration(migrationName: string): Promise<void> {
 
 	try {
 		// Need to reinitialize the data source to rebuild the migrations
-		await reinitializeDataSource();
-		wrapMigrations([migration]);
-		await dataSource.runMigrations({
-			transaction: 'each',
-		});
+		await reinitializeDataConnection();
+		// Run migrations
+		await Container.get(DbConnection).migrate();
 	} finally {
 		// Restore full migrations array
 		(dataSource.options as { migrations: Migration[] }).migrations = allMigrations;
 		// Need to reinitialize the data source to rebuild the migrations
-		await reinitializeDataSource();
+		await reinitializeDataConnection();
 	}
 }
