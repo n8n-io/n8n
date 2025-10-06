@@ -2,8 +2,8 @@
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
-import RunsSection from '@/components/Evaluations.ee/ListRuns/RunsSection.vue';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import RunsSection from '../components/ListRuns/RunsSection.vue';
+import { useEvaluationStore } from '../evaluation.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/composables/useToast';
 

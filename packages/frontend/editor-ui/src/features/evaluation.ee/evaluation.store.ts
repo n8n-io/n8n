@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import * as evaluationsApi from '@/api/evaluation.ee';
-import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
+import * as evaluationsApi from './evaluation.api';
+import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';

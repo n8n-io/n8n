@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T">
 import type { BaseTextKey } from '@n8n/i18n';
-import type { TestTableColumn } from '@/components/Evaluations.ee/shared/TestTableBase.vue';
+import type { TestTableColumn } from './TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import type { BadgeTheme } from '@n8n/design-system';

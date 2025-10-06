@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee'; // Adjust the import path as necessary
+import { useEvaluationStore } from './evaluation.store'; // Adjust the import path as necessary
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
-import type { TestRunRecord } from '@/api/evaluation.ee';
+import type { TestRunRecord } from './evaluation.api';
 import { mockedStore } from '@/__tests__/utils';
 
 const { getTestRuns, getTestRun, startTestRun, deleteTestRun } = vi.hoisted(() => ({
@@ -12,7 +12,7 @@ const { getTestRuns, getTestRun, startTestRun, deleteTestRun } = vi.hoisted(() =
 	deleteTestRun: vi.fn(),
 }));
 
-vi.mock('@/api/evaluation.ee', () => ({
+vi.mock('./evaluation.api', () => ({
 	getTestRuns,
 	getTestRun,
 	startTestRun,

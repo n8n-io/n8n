@@ -1,6 +1,6 @@
 import type { JsonValue } from 'n8n-workflow';
-import type { TestCaseExecutionRecord, TestRunRecord } from '../../api/evaluation.ee';
-import type { Column, Header } from './TestRunDetailView.vue';
+import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
+import type { Column, Header } from './views/TestRunDetailView.vue';
 
 export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
 const LONG_TABLE_CELL_MIN_WIDTH = 250;

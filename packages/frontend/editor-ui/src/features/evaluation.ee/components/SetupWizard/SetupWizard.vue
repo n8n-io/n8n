@@ -2,7 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '../../evaluation.store';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
