@@ -20,6 +20,7 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 @Service()
 export class ImportService {
@@ -50,6 +51,7 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 	) {}
 
 	async initRecords() {
@@ -79,6 +81,11 @@ export class ImportService {
 					workflow.active = false;
 
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
+				}
+
+				// Remove workflow from ActiveWorkflowManager to prevent orphaned trigger listeners
+				if (workflow.id) {
+					await this.activeWorkflowManager.remove(workflow.id);
 				}
 
 				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
