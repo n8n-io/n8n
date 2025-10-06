@@ -16,7 +16,7 @@ export const ChatModule: FrontendModuleDescription = {
 	routes: [
 		{
 			name: CHAT_VIEW,
-			path: '/chat',
+			path: '/ask',
 			components: {
 				default: ChatView,
 				sidebar: MainSidebar,
