@@ -203,9 +203,10 @@ export class SplitInBatchesV4 implements INodeType {
 		nodeContext.noItemsLeft = nodeContext.items.length === 0;
 		if (returnItems.length === 0) {
 			nodeContext.done = true;
-			// Normal completion - always reset counter to prevent memory leaks
+			const result: [INodeExecutionData[], INodeExecutionData[]] = [nodeContext.processedItems, []];
+			// Normal completion - reset counter AFTER preparing result but before return
 			SplitInBatchesV4.resetExecutionCount(this);
-			return [nodeContext.processedItems, []];
+			return result;
 		}
 
 		nodeContext.done = false;
@@ -279,9 +280,9 @@ export class SplitInBatchesV4 implements INodeType {
 	 *
 	 * This method is provided for external cleanup integration (e.g., from workflow engine hooks)
 	 * but is not strictly required since the node handles cleanup in three ways:
-	 * 1. On normal completion (line 238)
-	 * 2. On infinite loop detection error (line 148)
-	 * 3. On explicit reset option (line 154)
+	 * 1. On normal completion (line 208 - resetExecutionCount call)
+	 * 2. On infinite loop detection error (line 252 - before throwing error)
+	 * 3. On explicit reset option (when user manually resets the node)
 	 *
 	 * Use this method from workflow lifecycle hooks as an additional safety measure
 	 * to clean up any orphaned counters from abnormal terminations.

@@ -1429,7 +1429,7 @@ export class WorkflowExecute {
 
 			for (const c of doneOutput) {
 				if (c.node === node.name) {
-					throw new OperationalError(
+					throw new UserError(
 						'Stopped execution: Loop Over Items (Split in Batches) node has its "done" output connected back to its own input, which causes an infinite loop. Disconnect the "done" output from this node\'s input.',
 					);
 				}
