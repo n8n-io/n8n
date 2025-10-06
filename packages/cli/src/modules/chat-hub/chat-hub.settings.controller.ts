@@ -20,7 +20,7 @@ export class ChatHubSettingsController {
 	}
 
 	@Patch('/settings')
-	@GlobalScope('chat:manage')
+	@GlobalScope('chatHub:manage')
 	async updateSettings(
 		_req: AuthenticatedRequest,
 		_res: Response,

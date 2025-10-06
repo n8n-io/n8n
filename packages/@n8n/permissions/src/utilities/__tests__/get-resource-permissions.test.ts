@@ -38,7 +38,7 @@ describe('permissions', () => {
 			mcp: {},
 			mcpApiKey: {},
 			role: {},
-			chat: {},
+			chatHub: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -148,7 +148,7 @@ describe('permissions', () => {
 			execution: {},
 			workflowTags: {},
 			role: {},
-			chat: {},
+			chatHub: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

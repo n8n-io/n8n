@@ -13,7 +13,7 @@ const WARNING_MESSAGE =
 @BackendModule({ name: 'chat-hub' })
 export class ChatHubModule implements ModuleInterface {
 	async init() {
-		const logger = Container.get(Logger).scoped('chat');
+		const logger = Container.get(Logger).scoped('chat-hub');
 		logger.warn(`${YELLOW}${WARNING_MESSAGE}${CLEAR}`);
 
 		await import('./chat-hub.controller');
