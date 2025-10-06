@@ -558,14 +558,8 @@ export class Github implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-						operation: ['invite'],
-						resource: ['notification'],
-					},
-				},
-				displayOptions: {
-					hide: {
-						resource: ['user'],
-						operation: ['invite', 'getIssues'],
+                        operation: ['invite', 'getIssues'],
+                        resource: ['notification', 'user'],
 					},
 				},
 			},
@@ -2251,8 +2245,6 @@ export class Github implements INodeType {
 					},
 				],
 			},
-		],
-	};
 
 			// ----------------------------------
 			//    notification:getNotifications
