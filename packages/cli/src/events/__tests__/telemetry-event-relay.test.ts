@@ -28,7 +28,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
-import { InstalledPackagesRepository } from '@/modules/community-packages/installed-packages.repository';
+import type { InstalledPackagesRepository } from '@/modules/community-packages/installed-packages.repository';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
