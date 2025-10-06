@@ -13,7 +13,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			{
 				id: 'splitInBatches',
 				name: 'Split In Batches',
-				type: 'splitInBatches',
+				type: 'n8n-nodes-base.splitInBatches',
 				typeVersion: 4,
 				position: [0, 0],
 				parameters: {},
@@ -54,7 +54,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			{
 				id: 'splitInBatches',
 				name: 'Split In Batches',
-				type: 'splitInBatches',
+				type: 'n8n-nodes-base.splitInBatches',
 				typeVersion: 4,
 				position: [0, 0],
 				parameters: {},
@@ -94,7 +94,7 @@ describe('WorkflowExecute - assertNoDefiniteInfiniteLoops', () => {
 			{
 				id: 'splitInBatches',
 				name: 'Split In Batches',
-				type: 'splitInBatches',
+				type: 'n8n-nodes-base.splitInBatches',
 				typeVersion: 4,
 				position: [0, 0],
 				parameters: {},

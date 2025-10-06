@@ -68,7 +68,7 @@ export class SplitInBatchesV4 implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'⚠️ DANGER: Disabling protection can cause runaway executions that freeze or crash n8n. Only use for advanced debugging. NOT recommended for production. Requires N8N_ALLOW_DISABLE_LOOP_PROTECTION=true to take effect.',
+							'Whether to disable loop protection. ⚠️ DANGER: Disabling protection can cause runaway executions that freeze or crash n8n. Only use for advanced debugging. NOT recommended for production. Requires N8N_ALLOW_DISABLE_LOOP_PROTECTION=true to take effect.',
 					},
 					{
 						displayName: 'Limit Factor',
