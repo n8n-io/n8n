@@ -1,14 +1,14 @@
 import {
-	AddDataStoreRowsDto,
-	AddDataStoreColumnDto,
-	CreateDataStoreDto,
+	AddDataTableRowsDto,
+	AddDataTableColumnDto,
+	CreateDataTableDto,
 	DeleteDataTableRowsDto,
-	ListDataStoreContentQueryDto,
-	ListDataStoreQueryDto,
-	MoveDataStoreColumnDto,
-	UpdateDataStoreDto,
+	ListDataTableContentQueryDto,
+	ListDataTableQueryDto,
+	MoveDataTableColumnDto,
+	UpdateDataTableDto,
 	UpdateDataTableRowDto,
-	UpsertDataStoreRowDto,
+	UpsertDataTableRowDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -22,38 +22,38 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { DataStoreRowReturn } from 'n8n-workflow';
+import { DataTableRowReturn } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { DataStoreService } from './data-store.service';
-import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
-import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
-import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
-import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
-import { DataStoreSystemColumnNameConflictError } from './errors/data-store-system-column-name-conflict.error';
-import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { DataTableService } from './data-table.service';
+import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
+import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
+import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
+import { DataTableNotFoundError } from './errors/data-table-not-found.error';
+import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
+import { DataTableValidationError } from './errors/data-table-validation.error';
 
 @RestController('/projects/:projectId/data-tables')
-export class DataStoreController {
-	constructor(private readonly dataStoreService: DataStoreService) {}
+export class DataTableController {
+	constructor(private readonly dataStoreService: DataTableService) {}
 
 	@Post('/')
 	@ProjectScope('dataStore:create')
-	async createDataStore(
+	async createDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Body dto: CreateDataStoreDto,
+		@Body dto: CreateDataTableDto,
 	) {
 		try {
-			return await this.dataStoreService.createDataStore(req.params.projectId, dto);
+			return await this.dataStoreService.createDataTable(req.params.projectId, dto);
 		} catch (e: unknown) {
 			if (!(e instanceof Error)) {
 				throw e;
-			} else if (e instanceof DataStoreNameConflictError) {
+			} else if (e instanceof DataTableNameConflictError) {
 				throw new ConflictError(e.message);
 			} else {
 				throw new InternalServerError(e.message, e);
@@ -63,10 +63,10 @@ export class DataStoreController {
 
 	@Get('/')
 	@ProjectScope('dataStore:listProject')
-	async listProjectDataStores(
+	async listProjectDataTables(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Query payload: ListDataStoreQueryDto,
+		@Query payload: ListDataTableQueryDto,
 	) {
 		const providedFilter = payload?.filter ?? {};
 		return await this.dataStoreService.getManyAndCount({
@@ -75,20 +75,20 @@ export class DataStoreController {
 		});
 	}
 
-	@Patch('/:dataStoreId')
+	@Patch('/:dataTableId')
 	@ProjectScope('dataStore:update')
-	async updateDataStore(
+	async updateDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpdateDataStoreDto,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: UpdateDataTableDto,
 	) {
 		try {
-			return await this.dataStoreService.updateDataStore(dataStoreId, req.params.projectId, dto);
+			return await this.dataStoreService.updateDataTable(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreNameConflictError) {
+			} else if (e instanceof DataTableNameConflictError) {
 				throw new ConflictError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -98,17 +98,17 @@ export class DataStoreController {
 		}
 	}
 
-	@Delete('/:dataStoreId')
+	@Delete('/:dataTableId')
 	@ProjectScope('dataStore:delete')
-	async deleteDataStore(
+	async deleteDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
+		@Param('dataTableId') dataTableId: string,
 	) {
 		try {
-			return await this.dataStoreService.deleteDataStore(dataStoreId, req.params.projectId);
+			return await this.dataStoreService.deleteDataTable(dataTableId, req.params.projectId);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -118,17 +118,17 @@ export class DataStoreController {
 		}
 	}
 
-	@Get('/:dataStoreId/columns')
+	@Get('/:dataTableId/columns')
 	@ProjectScope('dataStore:read')
 	async getColumns(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
+		@Param('dataTableId') dataTableId: string,
 	) {
 		try {
-			return await this.dataStoreService.getColumns(dataStoreId, req.params.projectId);
+			return await this.dataStoreService.getColumns(dataTableId, req.params.projectId);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -138,22 +138,22 @@ export class DataStoreController {
 		}
 	}
 
-	@Post('/:dataStoreId/columns')
+	@Post('/:dataTableId/columns')
 	@ProjectScope('dataStore:update')
 	async addColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: AddDataStoreColumnDto,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: AddDataTableColumnDto,
 	) {
 		try {
-			return await this.dataStoreService.addColumn(dataStoreId, req.params.projectId, dto);
+			return await this.dataStoreService.addColumn(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
 			} else if (
-				e instanceof DataStoreColumnNameConflictError ||
-				e instanceof DataStoreSystemColumnNameConflictError
+				e instanceof DataTableColumnNameConflictError ||
+				e instanceof DataTableSystemColumnNameConflictError
 			) {
 				throw new ConflictError(e.message);
 			} else if (e instanceof Error) {
@@ -164,18 +164,18 @@ export class DataStoreController {
 		}
 	}
 
-	@Delete('/:dataStoreId/columns/:columnId')
+	@Delete('/:dataTableId/columns/:columnId')
 	@ProjectScope('dataStore:update')
 	async deleteColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
+		@Param('dataTableId') dataTableId: string,
 		@Param('columnId') columnId: string,
 	) {
 		try {
-			return await this.dataStoreService.deleteColumn(dataStoreId, req.params.projectId, columnId);
+			return await this.dataStoreService.deleteColumn(dataTableId, req.params.projectId, columnId);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError || e instanceof DataStoreColumnNotFoundError) {
+			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
 				throw new NotFoundError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -185,26 +185,26 @@ export class DataStoreController {
 		}
 	}
 
-	@Patch('/:dataStoreId/columns/:columnId/move')
+	@Patch('/:dataTableId/columns/:columnId/move')
 	@ProjectScope('dataStore:update')
 	async moveColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
+		@Param('dataTableId') dataTableId: string,
 		@Param('columnId') columnId: string,
-		@Body dto: MoveDataStoreColumnDto,
+		@Body dto: MoveDataTableColumnDto,
 	) {
 		try {
 			return await this.dataStoreService.moveColumn(
-				dataStoreId,
+				dataTableId,
 				req.params.projectId,
 				columnId,
 				dto,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError || e instanceof DataStoreColumnNotFoundError) {
+			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreValidationError) {
+			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -214,22 +214,22 @@ export class DataStoreController {
 		}
 	}
 
-	@Get('/:dataStoreId/rows')
+	@Get('/:dataTableId/rows')
 	@ProjectScope('dataStore:readRow')
-	async getDataStoreRows(
+	async getDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Query dto: ListDataStoreContentQueryDto,
+		@Param('dataTableId') dataTableId: string,
+		@Query dto: ListDataTableContentQueryDto,
 	) {
 		try {
 			return await this.dataStoreService.getManyRowsAndCount(
-				dataStoreId,
+				dataTableId,
 				req.params.projectId,
 				dto,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -242,31 +242,31 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
-	async appendDataStoreRows<T extends DataStoreRowReturn | undefined>(
+	async appendDataTableRows<T extends DataTableRowReturn | undefined>(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		dataStoreId: string,
-		dto: AddDataStoreRowsDto & { returnType?: T },
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
-	@Post('/:dataStoreId/insert')
+		dataTableId: string,
+		dto: AddDataTableRowsDto & { returnType?: T },
+	): Promise<Array<T extends true ? DataTableRowReturn : Pick<DataTableRowReturn, 'id'>>>;
+	@Post('/:dataTableId/insert')
 	@ProjectScope('dataStore:writeRow')
-	async appendDataStoreRows(
+	async appendDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: AddDataStoreRowsDto,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: AddDataTableRowsDto,
 	) {
 		try {
 			return await this.dataStoreService.insertRows(
-				dataStoreId,
+				dataTableId,
 				req.params.projectId,
 				dto.data,
 				dto.returnType,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreValidationError) {
+			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -276,20 +276,20 @@ export class DataStoreController {
 		}
 	}
 
-	@Post('/:dataStoreId/upsert')
+	@Post('/:dataTableId/upsert')
 	@ProjectScope('dataStore:writeRow')
-	async upsertDataStoreRow(
+	async upsertDataTableRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpsertDataStoreRowDto,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: UpsertDataTableRowDto,
 	) {
 		try {
 			// because of strict overloads, we need separate paths
 			const dryRun = dto.dryRun;
 			if (dryRun) {
 				return await this.dataStoreService.upsertRow(
-					dataStoreId,
+					dataTableId,
 					req.params.projectId,
 					dto,
 					true, // we want to always return data for dry runs
@@ -300,7 +300,7 @@ export class DataStoreController {
 			const returnData = dto.returnData;
 			if (returnData) {
 				return await this.dataStoreService.upsertRow(
-					dataStoreId,
+					dataTableId,
 					req.params.projectId,
 					dto,
 					returnData,
@@ -309,16 +309,16 @@ export class DataStoreController {
 			}
 
 			return await this.dataStoreService.upsertRow(
-				dataStoreId,
+				dataTableId,
 				req.params.projectId,
 				dto,
 				returnData,
 				dryRun,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreValidationError) {
+			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -328,12 +328,12 @@ export class DataStoreController {
 		}
 	}
 
-	@Patch('/:dataStoreId/rows')
+	@Patch('/:dataTableId/rows')
 	@ProjectScope('dataStore:writeRow')
-	async updateDataStoreRows(
+	async updateDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
+		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpdateDataTableRowDto,
 	) {
 		try {
@@ -341,7 +341,7 @@ export class DataStoreController {
 			const dryRun = dto.dryRun;
 			if (dryRun) {
 				return await this.dataStoreService.updateRows(
-					dataStoreId,
+					dataTableId,
 					req.params.projectId,
 					dto,
 					true, // we want to always return data for dry runs
@@ -352,7 +352,7 @@ export class DataStoreController {
 			const returnData = dto.returnData;
 			if (returnData) {
 				return await this.dataStoreService.updateRows(
-					dataStoreId,
+					dataTableId,
 					req.params.projectId,
 					dto,
 					returnData,
@@ -361,16 +361,16 @@ export class DataStoreController {
 			}
 
 			return await this.dataStoreService.updateRows(
-				dataStoreId,
+				dataTableId,
 				req.params.projectId,
 				dto,
 				returnData,
 				dryRun,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreValidationError) {
+			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -396,9 +396,9 @@ export class DataStoreController {
 				dto.returnData,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataStoreNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof DataStoreValidationError) {
+			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);

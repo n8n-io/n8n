@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
-import { DataStoreSizeValidator } from '../data-store-size-validator.service';
+import { DataTableSizeValidator } from '../data-table-size-validator.service';
 
-describe('DataStoreSizeValidator', () => {
-	let validator: DataStoreSizeValidator;
+describe('DataTableSizeValidator', () => {
+	let validator: DataTableSizeValidator;
 	let fetchSizeFn: jest.Mock;
 	const globalConfig = mockInstance(GlobalConfig, {
 		dataTable: {
@@ -14,7 +14,7 @@ describe('DataStoreSizeValidator', () => {
 		},
 	});
 	beforeEach(() => {
-		validator = new DataStoreSizeValidator(globalConfig);
+		validator = new DataTableSizeValidator(globalConfig);
 		fetchSizeFn = jest.fn();
 	});
 

@@ -190,7 +190,7 @@ export class EvaluationTrigger implements INodeType {
 				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
 				: MAX_ROWS;
 
-			if (this.helpers.getDataStoreProxy === undefined) {
+			if (this.helpers.getDataTableProxy === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
 					'Attempted to use Data table node but the module is disabled',
@@ -205,7 +205,7 @@ export class EvaluationTrigger implements INodeType {
 			const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
 				extractValue: true,
 			}) as string;
-			const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
+			const dataTableProxy = await this.helpers.getDataTableProxy(dataTableId);
 
 			const filter = await getDataTableFilter(this, 0);
 
@@ -318,7 +318,7 @@ export class EvaluationTrigger implements INodeType {
 							? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
 							: MAX_ROWS;
 
-						if (this.helpers.getDataStoreProxy === undefined) {
+						if (this.helpers.getDataTableProxy === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Attempted to use Data table node but the module is disabled',
@@ -328,7 +328,7 @@ export class EvaluationTrigger implements INodeType {
 						const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
 							extractValue: true,
 						}) as string;
-						const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
+						const dataTableProxy = await this.helpers.getDataTableProxy(dataTableId);
 
 						const filter = await getDataTableFilter(this, 0);
 						const { data } = await dataTableProxy.getManyRowsAndCount({

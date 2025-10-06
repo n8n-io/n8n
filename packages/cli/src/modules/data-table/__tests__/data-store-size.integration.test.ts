@@ -5,10 +5,10 @@ import { Container } from '@n8n/di';
 
 import { createUser } from '@test-integration/db/users';
 
-import { DataStoreSizeValidator } from '../data-store-size-validator.service';
-import { DataStoreRepository } from '../data-store.repository';
-import { DataStoreService } from '../data-store.service';
-import { DataStoreValidationError } from '../errors/data-store-validation.error';
+import { DataTableSizeValidator } from '../data-table-size-validator.service';
+import { DataTableRepository } from '../data-table.repository';
+import { DataTableService } from '../data-table.service';
+import { DataTableValidationError } from '../errors/data-table-validation.error';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
@@ -16,11 +16,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	const dataStoreService = Container.get(DataStoreService);
-	await dataStoreService.deleteDataStoreAll();
+	const dataStoreService = Container.get(DataTableService);
+	await dataStoreService.deleteDataTableAll();
 	await testDb.truncate(['DataTable', 'DataTableColumn']);
 
-	const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+	const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
 	dataStoreSizeValidator.reset();
 });
 
@@ -29,12 +29,12 @@ afterAll(async () => {
 });
 
 describe('Data Store Size Tests', () => {
-	let dataStoreService: DataStoreService;
-	let dataStoreRepository: DataStoreRepository;
+	let dataStoreService: DataTableService;
+	let dataStoreRepository: DataTableRepository;
 
 	beforeAll(() => {
-		dataStoreService = Container.get(DataStoreService);
-		dataStoreRepository = Container.get(DataStoreRepository);
+		dataStoreService = Container.get(DataTableService);
+		dataStoreRepository = Container.get(DataTableRepository);
 	});
 
 	let project1: Project;
@@ -46,12 +46,12 @@ describe('Data Store Size Tests', () => {
 	describe('size validation', () => {
 		it('should prevent insertRows when size limit exceeded', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
 			dataStoreSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+			const { id: dataStoreId } = await dataStoreService.createDataTable(project1.id, {
 				name: 'dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -63,7 +63,7 @@ describe('Data Store Size Tests', () => {
 			// ACT & ASSERT
 			await expect(
 				dataStoreService.insertRows(dataStoreId, project1.id, [{ data: 'test' }]),
-			).rejects.toThrow(DataStoreValidationError);
+			).rejects.toThrow(DataTableValidationError);
 
 			expect(mockFindDataTablesSize).toHaveBeenCalled();
 			mockFindDataTablesSize.mockRestore();
@@ -71,12 +71,12 @@ describe('Data Store Size Tests', () => {
 
 		it('should prevent updateRows when size limit exceeded', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
 			dataStoreSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+			const { id: dataStoreId } = await dataStoreService.createDataTable(project1.id, {
 				name: 'dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -95,7 +95,7 @@ describe('Data Store Size Tests', () => {
 					},
 					data: { data: 'updated' },
 				}),
-			).rejects.toThrow(DataStoreValidationError);
+			).rejects.toThrow(DataTableValidationError);
 
 			expect(mockFindDataTablesSize).toHaveBeenCalled();
 			mockFindDataTablesSize.mockRestore();
@@ -106,7 +106,7 @@ describe('Data Store Size Tests', () => {
 
 			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+			const { id: dataStoreId } = await dataStoreService.createDataTable(project1.id, {
 				name: 'dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -124,7 +124,7 @@ describe('Data Store Size Tests', () => {
 					},
 					data: { data: 'new' },
 				}),
-			).rejects.toThrow(DataStoreValidationError);
+			).rejects.toThrow(DataTableValidationError);
 
 			expect(mockFindDataTablesSize).toHaveBeenCalled();
 			mockFindDataTablesSize.mockRestore();
@@ -150,12 +150,12 @@ describe('Data Store Size Tests', () => {
 
 		it('should return all data tables for admin user', async () => {
 			// ARRANGE
-			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
+			const dataStore1 = await dataStoreService.createDataTable(project1.id, {
 				name: 'project1-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const dataStore2 = await dataStoreService.createDataStore(project2.id, {
+			const dataStore2 = await dataStoreService.createDataTable(project2.id, {
 				name: 'project2-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -201,12 +201,12 @@ describe('Data Store Size Tests', () => {
 			// ARRANGE
 			await linkUserToProject(regularUser, project1, 'project:viewer');
 
-			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
+			const dataStore1 = await dataStoreService.createDataTable(project1.id, {
 				name: 'accessible-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const dataStore2 = await dataStoreService.createDataStore(project2.id, {
+			const dataStore2 = await dataStoreService.createDataTable(project2.id, {
 				name: 'inaccessible-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -233,12 +233,12 @@ describe('Data Store Size Tests', () => {
 
 		it('should return empty dataTables but full totalBytes when user has no project access', async () => {
 			// ARRANGE
-			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
+			const dataStore1 = await dataStoreService.createDataTable(project1.id, {
 				name: 'inaccessible-dataStore1',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const dataStore2 = await dataStoreService.createDataStore(project2.id, {
+			const dataStore2 = await dataStoreService.createDataTable(project2.id, {
 				name: 'inaccessible-dataStore2',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -271,8 +271,8 @@ describe('Data Store Size Tests', () => {
 
 		it('should handle data tables with no rows', async () => {
 			// ARRANGE
-			const dataStore = await dataStoreService.createDataStore(project1.id, {
-				name: 'emptyDataStore',
+			const dataStore = await dataStoreService.createDataTable(project1.id, {
+				name: 'emptyDataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
@@ -285,7 +285,7 @@ describe('Data Store Size Tests', () => {
 			expect(result.dataTables).toBeDefined();
 			expect(result.dataTables[dataStore.id]).toBeDefined();
 			expect(result.dataTables[dataStore.id].sizeBytes).toBeGreaterThanOrEqual(0);
-			expect(result.dataTables[dataStore.id].name).toBe('emptyDataStore');
+			expect(result.dataTables[dataStore.id].name).toBe('emptyDataTable');
 		});
 	});
 
@@ -303,7 +303,7 @@ describe('Data Store Size Tests', () => {
 
 		it('should cache data globally and filter based on user permissions', async () => {
 			// ARRANGE
-			const dataStore = await dataStoreService.createDataStore(project1.id, {
+			const dataStore = await dataStoreService.createDataTable(project1.id, {
 				name: 'test-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -332,8 +332,8 @@ describe('Data Store Size Tests', () => {
 
 		it('should use global cache for both data fetching and size validation', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
-			const dataStore = await dataStoreService.createDataStore(project1.id, {
+			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
+			const dataStore = await dataStoreService.createDataTable(project1.id, {
 				name: 'test-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
@@ -366,8 +366,8 @@ describe('Data Store Size Tests', () => {
 
 		it('should invalidate cache on data modifications', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
-			const dataStore = await dataStoreService.createDataStore(project1.id, {
+			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
+			const dataStore = await dataStoreService.createDataTable(project1.id, {
 				name: 'test-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});

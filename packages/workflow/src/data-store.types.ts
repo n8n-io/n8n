@@ -1,32 +1,32 @@
-export type DataStoreColumnType = 'string' | 'number' | 'boolean' | 'date';
+export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
 
-export type DataStoreColumn = {
+export type DataTableColumn = {
 	id: string;
 	name: string;
-	type: DataStoreColumnType;
+	type: DataTableColumnType;
 	index: number;
 	dataTableId: string;
 };
 
-export type DataStore = {
+export type DataTable = {
 	id: string;
 	name: string;
-	columns: DataStoreColumn[];
+	columns: DataTableColumn[];
 	createdAt: Date;
 	updatedAt: Date;
 	projectId: string;
 };
 
-export type CreateDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
-	Partial<Pick<DataStoreColumn, 'index'>>;
+export type CreateDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> &
+	Partial<Pick<DataTableColumn, 'index'>>;
 
-export type CreateDataStoreOptions = Pick<DataStore, 'name'> & {
-	columns: CreateDataStoreColumnOptions[];
+export type CreateDataTableOptions = Pick<DataTable, 'name'> & {
+	columns: CreateDataTableColumnOptions[];
 };
 
-export type UpdateDataStoreOptions = { name: string };
+export type UpdateDataTableOptions = { name: string };
 
-export type ListDataStoreOptions = {
+export type ListDataTableOptions = {
 	filter?: Record<string, string | string[]>;
 	sortBy?:
 		| 'name:asc'
@@ -46,26 +46,26 @@ export type DataTableFilter = {
 	filters: Array<{
 		columnName: string;
 		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
-		value: DataStoreColumnJsType;
+		value: DataTableColumnJsType;
 	}>;
 };
 
-export type ListDataStoreRowsOptions = {
+export type ListDataTableRowsOptions = {
 	filter?: DataTableFilter;
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
 };
 
-export type UpdateDataStoreRowOptions = {
+export type UpdateDataTableRowOptions = {
 	filter: DataTableFilter;
-	data: DataStoreRow;
+	data: DataTableRow;
 	dryRun?: boolean;
 };
 
-export type UpsertDataStoreRowOptions = {
+export type UpsertDataTableRowOptions = {
 	filter: DataTableFilter;
-	data: DataStoreRow;
+	data: DataTableRow;
 	dryRun?: boolean;
 };
 
@@ -74,16 +74,16 @@ export type DeleteDataTableRowsOptions = {
 	dryRun?: boolean;
 };
 
-export type MoveDataStoreColumnOptions = {
+export type MoveDataTableColumnOptions = {
 	targetIndex: number;
 };
 
-export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
-	Partial<Pick<DataStoreColumn, 'index'>>;
+export type AddDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> &
+	Partial<Pick<DataTableColumn, 'index'>>;
 
-export type DataStoreColumnJsType = string | number | boolean | Date | null;
+export type DataTableColumnJsType = string | number | boolean | Date | null;
 
-export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataStoreColumnType> = {
+export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataTableColumnType> = {
 	id: 'number',
 	createdAt: 'date',
 	updatedAt: 'date',
@@ -92,26 +92,26 @@ export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataStoreColumnTy
 export const DATA_TABLE_SYSTEM_COLUMNS = Object.keys(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP);
 export const DATA_TABLE_SYSTEM_TESTING_COLUMN = 'dryRunState';
 
-export type DataStoreRowReturnBase = {
+export type DataTableRowReturnBase = {
 	id: number;
 	createdAt: Date;
 	updatedAt: Date;
 };
-export type DataStoreRow = Record<string, DataStoreColumnJsType>;
-export type DataStoreRows = DataStoreRow[];
-export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
-export type DataStoreRowsReturn = DataStoreRowReturn[];
+export type DataTableRow = Record<string, DataTableColumnJsType>;
+export type DataTableRows = DataTableRow[];
+export type DataTableRowReturn = DataTableRow & DataTableRowReturnBase;
+export type DataTableRowsReturn = DataTableRowReturn[];
 
-export type DataStoreRowReturnWithState = DataStoreRow & {
+export type DataTableRowReturnWithState = DataTableRow & {
 	id: number | null;
 	createdAt: Date | null;
 	updatedAt: Date | null;
 	dryRunState: 'before' | 'after';
 };
 
-export type DataStoreRowUpdatePair = {
-	before: DataStoreRowReturn;
-	after: DataStoreRowReturn;
+export type DataTableRowUpdatePair = {
+	before: DataTableRowReturn;
+	after: DataTableRowReturn;
 };
 
 export type DataTableInsertRowsReturnType = 'all' | 'id' | 'count';
@@ -119,9 +119,9 @@ export type DataTableInsertRowsBulkResult = { success: true; insertedRows: numbe
 export type DataTableInsertRowsResult<
 	T extends DataTableInsertRowsReturnType = DataTableInsertRowsReturnType,
 > = T extends 'all'
-	? DataStoreRowReturn[]
+	? DataTableRowReturn[]
 	: T extends 'id'
-		? Array<Pick<DataStoreRowReturn, 'id'>>
+		? Array<Pick<DataTableRowReturn, 'id'>>
 		: DataTableInsertRowsBulkResult;
 
 export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
@@ -146,45 +146,45 @@ export type DataTablesSizeResult = DataTablesSizeData & {
 };
 
 // APIs for a data store service operating on a specific projectId
-export interface IDataStoreProjectAggregateService {
+export interface IDataTableProjectAggregateService {
 	getProjectId(): string;
 
-	createDataStore(options: CreateDataStoreOptions): Promise<DataStore>;
+	createDataTable(options: CreateDataTableOptions): Promise<DataTable>;
 
-	getManyAndCount(options: ListDataStoreOptions): Promise<{ count: number; data: DataStore[] }>;
+	getManyAndCount(options: ListDataTableOptions): Promise<{ count: number; data: DataTable[] }>;
 
-	deleteDataStoreAll(): Promise<boolean>;
+	deleteDataTableAll(): Promise<boolean>;
 }
-// APIs for a data store service operating on a specific projectId and dataStoreId
-export interface IDataStoreProjectService {
-	updateDataStore(options: UpdateDataStoreOptions): Promise<boolean>;
+// APIs for a data store service operating on a specific projectId and dataTableId
+export interface IDataTableProjectService {
+	updateDataTable(options: UpdateDataTableOptions): Promise<boolean>;
 
-	deleteDataStore(): Promise<boolean>;
+	deleteDataTable(): Promise<boolean>;
 
-	getColumns(): Promise<DataStoreColumn[]>;
+	getColumns(): Promise<DataTableColumn[]>;
 
-	addColumn(options: AddDataStoreColumnOptions): Promise<DataStoreColumn>;
+	addColumn(options: AddDataTableColumnOptions): Promise<DataTableColumn>;
 
-	moveColumn(columnId: string, options: MoveDataStoreColumnOptions): Promise<boolean>;
+	moveColumn(columnId: string, options: MoveDataTableColumnOptions): Promise<boolean>;
 
 	deleteColumn(columnId: string): Promise<boolean>;
 
 	getManyRowsAndCount(
-		dto: Partial<ListDataStoreRowsOptions>,
-	): Promise<{ count: number; data: DataStoreRowsReturn }>;
+		dto: Partial<ListDataTableRowsOptions>,
+	): Promise<{ count: number; data: DataTableRowsReturn }>;
 
 	insertRows<T extends DataTableInsertRowsReturnType>(
-		rows: DataStoreRows,
+		rows: DataTableRows,
 		returnType: T,
 	): Promise<DataTableInsertRowsResult<T>>;
 
 	updateRows(
-		options: UpdateDataStoreRowOptions,
-	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
+		options: UpdateDataTableRowOptions,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
 
 	upsertRow(
-		options: UpsertDataStoreRowOptions,
-	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
+		options: UpsertDataTableRowOptions,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
 
-	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataStoreRowReturn[]>;
+	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]>;
 }

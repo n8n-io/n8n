@@ -1,5 +1,5 @@
 import type {
-	DataStoreProxyFunctions,
+	DataTableProxyFunctions,
 	INode,
 	Workflow,
 	IWorkflowExecuteAdditionalData,
@@ -9,21 +9,21 @@ export function getDataStoreHelperFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	workflow: Workflow,
 	node: INode,
-): Partial<DataStoreProxyFunctions> {
-	const dataStoreProxyProvider = additionalData['data-table']?.dataStoreProxyProvider;
-	if (!dataStoreProxyProvider) return {};
+): Partial<DataTableProxyFunctions> {
+	const dataTableProxyProvider = additionalData['data-table']?.dataTableProxyProvider;
+	if (!dataTableProxyProvider) return {};
 	return {
-		getDataStoreAggregateProxy: async () =>
-			await dataStoreProxyProvider.getDataStoreAggregateProxy(
+		getDataTableAggregateProxy: async () =>
+			await dataTableProxyProvider.getDataTableAggregateProxy(
 				workflow,
 				node,
 				additionalData.dataTableProjectId,
 			),
-		getDataStoreProxy: async (dataStoreId: string) =>
-			await dataStoreProxyProvider.getDataStoreProxy(
+		getDataTableProxy: async (dataTableId: string) =>
+			await dataTableProxyProvider.getDataTableProxy(
 				workflow,
 				node,
-				dataStoreId,
+				dataTableId,
 				additionalData.dataTableProjectId,
 			),
 	};
