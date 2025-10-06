@@ -12,6 +12,7 @@ import { Merge } from '../../../nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from '../../../nodes-base/dist/nodes/NoOp/NoOp.node';
 import { Set } from '../../../nodes-base/dist/nodes/Set/Set.node';
 import { SplitInBatches } from '../../../nodes-base/dist/nodes/SplitInBatches/SplitInBatches.node';
+import { SplitInBatchesV4 } from '../../../nodes-base/nodes/SplitInBatches/v4/SplitInBatchesV4.node';
 import { Start } from '../../../nodes-base/dist/nodes/Start/Start.node';
 
 export const predefinedNodesTypes: INodeTypeData = {
@@ -40,7 +41,11 @@ export const predefinedNodesTypes: INodeTypeData = {
 		sourcePath: '',
 	},
 	'n8n-nodes-base.splitInBatches': {
-		type: new SplitInBatches(),
+		type: new SplitInBatchesV4(),
+		sourcePath: '',
+	},
+	splitInBatches: {
+		type: new SplitInBatchesV4(),
 		sourcePath: '',
 	},
 	'@n8n/n8n-nodes-langchain.toolExecutor': {

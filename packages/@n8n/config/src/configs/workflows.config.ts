@@ -18,4 +18,8 @@ export class WorkflowsConfig {
 	/** How many workflows to activate simultaneously during startup. */
 	@Env('N8N_WORKFLOW_ACTIVATION_BATCH_SIZE')
 	activationBatchSize: number = 1;
+
+	/** Allow disabling infinite loop protection (unsafe, for advanced users only) */
+	@Env('N8N_ALLOW_DISABLE_LOOP_PROTECTION')
+	allowDisableLoopProtection: boolean = false;
 }

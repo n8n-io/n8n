@@ -102,6 +102,26 @@ export class WorkflowExecute {
 	) {}
 
 	/**
+	 * Cleanup SplitInBatches node counters for the given execution
+	 * to prevent memory leaks from static maps persisting across executions.
+	 */
+	private cleanupSplitInBatchesCounters(executionId: string, workflow: Workflow): void {
+		try {
+			// Find SplitInBatches nodes (v4) and cleanup their static counters
+			const splitInBatchesV4 = workflow.nodeTypes.getByNameAndVersion('splitInBatches', 4);
+
+			if (splitInBatchesV4 && 'cleanupExecutionCounters' in splitInBatchesV4) {
+				(
+					splitInBatchesV4 as INodeType & { cleanupExecutionCounters: (id: string) => void }
+				).cleanupExecutionCounters(executionId);
+			}
+		} catch (error) {
+			// Non-critical cleanup failure - log but don't throw
+			Logger.warn(`Failed to cleanup SplitInBatches counters for execution ${executionId}`, error);
+		}
+	}
+
+	/**
 	 * Executes the given workflow.
 	 *
 	 * @param {Workflow} workflow The workflow to execute
@@ -1517,6 +1537,10 @@ export class WorkflowExecute {
 				this.abortController.abort();
 				const fullRunData = this.getFullRunData(startedAt);
 				void hooks.runHook('workflowExecuteAfter', [fullRunData]);
+				// Cleanup SplitInBatches counters to prevent memory leaks
+				if (this.additionalData.executionId) {
+					this.cleanupSplitInBatchesCounters(this.additionalData.executionId, workflow);
+				}
 			});
 
 			// eslint-disable-next-line complexity
@@ -2306,6 +2330,11 @@ export class WorkflowExecute {
 						.catch((error) => {
 							console.error('There was a problem running hook "workflowExecuteAfter"', error);
 						});
+
+					// Cleanup SplitInBatches counters to prevent memory leaks
+					if (this.additionalData.executionId) {
+						this.cleanupSplitInBatchesCounters(this.additionalData.executionId, workflow);
+					}
 
 					if (closeFunction) {
 						try {

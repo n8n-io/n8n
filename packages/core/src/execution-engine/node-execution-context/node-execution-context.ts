@@ -131,18 +131,56 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return output;
 	}
 
+	/**
+	 * Get outgoing connections from a node.
+	 *
+	 * Returns an immutable copy of connections to prevent accidental modifications
+	 * to the workflow graph structure.
+	 *
+	 * @param nodeName - Name of the node to get outgoing connections from
+	 * @param type - Connection type (default: Main)
+	 * @returns Array of connections from the specified node, or empty array if none exist
+	 *
+	 * @example
+	 * ```typescript
+	 * // Get main output connections from "HTTP Request" node
+	 * const connections = this.getOutgoingConnections('HTTP Request');
+	 * // Returns: [{ node: 'Set', type: 'main', index: 0 }, ...]
+	 * ```
+	 */
 	getOutgoingConnections(
 		nodeName: string,
 		type: NodeConnectionType = NodeConnectionTypes.Main,
 	): NodeInputConnections {
-		return this.workflow.connectionsBySourceNode[nodeName]?.[type] ?? [];
+		const connections = this.workflow.connectionsBySourceNode[nodeName]?.[type] ?? [];
+		// Return deep copy to prevent mutation of internal workflow graph
+		return deepCopy(connections);
 	}
 
+	/**
+	 * Get incoming connections to a node.
+	 *
+	 * Returns an immutable copy of connections to prevent accidental modifications
+	 * to the workflow graph structure.
+	 *
+	 * @param nodeName - Name of the node to get incoming connections to
+	 * @param type - Connection type (default: Main)
+	 * @returns Array of connections to the specified node, or empty array if none exist
+	 *
+	 * @example
+	 * ```typescript
+	 * // Get incoming connections to current node
+	 * const connections = this.getIncomingConnections(this.getNode().name);
+	 * // Returns: [{ node: 'Webhook', type: 'main', index: 0 }, ...]
+	 * ```
+	 */
 	getIncomingConnections(
 		nodeName: string,
 		type: NodeConnectionType = NodeConnectionTypes.Main,
 	): NodeInputConnections {
-		return this.workflow.connectionsByDestinationNode[nodeName]?.[type] ?? [];
+		const connections = this.workflow.connectionsByDestinationNode[nodeName]?.[type] ?? [];
+		// Return deep copy to prevent mutation of internal workflow graph
+		return deepCopy(connections);
 	}
 
 	/**

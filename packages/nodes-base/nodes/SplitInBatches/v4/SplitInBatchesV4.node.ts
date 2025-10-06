@@ -10,8 +10,9 @@ import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow'
 export class SplitInBatchesV4 implements INodeType {
 	// Track executions per executionId + node name
 	private static executionCounters = new Map<string, number>();
-	private static breachCounters = new Map<string, number>();
 	private static reinitCounters = new Map<string, number>();
+	// Cache expected batch count from first execution to avoid recalculation on changing input
+	private static expectedBatchesCache = new Map<string, number>();
 
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
@@ -67,7 +68,7 @@ export class SplitInBatchesV4 implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to disable infinite loop protection for this node. Only enable if you are sure your workflow is correct.',
+							'⚠️ DANGER: Disabling protection can cause runaway executions that freeze or crash n8n. Only use for advanced debugging. NOT recommended for production. Requires N8N_ALLOW_DISABLE_LOOP_PROTECTION=true to take effect.',
 					},
 					{
 						displayName: 'Limit Factor',
@@ -230,9 +231,15 @@ export class SplitInBatchesV4 implements INodeType {
 		const newCount = currentCount + 1;
 		SplitInBatchesV4.executionCounters.set(globalKey, newCount);
 
-		const inputItems = executeFunctions.getInputData();
-		const batchSize = (executeFunctions.getNodeParameter('batchSize', 0) as number) || 1;
-		const expectedBatches = Math.ceil(inputItems.length / Math.max(batchSize, 1));
+		// Calculate expected batches only on first execution, cache for subsequent runs
+		let expectedBatches = SplitInBatchesV4.expectedBatchesCache.get(globalKey);
+		if (expectedBatches === undefined) {
+			const inputItems = executeFunctions.getInputData();
+			const batchSize = (executeFunctions.getNodeParameter('batchSize', 0) as number) || 1;
+			expectedBatches = Math.ceil(inputItems.length / Math.max(batchSize, 1));
+			SplitInBatchesV4.expectedBatchesCache.set(globalKey, expectedBatches);
+		}
+
 		const factor = Math.max(Number(options.limitFactor ?? 2), 1);
 		const maxExecutions = Math.min(Math.max(expectedBatches * factor, 10), 1000);
 
@@ -263,8 +270,8 @@ export class SplitInBatchesV4 implements INodeType {
 		const executionId = executeFunctions.getExecutionId();
 		const globalKey = `${executionId}_${nodeName}`;
 		SplitInBatchesV4.executionCounters.delete(globalKey);
-		SplitInBatchesV4.breachCounters.delete(globalKey);
 		SplitInBatchesV4.reinitCounters.delete(globalKey);
+		SplitInBatchesV4.expectedBatchesCache.delete(globalKey);
 	}
 
 	/**
@@ -286,8 +293,8 @@ export class SplitInBatchesV4 implements INodeType {
 		}
 		keysToDelete.forEach((key) => {
 			SplitInBatchesV4.executionCounters.delete(key);
-			SplitInBatchesV4.breachCounters.delete(key);
 			SplitInBatchesV4.reinitCounters.delete(key);
+			SplitInBatchesV4.expectedBatchesCache.delete(key);
 		});
 	}
 
@@ -302,8 +309,8 @@ export class SplitInBatchesV4 implements INodeType {
 	// ===== Test helpers (no runtime effect) =====
 	static clearAllCountersForTest(): void {
 		SplitInBatchesV4.executionCounters.clear();
-		SplitInBatchesV4.breachCounters.clear();
 		SplitInBatchesV4.reinitCounters.clear();
+		SplitInBatchesV4.expectedBatchesCache.clear();
 	}
 	static hasCounterForTest(executionId: string, nodeName: string): boolean {
 		return SplitInBatchesV4.executionCounters.has(`${executionId}_${nodeName}`);
