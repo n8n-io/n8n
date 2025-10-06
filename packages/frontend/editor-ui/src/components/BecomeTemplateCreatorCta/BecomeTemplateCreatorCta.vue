@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useBecomeTemplateCreatorStore } from './becomeTemplateCreatorStore';
 import { useI18n } from '@n8n/i18n';
 
 const i18n = useI18n();
-const store = useBecomeTemplateCreatorStore();
 const telemetry = useTelemetry();
 
 const onClick = () => {
@@ -13,11 +11,7 @@ const onClick = () => {
 </script>
 
 <template>
-	<div
-		v-if="store.showBecomeCreatorCta"
-		:class="$style.container"
-		data-test-id="become-template-creator-cta"
-	>
+	<div v-if="false" :class="$style.container" data-test-id="become-template-creator-cta">
 		<div :class="$style.textAndCloseButton">
 			<p :class="$style.text">
 				{{ i18n.baseText('becomeCreator.text') }}
@@ -26,7 +20,7 @@ const onClick = () => {
 			<button
 				:class="$style.closeButton"
 				data-test-id="close-become-template-creator-cta"
-				@click="store.dismissCta()"
+				@click="false"
 			>
 				<N8nIcon icon="x" size="xsmall" :title="i18n.baseText('generic.close')" />
 			</button>
