@@ -11,7 +11,7 @@ export class ChatService {
 		return await Promise.resolve(['gpt-3.5-turbo', 'gpt-4']);
 	}
 
-	async *ask(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
+	async *ask(_payload: ChatPayload, _user: IUser, _abortSignal?: AbortSignal) {
 		yield* [
 			{
 				role: 'assistant',
