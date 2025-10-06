@@ -366,8 +366,10 @@ describe('GoogleSheetsTrigger.utils', () => {
 				'anyUpdate', // event
 			);
 
-			// Based on actual behavior, Jane's row is detected because Age changed, not John's
-			// This suggests the columnsToWatch logic may not work as expected
+			// NOTE: This test currently reflects buggy behavior - it detects Jane's Age change
+			// even though only the Name column is being watched. The expected behavior would be
+			// to detect John's Name change instead. This test should be updated when the
+			// columnsToWatch functionality is fixed.
 			expect(result).toEqual([
 				{
 					row_number: 3,

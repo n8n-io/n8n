@@ -61,7 +61,7 @@
 			"main": [
 				[
 					{
-						"node": "Upload Large File",
+						"node": "Upload Small File",
 						"type": "main",
 						"index": 0
 					}

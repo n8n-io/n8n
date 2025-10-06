@@ -30,7 +30,7 @@ export async function msGraphSecurityApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://graph.microsoft.com/v1.0/security${endpoint}`,
+		uri: `https://graph.microsoft.com/v1.0/security${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`,
 		json: true,
 	};
 

@@ -13,7 +13,8 @@
 			"parameters": {
 				"resource": "fileFolder",
 				"operation": "search",
-				"query": "name contains 'test'"
+				"searchMethod": "query",
+				"queryString": "name contains 'test'"
 			},
 			"type": "n8n-nodes-base.googleDrive",
 			"typeVersion": 3,

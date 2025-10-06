@@ -336,12 +336,4 @@ describe('TheHiveProject', () => {
 			});
 		});
 	});
-
-	describe('Error Handling', () => {
-		it('should validate required parameters', () => {
-			// Test that the node properly validates required parameters
-			// This is a simple validation test that doesn't require HTTP mocking
-			expect(true).toBe(true); // Placeholder for parameter validation test
-		});
-	});
 });

@@ -18,7 +18,7 @@
 					"value": "123",
 					"mode": "id"
 				},
-				"name": "Updated Test File"
+				"newUpdatedFileName": "Updated Test File"
 			},
 			"type": "n8n-nodes-base.googleDrive",
 			"typeVersion": 3,

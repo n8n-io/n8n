@@ -441,6 +441,10 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				mockPollFunctions.getMode.mockReturnValue('manual');
 				(microsoftApiRequest as jest.Mock).mockRejectedValue(originalError);
 
+				await expect(
+					getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate),
+				).rejects.toThrow();
+
 				try {
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 				} catch (error) {
