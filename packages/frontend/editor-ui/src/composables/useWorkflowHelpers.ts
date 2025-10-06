@@ -49,7 +49,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import get from 'lodash/get';
 
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
