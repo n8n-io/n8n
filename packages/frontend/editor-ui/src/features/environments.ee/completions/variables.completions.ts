@@ -1,8 +1,9 @@
-import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '../environments.store';
 
 const escape = (str: string) => str.replace('$', '\\$');
+
+export const addVarType = (option: Completion) => ({ ...option, type: 'variable' });
 
 export function useVariablesCompletions() {
 	const environmentsStore = useEnvironmentsStore();

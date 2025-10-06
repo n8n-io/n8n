@@ -1,6 +1,6 @@
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n } from '@n8n/i18n';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 
 import type {
