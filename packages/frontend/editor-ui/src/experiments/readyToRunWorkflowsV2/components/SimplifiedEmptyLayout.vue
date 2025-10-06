@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nCard, N8nHeading, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -20,6 +20,8 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+
+const isLoadingReadyToRun = ref(false);
 
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const personalProject = computed(() => projectsStore.personalProject);
@@ -42,14 +44,20 @@ const emptyListDescription = computed(() => {
 });
 
 const showReadyToRunV2Card = computed(() => {
-	return readyToRunWorkflowsV2Store.getCardVisibility(
-		projectPermissions.value.workflow.create,
-		readOnlyEnv.value,
-		false, // loading is false in simplified layout
+	return (
+		isLoadingReadyToRun.value ||
+		readyToRunWorkflowsV2Store.getCardVisibility(
+			projectPermissions.value.workflow.create,
+			readOnlyEnv.value,
+			false, // loading is false in simplified layout
+		)
 	);
 });
 
 const handleReadyToRunV2Click = async () => {
+	if (isLoadingReadyToRun.value) return;
+
+	isLoadingReadyToRun.value = true;
 	const projectId = projectPages.isOverviewSubPage
 		? personalProject.value?.id
 		: (route.params.projectId as string);
@@ -61,6 +69,7 @@ const handleReadyToRunV2Click = async () => {
 			projectId,
 		);
 	} catch (error) {
+		isLoadingReadyToRun.value = false;
 		toast.showError(error, i18n.baseText('generic.error'));
 	}
 };
@@ -98,17 +107,18 @@ const emit = defineEmits<{
 			>
 				<N8nCard
 					v-if="showReadyToRunV2Card"
-					:class="$style.actionCard"
-					hoverable
+					:class="[$style.actionCard, { [$style.loading]: isLoadingReadyToRun }]"
+					:hoverable="!isLoadingReadyToRun"
 					data-test-id="ready-to-run-v2-card"
 					@click="handleReadyToRunV2Click"
 				>
 					<div :class="$style.cardContent">
 						<N8nIcon
 							:class="$style.cardIcon"
-							icon="sparkles"
+							:icon="isLoadingReadyToRun ? 'spinner' : 'sparkles'"
 							color="foreground-dark"
 							:stroke-width="1.5"
+							:spin="isLoadingReadyToRun"
 						/>
 						<N8nText size="large" class="mt-xs">
 							{{ i18n.baseText('workflows.empty.readyToRunV2') }}
@@ -200,6 +210,11 @@ const emit = defineEmits<{
 		.cardIcon svg {
 			color: var(--color-primary);
 		}
+	}
+
+	&.loading {
+		pointer-events: none;
+		opacity: 0.7;
 	}
 }
 

@@ -14,11 +14,12 @@ import {
 	NodeConnectionTypes,
 	ApplicationError,
 	sleep,
-	ExecutionCancelledError,
 	Node,
 	UnexpectedError,
 	UserError,
 	OperationalError,
+	TimeoutExecutionCancelledError,
+	ManualExecutionCancelledError,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	type ExecutionBaseError,
 	type ExecutionStatus,
@@ -81,6 +82,7 @@ export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
 
 	private readonly abortController = new AbortController();
+	timedOut: boolean = false;
 
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
@@ -1592,6 +1594,7 @@ export class WorkflowExecute {
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
 					) {
 						this.status = 'canceled';
+						this.timedOut = true;
 					}
 
 					if (this.status === 'canceled') {
@@ -2295,7 +2298,9 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new ExecutionCancelledError(this.additionalData.executionId ?? 'unknown'),
+							this.timedOut
+								? new TimeoutExecutionCancelledError(this.additionalData.executionId ?? 'unknown')
+								: new ManualExecutionCancelledError(this.additionalData.executionId ?? 'unknown'),
 							closeFunction,
 						);
 					}

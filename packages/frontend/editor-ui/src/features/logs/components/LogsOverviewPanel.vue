@@ -2,7 +2,6 @@
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { useClearExecutionButtonVisible } from '@/features/logs/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, nextTick, toRef, watch } from 'vue';
 import LogsOverviewRow from '@/features/logs/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -14,6 +13,7 @@ import { type IExecutionResponse } from '@/Interface';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 import { getScrollbarWidth } from '@/utils/htmlUtils';
 
+import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 const {
 	isOpen,
 	isReadOnly,

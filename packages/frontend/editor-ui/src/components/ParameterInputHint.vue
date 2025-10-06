@@ -2,6 +2,7 @@
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { computed, onMounted, ref } from 'vue';
 
+import { N8nText } from '@n8n/design-system';
 type Props = {
 	hint: string;
 	highlight?: boolean;
@@ -62,6 +63,7 @@ const simplyText = computed(() => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	font-family: monospace;
 }
 .highlight {
 	color: var(--color-secondary);
