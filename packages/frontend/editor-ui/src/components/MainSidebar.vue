@@ -206,7 +206,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		route: { to: { name: CHAT_VIEW } },
 		available:
 			settingsStore.isChatFeatureEnabled &&
-			hasPermission(['rbac'], { rbac: { scope: 'chat:message' } }),
+			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		id: 'help',
