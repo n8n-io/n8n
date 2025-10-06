@@ -611,7 +611,7 @@ export class SourceControlImportService {
 			description: project.description,
 			icon: project.icon,
 			filename: getProjectExportPath(project.id, this.projectExportFolder),
-			type: project.type as 'team', // This is safe because we only select team projects
+			type: 'team', // This is safe because we only select team projects
 			owner: {
 				type: 'team',
 				teamId: project.id,
