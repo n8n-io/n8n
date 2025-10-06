@@ -1,4 +1,9 @@
-from src.errors import TaskCancelledError, TaskRuntimeError, SecurityViolationError
+from src.errors import (
+    TaskCancelledError,
+    TaskRuntimeError,
+    TaskTimeoutError,
+    SecurityViolationError,
+)
 
 # Messages
 BROKER_INFO_REQUEST = "broker:inforequest"
@@ -70,6 +75,7 @@ SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
 IGNORED_ERROR_TYPES = (
     TaskRuntimeError,
     TaskCancelledError,
+    TaskTimeoutError,
     SecurityViolationError,
     SyntaxError,
 )
