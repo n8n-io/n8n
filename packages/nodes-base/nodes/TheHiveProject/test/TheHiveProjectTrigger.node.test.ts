@@ -106,7 +106,7 @@ describe('TheHiveProjectTrigger', () => {
 								{
 									field: 'object.severity',
 									operator: 'equal',
-									value: 2,
+                        value: '2',
 								},
 							],
 						},
