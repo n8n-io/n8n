@@ -3,14 +3,14 @@ import { RestController, Get, Post, Body } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
-import { ChatService } from './chat.service';
+import { ChatHubService } from './chat-hub.service';
 import { ChatMessageRequestDto } from './dto/chat-message-request.dto';
 
 export type FlushableResponse = Response & { flush: () => void };
 
 @RestController('/chat')
-export class ChatController {
-	constructor(private readonly chatService: ChatService) {}
+export class ChatHubController {
+	constructor(private readonly chatService: ChatHubService) {}
 
 	@Get('/agents/models/openai')
 	async getModels(_req: AuthenticatedRequest, res: FlushableResponse) {

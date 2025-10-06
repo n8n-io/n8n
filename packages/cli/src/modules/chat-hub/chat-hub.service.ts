@@ -1,10 +1,10 @@
 import { Service } from '@n8n/di';
 import { type IUser } from 'n8n-workflow';
 
-import { type ChatPayload } from './chat.types';
+import { type ChatPayload } from './chat-hub.types';
 
 @Service()
-export class ChatService {
+export class ChatHubService {
 	constructor() {}
 
 	async getModels() {

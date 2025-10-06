@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 const KEY = 'chat.access.enabled';
 
 @Service()
-export class ChatSettingsService {
+export class ChatHubSettingsService {
 	constructor(private readonly settingsRepository: SettingsRepository) {}
 
 	async getEnabled(): Promise<boolean> {
