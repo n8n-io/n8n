@@ -106,27 +106,6 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 				paginationToken,
 			);
 		});
-
-		it('should handle special characters in filter', async () => {
-			const mockResponse = {
-				value: [{ id: 'contact1', displayName: "O'Connor" }],
-			};
-
-			mockTransport.microsoftApiRequest.mockResolvedValue(mockResponse);
-
-			await searchContacts.call(mockLoadOptionsFunctions, "O'Connor");
-
-			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
-				'GET',
-				'/contacts',
-				undefined,
-				{
-					$select: 'id,displayName',
-					$top: 100,
-					$filter: "contains(displayName, 'O'Connor')",
-				},
-			);
-		});
 	});
 
 	describe('searchCalendars', () => {

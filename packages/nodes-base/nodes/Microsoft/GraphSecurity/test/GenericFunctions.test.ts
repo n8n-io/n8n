@@ -497,14 +497,9 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		});
 
 		it('should throw with expected error message', () => {
-			try {
+			expect(() => {
 				throwOnEmptyUpdate.call(mockExecuteFunctions);
-			} catch (error) {
-				expect(error).toBeInstanceOf(NodeOperationError);
-				expect((error as NodeOperationError).message).toBe(
-					'Please enter at least one field to update',
-				);
-			}
+			}).toThrow('Please enter at least one field to update');
 		});
 
 		it('should use the correct node context', () => {

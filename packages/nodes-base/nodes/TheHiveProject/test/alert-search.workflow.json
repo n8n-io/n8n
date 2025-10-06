@@ -19,7 +19,7 @@
 					"values": [
 						{
 							"field": "status",
-							"operator": "equals",
+							"operator": "_eq",
 							"value": "New"
 						}
 					]
