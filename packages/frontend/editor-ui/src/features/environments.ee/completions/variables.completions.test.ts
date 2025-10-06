@@ -2,8 +2,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { EditorState } from '@codemirror/state';
 import { CompletionContext } from '@codemirror/autocomplete';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useVariablesCompletions } from '@/components/CodeNodeEditor/completions/variables.completions';
+import { useEnvironmentsStore } from '../environments.store';
+import { useVariablesCompletions } from './variables.completions';
 let environmentsStore: ReturnType<typeof useEnvironmentsStore>;
 
 beforeEach(() => {

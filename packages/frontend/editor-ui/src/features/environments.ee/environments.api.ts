@@ -1,4 +1,4 @@
-import type { EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from './environments.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IDataObject } from 'n8n-workflow';

@@ -1,8 +1,8 @@
 import { afterAll, beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import type { EnvironmentVariable } from '@/Interface';
+import { useEnvironmentsStore } from './environments.store';
+import type { EnvironmentVariable } from './environments.types';
 
 describe('environments.store', () => {
 	let server: ReturnType<typeof setupServer>;
