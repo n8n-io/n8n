@@ -2,15 +2,9 @@
 import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nButton,
-	N8nInfoAccordion,
-	N8nLink,
-	N8nMarkdown,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nInfoAccordion, N8nMarkdown, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { ApiKey } from '@n8n/api-types';
+import ConnectionParameter from './ConnectionParameter.vue';
 
 const MCP_ENDPOINT = 'mcp-server/http';
 // TODO: Update once docs page is ready
@@ -22,6 +16,10 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	rotateKey: [];
+}>();
 
 const { copy, copied, isSupported } = useClipboard();
 const i18n = useI18n();
@@ -76,25 +74,7 @@ const fullServerUrl = computed(() => {
 					<span :class="$style.label">
 						{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
 					</span>
-					<span :class="$style.url">
-						<code>{{ fullServerUrl }}</code>
-						<N8nTooltip
-							:disables="!isSupported"
-							:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
-							placement="right"
-						>
-							<div :class="$style['copy-url-wrapper']">
-								<N8nButton
-									v-if="isSupported"
-									type="tertiary"
-									:icon="copied ? 'clipboard-check' : 'clipboard'"
-									:square="true"
-									:class="$style['copy-url-button']"
-									@click="copy(fullServerUrl)"
-								/>
-							</div>
-						</N8nTooltip>
-					</span>
+					<ConnectionParameter :value="fullServerUrl" />
 				</div>
 			</li>
 			<li>
@@ -102,7 +82,22 @@ const fullServerUrl = computed(() => {
 					<span :class="$style.label">
 						{{ i18n.baseText('settings.mcp.instructions.apiKey.label') }}:
 					</span>
-					<span>{{ props.apiKey.apiKey }}</span>
+					<ConnectionParameter
+						:value="props.apiKey.apiKey"
+						:max-width="400"
+						:allow-copy="!isKeyRedacted"
+					>
+						<template #customActions>
+							<N8nTooltip :content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')">
+								<N8nButton
+									type="tertiary"
+									icon="refresh"
+									:square="true"
+									@click="emit('rotateKey')"
+								/>
+							</N8nTooltip>
+						</template>
+					</ConnectionParameter>
 				</div>
 			</li>
 		</ol>

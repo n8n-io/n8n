@@ -167,6 +167,11 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 	}
 };
 
+const rotateKey = async () => {
+	// TODO: Handle errors and loading
+	await mcpStore.generateNewApiKey();
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
 	if (!mcpStore.mcpAccessEnabled) {
@@ -220,6 +225,7 @@ onMounted(async () => {
 					v-if="apiKey"
 					:base-url="rootStore.urlBaseEditor"
 					:api-key="apiKey"
+					@rotate-key="rotateKey"
 				/>
 			</div>
 			<div :class="$style['workflow-list-container']" data-test-id="mcp-workflow-list">

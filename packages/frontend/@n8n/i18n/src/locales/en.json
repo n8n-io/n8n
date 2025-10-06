@@ -2031,6 +2031,7 @@
 	"settings.mcp.instructions.json": "Or use the following code in your 'mcp.json' file",
 	"settings.mcp.instructions.docs.part1": "For more detailed instructions and examples, have a look at",
 	"settings.mcp.instructions.docs.part2": "our docs",
+	"settings.mcp.instructions.rotateKey.tooltip": "Generate new access token",
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",
