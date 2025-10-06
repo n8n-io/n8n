@@ -6,6 +6,7 @@ import {
 	N8nButton,
 	N8nInfoAccordion,
 	N8nInfoTip,
+	N8nLoading,
 	N8nMarkdown,
 	N8nNotice,
 	N8nText,
@@ -21,6 +22,7 @@ const DOCS_URL = 'https://docs.n8n.io/';
 type Props = {
 	baseUrl: string;
 	apiKey: ApiKey;
+	loadingApiKey: boolean;
 };
 
 const props = defineProps<Props>();
@@ -45,7 +47,7 @@ const connectionString = computed(() => {
         "--streamableHttp",
         "${props.baseUrl}${MCP_ENDPOINT}",
         "--header",
-        "authorization:Bearer ${isKeyRedacted.value ? '<YOUR_ACCESS_TOKEN_HERE>' : props.apiKey.apiKey}"
+        "authorization:Bearer ${apiKeyText.value}"
       ]
     }
   }
@@ -65,11 +67,18 @@ const connectionCode = computed(() => {
 const fullServerUrl = computed(() => {
 	return props.baseUrl + MCP_ENDPOINT;
 });
+
+const apiKeyText = computed(() => {
+	if (props.loadingApiKey) {
+		return `<${i18n.baseText('generic.loading')}...>`;
+	}
+	return isKeyRedacted.value ? '<YOUR_ACCESS_TOKEN_HERE>' : props.apiKey.apiKey;
+});
 </script>
 
 <template>
 	<div :class="$style.container">
-		<div>
+		<div :class="$style['instructions-container']">
 			<ol :class="$style.instructions">
 				<li>
 					<div :class="$style.item">
@@ -91,7 +100,13 @@ const fullServerUrl = computed(() => {
 						<span :class="$style.label">
 							{{ i18n.baseText('settings.mcp.instructions.apiKey.label') }}:
 						</span>
+						<N8nLoading
+							v-if="props.loadingApiKey"
+							:loading="props.loadingApiKey"
+							:class="$style['api-key-loader']"
+						/>
 						<ConnectionParameter
+							v-else
 							:value="props.apiKey.apiKey"
 							:max-width="400"
 							:allow-copy="!isKeyRedacted"
@@ -107,15 +122,16 @@ const fullServerUrl = computed(() => {
 								</N8nTooltip>
 							</template>
 						</ConnectionParameter>
-						<N8nInfoTip type="tooltip" tooltip-placement="right">
+						<N8nInfoTip v-if="!props.loadingApiKey" type="tooltip" tooltip-placement="right">
 							{{ i18n.baseText('settings.mcp.instructions.apiKey.tip') }}
 						</N8nInfoTip>
 					</div>
 				</li>
 			</ol>
 			<N8nNotice
-				v-if="!isKeyRedacted"
+				v-if="!isKeyRedacted && !props.loadingApiKey"
 				theme="warning"
+				:class="$style['copy-key-notice']"
 				:content="i18n.baseText('settings.mcp.newKey.notice')"
 			/>
 		</div>
@@ -128,7 +144,7 @@ const fullServerUrl = computed(() => {
 						:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
 					>
 						<N8nButton
-							v-if="isSupported"
+							v-if="isSupported && !props.loadingApiKey"
 							type="tertiary"
 							:icon="copied ? 'clipboard-check' : 'clipboard'"
 							:square="true"
@@ -154,6 +170,12 @@ const fullServerUrl = computed(() => {
 	flex-direction: column;
 }
 
+.instructions-container {
+	:global(.notice) {
+		margin: var(--spacing-s) var(--spacing-l) var(--spacing-m);
+	}
+}
+
 .instructions {
 	display: flex;
 	flex-direction: column;
@@ -169,10 +191,17 @@ const fullServerUrl = computed(() => {
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-2xs);
+
+		:global(.n8n-loading) div {
+			height: 32px;
+			width: 300px;
+			margin: 0;
+		}
 	}
 
 	.label {
 		font-size: var(--font-size-s);
+		flex: none;
 	}
 
 	.url {

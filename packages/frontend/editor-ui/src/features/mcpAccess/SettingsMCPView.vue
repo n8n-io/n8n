@@ -14,6 +14,7 @@ import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
 import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';
 
 import { ElSwitch } from 'element-plus';
 import {
@@ -38,6 +39,7 @@ const rootStore = useRootStore();
 
 const workflowsLoading = ref(false);
 const mcpStatusLoading = ref(false);
+const mcpKeyLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
@@ -128,7 +130,7 @@ const fetchAvailableWorkflows = async () => {
 		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
 		availableWorkflows.value = workflows;
 	} catch (error) {
-		toast.showError(error, 'Error fetching workflows');
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 	} finally {
 		workflowsLoading.value = false;
 	}
@@ -167,9 +169,30 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 	}
 };
 
+const fetchApiKey = async () => {
+	try {
+		mcpKeyLoading.value = true;
+		await mcpStore.getOrCreateApiKey();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.apiKey'));
+	} finally {
+		setTimeout(() => {
+			mcpKeyLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
 const rotateKey = async () => {
-	// TODO: Handle errors and loading
-	await mcpStore.generateNewApiKey();
+	try {
+		mcpKeyLoading.value = true;
+		await mcpStore.generateNewApiKey();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
+	} finally {
+		setTimeout(() => {
+			mcpKeyLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
 };
 
 onMounted(async () => {
@@ -179,8 +202,7 @@ onMounted(async () => {
 		return;
 	}
 	await fetchAvailableWorkflows();
-	// TODO: Add loading and error handling
-	await mcpStore.getOrCreateApiKey();
+	await fetchApiKey();
 });
 </script>
 <template>
@@ -223,6 +245,7 @@ onMounted(async () => {
 				</N8nHeading>
 				<MCPConnectionInstructions
 					v-if="apiKey"
+					:loading-api-key="mcpKeyLoading"
 					:base-url="rootStore.urlBaseEditor"
 					:api-key="apiKey"
 					@rotate-key="rotateKey"
