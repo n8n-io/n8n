@@ -1,5 +1,5 @@
 import type { RouteLocationNormalized } from 'vue-router';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useRoute } from 'vue-router';
 

@@ -121,7 +121,7 @@ import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { useParentFolder } from './useParentFolder';
+import { useParentFolder } from '@/features/folders/composables/useParentFolder';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;

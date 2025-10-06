@@ -5,10 +5,10 @@ import { ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { useFoldersStore } from '@/stores/folders.store';
-import type { FolderPathItem, FolderShortInfo } from '@/Interface';
+import { useFoldersStore } from '../folders.store';
+import type { FolderPathItem, FolderShortInfo } from '../folders.types';
 import type { IUser } from 'n8n-workflow';
-import ProjectBreadcrumb from '@/components/Folders/ProjectBreadcrumb.vue';
+import ProjectBreadcrumb from '@/features/folders/components/ProjectBreadcrumb.vue';
 
 import { N8nActionToggle, N8nBreadcrumbs } from '@n8n/design-system';
 type Props = {

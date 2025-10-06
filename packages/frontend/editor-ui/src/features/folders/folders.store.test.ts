@@ -2,9 +2,10 @@ import { vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { faker } from '@faker-js/faker';
 
-import { useFoldersStore } from '@/stores/folders.store';
-import * as workflowsApi from '@/api/workflows';
-import type { ChangeLocationSearchResponseItem, IUsedCredential } from '@/Interface';
+import { useFoldersStore } from './folders.store';
+import * as foldersApi from './folders.api';
+import type { IUsedCredential } from '@/Interface';
+import type { ChangeLocationSearchResponseItem } from './folders.types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 vi.mock('@/utils/apiUtils', () => ({
@@ -58,15 +59,15 @@ describe('folders.store', () => {
 
 		it('should fetch folders in a single page, empty filter', async () => {
 			const folder = createFolder();
-			vi.spyOn(workflowsApi, 'getProjectFolders').mockResolvedValue({
+			vi.spyOn(foldersApi, 'getProjectFolders').mockResolvedValue({
 				count: 1,
 				data: [folder],
 			});
 
 			const available = await foldersStore.fetchFoldersAvailableForMove(projectId, folderId);
 			expect(available).toEqual([{ ...folder, resource: 'folder' }]);
-			expect(workflowsApi.getProjectFolders).toHaveBeenCalledTimes(1);
-			expect(workflowsApi.getProjectFolders).toHaveBeenCalledWith(
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledTimes(1);
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledWith(
 				rootStore.restApiContext,
 				projectId,
 				{
@@ -83,7 +84,7 @@ describe('folders.store', () => {
 
 		it('should fetch folders in a single page with filter', async () => {
 			const folder = createFolder({ name: 'Test Folder' });
-			vi.spyOn(workflowsApi, 'getProjectFolders').mockResolvedValue({
+			vi.spyOn(foldersApi, 'getProjectFolders').mockResolvedValue({
 				count: 1,
 				data: [folder],
 			});
@@ -92,8 +93,8 @@ describe('folders.store', () => {
 				name: 'Test',
 			});
 			expect(available).toEqual([{ ...folder, resource: 'folder' }]);
-			expect(workflowsApi.getProjectFolders).toHaveBeenCalledTimes(1);
-			expect(workflowsApi.getProjectFolders).toHaveBeenCalledWith(
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledTimes(1);
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledWith(
 				rootStore.restApiContext,
 				projectId,
 				{
@@ -113,7 +114,7 @@ describe('folders.store', () => {
 			const folders = Array.from({ length: 150 }, (_, i) =>
 				createFolder({ name: `Folder ${i + 1}` }),
 			);
-			vi.spyOn(workflowsApi, 'getProjectFolders')
+			vi.spyOn(foldersApi, 'getProjectFolders')
 				.mockResolvedValueOnce({
 					count: 150,
 					data: folders.slice(0, 100),
@@ -128,8 +129,8 @@ describe('folders.store', () => {
 			});
 
 			expect(available).toHaveLength(150);
-			expect(workflowsApi.getProjectFolders).toHaveBeenCalledTimes(2);
-			expect(workflowsApi.getProjectFolders).toHaveBeenNthCalledWith(
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledTimes(2);
+			expect(foldersApi.getProjectFolders).toHaveBeenNthCalledWith(
 				1,
 				rootStore.restApiContext,
 				projectId,
@@ -144,7 +145,7 @@ describe('folders.store', () => {
 				},
 				selectFields,
 			);
-			expect(workflowsApi.getProjectFolders).toHaveBeenNthCalledWith(
+			expect(foldersApi.getProjectFolders).toHaveBeenNthCalledWith(
 				2,
 				rootStore.restApiContext,
 				projectId,
@@ -163,7 +164,7 @@ describe('folders.store', () => {
 
 		it('should cache the results on breadcrumbs cache', async () => {
 			const folder = createFolder();
-			vi.spyOn(workflowsApi, 'getProjectFolders').mockResolvedValue({
+			vi.spyOn(foldersApi, 'getProjectFolders').mockResolvedValue({
 				count: 1,
 				data: [folder],
 			});
@@ -193,12 +194,12 @@ describe('folders.store', () => {
 				sharedWithProjects: [],
 			};
 
-			vi.spyOn(workflowsApi, 'getFolderUsedCredentials').mockResolvedValue([usedCredential]);
+			vi.spyOn(foldersApi, 'getFolderUsedCredentials').mockResolvedValue([usedCredential]);
 
 			const credentials = await foldersStore.fetchFolderUsedCredentials(projectId, folderId);
 
 			expect(credentials).toEqual([usedCredential]);
-			expect(workflowsApi.getFolderUsedCredentials).toHaveBeenCalledWith(
+			expect(foldersApi.getFolderUsedCredentials).toHaveBeenCalledWith(
 				rootStore.restApiContext,
 				projectId,
 				folderId,

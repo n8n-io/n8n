@@ -143,7 +143,7 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
-import { useParentFolder } from '@/composables/useParentFolder';
+import { useParentFolder } from '@/features/folders/composables/useParentFolder';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 

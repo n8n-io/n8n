@@ -2,14 +2,14 @@
 import { ref, computed } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
-import MoveToFolderDropdown from '@/components/Folders/MoveToFolderDropdown.vue';
+import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '../folders.store';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
-import type { ChangeLocationSearchResult } from '@/Interface';
+import type { ChangeLocationSearchResult } from '../folders.types';
 
 import { ElRadio } from 'element-plus';
 import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
