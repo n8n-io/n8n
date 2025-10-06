@@ -422,9 +422,6 @@ onUnmounted(() => {
 	flex-direction: column;
 }
 
-.chat-message-typing {
-	max-width: 100px !important;
-}
 .chatContainer {
 	height: 100%;
 	width: 100%;
@@ -530,6 +527,11 @@ onUnmounted(() => {
 	/* Hide the default chat header since we use our own */
 	:global(.chat-header) {
 		display: none !important;
+	}
+
+	/* Fix typing indicator width */
+	:global(.chat-message-typing.chat-message) {
+		max-width: 100px !important;
 	}
 
 	/* Dark Mode Overrides */
