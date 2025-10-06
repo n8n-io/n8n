@@ -6,17 +6,24 @@ import { expect } from 'vitest';
 import type { CommandResult } from './command-tester';
 import type { MockPrompt } from './mock-prompts';
 
+function stripAnsiCodes(text: string): string {
+	// Need to strip ANSI escape codes for colors and styles
+	// eslint-disable-next-line no-control-regex
+	return text.replace(/\u001b\[.*?m/g, '');
+}
+
 function createLogMatcher(logLevel: 'success' | 'warning' | 'error') {
 	return function (received: CommandResult, expected: string) {
 		const messages = received.getLogMessages(logLevel);
-		const hasMessage = messages.some((msg) => msg.includes(expected));
+		const cleanMessages = messages.map(stripAnsiCodes);
+		const hasMessage = cleanMessages.some((msg) => msg.includes(expected));
 
 		return {
 			pass: hasMessage,
 			message: () =>
 				hasMessage
 					? `Expected command NOT to log ${logLevel} message containing "${expected}"`
-					: `Expected command to log ${logLevel} message containing "${expected}". Got: ${messages.join(', ')}`,
+					: `Expected command to log ${logLevel} message containing "${expected}". Got: ${cleanMessages.join(', ')}`,
 		};
 	};
 }

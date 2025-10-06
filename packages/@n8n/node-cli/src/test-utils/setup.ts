@@ -21,7 +21,6 @@ vi.mock('@clack/prompts', () => ({
 	text: vi.fn(),
 	select: vi.fn(),
 	isCancel: vi.fn(),
-	withCancelHandler: vi.fn(),
 }));
 
 vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {

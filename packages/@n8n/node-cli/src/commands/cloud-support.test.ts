@@ -1,5 +1,3 @@
-import fs from 'node:fs/promises';
-
 import { CommandTester } from '../test-utils/command-tester';
 import { MockPrompt } from '../test-utils/mock-prompts';
 import { setupTestPackage } from '../test-utils/package-setup';
@@ -28,19 +26,10 @@ describe('cloud-support command', () => {
 
 	describe('status', () => {
 		tmpdirTest('shows enabled status when strict mode and default config', async ({ tmpdir }) => {
-			await fs.writeFile(
-				`${tmpdir}/package.json`,
-				JSON.stringify({
-					n8n: {
-						nodes: ['dist/nodes/TestNode.node.js'],
-						strict: true,
-					},
-				}),
-			);
-			await fs.writeFile(
-				`${tmpdir}/eslint.config.mjs`,
-				"import { config } from '@n8n/node-cli/eslint'; export default config;",
-			);
+			await setupTestPackage(tmpdir, {
+				packageJson: { n8n: { strict: true } },
+				eslintConfig: true,
+			});
 
 			const result = await CommandTester.run('cloud-support');
 
@@ -48,21 +37,9 @@ describe('cloud-support command', () => {
 		});
 
 		tmpdirTest('shows disabled status when not strict mode', async ({ tmpdir }) => {
-			await fs.writeFile(
-				`${tmpdir}/package.json`,
-				JSON.stringify({
-					name: 'test-node',
-					version: '1.0.0',
-					n8n: {
-						nodes: ['dist/nodes/TestNode.node.js'],
-						strict: false,
-					},
-				}),
-			);
-			await fs.writeFile(
-				`${tmpdir}/eslint.config.mjs`,
-				"import { config } from '@n8n/node-cli/eslint'; export default config;",
-			);
+			await setupTestPackage(tmpdir, {
+				eslintConfig: true,
+			});
 
 			const result = await CommandTester.run('cloud-support');
 
@@ -72,21 +49,10 @@ describe('cloud-support command', () => {
 
 	describe('disable', () => {
 		tmpdirTest('updates config when user confirms', async ({ tmpdir }) => {
-			await fs.writeFile(
-				`${tmpdir}/package.json`,
-				JSON.stringify({
-					name: 'test-node',
-					version: '1.0.0',
-					n8n: {
-						nodes: ['dist/nodes/TestNode.node.js'],
-						strict: true,
-					},
-				}),
-			);
-			await fs.writeFile(
-				`${tmpdir}/eslint.config.mjs`,
-				"import { config } from '@n8n/node-cli/eslint'; export default config;",
-			);
+			await setupTestPackage(tmpdir, {
+				packageJson: { n8n: { strict: true } },
+				eslintConfig: true,
+			});
 
 			MockPrompt.setup([
 				{
@@ -111,21 +77,10 @@ describe('cloud-support command', () => {
 		});
 
 		tmpdirTest('does not update config when user cancels', async ({ tmpdir }) => {
-			await fs.writeFile(
-				`${tmpdir}/package.json`,
-				JSON.stringify({
-					name: 'test-node',
-					version: '1.0.0',
-					n8n: {
-						nodes: ['dist/nodes/TestNode.node.js'],
-						strict: true,
-					},
-				}),
-			);
-			await fs.writeFile(
-				`${tmpdir}/eslint.config.mjs`,
-				"import { config } from '@n8n/node-cli/eslint'; export default config;",
-			);
+			await setupTestPackage(tmpdir, {
+				packageJson: { n8n: { strict: true } },
+				eslintConfig: true,
+			});
 
 			MockPrompt.setup([
 				{
@@ -138,27 +93,16 @@ describe('cloud-support command', () => {
 
 			await expect(tmpdir).toHaveFileEqual(
 				'eslint.config.mjs',
-				"import { config } from '@n8n/node-cli/eslint'; export default config;",
+				"import { config } from '@n8n/node-cli/eslint';\n\nexport default config;\n",
 			);
-			await expect(tmpdir).toHaveFileContaining('package.json', '"strict":true');
+			await expect(tmpdir).toHaveFileContaining('package.json', '"strict": true');
 		});
 
 		tmpdirTest('does not update config when user declines', async ({ tmpdir }) => {
-			await fs.writeFile(
-				`${tmpdir}/package.json`,
-				JSON.stringify({
-					name: 'test-node',
-					version: '1.0.0',
-					n8n: {
-						nodes: ['dist/nodes/TestNode.node.js'],
-						strict: true,
-					},
-				}),
-			);
-			await fs.writeFile(
-				`${tmpdir}/eslint.config.mjs`,
-				"import { config } from '@n8n/node-cli/eslint'; export default config;",
-			);
+			await setupTestPackage(tmpdir, {
+				packageJson: { n8n: { strict: true } },
+				eslintConfig: true,
+			});
 
 			MockPrompt.setup([
 				{
@@ -171,9 +115,9 @@ describe('cloud-support command', () => {
 
 			await expect(tmpdir).toHaveFileEqual(
 				'eslint.config.mjs',
-				"import { config } from '@n8n/node-cli/eslint'; export default config;",
+				"import { config } from '@n8n/node-cli/eslint';\n\nexport default config;\n",
 			);
-			await expect(tmpdir).toHaveFileContaining('package.json', '"strict":true');
+			await expect(tmpdir).toHaveFileContaining('package.json', '"strict": true');
 		});
 	});
 });
