@@ -499,6 +499,8 @@ export function useCanvasMapping({
 						acc[node.id] = i18n.baseText(
 							'node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall',
 						);
+
+						return acc;
 					}
 
 					acc[node.id] = i18n.baseText('node.nodeIsWaitingTill', {

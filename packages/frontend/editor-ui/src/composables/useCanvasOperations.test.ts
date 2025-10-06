@@ -64,7 +64,7 @@ import {
 
 import { TelemetryHelpers } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 
 const mockRoute = reactive({
 	query: {},

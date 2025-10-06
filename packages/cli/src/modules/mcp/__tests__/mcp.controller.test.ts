@@ -1,7 +1,19 @@
 import { Logger } from '@n8n/backend-common';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock, mockDeep } from 'jest-mock-extended';
+
+// eslint-disable-next-line import-x/order
+import { McpServerApiKeyService } from '../mcp-api-key.service';
+
+const mockAuthMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => {
+	next();
+});
+const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
+mcpServerApiKeyService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware);
+
+// We need to mock the service before importing the controller as it's used in the middleware
+Container.set(McpServerApiKeyService, mcpServerApiKeyService);
 
 import { McpController, type FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
@@ -33,9 +45,11 @@ describe('McpController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
 		Container.set(Logger, logger);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
+
 		controller = Container.get(McpController);
 	});
 

@@ -120,7 +120,7 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useRoute, useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useParentFolder } from './useParentFolder';
 
