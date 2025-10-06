@@ -98,7 +98,7 @@ const workflowOwnerName = computed(() => {
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
 const isElibibleForMCPAccess = computed(() => {
-	if (!workflow.value.active) {
+	if (!workflow.value?.active) {
 		return false;
 	}
 	// If it's active, check if workflow has at least one enabled webhook trigger:

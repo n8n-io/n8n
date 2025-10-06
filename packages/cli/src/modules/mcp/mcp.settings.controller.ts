@@ -105,9 +105,9 @@ export class McpSettingsController {
 			req.user,
 			workflowUpdate,
 			workflowId,
-			undefined,
-			undefined,
-			true,
+			undefined, // tags
+			undefined, // parentFolderId
+			false, // forceSave
 		);
 
 		return {

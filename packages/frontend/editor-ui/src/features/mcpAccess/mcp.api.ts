@@ -1,3 +1,4 @@
+import { IWorkflowSettings } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -22,7 +23,7 @@ export async function toggleWorkflowMcpAccessApi(
 	context: IRestApiContext,
 	workflowId: string,
 	availableInMCP: boolean,
-): Promise<{ success: boolean }> {
+): Promise<{ id: string; settings: IWorkflowSettings | undefined; versionId: string }> {
 	return await makeRestApiRequest(
 		context,
 		'PATCH',
