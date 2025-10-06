@@ -348,10 +348,6 @@ export const applyBracketAccess = (key: string): string => {
 	return `['${escapeMappingString(key)}']`;
 };
 
-export const dotBracketToBracket = (string: string): string => {
-	return string.replace(/\.\[/g, '[');
-};
-
 /**
  * Apply a bracket-access completion
  *

@@ -14,7 +14,6 @@ import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
 import { onKeyStroke } from '@vueuse/core';
 import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
-import { dotBracketToBracket } from '@/plugins/codemirror/completions/utils';
 
 type Props = {
 	modelValue: string;
@@ -80,7 +79,7 @@ const {
 
 watch(segments.display, (newSegments) => {
 	emit('update:model-value', {
-		value: '=' + dotBracketToBracket(readEditorValue()),
+		value: '=' + readEditorValue(),
 		segments: newSegments,
 	});
 });
