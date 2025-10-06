@@ -443,14 +443,11 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 				await expect(
 					getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate),
-				).rejects.toThrow();
-
-				try {
-					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
-				} catch (error) {
-					expect(error).toBeInstanceOf(NodeApiError);
-					expect((error as NodeApiError).message).toContain('Custom error message');
-				}
+				).rejects.toThrow(
+					expect.objectContaining({
+						message: expect.stringContaining('Custom error message'),
+					}),
+				);
 			});
 
 			it('should handle errors without description', async () => {

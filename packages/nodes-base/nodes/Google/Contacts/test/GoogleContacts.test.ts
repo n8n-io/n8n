@@ -19,7 +19,9 @@ describe('Google Contacts', () => {
 			mock
 				.post('/people:createContact')
 				.reply(function (_, requestBody: any) {
-					if (requestBody.names && requestBody.names[0].givenName === 'John') {
+					const parsedBody =
+						typeof requestBody === 'string' ? JSON.parse(requestBody) : requestBody;
+					if (parsedBody.names && parsedBody.names[0].givenName === 'John') {
 						return [
 							201,
 							{
