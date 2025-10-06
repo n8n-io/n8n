@@ -21,7 +21,7 @@ export function useDataTableNavigationCommands(options: {
 }): CommandGroup {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
-	const dataStoreStore = useDataTableStore();
+	const dataTableStore = useDataTableStore();
 	const projectsStore = useProjectsStore();
 
 	const router = useRouter();
@@ -56,14 +56,14 @@ export function useDataTableNavigationCommands(options: {
 				return;
 			}
 
-			await dataStoreStore.fetchDataTables(
+			await dataTableStore.fetchDataTables(
 				currentProjectId.value,
 				1,
 				100, // TODO: pagination/lazy loading
 			);
 
 			const trimmedLower = trimmed.toLowerCase();
-			const filtered = dataStoreStore.dataTables.filter((dataTable) =>
+			const filtered = dataTableStore.dataTables.filter((dataTable) =>
 				dataTable.name.toLowerCase().includes(trimmedLower),
 			);
 

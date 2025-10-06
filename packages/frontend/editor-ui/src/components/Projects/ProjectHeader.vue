@@ -154,7 +154,6 @@ const menu = computed(() => {
 			label: i18n.baseText('dataTable.add.button.label'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
-				// TODO: can we safely rename dataStore to dataTable here?
 				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
 		});
 	}
