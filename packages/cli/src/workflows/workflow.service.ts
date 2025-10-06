@@ -41,7 +41,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
-import { ReadOnlyInstanceChecker } from '@/environments.ee/source-control/read-only-instance-checker.service';
 
 @Service()
 export class WorkflowService {
@@ -64,7 +63,6 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly protectedInstanceChecker: ReadOnlyInstanceChecker,
 	) {}
 
 	async getMany(
@@ -302,15 +300,6 @@ export class WorkflowService {
 		]);
 
 		if (parentFolderId) {
-			if (
-				this.protectedInstanceChecker.isEnvironmentReadOnly() &&
-				parentFolderId !== workflow.parentFolder?.id
-			) {
-				throw new BadRequestError(
-					'Environments: Cannot move workflow to a different folder on protected instance.',
-				);
-			}
-
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
 				try {
@@ -337,22 +326,13 @@ export class WorkflowService {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
-		const getRelationsToFetchAfterUpdate = () => {
-			const relationsToFetch = [];
-			if (parentFolderId) {
-				relationsToFetch.push('parentFolder');
-			}
-			if (!tagsDisabled) {
-				relationsToFetch.push('tags');
-			}
-			return relationsToFetch;
-		};
+		const relations = tagsDisabled ? [] : ['tags'];
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the hopefully updated entry.
 		const updatedWorkflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			relations: getRelationsToFetchAfterUpdate(),
+			relations,
 		});
 
 		if (updatedWorkflow === null) {
