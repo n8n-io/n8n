@@ -20,7 +20,7 @@ export class ChatHubController {
 		res.json(models);
 	}
 
-	@GlobalScope('chat:message')
+	@GlobalScope('chatHub:message')
 	@Post('/agents/openai')
 	async ask(
 		req: AuthenticatedRequest,
