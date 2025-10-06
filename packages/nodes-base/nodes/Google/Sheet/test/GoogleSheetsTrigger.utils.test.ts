@@ -244,15 +244,16 @@ describe('GoogleSheetsTrigger.utils', () => {
 
 	describe('compareRevisions', () => {
 		const baseColumns = ['Name', 'Age', 'City'];
-		const previousData = [baseColumns, ['John', '30', 'NYC'], ['Jane', '25', 'LA']];
-		const currentData = [
-			baseColumns,
-			['John', '31', 'NYC'], // Age updated
-			['Jane', '25', 'LA'], // No change
-			['Bob', '35', 'SF'], // New row
-		];
 
 		it('should detect row updates with current output', () => {
+			const previousData = [baseColumns, ['John', '30', 'NYC'], ['Jane', '25', 'LA']];
+			const currentData = [
+				baseColumns,
+				['John', '31', 'NYC'], // Age updated
+				['Jane', '25', 'LA'], // No change
+				['Bob', '35', 'SF'], // New row
+			];
+
 			const result = compareRevisions(
 				previousData,
 				currentData,
@@ -282,6 +283,14 @@ describe('GoogleSheetsTrigger.utils', () => {
 		});
 
 		it('should detect row updates with previous output', () => {
+			const previousData = [baseColumns, ['John', '30', 'NYC'], ['Jane', '25', 'LA']];
+			const currentData = [
+				baseColumns,
+				['John', '31', 'NYC'], // Age updated
+				['Jane', '25', 'LA'], // No change
+				['Bob', '35', 'SF'], // New row
+			];
+
 			const result = compareRevisions(
 				previousData,
 				currentData,
@@ -302,7 +311,7 @@ describe('GoogleSheetsTrigger.utils', () => {
 				},
 				{
 					row_number: 4,
-					change_type: 'updated', // Should be 'updated' not 'added' because previous[i] gets filled with empty strings
+					change_type: 'added', // New row is correctly marked as 'added'
 					Name: '',
 					Age: '',
 					City: '',
@@ -311,6 +320,14 @@ describe('GoogleSheetsTrigger.utils', () => {
 		});
 
 		it('should provide both previous and current data with differences', () => {
+			const previousData = [baseColumns, ['John', '30', 'NYC'], ['Jane', '25', 'LA']];
+			const currentData = [
+				baseColumns,
+				['John', '31', 'NYC'], // Age updated
+				['Jane', '25', 'LA'], // No change
+				['Bob', '35', 'SF'], // New row
+			];
+
 			const result = compareRevisions(
 				previousData,
 				currentData,
@@ -438,6 +455,14 @@ describe('GoogleSheetsTrigger.utils', () => {
 		});
 
 		it('should handle event type without change_type column', () => {
+			const previousData = [baseColumns, ['John', '30', 'NYC'], ['Jane', '25', 'LA']];
+			const currentData = [
+				baseColumns,
+				['John', '31', 'NYC'], // Age updated
+				['Jane', '25', 'LA'], // No change
+				['Bob', '35', 'SF'], // New row
+			];
+
 			const result = compareRevisions(
 				previousData,
 				currentData,

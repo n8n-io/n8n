@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
 
 describe('Google Contacts', () => {
@@ -19,8 +20,7 @@ describe('Google Contacts', () => {
 			mock
 				.post('/people:createContact')
 				.reply(function (_, requestBody: any) {
-					const parsedBody =
-						typeof requestBody === 'string' ? JSON.parse(requestBody) : requestBody;
+					const parsedBody = typeof requestBody === 'string' ? jsonParse(requestBody) : requestBody;
 					if (parsedBody.names && parsedBody.names[0].givenName === 'John') {
 						return [
 							201,
