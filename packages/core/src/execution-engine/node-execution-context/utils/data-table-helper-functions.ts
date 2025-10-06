@@ -5,7 +5,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-export function getDataStoreHelperFunctions(
+export function getDataTableHelperFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	workflow: Workflow,
 	node: INode,

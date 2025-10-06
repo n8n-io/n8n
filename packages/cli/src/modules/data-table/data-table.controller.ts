@@ -39,17 +39,17 @@ import { DataTableValidationError } from './errors/data-table-validation.error';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {
-	constructor(private readonly dataStoreService: DataTableService) {}
+	constructor(private readonly dataTableService: DataTableService) {}
 
 	@Post('/')
-	@ProjectScope('dataStore:create')
+	@ProjectScope('dataTable:create')
 	async createDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Body dto: CreateDataTableDto,
 	) {
 		try {
-			return await this.dataStoreService.createDataTable(req.params.projectId, dto);
+			return await this.dataTableService.createDataTable(req.params.projectId, dto);
 		} catch (e: unknown) {
 			if (!(e instanceof Error)) {
 				throw e;
@@ -62,21 +62,21 @@ export class DataTableController {
 	}
 
 	@Get('/')
-	@ProjectScope('dataStore:listProject')
+	@ProjectScope('dataTable:listProject')
 	async listProjectDataTables(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Query payload: ListDataTableQueryDto,
 	) {
 		const providedFilter = payload?.filter ?? {};
-		return await this.dataStoreService.getManyAndCount({
+		return await this.dataTableService.getManyAndCount({
 			...payload,
 			filter: { ...providedFilter, projectId: req.params.projectId },
 		});
 	}
 
 	@Patch('/:dataTableId')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async updateDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -84,7 +84,7 @@ export class DataTableController {
 		@Body dto: UpdateDataTableDto,
 	) {
 		try {
-			return await this.dataStoreService.updateDataTable(dataTableId, req.params.projectId, dto);
+			return await this.dataTableService.updateDataTable(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -99,14 +99,14 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId')
-	@ProjectScope('dataStore:delete')
+	@ProjectScope('dataTable:delete')
 	async deleteDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataTableId') dataTableId: string,
 	) {
 		try {
-			return await this.dataStoreService.deleteDataTable(dataTableId, req.params.projectId);
+			return await this.dataTableService.deleteDataTable(dataTableId, req.params.projectId);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -119,14 +119,14 @@ export class DataTableController {
 	}
 
 	@Get('/:dataTableId/columns')
-	@ProjectScope('dataStore:read')
+	@ProjectScope('dataTable:read')
 	async getColumns(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataTableId') dataTableId: string,
 	) {
 		try {
-			return await this.dataStoreService.getColumns(dataTableId, req.params.projectId);
+			return await this.dataTableService.getColumns(dataTableId, req.params.projectId);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -139,7 +139,7 @@ export class DataTableController {
 	}
 
 	@Post('/:dataTableId/columns')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async addColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -147,7 +147,7 @@ export class DataTableController {
 		@Body dto: AddDataTableColumnDto,
 	) {
 		try {
-			return await this.dataStoreService.addColumn(dataTableId, req.params.projectId, dto);
+			return await this.dataTableService.addColumn(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -165,7 +165,7 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId/columns/:columnId')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async deleteColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -173,7 +173,7 @@ export class DataTableController {
 		@Param('columnId') columnId: string,
 	) {
 		try {
-			return await this.dataStoreService.deleteColumn(dataTableId, req.params.projectId, columnId);
+			return await this.dataTableService.deleteColumn(dataTableId, req.params.projectId, columnId);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -186,7 +186,7 @@ export class DataTableController {
 	}
 
 	@Patch('/:dataTableId/columns/:columnId/move')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async moveColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -195,7 +195,7 @@ export class DataTableController {
 		@Body dto: MoveDataTableColumnDto,
 	) {
 		try {
-			return await this.dataStoreService.moveColumn(
+			return await this.dataTableService.moveColumn(
 				dataTableId,
 				req.params.projectId,
 				columnId,
@@ -215,7 +215,7 @@ export class DataTableController {
 	}
 
 	@Get('/:dataTableId/rows')
-	@ProjectScope('dataStore:readRow')
+	@ProjectScope('dataTable:readRow')
 	async getDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -223,7 +223,7 @@ export class DataTableController {
 		@Query dto: ListDataTableContentQueryDto,
 	) {
 		try {
-			return await this.dataStoreService.getManyRowsAndCount(
+			return await this.dataTableService.getManyRowsAndCount(
 				dataTableId,
 				req.params.projectId,
 				dto,
@@ -249,7 +249,7 @@ export class DataTableController {
 		dto: AddDataTableRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataTableRowReturn : Pick<DataTableRowReturn, 'id'>>>;
 	@Post('/:dataTableId/insert')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async appendDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -257,7 +257,7 @@ export class DataTableController {
 		@Body dto: AddDataTableRowsDto,
 	) {
 		try {
-			return await this.dataStoreService.insertRows(
+			return await this.dataTableService.insertRows(
 				dataTableId,
 				req.params.projectId,
 				dto.data,
@@ -277,7 +277,7 @@ export class DataTableController {
 	}
 
 	@Post('/:dataTableId/upsert')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async upsertDataTableRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -288,7 +288,7 @@ export class DataTableController {
 			// because of strict overloads, we need separate paths
 			const dryRun = dto.dryRun;
 			if (dryRun) {
-				return await this.dataStoreService.upsertRow(
+				return await this.dataTableService.upsertRow(
 					dataTableId,
 					req.params.projectId,
 					dto,
@@ -299,7 +299,7 @@ export class DataTableController {
 
 			const returnData = dto.returnData;
 			if (returnData) {
-				return await this.dataStoreService.upsertRow(
+				return await this.dataTableService.upsertRow(
 					dataTableId,
 					req.params.projectId,
 					dto,
@@ -308,7 +308,7 @@ export class DataTableController {
 				);
 			}
 
-			return await this.dataStoreService.upsertRow(
+			return await this.dataTableService.upsertRow(
 				dataTableId,
 				req.params.projectId,
 				dto,
@@ -329,7 +329,7 @@ export class DataTableController {
 	}
 
 	@Patch('/:dataTableId/rows')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async updateDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -340,7 +340,7 @@ export class DataTableController {
 			// because of strict overloads, we need separate paths
 			const dryRun = dto.dryRun;
 			if (dryRun) {
-				return await this.dataStoreService.updateRows(
+				return await this.dataTableService.updateRows(
 					dataTableId,
 					req.params.projectId,
 					dto,
@@ -351,7 +351,7 @@ export class DataTableController {
 
 			const returnData = dto.returnData;
 			if (returnData) {
-				return await this.dataStoreService.updateRows(
+				return await this.dataTableService.updateRows(
 					dataTableId,
 					req.params.projectId,
 					dto,
@@ -360,7 +360,7 @@ export class DataTableController {
 				);
 			}
 
-			return await this.dataStoreService.updateRows(
+			return await this.dataTableService.updateRows(
 				dataTableId,
 				req.params.projectId,
 				dto,
@@ -381,7 +381,7 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId/rows')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async deleteDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -389,7 +389,7 @@ export class DataTableController {
 		@Query dto: DeleteDataTableRowsDto,
 	) {
 		try {
-			return await this.dataStoreService.deleteRows(
+			return await this.dataTableService.deleteRows(
 				dataTableId,
 				req.params.projectId,
 				dto,
