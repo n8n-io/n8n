@@ -45,6 +45,8 @@ export {
 	type User,
 	type UsersList,
 	usersListSchema,
+	userBaseSchema,
+	userDetailSchema,
 } from './schemas/user.schema';
 
 export {
@@ -72,3 +74,5 @@ export type {
 	ExternalSecretsProviderProperty,
 	ExternalSecretsProviderState,
 } from './schemas/external-secrets.schema';
+
+export type { UsageState } from './schemas/usage.schema';

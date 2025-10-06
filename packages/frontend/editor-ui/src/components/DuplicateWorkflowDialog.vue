@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
+import { N8nButton, N8nInput } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	isActive: boolean;

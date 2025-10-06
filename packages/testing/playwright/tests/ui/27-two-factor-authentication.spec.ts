@@ -42,21 +42,21 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 		await n8n.mfaComposer.loginWithMfaCode(email, password, mfaSecret!);
 
 		const disableToken = authenticator.generate(mfaSecret!);
-		await n8n.settings.triggerDisableMfa();
-		await n8n.settings.fillMfaCodeAndSave(disableToken);
+		await n8n.settingsPersonal.triggerDisableMfa();
+		await n8n.settingsPersonal.fillMfaCodeAndSave(disableToken);
 
-		await expect(n8n.settings.getEnableMfaButton()).toBeVisible();
+		await expect(n8n.settingsPersonal.getEnableMfaButton()).toBeVisible();
 	});
 
 	test('Should prompt for MFA code when email changes', async ({ n8n }) => {
 		await n8n.mfaComposer.enableMfa(email, password, mfaSecret!);
 
-		await n8n.settings.goToPersonalSettings();
-		await n8n.settings.fillEmail(TEST_DATA.NEW_EMAIL);
-		await n8n.settings.pressEnterOnEmail();
+		await n8n.settingsPersonal.goToPersonalSettings();
+		await n8n.settingsPersonal.fillEmail(TEST_DATA.NEW_EMAIL);
+		await n8n.settingsPersonal.pressEnterOnEmail();
 
 		const mfaCode = authenticator.generate(mfaSecret!);
-		await n8n.settings.fillMfaCodeAndSave(mfaCode);
+		await n8n.settingsPersonal.fillMfaCodeAndSave(mfaCode);
 
 		await expect(
 			n8n.notifications.getNotificationByTitleOrContent(NOTIFICATIONS.PERSONAL_DETAILS_UPDATED),
@@ -66,11 +66,11 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	test('Should prompt for MFA recovery code when email changes', async ({ n8n }) => {
 		await n8n.mfaComposer.enableMfa(email, password, mfaSecret!);
 
-		await n8n.settings.goToPersonalSettings();
-		await n8n.settings.fillEmail(TEST_DATA.NEW_EMAIL);
-		await n8n.settings.pressEnterOnEmail();
+		await n8n.settingsPersonal.goToPersonalSettings();
+		await n8n.settingsPersonal.fillEmail(TEST_DATA.NEW_EMAIL);
+		await n8n.settingsPersonal.pressEnterOnEmail();
 
-		await expect(n8n.settings.getMfaCodeOrRecoveryCodeInput()).toBeVisible();
+		await expect(n8n.settingsPersonal.getMfaCodeOrRecoveryCodeInput()).toBeVisible();
 	});
 
 	test('Should not prompt for MFA code or recovery code when first name or last name changes', async ({
@@ -78,7 +78,10 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	}) => {
 		await n8n.mfaComposer.enableMfa(email, password, mfaSecret!);
 
-		await n8n.settings.updateFirstAndLastName(TEST_DATA.NEW_FIRST_NAME, TEST_DATA.NEW_LAST_NAME);
+		await n8n.settingsPersonal.updateFirstAndLastName(
+			TEST_DATA.NEW_FIRST_NAME,
+			TEST_DATA.NEW_LAST_NAME,
+		);
 
 		await expect(
 			n8n.notifications.getNotificationByTitleOrContent(NOTIFICATIONS.PERSONAL_DETAILS_UPDATED),
@@ -91,9 +94,9 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 
 		await n8n.mfaComposer.loginWithMfaCode(email, password, mfaSecret!);
 
-		await n8n.settings.triggerDisableMfa();
-		await n8n.settings.fillMfaCodeAndSave(RECOVERY_CODE);
+		await n8n.settingsPersonal.triggerDisableMfa();
+		await n8n.settingsPersonal.fillMfaCodeAndSave(RECOVERY_CODE);
 
-		await expect(n8n.settings.getEnableMfaButton()).toBeVisible();
+		await expect(n8n.settingsPersonal.getEnableMfaButton()).toBeVisible();
 	});
 });

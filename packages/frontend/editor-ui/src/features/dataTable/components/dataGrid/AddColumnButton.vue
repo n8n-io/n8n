@@ -9,9 +9,20 @@ import { DATA_TABLE_COLUMN_TYPES } from '@/features/dataTable/dataTable.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataTableTypes } from '@/features/dataTable/composables/useDataTableTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataTable/constants';
-import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useDebounce } from '@/composables/useDebounce';
 
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nInputLabel,
+	N8nOption,
+	N8nPopoverReka,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 type FormError = {
 	message?: string;
 	description?: string;
@@ -72,7 +83,11 @@ const onAddButtonClicked = async () => {
 			errorMessage = i18n.baseText('dataTable.addColumn.alreadyExistsError', {
 				interpolate: { name: columnName.value },
 			});
-			errorDescription = i18n.baseText('dataTable.addColumn.alreadyExistsDescription');
+			errorDescription = response.errorMessage?.includes('system')
+				? i18n.baseText('dataTable.addColumn.systemColumnDescription')
+				: response.errorMessage?.includes('testing')
+					? i18n.baseText('dataTable.addColumn.testingColumnDescription')
+					: i18n.baseText('dataTable.addColumn.alreadyExistsDescription');
 		}
 		error.value = {
 			message: errorMessage,
@@ -163,7 +178,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 									<N8nText v-if="error.message" size="small" color="danger" tag="span">
 										{{ error.message }}
 									</N8nText>
-									<Tooltip
+									<N8nTooltip
 										:content="error.description"
 										placement="top"
 										:disabled="!error.description"
@@ -175,7 +190,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 											color="text-base"
 											data-test-id="add-column-error-help-icon"
 										/>
-									</Tooltip>
+									</N8nTooltip>
 								</div>
 							</N8nInputLabel>
 							<N8nInputLabel

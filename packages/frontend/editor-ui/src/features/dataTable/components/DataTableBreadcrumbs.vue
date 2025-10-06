@@ -10,6 +10,8 @@ import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useToast } from '@/composables/useToast';
 import { telemetry } from '@/plugins/telemetry';
 
+import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
+import ProjectBreadcrumb from '@/components/Folders/ProjectBreadcrumb.vue';
 const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {

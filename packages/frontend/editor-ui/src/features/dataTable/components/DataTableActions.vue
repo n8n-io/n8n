@@ -10,6 +10,7 @@ import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nActionToggle } from '@n8n/design-system';
 type Props = {
 	dataTable: DataTable;
 	isReadOnly?: boolean;

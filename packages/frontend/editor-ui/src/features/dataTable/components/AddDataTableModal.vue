@@ -8,6 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import Modal from '@/components/Modal.vue';
 type Props = {
 	modalName: string;
 };

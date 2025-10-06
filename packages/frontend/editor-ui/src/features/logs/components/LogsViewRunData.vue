@@ -5,7 +5,6 @@ import { useI18n } from '@n8n/i18n';
 import { type IRunDataDisplayMode, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import { N8nLink, N8nText } from '@n8n/design-system';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
@@ -14,6 +13,7 @@ import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import { type SearchShortcut } from '@/types';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
+import { N8nLink, N8nText } from '@n8n/design-system';
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
 	title: string;
 	paneType: NodePanelType;

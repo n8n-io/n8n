@@ -4,9 +4,9 @@ import { useDataTableTypes } from '@/features/dataTable/composables/useDataTable
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/dataTable/typeGuards';
-import { N8nActionDropdown } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nIconButton } from '@n8n/design-system';
 
-type HeaderParamsWithDelete = IHeaderParams & {
+export type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete?: (columnId: string) => void;
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;

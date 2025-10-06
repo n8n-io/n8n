@@ -5,7 +5,9 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import DataTableActions from '@/features/dataTable/components/DataTableActions.vue';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
+import TimeAgo from '@/components/TimeAgo.vue';
 
+import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 type Props = {
 	dataTable: DataTable;
 	readOnly?: boolean;

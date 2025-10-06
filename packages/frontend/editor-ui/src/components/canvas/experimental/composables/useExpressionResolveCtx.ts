@@ -1,5 +1,5 @@
 import type { INodeUi } from '@/Interface';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import type { Workflow } from 'n8n-workflow';

@@ -117,6 +117,19 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		currentProject.value = await fetchProject(id);
 	};
 
+	async function fetchAndSetProject(projectId: string) {
+		if (projectId && currentProject.value?.id !== projectId) {
+			const project = await fetchProject(projectId);
+			setCurrentProject(project);
+		}
+	}
+
+	async function refreshCurrentProject() {
+		if (currentProjectId.value && currentProject.value?.id !== currentProjectId.value) {
+			await fetchAndSetProject(currentProjectId.value);
+		}
+	}
+
 	const createProject = async (project: CreateProjectDto): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.restApiContext, project);
 		await getProjectsCount();
@@ -305,8 +318,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getMyProjects,
 		getPersonalProject,
 		getAvailableProjects,
-		fetchProject,
 		getProject,
+		fetchProject,
+		fetchAndSetProject,
+		refreshCurrentProject,
 		createProject,
 		updateProject,
 		addMember,

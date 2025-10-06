@@ -18,6 +18,7 @@ import { restoreChatHistory } from '@/features/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
 import { isChatNode } from '@/utils/aiUtils';
 import { constructChatWebsocketUrl } from '@n8n/chat/utils';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
 	sendMessage: (text: string, files: File[]) => Promise<void>;
@@ -37,6 +38,7 @@ interface ChatState {
 export function useChatState(isReadOnly: boolean): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
@@ -214,7 +216,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	}
 
 	function refreshSession() {
-		workflowsStore.setWorkflowExecutionData(null);
+		workflowState.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
