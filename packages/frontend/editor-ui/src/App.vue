@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import '@/polyfills';
 
-import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
+import AssistantsHub from '@/features/assistant/components/AssistantsHub.vue';
+import AskAssistantFloatingButton from '@/features/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -15,7 +15,7 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';

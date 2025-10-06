@@ -1,5 +1,5 @@
 import { VIEWS } from '@/constants';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '../assistant.types';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 export const PAYLOAD_SIZE_FOR_1_PASS = 4;

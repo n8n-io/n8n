@@ -9,7 +9,7 @@ import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { IWorkflowDb } from '@/Interface';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '../assistant.types';
 import {
 	ERROR_HELPER_TEST_PAYLOAD,
 	PAYLOAD_SIZE_FOR_1_PASS,

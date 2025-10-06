@@ -1,5 +1,5 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';

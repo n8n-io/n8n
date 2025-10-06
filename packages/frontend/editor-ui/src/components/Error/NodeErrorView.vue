@@ -20,11 +20,11 @@ import type {
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useAssistantStore } from '@/stores/assistant.store';
-import type { ChatRequest } from '@/types/assistant.types';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 import {
 	N8nInlineAskAssistantButton,
 	N8nButton,
