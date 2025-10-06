@@ -34,6 +34,13 @@ ruleTester.run('no-import-enterprise-edition', NoImportEnterpriseEditionRule, {
 			code: 'import { Config } from "@n8n/config"',
 			filename: '/Users/test/project/src/environments.ee/services/service.ts',
 		},
+
+		// integration test files can import from .ee directories
+		{
+			code: 'import { EnterpriseService } from "../environments.ee/services/enterprise-service"',
+			filename:
+				'/Users/test/project/packages/cli/test/integration/services/enterprise.integration.test.ts',
+		},
 	],
 
 	invalid: [
