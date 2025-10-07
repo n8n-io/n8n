@@ -16,7 +16,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { useThrottleWithReactiveDelay } from '../../../composables/useThrottleWithReactiveDelay';
+import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
 
 interface UseLogsExecutionDataOptions {
 	/**
