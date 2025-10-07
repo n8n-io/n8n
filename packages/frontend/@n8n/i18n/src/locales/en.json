@@ -1146,6 +1146,7 @@
 	"mainSidebar.workersView": "Workers",
 	"mainSidebar.whatsNew": "What’s New",
 	"mainSidebar.whatsNew.fullChangelog": "Full changelog",
+	"mcp.workflowNotEligable.description": "Only active, webhook-triggered workflows can be accessible through MCP",
 	"menuActions.duplicate": "Duplicate",
 	"menuActions.download": "Download",
 	"menuActions.push": "Push to Git",
