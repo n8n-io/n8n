@@ -3,7 +3,7 @@ import { type ApiKey, type AuthenticatedRequest, WorkflowEntity, User, Role } fr
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { type INode } from 'n8n-workflow';
+import { HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
 
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
@@ -192,7 +192,7 @@ describe('McpSettingsController', () => {
 		const createWebhookNode = (overrides: Partial<INode> = {}): INode => ({
 			id: 'node-1',
 			name: 'Webhook',
-			type: 'n8n-nodes-base.webhook',
+			type: WEBHOOK_NODE_TYPE,
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
@@ -249,7 +249,7 @@ describe('McpSettingsController', () => {
 						{
 							id: 'node-2',
 							name: 'HTTP Request',
-							type: 'n8n-nodes-base.httpRequest',
+							type: HTTP_REQUEST_NODE_TYPE,
 							typeVersion: 1,
 							position: [10, 10],
 							parameters: {},

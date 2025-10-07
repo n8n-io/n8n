@@ -8,6 +8,7 @@ import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import type { WorkflowSettings } from 'n8n-workflow';
@@ -103,7 +104,7 @@ const isElibibleForMCPAccess = computed(() => {
 	}
 	// If it's active, check if workflow has at least one enabled webhook trigger:
 	return workflow.value?.nodes.some(
-		(node) => node.type === 'n8n-nodes-base.webhook' && node.disabled !== true,
+		(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
 	);
 });
 

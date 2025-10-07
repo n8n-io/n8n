@@ -2,6 +2,7 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope, Param } from '@n8n/decorators';
 import type { Response } from 'express';
+import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
@@ -83,7 +84,7 @@ export class McpSettingsController {
 			}
 
 			const hasWebhooks = workflow.nodes.some(
-				(node) => node.type === 'n8n-nodes-base.webhook' && node.disabled !== true,
+				(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
 			);
 
 			if (!hasWebhooks) {
@@ -99,7 +100,7 @@ export class McpSettingsController {
 			...currentSettings,
 			availableInMCP: dto.availableInMCP,
 		};
-		workflowUpdate.versionId = dto.versionId ?? workflow.versionId ?? '';
+		workflowUpdate.versionId = workflow.versionId;
 
 		const updatedWorkflow = await this.workflowService.update(
 			req.user,

@@ -7,6 +7,7 @@ import type {
 	INodeParameters,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import { buildWebhookPath, getWebhookDetails } from '../tools/webhook-utils';
 
@@ -40,7 +41,7 @@ const createWebhookNode = (
 	const base: INode = {
 		id: '1',
 		name: 'Webhook',
-		type: 'n8n-nodes-base.webhook',
+		type: WEBHOOK_NODE_TYPE,
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
