@@ -14,7 +14,7 @@ import {
 	TEST_ISSUE,
 } from './ParameterInputList.test.constants';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { Workflow } from 'n8n-workflow';
+import type { INodeProperties, Workflow } from 'n8n-workflow';
 import type { INodeUi } from '../Interface';
 import type { MockInstance } from 'vitest';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -140,7 +140,7 @@ describe('ParameterInputList', () => {
 
 	describe('updateFormParameters', () => {
 		const workflowHelpersMock: MockInstance = vi.spyOn(workflowHelpers, 'useWorkflowHelpers');
-		const formParameters = [
+		const formParameters: INodeProperties[] = [
 			{
 				displayName: 'TRIGGER NOTICE',
 				name: 'triggerNotice',

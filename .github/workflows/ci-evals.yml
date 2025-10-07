@@ -1,0 +1,33 @@
+name: Run Workflow Builder Evals
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/@n8n/ai-workflow-builder.ee/**'
+      - '.github/workflows/ci-evals.yml'
+
+jobs:
+  evals:
+    name: Run Evaluations
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+      LANGSMITH_TRACING: true
+      LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+      LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs-blacksmith
+
+      - name: Export Node Types
+        run: |
+          ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
+
+      - name: Run Evaluations
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
+        run: |
+          pnpm eval:langsmith

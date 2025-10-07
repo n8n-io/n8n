@@ -35,6 +35,7 @@ import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
+import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();

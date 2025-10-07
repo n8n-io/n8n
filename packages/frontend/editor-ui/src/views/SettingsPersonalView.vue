@@ -25,6 +25,19 @@ import { useSSOStore } from '@/stores/sso.store';
 import type { ConfirmPasswordModalEvents } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
 import { confirmPasswordEventBus } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
 
+import {
+	N8nAvatar,
+	N8nButton,
+	N8nFormInputs,
+	N8nHeading,
+	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 type UserBasicDetailsForm = {
 	firstName: string;
 	lastName: string;

@@ -15,6 +15,7 @@ import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
 	IPinData,
 	IConnection,
+	IConnections,
 	INodeExecutionData,
 	INode,
 	INodeTypeDescription,
@@ -35,6 +36,7 @@ import {
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -150,6 +152,92 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('workflowValidationIssues', () => {
+		it('collects issues only from connected, enabled nodes', () => {
+			const connections: IConnections = {
+				Start: {
+					main: [
+						[
+							{
+								node: 'Fetch',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+			};
+
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'start',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+				{
+					id: 'fetch',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					parameters: {},
+					issues: {
+						parameters: {
+							url: ['Missing URL', 'Invalid URL.'],
+						},
+						credentials: {
+							httpBasicAuth: ['Credentials not set'],
+						},
+					},
+					position: [300, 0],
+				},
+				{
+					id: 'orphan',
+					name: 'Disconnected',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					parameters: {},
+					issues: {
+						parameters: { field: ['Should be ignored'] },
+					},
+					position: [0, 400],
+				},
+				{
+					id: 'disabled',
+					name: 'Disabled Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					disabled: true,
+					parameters: {},
+					issues: {
+						parameters: { field: ['Disabled issue'] },
+					},
+					position: [0, 600],
+				},
+			];
+			workflowsStore.workflow.connections = connections;
+
+			const issues = workflowsStore.workflowValidationIssues;
+			expect(issues).toEqual([
+				{ node: 'Fetch', type: 'parameters', value: ['Missing URL', 'Invalid URL.'] },
+				{ node: 'Fetch', type: 'credentials', value: ['Credentials not set'] },
+			]);
+		});
+	});
+
+	describe('formatIssueMessage', () => {
+		it('joins array entries and trims trailing period', () => {
+			const message = workflowsStore.formatIssueMessage(['Missing URL', 'Invalid value.']);
+			expect(message).toBe('Missing URL, Invalid value');
+		});
+
+		it('returns string representation for non-array values', () => {
+			expect(workflowsStore.formatIssueMessage('Simple issue.')).toBe('Simple issue.');
+		});
+	});
+
 	describe('allWorkflows', () => {
 		it('should return sorted workflows by name', () => {
 			workflowsStore.setWorkflows([
@@ -178,7 +266,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should return false for an existing workflow', () => {
-			workflowsStore.setWorkflowId('123');
+			useWorkflowState().setWorkflowId('123');
 			expect(workflowsStore.isNewWorkflow).toBe(false);
 		});
 	});
@@ -458,13 +546,6 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalled();
 			expect(Object.values(workflowsStore.workflowsById)).toEqual(mockWorkflows);
-		});
-	});
-
-	describe('setWorkflowName()', () => {
-		it('should set the workflow name correctly', () => {
-			workflowsStore.setWorkflowName({ newName: 'New Workflow Name', setStateDirty: false });
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
 		});
 	});
 
@@ -757,7 +838,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node success run data', () => {
-			workflowsStore.setWorkflowExecutionData(executionResponse);
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -770,6 +851,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -780,7 +862,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should add node error event and track errored executions', async () => {
 			workflowsStore.workflow.pinData = {};
-			workflowsStore.setWorkflowExecutionData(executionResponse);
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -800,6 +882,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'Edit Fields',
 						runData: {
 							[errorEvent.nodeName]: [errorEvent.data],
 						},
@@ -869,7 +952,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -882,6 +965,7 @@ describe('useWorkflowsStore', () => {
 				...runWithExistingRunData,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -890,7 +974,7 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
-		it('should replace existing placeholder task data in new log view', () => {
+		it('should replace existing placeholder task data and lastNodeExecuted', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
@@ -923,7 +1007,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -936,6 +1020,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
 						},

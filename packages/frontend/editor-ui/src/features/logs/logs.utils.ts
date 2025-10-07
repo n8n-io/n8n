@@ -12,8 +12,14 @@ import {
 	type ISourceData,
 	parseErrorMetadata,
 	type RelatedExecution,
+	type INodeExecutionData,
 } from 'n8n-workflow';
-import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
+import type {
+	LogEntry,
+	LogEntrySelection,
+	LogTreeCreationContext,
+	LogTreeFilter,
+} from './logs.types';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash/get';
@@ -21,26 +27,27 @@ import isEmpty from 'lodash/isEmpty';
 import { v4 as uuid } from 'uuid';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 
-function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
-	if (!task.data) {
-		return emptyTokenUsageData;
-	}
+export function getConsumedTokens(task: Array<INodeExecutionData | null>): LlmTokenUsageData {
+	const tokenUsage = task.reduce<LlmTokenUsageData>((acc, curr) => {
+		const tokenUsageData = curr?.json?.tokenUsage ?? curr?.json?.tokenUsageEstimate;
 
-	const tokenUsage = Object.values(task.data)
-		.flat()
-		.flat()
-		.reduce<LlmTokenUsageData>((acc, curr) => {
-			const tokenUsageData = curr?.json?.tokenUsage ?? curr?.json?.tokenUsageEstimate;
+		if (!tokenUsageData) return acc;
 
-			if (!tokenUsageData) return acc;
-
-			return addTokenUsageData(acc, {
-				...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
-				isEstimate: !!curr?.json.tokenUsageEstimate,
-			});
-		}, emptyTokenUsageData);
+		return addTokenUsageData(acc, {
+			...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
+			isEstimate: !!curr?.json.tokenUsageEstimate,
+		});
+	}, emptyTokenUsageData);
 
 	return tokenUsage;
+}
+
+function getConsumedTokensFromTaskData(runData: ITaskData) {
+	return getConsumedTokens(
+		Object.values(runData.data ?? {})
+			.flat()
+			.flat(),
+	);
 }
 
 function createNode(
@@ -59,10 +66,11 @@ function createNode(
 		runIndex,
 		runData,
 		children,
-		consumedTokens: runData ? getConsumedTokens(runData) : emptyTokenUsageData,
+		consumedTokens: runData ? getConsumedTokensFromTaskData(runData) : emptyTokenUsageData,
 		workflow: context.workflow,
 		executionId: context.executionId,
 		execution: context.data,
+		isSubExecution: context.isSubExecution,
 	};
 }
 
@@ -82,13 +90,14 @@ function getChildNodes(
 			return [];
 		}
 
-		return createLogTreeRec({
+		return createLogTreeRec(undefined, {
 			...context,
 			parent: treeNode,
 			ancestorRunIndexes: [...context.ancestorRunIndexes, runIndex ?? 0],
 			workflow,
 			executionId: subExecutionLocator.executionId,
 			data: subWorkflowRunData,
+			isSubExecution: true,
 		});
 	}
 
@@ -192,7 +201,10 @@ function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 	return subTree[subTree.length - 1];
 }
 
-function createLogTreeRec(context: LogTreeCreationContext): LogEntry[] {
+function createLogTreeRec(
+	filter: LogTreeFilter | undefined,
+	context: LogTreeCreationContext,
+): LogEntry[] {
 	const runData = context.data.resultData.runData;
 
 	return Object.entries(runData)
@@ -204,7 +216,7 @@ function createLogTreeRec(context: LogTreeCreationContext): LogEntry[] {
 		}>(([nodeName, taskData]) => {
 			const node = context.workflow.getNode(nodeName);
 
-			if (node === null) {
+			if (node === null || (filter && filter.rootNodeId !== node.id)) {
 				return [];
 			}
 
@@ -212,12 +224,16 @@ function createLogTreeRec(context: LogTreeCreationContext): LogEntry[] {
 
 			if (childNodes.length === 0) {
 				// The node is root node
-				return taskData.map((task, runIndex) => ({
+				const taskDataList = taskData.map((task, runIndex) => ({
 					node,
 					task,
 					runIndex,
 					nodeHasMultipleRuns: taskData.length > 1,
 				}));
+
+				return filter
+					? taskDataList.filter((item) => item.runIndex === filter.rootNodeRunIndex)
+					: taskDataList;
 			}
 
 			// The node is sub node
@@ -246,8 +262,9 @@ export function createLogTree(
 	response: IExecutionResponse,
 	workflows: Record<string, Workflow> = {},
 	subWorkflowData: Record<string, IRunExecutionData> = {},
+	filter?: LogTreeFilter,
 ): LogEntry[] {
-	return createLogTreeRec({
+	return createLogTreeRec(filter, {
 		parent: undefined,
 		ancestorRunIndexes: [],
 		executionId: response.id,
@@ -255,7 +272,12 @@ export function createLogTree(
 		workflows,
 		data: response.data ?? { resultData: { runData: {} } },
 		subWorkflowData,
+		isSubExecution: false,
 	});
+}
+
+export function findLogEntryById(id: string, entries: LogEntry[]) {
+	return findLogEntryRec((entry) => entry.id === id, entries);
 }
 
 export function findLogEntryRec(

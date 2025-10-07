@@ -17,6 +17,7 @@ import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 import { BaseCommand } from './base-command';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 
 const flagsSchema = z.object({
 	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
@@ -87,6 +88,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.setConcurrency();
 		await super.init();
 
+		Container.get(DeprecationService).warn();
+
 		await this.initLicense();
 		this.logger.debug('License init complete');
 		await Container.get(CredentialsOverwrites).init();
@@ -156,7 +159,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.scalingService.setupQueue();
 
-		this.scalingService.setupWorker(this.concurrency);
+		await this.scalingService.setupWorker(this.concurrency);
 	}
 
 	async run() {

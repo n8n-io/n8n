@@ -1,6 +1,8 @@
 import {
 	RoleChangeRequestDto,
 	SettingsUpdateRequestDto,
+	userDetailSchema,
+	userBaseSchema,
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
@@ -74,6 +76,7 @@ export class UsersController {
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: UsersListFilterDto,
+		currentUser: User,
 	) {
 		const { select } = listQueryOptions;
 
@@ -93,7 +96,12 @@ export class UsersController {
 			}
 		}
 
-		return publicUsers;
+		const usersSeesAllDetails = hasGlobalScope(currentUser, 'user:create');
+		return publicUsers.map((user) => {
+			return usersSeesAllDetails || user.id === currentUser.id
+				? userDetailSchema.parse(user)
+				: userBaseSchema.parse(user);
+		});
 	}
 
 	@Get('/')
@@ -133,7 +141,7 @@ export class UsersController {
 
 		return usersListSchema.parse({
 			count,
-			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+			items: this.removeSupplementaryFields(publicUsers, listQueryOptions, req.user),
 		});
 	}
 

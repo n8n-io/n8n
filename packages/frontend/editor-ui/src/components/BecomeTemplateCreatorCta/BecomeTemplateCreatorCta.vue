@@ -2,6 +2,7 @@
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 const i18n = useI18n();
 const telemetry = useTelemetry();
 

@@ -4,7 +4,7 @@ import { MemorySaver } from '@langchain/langgraph';
 import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
+import { anthropicClaudeSonnet45 } from '../../src/llm-config.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import { loadNodesFromFile } from '../load-nodes.js';
 
@@ -25,7 +25,7 @@ export async function setupLLM(): Promise<BaseChatModel> {
 	if (!apiKey) {
 		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required');
 	}
-	return await anthropicClaudeSonnet4({ apiKey });
+	return await anthropicClaudeSonnet45({ apiKey });
 }
 
 /**

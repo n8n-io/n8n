@@ -18,7 +18,7 @@ import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -116,6 +116,19 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const getProject = async (id: string) => {
 		currentProject.value = await fetchProject(id);
 	};
+
+	async function fetchAndSetProject(projectId: string) {
+		if (projectId && currentProject.value?.id !== projectId) {
+			const project = await fetchProject(projectId);
+			setCurrentProject(project);
+		}
+	}
+
+	async function refreshCurrentProject() {
+		if (currentProjectId.value && currentProject.value?.id !== currentProjectId.value) {
+			await fetchAndSetProject(currentProjectId.value);
+		}
+	}
 
 	const createProject = async (project: CreateProjectDto): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.restApiContext, project);
@@ -305,8 +318,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getMyProjects,
 		getPersonalProject,
 		getAvailableProjects,
-		fetchProject,
 		getProject,
+		fetchProject,
+		fetchAndSetProject,
+		refreshCurrentProject,
 		createProject,
 		updateProject,
 		addMember,

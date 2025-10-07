@@ -1,13 +1,14 @@
 import { userEvent } from '@testing-library/user-event';
 import NDVHeader from '@/components/NDVHeader.vue';
 import { renderComponent } from '../__tests__/render';
+import type { ComponentProps } from 'vue-component-type-helpers';
 
 describe('NDVHeader', () => {
-	const defaultProps = {
+	const defaultProps: Partial<ComponentProps<typeof NDVHeader>> = {
 		nodeName: 'My Custom Name',
 		nodeTypeName: 'Edit Fields',
 		docsUrl: 'https://example.com/docs',
-		icon: { icon: 'code' },
+		icon: { type: 'icon', name: 'code' },
 		readOnly: false,
 	};
 

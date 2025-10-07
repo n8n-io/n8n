@@ -8,8 +8,7 @@
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref, useCssModule, useAttrs, computed } from 'vue';
 
-import type { ActionDropdownItem, IconSize, ButtonSize } from '@n8n/design-system/types';
-
+import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
@@ -60,6 +59,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 const emit = defineEmits<{
 	select: [action: T];
 	visibleChange: [open: boolean];
+	'badge-click': [action: T];
 }>();
 
 defineSlots<{
@@ -138,7 +138,11 @@ defineExpose({ open, close });
 								icon="check"
 								:size="iconSize"
 							/>
-							<span v-if="item.badge">
+							<span
+								v-if="item.badge"
+								:class="{ [$style.clickableBadge]: item.disabled }"
+								@click.stop="item.disabled && $emit('badge-click', item.id)"
+							>
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}
 								</N8nBadge>
@@ -224,5 +228,10 @@ defineExpose({ open, close });
 	.hasCustomStyling {
 		color: inherit !important;
 	}
+}
+
+.clickableBadge {
+	cursor: pointer;
+	pointer-events: auto;
 }
 </style>

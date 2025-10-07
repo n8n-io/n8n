@@ -29,8 +29,6 @@ import {
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	SOURCE_CONTROL_PULL_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
@@ -43,8 +41,13 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
+import {
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+} from '@/features/sourceControl.ee/sourceControl.constants';
 
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
@@ -60,9 +63,11 @@ import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import DeleteFolderModal from '@/components/Folders/DeleteFolderModal.vue';
+import MoveToFolderModal from '@/components/Folders/MoveToFolderModal.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
-import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
+import ExternalSecretsProviderModal from '@/features/externalSecrets/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
@@ -71,15 +76,18 @@ import MfaSetupModal from '@/components/MfaSetupModal.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
+import PreBuiltAgentsModal from '@/components/PreBuiltAgentsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
-import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
-import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
-import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
+import SetupWorkflowCredentialsModal from '@/features/templates/components/SetupWorkflowCredentialsModal.vue';
+import SourceControlPullModal from '@/features/sourceControl.ee/components/SourceControlPullModal.vue';
+import SourceControlPushModal from '@/features/sourceControl.ee/components/SourceControlPushModal.vue';
 import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
+import WhatsNewModal from '@/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
+import WorkflowExtractionNameModal from '@/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
@@ -87,7 +95,8 @@ import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
-import NodeRecommendationModal from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
+import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
+import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 </script>
 
 <template>
@@ -353,7 +362,13 @@ import NodeRecommendationModal from '@/experiments/templateRecoV2/components/Nod
 
 		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V2_KEY">
 			<template #default="{ modalName, data }">
-				<NodeRecommendationModal :modal-name="modalName" :data="data" />
+				<NodeRecommendationModalV2 :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V3_KEY">
+			<template #default="{ modalName, data }">
+				<NodeRecommendationModalV3 :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

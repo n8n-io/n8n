@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import snakeCase from 'lodash/snakeCase';
 import { useSessionStorage } from '@vueuse/core';
 
-import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
+import { N8nButton, N8nCircleLoader, N8nIcon, N8nInput, N8nTooltip } from '@n8n/design-system';
 import { randomInt } from 'n8n-workflow';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
@@ -25,7 +25,6 @@ import {
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/constants';
 import type { AskAiRequest } from '@/types/assistant.types';
-
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];

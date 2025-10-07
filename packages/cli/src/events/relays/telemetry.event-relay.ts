@@ -167,12 +167,14 @@ export class TelemetryEventRelay extends EventRelay {
 		readOnlyInstance,
 		repoType,
 		connected,
+		connectionType,
 	}: RelayEventMap['source-control-settings-updated']) {
 		this.telemetry.track('User updated source control settings', {
 			branch_name: branchName,
 			read_only_instance: readOnlyInstance,
 			repo_type: repoType,
 			connected,
+			connection_type: connectionType,
 		});
 	}
 

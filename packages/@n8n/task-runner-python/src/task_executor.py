@@ -3,9 +3,9 @@ import multiprocessing
 import traceback
 import textwrap
 import json
+import io
 import os
 import sys
-import tempfile
 import logging
 
 from src.errors import (
@@ -27,6 +27,7 @@ from src.constants import (
 from typing import Any, Set
 
 from multiprocessing.context import ForkServerProcess
+from multiprocessing import shared_memory
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,6 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
-        can_log: bool,
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -67,7 +67,6 @@ class TaskExecutor:
                 stdlib_allow,
                 external_allow,
                 builtins_deny,
-                can_log,
             ),
         )
 
@@ -79,7 +78,7 @@ class TaskExecutor:
         queue: multiprocessing.Queue,
         task_timeout: int,
         continue_on_fail: bool,
-    ) -> tuple[list, PrintArgs]:
+    ) -> tuple[list, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
         print_args: PrintArgs = []
@@ -119,23 +118,29 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            if "result_file" not in returned:
+            if "shm_name" not in returned:
                 raise TaskResultMissingError()
 
-            result_file = returned["result_file"]
+            shm_name = returned["shm_name"]
+            shm_size = returned["shm_size"]
             try:
-                with open(result_file, "r", encoding="utf-8") as f:
-                    result = json.load(f)
-            finally:
-                os.unlink(result_file)
+                shm = shared_memory.SharedMemory(name=shm_name)
+                try:
+                    json_str = bytes(shm.buf[:shm_size]).decode("utf-8")
+                    result = json.loads(json_str)
+                finally:
+                    shm.close()
+                    shm.unlink()
+            except FileNotFoundError:
+                raise TaskResultMissingError()
 
             print_args = returned.get("print_args", [])
 
-            return result, print_args
+            return result, print_args, shm_size
 
         except Exception as e:
             if continue_on_fail:
-                return [{"json": {"error": str(e)}}], print_args
+                return [{"json": {"error": str(e)}}], print_args, 0
             raise
 
     @staticmethod
@@ -163,7 +168,6 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
-        can_log: bool,
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -172,6 +176,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
@@ -180,9 +185,7 @@ class TaskExecutor:
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                 "_items": items,
-                "print": TaskExecutor._create_custom_print(print_args)
-                if can_log
-                else print,
+                "print": TaskExecutor._create_custom_print(print_args),
             }
 
             exec(compiled_code, globals)
@@ -190,8 +193,8 @@ class TaskExecutor:
             result = globals[EXECUTOR_USER_OUTPUT_KEY]
             TaskExecutor._put_result(queue, result, print_args)
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+        except BaseException as e:
+            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _per_item(
@@ -201,7 +204,6 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
-        can_log: bool,
     ):
         """Execute a Python code task in per-item mode."""
 
@@ -210,6 +212,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
@@ -220,9 +223,7 @@ class TaskExecutor:
                 globals = {
                     "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_args)
-                    if can_log
-                    else print,
+                    "print": TaskExecutor._create_custom_print(print_args),
                 }
 
                 exec(compiled_code, globals)
@@ -237,8 +238,8 @@ class TaskExecutor:
 
             TaskExecutor._put_result(queue, result, print_args)
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+        except BaseException as e:
+            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
@@ -249,25 +250,43 @@ class TaskExecutor:
     def _put_result(
         queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
     ):
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            delete=False,
-            prefix="n8n_result_",
-            suffix=".json",
-            encoding="utf-8",
-        ) as f:
-            json.dump(result, f, default=str, ensure_ascii=False)
-            result_file = f.name
+        json_bytes = json.dumps(result, default=str, ensure_ascii=False).encode("utf-8")
+        json_bytes_size = len(json_bytes)
 
-        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-        queue.put({"result_file": result_file, "print_args": print_args_to_send})
+        shm = shared_memory.SharedMemory(create=True, size=json_bytes_size)
+        shm.buf[:json_bytes_size] = json_bytes
 
-    @staticmethod
-    def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
         queue.put(
             {
-                "error": {"message": str(e), "stack": traceback.format_exc()},
+                "shm_name": shm.name,
+                "shm_size": json_bytes_size,  # stay exact, shm.size can round up for alignment
+                "print_args": print_args_to_send,
+            }
+        )
+
+        shm.close()
+
+    @staticmethod
+    def _put_error(
+        queue: multiprocessing.Queue,
+        e: BaseException,
+        stderr: str = "",
+        print_args: PrintArgs = [],
+    ):
+        error_dict = {
+            "message": f"Process exited with code {e.code}"
+            if isinstance(e, SystemExit)
+            else str(e),
+            "stack": traceback.format_exc(),
+            "stderr": stderr,
+        }
+
+        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
+
+        queue.put(
+            {
+                "error": error_dict,
                 "print_args": print_args_to_send,
             }
         )
@@ -378,8 +397,12 @@ class TaskExecutor:
         else:
             safe_modules.update(external_allow)
 
+        # keep modules marked as safe and submodules of those
         modules_to_remove = [
-            name for name in sys.modules.keys() if name not in safe_modules
+            name
+            for name in sys.modules.keys()
+            if name not in safe_modules
+            and not any(name.startswith(safe + ".") for safe in safe_modules)
         ]
 
         for module_name in modules_to_remove:

@@ -24,6 +24,7 @@ import {
 } from './utils';
 import { useDebounce } from '@/composables/useDebounce';
 
+import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	path: string;
 	condition: FilterConditionValue;

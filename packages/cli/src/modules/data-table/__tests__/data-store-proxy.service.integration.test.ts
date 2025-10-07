@@ -3,18 +3,18 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type {
-	AddDataStoreColumnOptions,
+	AddDataTableColumnOptions,
 	INode,
-	ListDataStoreRowsOptions,
-	MoveDataStoreColumnOptions,
-	UpsertDataStoreRowOptions,
+	ListDataTableRowsOptions,
+	MoveDataTableColumnOptions,
+	UpsertDataTableRowOptions,
 	Workflow,
 } from 'n8n-workflow';
 
 import type { OwnershipService } from '@/services/ownership.service';
 
-import { DataStoreProxyService } from '../data-store-proxy.service';
-import type { DataStoreService } from '../data-store.service';
+import { DataTableProxyService } from '../data-table-proxy.service';
+import type { DataTableService } from '../data-table.service';
 
 const PROJECT_ID = 'project-id';
 
@@ -22,23 +22,23 @@ beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
 });
-describe('DataStoreProxyService', () => {
-	let dataStoreServiceMock = mock<DataStoreService>();
+describe('DataTableProxyService', () => {
+	let dataTableServiceMock = mock<DataTableService>();
 	let ownershipServiceMock = mock<OwnershipService>();
 	let loggerMock = mock<Logger>();
-	let dataStoreProxyService: DataStoreProxyService;
+	let dataStoreProxyService: DataTableProxyService;
 
 	let workflow: Workflow;
 	let node: INode;
 	let project: Project;
 
 	beforeEach(() => {
-		dataStoreServiceMock = mock<DataStoreService>();
+		dataTableServiceMock = mock<DataTableService>();
 		ownershipServiceMock = mock<OwnershipService>();
 		loggerMock = mock<Logger>();
 
-		dataStoreProxyService = new DataStoreProxyService(
-			dataStoreServiceMock,
+		dataStoreProxyService = new DataTableProxyService(
+			dataTableServiceMock,
 			ownershipServiceMock,
 			loggerMock,
 		);
@@ -60,103 +60,103 @@ describe('DataStoreProxyService', () => {
 		it('should call getManyAndCount with correct parameters', async () => {
 			const options = { filter: { name: 'test' } };
 
-			const aggregateOperations = await dataStoreProxyService.getDataStoreAggregateProxy(
+			const aggregateOperations = await dataStoreProxyService.getDataTableAggregateProxy(
 				workflow,
 				node,
 			);
 			await aggregateOperations.getManyAndCount(options);
 
-			expect(dataStoreServiceMock.getManyAndCount).toBeCalledWith({
+			expect(dataTableServiceMock.getManyAndCount).toBeCalledWith({
 				filter: { name: 'test', projectId: PROJECT_ID },
 			});
 		});
 
-		it('should call createDataStore with correct parameters', async () => {
-			const options = { name: 'newDataStore', columns: [] };
+		it('should call createDataTable with correct parameters', async () => {
+			const options = { name: 'newDataTable', columns: [] };
 
-			const aggregateOperations = await dataStoreProxyService.getDataStoreAggregateProxy(
+			const aggregateOperations = await dataStoreProxyService.getDataTableAggregateProxy(
 				workflow,
 				node,
 			);
-			await aggregateOperations.createDataStore(options);
+			await aggregateOperations.createDataTable(options);
 
-			expect(dataStoreServiceMock.createDataStore).toBeCalledWith(PROJECT_ID, options);
+			expect(dataTableServiceMock.createDataTable).toBeCalledWith(PROJECT_ID, options);
 		});
 
-		it('should call deleteDataStoreByProject when proxy calls deleteDataStoreAll', async () => {
-			const aggregateOperations = await dataStoreProxyService.getDataStoreAggregateProxy(
+		it('should call deleteDataTableByProject when proxy calls deleteDataTableAll', async () => {
+			const aggregateOperations = await dataStoreProxyService.getDataTableAggregateProxy(
 				workflow,
 				node,
 			);
-			await aggregateOperations.deleteDataStoreAll();
+			await aggregateOperations.deleteDataTableAll();
 
-			expect(dataStoreServiceMock.deleteDataStoreByProjectId).toBeCalledWith(PROJECT_ID);
+			expect(dataTableServiceMock.deleteDataTableByProjectId).toBeCalledWith(PROJECT_ID);
 		});
 	});
-	it('should call updateDataStore with correct parameters', async () => {
-		const options = { name: 'updatedDataStore' };
+	it('should call updateDataTable with correct parameters', async () => {
+		const options = { name: 'updatedDataTable' };
 
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
-		await dataStoreOperations.updateDataStore(options);
+		await dataStoreOperations.updateDataTable(options);
 
-		expect(dataStoreServiceMock.updateDataStore).toBeCalledWith(
+		expect(dataTableServiceMock.updateDataTable).toBeCalledWith(
 			'dataStore-id',
 			PROJECT_ID,
 			options,
 		);
 	});
 
-	it('should call deleteDataStore with correct parameters', async () => {
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+	it('should call deleteDataTable with correct parameters', async () => {
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
-		await dataStoreOperations.deleteDataStore();
+		await dataStoreOperations.deleteDataTable();
 
-		expect(dataStoreServiceMock.deleteDataStore).toBeCalledWith('dataStore-id', PROJECT_ID);
+		expect(dataTableServiceMock.deleteDataTable).toBeCalledWith('dataStore-id', PROJECT_ID);
 	});
 
 	it('should call getColumns with correct parameters', async () => {
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
 		await dataStoreOperations.getColumns();
 
-		expect(dataStoreServiceMock.getColumns).toBeCalledWith('dataStore-id', PROJECT_ID);
+		expect(dataTableServiceMock.getColumns).toBeCalledWith('dataStore-id', PROJECT_ID);
 	});
 
 	it('should call addColumn with correct parameters', async () => {
-		const options: AddDataStoreColumnOptions = { name: 'newColumn', type: 'string' };
+		const options: AddDataTableColumnOptions = { name: 'newColumn', type: 'string' };
 
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
 		await dataStoreOperations.addColumn(options);
 
-		expect(dataStoreServiceMock.addColumn).toBeCalledWith('dataStore-id', PROJECT_ID, options);
+		expect(dataTableServiceMock.addColumn).toBeCalledWith('dataStore-id', PROJECT_ID, options);
 	});
 
 	it('should call moveColumn with correct parameters', async () => {
 		const columnId = 'column-id';
-		const options: MoveDataStoreColumnOptions = { targetIndex: 1 };
+		const options: MoveDataTableColumnOptions = { targetIndex: 1 };
 
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
 		await dataStoreOperations.moveColumn(columnId, options);
 
-		expect(dataStoreServiceMock.moveColumn).toBeCalledWith(
+		expect(dataTableServiceMock.moveColumn).toBeCalledWith(
 			'dataStore-id',
 			PROJECT_ID,
 			columnId,
@@ -167,32 +167,32 @@ describe('DataStoreProxyService', () => {
 	it('should call deleteColumn with correct parameters', async () => {
 		const columnId = 'column-id';
 
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
 		await dataStoreOperations.deleteColumn(columnId);
 
-		expect(dataStoreServiceMock.deleteColumn).toBeCalledWith('dataStore-id', PROJECT_ID, columnId);
+		expect(dataTableServiceMock.deleteColumn).toBeCalledWith('dataStore-id', PROJECT_ID, columnId);
 	});
 
 	it('should call getManyRowsAndCount with correct parameters', async () => {
-		const options: ListDataStoreRowsOptions = {
+		const options: ListDataTableRowsOptions = {
 			filter: {
 				filters: [{ columnName: 'x', condition: 'eq', value: 'testRow' }],
 				type: 'and',
 			},
 		};
 
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
 		await dataStoreOperations.getManyRowsAndCount(options);
 
-		expect(dataStoreServiceMock.getManyRowsAndCount).toBeCalledWith(
+		expect(dataTableServiceMock.getManyRowsAndCount).toBeCalledWith(
 			'dataStore-id',
 			PROJECT_ID,
 			options,
@@ -202,14 +202,14 @@ describe('DataStoreProxyService', () => {
 	it('should call insertRows with correct parameters', async () => {
 		const rows = [{ id: 1, name: 'row1' }];
 
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
 		await dataStoreOperations.insertRows(rows, 'count');
 
-		expect(dataStoreServiceMock.insertRows).toBeCalledWith(
+		expect(dataTableServiceMock.insertRows).toBeCalledWith(
 			'dataStore-id',
 			PROJECT_ID,
 			rows,
@@ -218,7 +218,7 @@ describe('DataStoreProxyService', () => {
 	});
 
 	it('should call upsertRow with correct parameters', async () => {
-		const options: UpsertDataStoreRowOptions = {
+		const options: UpsertDataTableRowOptions = {
 			filter: {
 				filters: [{ columnName: 'name', condition: 'eq', value: 'test' }],
 				type: 'and',
@@ -226,17 +226,44 @@ describe('DataStoreProxyService', () => {
 			data: { name: 'newName' },
 		};
 
-		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
 			workflow,
 			node,
 			'dataStore-id',
 		);
 		await dataStoreOperations.upsertRow(options);
 
-		expect(dataStoreServiceMock.upsertRow).toBeCalledWith(
+		expect(dataTableServiceMock.upsertRow).toBeCalledWith(
 			'dataStore-id',
 			PROJECT_ID,
 			options,
+			true,
+			undefined,
+		);
+	});
+
+	it('should call upsertRow dry run with correct parameters', async () => {
+		const options: UpsertDataTableRowOptions = {
+			filter: {
+				filters: [{ columnName: 'name', condition: 'eq', value: 'test' }],
+				type: 'and',
+			},
+			data: { name: 'newName' },
+			dryRun: true,
+		};
+
+		const dataStoreOperations = await dataStoreProxyService.getDataTableProxy(
+			workflow,
+			node,
+			'dataStore-id',
+		);
+		await dataStoreOperations.upsertRow(options);
+
+		expect(dataTableServiceMock.upsertRow).toBeCalledWith(
+			'dataStore-id',
+			PROJECT_ID,
+			options,
+			true,
 			true,
 		);
 	});
