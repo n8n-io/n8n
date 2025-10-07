@@ -90,7 +90,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				);
 				const newItem = {
 					binary: data[0].binary,
-					json: {},
+					json: responseData as IDataObject,
 				};
 				returnData.push(newItem);
 			} else {
