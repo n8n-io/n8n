@@ -182,13 +182,13 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
-			v-if="!isCompact || !props.latestInfo?.deleted"
+			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
 			type="secondary"
 			size="small"
 			icon="square-pen"
 			icon-size="medium"
 			:style="{
-				visibility: props.canOpenNdv ? '' : 'hidden',
+				visibility: props.data.isSubExecution ? 'hidden' : '',
 			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"

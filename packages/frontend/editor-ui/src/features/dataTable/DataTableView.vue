@@ -11,7 +11,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataTableResource } from '@/features/dataTable/types';
 import DataTableCard from '@/features/dataTable/components/DataTableCard.vue';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
 	DEFAULT_DATA_TABLE_PAGE_SIZE,

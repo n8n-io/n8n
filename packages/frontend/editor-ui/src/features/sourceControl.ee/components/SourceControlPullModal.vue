@@ -2,18 +2,19 @@
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
-import { sourceControlEventBus } from '@/event-bus/source-control';
+import { VIEWS } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY } from '../sourceControl.constants';
+import { sourceControlEventBus } from '../sourceControl.eventBus';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import {
 	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
 	notifyUserAboutPullWorkFolderOutcome,
-} from '@/utils/sourceControlUtils';
+} from '../sourceControl.utils';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -23,7 +24,7 @@ import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import Modal from './Modal.vue';
+import Modal from '@/components/Modal.vue';
 
 import {
 	N8nBadge,

@@ -8,7 +8,7 @@ import type {
 	SourceControlPreferences,
 	SourceControlStatus,
 	SshKeyTypes,
-} from '@/types/sourceControl.types';
+} from './sourceControl.types';
 import type { IWorkflowDb } from '@/Interface';
 
 import { makeRestApiRequest } from '@n8n/rest-api-client';
