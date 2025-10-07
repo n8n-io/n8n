@@ -252,6 +252,7 @@
 	"aiAssistant.privacySettings.allowSendingNodeParameters.tooltip": "When enabled, n8n will send node parameter values from your currently opened workflow",
 	"aiAssistant.privacySettings.allowSendingResolvedExpressions.label": "Allow sending resolved expressions",
 	"aiAssistant.privacySettings.allowSendingResolvedExpressions.tooltip": "When enabled, n8n will send resolved expression values from your node parameters",
+	"aiAssistant.privacySettings.save.error": "Error updating user settings",
 	"banners.confirmEmail.message.1": "To secure your account and prevent future access issues, please confirm your",
 	"banners.confirmEmail.message.2": "email address.",
 	"banners.confirmEmail.button": "Confirm email",

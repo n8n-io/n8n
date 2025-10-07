@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useToast } from '@/composables/useToast';
+import { useUsersStore } from '@/stores/users.store';
 import {
 	N8nButton,
 	N8nCheckbox,
@@ -10,31 +12,64 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useCssVar } from '@vueuse/core';
 import { type CheckboxValueType } from 'element-plus';
-import { ref } from 'vue';
+import type { IAiAssistantUserSettings } from 'n8n-workflow';
+import { ref, computed } from 'vue';
 
 const i18n = useI18n();
+const toast = useToast();
+
+const usersStore = useUsersStore();
 
 const zIndex = useCssVar('--z-index-ask-assistant-chat');
 const isOpen = ref(false);
-const isDirty = ref(false);
 const loading = ref(false);
-const allowSendingNodeParameters = ref(false);
-const allowSendingResolvedExpressions = ref(false);
+const localState = ref<IAiAssistantUserSettings>({
+	allowAssistantToSendParameterValues: false,
+	allowAssistantToSendExpressions: false,
+});
+
+const currentUserSettings = computed(() => usersStore.currentUser?.settings?.aiAssistant);
+
+const isDirty = computed(() => {
+	return (
+		localState.value.allowAssistantToSendParameterValues !==
+			(currentUserSettings.value?.allowAssistantToSendParameterValues ?? false) ||
+		localState.value.allowAssistantToSendExpressions !==
+			(currentUserSettings.value?.allowAssistantToSendExpressions ?? false)
+	);
+});
 
 const onAllowParametersChange = (value: CheckboxValueType) => {
 	if (value === false) {
 		// If user disables sending node parameters, also disable sending resolved expressions
-		allowSendingResolvedExpressions.value = false;
+		localState.value.allowAssistantToSendExpressions = false;
 	}
-	isDirty.value = true;
 };
 
-const onAllowExpressionsChange = (_value: CheckboxValueType) => {
-	isDirty.value = true;
+const onPopoverOpenChange = (open: boolean) => {
+	isOpen.value = open;
+	if (open) {
+		// Reset to current settings when opening the menu
+		localState.value = currentUserSettings.value
+			? { ...currentUserSettings.value }
+			: { allowAssistantToSendParameterValues: false, allowAssistantToSendExpressions: false };
+	}
 };
 
-const onSaveClick = () => {
-	isDirty.value = false;
+const onSaveClick = async () => {
+	try {
+		loading.value = true;
+		await usersStore.updateUserSettings({
+			aiAssistant: {
+				...localState.value,
+			},
+		});
+		isOpen.value = false;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('aiAssistant.privacySettings.save.error'));
+	} finally {
+		loading.value = false;
+	}
 };
 </script>
 
@@ -45,7 +80,7 @@ const onSaveClick = () => {
 			:disabled="isOpen"
 		>
 			<div>
-				<N8nPopoverReka v-model:open="isOpen" :z-index="zIndex">
+				<N8nPopoverReka v-model:open="isOpen" :z-index="zIndex" @update:open="onPopoverOpenChange">
 					<template #trigger>
 						<div :class="$style['trigger-container']">
 							<N8nIconButton icon="settings" type="tertiary" size="large" />
@@ -58,7 +93,7 @@ const onSaveClick = () => {
 							</N8nText>
 							<div :class="$style.form">
 								<N8nCheckbox
-									v-model="allowSendingNodeParameters"
+									v-model="localState.allowAssistantToSendParameterValues"
 									:label="
 										i18n.baseText('aiAssistant.privacySettings.allowSendingNodeParameters.label')
 									"
@@ -69,7 +104,7 @@ const onSaveClick = () => {
 									@update:model-value="onAllowParametersChange"
 								/>
 								<N8nCheckbox
-									v-model="allowSendingResolvedExpressions"
+									v-model="localState.allowAssistantToSendExpressions"
 									:label="
 										i18n.baseText(
 											'aiAssistant.privacySettings.allowSendingResolvedExpressions.label',
@@ -80,15 +115,14 @@ const onSaveClick = () => {
 											'aiAssistant.privacySettings.allowSendingResolvedExpressions.tooltip',
 										)
 									"
-									:disabled="!allowSendingNodeParameters"
-									@update:model-value="onAllowExpressionsChange"
+									:disabled="!localState.allowAssistantToSendParameterValues"
 									label-size="small"
 								/>
 							</div>
 							<N8nButton
 								type="primary"
 								size="small"
-								:disabled="!isDirty"
+								:disabled="!isDirty || loading"
 								:loading="loading"
 								@click="onSaveClick"
 							>
