@@ -495,8 +495,6 @@ async function commitAndPush() {
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.push'));
 	close();
 
-	console.log('files', files);
-
 	try {
 		await sourceControlStore.pushWorkfolder({
 			force: true,
