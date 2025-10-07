@@ -239,10 +239,9 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
-		// package version is present only for community nodes
-		const packageVersion = nodeTypes.getByNameAndVersion(node.type)?.packageVersion;
-		if (packageVersion) {
-			nodeItem.package_version = packageVersion;
+		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (nodeType.description.communityNodePackageVersion) {
+			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
 		}
 
 		if (runData?.[node.name]) {
