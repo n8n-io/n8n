@@ -1,5 +1,4 @@
 import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
-import { RenameDataTableScopes1759778069564 } from './../common/1759778069564-RenameDataTableScopes';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -198,7 +197,6 @@ const sqliteMigrations: Migration[] = [
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
 	AddProjectIdToVariableTable1758794506893,
 	AddAudienceColumnToApiKeys1758731786132,
-	RenameDataTableScopes1759778069564,
 ];
 
 export { sqliteMigrations };
