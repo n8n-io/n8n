@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { ANY_CONDITION, ALL_CONDITIONS } from '../../common/constants';
+import { ANY_CONDITION, ALL_CONDITIONS, type FieldEntry } from '../../common/constants';
 import { dataObjectToApiInput, buildGetManyFilter } from '../../common/utils';
 
 const mockNode: INode = {
@@ -210,7 +210,7 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { name: 'string' });
 
 			expect(result).toEqual({
 				type: 'and',
@@ -229,7 +229,7 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, { email: 'string' });
 
 			expect(result).toEqual({
 				type: 'or',
@@ -250,7 +250,11 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, {
+				name: 'string',
+				email: 'string',
+				phone: 'string',
+			});
 
 			expect(result).toEqual({
 				type: 'and',
@@ -281,7 +285,7 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { isActive: 'boolean' });
 
 			expect(result).toEqual({
 				type: 'and',
@@ -300,7 +304,7 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'email', condition: 'isFalse' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, { email: 'boolean' });
 
 			expect(result).toEqual({
 				type: 'or',
@@ -321,7 +325,11 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'isDeleted', condition: 'isFalse' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, {
+				name: 'string',
+				isActive: 'boolean',
+				isDeleted: 'boolean',
+			});
 
 			expect(result).toEqual({
 				type: 'and',
@@ -352,7 +360,10 @@ describe('buildGetManyFilter', () => {
 			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, {
+			age: 'number',
+			name: 'string',
+		});
 
 		expect(result).toEqual({
 			type: 'or',
@@ -368,6 +379,51 @@ describe('buildGetManyFilter', () => {
 					value: '%john%',
 				},
 			],
+		});
+	});
+
+	describe('date handling in filters', () => {
+		it('should pass Date objects through unchanged', () => {
+			const testDate = new Date('2025-10-06T08:14:42.274Z');
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'createdAt', condition: 'lte', keyValue: testDate },
+			];
+
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' });
+
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'createdAt',
+						condition: 'lte',
+						value: testDate,
+					},
+				],
+			});
+		});
+
+		it('should convert ISO date strings to Date objects', () => {
+			const dateString = '2025-10-06T08:14:42.274Z';
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'createdAt', condition: 'lte', keyValue: dateString },
+			];
+
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' });
+
+			expect(result.filters[0].value).toBeInstanceOf(Date);
+			expect((result.filters[0].value as Date).toISOString()).toBe(dateString);
+		});
+
+		it('should throw an Error for invalid date strings', () => {
+			const invalidDateString = 'invalid-date';
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'createdAt', condition: 'lte', keyValue: invalidDateString },
+			];
+
+			expect(() =>
+				buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' }),
+			).toThrowError(`Invalid date string '${invalidDateString}' for column 'createdAt'`);
 		});
 	});
 });
