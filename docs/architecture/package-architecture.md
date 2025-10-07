@@ -7,15 +7,21 @@ n8n uses a monorepo structure with pnpm workspaces. This document describes the 
 ## Package Overview
 
 ### Core Runtime Packages
-- **`cli`** - Main server process, REST API, and CLI commands
-- **`core`** - Workflow execution engine and node execution context
-- **`workflow`** - Data structures, interfaces, and expression language
-- **`nodes-base`** - Built-in nodes and credentials
+- **`n8n` (cli)** - Main server process, REST API, and CLI commands
+- **`n8n-core` (core)** - Workflow execution engine and node execution context
+- **`n8n-workflow` (workflow)** - Data structures, interfaces, and expression language
+- **`n8n-nodes-base` (nodes-base)** - Built-in nodes and credentials
+- **`@n8n/n8n-nodes-langchain` (nodes-langchain)** - AI and LangChain nodes
 
 ### Frontend Packages
-- **`editor-ui`** - Vue.js workflow editor application
-- **`@n8n/design-system`** - Reusable UI components
+- **`n8n-editor-ui` (editor-ui)** - Vue.js workflow editor application
+- **`@n8n/design-system`** - Reusable UI components and design tokens
 - **`@n8n/stores`** - Pinia state management stores
+- **`@n8n/composables`** - Shared Vue composables
+- **`@n8n/chat`** - Chat UI components
+- **`@n8n/i18n`** - Internationalization and localization
+- **`@n8n/rest-api-client`** - API client for frontend-backend communication
+- **`@n8n/storybook`** - Storybook configuration for component development
 
 ### Infrastructure Packages
 - **`@n8n/db`** - Database entities and repositories (TypeORM)
@@ -23,58 +29,106 @@ n8n uses a monorepo structure with pnpm workspaces. This document describes the 
 - **`@n8n/config`** - Configuration management
 - **`@n8n/permissions`** - Role-based access control
 - **`@n8n/task-runner`** - Isolated JavaScript/Python execution
+- **`@n8n/api-types`** - Shared TypeScript interfaces between frontend and backend
+- **`@n8n/backend-common`** - Shared backend utilities
+- **`@n8n/constants`** - Shared constants across packages
+- **`@n8n/errors`** - Error types and utilities
+- **`@n8n/utils`** - General utility functions
 
-## Package Dependencies
+### Development & Build Tools
+- **`n8n-node-dev`** - CLI tool for developing custom nodes
+- **`@n8n/node-cli`** - Node development CLI utilities
+- **`@n8n/create-node`** - Node creation templates and scaffolding
+- **`@n8n/extension-sdk`** - SDK for building n8n extensions
+- **`@n8n/eslint-config`** - Shared ESLint configuration
+- **`@n8n/eslint-plugin-community-nodes`** - ESLint plugin for community nodes
+- **`@n8n/stylelint-config`** - Shared Stylelint configuration
+- **`@n8n/typescript-config`** - Shared TypeScript configuration
+- **`@n8n/vitest-config`** - Shared Vitest test configuration
+- **`@n8n/backend-test-utils`** - Backend testing utilities
+
+### Specialized Packages
+- **`@n8n/client-oauth2`** - OAuth2 client implementation
+- **`@n8n/imap`** - IMAP email protocol support
+- **`@n8n/codemirror-lang`** - CodeMirror language support for n8n expressions
+- **`@n8n/codemirror-lang-sql`** - CodeMirror SQL language support
+- **`@n8n/json-schema-to-zod`** - JSON Schema to Zod conversion utilities
+- **`@n8n/decorators`** - TypeScript decorators for various features
+
+### Testing & Quality
+- **`n8n-playwright` (testing/playwright)** - E2E tests using Playwright
+- **`n8n-containers` (testing/containers)** - Container test utilities
+- **`@n8n/n8n-benchmark` (benchmark)** - Performance benchmarking tools
+- **`@n8n/scan-community-package`** - Community package security scanner
+
+### Enterprise & Extensions
+- **`@n8n/ai-workflow-builder`** - AI-powered workflow builder (EE)
+- **`@n8n/n8n-extension-insights`** - Insights extension
+
+## Core Package Dependencies
+
+This diagram shows core packages and their key dependencies:
 
 ```mermaid
 graph TD
-    CLI[cli] --> CORE[core]
-    CLI --> WF[workflow]
-    CLI --> DB["@n8n/db"]
-    CLI --> NODES[nodes-base]
+    CLI[n8n<br/>CLI Package] --> CORE[n8n-core<br/>Execution Engine]
+    CLI --> WF[n8n-workflow<br/>Types & Interfaces]
+    CLI --> DB["@n8n/db<br/>Database Layer"]
+    CLI --> NODES[n8n-nodes-base<br/>Built-in Nodes]
+    CLI --> LANGCHAIN["@n8n/n8n-nodes-langchain<br/>AI Nodes"]
+    CLI --> API["@n8n/api-types<br/>API Contracts"]
 
     CORE --> WF
     NODES --> CORE
     NODES --> WF
+    LANGCHAIN --> CORE
+    LANGCHAIN --> WF
 
-    EDITOR[editor-ui] --> WF
-    EDITOR --> API["@n8n/rest-api-client"]
+    EDITOR[n8n-editor-ui<br/>Frontend App] --> WF
+    EDITOR --> DS["@n8n/design-system<br/>UI Components"]
+    EDITOR --> STORES["@n8n/stores<br/>State Management"]
+    EDITOR --> API
 
-    DB --> DI["@n8n/di"]
-    CORE --> DI
-    CLI --> DI
+    DB --> CORE
+    WF --> ERRORS["@n8n/errors<br/>Error Classes"]
+    STORES --> WF
 ```
 
 ### Key Relationships
 
-1. **`workflow` is the foundation**
-   - Contains all interfaces and types
-   - No dependencies on other n8n packages
+1. **`n8n-workflow` is the foundation**
+   - Contains all core interfaces and types
+   - Minimal dependencies (only `@n8n/errors`)
    - Used by both frontend and backend
+   - No dependencies on other n8n packages
 
-2. **`core` provides execution**
-   - Depends on `workflow` for types
+2. **`n8n-core` provides execution**
+   - Depends on `n8n-workflow` for types
    - Implements the execution engine
    - Provides node execution context
+   - Uses DI container and backend utilities
 
-3. **`cli` orchestrates everything**
+3. **`n8n` (cli) orchestrates everything**
    - Main application entry point
-   - Loads nodes from `nodes-base`
-   - Uses `core` for execution
+   - Loads nodes from `n8n-nodes-base`
+   - Uses `n8n-core` for execution
    - Manages database via `@n8n/db`
+   - Integrates all infrastructure packages
+
+4. **Frontend packages are modular**
+   - `n8n-editor-ui` is the main Vue application
+   - UI components isolated in `@n8n/design-system`
+   - State management in `@n8n/stores`
+   - Shared logic in `@n8n/composables`
+   - API communication via `@n8n/rest-api-client`
 
 ## Major Package Details
 
-### CLI Package
+### CLI Package (n8n)
 
-The `cli` package is the main application server with multiple process types:
+The `n8n` package is the main application server with multiple process types:
 
-```mermaid
-graph LR
-    CLI[cli Package] --> START[start<br/>Main Process]
-    CLI --> WORKER[worker<br/>Queue Worker]
-    CLI --> WEBHOOK[webhook<br/>Webhook Server]
-```
+**Location**: `/packages/cli`
 
 **Architecture:**
 - **Commands**: Process entry points (`start`, `worker`, `webhook`)
@@ -82,9 +136,11 @@ graph LR
 - **Services**: Business logic layer (workflows, executions, auth)
 - **Middleware**: Request processing (auth, CORS, parsing)
 
-### Core Package
+### Core Package (n8n-core)
 
-The `core` package provides the workflow execution runtime:
+The `n8n-core` package provides the workflow execution runtime.
+
+**Location**: `/packages/core`
 
 **Key Components:**
 - `WorkflowExecute` - Main execution orchestrator
@@ -92,9 +148,11 @@ The `core` package provides the workflow execution runtime:
 - `BinaryDataManager` - Handles file storage for binary data
 - `CredentialsHelper` - Manages credential encryption/decryption
 
-### Workflow Package
+### Workflow Package (n8n-workflow)
 
-The `workflow` package contains shared data structures:
+The `n8n-workflow` package contains shared data structures.
+
+**Location**: `/packages/workflow`
 
 **Core Classes:**
 - `Workflow` - Main workflow class with nodes and connections
@@ -109,15 +167,15 @@ The `workflow` package contains shared data structures:
 
 ### Frontend Architecture
 
-The `editor-ui` package is a Vue 3 application:
+The `n8n-editor-ui` package is a Vue 3 application.
 
-```mermaid
-graph TD
-    VIEWS[Views] --> COMPONENTS[Components]
-    COMPONENTS --> DS["@n8n/design-system"]
-    VIEWS --> STORES[Pinia Stores]
-    STORES --> API["@n8n/rest-api-client"]
-```
+**Location**: `/packages/frontend/editor-ui`
+
+**Key Frontend Packages:**
+- **`@n8n/stores`** (`/packages/frontend/@n8n/stores`) - Pinia stores for state management
+- **`@n8n/design-system`** (`/packages/frontend/@n8n/design-system`) - Vue component library
+- **`@n8n/composables`** (`/packages/frontend/@n8n/composables`) - Reusable Vue composition functions
+- **`@n8n/rest-api-client`** (`/packages/frontend/@n8n/rest-api-client`) - Type-safe API client
 
 **Key Stores:**
 - `WorkflowStore` - Current workflow state
@@ -149,7 +207,7 @@ This pattern enables:
 
 ## Node System
 
-Nodes are defined in the `nodes-base` package and implement the `INodeType` interface:
+Nodes are defined in the `n8n-nodes-base` and `@n8n/n8n-nodes-langchain` packages and implement the `INodeType` interface:
 
 ```typescript
 export class HttpRequest implements INodeType {
@@ -164,12 +222,10 @@ export class HttpRequest implements INodeType {
 **Node Types:**
 - **Regular nodes** - Implement `execute()` method
 - **Trigger nodes** - Implement `trigger()` for polling or `webhook()` for webhooks
-- **Credentials** - Define authentication schemas for services
 
 **File Convention:**
 - `[NodeName].node.ts` - Node implementation
 - `[NodeName].node.json` - Metadata and documentation
-- `[ServiceName]Api.credentials.ts` - Service authentication
 
 ## Extension Points
 
@@ -180,26 +236,39 @@ External nodes can be installed via npm:
 - Loaded dynamically at startup
 - Isolated from core node packages
 
-### Task Runner
+### Extensions
 
-The `@n8n/task-runner` provides isolated code execution:
-- Runs JavaScript/Python code in separate processes
-- Communicates via WebSocket with main process
-- Provides controlled access to n8n helpers and libraries
+The extension system allows adding functionality:
+- **`@n8n/extension-sdk`** - SDK for building extensions
+- **`@n8n/n8n-extension-insights`** - Example extension for analytics
+
+## Build System
+
+The monorepo uses Turbo for build orchestration:
+- **pnpm workspaces** - Package management
+- **Turbo** - Parallel builds and caching
+- **TypeScript** - Project references for incremental compilation
+- **Vite** - Frontend bundling
+- **tsc** - Backend compilation
 
 ## Architecture Principles
 
 1. **Package Independence**
-   - Lower-level packages (like `workflow`) have no dependencies on higher-level ones
-   - Shared types and interfaces live in `workflow`
-   - Infrastructure packages (`di`, `db`) are isolated
+   - Lower-level packages (like `n8n-workflow`) have no dependencies on higher-level ones
+   - Shared types and interfaces live in `@n8n/api-types` or `n8n-workflow`
+   - Infrastructure packages (`@n8n/di`, `@n8n/db`) are isolated
 
 2. **Clear Boundaries**
-   - `cli` is the only package that brings everything together
-   - Frontend and backend share only the `workflow` package
+   - `n8n` (cli) is the only package that brings everything together
+   - Frontend and backend share only `n8n-workflow` and `@n8n/api-types`
    - Nodes access the system only through defined interfaces
 
 3. **Extensibility**
    - Nodes can be added without modifying core
    - Authentication methods are pluggable
    - Database support is abstracted via TypeORM
+
+4. **Modularity**
+   - Frontend features are split into focused packages
+   - Backend utilities are shared via `@n8n/backend-common`
+   - Development tools are isolated from runtime packages
