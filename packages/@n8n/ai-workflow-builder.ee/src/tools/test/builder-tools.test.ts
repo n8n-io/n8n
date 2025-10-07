@@ -3,6 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { createRemoveConnectionTool, REMOVE_CONNECTION_TOOL } from '@/tools/remove-connection.tool';
+
 import { createNodeType, nodeTypes } from '../../../test/test-utils';
 import { createAddNodeTool, getAddNodeToolBase } from '../add-node.tool';
 import { getBuilderTools, getBuilderToolsForDisplay } from '../builder-tools';
@@ -15,7 +17,6 @@ import {
 	createUpdateNodeParametersTool,
 	UPDATING_NODE_PARAMETER_TOOL,
 } from '../update-node-parameters.tool';
-import { createRemoveConnectionTool, REMOVE_CONNECTION_TOOL } from '@/tools/remove-connection.tool';
 
 jest.mock('../add-node.tool', () => ({
 	createAddNodeTool: jest.fn().mockReturnValue({
