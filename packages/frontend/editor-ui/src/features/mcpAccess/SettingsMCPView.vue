@@ -199,7 +199,6 @@ const rotateKey = async () => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
 	if (!mcpStore.mcpAccessEnabled) {
-		workflowsLoading.value = false;
 		return;
 	}
 	await fetchAvailableWorkflows();
