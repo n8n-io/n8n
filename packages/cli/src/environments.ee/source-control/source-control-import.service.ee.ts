@@ -956,11 +956,13 @@ export class SourceControlImportService {
 				overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
 			}
 			try {
+				// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 				await this.variablesRepository.upsert({ ...variable }, ['id']);
 			} catch (errorUpsert) {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
 					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);
 					try {
+						// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 						await this.variablesRepository.update({ key: variable.key }, { ...variable });
 					} catch (errorUpdate) {
 						this.logger.debug(`Failed to update variable ${variable.key}, skipping`);
