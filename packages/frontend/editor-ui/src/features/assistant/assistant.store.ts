@@ -7,29 +7,29 @@ import {
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from './users.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from './settings.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
-import { useWorkflowsStore } from './workflows.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
-import { useNDVStore } from './ndv.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { useUIStore } from './ui.store';
+import { useUIStore } from '@/stores/ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
-import { useCredentialsStore } from './credentials.store';
-import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
