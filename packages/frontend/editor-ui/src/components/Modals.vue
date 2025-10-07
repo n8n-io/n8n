@@ -52,7 +52,7 @@ import {
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
-import NewAssistantSessionModal from '@/components/AskAssistant/Chat/NewAssistantSessionModal.vue';
+import NewAssistantSessionModal from '@/features/assistant/components/Chat/NewAssistantSessionModal.vue';
 import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
 import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';

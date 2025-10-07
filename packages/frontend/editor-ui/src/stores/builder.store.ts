@@ -18,7 +18,11 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
-import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import {
+	DEFAULT_CHAT_WIDTH,
+	MAX_CHAT_WIDTH,
+	MIN_CHAT_WIDTH,
+} from '@/features/assistant/assistant.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
 import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';

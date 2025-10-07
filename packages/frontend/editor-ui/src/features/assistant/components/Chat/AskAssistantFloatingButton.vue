@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 import { computed } from 'vue';
 
