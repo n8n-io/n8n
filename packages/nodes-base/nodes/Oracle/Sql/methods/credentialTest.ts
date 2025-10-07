@@ -6,7 +6,7 @@ import type {
 import type * as oracleDBTypes from 'oracledb';
 
 import type { OracleDBNodeCredentials } from '../helpers/interfaces';
-import { configureOracleDB } from '../Sql/../transport';
+import { configureOracleDB } from '../transport';
 
 export async function oracleDBConnectionTest(
 	this: ICredentialTestFunctions,
