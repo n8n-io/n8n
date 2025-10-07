@@ -1,4 +1,5 @@
 import type { Request } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -107,5 +108,36 @@ export class WorkflowComposer {
 		);
 		await this.n8n.canvas.clickSaveWorkflowButton();
 		return await saveRequestPromise;
+	}
+
+	/**
+	 * Duplicates a workflow via the duplicate modal UI.
+	 * Verifies the form interaction completes without errors.
+	 * Note: This opens a new window/tab with the duplicated workflow but doesn't interact with it.
+	 * @param name - The name for the duplicated workflow
+	 * @param tag - Optional tag to add to the workflow
+	 */
+	async duplicateWorkflow(name: string, tag?: string): Promise<void> {
+		await this.n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await this.n8n.workflowSettingsModal.getDuplicateMenuItem().click();
+
+		const modal = this.n8n.workflowSettingsModal.getDuplicateModal();
+		await expect(modal).toBeVisible();
+
+		const nameInput = this.n8n.workflowSettingsModal.getDuplicateNameInput();
+		await expect(nameInput).toBeVisible();
+		await nameInput.press('ControlOrMeta+a');
+		await nameInput.fill(name);
+
+		if (tag) {
+			const tagsInput = this.n8n.workflowSettingsModal.getDuplicateTagsInput();
+			await tagsInput.fill(tag);
+			await tagsInput.press('Enter');
+			await tagsInput.press('Escape');
+		}
+
+		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
+		await expect(saveButton).toBeVisible();
+		await saveButton.click();
 	}
 }
