@@ -55,8 +55,8 @@ const onDragStart = () => {
 
 	display: flex;
 	align-items: baseline;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs);
+	gap: var(--spacing-3xs);
+	padding: var(--spacing-4xs) var(--spacing-3xs) 0 var(--spacing-3xs);
 	color: var(--color-foreground-dark);
 	border: var(--border-base);
 	border-bottom: none;

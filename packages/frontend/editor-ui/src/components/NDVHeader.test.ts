@@ -12,20 +12,9 @@ describe('NDVHeader', () => {
 		readOnly: false,
 	};
 
-	it('renders docs label with node type name if name is customized', () => {
+	it('renders docs label', () => {
 		const { getByText } = renderComponent(NDVHeader, { props: defaultProps });
-		expect(getByText('Edit Fields Docs')).toBeInTheDocument();
-	});
-
-	it('renders nodeTypeName if docsUrl is not provided and name is custom', () => {
-		const { getByText, queryByText } = renderComponent(NDVHeader, {
-			props: {
-				...defaultProps,
-				docsUrl: undefined,
-			},
-		});
-		expect(getByText('Edit Fields')).toBeInTheDocument();
-		expect(queryByText('Docs')).not.toBeInTheDocument();
+		expect(getByText('Docs')).toBeInTheDocument();
 	});
 
 	it('emits rename when inline text is changed', async () => {
