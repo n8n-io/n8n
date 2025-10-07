@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
 import type { Cipher } from 'n8n-core';
 
+import { ImportService } from '../import.service';
 import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
@@ -24,12 +25,9 @@ jest.mock('@n8n/db', () => ({
 	DataSource: mock<DataSource>(),
 }));
 
-// Mock ActiveWorkflowManager to prevent loading its dependencies
 jest.mock('@/active-workflow-manager', () => ({
 	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
 }));
-
-import { ImportService } from '../import.service';
 
 describe('ImportService', () => {
 	let importService: ImportService;
