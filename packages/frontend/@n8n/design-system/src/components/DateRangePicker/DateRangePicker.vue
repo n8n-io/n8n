@@ -106,48 +106,6 @@ const slots = useSlots();
 
 					<div v-if="!hideInputs" :class="$style.DateFieldWrapper">
 						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
-						<!-- <DateRangePickerField v-slot="{ segments }">
-							<div :class="$style.DateField">
-								<template v-for="item in segments.start" :key="item.part">
-									<DateRangePickerInput
-										v-if="item.part === 'literal'"
-										:part="item.part"
-										class="DateFieldLiteral"
-										type="start"
-									>
-										{{ item.value }}
-									</DateRangePickerInput>
-									<DateRangePickerInput
-										v-else
-										:part="item.part"
-										:class="$style.DateFieldSegment"
-										type="start"
-									>
-										{{ item.value }}
-									</DateRangePickerInput>
-								</template>
-							</div>
-
-							<template v-for="item in segments.end" :key="item.part">
-								<DateRangePickerInput
-									v-if="item.part === 'literal'"
-									:part="item.part"
-									:class="$style.DateFieldLiteral"
-									type="end"
-								>
-									{{ item.value }}
-								</DateRangePickerInput>
-								<DateRangePickerInput
-									v-else
-									:part="item.part"
-									:class="$style.DateFieldSegment"
-									type="end"
-								>
-									{{ item.value }}
-								</DateRangePickerInput>
-							</template>
-						</DateRangePickerField> -->
-
 						<div :class="$style.DateFieldError">Outside of allowed range</div>
 
 						<Button type="secondary" block class="mt-2xs" @click="emit('update:open', false)">
@@ -325,8 +283,8 @@ const slots = useSlots();
 }
 .PopoverContent:focus {
 	box-shadow:
-		hsl(206 22% 7% / 35%) 0px 10px 38px -10px,
-		hsl(206 22% 7% / 20%) 0px 10px 20px -15px,
+		hsl(206 22% 7% / 35%) 0 10px 38px -10px,
+		hsl(206 22% 7% / 20%) 0 10px 20px -15px,
 		0 0 0 2px var(--grass-7);
 }
 .PopoverContent[data-state='open'][data-side='top'] {
