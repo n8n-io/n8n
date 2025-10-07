@@ -1233,7 +1233,7 @@
 	"ndv.output.noOutputData.title": "No output data returned",
 	"ndv.output.noOutputData.v2.title": "No output data",
 	"ndv.output.noOutputData.v2.description": "{link} to view output data",
-	"ndv.output.noOutputData.v2.action": "Test this step",
+	"ndv.output.noOutputData.v2.action": "Execute step",
 	"ndv.output.noOutputData.trigger.title": "No trigger output",
 	"ndv.output.noOutputData.trigger.action": "Test this trigger",
 	"ndv.output.noOutputDataInBranch": "No output data in this branch",
