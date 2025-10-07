@@ -7,7 +7,7 @@ const props = defineProps<{
 	disabled?: boolean;
 	models: ChatHubConversationModel[];
 	availableCredentialTypes: Set<string>;
-	selectedModel?: ChatHubConversationModel;
+	selectedModel: ChatHubConversationModel | null;
 }>();
 
 const emit = defineEmits<{

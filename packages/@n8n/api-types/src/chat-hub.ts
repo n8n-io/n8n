@@ -1,10 +1,14 @@
+import { z } from 'zod';
+
 /**
  * Chat Hub conversation model configuration
  */
-export interface ChatHubConversationModel {
-	provider: string;
-	providerDisplayName?: string;
-	model: string;
-	displayName?: string;
-	credentialType: string;
-}
+export const chatHubConversationModelSchema = z.object({
+	provider: z.string(),
+	providerDisplayName: z.string().optional(),
+	model: z.string(),
+	displayName: z.string().optional(),
+	credentialType: z.string(),
+});
+
+export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;

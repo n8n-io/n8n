@@ -11,10 +11,14 @@ import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { ChatHubConversationModel, ChatMessage } from './chat.types';
+import type { ChatMessage, Suggestion } from './chat.types';
+import { chatHubConversationModelSchema, type ChatHubConversationModel } from '@n8n/api-types';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
+import { useLocalStorage } from '@vueuse/core';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
+import { SUGGESTIONS } from '@/features/chatHub/constants';
 
 const chatStore = useChatStore();
 const userStore = useUsersStore();
@@ -27,45 +31,38 @@ onMounted(async () => {
 		credentialsStore.fetchAllCredentials(),
 		chatStore.fetchChatModels(),
 	]);
-	if (chatStore.availableModels.length > 0) {
+
+	if (
+		chatStore.availableModels.length > 0 &&
+		(selectedModel.value === null || !chatStore.isAvailableModel(selectedModel.value))
+	) {
 		selectedModel.value = chatStore.availableModels[0];
 	}
 });
-
-type Suggestion = {
-	title: string;
-	subtitle: string;
-	icon?: string;
-};
 
 const message = ref('');
 const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
-const selectedModel = ref<ChatHubConversationModel>();
-
-const suggestions = ref<Suggestion[]>([
+const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	null,
 	{
-		title: 'Brainstorm ideas',
-		subtitle: 'for a product launch or campaign',
-		icon: '💡',
+		writeDefaults: false,
+		shallow: true,
+		serializer: {
+			read: (value) => {
+				try {
+					const result = chatHubConversationModelSchema.parse(JSON.parse(value));
+					return result;
+				} catch (error) {
+					return null;
+				}
+			},
+			write: (value) => JSON.stringify(value),
+		},
 	},
-	{
-		title: 'Explain a concept',
-		subtitle: "like Docker as if I'm 12",
-		icon: '📘',
-	},
-	{
-		title: 'Summarize text',
-		subtitle: 'paste content and get a TL;DR',
-		icon: '📝',
-	},
-	{
-		title: 'Draft an email',
-		subtitle: 'polite follow-up about a bug',
-		icon: '✉️',
-	},
-]);
+);
 
 const hasMessages = computed(() => chatStore.chatMessages.length > 0);
 const isModelAvailable = computed(() => {
@@ -198,7 +195,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 				<div v-if="!hasMessages" :class="$style.suggestions">
 					<button
-						v-for="s in suggestions"
+						v-for="s in SUGGESTIONS"
 						:key="s.title"
 						type="button"
 						:class="$style.card"

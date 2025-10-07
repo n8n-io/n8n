@@ -27,3 +27,9 @@ export type ChatMessage = UserMessage | AssistantMessage | ErrorMessage;
 export interface StreamOutput {
 	messages: StreamChunk[];
 }
+
+export type Suggestion = {
+	title: string;
+	subtitle: string;
+	icon?: string;
+};

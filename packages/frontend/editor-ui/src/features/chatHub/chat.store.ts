@@ -32,8 +32,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	});
 
 	const availableModels = computed(() => {
-		return models.value.filter((model) => availableCredentialTypes.value.has(model.credentialType));
+		return models.value.filter(isAvailableModel);
 	});
+
+	function isAvailableModel(model: ChatHubConversationModel): boolean {
+		return availableCredentialTypes.value.has(model.credentialType);
+	}
 
 	function setModels(newModels: ChatHubConversationModel[]) {
 		models.value = newModels;
@@ -123,5 +127,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		usersMessages,
 		addUserMessage,
 		addAssistantMessages,
+		isAvailableModel,
 	};
 });
