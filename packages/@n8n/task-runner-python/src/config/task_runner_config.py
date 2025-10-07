@@ -64,11 +64,15 @@ class TaskRunnerConfig:
     def from_env(cls):
         grant_token = read_str_env(ENV_GRANT_TOKEN, "")
         if not grant_token:
-            raise ConfigurationError("Environment variable N8N_RUNNERS_GRANT_TOKEN is required")
+            raise ConfigurationError(
+                "Environment variable N8N_RUNNERS_GRANT_TOKEN is required"
+            )
 
         task_timeout = read_int_env(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT)
         if task_timeout <= 0:
-            raise ConfigurationError(f"Task timeout must be positive, got {task_timeout}")
+            raise ConfigurationError(
+                f"Task timeout must be positive, got {task_timeout}"
+            )
 
         auto_shutdown_timeout = read_int_env(
             ENV_AUTO_SHUTDOWN_TIMEOUT, DEFAULT_AUTO_SHUTDOWN_TIMEOUT
