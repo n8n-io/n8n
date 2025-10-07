@@ -50,16 +50,16 @@ describe('CredentialIcon', () => {
 			}),
 		]);
 
-		const { getByRole } = renderComponent({
+		const { container } = renderComponent({
 			pinia,
 			props: {
 				credentialTypeName: 'test',
 			},
 		});
 
-		const icon = getByRole('img', { hidden: true });
-		expect(icon.tagName).toBe('svg');
-		expect(icon).toHaveClass('fa-clock');
+		const icon = container.querySelector('.n8n-icon');
+		expect(icon).toBeInTheDocument();
+		expect(icon?.getAttribute('data-icon')).toBe('clock');
 	});
 
 	it('shows correct icon when credential has an icon with node: prefix', () => {
