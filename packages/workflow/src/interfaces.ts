@@ -1723,7 +1723,6 @@ export interface INodeType {
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
-	packageVersion?: string;
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
@@ -1878,7 +1877,6 @@ export interface IVersionedNodeType {
 	currentVersion: number;
 	description: INodeTypeBaseDescription;
 	getNodeType: (version?: number) => INodeType;
-	packageVersion?: string;
 }
 export interface INodeCredentialTestResult {
 	status: 'OK' | 'Error';
@@ -2168,6 +2166,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
 	hints?: NodeHint[];
+	communityNodePackageVersion?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 

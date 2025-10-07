@@ -137,10 +137,6 @@ export abstract class DirectoryLoader {
 
 		const nodeType = tempNode.description.name;
 
-		if (packageVersion) {
-			tempNode.packageVersion = packageVersion;
-		}
-
 		if (this.removeNonIncludedNodes && !this.includeNodes.includes(nodeType)) {
 			return;
 		}
@@ -158,6 +154,7 @@ export abstract class DirectoryLoader {
 			}
 
 			for (const version of Object.values(tempNode.nodeVersions)) {
+				version.description.communityNodePackageVersion = packageVersion;
 				this.addLoadOptionsMethods(version);
 				this.applySpecialNodeParameters(version);
 			}
@@ -173,6 +170,7 @@ export abstract class DirectoryLoader {
 				);
 			}
 		} else {
+			tempNode.description.communityNodePackageVersion = packageVersion;
 			this.addLoadOptionsMethods(tempNode);
 			this.applySpecialNodeParameters(tempNode);
 
