@@ -1,0 +1,67 @@
+{
+	"name": "Google Drive V2 File/Folder Search Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "fileFolder",
+				"operation": "search",
+				"searchMethod": "query",
+				"queryString": "name contains 'test'"
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 3,
+			"position": [200, 0],
+			"id": "filefolder-search",
+			"name": "Search Files and Folders",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Drive OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Search Files and Folders": [
+			{
+				"json": {
+					"id": "123",
+					"name": "Test File",
+					"mimeType": "text/plain"
+				}
+			},
+			{
+				"json": {
+					"id": "folder123",
+					"name": "Test Folder",
+					"mimeType": "application/vnd.google-apps.folder"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Search Files and Folders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
