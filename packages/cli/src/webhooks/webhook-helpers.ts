@@ -29,7 +29,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
 	WebhookResponseData,
-	RelatedExecution,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
