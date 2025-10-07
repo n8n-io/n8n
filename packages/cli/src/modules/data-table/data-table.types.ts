@@ -1,6 +1,6 @@
 import type { FieldTypeMap } from 'n8n-workflow';
 
-export type DataStoreUserTableName = `${string}data_table_user_${string}`;
+export type DataTableUserTableName = `${string}data_table_user_${string}`;
 
 export const columnTypeToFieldType: Record<string, keyof FieldTypeMap> = {
 	// eslint-disable-next-line id-denylist

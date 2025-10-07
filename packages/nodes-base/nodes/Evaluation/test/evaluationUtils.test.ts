@@ -175,7 +175,7 @@ describe('setOutputs', () => {
 				addExecutionHints: jest.fn(),
 				getMode: jest.fn().mockReturnValue('evaluation'),
 				helpers: {
-					getDataStoreProxy: jest.fn().mockResolvedValue(mockDataTable),
+					getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable),
 				},
 				...options,
 			});

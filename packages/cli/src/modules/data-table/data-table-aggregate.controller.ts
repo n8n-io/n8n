@@ -1,23 +1,23 @@
-import { ListDataStoreQueryDto } from '@n8n/api-types';
+import { ListDataTableQueryDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Query, RestController } from '@n8n/decorators';
 
-import { DataStoreAggregateService } from './data-store-aggregate.service';
-import { DataStoreService } from './data-store.service';
+import { DataTableAggregateService } from './data-table-aggregate.service';
+import { DataTableService } from './data-table.service';
 
 @RestController('/data-tables-global')
-export class DataStoreAggregateController {
+export class DataTableAggregateController {
 	constructor(
-		private readonly dataStoreAggregateService: DataStoreAggregateService,
-		private readonly dataStoreService: DataStoreService,
+		private readonly dataStoreAggregateService: DataTableAggregateService,
+		private readonly dataStoreService: DataTableService,
 	) {}
 
 	@Get('/')
 	@GlobalScope('dataStore:list')
-	async listDataStores(
+	async listDataTables(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Query payload: ListDataStoreQueryDto,
+		@Query payload: ListDataTableQueryDto,
 	) {
 		return await this.dataStoreAggregateService.getManyAndCount(req.user, payload);
 	}

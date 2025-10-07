@@ -1,7 +1,7 @@
 import {
 	type INode,
 	NodeOperationError,
-	type IDataStoreProjectService,
+	type IDataTableProjectService,
 	type IExecuteFunctions,
 } from 'n8n-workflow';
 
@@ -13,9 +13,9 @@ import { executeSelectMany, getSelectFilter } from '../../common/selectMany';
 describe('selectMany utils', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 	const getManyRowsAndCount = jest.fn();
-	const dataStoreProxy = jest.mocked<IDataStoreProjectService>({
+	const dataStoreProxy = jest.mocked<IDataTableProjectService>({
 		getManyRowsAndCount,
-	} as unknown as IDataStoreProjectService);
+	} as unknown as IDataTableProjectService);
 	const dataTableId = 2345;
 	let filters: FieldEntry[];
 	const node = { id: 1 } as unknown as INode;
@@ -29,7 +29,7 @@ describe('selectMany utils', () => {
 			},
 		];
 
-		const mockDataStoreProxy = {
+		const mockDataTableProxy = {
 			getColumns: jest.fn().mockResolvedValue([
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
@@ -50,7 +50,7 @@ describe('selectMany utils', () => {
 				}
 			}),
 			helpers: {
-				getDataStoreProxy: jest.fn().mockResolvedValue(mockDataStoreProxy),
+				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
 			},
 		} as unknown as IExecuteFunctions;
 

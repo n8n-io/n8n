@@ -1,16 +1,16 @@
-import type { ListDataStoreQueryDto } from '@n8n/api-types';
+import type { ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { ProjectService } from '@/services/project.service.ee';
 
-import { DataStoreRepository } from './data-store.repository';
+import { DataTableRepository } from './data-table.repository';
 
 @Service()
-export class DataStoreAggregateService {
+export class DataTableAggregateService {
 	constructor(
-		private readonly dataStoreRepository: DataStoreRepository,
+		private readonly dataTableRepository: DataTableRepository,
 		private readonly projectService: ProjectService,
 		private readonly logger: Logger,
 	) {
@@ -19,7 +19,7 @@ export class DataStoreAggregateService {
 	async start() {}
 	async shutdown() {}
 
-	async getManyAndCount(user: User, options: ListDataStoreQueryDto) {
+	async getManyAndCount(user: User, options: ListDataTableQueryDto) {
 		const projects = await this.projectService.getProjectRelationsForUser(user);
 		let projectIds = projects.map((x) => x.projectId);
 		if (options.filter?.projectId) {
@@ -31,7 +31,7 @@ export class DataStoreAggregateService {
 			return { count: 0, data: [] };
 		}
 
-		return await this.dataStoreRepository.getManyAndCount({
+		return await this.dataTableRepository.getManyAndCount({
 			...options,
 			filter: {
 				...options.filter,
