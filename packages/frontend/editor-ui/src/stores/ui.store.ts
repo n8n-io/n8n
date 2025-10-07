@@ -499,7 +499,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const openCommunityPackageUpdateConfirmModal = (packageName: string, source?: string) => {
-		telemetry.track('user clicked to open community node update modal', {
+		telemetry.track('User clicked to open community node update modal', {
 			source,
 			package_name: packageName,
 		});
