@@ -143,27 +143,27 @@ async function processEventStream(
 				}
 				break;
 			case 'on_tool_end':
-                // Capture tool execution results and match with action
-                if (event.data) {
-                    const toolData = event.data as any;
-                    const toolContent = { name: event.name, toolData: toolData.output || '{}' };
-                    // Stream the final tool result
+				// Capture tool execution results and match with action
+				if (event.data) {
+					const toolData = event.data as any;
+					const toolContent = { name: event.name, toolData: toolData.output || '{}' };
+					// Stream the final tool result
 					if (enableStreamingToolCalls) {
-                    	ctx.sendChunk('tool', itemIndex, toolContent);
+						ctx.sendChunk('tool', itemIndex, toolContent);
 					}
-                    
-                    // Also add to intermediate steps if needed
-                    if (returnIntermediateSteps && agentResult.intermediateSteps!.length > 0) {
-                        // Find the matching intermediate step for this tool call
-                        const matchingStep = agentResult.intermediateSteps!.find(
-                            (step) => !step.observation && step.action.tool === event.name,
-                        );
-                        if (matchingStep) {
-                            matchingStep.observation = toolData.output || '';
-                        }
-                    }
-                }
-                break
+
+					// Also add to intermediate steps if needed
+					if (returnIntermediateSteps && agentResult.intermediateSteps!.length > 0) {
+						// Find the matching intermediate step for this tool call
+						const matchingStep = agentResult.intermediateSteps!.find(
+							(step) => !step.observation && step.action.tool === event.name,
+						);
+						if (matchingStep) {
+							matchingStep.observation = toolData.output || '';
+						}
+					}
+				}
+				break
 			default:
 				break;
 		}
