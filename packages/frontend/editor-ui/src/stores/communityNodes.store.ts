@@ -1,9 +1,10 @@
 import * as communityNodesApi from '@n8n/rest-api-client/api/communityNodes';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { PublicInstalledPackage, CommunityPackageMap } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import { computed, ref } from 'vue';
+import type { CommunityPackageMap } from '@/Interface';
 
 const LOADER_DELAY = 300;
 
