@@ -84,6 +84,7 @@ async function processEventStream(
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
 	returnIntermediateSteps: boolean = false,
+	enableStreamingToolCalls: boolean = false,
 ): Promise<{ output: string; intermediateSteps?: any[] }> {
 	const agentResult: { output: string; intermediateSteps?: any[] } = {
 		output: '',
@@ -147,7 +148,9 @@ async function processEventStream(
                     const toolData = event.data as any;
                     const toolContent = { name: event.name, toolData: toolData.output || '{}' };
                     // Stream the final tool result
-                    ctx.sendChunk('tool', itemIndex, toolContent);
+					if (enableStreamingToolCalls) {
+                    	ctx.sendChunk('tool', itemIndex, toolContent);
+					}
                     
                     // Also add to intermediate steps if needed
                     if (returnIntermediateSteps && agentResult.intermediateSteps!.length > 0) {
@@ -212,6 +215,7 @@ export async function toolsAgentExecute(
 
 	// Check if streaming is enabled
 	const enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
+	const enableStreamingToolCalls = this.getNodeParameter('options.enableStreamingToolCalls', 0, true) as boolean;
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -295,6 +299,7 @@ export async function toolsAgentExecute(
 					eventStream,
 					itemIndex,
 					options.returnIntermediateSteps,
+					options.enableStreamingToolCalls,
 				);
 			} else {
 				// Handle regular execution

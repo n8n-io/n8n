@@ -141,6 +141,7 @@ async function processEventStream(
 	returnIntermediateSteps: boolean = false,
 	memory?: BaseChatMemory,
 	input?: string,
+	enableStreamingToolCalls: boolean = false,
 ): Promise<AgentResult> {
 	const agentResult: AgentResult = {
 		output: '',
@@ -225,7 +226,9 @@ async function processEventStream(
                     const toolData = event.data as { output?: string };
                     const toolContent = { name: event.name, toolData: toolData.output || '{}' };
                     // Stream the final tool result
-                    ctx.sendChunk('tool', itemIndex, toolContent);
+					if (enableStreamingToolCalls) {
+                    	ctx.sendChunk('tool', itemIndex, toolContent);
+					}
                     
                     // Also add to intermediate steps if needed
                     if (returnIntermediateSteps && agentResult.intermediateSteps!.length > 0) {
@@ -393,12 +396,13 @@ export async function toolsAgentExecute(
 			}
 			const outputParser = await getOptionalOutputParser(this, itemIndex);
 			const tools = await getTools(this, outputParser);
-			const options = this.getNodeParameter('options', itemIndex, { enableStreaming: true }) as {
+			const options = this.getNodeParameter('options', itemIndex, { enableStreaming: true, enableStreamingToolCalls: false }) as {
 				systemMessage?: string;
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
 				enableStreaming?: boolean;
+				enableStreamingToolCalls?: boolean;
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -462,6 +466,7 @@ export async function toolsAgentExecute(
 					options.returnIntermediateSteps,
 					memory,
 					input,
+					options.enableStreamingToolCalls
 				);
 
 				// If result contains tool calls, build the request object like the normal flow
