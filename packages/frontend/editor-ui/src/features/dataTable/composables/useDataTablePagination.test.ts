@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { useDataTablePagination, type PageSize } from './useDataTablePagination';
+import { useDataTablePagination } from './useDataTablePagination';
 
 describe('useDataTablePagination', () => {
 	describe('initialization', () => {
