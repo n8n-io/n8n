@@ -16,12 +16,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	const dataStoreService = Container.get(DataTableService);
-	await dataStoreService.deleteDataTableAll();
+	const dataTableService = Container.get(DataTableService);
+	await dataTableService.deleteDataTableAll();
 	await testDb.truncate(['DataTable', 'DataTableColumn']);
 
-	const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
-	dataStoreSizeValidator.reset();
+	const dataTableSizeValidator = Container.get(DataTableSizeValidator);
+	dataTableSizeValidator.reset();
 });
 
 afterAll(async () => {
@@ -29,12 +29,12 @@ afterAll(async () => {
 });
 
 describe('Data Table Size Tests', () => {
-	let dataStoreService: DataTableService;
-	let dataStoreRepository: DataTableRepository;
+	let dataTableService: DataTableService;
+	let dataTableRepository: DataTableRepository;
 
 	beforeAll(() => {
-		dataStoreService = Container.get(DataTableService);
-		dataStoreRepository = Container.get(DataTableRepository);
+		dataTableService = Container.get(DataTableService);
+		dataTableRepository = Container.get(DataTableRepository);
 	});
 
 	let project1: Project;
@@ -46,23 +46,23 @@ describe('Data Table Size Tests', () => {
 	describe('size validation', () => {
 		it('should prevent insertRows when size limit exceeded', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
-			dataStoreSizeValidator.reset();
+			const dataTableSizeValidator = Container.get(DataTableSizeValidator);
+			dataTableSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
-			const { id: dataStoreId } = await dataStoreService.createDataTable(project1.id, {
-				name: 'dataStore',
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
 			const mockFindDataTablesSize = jest
-				.spyOn(dataStoreRepository, 'findDataTablesSize')
+				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
 			// ACT & ASSERT
 			await expect(
-				dataStoreService.insertRows(dataStoreId, project1.id, [{ data: 'test' }]),
+				dataTableService.insertRows(dataTableId, project1.id, [{ data: 'test' }]),
 			).rejects.toThrow(DataTableValidationError);
 
 			expect(mockFindDataTablesSize).toHaveBeenCalled();
@@ -71,24 +71,24 @@ describe('Data Table Size Tests', () => {
 
 		it('should prevent updateRows when size limit exceeded', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
-			dataStoreSizeValidator.reset();
+			const dataTableSizeValidator = Container.get(DataTableSizeValidator);
+			dataTableSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
-			const { id: dataStoreId } = await dataStoreService.createDataTable(project1.id, {
-				name: 'dataStore',
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
 			// Now mock the size check to be over limit
 			const mockFindDataTablesSize = jest
-				.spyOn(dataStoreRepository, 'findDataTablesSize')
+				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
 			// ACT & ASSERT
 			await expect(
-				dataStoreService.updateRows(dataStoreId, project1.id, {
+				dataTableService.updateRows(dataTableId, project1.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
@@ -106,18 +106,18 @@ describe('Data Table Size Tests', () => {
 
 			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
-			const { id: dataStoreId } = await dataStoreService.createDataTable(project1.id, {
-				name: 'dataStore',
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
 			const mockFindDataTablesSize = jest
-				.spyOn(dataStoreRepository, 'findDataTablesSize')
+				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
 			// ACT & ASSERT
 			await expect(
-				dataStoreService.upsertRow(dataStoreId, project1.id, {
+				dataTableService.upsertRow(dataTableId, project1.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'data', condition: 'eq', value: 'nonexistent' }],
@@ -150,24 +150,24 @@ describe('Data Table Size Tests', () => {
 
 		it('should return all data tables for admin user', async () => {
 			// ARRANGE
-			const dataStore1 = await dataStoreService.createDataTable(project1.id, {
-				name: 'project1-dataStore',
+			const dataTable1 = await dataTableService.createDataTable(project1.id, {
+				name: 'project1-dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const dataStore2 = await dataStoreService.createDataTable(project2.id, {
-				name: 'project2-dataStore',
+			const dataTable2 = await dataTableService.createDataTable(project2.id, {
+				name: 'project2-dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
 			const data = new Array(1000).fill(0).map((_, i) => ({ data: `test_data_${i}` }));
 
-			await dataStoreService.insertRows(dataStore1.id, project1.id, data);
+			await dataTableService.insertRows(dataTable1.id, project1.id, data);
 
-			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable2.id, project2.id, [{ data: 'test' }]);
 
 			// ACT
-			const result = await dataStoreService.getDataTablesSize(owner);
+			const result = await dataTableService.getDataTablesSize(owner);
 
 			// ASSERT
 			expect(result).toBeDefined();
@@ -176,24 +176,24 @@ describe('Data Table Size Tests', () => {
 			expect(result.dataTables).toBeDefined();
 
 			expect(Object.keys(result.dataTables)).toHaveLength(2);
-			expect(result.dataTables[dataStore1.id]).toBeDefined();
-			expect(result.dataTables[dataStore2.id]).toBeDefined();
+			expect(result.dataTables[dataTable1.id]).toBeDefined();
+			expect(result.dataTables[dataTable2.id]).toBeDefined();
 
 			// Check info
-			expect(result.dataTables[dataStore1.id].name).toBe('project1-dataStore');
-			expect(result.dataTables[dataStore1.id].projectId).toBe(project1.id);
-			expect(result.dataTables[dataStore2.id].name).toBe('project2-dataStore');
-			expect(result.dataTables[dataStore2.id].projectId).toBe(project2.id);
+			expect(result.dataTables[dataTable1.id].name).toBe('project1-dataTable');
+			expect(result.dataTables[dataTable1.id].projectId).toBe(project1.id);
+			expect(result.dataTables[dataTable2.id].name).toBe('project2-dataTable');
+			expect(result.dataTables[dataTable2.id].projectId).toBe(project2.id);
 
-			expect(result.dataTables[dataStore1.id].sizeBytes).toBeGreaterThan(0);
-			expect(result.dataTables[dataStore2.id].sizeBytes).toBeGreaterThan(0);
-			expect(result.dataTables[dataStore1.id].sizeBytes).toBeGreaterThan(
-				result.dataTables[dataStore2.id].sizeBytes,
+			expect(result.dataTables[dataTable1.id].sizeBytes).toBeGreaterThan(0);
+			expect(result.dataTables[dataTable2.id].sizeBytes).toBeGreaterThan(0);
+			expect(result.dataTables[dataTable1.id].sizeBytes).toBeGreaterThan(
+				result.dataTables[dataTable2.id].sizeBytes,
 			);
 
 			// Total should be sum of individual tables
 			const expectedTotal =
-				result.dataTables[dataStore1.id].sizeBytes + result.dataTables[dataStore2.id].sizeBytes;
+				result.dataTables[dataTable1.id].sizeBytes + result.dataTables[dataTable2.id].sizeBytes;
 			expect(result.totalBytes).toBe(expectedTotal);
 		});
 
@@ -201,21 +201,21 @@ describe('Data Table Size Tests', () => {
 			// ARRANGE
 			await linkUserToProject(regularUser, project1, 'project:viewer');
 
-			const dataStore1 = await dataStoreService.createDataTable(project1.id, {
-				name: 'accessible-dataStore',
+			const dataTable1 = await dataTableService.createDataTable(project1.id, {
+				name: 'accessible-dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const dataStore2 = await dataStoreService.createDataTable(project2.id, {
-				name: 'inaccessible-dataStore',
+			const dataTable2 = await dataTableService.createDataTable(project2.id, {
+				name: 'inaccessible-dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			await dataStoreService.insertRows(dataStore1.id, project1.id, [{ data: 'accessible' }]);
-			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'inaccessible' }]);
+			await dataTableService.insertRows(dataTable1.id, project1.id, [{ data: 'accessible' }]);
+			await dataTableService.insertRows(dataTable2.id, project2.id, [{ data: 'inaccessible' }]);
 
 			// ACT
-			const result = await dataStoreService.getDataTablesSize(regularUser);
+			const result = await dataTableService.getDataTablesSize(regularUser);
 
 			// ASSERT
 			expect(result).toBeDefined();
@@ -224,31 +224,31 @@ describe('Data Table Size Tests', () => {
 			expect(result.dataTables).toBeDefined();
 
 			expect(Object.keys(result.dataTables)).toHaveLength(1);
-			expect(result.dataTables[dataStore1.id]).toBeDefined();
-			expect(result.dataTables[dataStore2.id]).toBeUndefined(); // No access
+			expect(result.dataTables[dataTable1.id]).toBeDefined();
+			expect(result.dataTables[dataTable2.id]).toBeUndefined(); // No access
 
-			expect(result.dataTables[dataStore1.id].name).toBe('accessible-dataStore');
-			expect(result.dataTables[dataStore1.id].projectId).toBe(project1.id);
+			expect(result.dataTables[dataTable1.id].name).toBe('accessible-dataTable');
+			expect(result.dataTables[dataTable1.id].projectId).toBe(project1.id);
 		});
 
 		it('should return empty dataTables but full totalBytes when user has no project access', async () => {
 			// ARRANGE
-			const dataStore1 = await dataStoreService.createDataTable(project1.id, {
-				name: 'inaccessible-dataStore1',
+			const dataTable1 = await dataTableService.createDataTable(project1.id, {
+				name: 'inaccessible-dataTable1',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const dataStore2 = await dataStoreService.createDataTable(project2.id, {
-				name: 'inaccessible-dataStore2',
+			const dataTable2 = await dataTableService.createDataTable(project2.id, {
+				name: 'inaccessible-dataTable2',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
 			// Add data to both
-			await dataStoreService.insertRows(dataStore1.id, project1.id, [{ data: 'test1' }]);
-			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'test2' }]);
+			await dataTableService.insertRows(dataTable1.id, project1.id, [{ data: 'test1' }]);
+			await dataTableService.insertRows(dataTable2.id, project2.id, [{ data: 'test2' }]);
 
 			// ACT
-			const result = await dataStoreService.getDataTablesSize(regularUser);
+			const result = await dataTableService.getDataTablesSize(regularUser);
 
 			// ASSERT
 			expect(result).toBeDefined();
@@ -260,7 +260,7 @@ describe('Data Table Size Tests', () => {
 
 		it('should return empty result when no data tables exist', async () => {
 			// ACT
-			const result = await dataStoreService.getDataTablesSize(owner);
+			const result = await dataTableService.getDataTablesSize(owner);
 
 			// ASSERT
 			expect(result).toBeDefined();
@@ -271,21 +271,21 @@ describe('Data Table Size Tests', () => {
 
 		it('should handle data tables with no rows', async () => {
 			// ARRANGE
-			const dataStore = await dataStoreService.createDataTable(project1.id, {
+			const dataTable = await dataTableService.createDataTable(project1.id, {
 				name: 'emptyDataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
 			// ACT
-			const result = await dataStoreService.getDataTablesSize(owner);
+			const result = await dataTableService.getDataTablesSize(owner);
 
 			// ASSERT
 			expect(result).toBeDefined();
 			expect(result.totalBytes).toBeGreaterThanOrEqual(0);
 			expect(result.dataTables).toBeDefined();
-			expect(result.dataTables[dataStore.id]).toBeDefined();
-			expect(result.dataTables[dataStore.id].sizeBytes).toBeGreaterThanOrEqual(0);
-			expect(result.dataTables[dataStore.id].name).toBe('emptyDataTable');
+			expect(result.dataTables[dataTable.id]).toBeDefined();
+			expect(result.dataTables[dataTable.id].sizeBytes).toBeGreaterThanOrEqual(0);
+			expect(result.dataTables[dataTable.id].name).toBe('emptyDataTable');
 		});
 	});
 
@@ -303,25 +303,25 @@ describe('Data Table Size Tests', () => {
 
 		it('should cache data globally and filter based on user permissions', async () => {
 			// ARRANGE
-			const dataStore = await dataStoreService.createDataTable(project1.id, {
-				name: 'test-dataStore',
+			const dataTable = await dataTableService.createDataTable(project1.id, {
+				name: 'test-dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
 
-			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
+			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
 			// First call - regular user sees no data tables (filtered from global cache)
-			const userResult = await dataStoreService.getDataTablesSize(regularUser);
+			const userResult = await dataTableService.getDataTablesSize(regularUser);
 			expect(Object.keys(userResult.dataTables)).toHaveLength(0);
 			expect(userResult.totalBytes).toBeGreaterThan(0);
 
 			// Second call - owner sees the data table (same global cache, different filtering)
-			const ownerResult = await dataStoreService.getDataTablesSize(owner);
+			const ownerResult = await dataTableService.getDataTablesSize(owner);
 			expect(Object.keys(ownerResult.dataTables)).toHaveLength(1);
-			expect(ownerResult.dataTables[dataStore.id]).toBeDefined();
+			expect(ownerResult.dataTables[dataTable.id]).toBeDefined();
 
 			// Should have called the repository only once (global cache shared)
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
@@ -332,23 +332,23 @@ describe('Data Table Size Tests', () => {
 
 		it('should use global cache for both data fetching and size validation', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
-			const dataStore = await dataStoreService.createDataTable(project1.id, {
-				name: 'test-dataStore',
+			const dataTableSizeValidator = Container.get(DataTableSizeValidator);
+			const dataTable = await dataTableService.createDataTable(project1.id, {
+				name: 'test-dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
 
-			const mockGetCachedSizeData = jest.spyOn(dataStoreSizeValidator, 'getCachedSizeData');
-			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
+			const mockGetCachedSizeData = jest.spyOn(dataTableSizeValidator, 'getCachedSizeData');
+			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT
 			// Fetch data (uses global cache)
-			await dataStoreService.getDataTablesSize(owner);
+			await dataTableService.getDataTablesSize(owner);
 
 			// Insert more data (triggers size validation which should use same cache)
-			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test2' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test2' }]);
 
 			// ASSERT
 			// Should have called getCachedSizeData twice:
@@ -366,30 +366,30 @@ describe('Data Table Size Tests', () => {
 
 		it('should invalidate cache on data modifications', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataTableSizeValidator);
-			const dataStore = await dataStoreService.createDataTable(project1.id, {
-				name: 'test-dataStore',
+			const dataTableSizeValidator = Container.get(DataTableSizeValidator);
+			const dataTable = await dataTableService.createDataTable(project1.id, {
+				name: 'test-dataTable',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const mockReset = jest.spyOn(dataStoreSizeValidator, 'reset');
-			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
+			const mockReset = jest.spyOn(dataTableSizeValidator, 'reset');
+			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
-			const result1 = await dataStoreService.getDataTablesSize(owner);
+			const result1 = await dataTableService.getDataTablesSize(owner);
 			expect(result1.totalBytes).toBeGreaterThanOrEqual(0);
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
 
 			// Inserting new data should reset cache
-			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
 			expect(mockReset).toHaveBeenCalledTimes(1);
 
 			// Fetch data again (should call repository again due to cache reset)
-			await dataStoreService.getDataTablesSize(owner);
+			await dataTableService.getDataTablesSize(owner);
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(2);
 
 			// Update data (should reset cache again)
-			await dataStoreService.updateRows(dataStore.id, project1.id, {
+			await dataTableService.updateRows(dataTable.id, project1.id, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'data', condition: 'eq', value: 'test' }],
@@ -399,7 +399,7 @@ describe('Data Table Size Tests', () => {
 			expect(mockReset).toHaveBeenCalledTimes(2);
 
 			// Upsert data (should reset cache again)
-			await dataStoreService.upsertRow(dataStore.id, project1.id, {
+			await dataTableService.upsertRow(dataTable.id, project1.id, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'data', condition: 'eq', value: 'nonexistent' }],
@@ -409,7 +409,7 @@ describe('Data Table Size Tests', () => {
 			expect(mockReset).toHaveBeenCalledTimes(3);
 
 			// Delete data (should reset cache again)
-			await dataStoreService.deleteRows(dataStore.id, project1.id, {
+			await dataTableService.deleteRows(dataTable.id, project1.id, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'data', condition: 'eq', value: 'updated' }],

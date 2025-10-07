@@ -118,8 +118,8 @@ export async function getSelectFilter(
 
 	// Validate filter conditions against current table schema
 	if (fields.length > 0) {
-		const dataStoreProxy = await getDataTableProxyExecute(ctx, index);
-		const availableColumns = await dataStoreProxy.getColumns();
+		const dataTableProxy = await getDataTableProxyExecute(ctx, index);
+		const availableColumns = await dataTableProxy.getColumns();
 		const allColumns = new Set([
 			...DATA_TABLE_SYSTEM_COLUMNS,
 			...availableColumns.map((col) => col.name),
@@ -144,7 +144,7 @@ export async function getSelectFilter(
 export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
-	dataStoreProxy: IDataTableProjectService,
+	dataTableProxy: IDataTableProjectService,
 	rejectEmpty = false,
 	limit?: number,
 ): Promise<Array<{ json: DataTableRowReturn }>> {
@@ -165,7 +165,7 @@ export async function executeSelectMany(
 	let take = PAGE_SIZE;
 
 	while (true) {
-		const { data, count } = await dataStoreProxy.getManyRowsAndCount({
+		const { data, count } = await dataTableProxy.getManyRowsAndCount({
 			skip,
 			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
