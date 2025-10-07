@@ -235,11 +235,8 @@ function applyRemoveConnectionOperation(
 	connectionTypeOutputs[sourceOutputIndex] = filteredConnections;
 
 	// Clean up empty arrays and objects
-	// If the output index has no connections, remove it
 	if (filteredConnections.length === 0) {
-		connectionTypeOutputs[sourceOutputIndex] = [];
-
-		// Check if all output indices are empty
+		// Check if all outputs of this type are empty
 		const hasAnyConnections = connectionTypeOutputs.some(
 			(outputs) => Array.isArray(outputs) && outputs.length > 0,
 		);
