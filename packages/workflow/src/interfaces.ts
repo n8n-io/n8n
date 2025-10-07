@@ -1764,6 +1764,7 @@ export interface INodeType {
 			[operation: string]: (this: IExecuteFunctions) => Promise<NodeOutput>;
 		};
 	};
+	packageVersion?: string;
 }
 
 /**
@@ -1873,6 +1874,7 @@ export interface IVersionedNodeType {
 	currentVersion: number;
 	description: INodeTypeBaseDescription;
 	getNodeType: (version?: number) => INodeType;
+	packageVersion?: string;
 }
 export interface INodeCredentialTestResult {
 	status: 'OK' | 'Error';
