@@ -1154,7 +1154,6 @@ function onClickConnectionAdd(connection: Connection) {
 }
 
 function onClickReplaceNode(nodeId: string) {
-	debugger;
 	const node = workflowsStore.getNodeById(nodeId);
 	if (!node) return;
 	const nodeType = nodeTypesStore.getNodeType(node.type);
