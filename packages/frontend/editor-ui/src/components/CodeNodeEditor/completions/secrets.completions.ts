@@ -1,4 +1,4 @@
-import { addVarType } from '../utils';
+import { addVarType } from '@/features/environments.ee/completions/variables.completions';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 

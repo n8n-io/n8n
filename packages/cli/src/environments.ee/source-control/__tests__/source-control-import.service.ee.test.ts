@@ -17,6 +17,7 @@ import fsp from 'node:fs/promises';
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
+import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
 jest.mock('fast-glob');
@@ -373,157 +374,358 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
-	describe('importTeamProjectsFromWorkFolder', () => {
-		it('should import team projects from work folder', async () => {
-			// Arrange
-			const mockProjectFile1 = '/mock/team-project1.json';
-			const mockProjectFile2 = '/mock/team-project2.json';
-			const mockProjectData1 = {
+	describe('projects', () => {
+		describe('importTeamProjectsFromWorkFolder', () => {
+			it('should import team projects from work folder', async () => {
+				// Arrange
+				const mockProjectFile1 = '/mock/team-project1.json';
+				const mockProjectFile2 = '/mock/team-project2.json';
+				const mockProjectData1 = {
+					id: 'project1',
+					name: 'Team Project 1',
+					icon: 'icon1.png',
+					description: 'First team project',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'project1',
+					},
+				};
+				const mockProjectData2 = {
+					id: 'project2',
+					name: 'Team Project 2',
+					icon: 'icon2.png',
+					description: 'Second team project',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'project2',
+					},
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockProjectFile1, id: mockProjectData1.id }),
+					mock<SourceControlledFile>({ file: mockProjectFile2, id: mockProjectData2.id }),
+				];
+
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
+
+				// Act
+				const result = await service.importTeamProjectsFromWorkFolder(candidates);
+
+				// Assert
+				expect(fsReadFile).toHaveBeenCalledWith(mockProjectFile1, { encoding: 'utf8' });
+				expect(fsReadFile).toHaveBeenCalledWith(mockProjectFile2, { encoding: 'utf8' });
+				expect(projectRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						id: mockProjectData1.id,
+						name: mockProjectData1.name,
+						icon: mockProjectData1.icon,
+						description: mockProjectData1.description,
+						type: mockProjectData1.type,
+					}),
+					['id'],
+				);
+				expect(projectRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						id: mockProjectData2.id,
+						name: mockProjectData2.name,
+						icon: mockProjectData2.icon,
+						description: mockProjectData2.description,
+						type: mockProjectData2.type,
+					}),
+					['id'],
+				);
+
+				expect(result).toEqual([
+					{
+						id: mockProjectData1.id,
+						name: mockProjectData1.name,
+					},
+					{
+						id: mockProjectData2.id,
+						name: mockProjectData2.name,
+					},
+				]);
+			});
+
+			it('should import only valid team projects and skip invalid ones', async () => {
+				const mockTeamProjectFile = '/mock/project-team-valid.json';
+				const mockTeamProjectData = {
+					id: 'project-team-valid',
+					name: 'Valid Team Project',
+					icon: 'icon-team-valid',
+					description: 'A valid team project',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'project-team-valid',
+					},
+				};
+				const mockNonTeamProjectFile = '/mock/project-non-team.json';
+				const mockNonTeamProjectData = {
+					id: 'project-non-team',
+					name: 'Personal Project',
+					icon: 'icon-non-team',
+					description: 'A personal project',
+					type: 'personal', // not 'team'
+					owner: {
+						type: 'personal',
+						personalEmail: 'user@email.com',
+					},
+				};
+				const mockInconsistentOwnerFile = '/mock/project-inconsistent-owner.json';
+				const mockInconsistentOwnerData = {
+					id: 'project-team-inconsistent',
+					name: 'Team Project Inconsistent',
+					icon: 'icon-team-inconsistent',
+					description: 'A team project with inconsistent owner',
+					type: 'team',
+					owner: {
+						type: 'personal', // should be 'team'
+						personalEmail: 'user@email.com',
+					},
+				};
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockTeamProjectFile, id: mockTeamProjectData.id }),
+					mock<SourceControlledFile>({
+						file: mockNonTeamProjectFile,
+						id: mockNonTeamProjectData.id,
+					}),
+					mock<SourceControlledFile>({
+						file: mockInconsistentOwnerFile,
+						id: mockInconsistentOwnerData.id,
+					}),
+				];
+
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockTeamProjectData))
+					.mockResolvedValueOnce(JSON.stringify(mockNonTeamProjectData))
+					.mockResolvedValueOnce(JSON.stringify(mockInconsistentOwnerData));
+
+				const result = await service.importTeamProjectsFromWorkFolder(candidates);
+
+				expect(fsReadFile).toHaveBeenCalledWith(mockTeamProjectFile, { encoding: 'utf8' });
+				expect(fsReadFile).toHaveBeenCalledWith(mockNonTeamProjectFile, { encoding: 'utf8' });
+				expect(fsReadFile).toHaveBeenCalledWith(mockInconsistentOwnerFile, { encoding: 'utf8' });
+
+				expect(projectRepository.upsert).toHaveBeenCalledTimes(1);
+				expect(projectRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						id: mockTeamProjectData.id,
+						name: mockTeamProjectData.name,
+						icon: mockTeamProjectData.icon,
+						description: mockTeamProjectData.description,
+						type: mockTeamProjectData.type,
+					}),
+					['id'],
+				);
+
+				expect(result).toEqual([
+					{
+						id: mockTeamProjectData.id,
+						name: mockTeamProjectData.name,
+					},
+				]);
+			});
+		});
+
+		describe('getRemoteProjectsFromFiles', () => {
+			const mockProjectData1: ExportableProject = {
 				id: 'project1',
 				name: 'Team Project 1',
-				icon: 'icon1.png',
+				icon: { type: 'icon', value: 'icon1' },
 				description: 'First team project',
 				type: 'team',
 				owner: {
 					type: 'team',
 					teamId: 'project1',
+					teamName: 'Team Project 1',
 				},
 			};
-			const mockProjectData2 = {
+			const mockProjectData2: ExportableProject = {
 				id: 'project2',
 				name: 'Team Project 2',
-				icon: 'icon2.png',
+				icon: { type: 'icon', value: 'icon2' },
 				description: 'Second team project',
 				type: 'team',
 				owner: {
 					type: 'team',
 					teamId: 'project2',
+					teamName: 'Team Project 2',
 				},
 			};
-			const candidates = [
-				mock<SourceControlledFile>({ file: mockProjectFile1, id: mockProjectData1.id }),
-				mock<SourceControlledFile>({ file: mockProjectFile2, id: mockProjectData2.id }),
-			];
 
-			fsReadFile
-				.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
-				.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
+			it('should return all projects if the user has access to all projects', async () => {
+				// ARRANGE
+				globMock.mockResolvedValue([`${mockProjectData1.id}.json`, `${mockProjectData2.id}.json`]);
 
-			// Act
-			const result = await service.importTeamProjectsFromWorkFolder(candidates);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
 
-			// Assert
-			expect(fsReadFile).toHaveBeenCalledWith(mockProjectFile1, { encoding: 'utf8' });
-			expect(fsReadFile).toHaveBeenCalledWith(mockProjectFile2, { encoding: 'utf8' });
-			expect(projectRepository.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: mockProjectData1.id,
-					name: mockProjectData1.name,
-					icon: mockProjectData1.icon,
-					description: mockProjectData1.description,
-					type: mockProjectData1.type,
-				}),
-				['id'],
-			);
-			expect(projectRepository.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: mockProjectData2.id,
-					name: mockProjectData2.name,
-					icon: mockProjectData2.icon,
-					description: mockProjectData2.description,
-					type: mockProjectData2.type,
-				}),
-				['id'],
-			);
+				// ACT
+				const result = await service.getRemoteProjectsFromFiles(globalAdminContext);
 
-			expect(result).toEqual([
-				{
-					id: mockProjectData1.id,
-					name: mockProjectData1.name,
-				},
-				{
-					id: mockProjectData2.id,
-					name: mockProjectData2.name,
-				},
-			]);
+				// ASSERT
+				expect(fsReadFile).toHaveBeenCalledTimes(2);
+				expect(fsReadFile).toHaveBeenCalledWith(`${mockProjectData1.id}.json`, {
+					encoding: 'utf8',
+				});
+				expect(fsReadFile).toHaveBeenCalledWith(`${mockProjectData2.id}.json`, {
+					encoding: 'utf8',
+				});
+
+				// expect the result to be the correct projects with the correct filename
+				expect(result).toHaveLength(2);
+				expect(result[0]).toMatchObject({
+					...mockProjectData1,
+					filename: `/mock/n8n/git/projects/${mockProjectData1.id}.json`,
+				});
+				expect(result[1]).toMatchObject({
+					...mockProjectData2,
+					filename: `/mock/n8n/git/projects/${mockProjectData2.id}.json`,
+				});
+			});
+
+			it('should return only projects that the user has access to', async () => {
+				// ARRANGE
+				globMock.mockResolvedValue([`${mockProjectData1.id}.json`, `${mockProjectData2.id}.json`]);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
+
+				// Only allow access to project2
+				sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
+					mock<Project>({ id: mockProjectData2.id, type: 'team' }),
+				]);
+
+				// ACT
+				const result = await service.getRemoteProjectsFromFiles(globalMemberContext);
+
+				// ASSERT
+				expect(fsReadFile).toHaveBeenCalledTimes(2);
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({
+					...mockProjectData2,
+					filename: `/mock/n8n/git/projects/${mockProjectData2.id}.json`,
+				});
+			});
 		});
 
-		it('should import only valid team projects and skip invalid ones', async () => {
-			const mockTeamProjectFile = '/mock/project-team-valid.json';
-			const mockTeamProjectData = {
-				id: 'project-team-valid',
-				name: 'Valid Team Project',
-				icon: 'icon-team-valid',
-				description: 'A valid team project',
-				type: 'team',
-				owner: {
+		describe('getLocalTeamProjectsFromDb', () => {
+			it('should return team projects with the correct filter', async () => {
+				// ARRANGE
+				const mockProjectData1: Project = mock<Project>({
+					id: 'project1',
+					name: 'Team Project 1',
+					icon: null,
+					description: 'First team project',
 					type: 'team',
-					teamId: 'project-team-valid',
-				},
-			};
-			const mockNonTeamProjectFile = '/mock/project-non-team.json';
-			const mockNonTeamProjectData = {
-				id: 'project-non-team',
-				name: 'Personal Project',
-				icon: 'icon-non-team',
-				description: 'A personal project',
-				type: 'personal', // not 'team'
-				owner: {
-					type: 'personal',
-					personalEmail: 'user@email.com',
-				},
-			};
-			const mockInconsistentOwnerFile = '/mock/project-inconsistent-owner.json';
-			const mockInconsistentOwnerData = {
-				id: 'project-team-inconsistent',
-				name: 'Team Project Inconsistent',
-				icon: 'icon-team-inconsistent',
-				description: 'A team project with inconsistent owner',
-				type: 'team',
-				owner: {
-					type: 'personal', // should be 'team'
-					personalEmail: 'user@email.com',
-				},
-			};
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				});
+				const mockProjectData2: Project = mock<Project>({
+					id: 'project2',
+					name: 'Team Project 2',
+					icon: { type: 'icon', value: 'icon2' },
+					description: 'Second team project',
+					type: 'team',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				});
 
-			const candidates = [
-				mock<SourceControlledFile>({ file: mockTeamProjectFile, id: mockTeamProjectData.id }),
-				mock<SourceControlledFile>({ file: mockNonTeamProjectFile, id: mockNonTeamProjectData.id }),
-				mock<SourceControlledFile>({
-					file: mockInconsistentOwnerFile,
-					id: mockInconsistentOwnerData.id,
-				}),
-			];
+				const mockFilter = { id: 'test' };
+				sourceControlScopedService.getProjectsWithPushScopeByContextFilter.mockReturnValue(
+					mockFilter,
+				);
+				projectRepository.find.mockResolvedValue([mockProjectData1, mockProjectData2]);
 
-			fsReadFile
-				.mockResolvedValueOnce(JSON.stringify(mockTeamProjectData))
-				.mockResolvedValueOnce(JSON.stringify(mockNonTeamProjectData))
-				.mockResolvedValueOnce(JSON.stringify(mockInconsistentOwnerData));
+				// ACT
+				const result = await service.getLocalTeamProjectsFromDb(globalAdminContext);
 
-			const result = await service.importTeamProjectsFromWorkFolder(candidates);
+				// ASSERT
 
-			expect(fsReadFile).toHaveBeenCalledWith(mockTeamProjectFile, { encoding: 'utf8' });
-			expect(fsReadFile).toHaveBeenCalledWith(mockNonTeamProjectFile, { encoding: 'utf8' });
-			expect(fsReadFile).toHaveBeenCalledWith(mockInconsistentOwnerFile, { encoding: 'utf8' });
+				// making sure the correct filter is used
+				expect(projectRepository.find).toHaveBeenCalledWith({
+					select: ['id', 'name', 'description', 'icon', 'type'],
+					where: {
+						type: 'team',
+						...mockFilter,
+					},
+				});
 
-			expect(projectRepository.upsert).toHaveBeenCalledTimes(1);
-			expect(projectRepository.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: mockTeamProjectData.id,
-					name: mockTeamProjectData.name,
-					icon: mockTeamProjectData.icon,
-					description: mockTeamProjectData.description,
-					type: mockTeamProjectData.type,
-				}),
-				['id'],
-			);
+				expect(result).toHaveLength(2);
+				expect(result[0]).toMatchObject({
+					id: mockProjectData1.id,
+					name: mockProjectData1.name,
+					description: mockProjectData1.description,
+					icon: mockProjectData1.icon,
+					filename: `/mock/n8n/git/projects/${mockProjectData1.id}.json`,
+					type: mockProjectData1.type,
+					owner: {
+						type: 'team',
+						teamId: mockProjectData1.id,
+						teamName: mockProjectData1.name,
+					},
+				});
+				expect(result[1]).toMatchObject({
+					id: mockProjectData2.id,
+					name: mockProjectData2.name,
+					description: mockProjectData2.description,
+					icon: mockProjectData2.icon,
+					filename: `/mock/n8n/git/projects/${mockProjectData2.id}.json`,
+					type: mockProjectData2.type,
+					owner: {
+						type: 'team',
+						teamId: mockProjectData2.id,
+						teamName: mockProjectData2.name,
+					},
+				});
+			});
 
-			expect(result).toEqual([
-				{
-					id: mockTeamProjectData.id,
-					name: mockTeamProjectData.name,
-				},
-			]);
+			it('should return all team projects', async () => {
+				// ARRANGE
+				const mockProjectData1: Project = mock<Project>({
+					id: 'project1',
+					name: 'Team Project 1',
+					icon: null,
+					description: 'First team project',
+					type: 'team',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				});
+
+				projectRepository.find.mockResolvedValue([mockProjectData1]);
+
+				// ACT
+				const result = await service.getLocalTeamProjectsFromDb();
+
+				// ASSERT
+
+				// making sure the correct filter is used
+				expect(projectRepository.find).toHaveBeenCalledWith({
+					select: ['id', 'name', 'description', 'icon', 'type'],
+					where: { type: 'team' },
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({
+					id: mockProjectData1.id,
+					name: mockProjectData1.name,
+					description: mockProjectData1.description,
+					icon: mockProjectData1.icon,
+					filename: `/mock/n8n/git/projects/${mockProjectData1.id}.json`,
+					type: mockProjectData1.type,
+					owner: {
+						type: 'team',
+						teamId: mockProjectData1.id,
+						teamName: mockProjectData1.name,
+					},
+				});
+			});
 		});
 	});
 });
