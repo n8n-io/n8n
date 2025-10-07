@@ -21,9 +21,8 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES, TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
-import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
-// import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import { getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
+import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
@@ -117,7 +116,7 @@ const range = shallowRef<{
 	start: DateValue;
 	end: DateValue;
 }>({
-	start: maxDate.copy(),
+	start: maxDate.copy().subtract({ days: 6 }),
 	end: maxDate.copy(),
 });
 
@@ -202,6 +201,15 @@ onMounted(() => {
 onBeforeMount(async () => {
 	await projectsStore.getAvailableProjects();
 });
+
+// Must be *only* <email> — no extra text before or after
+const emailPattern = /^<([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})>$/;
+
+const projects = computed(() =>
+	projectsStore.availableProjects.filter(
+		(project) => project.name && !emailPattern.test(project.name.trim()),
+	),
+);
 </script>
 
 <template>
@@ -214,7 +222,7 @@ onBeforeMount(async () => {
 			<div class="mt-s" style="display: flex; gap: 12px; align-items: center">
 				<ProjectSharing
 					v-model="selectedProject"
-					:projects="projectsStore.availableProjects"
+					:projects="projects"
 					:placeholder="i18n.baseText('insights.dashboard.search.placeholder')"
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					size="mini"
