@@ -143,7 +143,7 @@ export async function getSelectFilter(
 		}
 	}
 
-	return buildGetManyFilter(fields, matchType, allColumnsWithTypes);
+	return buildGetManyFilter(fields, matchType, allColumnsWithTypes, node);
 }
 
 export async function executeSelectMany(

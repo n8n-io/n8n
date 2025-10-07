@@ -88,6 +88,7 @@ export function buildGetManyFilter(
 	fieldEntries: FieldEntry[],
 	matchType: FilterType,
 	columnTypeMap: Record<string, DataTableColumnType>,
+	node: INode,
 ): DataTableFilter {
 	const filters = fieldEntries.map((x) => {
 		switch (x.condition) {
@@ -123,7 +124,10 @@ export function buildGetManyFilter(
 				if (columnType === 'date' && typeof value === 'string') {
 					const parsed = new Date(value);
 					if (isNaN(parsed.getTime())) {
-						throw new Error(`Invalid date string '${value}' for column '${x.keyName}'`);
+						throw new NodeOperationError(
+							node,
+							`Invalid date string '${value}' for column '${x.keyName}'`,
+						);
 					}
 					value = parsed;
 				}

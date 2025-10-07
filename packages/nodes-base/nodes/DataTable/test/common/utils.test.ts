@@ -210,7 +210,7 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { name: 'string' });
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { name: 'string' }, mockNode);
 
 			expect(result).toEqual({
 				type: 'and',
@@ -229,7 +229,7 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, { email: 'string' });
+			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, { email: 'string' }, mockNode);
 
 			expect(result).toEqual({
 				type: 'or',
@@ -250,11 +250,16 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, {
-				name: 'string',
-				email: 'string',
-				phone: 'string',
-			});
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{
+					name: 'string',
+					email: 'string',
+					phone: 'string',
+				},
+				mockNode,
+			);
 
 			expect(result).toEqual({
 				type: 'and',
@@ -285,7 +290,12 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { isActive: 'boolean' });
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{ isActive: 'boolean' },
+				mockNode,
+			);
 
 			expect(result).toEqual({
 				type: 'and',
@@ -304,7 +314,12 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'email', condition: 'isFalse' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, { email: 'boolean' });
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ANY_CONDITION,
+				{ email: 'boolean' },
+				mockNode,
+			);
 
 			expect(result).toEqual({
 				type: 'or',
@@ -325,11 +340,16 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'isDeleted', condition: 'isFalse' as const, keyValue: 'ignored' },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, {
-				name: 'string',
-				isActive: 'boolean',
-				isDeleted: 'boolean',
-			});
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{
+					name: 'string',
+					isActive: 'boolean',
+					isDeleted: 'boolean',
+				},
+				mockNode,
+			);
 
 			expect(result).toEqual({
 				type: 'and',
@@ -360,10 +380,15 @@ describe('buildGetManyFilter', () => {
 			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, {
-			age: 'number',
-			name: 'string',
-		});
+		const result = buildGetManyFilter(
+			fieldEntries,
+			ANY_CONDITION,
+			{
+				age: 'number',
+				name: 'string',
+			},
+			mockNode,
+		);
 
 		expect(result).toEqual({
 			type: 'or',
@@ -389,7 +414,12 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'createdAt', condition: 'lte', keyValue: testDate },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' });
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{ createdAt: 'date' },
+				mockNode,
+			);
 
 			expect(result).toEqual({
 				type: 'and',
@@ -409,7 +439,12 @@ describe('buildGetManyFilter', () => {
 				{ keyName: 'createdAt', condition: 'lte', keyValue: dateString },
 			];
 
-			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' });
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{ createdAt: 'date' },
+				mockNode,
+			);
 
 			expect(result.filters[0].value).toBeInstanceOf(Date);
 			expect((result.filters[0].value as Date).toISOString()).toBe(dateString);
@@ -422,7 +457,7 @@ describe('buildGetManyFilter', () => {
 			];
 
 			expect(() =>
-				buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' }),
+				buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' }, mockNode),
 			).toThrowError(`Invalid date string '${invalidDateString}' for column 'createdAt'`);
 		});
 	});
