@@ -10,7 +10,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
@@ -37,7 +37,7 @@ const WorkflowExecutionsLandingPage = async () =>
 const WorkflowExecutionsPreview = async () =>
 	await import('@/components/executions/workflow/WorkflowExecutionsPreview.vue');
 const SettingsView = async () => await import('./views/SettingsView.vue');
-const SettingsLdapView = async () => await import('./views/SettingsLdapView.vue');
+const SettingsLdapView = async () => await import('@/features/sso/views/SettingsLdapView.vue');
 const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
 const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
 const SettingsCommunityNodesView = async () =>
@@ -58,7 +58,7 @@ const TemplatesSearchView = async () =>
 const VariablesView = async () =>
 	await import('@/features/environments.ee/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
-const SettingsSso = async () => await import('./views/SettingsSso.vue');
+const SettingsSso = async () => await import('@/features/sso/views/SettingsSso.vue');
 const SignoutView = async () => await import('@/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>

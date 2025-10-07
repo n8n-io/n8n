@@ -18,7 +18,7 @@ import { createFormEventBus } from '@n8n/design-system/utils';
 import type { TableColumnCtx } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '../sso.store';
 
 import { ElTable, ElTableColumn } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nFormInputs, N8nHeading, N8nInfoTip } from '@n8n/design-system';
