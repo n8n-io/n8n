@@ -129,3 +129,16 @@ export function howManyTestCasesToGenerate(): number {
 	}
 	return 10; // Default to 10 if not specified
 }
+
+/**
+ * Sets up environment for cache testing
+ * @returns Agent and LLM instances
+ */
+export async function setupEnvironment(): Promise<{
+	agent: WorkflowBuilderAgent;
+	llm: BaseChatModel;
+}> {
+	const env = await setupTestEnvironment();
+	const agent = createAgent(env.parsedNodeTypes, env.llm, env.tracer);
+	return { agent, llm: env.llm };
+}
