@@ -30,7 +30,6 @@ import { useUIStore } from '@/stores/ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
-import { useBuilderStore } from '@/stores/builder.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
