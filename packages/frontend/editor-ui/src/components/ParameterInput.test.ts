@@ -75,7 +75,7 @@ vi.mock('@/stores/nodeTypes.store', () => {
 	};
 });
 
-vi.mock('@/plugins/codemirror/completions/datatype.completions', () => {
+vi.mock('@/features/editors/plugins/codemirror/completions/datatype.completions', () => {
 	return {
 		datatypeCompletions: vi.fn(() => mockCompletionResult),
 	};
