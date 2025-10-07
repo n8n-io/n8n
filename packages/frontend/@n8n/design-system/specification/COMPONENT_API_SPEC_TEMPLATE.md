@@ -34,7 +34,8 @@ With two approvals, you can be quite sure that the API won't be challenged anymo
 
 **CSS Variables**
 
-- TODO: add example for CSS variable
+- `--checkbox--border-color`
+- `--checkbox--border-color--checked`
 
 ### Template usage example
 
