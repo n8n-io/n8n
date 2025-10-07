@@ -53,7 +53,7 @@ import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { getGenericHints } from '@/utils/nodeViewUtils';
@@ -1989,13 +1989,14 @@ defineExpose({ enterEditMode });
 	border-top: 0;
 	border-left: 0;
 	border-right: 0;
+	height: 40px;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--ndv-spacing);
-	padding: var(--ndv-spacing) var(--ndv-spacing) 0 var(--ndv-spacing);
+	padding: var(--ndv-spacing) var(--spacing-3xs) 0 var(--ndv-spacing);
 	position: relative;
 	overflow-x: auto;
 	overflow-y: hidden;

@@ -15,7 +15,7 @@ import type {
 	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
-	CanvasNodeAIPromptRender,
+	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
@@ -96,9 +96,10 @@ export function useCanvasMapping({
 			options: {},
 		};
 	}
-	function createAIPromptRenderType(): CanvasNodeAIPromptRender {
+
+	function createChoicePromptRenderType(): CanvasNodeChoicePromptRender {
 		return {
-			type: CanvasNodeRenderType.AIPrompt,
+			type: CanvasNodeRenderType.ChoicePrompt,
 			options: {},
 		};
 	}
@@ -140,8 +141,8 @@ export function useCanvasMapping({
 					case `${CanvasNodeRenderType.AddNodes}`:
 						acc[node.id] = createAddNodesRenderType();
 						break;
-					case `${CanvasNodeRenderType.AIPrompt}`:
-						acc[node.id] = createAIPromptRenderType();
+					case `${CanvasNodeRenderType.ChoicePrompt}`:
+						acc[node.id] = createChoicePromptRenderType();
 						break;
 					default:
 						acc[node.id] = createDefaultNodeRenderType(node);

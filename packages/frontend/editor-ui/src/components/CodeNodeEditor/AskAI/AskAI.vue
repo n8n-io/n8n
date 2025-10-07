@@ -24,7 +24,7 @@ import {
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/constants';
-import type { AskAiRequest } from '@/types/assistant.types';
+import type { AskAiRequest } from '@/features/assistant/assistant.types';
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];

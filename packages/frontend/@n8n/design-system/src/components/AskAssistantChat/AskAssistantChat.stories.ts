@@ -1,7 +1,7 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
 import AskAssistantChat from './AskAssistantChat.vue';
-import type { ChatUI } from '../../types/assistant';
+import type { ChatUI, WorkflowSuggestion } from '../../types/assistant';
 
 export default {
 	title: 'Assistant/AskAssistantChat',
@@ -21,7 +21,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		AskAssistantChat,
 	},
-	template: '<div style="width:275px; height:500px"><ask-assistant-chat v-bind="args" /></div>',
+	template: '<div style="width:380px; height:500px"><ask-assistant-chat v-bind="args" /></div>',
 	methods,
 });
 
@@ -31,6 +31,38 @@ DefaultPlaceholderChat.args = {
 		firstName: 'Max',
 		lastName: 'Test',
 	},
+};
+
+const mockSuggestions: WorkflowSuggestion[] = [
+	{
+		id: 'invoice-pipeline',
+		summary: 'Invoice processing pipeline',
+		prompt:
+			'Create an invoice parsing workflow using n8n forms. Extract key information and store in Airtable.',
+	},
+	{
+		id: 'ai-news-digest',
+		summary: 'Daily AI news digest',
+		prompt:
+			'Create a workflow that fetches the latest AI news every morning at 8 AM and sends a summary via Telegram.',
+	},
+	{
+		id: 'rag-assistant',
+		summary: 'RAG knowledge assistant',
+		prompt:
+			'Build a pipeline that accepts PDF files, chunks documents, and creates a chatbot that can answer questions.',
+	},
+];
+
+export const WithSuggestions = Template.bind({});
+WithSuggestions.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	suggestions: mockSuggestions,
+	creditsQuota: 100,
+	creditsRemaining: 75,
 };
 
 export const Chat = Template.bind({});

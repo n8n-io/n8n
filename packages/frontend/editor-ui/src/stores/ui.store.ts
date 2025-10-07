@@ -25,8 +25,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
@@ -35,8 +33,6 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
-	DELETE_FOLDER_MODAL_KEY,
-	MOVE_FOLDER_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -49,6 +45,14 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 } from '@/constants';
+import {
+	DELETE_FOLDER_MODAL_KEY,
+	MOVE_FOLDER_MODAL_KEY,
+} from '@/features/folders/folders.constants';
+import {
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+} from '@/features/sourceControl.ee/sourceControl.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
@@ -380,7 +384,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		const items: IMenuItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
 			if (settingsStore.isModuleActive(moduleName)) {
-				items.push(...moduleItems);
+				items.push(...moduleItems.map((item) => ({ ...item, available: true })));
 			}
 		});
 		return items;
