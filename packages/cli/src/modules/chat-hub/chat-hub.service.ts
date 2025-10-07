@@ -78,20 +78,6 @@ export class ChatHubService {
 				displayName: 'Gemini 1.5 Flash',
 				credentialType: 'googlePalmApi',
 			},
-			{
-				provider: 'mistral',
-				providerDisplayName: 'Mistral AI',
-				model: 'mistral-large-latest',
-				displayName: 'Mistral Large',
-				credentialType: 'mistralCloudApi',
-			},
-			{
-				provider: 'mistral',
-				providerDisplayName: 'Mistral AI',
-				model: 'mistral-small-latest',
-				displayName: 'Mistral Small',
-				credentialType: 'mistralCloudApi',
-			},
 		]);
 	}
 
