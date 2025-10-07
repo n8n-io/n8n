@@ -50,16 +50,21 @@ const range = shallowRef<N8nDateRangePickerProps['modelValue']>({
 	end: props.modelValue.end?.copy(),
 });
 
-function syncData(isOpen: boolean) {
+function syncWithParentValue() {
 	if (
-		isOpen &&
-		!isEqual(range.value?.start, props.modelValue.start) &&
+		!isEqual(range.value?.start, props.modelValue.start) ||
 		!isEqual(range.value?.end, props.modelValue.end)
 	) {
 		range.value = {
 			start: props.modelValue.start?.copy(),
 			end: props.modelValue.end?.copy(),
 		};
+	}
+}
+
+function syncData(isOpen: boolean) {
+	if (isOpen) {
+		syncWithParentValue();
 		return;
 	}
 
@@ -70,6 +75,7 @@ function syncData(isOpen: boolean) {
 
 	if (!isValidDateRange(normalizedRange)) {
 		console.error('Invalid date range selected', normalizedRange);
+		syncWithParentValue();
 		return;
 	}
 
