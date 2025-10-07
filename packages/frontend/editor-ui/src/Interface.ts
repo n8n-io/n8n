@@ -188,12 +188,6 @@ export interface IAiDataContent {
 	};
 }
 
-export interface IAiData {
-	data: IAiDataContent[];
-	node: string;
-	runIndex: number;
-}
-
 export interface IStartRunData {
 	workflowData: WorkflowData;
 	startNodes?: StartNodeData[];

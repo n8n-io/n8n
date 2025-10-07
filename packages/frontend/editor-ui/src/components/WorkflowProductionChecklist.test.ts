@@ -8,10 +8,10 @@ import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
-import type { SourceControlPreferences } from '@/types/sourceControl.types';
+import type { SourceControlPreferences } from '@/features/sourceControl.ee/sourceControl.types';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,

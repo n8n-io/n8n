@@ -8,7 +8,7 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -23,7 +23,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 vi.mock('@/api/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
-vi.mock('@/api/sourceControl');
+vi.mock('@/features/sourceControl.ee/sourceControl.api');
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
