@@ -15,6 +15,7 @@ import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
 import type { TelemetryContext } from './types/telemetry';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { WorkflowState } from './composables/useWorkflowState';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -71,8 +72,6 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
-export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
@@ -500,7 +499,7 @@ export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
 );
 
 export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
-export const FOLDER_NAME_MAX_LENGTH = 100;
+export const FOLDER_NAME_MAX_LENGTH = 128;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
@@ -843,6 +842,13 @@ export const READY_TO_RUN_V2_EXPERIMENT = {
 	variant2: 'variant-2-twoboxes',
 };
 
+export const READY_TO_RUN_V2_PART2_EXPERIMENT = {
+	name: '045_ready-to-run-worfklow_v2-2',
+	control: 'control',
+	variant3: 'variant-3',
+	variant4: 'variant-4',
+};
+
 export const PERSONALIZED_TEMPLATES_V3 = {
 	name: '044_template_reco_v3',
 	control: 'control',
@@ -860,6 +866,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_EXPERIMENT.name,
 	PERSONALIZED_TEMPLATES_V3.name,
+	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
@@ -1029,6 +1036,7 @@ export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
 export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
+export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowState');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';

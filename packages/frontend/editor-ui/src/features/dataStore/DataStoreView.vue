@@ -11,7 +11,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import {
 	ADD_DATA_STORE_MODAL_KEY,
 	DEFAULT_DATA_STORE_PAGE_SIZE,

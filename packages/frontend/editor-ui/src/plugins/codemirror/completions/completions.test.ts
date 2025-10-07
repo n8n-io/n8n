@@ -16,7 +16,7 @@ import type { CompletionSource, CompletionResult } from '@codemirror/autocomplet
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';

@@ -2,7 +2,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';

@@ -77,7 +77,7 @@ export function useBuilderMessages() {
 				return {
 					...message,
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 				};
 			}
 			// Remove any existing rating from other messages
@@ -88,6 +88,49 @@ export function useBuilderMessages() {
 			}
 			return message;
 		});
+	}
+
+	/**
+	 * Process a tool message - either update existing or add new
+	 */
+	function processToolMessage(
+		messages: ChatUI.AssistantMessage[],
+		msg: ChatRequest.ToolMessage,
+		messageId: string,
+	): void {
+		// Use toolCallId as the message ID for consistency across updates
+		const toolMessageId = msg.toolCallId ?? messageId;
+
+		// Check if we already have this tool message
+		const existingIndex = msg.toolCallId
+			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
+			: -1;
+
+		if (existingIndex !== -1) {
+			// Update existing tool message - merge updates array
+			const existing = messages[existingIndex] as ChatUI.ToolMessage;
+			const toolMessage: ChatUI.ToolMessage = {
+				...existing,
+				status: msg.status,
+				updates: [...(existing.updates || []), ...(msg.updates || [])],
+			};
+			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
+		} else {
+			// Add new tool message
+			const toolMessage: ChatUI.AssistantMessage = {
+				id: toolMessageId,
+				role: 'assistant',
+				type: 'tool',
+				toolName: msg.toolName,
+				toolCallId: msg.toolCallId,
+				displayTitle: msg.displayTitle,
+				customDisplayTitle: msg.customDisplayTitle,
+				status: msg.status,
+				updates: msg.updates || [],
+				read: false,
+			};
+			messages.push(toolMessage);
+		}
 	}
 
 	/**
@@ -136,47 +179,12 @@ export function useBuilderMessages() {
 		return shouldClearThinking;
 	}
 
-	/**
-	 * Process a tool message - either update existing or add new
-	 */
-	function processToolMessage(
-		messages: ChatUI.AssistantMessage[],
-		msg: ChatRequest.ToolMessage,
-		messageId: string,
-	): void {
-		// Use toolCallId as the message ID for consistency across updates
-		const toolMessageId = msg.toolCallId ?? messageId;
+	function getToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.ToolMessage[] {
+		return messages.filter((msg): msg is ChatUI.ToolMessage => msg.type === 'tool');
+	}
 
-		// Check if we already have this tool message
-		const existingIndex = msg.toolCallId
-			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
-			: -1;
-
-		if (existingIndex !== -1) {
-			// Update existing tool message - merge updates array
-			const existing = messages[existingIndex] as ChatUI.ToolMessage;
-			const toolMessage: ChatUI.ToolMessage = {
-				...existing,
-				status: msg.status,
-				updates: [...(existing.updates || []), ...(msg.updates || [])],
-			};
-			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
-		} else {
-			// Add new tool message
-			const toolMessage: ChatUI.AssistantMessage = {
-				id: toolMessageId,
-				role: 'assistant',
-				type: 'tool',
-				toolName: msg.toolName,
-				toolCallId: msg.toolCallId,
-				displayTitle: msg.displayTitle,
-				customDisplayTitle: msg.customDisplayTitle,
-				status: msg.status,
-				updates: msg.updates || [],
-				read: false,
-			};
-			messages.push(toolMessage);
-		}
+	function getRunningTools(messages: ChatUI.AssistantMessage[]) {
+		return getToolMessages(messages).filter((msg) => msg.status === 'running');
 	}
 
 	/**
@@ -191,10 +199,7 @@ export function useBuilderMessages() {
 		hasAnyRunningTools: boolean;
 		isStillThinking: boolean;
 	} {
-		const allToolMessages = messages.filter(
-			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
-		);
-		const hasAnyRunningTools = allToolMessages.some((msg) => msg.status === 'running');
+		const hasAnyRunningTools = getRunningTools(messages).length > 0;
 		if (hasAnyRunningTools) {
 			return {
 				hasAnyRunningTools: true,
@@ -202,7 +207,7 @@ export function useBuilderMessages() {
 			};
 		}
 
-		const hasCompletedTools = allToolMessages.some((msg) => msg.status === 'completed');
+		const hasCompletedTools = getToolMessages(messages).some((msg) => msg.status === 'completed');
 
 		// Find the last completed tool message
 		let lastCompletedToolIndex = -1;
@@ -240,6 +245,20 @@ export function useBuilderMessages() {
 	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
 		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
+		if (hasAnyRunningTools) {
+			const runningTools = getRunningTools(messages);
+			const lastRunningTool = runningTools[runningTools.length - 1];
+			if (lastRunningTool) {
+				const toolName = lastRunningTool.customDisplayTitle || lastRunningTool.displayTitle;
+				if (toolName) {
+					return toolName;
+				}
+			}
+
+			return locale.baseText('aiAssistant.thinkingSteps.thinking');
+		}
+
+		// If no tools are running but we're still thinking (all tools completed, waiting for response)
 		if (!hasAnyRunningTools && isStillThinking) {
 			return locale.baseText('aiAssistant.thinkingSteps.thinking');
 		}
@@ -402,5 +421,6 @@ export function useBuilderMessages() {
 		mapAssistantMessageToUI,
 		applyRatingLogic,
 		clearRatingLogic,
+		getRunningTools,
 	};
 }

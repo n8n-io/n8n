@@ -8,7 +8,7 @@ import {
 } from '@/utils/experiments';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 

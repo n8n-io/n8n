@@ -19,6 +19,7 @@ const updateDataTableRowShape = {
 			message: 'data must not be empty',
 		}),
 	returnData: z.boolean().optional().default(false),
+	dryRun: z.boolean().optional().default(false),
 };
 
 export class UpdateDataTableRowDto extends Z.class(updateDataTableRowShape) {}

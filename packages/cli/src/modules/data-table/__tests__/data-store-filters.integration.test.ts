@@ -1410,7 +1410,7 @@ describe('dataStore filters', () => {
 		});
 	});
 
-	describe('updateRow', () => {
+	describe('updateRows', () => {
 		describe('equals and not equals filters', () => {
 			it("updates rows with 'equals' filter correctly", async () => {
 				// ARRANGE
@@ -1433,7 +1433,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(
+				await dataStoreService.updateRows(
 					dataStoreId,
 					project.id,
 					{
@@ -1486,7 +1486,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(dataStoreId, project.id, {
+				await dataStoreService.updateRows(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }],
@@ -1524,7 +1524,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(dataStoreId, project.id, {
+				await dataStoreService.updateRows(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', condition: 'eq', value: null }],
@@ -1563,7 +1563,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(dataStoreId, project.id, {
+				await dataStoreService.updateRows(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', condition: 'neq', value: null }],
@@ -1603,7 +1603,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(dataStoreId, project.id, {
+				await dataStoreService.updateRows(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
@@ -1644,7 +1644,7 @@ describe('dataStore filters', () => {
 				await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
 				// ACT
-				await dataStoreService.updateRow(dataStoreId, project.id, {
+				await dataStoreService.updateRows(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%ar%', condition: 'ilike' }],
@@ -1683,7 +1683,7 @@ describe('dataStore filters', () => {
 				await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
 				// ACT
-				await dataStoreService.updateRow(dataStoreId, project.id, {
+				await dataStoreService.updateRows(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
@@ -1720,7 +1720,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(dataStoreId, project.id, {
+				await dataStoreService.updateRows(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
@@ -1769,7 +1769,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gt' }],
@@ -1801,7 +1801,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gte' }],
@@ -1836,7 +1836,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lt' }],
@@ -1870,7 +1870,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lte' }],
@@ -1922,7 +1922,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const newStartDate = new Date('2024-01-01T12:00:00Z');
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'C', condition: 'gt' }],
@@ -1954,7 +1954,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const newStartDate = new Date('2024-01-01T12:00:00Z');
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'C', condition: 'lt' }],
@@ -2004,7 +2004,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const baseDate = new Date('2024-01-01');
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'gt' }],
@@ -2037,7 +2037,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const baseDate = new Date('2024-01-02');
-					await dataStoreService.updateRow(dataStoreId, project.id, {
+					await dataStoreService.updateRows(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'lte' }],
@@ -2083,7 +2083,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(id, project.id, {
+				await dataStoreService.updateRows(id, project.id, {
 					filter: {
 						type: 'and',
 						filters: [
@@ -2129,7 +2129,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(id, project.id, {
+				await dataStoreService.updateRows(id, project.id, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -2176,7 +2176,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRow(id, project.id, {
+				await dataStoreService.updateRows(id, project.id, {
 					filter: {
 						type: 'or',
 						filters: [

@@ -153,12 +153,24 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 				return await dataStoreService.insertRows(dataStoreId, projectId, rows, returnType);
 			},
 
-			async updateRow(options: UpdateDataStoreRowOptions) {
-				return await dataStoreService.updateRow(dataStoreId, projectId, options, true);
+			async updateRows(options: UpdateDataStoreRowOptions) {
+				return await dataStoreService.updateRows(
+					dataStoreId,
+					projectId,
+					{ filter: options.filter, data: options.data },
+					true,
+					options.dryRun,
+				);
 			},
 
 			async upsertRow(options: UpsertDataStoreRowOptions) {
-				return await dataStoreService.upsertRow(dataStoreId, projectId, options, true);
+				return await dataStoreService.upsertRow(
+					dataStoreId,
+					projectId,
+					options,
+					true,
+					options.dryRun,
+				);
 			},
 
 			async deleteRows(options: DeleteDataTableRowsOptions) {

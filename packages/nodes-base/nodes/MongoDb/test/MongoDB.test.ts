@@ -94,7 +94,11 @@ describe('MongoDB CRUD Node', () => {
 		);
 
 		it('calls the spy with the expected arguments', function () {
-			expect(spy).toBeCalledWith({ name: 'my-index', definition: { mappings: {} } });
+			expect(spy).toBeCalledWith({
+				name: 'my-index',
+				definition: { mappings: {} },
+				type: 'vectorSearch',
+			});
 		});
 	});
 

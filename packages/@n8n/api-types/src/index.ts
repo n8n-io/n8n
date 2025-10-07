@@ -74,3 +74,5 @@ export type {
 	ExternalSecretsProviderProperty,
 	ExternalSecretsProviderState,
 } from './schemas/external-secrets.schema';
+
+export type { UsageState } from './schemas/usage.schema';

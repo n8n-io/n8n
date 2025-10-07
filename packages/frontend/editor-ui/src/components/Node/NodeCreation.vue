@@ -20,8 +20,10 @@ import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useBuilderStore } from '@/stores/builder.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+
 type Props = {
 	nodeViewScale: number;
 	createNodeActive?: boolean;
@@ -47,6 +49,7 @@ const focusPanelStore = useFocusPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -94,15 +97,19 @@ function toggleFocusPanel() {
 	);
 }
 
-function onAskAssistantButtonClick() {
-	if (!assistantStore.chatWindowOpen)
+async function onAskAssistantButtonClick() {
+	if (builderStore.isAIBuilderEnabled) {
+		await builderStore.toggleChat();
+	} else {
+		assistantStore.toggleChat();
+	}
+	if (builderStore.isAssistantOpen || assistantStore.isAssistantOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
 		});
-
-	assistantStore.toggleChatOpen();
+	}
 }
 </script>
 

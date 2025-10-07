@@ -13,7 +13,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type { FieldEntry, FilterType } from './constants';
 import { ALL_CONDITIONS, ANY_CONDITION } from './constants';
-import { DATA_TABLE_ID_FIELD } from './fields';
+import { DATA_TABLE_ID_FIELD, DRY_RUN } from './fields';
 
 type DateLike = { toISOString: () => string };
 
@@ -177,4 +177,17 @@ export function dataObjectToApiInput(
 			return [k, v];
 		}),
 	);
+}
+
+export function getDryRunParameter(ctx: IExecuteFunctions, index: number): boolean {
+	const dryRun = ctx.getNodeParameter(`options.${DRY_RUN.name}`, index, false);
+
+	if (typeof dryRun !== 'boolean') {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`unexpected input ${JSON.stringify(dryRun)} for boolean dryRun`,
+		);
+	}
+
+	return dryRun;
 }

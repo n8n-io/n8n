@@ -59,6 +59,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 const emit = defineEmits<{
 	select: [action: T];
 	visibleChange: [open: boolean];
+	'badge-click': [action: T];
 }>();
 
 defineSlots<{
@@ -137,7 +138,11 @@ defineExpose({ open, close });
 								icon="check"
 								:size="iconSize"
 							/>
-							<span v-if="item.badge">
+							<span
+								v-if="item.badge"
+								:class="{ [$style.clickableBadge]: item.disabled }"
+								@click.stop="item.disabled && $emit('badge-click', item.id)"
+							>
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}
 								</N8nBadge>
@@ -223,5 +228,10 @@ defineExpose({ open, close });
 	.hasCustomStyling {
 		color: inherit !important;
 	}
+}
+
+.clickableBadge {
+	cursor: pointer;
+	pointer-events: auto;
 }
 </style>

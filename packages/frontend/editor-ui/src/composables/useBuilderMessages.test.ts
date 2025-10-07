@@ -269,7 +269,32 @@ describe('useBuilderMessages', () => {
 			expect(result.messages[2].id).toBe('batch-id-2');
 		});
 
-		it('should show thinking message when tools are in progress', () => {
+		it('should show tool name when tool is in progress with displayTitle', () => {
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-123',
+					displayTitle: 'Adding nodes...',
+					status: 'running',
+					updates: [{ type: 'input', data: { nodes: [] } }],
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+			);
+
+			expect(result.messages).toHaveLength(1);
+			expect(result.thinkingMessage).toBe('Adding nodes...');
+			expect(result.shouldClearThinking).toBe(false);
+		});
+
+		it('should show Thinking when tool is in progress without displayTitle', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -289,7 +314,33 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe(undefined);
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+			expect(result.shouldClearThinking).toBe(false);
+		});
+
+		it('should prefer customDisplayTitle over displayTitle for tool in progress', () => {
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-123',
+					displayTitle: 'Adding nodes...',
+					customDisplayTitle: 'Creating HTTP Request node',
+					status: 'running',
+					updates: [{ type: 'input', data: { nodes: [] } }],
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+			);
+
+			expect(result.messages).toHaveLength(1);
+			expect(result.thinkingMessage).toBe('Creating HTTP Request node');
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -389,8 +440,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should not show thinking message as new tool is running
-			expect(result.thinkingMessage).toBe(undefined);
+			// Should show thinking message as new tool is running (without displayTitle)
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
 		it('should show thinking message when second tool completes', () => {
@@ -473,8 +524,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should not show thinking because call-456 is still running
-			expect(result.thinkingMessage).toBe(undefined);
+			// Should show thinking because call-456 is still running (without displayTitle)
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 			// Verify first tool is now completed
 			const firstTool = result.messages.find(
@@ -661,10 +712,10 @@ describe('useBuilderMessages', () => {
 			const middleText = result.messages[2];
 			expect(middleText.showRating).toBeUndefined();
 
-			// Only the LAST text message should have showRating with regular style
+			// Only the LAST text message should have showRating with minimal style
 			const lastText = result.messages[3];
 			expect(lastText.showRating).toBe(true);
-			expect(lastText.ratingStyle).toBe('regular');
+			expect(lastText.ratingStyle).toBe('minimal');
 		});
 
 		it('should not apply rating to text messages without workflow-updated', () => {
@@ -780,7 +831,7 @@ describe('useBuilderMessages', () => {
 
 			const lastMessage = result.messages[3];
 			expect(lastMessage.showRating).toBe(true);
-			expect(lastMessage.ratingStyle).toBe('regular');
+			expect(lastMessage.ratingStyle).toBe('minimal');
 		});
 	});
 
@@ -1162,7 +1213,7 @@ describe('useBuilderMessages', () => {
 			// Check final text message has rating
 			const textMessage = result.messages.find((m) => m.type === 'text');
 			expect(textMessage?.showRating).toBe(true);
-			expect(textMessage?.ratingStyle).toBe('regular');
+			expect(textMessage?.ratingStyle).toBe('minimal');
 
 			// Should clear thinking since tools are complete and text is present
 			expect(result.shouldClearThinking).toBe(true);
@@ -1263,7 +1314,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			let result = builderMessages.processAssistantMessages(currentMessages, batch1, 'batch-1');
-			expect(result.thinkingMessage).toBe(undefined);
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			currentMessages = result.messages;
 
 			// Second batch: tool completes
@@ -1325,7 +1376,7 @@ describe('useBuilderMessages', () => {
 					type: 'text',
 					content: 'Hello there!',
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 					read: false,
 				},
 				{
@@ -1421,7 +1472,7 @@ describe('useBuilderMessages', () => {
 					type: 'text',
 					content: 'With rating',
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 					read: false,
 				},
 				{
@@ -1727,7 +1778,7 @@ describe('useBuilderMessages', () => {
 				id: 'msg-2',
 				content: 'Process completed!',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -1829,7 +1880,7 @@ describe('useBuilderMessages', () => {
 					type: 'text',
 					content: 'Previous message',
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 					read: false,
 				},
 				{
@@ -1885,7 +1936,7 @@ describe('useBuilderMessages', () => {
 			expect(result[0]).not.toHaveProperty('ratingStyle');
 			expect(result[2]).toMatchObject({
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -1928,7 +1979,7 @@ describe('useBuilderMessages', () => {
 			expect(result[3]).toMatchObject({
 				content: 'Final update complete',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -1964,7 +2015,7 @@ describe('useBuilderMessages', () => {
 			expect(result[2]).toMatchObject({
 				content: 'Workflow created!',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -2005,7 +2056,7 @@ describe('useBuilderMessages', () => {
 			expect(result[2]).toMatchObject({
 				content: 'You are welcome!',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 	});

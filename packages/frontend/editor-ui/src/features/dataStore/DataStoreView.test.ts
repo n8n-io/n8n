@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import DataStoreView from '@/features/dataStore/DataStoreView.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';

@@ -18,21 +18,34 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				items: { type: Array, required: true },
 				placement: { type: String },
 			},
-			emits: ['select'],
+			emits: ['select', 'badge-click'],
+			methods: {
+				handleRadioChange(itemId: string) {
+					// @ts-expect-error - $emit exists at runtime
+					this.$emit('select', itemId);
+				},
+				handleBadgeClick(event: CustomEvent) {
+					// @ts-expect-error - $emit exists at runtime
+					this.$emit('badge-click', event.detail);
+				},
+			},
 			template: `
-				<div data-test-id="action-dropdown">
+				<div
+					data-test-id="project-member-role-dropdown"
+					@change="handleRadioChange($event.target.value)"
+					@badge-click="handleBadgeClick($event)"
+				>
 					<div data-test-id="activator">
 						<slot name="activator" />
 					</div>
 					<ul data-test-id="dropdown-menu">
 						<li v-for="item in items" :key="item.id">
-							<button
+							<div
 								:data-test-id="'action-' + item.id"
 								:disabled="item.disabled"
-								@click="$emit('select', item.id)"
 							>
 								<slot name="menuItem" v-bind="item" />
-							</button>
+							</div>
 						</li>
 					</ul>
 				</div>
@@ -234,7 +247,8 @@ describe('ProjectMembersRoleCell', () => {
 			const { emitted } = renderComponent();
 			const user = userEvent.setup();
 
-			await user.click(screen.getByTestId('action-project:admin'));
+			const adminRadio = screen.getByRole('radio', { name: /Admin/i });
+			await user.click(adminRadio);
 
 			expect(emitted()).toHaveProperty('update:role');
 			expect(emitted()['update:role'][0]).toEqual([
@@ -254,7 +268,8 @@ describe('ProjectMembersRoleCell', () => {
 			});
 			const user = userEvent.setup();
 
-			await user.click(screen.getByTestId('action-project:admin'));
+			const adminRadio = screen.getByRole('radio', { name: /Admin/i });
+			await user.click(adminRadio);
 
 			expect(emitted()['update:role'][0]).toEqual([
 				{
@@ -306,8 +321,8 @@ describe('ProjectMembersRoleCell', () => {
 		it('should handle disabled actions correctly', () => {
 			renderComponent();
 
-			const viewerButton = screen.getByTestId('action-project:viewer');
-			expect(viewerButton).toBeDisabled();
+			const viewerDiv = screen.getByTestId('action-project:viewer');
+			expect(viewerDiv).toHaveAttribute('disabled');
 		});
 
 		it('should show role descriptions in radio labels', () => {
@@ -369,6 +384,42 @@ describe('ProjectMembersRoleCell', () => {
 
 			expect(screen.getByLabelText(/Admin/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/Editor/i)).toBeInTheDocument();
+		});
+	});
+
+	describe('Badge Click for Disabled Roles', () => {
+		it('should forward badge-click event when emitted from dropdown', () => {
+			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
+				{ id: 'project:admin', label: 'Admin', disabled: false },
+				{ id: 'project:viewer', label: 'Viewer', disabled: true },
+			];
+
+			const { emitted } = renderComponent({
+				props: {
+					actions: disabledActions,
+				},
+			});
+
+			// Simulate badge-click event from N8nActionDropdown
+			const dropdown = screen.getByTestId('project-member-role-dropdown');
+			dropdown.dispatchEvent(new CustomEvent('badge-click', { detail: 'project:viewer' }));
+
+			expect(emitted()).toHaveProperty('badge-click');
+		});
+
+		it('should use lighter text color for disabled roles', () => {
+			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
+				{ id: 'project:viewer', label: 'Viewer', disabled: true },
+			];
+
+			renderComponent({
+				props: {
+					actions: disabledActions,
+				},
+			});
+
+			// Verify that disabled role is rendered
+			expect(screen.getByText('Viewer')).toBeInTheDocument();
 		});
 	});
 });

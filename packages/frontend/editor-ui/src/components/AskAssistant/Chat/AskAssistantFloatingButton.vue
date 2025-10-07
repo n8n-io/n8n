@@ -2,10 +2,13 @@
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useBuilderStore } from '@/stores/builder.store';
 import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
+
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
 
@@ -23,13 +26,19 @@ const lastUnread = computed(() => {
 	return '';
 });
 
-const onClick = () => {
-	assistantStore.openChat();
-	assistantStore.trackUserOpenedAssistant({
-		source: 'canvas',
-		task: 'placeholder',
-		has_existing_session: !assistantStore.isSessionEnded,
-	});
+const onClick = async () => {
+	if (builderStore.isAIBuilderEnabled) {
+		await builderStore.toggleChat();
+	} else {
+		assistantStore.toggleChat();
+	}
+	if (builderStore.isAssistantOpen || assistantStore.isAssistantOpen) {
+		assistantStore.trackUserOpenedAssistant({
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: !assistantStore.isSessionEnded,
+		});
+	}
 };
 </script>
 
@@ -72,6 +81,7 @@ const onClick = () => {
 	line-height: var(--spacing-s);
 	font-weight: var(--font-weight-bold);
 	margin-top: var(--spacing-xs);
+
 	> span {
 		margin-left: var(--spacing-4xs);
 	}

@@ -194,6 +194,7 @@ describe('AskAssistantBuild', () => {
 			.fn()
 			.mockReturnValue({ success: true, workflowData: {}, newNodeIds: [] });
 		builderStore.getWorkflowSnapshot = vi.fn().mockReturnValue('{}');
+		builderStore.getRunningTools = vi.fn().mockReturnValue([]);
 		builderStore.workflowMessages = [];
 		builderStore.toolMessages = [];
 		builderStore.workflowPrompt = workflowPrompt;
@@ -289,7 +290,7 @@ describe('AskAssistantBuild', () => {
 							content: 'Wat',
 							read: true,
 							showRating: true,
-							ratingStyle: 'regular',
+							ratingStyle: 'minimal',
 						},
 					],
 				});
@@ -661,11 +662,17 @@ describe('AskAssistantBuild', () => {
 				},
 			});
 
-			// User cancels generation - this adds a "[Task aborted]" message
+			// User cancels generation - this adds a locale message for aborted task
+			// In tests, i18n.baseText returns the key itself
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: testMessage },
-					{ id: '2', role: 'assistant', type: 'text', content: '[Task aborted]' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'text',
+						content: 'aiAssistant.builder.streamAbortedMessage',
+					},
 				],
 			});
 
@@ -1005,10 +1012,16 @@ describe('AskAssistantBuild', () => {
 			});
 
 			// Add cancellation message to chat
+			// In tests, i18n.baseText returns the key itself
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
-					{ id: '2', role: 'assistant', type: 'text', content: '[Task aborted]' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'text',
+						content: 'aiAssistant.builder.streamAbortedMessage',
+					},
 				],
 			});
 

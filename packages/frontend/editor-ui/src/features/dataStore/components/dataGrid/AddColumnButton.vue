@@ -83,7 +83,11 @@ const onAddButtonClicked = async () => {
 			errorMessage = i18n.baseText('dataStore.addColumn.alreadyExistsError', {
 				interpolate: { name: columnName.value },
 			});
-			errorDescription = i18n.baseText('dataStore.addColumn.alreadyExistsDescription');
+			errorDescription = response.errorMessage?.includes('system')
+				? i18n.baseText('dataStore.addColumn.systemColumnDescription')
+				: response.errorMessage?.includes('testing')
+					? i18n.baseText('dataStore.addColumn.testingColumnDescription')
+					: i18n.baseText('dataStore.addColumn.alreadyExistsDescription');
 		}
 		error.value = {
 			message: errorMessage,

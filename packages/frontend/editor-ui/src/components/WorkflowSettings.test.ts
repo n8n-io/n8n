@@ -10,7 +10,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import WorkflowSettingsVue from '@/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),

@@ -32,17 +32,6 @@ const cloudTrialRequirements = {
 	},
 };
 
-const firstVisitRequirements: TestRequirements = {
-	...cloudTrialRequirements,
-};
-
-const subsequentVisitRequirements: TestRequirements = {
-	...cloudTrialRequirements,
-	storage: {
-		'n8n-trial-visit-count': '1',
-	},
-};
-
 const setupCloudTest = async (
 	n8n: n8nPage,
 	setupRequirements: (requirements: TestRequirements) => Promise<void>,
@@ -54,14 +43,8 @@ const setupCloudTest = async (
 
 test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Trial Banner', () => {
-		test('should not render trial banner on first visit', async ({ n8n, setupRequirements }) => {
-			await setupCloudTest(n8n, setupRequirements, firstVisitRequirements);
-			await n8n.start.fromBlankCanvas();
-			await expect(n8n.sideBar.getTrialBanner()).toBeHidden();
-		});
-
-		test('should render trial banner on subsequent visits', async ({ n8n, setupRequirements }) => {
-			await setupCloudTest(n8n, setupRequirements, subsequentVisitRequirements);
+		test('should render trial banner for opt-in cloud user', async ({ n8n, setupRequirements }) => {
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
 

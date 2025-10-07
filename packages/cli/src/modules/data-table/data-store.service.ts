@@ -24,6 +24,7 @@ import type {
 	DataTablesSizeResult,
 	DataTableInfoById,
 	DataStoreColumnType,
+	DataStoreRowReturnWithState,
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
@@ -212,14 +213,30 @@ export class DataStoreService {
 	async upsertRow<T extends boolean | undefined>(
 		dataTableId: string,
 		projectId: string,
-		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
+		returnData: true,
+		dryRun?: boolean,
+	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
-		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
+		returnData?: boolean,
+		dryRun?: true,
+	): Promise<DataStoreRowReturnWithState[]>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
+		returnData?: false,
+		dryRun?: false,
+	): Promise<true>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
+		dryRun: boolean = false,
 	) {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
@@ -227,7 +244,18 @@ export class DataStoreService {
 		const result = await this.dataStoreColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, trx);
 			this.validateUpdateParams(dto, columns);
-			const updated = await this.dataStoreRowsRepository.updateRow(
+
+			if (dryRun) {
+				return await this.dataStoreRowsRepository.dryRunUpsertRow(
+					dataTableId,
+					dto.data,
+					dto.filter,
+					columns,
+					trx,
+				);
+			}
+
+			const updated = await this.dataStoreRowsRepository.updateRows(
 				dataTableId,
 				dto.data,
 				dto.filter,
@@ -251,7 +279,9 @@ export class DataStoreService {
 			return returnData ? inserted : true;
 		});
 
-		this.dataStoreSizeValidator.reset();
+		if (!dryRun) {
+			this.dataStoreSizeValidator.reset();
+		}
 
 		return result;
 	}
@@ -277,17 +307,33 @@ export class DataStoreService {
 		this.validateAndTransformFilters(filter, columns);
 	}
 
-	async updateRow<T extends boolean | undefined>(
+	async updateRows<T extends boolean | undefined>(
 		dataTableId: string,
 		projectId: string,
-		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
-	async updateRow(
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: true,
+		dryRun?: boolean,
+	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
+	async updateRows(
 		dataTableId: string,
 		projectId: string,
-		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
-		returnData = false,
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData?: boolean,
+		dryRun?: true,
+	): Promise<DataStoreRowReturnWithState[]>;
+	async updateRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData?: false,
+		dryRun?: false,
+	): Promise<true>;
+	async updateRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean = false,
+		dryRun: boolean = false,
 	) {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
@@ -295,7 +341,18 @@ export class DataStoreService {
 		const result = await this.dataStoreColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, trx);
 			this.validateUpdateParams(dto, columns);
-			return await this.dataStoreRowsRepository.updateRow(
+
+			if (dryRun) {
+				return await this.dataStoreRowsRepository.dryRunUpdateRows(
+					dataTableId,
+					dto.data,
+					dto.filter,
+					columns,
+					trx,
+				);
+			}
+
+			return await this.dataStoreRowsRepository.updateRows(
 				dataTableId,
 				dto.data,
 				dto.filter,
@@ -305,7 +362,9 @@ export class DataStoreService {
 			);
 		});
 
-		this.dataStoreSizeValidator.reset();
+		if (!dryRun) {
+			this.dataStoreSizeValidator.reset();
+		}
 
 		return result;
 	}

@@ -19,16 +19,19 @@ import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
+import { TemplateCredentialSetupPage } from './TemplateCredentialSetupPage';
 import { TemplatesPage } from './TemplatesPage';
 import { VariablesPage } from './VariablesPage';
 import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
 import { WorkflowActivationModal } from './WorkflowActivationModal';
+import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
+import { ExecutionsComposer } from '../composables/ExecutionsComposer';
 import { MfaComposer } from '../composables/MfaComposer';
 import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
@@ -61,6 +64,7 @@ export class n8nPage {
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
+	readonly templateCredentialSetup: TemplateCredentialSetupPage;
 	readonly templates: TemplatesPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
@@ -74,6 +78,7 @@ export class n8nPage {
 	readonly settingsUsers: SettingsUsersPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
+	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
@@ -84,6 +89,7 @@ export class n8nPage {
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
 	readonly credentialsComposer: CredentialsComposer;
+	readonly executionsComposer: ExecutionsComposer;
 	readonly mfaComposer: MfaComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
 	readonly ndvComposer: NodeDetailsViewComposer;
@@ -112,6 +118,7 @@ export class n8nPage {
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
+		this.templateCredentialSetup = new TemplateCredentialSetupPage(page);
 		this.templates = new TemplatesPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
@@ -126,6 +133,7 @@ export class n8nPage {
 		this.settingsUsers = new SettingsUsersPage(page);
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
+		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
@@ -135,6 +143,7 @@ export class n8nPage {
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
 		this.credentialsComposer = new CredentialsComposer(this);
+		this.executionsComposer = new ExecutionsComposer(this);
 		this.mfaComposer = new MfaComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
 		this.ndvComposer = new NodeDetailsViewComposer(this);

@@ -117,7 +117,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			});
 		});
 
-		it('should return data from second branch when first is empty', async () => {
+		it('should return error when second branch has data but first is empty (default behavior)', async () => {
 			const jsonData = { foo: 'bar', fromSecondBranch: true };
 			lastNodeTaskData.data = {
 				main: [
@@ -130,6 +130,27 @@ describe('extractWebhookLastNodeResponse', () => {
 				context,
 				'firstEntryJson',
 				lastNodeTaskData,
+			);
+
+			assert(!result.ok);
+			expect(result.error).toBeInstanceOf(OperationalError);
+			expect(result.error.message).toBe('No item to return was found');
+		});
+
+		it('should return data from second branch when first is empty and checkAllMainOutputs is true', async () => {
+			const jsonData = { foo: 'bar', fromSecondBranch: true };
+			lastNodeTaskData.data = {
+				main: [
+					[], // First branch is empty
+					[{ json: jsonData }], // Second branch has data
+				],
+			};
+
+			const result = await extractWebhookLastNodeResponse(
+				context,
+				'firstEntryJson',
+				lastNodeTaskData,
+				true, // checkAllMainOutputs = true
 			);
 
 			expect(result).toEqual({
@@ -330,7 +351,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			);
 		});
 
-		it('should return binary data from second branch when first is empty', async () => {
+		it('should return error when second branch has binary but first is empty (default behavior)', async () => {
 			const binaryData: IBinaryData = {
 				data: Buffer.from('binary from second branch').toString(BINARY_ENCODING),
 				mimeType: 'text/plain',
@@ -352,6 +373,36 @@ describe('extractWebhookLastNodeResponse', () => {
 				context,
 				'firstEntryBinary',
 				lastNodeTaskData,
+			);
+
+			assert(!result.ok);
+			expect(result.error).toBeInstanceOf(OperationalError);
+			expect(result.error.message).toBe('No item was found to return');
+		});
+
+		it('should return binary from second branch when first is empty and checkAllMainOutputs is true', async () => {
+			const binaryData: IBinaryData = {
+				data: Buffer.from('binary from second branch').toString(BINARY_ENCODING),
+				mimeType: 'text/plain',
+			};
+			const nodeExecutionData: INodeExecutionData = {
+				json: {},
+				binary: { data: binaryData },
+			};
+			lastNodeTaskData.data = {
+				main: [
+					[], // First branch is empty
+					[nodeExecutionData], // Second branch has binary data
+				],
+			};
+
+			context.evaluateSimpleWebhookDescriptionExpression.mockReturnValue('data');
+
+			const result = await extractWebhookLastNodeResponse(
+				context,
+				'firstEntryBinary',
+				lastNodeTaskData,
+				true, // checkAllMainOutputs = true
 			);
 
 			expect(result).toEqual({
@@ -434,7 +485,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			});
 		});
 
-		it('should return all entries from second branch when first is empty', async () => {
+		it('should return empty array when second branch has data but first is empty (default behavior)', async () => {
 			const jsonData1 = { item: 1, fromSecondBranch: true };
 			const jsonData2 = { item: 2, fromSecondBranch: true };
 			const jsonData3 = { item: 3, fromSecondBranch: true };
@@ -451,19 +502,48 @@ describe('extractWebhookLastNodeResponse', () => {
 				ok: true,
 				result: {
 					type: 'static',
+					body: [], // Old behavior: returns empty array when first branch is empty
+					contentType: undefined,
+				},
+			});
+		});
+
+		it('should return all entries from second branch when first is empty and checkAllMainOutputs is true', async () => {
+			const jsonData1 = { item: 1, fromSecondBranch: true };
+			const jsonData2 = { item: 2, fromSecondBranch: true };
+			const jsonData3 = { item: 3, fromSecondBranch: true };
+			lastNodeTaskData.data = {
+				main: [
+					[], // First branch is empty
+					[{ json: jsonData1 }, { json: jsonData2 }, { json: jsonData3 }], // Second branch has data
+				],
+			};
+
+			const result = await extractWebhookLastNodeResponse(
+				context,
+				'allEntries',
+				lastNodeTaskData,
+				true, // checkAllMainOutputs = true
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				result: {
+					type: 'static',
 					body: [jsonData1, jsonData2, jsonData3],
 					contentType: undefined,
 				},
 			});
 		});
 
-		it('should return entries from first non-empty branch only', async () => {
+		it('should return entries from first branch only even when multiple branches have data', async () => {
+			const branch1Data = { item: 'from-first' };
 			const branch2Data = { item: 'from-second' };
 			const branch3Data = { item: 'from-third' };
 			lastNodeTaskData.data = {
 				main: [
-					[], // First branch is empty
-					[{ json: branch2Data }], // Second branch has data - this should be used
+					[{ json: branch1Data }], // First branch has data - this should be used
+					[{ json: branch2Data }], // Second branch also has data - should be ignored
 					[{ json: branch3Data }], // Third branch also has data - should be ignored
 				],
 			};
@@ -474,7 +554,7 @@ describe('extractWebhookLastNodeResponse', () => {
 				ok: true,
 				result: {
 					type: 'static',
-					body: [branch2Data], // Only data from second branch
+					body: [branch1Data], // Only data from first branch
 					contentType: undefined,
 				},
 			});
