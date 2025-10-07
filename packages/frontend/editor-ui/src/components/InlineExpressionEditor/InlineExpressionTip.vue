@@ -9,6 +9,7 @@ import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/s
 import { watchDebounced } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import { N8nText } from '@n8n/design-system';
 type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
 
 type Props = {

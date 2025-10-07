@@ -19,6 +19,7 @@ const upsertDataStoreRowShape = {
 			message: 'data must not be empty',
 		}),
 	returnData: z.boolean().optional().default(false),
+	dryRun: z.boolean().optional().default(false),
 };
 
 export class UpsertDataStoreRowDto extends Z.class(upsertDataStoreRowShape) {}

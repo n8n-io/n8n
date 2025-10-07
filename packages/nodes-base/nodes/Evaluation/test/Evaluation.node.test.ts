@@ -18,7 +18,7 @@ describe('Test Evaluation', () => {
 	const mockDataTable = mock<IDataStoreProjectService>({
 		getColumns: jest.fn(),
 		addColumn: jest.fn(),
-		updateRow: jest.fn(),
+		updateRows: jest.fn(),
 	});
 
 	const mockExecuteFunctions = mock<IExecuteFunctions>({
@@ -69,7 +69,7 @@ describe('Test Evaluation', () => {
 
 				expect(mockDataTable.getColumns).not.toHaveBeenCalled();
 				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
-				expect(mockDataTable.updateRow).not.toHaveBeenCalled();
+				expect(mockDataTable.updateRows).not.toHaveBeenCalled();
 			});
 
 			test('should return empty when there is no parent evaluation trigger', async () => {
@@ -92,7 +92,7 @@ describe('Test Evaluation', () => {
 
 				expect(mockDataTable.getColumns).not.toHaveBeenCalled();
 				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
-				expect(mockDataTable.updateRow).not.toHaveBeenCalled();
+				expect(mockDataTable.updateRows).not.toHaveBeenCalled();
 			});
 
 			test('should update rows and return input data with existing columns', async () => {
@@ -129,7 +129,7 @@ describe('Test Evaluation', () => {
 
 				expect(mockDataTable.getColumns).toHaveBeenCalled();
 				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
-				expect(mockDataTable.updateRow).toHaveBeenCalledWith({
+				expect(mockDataTable.updateRows).toHaveBeenCalledWith({
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'id', condition: 'eq', value: 23 }],
@@ -178,7 +178,7 @@ describe('Test Evaluation', () => {
 					name: 'bar',
 					type: 'string',
 				});
-				expect(mockDataTable.updateRow).toHaveBeenCalledWith({
+				expect(mockDataTable.updateRows).toHaveBeenCalledWith({
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'id', condition: 'eq', value: 23 }],

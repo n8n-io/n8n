@@ -17,6 +17,8 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
+import { ElCheckbox } from 'element-plus';
+import { N8nButton, N8nText } from '@n8n/design-system';
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
@@ -84,9 +86,10 @@ const showSettings = async () => {
 	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 };
 
-const handleCheckboxChange = (checkboxValue: boolean) => {
-	checked.value = checkboxValue;
-	useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value = checkboxValue.toString();
+const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
+	const boolValue = typeof checkboxValue === 'boolean' ? checkboxValue : Boolean(checkboxValue);
+	checked.value = boolValue;
+	useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value = boolValue.toString();
 };
 </script>
 

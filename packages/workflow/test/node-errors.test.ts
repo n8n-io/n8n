@@ -1,5 +1,5 @@
 import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '../src/constants';
-import { NodeOperationError } from '../src/errors';
+import { ExpressionError, NodeOperationError } from '../src/errors';
 import { NodeApiError } from '../src/errors/node-api.error';
 import type { INode, JsonObject } from '../src/interfaces';
 
@@ -121,6 +121,24 @@ describe('NodeErrors tests', () => {
 		expect(nodeOperationError.message).toEqual('some text');
 
 		expect(nodeOperationError.description).toEqual(undefined);
+	});
+
+	it('should use error description if no options do not provide one, NodeOperationError', () => {
+		const error = new ExpressionError('aMessage', { description: 'an error description' });
+		const nodeOperationError = new NodeOperationError(node, error);
+
+		expect(nodeOperationError.message).toEqual('aMessage');
+		expect(nodeOperationError.description).toEqual('an error description');
+	});
+
+	it('should use options description even if error provides one, NodeOperationError', () => {
+		const error = new ExpressionError('aMessage', { description: 'an error description' });
+		const nodeOperationError = new NodeOperationError(node, error, {
+			description: 'another description',
+		});
+
+		expect(nodeOperationError.message).toEqual('aMessage');
+		expect(nodeOperationError.description).toEqual('another description');
 	});
 
 	it('should remove description if it is equal to message, message provided in options take precedence over original, NodeApiError', () => {

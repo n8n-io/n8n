@@ -12,9 +12,9 @@ import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunit
 import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import { N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nTabs } from '@n8n/design-system';
 type Props = {
 	modelValue?: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;

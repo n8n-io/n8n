@@ -22,12 +22,16 @@ import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/con
 import type { BaseTextKey } from '@n8n/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
-import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
-import { N8nIconButton } from '@n8n/design-system';
-
+import {
+	N8nInlineAskAssistantButton,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 type Props = {
 	// TODO: .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;
@@ -479,7 +483,7 @@ async function onAskAssistantClick() {
 				class="node-error-view__button"
 				data-test-id="node-error-view-ask-assistant-button"
 			>
-				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+				<N8nInlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
 			</div>
 		</div>
 

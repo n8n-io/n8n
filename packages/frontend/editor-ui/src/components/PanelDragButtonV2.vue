@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Draggable from './Draggable.vue';
 import type { XYPosition } from '@/Interface';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 defineProps<{
 	canMoveRight: boolean;

@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
+import EmptySharedSectionActionBox from '@/components/Folders/EmptySharedSectionActionBox.vue';
+import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
+import FolderCard from '@/components/Folders/FolderCard.vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
@@ -49,31 +52,20 @@ import type {
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { getEasyAiWorkflowJson } from '@/utils/templates/workflowSamples';
+import { getEasyAiWorkflowJson } from '@/features/templates/utils/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
 } from '@/utils/experiments';
-import {
-	N8nButton,
-	N8nCard,
-	N8nHeading,
-	N8nIcon,
-	N8nInlineTextEdit,
-	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-} from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -83,6 +75,24 @@ import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nCallout,
+	N8nCard,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInlineTextEdit,
+	N8nInputLabel,
+	N8nLink,
+	N8nLoading,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
 
@@ -1457,6 +1467,13 @@ const moveFolder = async (payload: {
 		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
+			toast.showMessage({
+				title: i18n.baseText('folders.move.success.title'),
+				message: i18n.baseText('folders.move.success.messageNoAccess', {
+					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+				}),
+				type: 'success',
+			});
 		} else {
 			// Else show success message and update the list
 			toast.showToast({
