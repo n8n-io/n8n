@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BaseTextKey } from '@n8n/i18n';
-import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useLogStreamingStore } from '../logStreaming.store';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
