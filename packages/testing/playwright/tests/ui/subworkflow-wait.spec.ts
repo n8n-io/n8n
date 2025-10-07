@@ -3,6 +3,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../fixtures/base';
 import { resolveFromRoot } from '../../utils/path-helper';
+import { retryUntil } from '../../utils/retry-utils';
 
 test.describe('Parent that does not wait for sub-workflow', () => {
 	test('should not wait for the sub-workflow', async ({ api }) => {
@@ -62,13 +63,16 @@ test.describe('Parent that does not wait for sub-workflow', () => {
 		const childExecution = await api.workflows.waitForExecution(childWorkflowId, 5000);
 		expect(childExecution.status).toBe('success');
 
-		// Now check if the parent is finished. It should be waiting.
-		// We need to wait a bit for the parent to transition to waiting state after the child completes
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-		const getExecutionsResponse = await api.workflows.getExecutions(workflowId);
-		// TODO: figure out why the filtering in `getExecutions` isn't working.
-		const parentExecutions = getExecutionsResponse.filter((e) => e.workflowId === workflowId);
-		expect(parentExecutions.length).toBe(1);
-		expect(parentExecutions[0].status).toBe('waiting');
+		// Verify that the parent didn't get resumed. We might need to give it a moment to reach the waiting state.
+		await retryUntil(
+			async () => {
+				const getExecutionsResponse = await api.workflows.getExecutions(workflowId);
+				// TODO: figure out why the filtering in `getExecutions` isn't working.
+				const parentExecutions = getExecutionsResponse.filter((e) => e.workflowId === workflowId);
+				expect(parentExecutions.length).toBe(1);
+				expect(parentExecutions[0].status).toBe('waiting');
+			},
+			{ timeoutMs: 2000, intervalMs: 100 },
+		);
 	});
 });
