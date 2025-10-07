@@ -38,7 +38,7 @@ import {
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
