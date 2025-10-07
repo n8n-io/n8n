@@ -84,7 +84,7 @@ export function mockSpawn(
 			emitProcessEvents(mockProcess, options);
 
 			callIndex++;
-			return mockProcess as ChildProcess;
+			return mockProcess;
 		});
 	} else {
 		const command = commandOrCommands;
@@ -99,7 +99,7 @@ export function mockSpawn(
 
 			emitProcessEvents(mockProcess, mockOptions);
 
-			return mockProcess as ChildProcess;
+			return mockProcess;
 		});
 	}
 }
