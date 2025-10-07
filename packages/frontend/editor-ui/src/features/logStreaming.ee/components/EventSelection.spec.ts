@@ -1,8 +1,8 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import EventSelection from './EventSelection.vue';
+import { useLogStreamingStore } from '../logStreaming.store';
 
 const renderComponent = createComponentRenderer(EventSelection);
 
