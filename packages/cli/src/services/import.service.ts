@@ -20,7 +20,7 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 @Service()
 export class ImportService {

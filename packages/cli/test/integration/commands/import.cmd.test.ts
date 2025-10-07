@@ -8,17 +8,15 @@ import {
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { createMember, createOwner } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
-mockInstance(ActiveWorkflowManager, {
-	remove: jest.fn().mockResolvedValue(undefined),
-});
+mockInstance(ActiveWorkflowManager);
 
 const command = setupTestCommand(ImportWorkflowsCommand);
 

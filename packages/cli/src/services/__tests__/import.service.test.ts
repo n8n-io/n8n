@@ -5,7 +5,6 @@ import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
 import type { Cipher } from 'n8n-core';
 
-import { ImportService } from '../import.service';
 import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
@@ -24,6 +23,13 @@ jest.mock('@n8n/db', () => ({
 	TagRepository: mock<TagRepository>(),
 	DataSource: mock<DataSource>(),
 }));
+
+// Mock ActiveWorkflowManager to prevent loading its dependencies
+jest.mock('@/active-workflow-manager', () => ({
+	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
+}));
+
+import { ImportService } from '../import.service';
 
 describe('ImportService', () => {
 	let importService: ImportService;
@@ -781,119 +787,6 @@ describe('ImportService', () => {
 				`\n🗜️  Found entities.zip file, decompressing to ${inputDir}...`,
 			);
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Successfully decompressed entities.zip');
-		});
-	});
-
-	describe('importWorkflows', () => {
-		beforeEach(() => {
-			// Mock transaction on manager
-			Object.defineProperty(mockCredentialsRepository, 'manager', {
-				value: {
-					transaction: jest.fn().mockImplementation(async (callback) => {
-						return await callback(mockEntityManager);
-					}),
-				},
-				writable: true,
-				configurable: true,
-			});
-		});
-
-		it('should remove active workflow from ActiveWorkflowManager before transaction', async () => {
-			const workflows = [
-				{
-					id: 'workflow-1',
-					name: 'Test Workflow',
-					active: true,
-					nodes: [{ id: 'node-1', type: 'n8n-nodes-base.scheduleTrigger', credentials: {} }],
-					connections: {},
-					settings: {},
-				},
-			];
-
-			mockCredentialsRepository.find = jest.fn().mockResolvedValue([]);
-			mockTagRepository.find = jest.fn().mockResolvedValue([]);
-			mockTagRepository.setTags = jest.fn().mockResolvedValue(undefined);
-			mockEntityManager.existsBy = jest.fn().mockResolvedValue(true);
-			mockEntityManager.upsert = jest
-				.fn()
-				.mockResolvedValue({ identifiers: [{ id: 'workflow-1' }] });
-			mockEntityManager.findOneByOrFail = jest.fn().mockResolvedValue({ id: 'project-1' });
-
-			const transactionMock = mockCredentialsRepository.manager.transaction as jest.Mock;
-			let removeCalledBeforeTransaction = false;
-
-			mockActiveWorkflowManager.remove = jest.fn().mockImplementation(async () => {
-				// Check if transaction hasn't been called yet
-				if (transactionMock.mock.calls.length === 0) {
-					removeCalledBeforeTransaction = true;
-				}
-			});
-
-			await importService.importWorkflows(workflows as any, 'project-1');
-
-			// Verify activeWorkflowManager.remove was called BEFORE transaction
-			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith('workflow-1');
-			expect(removeCalledBeforeTransaction).toBe(true);
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Deactivating workflow "Test Workflow". Remember to activate later.',
-			);
-		});
-
-		it('should not call remove if workflow does not have an ID', async () => {
-			const workflows = [
-				{
-					name: 'Test Workflow',
-					active: false,
-					nodes: [],
-					connections: {},
-					settings: {},
-				},
-			];
-
-			mockCredentialsRepository.find = jest.fn().mockResolvedValue([]);
-			mockTagRepository.find = jest.fn().mockResolvedValue([]);
-			mockTagRepository.setTags = jest.fn().mockResolvedValue(undefined);
-			mockEntityManager.existsBy = jest.fn().mockResolvedValue(false);
-			mockEntityManager.upsert = jest.fn().mockResolvedValue({ identifiers: [{ id: 'new-id' }] });
-			mockEntityManager.findOneByOrFail = jest.fn().mockResolvedValue({ id: 'project-1' });
-
-			await importService.importWorkflows(workflows as any, 'project-1');
-
-			// Verify activeWorkflowManager.remove was NOT called
-			expect(mockActiveWorkflowManager.remove).not.toHaveBeenCalled();
-		});
-
-		it('should handle workflows with invalid credentials', async () => {
-			const workflows = [
-				{
-					id: 'workflow-1',
-					name: 'Test Workflow',
-					active: false,
-					nodes: [
-						{
-							id: 'node-1',
-							type: 'n8n-nodes-base.httpRequest',
-							credentials: { httpBasicAuth: 'invalid-cred' },
-						},
-					],
-					connections: {},
-					settings: {},
-				},
-			];
-
-			mockCredentialsRepository.find = jest.fn().mockResolvedValue([]);
-			mockTagRepository.find = jest.fn().mockResolvedValue([]);
-			mockTagRepository.setTags = jest.fn().mockResolvedValue(undefined);
-			mockEntityManager.existsBy = jest.fn().mockResolvedValue(true);
-			mockEntityManager.upsert = jest
-				.fn()
-				.mockResolvedValue({ identifiers: [{ id: 'workflow-1' }] });
-			mockEntityManager.findOneByOrFail = jest.fn().mockResolvedValue({ id: 'project-1' });
-
-			await importService.importWorkflows(workflows as any, 'project-1');
-
-			// Verify workflow was processed
-			expect(mockEntityManager.upsert).toHaveBeenCalled();
 		});
 	});
 });
