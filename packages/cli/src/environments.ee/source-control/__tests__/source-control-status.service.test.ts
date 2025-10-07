@@ -17,6 +17,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 
 import type { SourceControlGitService } from '../source-control-git.service.ee';
+import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import { SourceControlStatusService } from '../source-control-status.service.ee';
@@ -90,6 +91,8 @@ describe('getStatus', () => {
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
 		folderRepository.find.mockResolvedValue([]);
+
+		jest.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(true);
 	});
 
 	it('ensure updatedAt field for last deleted tag', async () => {
@@ -703,6 +706,52 @@ describe('getStatus', () => {
 					]),
 				);
 			});
+		});
+
+		it('should not mark projects for deletion when projects folder does not exist (backward compatibility)', async () => {
+			// ARRANGE
+			const user = mockUsers.globalAdmin;
+			const localProjects = [
+				{
+					id: 'local-project-1',
+					name: 'Local Project 1',
+					description: 'Local project description',
+					icon: null,
+					type: 'team' as const,
+					owner: {
+						type: 'team' as const,
+						teamId: 'local-project-1',
+						teamName: 'Local Project 1',
+					},
+					filename: '/mock/n8n/git/projects/local-project-1.json',
+				},
+			];
+
+			setupProjectMocks({
+				remote: [],
+				local: localProjects,
+			});
+
+			// Override the default mock: folder doesn't exist (backward compatibility scenario)
+			jest.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(false);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (!Array.isArray(result)) {
+				fail('Expected result to be an array.');
+			}
+
+			// Should NOT include any project deletion entries
+			const projectDeletions = result.filter(
+				(file) => file.type === 'project' && file.status === 'deleted',
+			);
+			expect(projectDeletions).toHaveLength(0);
 		});
 	});
 });
