@@ -158,13 +158,13 @@ describe('GET /data-tables-global', () => {
 	});
 
 	test('should filter data tables by id', async () => {
-		const dataStore1 = await createDataTable(ownerProject, { name: 'Data Table 1' });
+		const dataTable1 = await createDataTable(ownerProject, { name: 'Data Table 1' });
 		await createDataTable(ownerProject, { name: 'Data Table 2' });
 		await createDataTable(ownerProject, { name: 'Data Table 3' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
-			.query({ filter: JSON.stringify({ id: dataStore1.id }) })
+			.query({ filter: JSON.stringify({ id: dataTable1.id }) })
 			.expect(200);
 
 		expect(response.body.data.count).toBe(1);
@@ -204,7 +204,7 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(5); // Total count should be 5
 		expect(response.body.data.data).toHaveLength(3); // But only 3 returned
-		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+		expect(response.body.data.data.map((dataTable: DataTable) => dataTable.name)).toEqual([
 			'Data Table 5',
 			'Data Table 4',
 			'Data Table 3',
@@ -226,7 +226,7 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(3);
-		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+		expect(response.body.data.data.map((dataTable: DataTable) => dataTable.name)).toEqual([
 			'Data Table 3',
 			'Data Table 2',
 			'Data Table 1',
@@ -251,7 +251,7 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+		expect(response.body.data.data.map((dataTable: DataTable) => dataTable.name)).toEqual([
 			'Data Table 4',
 			'Data Table 3',
 		]);
@@ -267,7 +267,7 @@ describe('GET /data-tables-global', () => {
 			.query({ sortBy: 'name:asc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+		expect(response.body.data.data.map((dataTable: DataTable) => dataTable.name)).toEqual([
 			'A Data Table',
 			'M Data Table',
 			'Z Data Table',
@@ -318,12 +318,12 @@ describe('GET /data-tables-global', () => {
 	});
 
 	test('should combine multiple query parameters correctly', async () => {
-		const dataStore1 = await createDataTable(ownerProject, { name: 'Test Data Table' });
+		const dataTable1 = await createDataTable(ownerProject, { name: 'Test Data Table' });
 		await createDataTable(ownerProject, { name: 'Another Data Table' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
-			.query({ filter: JSON.stringify({ name: 'data', id: dataStore1.id }), sortBy: 'name:asc' })
+			.query({ filter: JSON.stringify({ name: 'data', id: dataTable1.id }), sortBy: 'name:asc' })
 			.expect(200);
 
 		expect(response.body.data.count).toBe(1);

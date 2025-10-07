@@ -216,7 +216,7 @@ describe('dataTable', () => {
 	});
 
 	describe('deleteDataTable', () => {
-		it('should succeed with deleting a store', async () => {
+		it('should succeed with deleting a data table', async () => {
 			// ARRANGE
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
 				name: 'myDataTable1',
@@ -230,8 +230,8 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const deletedDatastore = await dataTableRepository.findOneBy({ id: dataTableId });
-			expect(deletedDatastore).toBeNull();
+			const deletedDataTable = await dataTableRepository.findOneBy({ id: dataTableId });
+			expect(deletedDataTable).toBeNull();
 
 			const queryUserTable = dataTableRepository.manager
 				.createQueryBuilder()
@@ -716,17 +716,17 @@ describe('dataTable', () => {
 			it('sorts by name', async () => {
 				// ARRANGE
 				await dataTableService.createDataTable(project1.id, {
-					name: 'ds2',
+					name: 'dt2',
 					columns: [],
 				});
 
 				await dataTableService.createDataTable(project1.id, {
-					name: 'ds1',
+					name: 'dt1',
 					columns: [],
 				});
 
 				await dataTableService.createDataTable(project1.id, {
-					name: 'ds3',
+					name: 'dt3',
 					columns: [],
 				});
 
@@ -741,28 +741,28 @@ describe('dataTable', () => {
 				});
 
 				// ASSERT
-				expect(nameAsc.data.map((x) => x.name)).toEqual(['ds1', 'ds2', 'ds3']);
-				expect(nameDesc.data.map((x) => x.name)).toEqual(['ds3', 'ds2', 'ds1']);
+				expect(nameAsc.data.map((x) => x.name)).toEqual(['dt1', 'dt2', 'dt3']);
+				expect(nameDesc.data.map((x) => x.name)).toEqual(['dt3', 'dt2', 'dt1']);
 			});
 
 			it('sorts by createdAt', async () => {
 				// ARRANGE
 				await dataTableService.createDataTable(project1.id, {
-					name: 'ds0',
+					name: 'dt0',
 					columns: [],
 				});
 
 				// Wait to get seconds difference
 				await new Promise((resolve) => setTimeout(resolve, 1001));
 				await dataTableService.createDataTable(project1.id, {
-					name: 'ds1',
+					name: 'dt1',
 					columns: [],
 				});
 
 				// Wait to get seconds difference
 				await new Promise((resolve) => setTimeout(resolve, 1001));
 				await dataTableService.createDataTable(project1.id, {
-					name: 'ds2',
+					name: 'dt2',
 					columns: [],
 				});
 
@@ -777,27 +777,27 @@ describe('dataTable', () => {
 				});
 
 				// ASSERT
-				expect(createdAsc.data.map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
-				expect(createdDesc.data.map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
+				expect(createdAsc.data.map((x) => x.name)).toEqual(['dt0', 'dt1', 'dt2']);
+				expect(createdDesc.data.map((x) => x.name)).toEqual(['dt2', 'dt1', 'dt0']);
 			});
 
 			it('sorts by updatedAt', async () => {
 				// ARRANGE
 				const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
-					name: 'ds1',
+					name: 'dt1',
 					columns: [],
 				});
 
 				// Wait to get seconds difference
 				await new Promise((resolve) => setTimeout(resolve, 1001));
 				await dataTableService.createDataTable(project1.id, {
-					name: 'ds2',
+					name: 'dt2',
 					columns: [],
 				});
 
 				// Wait to get seconds difference
 				await new Promise((resolve) => setTimeout(resolve, 1001));
-				await dataTableService.updateDataTable(dataTableId, project1.id, { name: 'ds1Updated' });
+				await dataTableService.updateDataTable(dataTableId, project1.id, { name: 'dt1Updated' });
 
 				// ACT
 				const updatedAsc = await dataTableService.getManyAndCount({
@@ -811,8 +811,8 @@ describe('dataTable', () => {
 				});
 
 				// ASSERT
-				expect(updatedAsc.data.map((x) => x.name)).toEqual(['ds2', 'ds1Updated']);
-				expect(updatedDesc.data.map((x) => x.name)).toEqual(['ds1Updated', 'ds2']);
+				expect(updatedAsc.data.map((x) => x.name)).toEqual(['dt2', 'dt1Updated']);
+				expect(updatedDesc.data.map((x) => x.name)).toEqual(['dt1Updated', 'dt2']);
 			});
 		});
 
