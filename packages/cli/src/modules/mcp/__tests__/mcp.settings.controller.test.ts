@@ -297,7 +297,7 @@ describe('McpSettingsController', () => {
 			});
 		});
 
-		test('rejects enabling MCP for inactive workflows', async () => {
+		test('rejects disabling MCP for inactive workflows', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				createWorkflow({ active: false }),
 			);
