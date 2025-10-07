@@ -197,7 +197,9 @@ describe('ProjectHeader', () => {
 
 	it('should render ProjectTabs Settings if project is team project and user has update scope', () => {
 		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject({ scopes: ['project:update'] });
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:update'],
+		});
 		renderComponent();
 
 		expect(projectTabsSpy).toHaveBeenCalledWith(
@@ -210,7 +212,9 @@ describe('ProjectHeader', () => {
 
 	it('should render ProjectTabs without Settings if no project update permission', () => {
 		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject({ scopes: ['project:read'] });
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read'],
+		});
 		renderComponent();
 
 		expect(projectTabsSpy).toHaveBeenCalledWith(
@@ -281,7 +285,9 @@ describe('ProjectHeader', () => {
 	});
 
 	it('should not render creation button in setting page', async () => {
-		projectsStore.currentProject = createTestProject({ type: ProjectTypes.Personal });
+		projectsStore.currentProject = createTestProject({
+			type: ProjectTypes.Personal,
+		});
 		vi.spyOn(router, 'useRoute').mockReturnValueOnce({
 			name: VIEWS.PROJECT_SETTINGS,
 		} as RouteLocationNormalizedLoadedGeneric);
@@ -467,7 +473,7 @@ describe('ProjectHeader', () => {
 			expect(actionsContainer.children).toHaveLength(2);
 		});
 
-		it('should not render datastore menu item if data store feature is disabled', () => {
+		it('should not render dataTable menu item if data table feature is disabled', () => {
 			settingsStore.isDataTableFeatureEnabled = false;
 			const { getByTestId } = renderComponent();
 			const actionsContainer = getByTestId('add-resource-actions');
