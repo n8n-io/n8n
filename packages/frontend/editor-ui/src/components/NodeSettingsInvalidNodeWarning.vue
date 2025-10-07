@@ -14,6 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from './ContactAdministratorToInstall.vue';
+import { removePreviewToken } from './Node/NodeCreator/utils';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
@@ -31,7 +32,7 @@ const isVerifiedCommunityNode = computed(
 		isCommunityPackageName(node.type) &&
 		nodeTypesStore.communityNodeType(node.type)?.isOfficialNode,
 );
-const npmPackage = computed(() => node.type.split('.')[0]);
+const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
 const isOwner = computed(() => usersStore.isInstanceOwner);
 
 const { installNode, loading } = useInstallNode();
@@ -54,7 +55,7 @@ async function onViewDetailsClick() {
 async function onInstallClick() {
 	telemetry.track('user clicked cnr install button', {
 		source: 'missing node modal source',
-		package_name: node.type.split('.')[0],
+		package_name: npmPackage.value,
 		node_type: node.type,
 	});
 

@@ -321,11 +321,29 @@ const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
 
 const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
 
-const hasInputPanel = computed(() => !isTriggerNode.value || showTriggerPanel.value);
+const hasInputPanel = computed(
+	() => !!activeNodeType.value && (!isTriggerNode.value || showTriggerPanel.value),
+);
+const hasOutputPanel = computed(() => !!activeNodeType.value);
 
 const supportedResizeDirections = computed<Array<'left' | 'right'>>(() =>
 	hasInputPanel.value ? ['left', 'right'] : ['right'],
 );
+
+const shouldShowResizeWrapper = computed(() => hasInputPanel.value || hasOutputPanel.value);
+
+const nodeSettingsProps = computed(() => ({
+	eventBus: settingsEventBus,
+	dragging: isDragging.value,
+	pushRef: pushRef.value,
+	nodeType: activeNodeType.value,
+	foreignCredentials: foreignCredentials.value,
+	readOnly: props.readOnly,
+	blockUI: blockUi.value && showTriggerPanel.value,
+	executable: !props.readOnly,
+	inputSize: inputSize.value,
+	isNdvV2: true,
+}));
 
 const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputPanel.value) return 'inputless';
@@ -703,10 +721,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Teleport
-		v-if="activeNode && activeNodeType && !isActiveStickyNode"
-		:to="`#${APP_MODALS_ELEMENT_ID}`"
-	>
+	<Teleport v-if="activeNode && !isActiveStickyNode" :to="`#${APP_MODALS_ELEMENT_ID}`">
 		<div :class="$style.backdrop" :style="{ zIndex: APP_Z_INDEXES.NDV }" @click="close"></div>
 
 		<dialog
@@ -722,8 +737,10 @@ onBeforeUnmount(() => {
 				<NDVHeader
 					:class="$style.header"
 					:node-name="activeNode.name"
-					:node-type-name="activeNodeType.defaults.name ?? activeNodeType.displayName"
-					:icon="getNodeIconSource(activeNodeType)"
+					:node-type-name="
+						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
+					"
+					:icon="getNodeIconSource(activeNodeType ?? activeNode.type)"
 					:docs-url="docsUrl"
 					@close="close"
 					@rename="onRename"
@@ -773,6 +790,7 @@ onBeforeUnmount(() => {
 					</div>
 
 					<N8nResizeWrapper
+						v-if="shouldShowResizeWrapper"
 						:width="panelWidthPixels.main"
 						:min-width="260"
 						:supported-directions="supportedResizeDirections"
@@ -795,17 +813,8 @@ onBeforeUnmount(() => {
 								@dragend="onDragEnd"
 							/>
 							<NodeSettings
-								:event-bus="settingsEventBus"
-								:dragging="isDragging"
-								:push-ref="pushRef"
-								:node-type="activeNodeType"
-								:foreign-credentials="foreignCredentials"
-								:read-only="readOnly"
-								:block-u-i="blockUi && showTriggerPanel"
-								:executable="!readOnly"
-								:input-size="inputSize"
+								v-bind="nodeSettingsProps"
 								:class="$style.settings"
-								is-ndv-v2
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
 								@activate="onWorkflowActivate"
@@ -814,8 +823,20 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</N8nResizeWrapper>
+					<div v-else ref="mainPanelRef" :class="$style.main">
+						<NodeSettings
+							v-bind="nodeSettingsProps"
+							:class="$style.settings"
+							@execute="onNodeExecute"
+							@stop-execution="onStopExecution"
+							@activate="onWorkflowActivate"
+							@switch-selected-node="onSwitchSelectedNode"
+							@open-connection-node-creator="onOpenConnectionNodeCreator"
+						/>
+					</div>
 
 					<div
+						v-if="hasOutputPanel"
 						:class="[$style.column, $style.dataColumn]"
 						:style="{ width: `${panelWidthPercentage.right}%` }"
 					>

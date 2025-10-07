@@ -160,6 +160,32 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			});
 		});
 
+		it('should call installNode without preview token directly for verified community node', async () => {
+			mockUseUsersStore.isInstanceOwner = true;
+			mockUseNodeTypesStore.communityNodeType = () =>
+				({
+					isOfficialNode: true,
+				}) as CommunityNodeType;
+			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test-preview.testNode' });
+			mockInstallNode.mockResolvedValue({ success: true });
+
+			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
+				props: {
+					node,
+				},
+				pinia,
+			});
+
+			const installButton = getByTestId('install-community-node-button');
+			installButton.click();
+
+			expect(mockInstallNode).toHaveBeenCalledWith({
+				type: 'verified',
+				packageName: 'n8n-nodes-test',
+				nodeType: 'n8n-nodes-test-preview.testNode',
+			});
+		});
+
 		it('should open modal for non-verified community node', async () => {
 			mockUseUsersStore.isInstanceOwner = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
