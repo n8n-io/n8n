@@ -35,16 +35,16 @@ async function toggleAssistantMode() {
 	const newMode = switchingToBuild ? 'builder' : 'assistant';
 
 	if (wasOpen) {
-		// If chat is already open, just switch the mode
-		chatPanelStore.switchMode(newMode);
-
 		if (switchingToBuild) {
-			// Load sessions first if builder has no messages
+			// Load sessions before switching mode if builder has no messages
 			if (builderStore.chatMessages.length === 0) {
 				await builderStore.fetchBuilderCredits();
 				await builderStore.loadSessions();
 			}
 		}
+
+		// Now switch the mode - data is already loaded
+		chatPanelStore.switchMode(newMode);
 	} else {
 		// Opening from closed state - use full open logic
 		if (switchingToBuild) {
