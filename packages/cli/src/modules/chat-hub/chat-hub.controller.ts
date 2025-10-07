@@ -1,14 +1,16 @@
-import { STREAM_SEPARATOR } from '@/constants';
+import type { ChatModelsResponse } from '@n8n/api-types';
+import type { StreamOutput } from '@n8n/chat-hub';
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Post, Body, GlobalScope } from '@n8n/decorators';
-import type { StreamOutput } from '@n8n/chat-hub';
-import type { ChatModelsResponse } from '@n8n/api-types';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
 import { ChatHubService } from './chat-hub.service';
+import { AskAiWithCredentialsRequestDto } from './dto/ask-ai-with-credentials-request.dto';
 import { ChatMessageRequestDto } from './dto/chat-message-request.dto';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+
+import { STREAM_SEPARATOR } from '@/constants';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -42,7 +44,12 @@ export class ChatHubController {
 
 			const messageId = crypto.randomUUID();
 			const aiResponse = this.chatService.ask(
-				{ ...payload, userId: req.user.id, messageId },
+				{
+					...payload,
+					userId: req.user.id,
+					messageId,
+					provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				},
 				signal,
 			);
 
@@ -90,6 +97,52 @@ export class ChatHubController {
 				// If headers were already sent dont't send a second error response
 				res.end();
 			}
+		}
+	}
+
+	@GlobalScope('chatHub:message')
+	@Post('/agents/n8n')
+	async askN8n(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body payload: AskAiWithCredentialsRequestDto,
+	) {
+		res.header('Content-type', 'application/json-lines; charset=utf-8');
+		res.header('Transfer-Encoding', 'chunked');
+		res.header('Connection', 'keep-alive');
+		res.header('Cache-Control', 'no-cache');
+		res.flushHeaders();
+
+		// TODO: Save human message to DB
+
+		const replyId = crypto.randomUUID();
+
+		try {
+			await this.chatService.askN8n(res, req.user, {
+				...payload,
+				userId: req.user.id,
+				replyId,
+			});
+		} catch (executionError: unknown) {
+			assert(executionError instanceof Error);
+
+			if (!res.headersSent) {
+				res.status(500).json({
+					code: 500,
+					message: executionError.message,
+				});
+			} else {
+				res.write(
+					JSON.stringify({
+						type: 'error',
+						content: executionError.message,
+						id: replyId,
+					}) + '\n',
+				);
+				res.flush();
+			}
+
+			if (!res.writableEnded) res.end();
 		}
 	}
 }

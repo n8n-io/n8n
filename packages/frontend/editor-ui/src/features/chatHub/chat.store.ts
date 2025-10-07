@@ -89,12 +89,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		messageChatApi(
 			rootStore.restApiContext,
-			model.provider,
 			{
 				model: model.model,
+				provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 				messageId,
 				sessionId,
 				message,
+				credentials: {
+					openAiApi: { id: 'Jtx6ADZkQZARdxae', name: 'OpenAi account' },
+				},
 			},
 			onStreamMessage,
 			onStreamDone,
