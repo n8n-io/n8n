@@ -25,8 +25,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
@@ -47,7 +45,12 @@ import {
 	PRE_BUILT_AGENTS_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 } from '@/constants';
+import {
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+} from '@/features/sourceControl.ee/sourceControl.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
@@ -132,6 +135,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
+				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -245,6 +249,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const processingExecutionResults = ref<boolean>(false);
+	const isBlankRedirect = ref<boolean>(false);
 
 	/**
 	 * Modules can register their ProjectHeader tabs here
@@ -669,6 +674,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		activeActions,
 		headerHeight,
 		stateIsDirty,
+		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
 		bannersHeight,

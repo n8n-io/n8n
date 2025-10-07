@@ -5,6 +5,7 @@ import { ASSIGNMENT_TYPES } from './constants';
 import { computed } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 interface Props {
 	modelValue: string;
 	isReadOnly?: boolean;

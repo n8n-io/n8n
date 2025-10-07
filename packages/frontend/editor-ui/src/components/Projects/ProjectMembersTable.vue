@@ -1,17 +1,18 @@
 <script lang="ts" setup>
 import type { ProjectMemberData } from '@/types/projects.types';
-import {
-	N8nDataTableServer,
-	N8nUserInfo,
-	type ActionDropdownItem,
-	type UserAction,
-} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref } from 'vue';
 
+import {
+	N8nDataTableServer,
+	N8nText,
+	N8nUserInfo,
+	type ActionDropdownItem,
+	type UserAction,
+} from '@n8n/design-system';
 const i18n = useI18n();
 
 const props = defineProps<{
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: Role['slug']; userId: string }];
 	action: [value: { action: string; userId: string }];
+	'show-upgrade-dialog': [];
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
@@ -68,6 +70,8 @@ const roleActions = computed<Array<ActionDropdownItem<string>>>(() =>
 		label: role.displayName,
 		disabled: !role.licensed,
 		description: role.description ?? undefined,
+		badge: !role.licensed ? i18n.baseText('generic.upgrade') : undefined,
+		badgeProps: !role.licensed ? { theme: 'warning', bold: true } : undefined,
 	})),
 );
 
@@ -108,6 +112,7 @@ const filterActions = (member: ProjectMemberData) => {
 					:roles="props.projectRoles"
 					:actions="roleActions"
 					@update:role="onRoleChange"
+					@badge-click="emit('show-upgrade-dialog')"
 				/>
 				<N8nText v-else color="text-dark">
 					{{ props.projectRoles.find((role) => role.slug === item.role)?.displayName ?? item.role }}

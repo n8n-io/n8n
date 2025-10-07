@@ -4,6 +4,7 @@ import { useInjectViewportSync } from '@/features/workflow-diff/useViewportSync'
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
+import Canvas from '@/components/canvas/Canvas.vue';
 
 const props = defineProps<{
 	id: string;

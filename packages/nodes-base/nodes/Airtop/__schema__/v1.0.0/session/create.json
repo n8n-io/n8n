@@ -16,9 +16,6 @@
                 "configuration": {
                     "type": "object",
                     "properties": {
-                        "baseProfileId": {
-                            "type": "string"
-                        },
                         "timeoutMinutes": {
                             "type": "integer"
                         }
@@ -67,5 +64,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

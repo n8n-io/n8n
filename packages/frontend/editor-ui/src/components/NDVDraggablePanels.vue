@@ -13,6 +13,7 @@ import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import { useUIStore } from '@/stores/ui.store';
 import { useThrottleFn } from '@vueuse/core';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
 const MIN_PANEL_WIDTH = 310;

@@ -3,6 +3,7 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const pushConnectionStore = usePushConnectionStore();
 const i18n = useI18n();
 

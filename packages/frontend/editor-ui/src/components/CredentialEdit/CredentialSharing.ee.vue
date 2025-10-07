@@ -17,6 +17,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 
+import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;

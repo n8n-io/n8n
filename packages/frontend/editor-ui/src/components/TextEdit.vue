@@ -6,6 +6,8 @@ import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { storeToRefs } from 'pinia';
 
+import { ElDialog } from 'element-plus';
+import { N8nInput, N8nInputLabel } from '@n8n/design-system';
 const props = defineProps<{
 	dialogVisible: boolean;
 	parameter: INodeProperties;

@@ -2,7 +2,6 @@
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, watch, ref } from 'vue';
-import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -11,7 +10,12 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
+import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
+import type { WorkflowSuggestion } from '@n8n/design-system/types/assistant';
+
+import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 
 const emit = defineEmits<{
 	close: [];
@@ -30,19 +34,47 @@ const { goToUpgrade } = usePageRedirectionHelper();
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
-const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
+const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
-const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
+const loadingMessage = computed(() => {
+	// Check if we have any running tool messages visible in the chat
+	const hasVisibleRunningTools = builderStore.getRunningTools(builderStore.chatMessages).length > 0;
+	// Don't show loading message if tools are already visible and running
+	// to avoid duplicate display (tool messages show their own status)
+	if (hasVisibleRunningTools) {
+		return undefined;
+	}
+
+	return builderStore.assistantThinkingMessage;
+});
 const currentRoute = computed(() => route.name);
+const showExecuteMessage = computed(() => {
+	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
+		(msg) => msg.type === 'workflow-updated',
+	);
+	return (
+		!builderStore.streaming &&
+		workflowsStore.workflow.nodes.length > 0 &&
+		builderUpdatedWorkflowMessageIndex > -1
+	);
+});
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
-const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner !== false);
+const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
+
+const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
+	// Only show suggestions when no messages in chat yet (blank state)
+	if (builderStore.chatMessages.length === 0) {
+		return WORKFLOW_SUGGESTIONS;
+	}
+	return undefined;
+});
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -109,6 +141,56 @@ function trackWorkflowModifications() {
 	}
 }
 
+function onWorkflowExecuted() {
+	const executionData = workflowsStore.workflowExecutionData;
+	const executionStatus = executionData?.status ?? 'unknown';
+	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
+	const errorNodeType = errorNodeName
+		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		: undefined;
+
+	if (!executionData) {
+		builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.noExecutionData'),
+			type: 'execution',
+			executionStatus: 'error',
+			errorMessage: 'Workflow execution data missing after run attempt.',
+		});
+		return;
+	}
+
+	if (executionStatus === 'success') {
+		builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
+			type: 'execution',
+			executionStatus,
+		});
+		return;
+	}
+
+	const executionError = executionData.data?.resultData.error?.message ?? 'Unknown error';
+	const scopedErrorMessage = errorNodeName
+		? i18n.baseText('aiAssistant.builder.executeMessage.executionFailedOnNode', {
+				interpolate: {
+					nodeName: errorNodeName,
+					errorMessage: executionError,
+				},
+			})
+		: i18n.baseText('aiAssistant.builder.executeMessage.executionFailed', {
+				interpolate: { errorMessage: executionError },
+			});
+
+	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
+
+	builderStore.sendChatMessage({
+		text: scopedErrorMessage,
+		type: 'execution',
+		errorMessage: executionError,
+		errorNodeType,
+		executionStatus: failureStatus,
+	});
+}
+
 // Watch for workflow updates and apply them
 watch(
 	() => builderStore.workflowMessages,
@@ -165,7 +247,10 @@ watch(
 			const successful =
 				lastMessage &&
 				lastMessage.type !== 'error' &&
-				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+				!(
+					lastMessage.type === 'text' &&
+					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
+				);
 
 			builderStore.initialGeneration = false;
 
@@ -181,24 +266,30 @@ watch(
 watch(currentRoute, () => {
 	onNewWorkflow();
 });
+
+defineExpose({
+	focusInput: () => {
+		n8nChatRef.value?.focusInput();
+	},
+});
 </script>
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
-		<AskAssistantChat
-			ref="assistantChatRef"
+		<N8nAskAssistantChat
+			ref="n8nChatRef"
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
-			:title="'n8n AI'"
 			:show-stop="true"
 			:scroll-on-new-message="true"
 			:credits-quota="creditsQuota"
 			:credits-remaining="creditsRemaining"
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
-			:inputPlaceholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:suggestions="workflowSuggestions"
+			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
@@ -208,12 +299,15 @@ watch(currentRoute, () => {
 			<template #header>
 				<slot name="header" />
 			</template>
-			<template #placeholder>
-				<N8nText :class="$style.topText">{{
-					i18n.baseText('aiAssistant.builder.assistantPlaceholder')
-				}}</N8nText>
+			<template #messagesFooter>
+				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
-		</AskAssistantChat>
+			<template #placeholder>
+				<N8nText :class="$style.topText"
+					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
+				</N8nText>
+			</template>
+		</N8nAskAssistantChat>
 	</div>
 </template>
 
@@ -236,6 +330,7 @@ watch(currentRoute, () => {
 	padding: var(--spacing-xs);
 	border: 0;
 }
+
 .newWorkflowText {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);

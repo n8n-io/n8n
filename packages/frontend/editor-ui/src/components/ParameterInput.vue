@@ -33,12 +33,14 @@ import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import InlineExpressionTip from '@/components/InlineExpressionEditor/InlineExpressionTip.vue';
 import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
+import WorkflowSelectorParameterInput from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,
@@ -74,7 +76,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useElementSize } from '@vueuse/core';
@@ -94,6 +95,8 @@ import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/comp
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/stores/projects.store';
 
+import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
+import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -1640,7 +1643,13 @@ onUpdated(async () => {
 				v-model="tempValue"
 				type="datetime"
 				value-format="YYYY-MM-DDTHH:mm:ss"
-				:size="inputSize"
+				:size="
+					inputSize === 'mini'
+						? 'small'
+						: inputSize === 'xlarge' || inputSize === 'medium'
+							? 'large'
+							: inputSize
+				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				:placeholder="

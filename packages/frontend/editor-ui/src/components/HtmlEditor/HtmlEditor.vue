@@ -38,6 +38,7 @@ import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges, pasteHandler } from './utils';
 import type { TargetNodeParameterContext } from '@/Interface';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
 type Props = {
 	modelValue: string;

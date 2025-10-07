@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:role': [payload: { role: Role['slug']; userId: string }];
+	'badge-click': [action: Role['slug']];
 }>();
 
 const selectedRole = computed(() => props.roles.find((role) => role.slug === props.data.role));
@@ -35,6 +36,7 @@ const onActionSelect = (role: Role['slug']) => {
 		:max-height="280"
 		data-test-id="project-member-role-dropdown"
 		@select="onActionSelect"
+		@badge-click="emit('badge-click', $event)"
 	>
 		<template #activator>
 			<button :class="$style.roleLabel" type="button">

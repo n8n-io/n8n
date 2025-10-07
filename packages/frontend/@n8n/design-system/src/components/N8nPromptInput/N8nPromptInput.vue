@@ -200,9 +200,12 @@ function adjustHeight() {
 
 watch(
 	() => props.modelValue,
-	(newValue) => {
+	async (newValue) => {
 		textValue.value = newValue || '';
-		void nextTick(() => adjustHeight());
+		await nextTick();
+		// Wait for an additional animation frame to ensure DOM has fully updated
+		await new Promise(requestAnimationFrame);
+		adjustHeight();
 	},
 );
 
@@ -239,7 +242,7 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
+	const isSubmitKey = event.key === 'Enter' && (event.ctrlKey || event.metaKey || event.shiftKey);
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
 	if (atMaxLength && isPrintableChar && !isDeletionKey) {
@@ -247,8 +250,8 @@ async function handleKeyDown(event: KeyboardEvent) {
 		return;
 	}
 
-	// Submit on plain Enter (no Shift/Ctrl/Meta). If send disabled, don't submit.
-	if (isPlainEnter) {
+	// Submit on Ctrl/Cmd+Enter. If send disabled, don't submit.
+	if (isSubmitKey) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();

@@ -11,6 +11,18 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
 
+import { ElSwitch } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nHeading,
+	N8nInfoTip,
+	N8nInput,
+	N8nOption,
+	N8nRadioButtons,
+	N8nSelect,
+	N8nTooltip,
+} from '@n8n/design-system';
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
