@@ -432,7 +432,6 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: systemPrompt,
-				cache_control: { type: 'ephemeral' },
 			},
 			{
 				type: 'text',
@@ -440,20 +439,7 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			},
 			{
 				type: 'text',
-				text: currentWorkflowJson,
-			},
-			{
-				type: 'text',
-				text: currentExecutionData,
-			},
-			{
-				type: 'text',
-				text: currentExecutionNodesSchemas,
-			},
-			{
-				type: 'text',
 				text: responsePatterns,
-				cache_control: { type: 'ephemeral' },
 			},
 			{
 				type: 'text',

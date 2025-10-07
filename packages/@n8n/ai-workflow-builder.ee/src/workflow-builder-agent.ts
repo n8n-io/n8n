@@ -1,6 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { ToolMessage } from '@langchain/core/messages';
-import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import type { MemorySaver } from '@langchain/langgraph';
@@ -113,13 +112,116 @@ export class WorkflowBuilderAgent {
 				});
 			}
 
+			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
+
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
-				workflowJSON: trimWorkflowJSON(state.workflowJSON),
-				executionData: state.workflowContext?.executionData ?? {},
-				executionSchema: state.workflowContext?.executionSchema ?? [],
 				instanceUrl: this.instanceUrl,
+				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 			});
+			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+			const executionData = state.workflowContext?.executionData ?? {};
+			const executionSchema = state.workflowContext?.executionSchema ?? [];
+
+			const workflowContext = [
+				'',
+				'<current_workflow_json>',
+				JSON.stringify(trimmedWorkflow, null, 2),
+				'</current_workflow_json>',
+				'<trimmed_workflow_json_note>',
+				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+				'Use get_node_parameter tool to get full details when needed.',
+				'</trimmed_workflow_json_note>',
+				'',
+				'<current_simplified_execution_data>',
+				JSON.stringify(executionData, null, 2),
+				'</current_simplified_execution_data>',
+				'',
+				'<current_execution_nodes_schemas>',
+				JSON.stringify(executionSchema, null, 2),
+				'</current_execution_nodes_schemas>',
+			].join('\n');
+
+			// Find all user/tool message indices for caching optimization
+			const userToolIndices: number[] = [];
+			for (let i = 0; i < prompt.messages.length; i++) {
+				if (
+					prompt.messages[i] instanceof HumanMessage ||
+					prompt.messages[i] instanceof ToolMessage
+				) {
+					userToolIndices.push(i);
+				}
+			}
+
+			if (userToolIndices.length > 0) {
+				for (let i = 0; i < userToolIndices.length - 1; i++) {
+					const idx = userToolIndices[i];
+					const message = prompt.messages[idx];
+
+					if (typeof message.content === 'string') {
+						message.content = message.content.replace(
+							/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/,
+							'',
+						);
+					}
+
+					if (Array.isArray(message.content)) {
+						for (const block of message.content as any[]) {
+							if (block && typeof block === 'object' && 'cache_control' in block) {
+								delete block.cache_control;
+							}
+						}
+					}
+				}
+
+				const lastIdx = userToolIndices[userToolIndices.length - 1];
+				const lastMessage = prompt.messages[lastIdx];
+				if (typeof lastMessage.content === 'string') {
+					lastMessage.content = lastMessage.content + workflowContext;
+				}
+			}
+
+			if (userToolIndices.length > 1) {
+				const secondToLastIdx = userToolIndices[userToolIndices.length - 2];
+				const secondToLastMessage = prompt.messages[secondToLastIdx];
+
+				if (typeof secondToLastMessage.content === 'string') {
+					secondToLastMessage.content = [
+						{
+							type: 'text',
+							text: secondToLastMessage.content,
+							cache_control: { type: 'ephemeral' },
+						},
+					] as any;
+				} else if (Array.isArray(secondToLastMessage.content)) {
+					const lastBlock = secondToLastMessage.content[
+						secondToLastMessage.content.length - 1
+					] as any;
+					if (lastBlock && typeof lastBlock === 'object' && 'text' in lastBlock) {
+						lastBlock.cache_control = { type: 'ephemeral' };
+					}
+				}
+			}
+
+			if (userToolIndices.length > 0) {
+				const lastUserToolIdx = userToolIndices[userToolIndices.length - 1];
+				const lastMessage = prompt.messages[lastUserToolIdx];
+
+				if (typeof lastMessage.content === 'string') {
+					lastMessage.content = [
+						{
+							type: 'text',
+							text: lastMessage.content,
+							cache_control: { type: 'ephemeral' },
+						},
+					] as any;
+				} else if (Array.isArray(lastMessage.content)) {
+					const lastBlock = lastMessage.content[lastMessage.content.length - 1] as any;
+					if (lastBlock && typeof lastBlock === 'object' && 'text' in lastBlock) {
+						lastBlock.cache_control = { type: 'ephemeral' };
+					}
+				}
+			}
 
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
