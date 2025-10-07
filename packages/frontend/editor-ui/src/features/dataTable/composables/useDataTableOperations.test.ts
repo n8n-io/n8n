@@ -51,7 +51,6 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@/features/dataTable/composables/useDataTableTypes', () => ({
 	useDataTableTypes: vi.fn(() => ({
 		mapToDataTableColumnType: vi.fn(),
-		getDefaultValueForType: vi.fn(),
 	})),
 }));
 

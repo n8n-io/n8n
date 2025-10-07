@@ -1,8 +1,4 @@
-import type {
-	AGGridCellType,
-	DataTableColumnType,
-	DataTableValue,
-} from '@/features/dataTable/dataTable.types';
+import type { AGGridCellType, DataTableColumnType } from '@/features/dataTable/dataTable.types';
 import { isAGGridCellType } from '@/features/dataTable/typeGuards';
 import { DATA_TYPE_ICON_MAP } from '@/constants';
 
@@ -33,25 +29,9 @@ export const useDataTableTypes = () => {
 		return colType as DataTableColumnType;
 	};
 
-	const getDefaultValueForType = (colType: DataTableColumnType): DataTableValue => {
-		switch (colType) {
-			case 'string':
-				return '';
-			case 'number':
-				return 0;
-			case 'boolean':
-				return false;
-			case 'date':
-				return null;
-			default:
-				return null;
-		}
-	};
-
 	return {
 		getIconForType,
 		mapToAGCellType,
 		mapToDataTableColumnType,
-		getDefaultValueForType,
 	};
 };
