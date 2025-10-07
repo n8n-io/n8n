@@ -195,7 +195,10 @@ export class ActiveWorkflowManager {
 				await this.webhookService.storeWebhook(webhook);
 				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
-				if (activation === 'init' && error.name === 'QueryFailedError') {
+				if (
+					['init', 'leadershipChange'].includes(activation) &&
+					error.name === 'QueryFailedError'
+				) {
 					// n8n does not remove the registered webhooks on exit.
 					// This means that further initializations will always fail
 					// when inserting to database. This is why we ignore this error
@@ -972,9 +975,7 @@ export class ActiveWorkflowManager {
 		// to prevent issues with users upgrading from a version < 1.15, where the webhook entity
 		// was cleared on shutdown to anything past 1.28.0, where we stopped populating it on init,
 		// causing all webhooks to break
-		if (activationMode === 'init') return true;
-
-		if (activationMode === 'leadershipChange') return false;
+		if (['init', 'leadershipChange'].includes(activationMode)) return true;
 
 		return this.instanceSettings.isLeader; // 'update' or 'activate'
 	}

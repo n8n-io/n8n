@@ -70,7 +70,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
@@ -89,7 +89,7 @@ import type {
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
@@ -106,7 +106,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
-import { sourceControlEventBus } from '@/event-bus/source-control';
+import { sourceControlEventBus } from '@/features/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -433,10 +433,6 @@ async function initializeRoute(force = false) {
 
 			if (!isDemoRoute.value) {
 				await loadCredentials();
-
-				// Fetch builder credits when initializing the route
-				// Only needed if workflow is editable where builder can be used
-				void builderStore.fetchBuilderCredits();
 			}
 
 			// If there is no workflow id, treat it as a new workflow
@@ -1474,6 +1470,7 @@ function removeSourceControlEventBindings() {
 function addCommandBarEventBindings() {
 	canvasEventBus.on('create:sticky', onCreateSticky);
 }
+
 function removeCommandBarEventBindings() {
 	canvasEventBus.off('create:sticky', onCreateSticky);
 }
@@ -1802,12 +1799,12 @@ watch(
 			parameters: {},
 		};
 
-		const aiPromptItem: INodeUi = {
-			id: CanvasNodeRenderType.AIPrompt,
-			name: CanvasNodeRenderType.AIPrompt,
-			type: CanvasNodeRenderType.AIPrompt,
+		const choicePromptItem: INodeUi = {
+			id: CanvasNodeRenderType.ChoicePrompt,
+			name: CanvasNodeRenderType.ChoicePrompt,
+			type: CanvasNodeRenderType.ChoicePrompt,
 			typeVersion: 1,
-			position: [-300, -100],
+			position: [0, 0],
 			parameters: {},
 			draggable: false,
 		};
@@ -1816,7 +1813,7 @@ watch(
 			builderStore.isAIBuilderEnabled &&
 			builderStore.isAssistantEnabled &&
 			builderStore.assistantMessages.length === 0
-				? [aiPromptItem]
+				? [choicePromptItem]
 				: [addNodesItem];
 	},
 );
