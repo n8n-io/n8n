@@ -72,11 +72,8 @@ export class ImportService {
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
-		}
 
-		// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-		// This must be done outside the transaction to avoid inconsistent state on rollback
-		for (const workflow of workflows) {
+			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			if (workflow.id) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
