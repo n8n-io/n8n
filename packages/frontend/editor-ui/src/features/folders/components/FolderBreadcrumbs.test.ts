@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import type { FolderShortInfo, UserAction } from '@/Interface';
+import type { UserAction } from '@/Interface';
+import type { FolderShortInfo } from '../folders.types';
 import FolderBreadcrumbs from './FolderBreadcrumbs.vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,7 +9,7 @@ import type { Mock } from 'vitest';
 import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes, type Project } from '@/types/projects.types';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '../folders.store';
 import type { IUser } from 'n8n-workflow';
 
 vi.mock('vue-router', async (importOriginal) => ({
