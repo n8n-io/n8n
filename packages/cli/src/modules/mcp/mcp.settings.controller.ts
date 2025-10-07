@@ -78,20 +78,16 @@ export class McpSettingsController {
 			);
 		}
 
-		if (dto.availableInMCP) {
-			if (!workflow.active) {
-				throw new BadRequestError('Only active workflows can be made available in the MCP');
-			}
+		if (!workflow.active) {
+			throw new BadRequestError('MCP access can only be set for active workflows');
+		}
 
-			const hasWebhooks = workflow.nodes.some(
-				(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
-			);
+		const hasWebhooks = workflow.nodes.some(
+			(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
+		);
 
-			if (!hasWebhooks) {
-				throw new BadRequestError(
-					'Only workflows with active webhooks can be made available in the MCP',
-				);
-			}
+		if (!hasWebhooks) {
+			throw new BadRequestError('MCP access can only be set for webhook-triggered workflows');
 		}
 
 		const workflowUpdate = new WorkflowEntity();

@@ -234,9 +234,7 @@ describe('McpSettingsController', () => {
 				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
 					availableInMCP: true,
 				}),
-			).rejects.toThrow(
-				new BadRequestError('Only active workflows can be made available in the MCP'),
-			);
+			).rejects.toThrow(new BadRequestError('MCP access can only be set for active workflows'));
 
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
@@ -263,7 +261,7 @@ describe('McpSettingsController', () => {
 					availableInMCP: true,
 				}),
 			).rejects.toThrow(
-				new BadRequestError('Only workflows with active webhooks can be made available in the MCP'),
+				new BadRequestError('MCP access can only be set for webhook-triggered workflows'),
 			);
 
 			expect(workflowService.update).not.toHaveBeenCalled();
@@ -299,7 +297,7 @@ describe('McpSettingsController', () => {
 			});
 		});
 
-		test('allows disabling MCP access without validations', async () => {
+		test('rejects enabling MCP for inactive workflows', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				createWorkflow({ active: false }),
 			);
@@ -310,22 +308,14 @@ describe('McpSettingsController', () => {
 			} as unknown as WorkflowEntity);
 
 			const req = createReq({}, { user });
-			const response = await controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
-				availableInMCP: false,
-				versionId: 'client-version',
-			});
 
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-			expect(workflowService.update.mock.calls[0][1].settings).toEqual({
-				saveManualExecutions: true,
-				availableInMCP: false,
-			});
+			await expect(
+				controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
+					availableInMCP: false,
+				}),
+			).rejects.toThrow(new BadRequestError('MCP access can only be set for active workflows'));
 
-			expect(response).toEqual({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: false },
-				versionId: 'client-version',
-			});
+			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 	});
 });
