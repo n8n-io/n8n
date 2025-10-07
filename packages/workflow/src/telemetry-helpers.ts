@@ -38,7 +38,6 @@ import type {
 	ITaskData,
 	IRun,
 	INodeParameterResourceLocator,
-	CommunityPackageMap,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters } from './node-helpers';
