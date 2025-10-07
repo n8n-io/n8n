@@ -350,4 +350,37 @@ export class DataStoreDetails extends BasePage {
 			await input.press('Enter');
 		}
 	}
+
+	async getColumnOrder(): Promise<string[]> {
+		const headers = this.page.getByRole('columnheader');
+		const count = await headers.count();
+		const columnData: Array<{ index: number; name: string }> = [];
+
+		for (let i = 0; i < count; i++) {
+			const header = headers.nth(i);
+			const ariaColIndex = await header.getAttribute('aria-colindex');
+			const textElement = header.getByTestId('data-store-column-header-text');
+			const textCount = await textElement.count();
+
+			if (textCount > 0 && ariaColIndex) {
+				const text = await textElement.textContent();
+				if (text) {
+					columnData.push({
+						index: parseInt(ariaColIndex, 10),
+						name: text.trim(),
+					});
+				}
+			}
+		}
+
+		columnData.sort((a, b) => a.index - b.index);
+		return columnData.map((col) => col.name);
+	}
+
+	async dragColumnToPosition(sourceColumnName: string, targetColumnName: string) {
+		const sourceColumn = this.getColumnHeaderByName(sourceColumnName);
+		const targetColumn = this.getColumnHeaderByName(targetColumnName);
+
+		await sourceColumn.dragTo(targetColumn);
+	}
 }

@@ -432,4 +432,51 @@ test.describe('Data Table details view', () => {
 		await n8n.dataTableDetails.setNumberFilter(COLUMN_NAMES.age, '22', 'greaterThan');
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(4);
 	});
+
+	test('Should reorder columns using drag and drop', async ({ n8n }) => {
+		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
+
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.age, 'number', 'header');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.active, 'boolean', 'header');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.birthday, 'date', 'header');
+		await n8n.dataTableDetails.addColumn('email', 'string', 'header');
+
+		const initialOrder = await n8n.dataTableDetails.getColumnOrder();
+		expect(initialOrder).toContain(COLUMN_NAMES.name);
+		expect(initialOrder).toContain(COLUMN_NAMES.age);
+		expect(initialOrder).toContain(COLUMN_NAMES.active);
+		expect(initialOrder).toContain(COLUMN_NAMES.birthday);
+		expect(initialOrder).toContain('email');
+
+		const nameIndex = initialOrder.indexOf(COLUMN_NAMES.name);
+		const activeIndex = initialOrder.indexOf(COLUMN_NAMES.active);
+		const emailIndex = initialOrder.indexOf('email');
+
+		await n8n.dataTableDetails.dragColumnToPosition(COLUMN_NAMES.active, COLUMN_NAMES.name);
+
+		const orderAfterFirstDrag = await n8n.dataTableDetails.getColumnOrder();
+		const newActiveIndex = orderAfterFirstDrag.indexOf(COLUMN_NAMES.active);
+		const newNameIndex = orderAfterFirstDrag.indexOf(COLUMN_NAMES.name);
+
+		expect(newActiveIndex).toBeLessThan(newNameIndex);
+		expect(activeIndex).toBeGreaterThan(nameIndex);
+
+		await n8n.dataTableDetails.dragColumnToPosition('email', COLUMN_NAMES.age);
+
+		const orderAfterSecondDrag = await n8n.dataTableDetails.getColumnOrder();
+		const emailIndexAfter = orderAfterSecondDrag.indexOf('email');
+		const ageIndexAfter = orderAfterSecondDrag.indexOf(COLUMN_NAMES.age);
+
+		expect(emailIndexAfter).toBeLessThan(ageIndexAfter);
+		expect(emailIndex).toBeGreaterThan(initialOrder.indexOf(COLUMN_NAMES.age));
+
+		await n8n.dataTableDetails.dragColumnToPosition(COLUMN_NAMES.birthday, COLUMN_NAMES.active);
+
+		const finalOrder = await n8n.dataTableDetails.getColumnOrder();
+		const birthdayFinalIndex = finalOrder.indexOf(COLUMN_NAMES.birthday);
+		const activeFinalIndex = finalOrder.indexOf(COLUMN_NAMES.active);
+
+		expect(birthdayFinalIndex).toBeLessThan(activeFinalIndex);
+	});
 });
