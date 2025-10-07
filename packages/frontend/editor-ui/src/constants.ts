@@ -72,8 +72,6 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
-export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
@@ -501,7 +499,7 @@ export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
 );
 
 export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
-export const FOLDER_NAME_MAX_LENGTH = 100;
+export const FOLDER_NAME_MAX_LENGTH = 128;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;

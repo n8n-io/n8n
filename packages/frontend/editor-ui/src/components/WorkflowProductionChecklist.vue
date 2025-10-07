@@ -19,7 +19,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 const props = defineProps<{

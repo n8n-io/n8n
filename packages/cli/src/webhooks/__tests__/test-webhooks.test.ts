@@ -192,7 +192,10 @@ describe('TestWebhooks', () => {
 
 			await testWebhooks.deactivateWebhooks(workflow);
 
-			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith(userId);
+			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith({
+				userId,
+				workflowId: workflowEntity.id,
+			});
 		});
 	});
 
