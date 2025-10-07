@@ -153,7 +153,7 @@ n8n-node lint --fix
 Manage n8n Cloud eligibility.
 
 ```bash
-n8n-node cloud-support [enable|disable|]
+n8n-node cloud-support [enable|disable]
 ```
 
 **Arguments:**

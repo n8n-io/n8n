@@ -12,7 +12,7 @@ const DEFAULT_PACKAGE_CONFIG: N8nPackageJson = {
 	version: '1.0.0',
 	n8n: {
 		nodes: ['dist/nodes/TestNode.node.js'],
-		strict: false,
+		strict: true,
 	},
 };
 

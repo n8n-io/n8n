@@ -6,7 +6,7 @@ import { expect } from 'vitest';
 import type { CommandResult } from './command-tester';
 import type { MockPrompt } from './mock-prompts';
 
-function stripAnsiCodes(text: string): string {
+export function stripAnsiCodes(text: string): string {
 	// Need to strip ANSI escape codes for colors and styles
 	// eslint-disable-next-line no-control-regex
 	return text.replace(/\u001b\[.*?m/g, '');

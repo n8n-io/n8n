@@ -21,9 +21,11 @@ export interface CommandMockConfig {
 }
 
 function createMockProcess(): MockChildProcess {
-	const mockProcess = new EventEmitter() as MockChildProcess;
-	mockProcess.stdout = new EventEmitter();
-	mockProcess.stderr = new EventEmitter();
+	const emitter = new EventEmitter();
+	const mockProcess: MockChildProcess = Object.assign(emitter, {
+		stdout: new EventEmitter(),
+		stderr: new EventEmitter(),
+	});
 	return mockProcess;
 }
 

@@ -2,6 +2,7 @@ import { cancel } from '@clack/prompts';
 import fs from 'node:fs/promises';
 
 import { CommandTester } from '../test-utils/command-tester';
+import { stripAnsiCodes } from '../test-utils/matchers';
 import { mockSpawn } from '../test-utils/mock-child-process';
 import { setupTestPackage } from '../test-utils/package-setup';
 import { tmpdirTest } from '../test-utils/temp-fs';
@@ -15,7 +16,9 @@ describe('lint command', () => {
 	});
 
 	tmpdirTest('successful lint - runs eslint with correct arguments', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir);
+		await setupTestPackage(tmpdir, {
+			eslintConfig: true,
+		});
 
 		mockSpawn('pnpm', ['exec', '--', 'eslint', '.'], { exitCode: 0 });
 
@@ -25,7 +28,9 @@ describe('lint command', () => {
 	});
 
 	tmpdirTest('lint with fix flag - passes --fix to eslint', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir);
+		await setupTestPackage(tmpdir, {
+			eslintConfig: true,
+		});
 
 		mockSpawn('pnpm', ['exec', '--', 'eslint', '.', '--fix'], { exitCode: 0 });
 
@@ -35,7 +40,9 @@ describe('lint command', () => {
 	});
 
 	tmpdirTest('eslint failure - exits with error code', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir);
+		await setupTestPackage(tmpdir, {
+			eslintConfig: true,
+		});
 
 		mockSpawn('pnpm', ['exec', '--', 'eslint', '.'], {
 			exitCode: 1,
@@ -46,7 +53,9 @@ describe('lint command', () => {
 	});
 
 	tmpdirTest('eslint spawn error - handles process errors', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir);
+		await setupTestPackage(tmpdir, {
+			eslintConfig: true,
+		});
 
 		mockSpawn('pnpm', ['exec', '--', 'eslint', '.'], {
 			error: 'ENOENT: no such file or directory, spawn eslint',
@@ -84,7 +93,9 @@ describe('lint command', () => {
 	});
 
 	tmpdirTest('cloud-only lint errors - suggests disabling cloud support', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir);
+		await setupTestPackage(tmpdir, {
+			eslintConfig: true,
+		});
 
 		mockSpawn('pnpm', ['exec', '--', 'eslint', '.'], {
 			exitCode: 1,
@@ -102,7 +113,9 @@ describe('lint command', () => {
 	});
 
 	tmpdirTest('regular lint errors - no cloud suggestion', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir);
+		await setupTestPackage(tmpdir, {
+			eslintConfig: true,
+		});
 
 		mockSpawn('pnpm', ['exec', '--', 'eslint', '.'], {
 			exitCode: 1,
@@ -125,6 +138,8 @@ describe('lint command', () => {
 				"import { config } from '@n8n/node-cli/eslint';\n\n// Custom modification\nexport default config;\n",
 		});
 
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, 'lockfileVersion: 5.4\n');
+
 		await expect(CommandTester.run('lint')).rejects.toThrow('EEXIT: 1');
 
 		const stdoutCalls = mockProcessStdout.mock.calls.flat();
@@ -139,14 +154,17 @@ describe('lint command', () => {
 			packageJson: { n8n: { strict: true } },
 		});
 
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, 'lockfileVersion: 5.4\n');
+
 		// Don't create eslint.config.mjs file (it will be missing)
 
 		await expect(CommandTester.run('lint')).rejects.toThrow('EEXIT: 1');
 
 		const stdoutCalls = mockProcessStdout.mock.calls.flat();
-		const hasMissingConfigError = stdoutCalls.some(
-			(call) => typeof call === 'string' && call.includes('eslint.config.mjs not found'),
-		);
-		expect(hasMissingConfigError).toBe(true);
+		const stdout = stdoutCalls
+			.filter((call) => typeof call === 'string')
+			.map(stripAnsiCodes)
+			.join('\n');
+		expect(stdout).toContain('eslint.config.mjs not found');
 	});
 });

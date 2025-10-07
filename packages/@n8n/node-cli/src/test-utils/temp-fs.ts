@@ -20,9 +20,11 @@ export const tmpdirTest = test.extend<TmpDirFixture>({
 
 		process.chdir(directory);
 
-		await use(directory);
-
-		process.chdir(originalCwd);
-		await fs.rm(directory, { recursive: true, force: true });
+		try {
+			await use(directory);
+		} finally {
+			process.chdir(originalCwd);
+			await fs.rm(directory, { recursive: true, force: true });
+		}
 	},
 });

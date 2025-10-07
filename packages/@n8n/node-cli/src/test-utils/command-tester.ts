@@ -4,6 +4,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { commands } from '../index';
 
+function isValidCommand(commandName: string): commandName is keyof typeof commands {
+	return commandName in commands;
+}
+
 export type LogLevel = 'success' | 'warning' | 'error' | 'info';
 
 export interface CommandResult {
@@ -15,12 +19,13 @@ export class CommandTester {
 		const argv = commandLine.trim().split(/\s+/);
 		const [commandName, ...restArgv] = argv;
 
-		const CommandClass = commands[commandName as keyof typeof commands];
-		if (!CommandClass) {
+		if (!isValidCommand(commandName)) {
 			throw new Error(
 				`Unknown command: ${commandName}. Available: ${Object.keys(commands).join(', ')}`,
 			);
 		}
+
+		const CommandClass = commands[commandName];
 
 		const command = new CommandClass(
 			restArgv,

@@ -38,6 +38,7 @@ describe('cloud-support command', () => {
 
 		tmpdirTest('shows disabled status when not strict mode', async ({ tmpdir }) => {
 			await setupTestPackage(tmpdir, {
+				packageJson: { n8n: { strict: false } },
 				eslintConfig: true,
 			});
 
