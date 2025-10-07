@@ -201,6 +201,15 @@ export async function getRedisClient(context: IFunctionsContext) {
 }
 
 /**
+ * Type guard to check if a value is a string array.
+ * @param value - The value to check.
+ * @returns True if the value is a string array, false otherwise.
+ */
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+/**
  * Get the complete list of indexes from Redis.
  * @returns The list of indexes.
  */
@@ -215,7 +224,13 @@ export async function listIndexes(this: ILoadOptionsFunctions) {
 		// Get all indexes using FT._LIST command
 		const indexes = await client.ft._list();
 
-		const results = (indexes as string[]).map((index) => ({
+		// Validate that indexes is actually a string array
+		if (!isStringArray(indexes)) {
+			this.logger.warn('FT._LIST returned unexpected data type');
+			return { results: [] };
+		}
+
+		const results = indexes.map((index) => ({
 			name: index,
 			value: index,
 		}));
@@ -332,6 +347,15 @@ export class VectorStoreRedis extends createVectorStoreNode({
 			});
 		}
 
+		// Process filter: split by comma, trim, and remove empty strings
+		// If no valid filter terms exist, pass undefined instead of empty array
+		const filterTerms = filter
+			? filter
+					.split(',')
+					.map((s) => s.trim())
+					.filter((s) => s)
+			: [];
+
 		return new ExtendedRedisVectorSearch(
 			embeddings,
 			{
@@ -342,12 +366,7 @@ export class VectorStoreRedis extends createVectorStoreNode({
 				...(contentField ? { contentKey: contentField } : {}),
 				...(embeddingField ? { vectorKey: embeddingField } : {}),
 			},
-			filter
-				? filter
-						.split(',')
-						.map((s) => s.trim())
-						.filter((s) => s)
-				: [],
+			filterTerms.length > 0 ? filterTerms : undefined,
 		);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {

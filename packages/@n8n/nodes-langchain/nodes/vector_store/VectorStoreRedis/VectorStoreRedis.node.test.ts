@@ -174,6 +174,27 @@ describe('VectorStoreRedis.node', () => {
 
 			expect(results).toEqual({ results: [] });
 		});
+
+		it('returns empty results when FT._LIST returns unexpected data type', async () => {
+			const mockClient = {
+				on: jest.fn(),
+				connect: jest.fn().mockResolvedValue(undefined),
+				disconnect: jest.fn(),
+				quit: jest.fn(),
+				ft: { _list: jest.fn().mockResolvedValue({ unexpected: 'object' }) },
+			} as any;
+
+			MockCreateClient.mockReturnValue(mockClient);
+
+			(loadOptionsFunctions as any).getCredentials = jest.fn().mockResolvedValue(baseCredentials);
+
+			const results = await (RedisNode.listIndexes as any).call(loadOptionsFunctions as any);
+
+			expect(results).toEqual({ results: [] });
+			expect(loadOptionsFunctions.logger.warn).toHaveBeenCalledWith(
+				'FT._LIST returned unexpected data type',
+			);
+		});
 	});
 
 	describe('getVectorStoreClient', () => {
@@ -338,7 +359,47 @@ describe('VectorStoreRedis.node', () => {
 
 			const res = await instance.similaritySearchVectorWithScore([0], 1);
 			expect(res).toBeDefined();
-			expect(instance.defaultFilter).toEqual([]);
+			expect(instance.defaultFilter).toBeUndefined();
+		});
+
+		it('returns undefined filter when filter string contains only whitespace and commas', async () => {
+			const mockClient = {
+				on: jest.fn(),
+				connect: jest.fn().mockResolvedValue(undefined),
+				disconnect: jest.fn(),
+				quit: jest.fn(),
+				ft: { info: jest.fn().mockResolvedValue(undefined) },
+			} as any;
+
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
+			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = jest
+				.fn()
+				.mockResolvedValue('ok');
+
+			const context: any = {
+				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => {
+					const map: Record<string, any> = {
+						redisIndex: 'myIndex',
+						'options.keyPrefix': '',
+						'options.metadataKey': '',
+						'options.contentKey': '',
+						'options.vectorKey': '',
+						'options.metadataFilter': '  , , ,  ',
+					};
+					return map[name];
+				},
+				getNode: () => ({ name: 'VectorStoreRedis' }),
+				logger: loadOptionsFunctions.logger,
+			} as any;
+
+			const node = new RedisNode.VectorStoreRedis();
+			const instance = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			// Filter with only whitespace and commas should result in undefined
+			expect(instance.defaultFilter).toBeUndefined();
 		});
 
 		it('throws NodeOperationError when index is missing', async () => {
