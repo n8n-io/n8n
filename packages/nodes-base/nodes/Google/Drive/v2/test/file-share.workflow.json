@@ -18,9 +18,13 @@
 					"value": "123",
 					"mode": "id"
 				},
-				"role": "reader",
-				"type": "user",
-				"emailAddress": "test@example.com"
+				"permissionsUi": {
+					"permissionsValues": {
+						"role": "reader",
+						"type": "user",
+						"emailAddress": "test@example.com"
+					}
+				}
 			},
 			"type": "n8n-nodes-base.googleDrive",
 			"typeVersion": 3,
