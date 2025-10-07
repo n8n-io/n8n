@@ -105,7 +105,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(UrlService, urlService);
 
 	test('logAiEvent should call MessageEventBus', async () => {
-		const additionalData = await getBase('user-id');
+		const additionalData = await getBase({ userId: 'user-id', workflowId: 'workflow-id' });
 
 		const eventName = 'ai-messages-retrieved-from-memory';
 		const payload = {
@@ -315,21 +315,23 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		it('should include userId when provided', async () => {
 			const userId = 'test-user-id';
-			const additionalData = await getBase(userId);
+			const additionalData = await getBase({ userId });
 
 			expect(additionalData.userId).toBe(userId);
 		});
 
 		it('should include currentNodeParameters when provided', async () => {
 			const currentNodeParameters = { param1: 'value1' };
-			const additionalData = await getBase(undefined, currentNodeParameters);
+			const additionalData = await getBase({ currentNodeParameters });
 
 			expect(additionalData.currentNodeParameters).toBe(currentNodeParameters);
 		});
 
 		it('should include executionTimeoutTimestamp when provided', async () => {
 			const executionTimeoutTimestamp = Date.now() + 1000;
-			const additionalData = await getBase(undefined, undefined, executionTimeoutTimestamp);
+			const additionalData = await getBase({
+				executionTimeoutTimestamp,
+			});
 
 			expect(additionalData.executionTimeoutTimestamp).toBe(executionTimeoutTimestamp);
 		});
