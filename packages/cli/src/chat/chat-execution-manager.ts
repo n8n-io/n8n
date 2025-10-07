@@ -90,7 +90,7 @@ export class ChatExecutionManager {
 		const workflow = this.getWorkflow(execution);
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 		const node = workflow.getNode(lastNodeExecuted);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
 		const executionData = execution.data.executionData?.nodeExecutionStack[0];
 
 		if (!node || !executionData) return null;
