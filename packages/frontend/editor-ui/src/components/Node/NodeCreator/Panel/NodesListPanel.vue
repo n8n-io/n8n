@@ -194,7 +194,6 @@ function onBackButton() {
 						:circle="false"
 						:show-tooltip="false"
 						:size="20"
-						:use-updated-icons="true"
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
 
