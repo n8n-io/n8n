@@ -390,7 +390,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 
 				expect(mockRequest).toHaveBeenCalledWith(
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+						uri: 'https://graph.microsoft.com/v1.0/securityalerts',
 					}),
 				);
 			});
