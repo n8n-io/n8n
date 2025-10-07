@@ -9,6 +9,7 @@ import {
 	N8nDataTableServer,
 	N8nHeading,
 	N8nIcon,
+	N8nText,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
@@ -132,14 +133,19 @@ const rowActions = computed<Array<{ label: string; value: keyof typeof actions }
 function handleAction(action: string, item: Role) {
 	void actions[action as keyof typeof actions](item);
 }
+
+function handleRowClick(item: Role) {
+	if (item.systemRole) return;
+	void router.push({ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: item.slug } });
+}
 </script>
 
 <template>
 	<div>
 		<div class="mb-xl" :class="$style.headerContainer">
-			<N8nHeading tag="h1" size="2xlarge">Project Roles</N8nHeading>
+			<N8nHeading tag="h1" size="2xlarge">{{ i18n.baseText('settings.projectRoles') }}</N8nHeading>
 			<N8nButton type="secondary" @click="router.push({ name: VIEWS.PROJECT_NEW_ROLE })">
-				Add Role
+				{{ i18n.baseText('projectRoles.addRole') }}
 			</N8nButton>
 		</div>
 
@@ -149,18 +155,11 @@ function handleAction(action: string, item: Role) {
 			:items-length="rolesStore.processedProjectRoles.length"
 			:items-per-page="rolesStore.processedProjectRoles.length"
 			:page-sizes="[rolesStore.processedProjectRoles.length]"
+			@click:row="(event, { item }) => handleRowClick(item)"
 		>
 			<template #[`item.displayName`]="{ item }">
-				<template v-if="item.systemRole">
-					<div>{{ item.displayName }}</div>
-					<div>{{ item.description }}</div>
-				</template>
-				<template v-else>
-					<RouterLink :to="{ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: item.slug } }">
-						<div>{{ item.displayName }}</div>
-					</RouterLink>
-					<div>{{ item.description }}</div>
-				</template>
+				<N8nText tag="div" class="mb-5xs">{{ item.displayName }}</N8nText>
+				<N8nText tag="div" size="small" color="text-light">{{ item.description }}</N8nText>
 			</template>
 			<template #[`item.systemRole`]="{ item }">
 				<template v-if="item.systemRole"> <N8nIcon icon="lock" /> System</template>

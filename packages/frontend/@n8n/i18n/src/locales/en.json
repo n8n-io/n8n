@@ -1881,6 +1881,7 @@
 
 	"projectRoles.backToRoleList": "Back to role list",
 	"projectRoles.newRole": "New Role",
+	"projectRoles.addRole": "Add role",
 	"projectRoles.discardChanges": "Discard changes",
 	"projectRoles.save": "Save",
 	"projectRoles.create": "Create",
@@ -1892,6 +1893,11 @@
 	"projectRoles.admin": "Admin",
 	"projectRoles.editor": "Editor",
 	"projectRoles.viewer": "Viewer",
+	"projectRoles.type.project": "Project",
+	"projectRoles.type.folder": "Folders",
+	"projectRoles.type.workflow": "Workflows",
+	"projectRoles.type.credential": "Credentials",
+	"projectRoles.type.sourceControl": "Source control",
 
 	"renameAction.emptyName.message": "Please enter a name, or press 'esc' to go back to the old one",
 	"renameAction.emptyName.title": "Name missing",
@@ -2174,7 +2180,7 @@
 	"settings.users.table.row.role.description.member": "Manage and create own workflows and credentials",
 	"settings.users.table.row.2fa.enabled": "@:_reusableBaseText.enabled",
 	"settings.users.table.row.2fa.disabled": "@:_reusableBaseText.disabled",
-	"settings.projectRoles": "Project Roles",
+	"settings.projectRoles": "Project roles",
 	"settings.api": "API",
 	"settings.api.scopes.upgrade": "{link} to unlock the ability to modify API key scopes",
 	"settings.n8napi": "n8n API",

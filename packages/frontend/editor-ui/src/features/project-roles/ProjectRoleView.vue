@@ -324,7 +324,9 @@ const displayNameValidationRules = [
 
 		<div :class="$style.cardContainer">
 			<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
-				<div style="width: 133px" :class="$style.cardTitle">{{ type }}</div>
+				<div style="width: 133px" :class="$style.cardTitle">
+					{{ i18n.baseText(`projectRoles.type.${type}`) }}
+				</div>
 				<div>
 					<N8nFormInput
 						v-for="scope in scopes[type]"

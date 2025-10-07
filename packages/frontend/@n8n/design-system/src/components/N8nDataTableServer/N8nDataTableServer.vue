@@ -560,6 +560,9 @@ const table = useVueTable({
 	tbody tr {
 		background-color: var(--color-background-xlight);
 		border-bottom: 1px solid var(--color-foreground-base);
+		&:last-child {
+			border-color: transparent;
+		}
 	}
 
 	td {
