@@ -221,7 +221,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				endPoint = `/api/v3/data/${baseId}/${table}/records/${id}`;
 				// uploadMode = url
 				const url = this.getNodeParameter('url', i) as string;
-				const existingData: IDataObject = await apiRequest.call(this, 'GET', endPoint, body, qs);
+				const existingData: IDataObject = await apiRequest.call(this, 'GET', endPoint, {}, qs);
 				let field: string | IDataObject[] | undefined = (existingData.fields as IDataObject)[
 					uploadFieldName
 				] as string | IDataObject[];
