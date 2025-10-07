@@ -79,6 +79,8 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	isTriggerNode,
+	getNodeOutputs,
+	NodeHelpers,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -1081,39 +1083,7 @@ async function onAddNodesAndConnections(
 		}));
 	}
 
-	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
-	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
-		const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
-		const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
-		const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
-
-		return {
-			source: fromNode.id,
-			sourceHandle: createCanvasConnectionHandleString({
-				mode: CanvasConnectionMode.Output,
-				type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-				index: from.outputIndex ?? 0,
-			}),
-			target: toNode.id,
-			targetHandle: createCanvasConnectionHandleString({
-				mode: CanvasConnectionMode.Input,
-				type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-				index: to.inputIndex ?? 0,
-			}),
-			data: {
-				source: {
-					index: from.outputIndex ?? 0,
-					type,
-				},
-				target: {
-					index: to.inputIndex ?? 0,
-					type,
-				},
-			},
-		};
-	});
-
-	const { addedNodes } = await addNodesAndConnections(nodes, mappedConnections, {
+	const { addedNodes } = await addNodesAndConnections(nodes, connections, {
 		dragAndDrop,
 		position,
 		viewport: viewportBoundaries.value,
@@ -1200,7 +1170,23 @@ function onClickReplaceNode(nodeId: string) {
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
 	} else {
-		nodeCreatorStore.openNodeCreatorForRegularNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
+		const inputs = NodeHelpers.getNodeOutputs(editableWorkflowObject.value, node, nodeType).map(
+			(output) => (typeof output === 'string' ? output : output.type),
+		);
+		const outputs = NodeHelpers.getNodeOutputs(editableWorkflowObject.value, node, nodeType).map(
+			(output) => (typeof output === 'string' ? output : output.type),
+		);
+
+		if (inputs[0] && outputs[0] && inputs[0] !== outputs[0]) {
+			nodeCreatorStore.openNodeCreatorForRegularNodes(
+				NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION,
+			);
+		} else {
+			nodeCreatorStore.openSelectiveNodeCreator({
+				connectionType: inputs[0] ?? outputs[0],
+				node: node.name,
+			});
+		}
 	}
 }
 

@@ -5,6 +5,7 @@
 
 import type {
 	AddedNode,
+	AddedNodeConnection,
 	AddedNodesAndConnections,
 	IExecutionResponse,
 	INodeUi,
@@ -123,6 +124,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useParentFolder } from './useParentFolder';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2329,7 +2331,7 @@ export function useCanvasOperations() {
 
 	async function addNodesAndConnections(
 		nodes: AddedNode[],
-		connections: CanvasConnectionCreateData[],
+		addedConnections: AddedNodeConnection[],
 		{
 			trackBulk = true,
 			trackHistory = true,
@@ -2349,6 +2351,38 @@ export function useCanvasOperations() {
 			trackHistory,
 			trackBulk: false,
 			telemetry: true,
+		});
+
+		const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
+		const connections: CanvasConnectionCreateData[] = addedConnections.map(({ from, to }) => {
+			const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
+			const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
+			const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
+
+			return {
+				source: fromNode.id,
+				sourceHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
+					index: from.outputIndex ?? 0,
+				}),
+				target: toNode.id,
+				targetHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Input,
+					type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
+					index: to.inputIndex ?? 0,
+				}),
+				data: {
+					source: {
+						index: from.outputIndex ?? 0,
+						type,
+					},
+					target: {
+						index: to.inputIndex ?? 0,
+						type,
+					},
+				},
+			};
 		});
 
 		await addConnections(connections, { trackHistory, trackBulk: false });
