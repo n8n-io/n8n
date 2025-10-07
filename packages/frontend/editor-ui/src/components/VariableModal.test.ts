@@ -181,7 +181,30 @@ describe('VariableModal', () => {
 			expect(saveButton).toBeDisabled();
 		});
 
+		it('should show error when global variable exists globally', async () => {
+			const { getByTestId, queryByTestId } = renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			const keyInputContainer = getByTestId('variable-modal-key-input');
+			const saveButton = getByTestId('variable-modal-save-button');
+
+			const keyInput = keyInputContainer.querySelector('input');
+			if (!keyInput) throw new Error('Input not found');
+
+			// Use an existing global variable key
+			await userEvent.type(keyInput, 'EXISTING_GLOBAL_VAR');
+
+			expect(queryByTestId('variable-modal-key-exists-error')).toBeInTheDocument();
+			expect(saveButton).toBeDisabled();
+		});
+
 		it('should show error when key exists in same project', async () => {
+			projectsStore.currentProjectId = 'project-1';
 			const { getByTestId, queryByTestId } = renderModal({
 				props: {
 					mode: 'new',
@@ -197,10 +220,34 @@ describe('VariableModal', () => {
 			if (!keyInput) throw new Error('Input not found');
 
 			// Use an existing key
-			await userEvent.type(keyInput, 'EXISTING_GLOBAL_VAR');
+			await userEvent.type(keyInput, 'EXISTING_PROJECT_VAR');
 
 			expect(queryByTestId('variable-modal-key-exists-error')).toBeInTheDocument();
 			expect(saveButton).toBeDisabled();
+		});
+
+		it('should show warning overriding global variable in project context', async () => {
+			projectsStore.currentProjectId = 'project-1';
+			const { getByTestId, queryByTestId } = renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			const keyInputContainer = getByTestId('variable-modal-key-input');
+			const saveButton = getByTestId('variable-modal-save-button');
+
+			const keyInput = keyInputContainer.querySelector('input');
+			if (!keyInput) throw new Error('Input not found');
+
+			// Use an existing global variable key
+			await userEvent.type(keyInput, 'EXISTING_GLOBAL_VAR');
+
+			expect(queryByTestId('variable-modal-key-exists-error')).not.toBeInTheDocument();
+			expect(queryByTestId('variable-modal-global-exists-warning')).toBeInTheDocument();
+			expect(saveButton).toBeEnabled();
 		});
 
 		it('should close modal on cancel', async () => {
@@ -328,22 +375,12 @@ describe('VariableModal', () => {
 			expect(saveButton).toBeEnabled();
 		});
 
-		it('should show error when changing key to existing one in same scope', async () => {
-			// Use a variable in the global scope
-			const globalVariable: EnvironmentVariable = {
-				id: '10',
-				key: 'MY_VAR',
-				value: 'some value',
-			};
-
-			// Add it to the mock variables
-			const mockVarsWithNewVar = [...mockVariables, globalVariable];
-			environmentsStore.variables = mockVarsWithNewVar;
-
-			const { getByTestId, findByTestId } = renderModal({
+		it('should show an error when changing key to one that exists in same project', async () => {
+			projectsStore.currentProjectId = 'project-1';
+			const { getByTestId, queryByTestId } = renderModal({
 				props: {
 					mode: 'edit',
-					variable: globalVariable,
+					variable: { ...existingVariable, project: { id: 'project-1', name: 'Project 1' } },
 				},
 				global,
 				pinia,
@@ -355,14 +392,38 @@ describe('VariableModal', () => {
 			const keyInput = keyInputContainer.querySelector('input');
 			if (!keyInput) throw new Error('Input not found');
 
-			// Change to another existing key in the same scope (global)
+			// Change to an existing key
+			await userEvent.clear(keyInput);
+			await userEvent.type(keyInput, 'EXISTING_PROJECT_VAR');
+
+			expect(queryByTestId('variable-modal-key-exists-error')).toBeInTheDocument();
+			expect(saveButton).toBeDisabled();
+		});
+
+		it('should show a warning when changing key to one that exists globally in project context', async () => {
+			projectsStore.currentProjectId = 'project-1';
+			const { getByTestId, queryByTestId } = renderModal({
+				props: {
+					mode: 'edit',
+					variable: { ...existingVariable, project: { id: 'project-1', name: 'Project 1' } },
+				},
+				global,
+				pinia,
+			});
+
+			const keyInputContainer = getByTestId('variable-modal-key-input');
+			const saveButton = getByTestId('variable-modal-save-button');
+
+			const keyInput = keyInputContainer.querySelector('input');
+			if (!keyInput) throw new Error('Input not found');
+
+			// Change to an existing global variable key
 			await userEvent.clear(keyInput);
 			await userEvent.type(keyInput, 'EXISTING_GLOBAL_VAR');
 
-			// Wait for the error to appear (reactive computed property)
-			const errorElement = await findByTestId('variable-modal-key-exists-error');
-			expect(errorElement).toBeInTheDocument();
-			expect(saveButton).toBeDisabled();
+			expect(queryByTestId('variable-modal-key-exists-error')).not.toBeInTheDocument();
+			expect(queryByTestId('variable-modal-global-exists-warning')).toBeInTheDocument();
+			expect(saveButton).toBeEnabled();
 		});
 	});
 
