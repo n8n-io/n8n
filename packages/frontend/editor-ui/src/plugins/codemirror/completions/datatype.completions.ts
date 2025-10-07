@@ -1151,8 +1151,9 @@ export const secretOptions = (base: string) => {
 		if (typeof resolved !== 'object') {
 			return [];
 		}
-		return Object.entries(resolved).map(([secret, value]) =>
-			createCompletionOption({
+		return Object.entries(resolved).map(([secret, value]) => {
+			const needsBracketAccess = /\//.test(secret);
+			const option = createCompletionOption({
 				name: secret,
 				doc: {
 					name: secret,
@@ -1160,8 +1161,15 @@ export const secretOptions = (base: string) => {
 					description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
 					docURL: i18n.baseText('settings.externalSecrets.docs'),
 				},
-			}),
-		);
+			});
+
+			// Override the apply handler for keys that need bracket access
+			if (needsBracketAccess) {
+				option.apply = applyBracketAccessCompletion;
+			}
+
+			return option;
+		});
 	} catch {
 		return [];
 	}

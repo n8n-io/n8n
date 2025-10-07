@@ -51,7 +51,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const dataStoreProxy = await getDataTableProxyExecute(this, index);
+	const dataTableProxy = await getDataTableProxyExecute(this, index);
 
-	return await executeSelectMany(this, index, dataStoreProxy);
+	return await executeSelectMany(this, index, dataTableProxy);
 }

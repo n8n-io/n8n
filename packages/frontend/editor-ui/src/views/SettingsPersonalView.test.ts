@@ -9,7 +9,7 @@ import { setupServer } from '@/__tests__/server';
 import { ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/stores/ui.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 
 let pinia: ReturnType<typeof createPinia>;

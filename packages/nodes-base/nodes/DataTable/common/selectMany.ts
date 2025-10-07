@@ -1,8 +1,8 @@
 import { DATA_TABLE_SYSTEM_COLUMNS, NodeOperationError } from 'n8n-workflow';
 import type {
 	DataTableFilter,
-	DataStoreRowReturn,
-	IDataStoreProjectService,
+	DataTableRowReturn,
+	IDataTableProjectService,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeProperties,
@@ -118,8 +118,8 @@ export async function getSelectFilter(
 
 	// Validate filter conditions against current table schema
 	if (fields.length > 0) {
-		const dataStoreProxy = await getDataTableProxyExecute(ctx, index);
-		const availableColumns = await dataStoreProxy.getColumns();
+		const dataTableProxy = await getDataTableProxyExecute(ctx, index);
+		const availableColumns = await dataTableProxy.getColumns();
 		const allColumns = new Set([
 			...DATA_TABLE_SYSTEM_COLUMNS,
 			...availableColumns.map((col) => col.name),
@@ -144,10 +144,10 @@ export async function getSelectFilter(
 export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
-	dataStoreProxy: IDataStoreProjectService,
+	dataTableProxy: IDataTableProjectService,
 	rejectEmpty = false,
 	limit?: number,
-): Promise<Array<{ json: DataStoreRowReturn }>> {
+): Promise<Array<{ json: DataTableRowReturn }>> {
 	const filter = await getSelectFilter(ctx, index);
 
 	if (rejectEmpty && filter.filters.length === 0) {
@@ -155,7 +155,7 @@ export async function executeSelectMany(
 	}
 
 	const PAGE_SIZE = 1000;
-	const result: Array<{ json: DataStoreRowReturn }> = [];
+	const result: Array<{ json: DataTableRowReturn }> = [];
 
 	const returnAll = ctx.getNodeParameter('returnAll', index, false);
 	limit = limit ?? (!returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0);
@@ -165,7 +165,7 @@ export async function executeSelectMany(
 	let take = PAGE_SIZE;
 
 	while (true) {
-		const { data, count } = await dataStoreProxy.getManyRowsAndCount({
+		const { data, count } = await dataTableProxy.getManyRowsAndCount({
 			skip,
 			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
