@@ -427,6 +427,74 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 			}).toThrow(NodeOperationError);
 		});
 
+		it('should handle NaN limitFactor gracefully and fallback to default', () => {
+			// Test with invalid limitFactor values that would cause NaN
+			const mockWithNaN = {
+				...mockExecuteFunctions,
+				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'batchSize') return 1;
+					if (paramName === 'options') return { limitFactor: NaN };
+					return undefined;
+				}),
+			};
+
+			// Should use default factor of 2, so limit = max(3*2, 10) = 10, with 2x tolerance = 20
+			for (let i = 0; i < 20; i++) {
+				expect(() => {
+					(SplitInBatchesV4 as any).checkExecutionLimit(mockWithNaN as IExecuteFunctions);
+				}).not.toThrow();
+			}
+
+			// 21st execution should throw (confirms fallback to default worked)
+			expect(() => {
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockWithNaN as IExecuteFunctions);
+			}).toThrow(NodeOperationError);
+		});
+
+		it('should handle negative limitFactor and fallback to default', () => {
+			const mockWithNegative = {
+				...mockExecuteFunctions,
+				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'batchSize') return 1;
+					if (paramName === 'options') return { limitFactor: -5 };
+					return undefined;
+				}),
+			};
+
+			// Should use default factor of 2
+			for (let i = 0; i < 20; i++) {
+				expect(() => {
+					(SplitInBatchesV4 as any).checkExecutionLimit(mockWithNegative as IExecuteFunctions);
+				}).not.toThrow();
+			}
+
+			expect(() => {
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockWithNegative as IExecuteFunctions);
+			}).toThrow(NodeOperationError);
+		});
+
+		it('should handle Infinity limitFactor and fallback to default', () => {
+			const mockWithInfinity = {
+				...mockExecuteFunctions,
+				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'batchSize') return 1;
+					if (paramName === 'options') return { limitFactor: Infinity };
+					return undefined;
+				}),
+			};
+
+			// Should use default factor of 2
+			for (let i = 0; i < 20; i++) {
+				expect(() => {
+					(SplitInBatchesV4 as any).checkExecutionLimit(mockWithInfinity as IExecuteFunctions);
+				}).not.toThrow();
+			}
+
+			expect(() => {
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockWithInfinity as IExecuteFunctions);
+			}).toThrow(NodeOperationError);
+		});
+
 		it('should prevent memory leaks by resetting counters after normal multi-batch processing', async () => {
 			// Simulate multiple different workflows completing
 			const workflows = ['workflow1', 'workflow2', 'workflow3'];
@@ -560,6 +628,101 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 			await expect(
 				splitInBatchesNode.execute.call(mockFunctions as unknown as IExecuteFunctions),
 			).rejects.toThrow(NodeOperationError);
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle zero input items gracefully', async () => {
+			const mockFunctions = {
+				...mockExecuteFunctions,
+				getInputData: jest.fn().mockReturnValue([]), // No input items
+				getContext: jest.fn().mockImplementation((contextType: string) => {
+					if (contextType === 'node') {
+						return {
+							set: jest.fn(),
+							get: jest.fn().mockReturnValue(undefined), // First execution
+						};
+					}
+					return { set: jest.fn(), get: jest.fn() };
+				}),
+				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
+			};
+
+			const result = await splitInBatchesNode.execute.call(
+				mockFunctions as unknown as IExecuteFunctions,
+			);
+
+			// Should return empty arrays on done output (no items to process)
+			expect(result).toEqual([[], []]);
+
+			// Counter should be reset (no infinite loop)
+			expect(SplitInBatchesV4.hasCounterForTest('test-execution-id', 'SplitInBatches')).toBe(false);
+		});
+
+		it('should handle batch size larger than input items', () => {
+			const mockFunctions = {
+				...mockExecuteFunctions,
+				getInputData: jest.fn().mockReturnValue([{ json: { item: 1 } }]), // 1 item
+				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'batchSize') return 1000; // Batch size > input
+					if (paramName === 'options') return {};
+					return undefined;
+				}),
+			};
+
+			// Expected batches = ceil(1 / 1000) = 1, limit = max(1*2, 10) = 10
+			// Should allow 10 executions without error
+			for (let i = 0; i < 10; i++) {
+				expect(() => {
+					SplitInBatchesV4.checkExecutionLimit(mockFunctions as IExecuteFunctions);
+				}).not.toThrow();
+			}
+
+			// 11th execution should not throw yet (2x tolerance = 20)
+			for (let i = 0; i < 10; i++) {
+				expect(() => {
+					SplitInBatchesV4.checkExecutionLimit(mockFunctions as IExecuteFunctions);
+				}).not.toThrow();
+			}
+
+			// 21st execution should throw
+			expect(() => {
+				SplitInBatchesV4.checkExecutionLimit(mockFunctions as IExecuteFunctions);
+			}).toThrow(NodeOperationError);
+		});
+
+		it('should handle single item with batch size 1', async () => {
+			const mockFunctions = {
+				...mockExecuteFunctions,
+				getInputData: jest.fn().mockReturnValue([{ json: { value: 'single' } }]),
+				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'batchSize') return 1;
+					if (paramName === 'options') return {};
+					return undefined;
+				}),
+				getContext: jest.fn().mockImplementation((contextType: string) => {
+					if (contextType === 'node') {
+						return {
+							set: jest.fn(),
+							get: jest.fn().mockReturnValue(undefined), // First execution
+						};
+					}
+					return { set: jest.fn(), get: jest.fn() };
+				}),
+				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
+			};
+
+			const result = await splitInBatchesNode.execute.call(
+				mockFunctions as unknown as IExecuteFunctions,
+			);
+
+			// Should return one item on loop output
+			expect(result).toEqual([[], [{ json: { value: 'single' } }]]);
+
+			// Expected batches = 1, so counter should track properly
+			expect(SplitInBatchesV4.hasCounterForTest('test-execution-id', 'SplitInBatches')).toBe(true);
 		});
 	});
 });

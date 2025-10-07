@@ -8,6 +8,12 @@ import type {
 import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class SplitInBatchesV4 implements INodeType {
+	// Infinite loop protection constants
+	private static readonly MIN_EXECUTION_LIMIT = 10; // Minimum protection threshold for small datasets
+	private static readonly MAX_EXECUTION_LIMIT = 1000; // Safety cap for large datasets to prevent runaway executions
+	private static readonly DEFAULT_LIMIT_FACTOR = 2; // Default multiplier for expected batches
+	private static readonly DEFAULT_MAX_REINIT = 10; // Default max re-initializations before considered stuck
+
 	// Track executions per executionId + node name
 	private static executionCounters = new Map<string, number>();
 	private static reinitCounters = new Map<string, number>();
@@ -251,12 +257,26 @@ export class SplitInBatchesV4 implements INodeType {
 			SplitInBatchesV4.expectedBatchesCache.set(globalKey, expectedBatches);
 		}
 
-		const factor = Math.max(Number(options.limitFactor ?? 2), 1);
-		const maxExecutions = Math.min(Math.max(expectedBatches * factor, 10), 1000);
+		// Safely parse limitFactor with NaN protection
+		const rawFactor = Number(options.limitFactor ?? SplitInBatchesV4.DEFAULT_LIMIT_FACTOR);
+		const factor =
+			Number.isFinite(rawFactor) && rawFactor >= 1
+				? rawFactor
+				: SplitInBatchesV4.DEFAULT_LIMIT_FACTOR;
+		const maxExecutions = Math.min(
+			Math.max(expectedBatches * factor, SplitInBatchesV4.MIN_EXECUTION_LIMIT),
+			SplitInBatchesV4.MAX_EXECUTION_LIMIT,
+		);
 
 		// Check re-initialization count as additional signal
 		const reinitCount = SplitInBatchesV4.reinitCounters.get(globalKey) || 0;
-		const maxReinit = Math.max(Number(options.maxReinitializations ?? 10), 1);
+		const rawMaxReinit = Number(
+			options.maxReinitializations ?? SplitInBatchesV4.DEFAULT_MAX_REINIT,
+		);
+		const maxReinit =
+			Number.isFinite(rawMaxReinit) && rawMaxReinit >= 1
+				? rawMaxReinit
+				: SplitInBatchesV4.DEFAULT_MAX_REINIT;
 		const likelyStuck = reinitCount >= maxReinit;
 
 		// Determine actual limit based on stuck detection

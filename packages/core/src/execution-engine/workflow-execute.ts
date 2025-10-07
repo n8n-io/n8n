@@ -109,8 +109,8 @@ export class WorkflowExecute {
 	 */
 	private cleanupSplitInBatchesCounters(executionId: string, workflow: Workflow): void {
 		try {
-			// Get the SplitInBatches v4 node type - use base name 'splitInBatches' with version 4
-			const nodeType = workflow.nodeTypes.getByNameAndVersion('splitInBatches', 4);
+			// Get the SplitInBatches v4 node type - use full node type name with version 4
+			const nodeType = workflow.nodeTypes.getByNameAndVersion(SPLIT_IN_BATCHES_NODE_TYPE, 4);
 
 			if (nodeType && 'cleanupExecutionCounters' in nodeType) {
 				(
@@ -2478,6 +2478,11 @@ export class WorkflowExecute {
 				fullRunData,
 				newStaticData,
 			]);
+		}
+
+		// Cleanup SplitInBatches counters to prevent memory leaks on successful completion
+		if (this.additionalData.executionId) {
+			this.cleanupSplitInBatchesCounters(this.additionalData.executionId, workflow);
 		}
 
 		if (closeFunction) {
