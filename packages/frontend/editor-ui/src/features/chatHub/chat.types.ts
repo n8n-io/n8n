@@ -1,3 +1,8 @@
+export interface Model {
+	provider: string;
+	model: string;
+}
+
 export interface UserMessage {
 	id: string;
 	role: 'user';

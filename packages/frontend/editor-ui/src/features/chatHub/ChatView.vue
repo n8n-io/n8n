@@ -1,20 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
-import { useI18n } from '@n8n/i18n';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
 import { N8nHeading, N8nIcon, N8nText, N8nScrollArea } from '@n8n/design-system';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
+import ModelSelector from './components/ModelSelector.vue';
 
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { ChatMessage } from './chat.types';
+import type { ChatMessage, Model } from './chat.types';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 
-const i18n = useI18n();
 const chatStore = useChatStore();
 const userStore = useUsersStore();
 
@@ -28,6 +27,10 @@ const message = ref('');
 const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const selectedModel = ref<Model>({
+	provider: 'openai',
+	model: 'gpt-4',
+});
 
 const suggestions = ref<Suggestion[]>([
 	{
@@ -87,9 +90,13 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+function onModelChange(selection: Model) {
+	selectedModel.value = selection;
+}
+
 function onSubmit() {
 	if (!message.value.trim() || chatStore.isResponding) return;
-	chatStore.askAI(message.value, sessionId.value);
+	chatStore.askAI(message.value, sessionId.value, selectedModel.value);
 	message.value = '';
 }
 
@@ -129,6 +136,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 <template>
 	<PageViewLayout>
+		<ModelSelector :disabled="chatStore.isResponding" @change="onModelChange" />
 		<div
 			:class="{
 				[$style.content]: true,

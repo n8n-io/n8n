@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, messageChatApi } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { StreamChunk, StreamOutput, ChatMessage } from './chat.types';
+import type { StreamChunk, StreamOutput, ChatMessage, Model } from './chat.types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const models = ref<string[]>([]);
@@ -70,15 +70,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		isResponding.value = false;
 	}
 
-	const askAI = (message: string, sessionId: string) => {
+	const askAI = (message: string, sessionId: string, model: Model) => {
 		const messageId = uuidv4();
 		addUserMessage(message, messageId);
 
+		if (model.provider !== 'openai') {
+			throw Error('not supported');
+		}
+
 		messageChatApi(
 			rootStore.restApiContext,
-			'openai',
+			model.provider,
 			{
-				model: 'gpt-4',
+				model: model.model,
 				messageId,
 				sessionId,
 				message,
