@@ -19,6 +19,7 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportService } from '@/services/import.service';
 
 import { createMember, createOwner } from './shared/db/users';
@@ -28,6 +29,7 @@ describe('ImportService', () => {
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
+	let mockActiveWorkflowManager: ActiveWorkflowManager;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -39,7 +41,16 @@ describe('ImportService', () => {
 
 		const credentialsRepository = Container.get(CredentialsRepository);
 
-		importService = new ImportService(mock(), credentialsRepository, tagRepository, mock(), mock());
+		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+
+		importService = new ImportService(
+			mock(),
+			credentialsRepository,
+			tagRepository,
+			mock(),
+			mock(),
+			mockActiveWorkflowManager,
+		);
 	});
 
 	afterEach(async () => {
@@ -201,5 +212,12 @@ describe('ImportService', () => {
 		const dbTag = await tagRepository.findOneOrFail({ where: { name: tag.name } });
 
 		expect(dbTag.name).toBe(tag.name); // tag created
+	});
+
+	test('should remove workflow from ActiveWorkflowManager when workflow has ID', async () => {
+		const workflowWithId = await createWorkflow({ active: true });
+		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
+
+		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id);
 	});
 });

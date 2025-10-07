@@ -8,6 +8,7 @@ import {
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
@@ -15,6 +16,8 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 import { createMember, createOwner } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
+mockInstance(ActiveWorkflowManager);
+
 const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
