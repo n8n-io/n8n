@@ -163,7 +163,7 @@ async function processEventStream(
 						}
 					}
 				}
-				break
+				break;
 			default:
 				break;
 		}
