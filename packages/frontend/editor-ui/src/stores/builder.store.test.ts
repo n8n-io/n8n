@@ -4,7 +4,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '@/stores/builder.store';
+import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
+
+const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '../__tests__/defaults';
@@ -25,7 +29,7 @@ import {
 } from '@/composables/useWorkflowState';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './chatWindow.store';
+import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './chatPanel.store';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import type {} from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
@@ -162,46 +166,47 @@ describe('AI Builder store', () => {
 
 	it('initializes with default values', () => {
 		const builderStore = useBuilderStore();
+		const chatPanelStore = useChatPanelStore();
 
-		expect(builderStore.chatWidth).toBe(DEFAULT_CHAT_WIDTH);
+		expect(chatPanelStore.width).toBe(DEFAULT_CHAT_WIDTH);
 		expect(builderStore.chatMessages).toEqual([]);
-		expect(builderStore.chatWindowOpen).toBe(false);
+		expect(chatPanelStore.isOpen).toBe(false);
 		expect(builderStore.streaming).toBe(false);
 	});
 
 	it('can change chat width', () => {
-		const builderStore = useBuilderStore();
+		const chatPanelStore = useChatPanelStore();
 
-		builderStore.updateWindowWidth(400);
-		expect(builderStore.chatWidth).toBe(400);
+		chatPanelStore.updateWidth(400);
+		expect(chatPanelStore.width).toBe(400);
 	});
 
 	it('should not allow chat width to be less than the minimal width', () => {
-		const builderStore = useBuilderStore();
+		const chatPanelStore = useChatPanelStore();
 
-		builderStore.updateWindowWidth(100);
-		expect(builderStore.chatWidth).toBe(MIN_CHAT_WIDTH);
+		chatPanelStore.updateWidth(100);
+		expect(chatPanelStore.width).toBe(MIN_CHAT_WIDTH);
 	});
 
 	it('should not allow chat width to be more than the maximal width', () => {
-		const builderStore = useBuilderStore();
+		const chatPanelStore = useChatPanelStore();
 
-		builderStore.updateWindowWidth(2000);
-		expect(builderStore.chatWidth).toBe(MAX_CHAT_WIDTH);
+		chatPanelStore.updateWidth(2000);
+		expect(chatPanelStore.width).toBe(MAX_CHAT_WIDTH);
 	});
 
 	it('should open chat window', async () => {
-		const builderStore = useBuilderStore();
+		const chatPanelStore = useChatPanelStore();
 
-		await builderStore.openChat();
-		expect(builderStore.chatWindowOpen).toBe(true);
+		await chatPanelStore.open({ mode: 'builder' });
+		expect(chatPanelStore.isOpen).toBe(true);
 	});
 
 	it('should close chat window', () => {
-		const builderStore = useBuilderStore();
+		const chatPanelStore = useChatPanelStore();
 
-		builderStore.closeChat();
-		expect(builderStore.chatWindowOpen).toBe(false);
+		chatPanelStore.close();
+		expect(chatPanelStore.isOpen).toBe(false);
 	});
 
 	it('can process a simple assistant message through API', async () => {
@@ -1546,6 +1551,7 @@ describe('AI Builder store', () => {
 
 		it('should call fetchBuilderCredits when opening chat', async () => {
 			const builderStore = useBuilderStore();
+			const chatPanelStore = useChatPanelStore();
 
 			// Mock posthog to return variant for release experiment
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
@@ -1564,7 +1570,7 @@ describe('AI Builder store', () => {
 			// Mock loadSessions to prevent actual API call
 			vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
 
-			await builderStore.openChat();
+			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(mockGetBuilderCredits).toHaveBeenCalled();
 			expect(builderStore.creditsQuota).toBe(100);

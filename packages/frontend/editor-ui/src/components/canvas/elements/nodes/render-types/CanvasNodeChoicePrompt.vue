@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useBuilderStore } from '@/stores/builder.store';
-import { useChatWindowStore } from '@/stores/chatWindow.store';
+import { useChatPanelStore } from '@/stores/chatPanel.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { N8nIcon } from '@n8n/design-system';
 
 const nodeCreatorStore = useNodeCreatorStore();
-const builderStore = useBuilderStore();
-const chatWindowStore = useChatWindowStore();
+const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 
 const isChatWindowOpen = computed(
-	() => chatWindowStore.isOpen && chatWindowStore.isBuilderModeActive,
+	() => chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive,
 );
 
 const onAddFirstStepClick = () => {
@@ -28,11 +26,7 @@ const onAddFirstStepClick = () => {
 };
 
 async function onBuildWithAIClick() {
-	chatWindowStore.toggle('builder');
-	if (chatWindowStore.isOpen && builderStore.chatMessages.length === 0) {
-		await builderStore.fetchBuilderCredits();
-		await builderStore.loadSessions();
-	}
+	await chatPanelStore.toggle({ mode: 'builder' });
 }
 </script>
 

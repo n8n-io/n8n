@@ -21,6 +21,7 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useChatPanelStore } from '@/stores/chatPanel.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
@@ -52,6 +53,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
+const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
 const workflowId = computed(() => workflowsStore.workflowId);
@@ -444,7 +446,7 @@ async function onAskAssistantClick() {
 		});
 		return;
 	}
-	await assistantStore.initErrorHelper(errorHelp);
+	await chatPanelStore.openWithErrorHelper(errorHelp);
 	assistantStore.trackUserOpenedAssistant({
 		source: 'error',
 		task: 'error',

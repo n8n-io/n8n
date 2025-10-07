@@ -31,6 +31,7 @@ import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useChatPanelStore } from '@/stores/chatPanel.store';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
 import {
@@ -82,6 +83,7 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -223,7 +225,7 @@ async function onAskAssistantClick() {
 		});
 		return;
 	}
-	await assistantStore.initCredHelp(props.credentialType);
+	await chatPanelStore.openWithCredHelp(props.credentialType);
 }
 
 watch(showOAuthSuccessBanner, (newValue, oldValue) => {

@@ -12,7 +12,7 @@ import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
-import { useChatWindowStore } from '@/stores/chatWindow.store';
+import { useChatPanelStore } from '@/stores/chatPanel.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
 
@@ -36,7 +36,7 @@ const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 const uiStore = useUIStore();
-const chatWindowStore = useChatWindowStore();
+const chatPanelStore = useChatPanelStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -56,8 +56,8 @@ const nodeCreatorInlineStyle = computed(() => {
 });
 
 function getRightOffset() {
-	if (chatWindowStore.isOpen) {
-		return chatWindowStore.width;
+	if (chatPanelStore.isOpen) {
+		return chatPanelStore.width;
 	}
 
 	return 0;
