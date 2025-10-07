@@ -180,7 +180,7 @@ describe('AuthRolesService', () => {
 			const savedRoles = roleRepository.save.mock.calls[0][0] as Role[];
 			const updatedRole = savedRoles.find((r) => r.slug === roleWithObsoleteScope.slug);
 
-			// CRITICAL: Verify the logic actually filtered out the obsolete scope
+			// Verify the logic actually filtered out the obsolete scope
 			expect(updatedRole?.scopes.length).toBe(1);
 			expect(updatedRole?.scopes[0].slug).toBe(validScope.slug);
 			expect(updatedRole?.scopes.map((s) => s.slug)).not.toContain('obsolete:scope');
@@ -236,7 +236,7 @@ describe('AuthRolesService', () => {
 			const savedRoles = roleRepository.save.mock.calls[0][0] as Role[];
 			expect(savedRoles.length).toBe(3);
 
-			// CRITICAL: Verify each role has the correct scopes after filtering
+			// Verify each role has the correct scopes after filtering
 			savedRoles.forEach((role) => {
 				expect(role.scopes.length).toBe(1);
 				expect(role.scopes[0].slug).toBe(validScope.slug);
@@ -279,7 +279,7 @@ describe('AuthRolesService', () => {
 			//
 			// ASSERT
 			//
-			// CRITICAL: Verify remove was NOT called for valid scopes
+			// Verify remove was NOT called for valid scopes
 			expect(scopeRepository.remove).not.toHaveBeenCalled();
 
 			// Verify all scopes are indeed in ALL_SCOPES
@@ -320,7 +320,7 @@ describe('AuthRolesService', () => {
 			//
 			// ASSERT
 			//
-			// CRITICAL: Verify ONLY obsolete scopes were deleted
+			// Verify ONLY obsolete scopes were deleted
 			expect(scopeRepository.remove).toHaveBeenCalled();
 			const removedScopes = scopeRepository.remove.mock.calls[0][0] as unknown as Scope[];
 
