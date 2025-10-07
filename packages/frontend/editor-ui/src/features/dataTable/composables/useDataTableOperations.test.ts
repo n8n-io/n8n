@@ -12,6 +12,13 @@ vi.mock('@/features/dataTable/dataTable.store', () => ({
 	useDataTableStore: vi.fn(() => ({})),
 }));
 
+vi.mock('@/composables/useToast', () => ({
+	useToast: vi.fn(() => ({
+		showError: vi.fn(),
+		showMessage: vi.fn(),
+	})),
+}));
+
 describe('useDataTableOperations', () => {
 	let params: UseDataTableOperationsParams;
 	let dataTableStore: ReturnType<typeof useDataTableStore>;
@@ -48,6 +55,7 @@ describe('useDataTableOperations', () => {
 			pageSize: ref(10),
 			currentSortBy: ref(''),
 			currentSortOrder: ref(null),
+			currentFilterJSON: ref(undefined),
 			handleClearSelection: vi.fn(),
 			selectedRowIds: ref(new Set()),
 			handleCopyFocusedCell: vi.fn(),
@@ -79,7 +87,10 @@ describe('useDataTableOperations', () => {
 			const { onAddColumn } = useDataTableOperations({ ...params, rowData });
 			const result = await onAddColumn({ name: returnedColumn.name, type: returnedColumn.type });
 			expect(result.success).toBe(true);
-			expect(params.setGridData).toHaveBeenCalledWith({ rowData: [{ id: 1, test: null }] });
+			expect(params.setGridData).toHaveBeenCalledWith({
+				rowData: [{ id: 1, test: null }],
+				colDefs: [],
+			});
 			expect(params.addGridColumn).toHaveBeenCalledWith(returnedColumn);
 		});
 	});
