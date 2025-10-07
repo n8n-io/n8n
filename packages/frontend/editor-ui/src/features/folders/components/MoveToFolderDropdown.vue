@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import type { ChangeLocationSearchResult } from '@/Interface';
-import { useFoldersStore } from '@/stores/folders.store';
+import type { ChangeLocationSearchResult } from '../folders.types';
+import { useFoldersStore } from '../folders.store';
 import { computed, ref, watch } from 'vue';
 
 import { N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';

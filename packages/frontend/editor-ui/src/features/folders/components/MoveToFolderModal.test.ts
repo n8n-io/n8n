@@ -11,18 +11,15 @@ import {
 	type MockedStore,
 } from '@/__tests__/utils';
 import { useUIStore } from '@/stores/ui.store';
-import { MOVE_FOLDER_MODAL_KEY } from '@/constants';
+import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { Project } from '@/types/projects.types';
-import type {
-	ChangeLocationSearchResult,
-	ICredentialsResponse,
-	IUsedCredential,
-} from '@/Interface';
+import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
+import type { ChangeLocationSearchResult } from '../folders.types';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
 import type { EventBus } from '@n8n/utils/dist/event-bus';

@@ -2,22 +2,17 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
-import { EnterpriseEditionFeature, MOVE_FOLDER_MODAL_KEY } from '@/constants';
-import { useFoldersStore } from '@/stores/folders.store';
+import { EnterpriseEditionFeature } from '@/constants';
+import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
+import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
-import {
-	ProjectTypes,
-	type ProjectListItem,
-	type ProjectSharingData,
-} from '@/types/projects.types';
-import type {
-	ChangeLocationSearchResult,
-	ICredentialsResponse,
-	IUsedCredential,
-} from '@/Interface';
+import { ProjectTypes } from '@/types/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
+import type { ChangeLocationSearchResult } from '../folders.types';
+import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import Modal from '@/components/Modal.vue';

@@ -27,7 +27,7 @@ import type { WorkflowResource } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
 import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 
 import {
 	N8nActionToggle,

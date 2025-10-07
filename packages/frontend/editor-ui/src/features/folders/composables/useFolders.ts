@@ -3,22 +3,11 @@ import {
 	FOLDER_NAME_MAX_LENGTH,
 	FOLDER_NAME_ONLY_DOTS_REGEX,
 	ILLEGAL_FOLDER_CHARACTERS,
-} from '@/constants';
+} from '../folders.constants';
 import { useI18n } from '@n8n/i18n';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '../folders.store';
 import { computed } from 'vue';
-
-export type DragTarget = {
-	type: 'folder' | 'workflow';
-	id: string;
-	name: string;
-};
-
-export type DropTarget = {
-	type: 'folder' | 'project';
-	id: string;
-	name: string;
-};
+import type { DragTarget, DropTarget } from '../folders.types';
 
 export function isDropTarget(target: DragTarget | DropTarget): target is DropTarget {
 	return target.type === 'folder' || target.type === 'project';
