@@ -63,7 +63,7 @@ const form = reactive<{
 }>({
 	key: props.variable?.key || '',
 	value: props.variable?.value || '',
-	projectId: props.variable?.project?.id ?? projectsStore.currentProjectId ?? '',
+	projectId: props.variable ? props.variable.project?.id : projectsStore.currentProjectId,
 });
 
 const formValidation = reactive<{
@@ -74,11 +74,8 @@ const formValidation = reactive<{
 	value: false,
 });
 
-const keyExistsInSameProject = computed(() => {
+const keyExistsInSameScope = computed(() => {
 	if (!form.key) return false;
-
-	// Get the current project ID (either from form or from current context)
-	const currentProjectId = form.projectId ?? projectsStore.currentProjectId;
 
 	// Check if a variable with the same key exists in the same project scope
 	const existingVariable = environmentsStore.variables.find((v: EnvironmentVariable) => {
@@ -90,19 +87,21 @@ const keyExistsInSameProject = computed(() => {
 		// Check if the key matches
 		if (v.key !== form.key) return false;
 
-		// Compare project IDs (both null/undefined means global scope)
-		const vProjectId = v.project?.id;
-		return vProjectId === currentProjectId;
+		// Check if both are global (no project)
+		if (!v.project && !form.projectId) return true;
+
+		// Check if both belong to the same project
+		return v.project && v.project?.id === form.projectId;
 	});
 
 	return !!existingVariable;
 });
 
-const globalVariableExists = computed(() => {
-	if (!form.key || keyExistsInSameProject.value) return false;
+const globalVariableExistsWarning = computed(() => {
+	if (!form.key || keyExistsInSameScope.value) return false;
 
-	// Only show warning if the current variable is scoped to a project (not global)
-	const isCurrentVariableGlobal = !form.projectId && !projectsStore.currentProjectId;
+	// Only show warning if the current variable is global
+	const isCurrentVariableGlobal = !form.projectId;
 	if (isCurrentVariableGlobal) return false;
 
 	// Check if a global variable (without project) with the same key exists
@@ -114,7 +113,7 @@ const globalVariableExists = computed(() => {
 });
 
 const isValid = computed(
-	() => Object.values(formValidation).every((value) => value) && !keyExistsInSameProject.value,
+	() => Object.values(formValidation).every((value) => value) && !keyExistsInSameScope.value,
 );
 
 const modalTitle = computed(() =>
@@ -164,11 +163,16 @@ async function handleSubmit() {
 	try {
 		loading.value = true;
 
-		const variablePayload = {
+		const variablePayload: Omit<EnvironmentVariable, 'id' | 'project'> & {
+			projectId?: string | null;
+		} = {
 			key: form.key,
 			value: form.value,
-			...(form.projectId && { projectId: form.projectId }),
 		};
+
+		if (typeof form.projectId !== 'undefined') {
+			variablePayload.projectId = form.projectId;
+		}
 
 		if (props.mode === 'new') {
 			await environmentsStore.createVariable(variablePayload);
@@ -215,7 +219,7 @@ async function handleSubmit() {
 				/>
 
 				<N8nCallout
-					v-if="keyExistsInSameProject"
+					v-if="keyExistsInSameScope"
 					theme="danger"
 					data-test-id="variable-modal-key-exists-error"
 				>
@@ -223,7 +227,7 @@ async function handleSubmit() {
 				</N8nCallout>
 
 				<N8nCallout
-					v-else-if="globalVariableExists"
+					v-else-if="globalVariableExistsWarning"
 					theme="warning"
 					data-test-id="variable-modal-global-exists-warning"
 				>
