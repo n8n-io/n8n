@@ -43,13 +43,12 @@ import type {
 	XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
 import type {
-	CanvasConnectionCreateData,
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
 	ViewportBoundaries,
 } from '@/types';
-import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -74,12 +73,10 @@ import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
-	NodeConnectionTypes,
 	jsonParse,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	isTriggerNode,
-	getNodeOutputs,
 	NodeHelpers,
 } from 'n8n-workflow';
 import type {
@@ -122,11 +119,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import {
-	createCanvasConnectionHandleString,
-	shouldIgnoreCanvasShortcut,
-} from '@/utils/canvasUtils';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { shouldIgnoreCanvasShortcut } from '@/utils/canvasUtils';
 import { getSampleWorkflowByTemplateId } from '@/features/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
