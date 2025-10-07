@@ -3,7 +3,12 @@ import { MCP_STORE } from './mcp.constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { updateMcpSettings, toggleWorkflowMcpAccessApi, fetchApiKey, rotateApiKey } from '@/features/mcpAccess/mcp.api';
+import {
+	updateMcpSettings,
+	toggleWorkflowMcpAccessApi,
+	fetchApiKey,
+	rotateApiKey,
+} from '@/features/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isWorkflowListItem } from '@/utils/typeGuards';
