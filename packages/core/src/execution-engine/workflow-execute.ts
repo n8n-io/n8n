@@ -2405,7 +2405,7 @@ export class WorkflowExecute {
 							await closeFunction;
 						} catch (errorClose) {
 							Logger.error(
-								`There was a problem deactivating trigger of workflow "${workflow.id}": "${errorClose.message}"`,
+								`There was a 'problem' deactivating trigger of workflow "${workflow.id}": "${errorClose.message}"`,
 								{
 									workflowId: workflow.id,
 								},
@@ -2530,7 +2530,13 @@ export class WorkflowExecute {
 		this.moveNodeMetadata();
 		// Prevent from running the hook if the error is an abort error as it was already handled
 		if (!this.isCancelled) {
-			await this.additionalData.hooks?.runHook('sendChunk', [{ type: 'end' }]);
+			const structuredChunk: EndChunk = {
+				type: 'end',
+				metadata: {
+					timestamp: Date.now(),
+				},
+			};
+			await this.additionalData.hooks?.runHook('sendChunk', [structuredChunk]);
 			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
 				fullRunData,
 				newStaticData,
