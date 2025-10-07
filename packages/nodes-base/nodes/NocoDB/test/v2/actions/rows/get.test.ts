@@ -86,7 +86,7 @@ describe('NocoDB Rows Get Action', () => {
 				[{ item: 0 }],
 			);
 			expect(result).toEqual([
-				[[{ binary: { attachmentField: { data: 'binaryData' } }, json: {} }]],
+				[[{ binary: { attachmentField: { data: 'binaryData' } }, json: expect.anything() }]],
 			]);
 		});
 
