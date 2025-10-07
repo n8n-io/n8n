@@ -25,7 +25,7 @@ import {
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
-import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -36,10 +36,10 @@ import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
+import { destinationToFakeINodeUi } from '../logStreaming.utils';
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/components/SaveButton.vue';
-import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
+import EventSelection from './EventSelection.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -47,7 +47,7 @@ import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
-} from './descriptions.ee';
+} from '../logStreaming.constants';
 import { useElementSize } from '@vueuse/core';
 
 import {

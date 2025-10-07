@@ -2,7 +2,7 @@
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { MODAL_CONFIRM } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
-import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useLogStreamingStore } from '../logStreaming.store';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -12,6 +12,7 @@ import { assert } from '@n8n/utils/assert';
 
 import { ElSwitch } from 'element-plus';
 import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
+
 const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
