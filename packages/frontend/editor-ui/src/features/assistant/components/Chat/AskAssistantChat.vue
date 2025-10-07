@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, ref } from 'vue';
+import { computed, ref, useSlots } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
+import AskAssistantSettingsMenu from './AskAssistantSettingsMenu.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -12,6 +13,7 @@ const emit = defineEmits<{
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const slots = useSlots();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
@@ -67,7 +69,7 @@ defineExpose({
 </script>
 
 <template>
-	<div data-test-id="ask-assistant-chat" tabindex="0" class="wrapper" @keydown.stop>
+	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.wrapper" @keydown.stop>
 		<N8nAskAssistantChat
 			ref="n8nChatRef"
 			:user="user"
@@ -81,15 +83,29 @@ defineExpose({
 			@code-undo="undoCodeDiff"
 		>
 			<template #header>
-				<slot name="header" />
+				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
+					<slot name="header" />
+					<AskAssistantSettingsMenu />
+				</div>
 			</template>
 		</N8nAskAssistantChat>
 	</div>
 </template>
 
-<style scoped>
+<style module lang="scss">
 .wrapper {
 	height: 100%;
 	width: 100%;
+}
+
+.header {
+	display: flex;
+	justify-content: end;
+	align-items: center;
+	flex: 1;
+
+	&.with-slot {
+		justify-content: space-between;
+	}
 }
 </style>
