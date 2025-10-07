@@ -135,7 +135,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 			versionId: '70b92d94-0e9a-4b41-9976-a654df420af5',
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.manualTrigger', 'test.unknown'],
 				node_connections: [{ start: '0', end: '1' }],
@@ -176,7 +176,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 			versionId: '70b92d94-0e9a-4b41-9976-a654df420af5',
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: [],
 				node_connections: [],
@@ -192,7 +192,7 @@ describe('generateNodesGraph', () => {
 
 	test('should return node graph when workflow keys are not set', () => {
 		const workflow: Partial<IWorkflowBase> = {};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: [],
 				node_connections: [],
@@ -244,7 +244,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 			versionId: '70b92d94-0e9a-4b41-9976-a654df420af5',
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.manualTrigger', 'test.googleSheets'],
 				node_connections: [{ start: '0', end: '1' }],
@@ -322,7 +322,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 			versionId: '70b92d94-0e9a-4b41-9976-a654df420af5',
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.manualTrigger', 'test.googleSheets'],
 				node_connections: [{ start: '0', end: '1' }],
@@ -396,7 +396,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
 				node_connections: [{ start: '0', end: '1' }],
@@ -470,7 +470,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: false })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: false })).toEqual({
 			nodeGraph: {
 				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
 				node_connections: [{ start: '0', end: '1' }],
@@ -530,7 +530,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['@n8n/n8n-nodes-langchain.agentTool'],
 				node_connections: [],
@@ -575,7 +575,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
 				node_connections: [],
@@ -618,7 +618,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['@n8n/n8n-nodes-langchain.chainSummarization'],
 				node_connections: [],
@@ -658,7 +658,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['@n8n/n8n-nodes-langchain.customTool'],
 				node_connections: [],
@@ -703,7 +703,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['@n8n/n8n-nodes-langchain.chainLlm'],
 				node_connections: [],
@@ -779,7 +779,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 			versionId: '70b92d94-0e9a-4b41-9976-a654df420af5',
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.manualTrigger', 'test.googleSheets'],
@@ -825,7 +825,7 @@ describe('generateNodesGraph', () => {
 				'When clicking "Execute Workflow"': [],
 			},
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nameIndices: {
 				'When clicking "Execute Workflow"': '0',
 			},
@@ -867,7 +867,7 @@ describe('generateNodesGraph', () => {
 			connections: {},
 			pinData: {},
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.webhook'],
@@ -915,7 +915,7 @@ describe('generateNodesGraph', () => {
 			connections: {},
 			pinData: {},
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.httpRequest'],
@@ -970,7 +970,7 @@ describe('generateNodesGraph', () => {
 			connections: {},
 			pinData: {},
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.httpRequest'],
@@ -1117,7 +1117,7 @@ describe('generateNodesGraph', () => {
 			},
 		},
 	])('should return graph with merge v3 node', ({ workflow, expected, isCloudDeployment }) => {
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment })).toEqual(expected);
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment })).toEqual(expected);
 	});
 
 	test('should return graph with http v1 node', () => {
@@ -1138,7 +1138,7 @@ describe('generateNodesGraph', () => {
 			connections: {},
 			pinData: {},
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.httpRequest'],
 				node_connections: [],
@@ -1177,7 +1177,7 @@ describe('generateNodesGraph', () => {
 			connections: {},
 			pinData: {},
 		};
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.httpRequest'],
 				node_connections: [],
@@ -1257,7 +1257,7 @@ describe('generateNodesGraph', () => {
 			},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, {})).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
 			nodeGraph: {
 				node_types: [
 					'n8n-nodes-base.manualTrigger',
@@ -1314,13 +1314,13 @@ describe('generateNodesGraph', () => {
 			throw new ApplicationError('Could not find property option');
 		});
 
-		expect(() => generateNodesGraph(workflow, nodeTypes, {}, {})).not.toThrow();
+		expect(() => generateNodesGraph(workflow, nodeTypes)).not.toThrow();
 	});
 
 	test('should add run and items count', () => {
 		const { workflow, runData } = generateTestWorkflowAndRunData();
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { runData })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { runData })).toEqual({
 			nameIndices: {
 				DebugHelper: '4',
 				'Edit Fields': '1',
@@ -1439,7 +1439,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.evaluation'],
 				node_connections: [],
@@ -1481,7 +1481,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.evaluation'],
 				node_connections: [],
@@ -1528,7 +1528,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 
-		expect(generateNodesGraph(workflow, nodeTypes, {}, { isCloudDeployment: true })).toEqual({
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.evaluation'],
 				node_connections: [],
@@ -1565,7 +1565,7 @@ describe('generateNodesGraph', () => {
 					parameters: {},
 					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
 					name: 'Community Installed Node',
-					type: 'community-installed-node.communityInstalledNode',
+					type: 'n8n-nodes-community-installed-node.communityInstalledNode',
 					typeVersion: 1,
 					position: [200, 200],
 				},
@@ -1573,7 +1573,7 @@ describe('generateNodesGraph', () => {
 					parameters: {},
 					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
 					name: 'Community Installed Node 2',
-					type: 'community-installed-node2.communityInstalledNode',
+					type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
 					typeVersion: 1,
 					position: [300, 300],
 				},
@@ -1591,27 +1591,25 @@ describe('generateNodesGraph', () => {
 		};
 
 		expect(
-			generateNodesGraph(
-				workflow,
-				nodeTypes,
-				{
-					'community-installed-node': {
-						installedVersion: '1.0.0',
-						packageName: 'community-installed-node',
-						installedNodes: [],
-						createdAt: new Date(),
-						updatedAt: new Date(),
-					},
-					'community-installed-node2': {
-						installedVersion: '1.0.1',
-						packageName: 'community-installed-node2',
-						installedNodes: [],
-						createdAt: new Date(),
-						updatedAt: new Date(),
-					},
+			generateNodesGraph(workflow, {
+				...nodeTypes,
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const orig = nodeTypes.getByNameAndVersion(nodeType, version);
+					if (nodeType === 'n8n-nodes-community-installed-node.communityInstalledNode') {
+						return {
+							...orig,
+							packageVersion: '1.0.0',
+						};
+					}
+					if (nodeType === 'n8n-nodes-community-installed-node2.communityInstalledNode') {
+						return {
+							...orig,
+							packageVersion: '1.0.1',
+						};
+					}
+					return orig;
 				},
-				{},
-			),
+			}),
 		).toEqual({
 			evaluationTriggerNodeNames: [],
 			nameIndices: {
@@ -1625,8 +1623,8 @@ describe('generateNodesGraph', () => {
 				is_pinned: false,
 				node_types: [
 					'n8n-nodes-base.manualTrigger',
-					'community-installed-node.communityInstalledNode',
-					'community-installed-node2.communityInstalledNode',
+					'n8n-nodes-community-installed-node.communityInstalledNode',
+					'n8n-nodes-community-installed-node2.communityInstalledNode',
 					'community-missing-node.communityMissingNode',
 				],
 				node_connections: [],
@@ -1639,14 +1637,14 @@ describe('generateNodesGraph', () => {
 					},
 					'1': {
 						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
-						type: 'community-installed-node.communityInstalledNode',
+						type: 'n8n-nodes-community-installed-node.communityInstalledNode',
 						version: 1,
 						position: [200, 200],
 						package_version: '1.0.0',
 					},
 					'2': {
 						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
-						type: 'community-installed-node2.communityInstalledNode',
+						type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
 						version: 1,
 						position: [300, 300],
 						package_version: '1.0.1',
@@ -3053,7 +3051,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			connections: {},
 		};
 
-		const result = generateNodesGraph(workflow, nodeTypes, {}, {});
+		const result = generateNodesGraph(workflow, nodeTypes);
 
 		expect(result.nodeGraph.nodes['0']).toEqual({
 			id: 'agent-id-streaming-disabled',
@@ -3116,7 +3114,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			connections: {},
 		};
 
-		const result = generateNodesGraph(workflow, nodeTypes, {}, {});
+		const result = generateNodesGraph(workflow, nodeTypes);
 
 		expect(result.nodeGraph.nodes['0']).toEqual({
 			id: 'chat-trigger-id',

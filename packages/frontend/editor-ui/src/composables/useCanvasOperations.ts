@@ -122,7 +122,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useParentFolder } from './useParentFolder';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -171,7 +170,6 @@ export function useCanvasOperations() {
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
-	const communityNodesStore = useCommunityNodesStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -1965,7 +1963,6 @@ export function useCanvasOperations() {
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
 							workflowHelpers.getNodeTypes(),
-							communityNodesStore.installedPackages,
 							{
 								nodeIdMap,
 								sourceInstanceId:

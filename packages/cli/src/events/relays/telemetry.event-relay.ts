@@ -9,18 +9,13 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type {
-	CommunityPackageMap,
-	ExecutionStatus,
-	INodesGraphResult,
-	ITelemetryTrackProperties,
-} from 'n8n-workflow';
+import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
-import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
+import { EventRelay } from './event-relay';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -30,7 +25,6 @@ import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shar
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
-import { InstalledPackagesRepository } from '@/modules/community-packages/installed-packages.repository';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
@@ -46,7 +40,6 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly installedPackagesRepository: InstalledPackagesRepository,
 	) {
 		super(eventService);
 	}
@@ -120,14 +113,6 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 		});
-	}
-
-	private async getInstalledPackagesMap(): Promise<CommunityPackageMap> {
-		const installedPackages = await this.installedPackagesRepository.find();
-		return installedPackages.reduce<CommunityPackageMap>((acc, installedPackage) => {
-			acc[installedPackage.packageName] = installedPackage;
-			return acc;
-		}, {});
 	}
 
 	// #endregion
@@ -547,11 +532,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectType,
 		uiContext,
 	}: RelayEventMap['workflow-created']) {
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(
-			workflow,
-			this.nodeTypes,
-			await this.getInstalledPackagesMap(),
-		);
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
 		this.telemetry.track('User created workflow', {
 			user_id: user.id,
@@ -607,14 +588,9 @@ export class TelemetryEventRelay extends EventRelay {
 	private async workflowSaved({ user, workflow, publicApi }: RelayEventMap['workflow-saved']) {
 		const isCloudDeployment = this.globalConfig.deployment.type === 'cloud';
 
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(
-			workflow,
-			this.nodeTypes,
-			await this.getInstalledPackagesMap(),
-			{
-				isCloudDeployment,
-			},
-		);
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+			isCloudDeployment,
+		});
 
 		let userRole: 'owner' | 'sharee' | 'member' | undefined = undefined;
 		const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
@@ -721,14 +697,9 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				if (telemetryProperties.is_manual) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(
-						workflow,
-						this.nodeTypes,
-						await this.getInstalledPackagesMap(),
-						{
-							runData: runData.data.resultData?.runData,
-						},
-					);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
 					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 
@@ -740,14 +711,9 @@ export class TelemetryEventRelay extends EventRelay {
 
 			if (telemetryProperties.is_manual) {
 				if (!nodeGraphResult) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(
-						workflow,
-						this.nodeTypes,
-						await this.getInstalledPackagesMap(),
-						{
-							runData: runData.data.resultData?.runData,
-						},
-					);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 				}
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
@@ -782,14 +748,9 @@ export class TelemetryEventRelay extends EventRelay {
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(
-						workflow,
-						this.nodeTypes,
-						await this.getInstalledPackagesMap(),
-						{
-							runData: runData.data.resultData?.runData,
-						},
-					);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+						runData: runData.data.resultData?.runData,
+					});
 					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 

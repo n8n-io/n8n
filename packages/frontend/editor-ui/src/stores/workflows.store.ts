@@ -102,6 +102,7 @@ import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
 import { useCommunityNodesStore } from './communityNodes.store';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -505,13 +506,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			init: async (): Promise<void> => {},
 			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 				const nodeTypeDescription = nodeTypesStore.getNodeType(nodeType, version);
-
 				if (nodeTypeDescription === null) {
 					return undefined;
 				}
 
+				const packageName = nodeType.split('.')[0];
+				const packageVersion = isCommunityPackageName(packageName)
+					? communityNodesStore.installedPackages[packageName]?.installedVersion
+					: undefined;
+
 				return {
 					description: nodeTypeDescription,
+					packageVersion,
 					// As we do not have the trigger/poll functions available in the frontend
 					// we use the information available to figure out what are trigger nodes
 					// @ts-ignore
@@ -1447,7 +1453,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					TelemetryHelpers.generateNodesGraph(
 						await workflowHelpers.getWorkflowDataToSave(),
 						workflowHelpers.getNodeTypes(),
-						communityNodesStore.installedPackages,
 						{
 							isCloudDeployment: settingsStore.isCloudDeployment,
 						},

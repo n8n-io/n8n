@@ -42,7 +42,7 @@ import type {
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters } from './node-helpers';
-import { jsonParse } from './utils';
+import { isCommunityPackageName, jsonParse } from './utils';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
@@ -170,7 +170,6 @@ function getNumberOfItemsInRuns(runs: ITaskData[]): number {
 export function generateNodesGraph(
 	workflow: Partial<IWorkflowBase>,
 	nodeTypes: INodeTypes,
-	installedNodes: CommunityPackageMap,
 	options?: {
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
@@ -240,6 +239,11 @@ export function generateNodesGraph(
 			version: node.typeVersion,
 			position: node.position,
 		};
+
+		const packageName = node.type.split('.')[0];
+		if (isCommunityPackageName(packageName)) {
+			nodeItem.package_version = nodeTypes.getByNameAndVersion(node.type)?.packageVersion;
+		}
 
 		if (runData?.[node.name]) {
 			const runs = runData[node.name] ?? [];
@@ -537,11 +541,6 @@ export function generateNodesGraph(
 			if (node.type === MERGE_NODE_TYPE && node.parameters?.operation === 'combineBySql') {
 				nodeItem.sql = node.parameters?.query as string;
 			}
-		}
-
-		const packageName = node.type.split('.')[0];
-		if (installedNodes[packageName]) {
-			nodeItem.package_version = installedNodes[packageName].installedVersion;
 		}
 
 		nodeGraph.nodes[index.toString()] = nodeItem;

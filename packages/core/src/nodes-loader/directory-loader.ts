@@ -131,11 +131,15 @@ export abstract class DirectoryLoader {
 	}
 
 	/** Loads a nodes class from a file, fixes icons, and augments the codex */
-	loadNodeFromFile(filePath: string) {
+	loadNodeFromFile(filePath: string, packageVersion?: string) {
 		const tempNode = this.loadClass<INodeType | IVersionedNodeType>(filePath);
 		this.addCodex(tempNode, filePath);
 
 		const nodeType = tempNode.description.name;
+
+		if (packageVersion) {
+			tempNode.packageVersion = packageVersion;
+		}
 
 		if (this.removeNonIncludedNodes && !this.includeNodes.includes(nodeType)) {
 			return;

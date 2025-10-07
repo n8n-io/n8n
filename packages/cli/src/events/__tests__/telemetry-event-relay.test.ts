@@ -3,11 +3,11 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
-	type WorkflowEntity,
-	type IWorkflowDb,
 	type CredentialsRepository,
+	type IWorkflowDb,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
+	type WorkflowEntity,
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
@@ -16,10 +16,10 @@ import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	type INode,
 	type INodesGraphResult,
-	NodeApiError,
-	TelemetryHelpers,
 	type IRun,
 	type IWorkflowBase,
+	NodeApiError,
+	TelemetryHelpers,
 } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
@@ -28,7 +28,6 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
-import type { InstalledPackagesRepository } from '@/modules/community-packages/installed-packages.repository';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -72,7 +71,6 @@ describe('TelemetryEventRelay', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
-	const installedPackagesRepository = mock<InstalledPackagesRepository>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -90,7 +88,6 @@ describe('TelemetryEventRelay', () => {
 			sharedWorkflowRepository,
 			projectRelationRepository,
 			credentialsRepository,
-			installedPackagesRepository,
 		);
 
 		await telemetryEventRelay.init();
@@ -116,7 +113,6 @@ describe('TelemetryEventRelay', () => {
 				sharedWorkflowRepository,
 				projectRelationRepository,
 				credentialsRepository,
-				installedPackagesRepository,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -141,7 +137,6 @@ describe('TelemetryEventRelay', () => {
 				sharedWorkflowRepository,
 				projectRelationRepository,
 				credentialsRepository,
-				installedPackagesRepository,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -705,8 +700,6 @@ describe('TelemetryEventRelay', () => {
 				projectType: 'personal',
 			};
 
-			installedPackagesRepository.find.mockResolvedValue([]);
-
 			eventService.emit('workflow-created', event);
 
 			await flushPromises();
@@ -823,7 +816,6 @@ describe('TelemetryEventRelay', () => {
 				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
 				publicApi: false,
 			};
-			installedPackagesRepository.find.mockResolvedValue([]);
 
 			eventService.emit('workflow-saved', event);
 
@@ -833,58 +825,6 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				workflow_id: 'workflow123',
 				node_graph_string: expect.any(String),
-				notes_count_overlapping: 0,
-				notes_count_non_overlapping: 0,
-				version_cli: expect.any(String),
-				num_tags: 0,
-				public_api: false,
-				sharing_role: undefined,
-			});
-		});
-
-		it('should track on `workflow-saved` event with installed packages', async () => {
-			const event: RelayEventMap['workflow-saved'] = {
-				user: {
-					id: 'user123',
-					email: 'user@example.com',
-					firstName: 'John',
-					lastName: 'Doe',
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-				},
-				workflow: mock<IWorkflowDb>({
-					id: 'workflow123',
-					name: 'Test Workflow',
-					nodes: [
-						{
-							name: 'Test Node',
-							type: 'test-package.test-node',
-						},
-					],
-				}),
-				publicApi: false,
-			};
-			installedPackagesRepository.find.mockResolvedValue([
-				{
-					packageName: 'test-package',
-					installedVersion: '0.0.5',
-					authorName: 'Test Author',
-					authorEmail: 'test@example.com',
-					installedNodes: [],
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					setUpdateDate: () => {},
-				},
-			]);
-
-			eventService.emit('workflow-saved', event);
-
-			await flushPromises();
-
-			expect(installedPackagesRepository.find).toHaveBeenCalled();
-			expect(telemetry.track).toHaveBeenCalledWith('User saved workflow', {
-				user_id: 'user123',
-				workflow_id: 'workflow123',
-				node_graph_string: expect.stringContaining('"package_version":"0.0.5"'),
 				notes_count_overlapping: 0,
 				notes_count_non_overlapping: 0,
 				version_cli: expect.any(String),
@@ -1300,7 +1240,6 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user123',
 				runData: runData as unknown as IRun,
 			};
-			installedPackagesRepository.find.mockResolvedValue([]);
 
 			eventService.emit('workflow-post-execute', event);
 
@@ -1424,7 +1363,6 @@ describe('TelemetryEventRelay', () => {
 
 		it('should call telemetry.track when manual node execution finished with canceled error message', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:owner');
-			installedPackagesRepository.find.mockResolvedValue([]);
 
 			const runData = {
 				status: 'error',
@@ -1525,7 +1463,6 @@ describe('TelemetryEventRelay', () => {
 
 		it('should call telemetry.track when manual workflow execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:owner');
-			installedPackagesRepository.find.mockResolvedValue([]);
 
 			const runData = {
 				status: 'error',
@@ -1633,7 +1570,6 @@ describe('TelemetryEventRelay', () => {
 			credentialsRepository.findOneBy.mockResolvedValue(
 				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: true }),
 			);
-			installedPackagesRepository.find.mockResolvedValue([]);
 
 			const runData = {
 				status: 'error',
@@ -1747,7 +1683,6 @@ describe('TelemetryEventRelay', () => {
 			credentialsRepository.findOneBy.mockResolvedValue(
 				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: true }),
 			);
-			installedPackagesRepository.find.mockResolvedValue([]);
 
 			const runData = {
 				status: 'error',

@@ -48,12 +48,10 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState } from './useWorkflowState';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
-	const communityNodesStore = useCommunityNodesStore();
 	const workflowSaving = useWorkflowSaving({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
 	const toast = useToast();
@@ -546,7 +544,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					TelemetryHelpers.generateNodesGraph(
 						workflowData as IWorkflowBase,
 						workflowHelpers.getNodeTypes(),
-						communityNodesStore.installedPackages,
 						{ isCloudDeployment: settingsStore.isCloudDeployment },
 					).nodeGraph,
 				),

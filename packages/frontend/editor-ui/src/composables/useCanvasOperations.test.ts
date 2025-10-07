@@ -80,7 +80,6 @@ vi.mock('vue-router', () => ({
 }));
 
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -3615,37 +3614,6 @@ describe('useCanvasOperations', () => {
 
 			// Ensure no telemetry was called at all
 			expect(telemetry.track).not.toHaveBeenCalled();
-		});
-
-		it('should use installed packages from community nodes store', async () => {
-			const communityNodesStore = mockedStore(useCommunityNodesStore);
-
-			communityNodesStore.installedPackages = {
-				'test-package': {
-					packageName: 'test-package',
-					installedVersion: '1.0.0',
-					installedNodes: [],
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
-			};
-
-			const telemetry = useTelemetry();
-
-			const canvasOperations = useCanvasOperations();
-			await canvasOperations.importWorkflowData(workflowData, 'duplicate', {
-				trackEvents: true,
-			});
-			expect(vi.mocked(TelemetryHelpers.generateNodesGraph)).toHaveBeenCalledWith(
-				expect.anything(),
-				undefined,
-				communityNodesStore.installedPackages,
-				expect.anything(),
-			);
-			expect(telemetry.track).toHaveBeenCalledWith('User duplicated nodes', {
-				workflow_id: expect.any(String),
-				node_graph_string: expect.any(String),
-			});
 		});
 
 		it('should set workflow name when importing with name', async () => {
