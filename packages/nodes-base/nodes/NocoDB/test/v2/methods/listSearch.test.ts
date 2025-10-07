@@ -1,6 +1,6 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { getWorkspaces, getBases } from '../../../v2/methods/listSearch';
+import { getWorkspaces, getBases, getRelatedTableFields } from '../../../v2/methods/listSearch';
 import * as transport from '../../../v2/transport';
 
 describe('NocoDB List Search Methods', () => {
@@ -244,6 +244,131 @@ describe('NocoDB List Search Methods', () => {
 			apiRequestSpy.mockRejectedValue(new Error('API Error'));
 
 			await expect(getBases.call(mockThis)).rejects.toThrow('Error while fetching bases!');
+		});
+	});
+
+	describe('getRelatedTableFields', () => {
+		it('should return an empty array for version 3', async () => {
+			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+				if (name === 'version') return 3;
+				return undefined;
+			});
+
+			const result = await getRelatedTableFields.call(mockThis);
+
+			expect(result).toEqual({ results: [] });
+		});
+
+		it('should throw an error if no link field is selected', async () => {
+			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+				if (name === 'version') return 4;
+				if (name === 'linkFieldName') return ''; // No link field selected
+				return undefined;
+			});
+
+			await expect(getRelatedTableFields.call(mockThis)).rejects.toThrow('No link field selected!');
+		});
+
+		it('should return related table fields successfully (version 4)', async () => {
+			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
+			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+				if (name === 'version') return 4;
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'linkFieldName') return 'linkField1';
+				return undefined;
+			});
+			apiRequestSpy
+				.mockResolvedValueOnce({ options: { related_table_id: 'relatedTable1' } }) // First API call for link field
+				.mockResolvedValueOnce({
+					fields: [
+						{ id: 'fieldA', title: 'Field A' },
+						{ id: 'fieldB', title: 'Field B' },
+					],
+				}); // Second API call for related table fields
+
+			const result = await getRelatedTableFields.call(mockThis);
+
+			expect(apiRequestSpy).toHaveBeenCalledTimes(2);
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/api/v3/meta/bases/base1/tables/table1/fields/linkField1',
+				{},
+				{},
+			);
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/api/v3/meta/bases/base1/tables/relatedTable1',
+				{},
+				{},
+			);
+			expect(result).toEqual({
+				results: [
+					{ name: 'Field A', value: 'fieldA' },
+					{ name: 'Field B', value: 'fieldB' },
+				],
+			});
+		});
+
+		it('should return empty results if no related_table_id is found', async () => {
+			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
+			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+				if (name === 'version') return 4;
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'linkFieldName') return 'linkField1';
+				return undefined;
+			});
+			apiRequestSpy.mockResolvedValueOnce({ options: {} }); // No related_table_id
+
+			const result = await getRelatedTableFields.call(mockThis);
+
+			expect(apiRequestSpy).toHaveBeenCalledTimes(1);
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/api/v3/meta/bases/base1/tables/table1/fields/linkField1',
+				{},
+				{},
+			);
+			expect(result).toEqual({ results: [] });
+		});
+
+		it('should throw NodeOperationError on first API error', async () => {
+			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
+			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+				if (name === 'version') return 4;
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'linkFieldName') return 'linkField1';
+				return undefined;
+			});
+			apiRequestSpy.mockRejectedValueOnce({
+				messages: ['First API Error'],
+			});
+
+			await expect(getRelatedTableFields.call(mockThis)).rejects.toThrow(
+				'Error while fetching fields: First API Error',
+			);
+		});
+
+		it('should throw NodeOperationError on second API error', async () => {
+			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
+			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+				if (name === 'version') return 4;
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'linkFieldName') return 'linkField1';
+				return undefined;
+			});
+			apiRequestSpy
+				.mockResolvedValueOnce({ options: { related_table_id: 'relatedTable1' } })
+				.mockRejectedValueOnce({
+					messages: ['Second API Error'],
+				});
+
+			await expect(getRelatedTableFields.call(mockThis)).rejects.toThrow(
+				'Error while fetching fields: Second API Error',
+			);
 		});
 	});
 });

@@ -222,20 +222,18 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				// uploadMode = url
 				const url = this.getNodeParameter('url', i) as string;
 				const existingData: IDataObject = await apiRequest.call(this, 'GET', endPoint, body, qs);
-				let field: string | IDataObject[] = (existingData.fields as IDataObject)[uploadFieldName] as
-					| string
-					| IDataObject[];
+				let field: string | IDataObject[] | undefined = (existingData.fields as IDataObject)[
+					uploadFieldName
+				] as string | IDataObject[];
 
 				if (field && typeof field === 'string') {
-					field = JSONSafeParse(field);
+					field = JSONSafeParse<IDataObject[]>(field);
 					if (field && !Array.isArray(field)) {
 						throw new Error('Attachment value need to be an array');
 					}
 				}
 
-				if (!field) {
-					field = [];
-				}
+				field = field ?? [];
 				(field as IDataObject[]).push({
 					url,
 				});

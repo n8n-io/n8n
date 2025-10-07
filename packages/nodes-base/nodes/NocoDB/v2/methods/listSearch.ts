@@ -3,9 +3,11 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
+	NodeApiError,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { parseToApiNodeOperationError } from '../helpers';
 import { ColumnsFetcher } from '../helpers/columns-fetcher';
 import { apiRequest } from '../transport';
 
@@ -137,13 +139,12 @@ export async function getTables(
 					filter && filter !== '' ? results.filter((flt) => flt.name.includes(filter)) : results,
 			};
 		} catch (e) {
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error('Error while fetching tables!', { cause: e }),
-				{
-					level: 'warning',
-				},
-			);
+			throw parseToApiNodeOperationError({
+				error: e as NodeApiError,
+				errorLevel: 'warning',
+				subject: 'Error while fetching tables:',
+				node: this.getNode(),
+			});
 		}
 	} else {
 		throw new NodeOperationError(this.getNode(), 'No base selected!', {
@@ -211,14 +212,12 @@ export async function getViews(
 						: results,
 			};
 		} catch (e) {
-			const message = e.messages?.[0] ?? '';
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error(`Error while fetching views: ${message}`, { cause: e }),
-				{
-					level: 'warning',
-				},
-			);
+			throw parseToApiNodeOperationError({
+				error: e as NodeApiError,
+				errorLevel: 'warning',
+				subject: 'Error while fetching views:',
+				node: this.getNode(),
+			});
 		}
 	} else {
 		throw new NodeOperationError(this.getNode(), 'No table selected!', {
@@ -262,14 +261,12 @@ export async function getFields(
 						: results,
 			};
 		} catch (e) {
-			const message = e.messages?.[0] ?? '';
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error(`Error while fetching fields: ${message}`, { cause: e }),
-				{
-					level: 'warning',
-				},
-			);
+			throw parseToApiNodeOperationError({
+				error: e as NodeApiError,
+				errorLevel: 'warning',
+				subject: 'Error while fetching fields:',
+				node: this.getNode(),
+			});
 		}
 	} else {
 		throw new NodeOperationError(this.getNode(), 'No table selected!', {
@@ -320,13 +317,12 @@ export async function getTriggerFields(
 						: results,
 			};
 		} catch (e) {
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error(`Error while fetching fields! ${e.message}`, { cause: e }),
-				{
-					level: 'warning',
-				},
-			);
+			throw parseToApiNodeOperationError({
+				error: e as NodeApiError,
+				errorLevel: 'warning',
+				subject: 'Error while fetching fields:',
+				node: this.getNode(),
+			});
 		}
 	} else {
 		throw new NodeOperationError(this.getNode(), 'No table selected!', {
@@ -369,13 +365,12 @@ export async function getDownloadFieldsId(
 				}),
 		};
 	} catch (e) {
-		throw new NodeOperationError(
-			this.getNode(),
-			new Error(`Error while fetching fields! ${e.message}`, { cause: e }),
-			{
-				level: 'warning',
-			},
-		);
+		throw parseToApiNodeOperationError({
+			error: e as NodeApiError,
+			errorLevel: 'warning',
+			subject: 'Error while fetching fields:',
+			node: this.getNode(),
+		});
 	}
 }
 
@@ -403,13 +398,12 @@ export async function getLinkFieldsId(
 				}),
 		};
 	} catch (e) {
-		throw new NodeOperationError(
-			this.getNode(),
-			new Error(`Error while fetching fields! ${e.message}`, { cause: e }),
-			{
-				level: 'warning',
-			},
-		);
+		throw parseToApiNodeOperationError({
+			error: e as NodeApiError,
+			errorLevel: 'warning',
+			subject: 'Error while fetching fields:',
+			node: this.getNode(),
+		});
 	}
 }
 
@@ -426,11 +420,14 @@ export async function getRelatedTableFields(
 	const linkFieldName = this.getNodeParameter('linkFieldName', 0, {
 		extractValue: true,
 	}) as string;
+	const tableId = this.getNodeParameter('table', 0, {
+		extractValue: true,
+	}) as string;
 
 	if (linkFieldName) {
 		try {
 			const requestMethod = 'GET';
-			let endpoint = `/api/v3/meta/bases/${baseId}/fields/${linkFieldName}`;
+			let endpoint = `/api/v3/meta/bases/${baseId}/tables/${tableId}/fields/${linkFieldName}`;
 			let responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 			const relatedTableId = responseData.options?.related_table_id;
 			if (!relatedTableId) {
@@ -449,17 +446,15 @@ export async function getRelatedTableFields(
 				}),
 			};
 		} catch (e) {
-			const message = e.messages?.[0] ?? '';
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error(`Error while fetching fields: ${message}`, { cause: e }),
-				{
-					level: 'warning',
-				},
-			);
+			throw parseToApiNodeOperationError({
+				error: e as NodeApiError,
+				errorLevel: 'warning',
+				subject: 'Error while fetching fields:',
+				node: this.getNode(),
+			});
 		}
 	} else {
-		throw new NodeOperationError(this.getNode(), 'No table selected!', {
+		throw new NodeOperationError(this.getNode(), 'No link field selected!', {
 			level: 'warning',
 		});
 	}
