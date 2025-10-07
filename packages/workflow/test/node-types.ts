@@ -1405,6 +1405,7 @@ export class NodeTypes implements INodeTypes {
 				properties: [],
 				name: nodeType,
 			},
+			packageVersion: undefined,
 		});
 	}
 

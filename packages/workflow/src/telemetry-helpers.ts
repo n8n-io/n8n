@@ -41,7 +41,7 @@ import type {
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters } from './node-helpers';
-import { isCommunityPackageName, jsonParse } from './utils';
+import { jsonParse } from './utils';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
@@ -239,9 +239,10 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
-		const packageName = node.type.split('.')[0];
-		if (isCommunityPackageName(packageName)) {
-			nodeItem.package_version = nodeTypes.getByNameAndVersion(node.type)?.packageVersion;
+		// package version is present only for community nodes
+		const packageVersion = nodeTypes.getByNameAndVersion(node.type)?.packageVersion;
+		if (packageVersion) {
+			nodeItem.package_version = packageVersion;
 		}
 
 		if (runData?.[node.name]) {
