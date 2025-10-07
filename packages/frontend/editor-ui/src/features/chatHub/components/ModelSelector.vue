@@ -1,31 +1,50 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed } from 'vue';
 import { N8nText } from '@n8n/design-system';
-import type { Model } from '../chat.types';
+import type { ChatHubConversationModel } from '../chat.types';
 
-defineProps<{
+const props = defineProps<{
 	disabled?: boolean;
+	models: ChatHubConversationModel[];
+	selectedModel?: ChatHubConversationModel;
 }>();
 
 const emit = defineEmits<{
-	change: [Model];
+	change: [ChatHubConversationModel];
 }>();
 
-const selectedModel = ref<string>('gpt-4');
-const selectedProvider = ref<string>('openai');
+const providers = computed(() => {
+	const uniqueProviders = new Set(props.models.map((m) => m.provider));
+	return Array.from(uniqueProviders);
+});
 
-watch(selectedProvider, (newProvider) => {
-	if (newProvider === 'openai') {
-		selectedModel.value = 'gpt-4';
-	} else if (newProvider === 'anthropic') {
-		selectedModel.value = 'claude-3-5-sonnet-20241022';
+const selectedProvider = computed(() => {
+	return props.selectedModel?.provider ?? props.models[0]?.provider ?? '';
+});
+
+const filteredModels = computed(() => {
+	return props.models.filter((m) => m.provider === selectedProvider.value);
+});
+
+const selectedModelKey = computed(() => {
+	if (!props.selectedModel) return '';
+	return `${props.selectedModel.provider}-${props.selectedModel.model}`;
+});
+
+function onProviderChange(provider: string) {
+	const firstModel = props.models.find((m) => m.provider === provider);
+	if (firstModel) {
+		emit('change', firstModel);
 	}
-	emit('change', { provider: newProvider, model: selectedModel.value });
-});
+}
 
-watch(selectedModel, (newModel) => {
-	emit('change', { provider: selectedProvider.value, model: newModel });
-});
+function onModelChange(modelKey: string) {
+	const [provider, model] = modelKey.split('-');
+	const selectedModel = props.models.find((m) => m.provider === provider && m.model === model);
+	if (selectedModel) {
+		emit('change', selectedModel);
+	}
+}
 </script>
 
 <template>
@@ -33,22 +52,31 @@ watch(selectedModel, (newModel) => {
 		<label :class="$style.modelLabel">
 			<N8nText size="small" color="text-base">Model:</N8nText>
 		</label>
-		<select v-model="selectedProvider" :class="$style.modelSelect" :disabled="disabled">
-			<option value="openai">OpenAI</option>
-			<option value="anthropic">Claude</option>
+		<select
+			:model-value="selectedProvider"
+			:class="$style.modelSelect"
+			:disabled="disabled || models.length === 0"
+			@change="onProviderChange(($event.target as HTMLSelectElement).value)"
+		>
+			<option v-for="provider in providers" :key="provider" :value="provider">
+				{{
+					models.find((m) => m.provider === provider)?.providerDisplayName ||
+					provider.charAt(0).toUpperCase() + provider.slice(1)
+				}}
+			</option>
 		</select>
-		<select v-model="selectedModel" :class="$style.modelSelect" :disabled="disabled">
-			<option v-if="selectedProvider === 'openai'" value="gpt-4">GPT-4</option>
-			<option v-if="selectedProvider === 'openai'" value="gpt-4-turbo">GPT-4 Turbo</option>
-			<option v-if="selectedProvider === 'openai'" value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-			<option v-if="selectedProvider === 'anthropic'" value="claude-3-5-sonnet-20241022">
-				Claude 3.5 Sonnet
-			</option>
-			<option v-if="selectedProvider === 'anthropic'" value="claude-3-opus-20240229">
-				Claude 3 Opus
-			</option>
-			<option v-if="selectedProvider === 'anthropic'" value="claude-3-haiku-20240307">
-				Claude 3 Haiku
+		<select
+			:model-value="selectedModelKey"
+			:class="$style.modelSelect"
+			:disabled="disabled || models.length === 0"
+			@change="onModelChange(($event.target as HTMLSelectElement).value)"
+		>
+			<option
+				v-for="model in filteredModels"
+				:key="`${model.provider}-${model.model}`"
+				:value="`${model.provider}-${model.model}`"
+			>
+				{{ model.displayName || model.model }}
 			</option>
 		</select>
 	</div>
@@ -57,17 +85,13 @@ watch(selectedModel, (newModel) => {
 <style lang="scss" module>
 .modelSelectorFixed {
 	position: absolute;
-	top: var(--spacing-m);
-	left: var(--spacing-m);
+	top: 0;
+	left: 0;
 	z-index: 100;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-s);
 	padding: var(--spacing-xs) var(--spacing-s);
-	background: var(--color-background-light);
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .modelLabel {

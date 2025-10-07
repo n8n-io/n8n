@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { ChatConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { OpenAiChatAgent } from '@n8n/chat-hub';
+import type { ChatHubConversationModel } from '@n8n/api-types';
 
 import { type ChatPayload } from './chat-hub.types';
 
@@ -19,8 +20,69 @@ export class ChatHubService {
 		});
 	}
 
-	async getModels() {
-		return await Promise.resolve(['gpt-3.5-turbo', 'gpt-4']);
+	async getModels(): Promise<ChatHubConversationModel[]> {
+		return await Promise.resolve([
+			{
+				provider: 'openai',
+				providerDisplayName: 'OpenAI',
+				model: 'gpt-4',
+				displayName: 'GPT-4',
+			},
+			{
+				provider: 'openai',
+				providerDisplayName: 'OpenAI',
+				model: 'gpt-4-turbo',
+				displayName: 'GPT-4 Turbo',
+			},
+			{
+				provider: 'openai',
+				providerDisplayName: 'OpenAI',
+				model: 'gpt-3.5-turbo',
+				displayName: 'GPT-3.5 Turbo',
+			},
+			{
+				provider: 'anthropic',
+				providerDisplayName: 'Anthropic',
+				model: 'claude-3-5-sonnet-20241022',
+				displayName: 'Claude 3.5 Sonnet',
+			},
+			{
+				provider: 'anthropic',
+				providerDisplayName: 'Anthropic',
+				model: 'claude-3-opus-20240229',
+				displayName: 'Claude 3 Opus',
+			},
+			{
+				provider: 'anthropic',
+				providerDisplayName: 'Anthropic',
+				model: 'claude-3-haiku-20240307',
+				displayName: 'Claude 3 Haiku',
+			},
+			{
+				provider: 'google',
+				providerDisplayName: 'Google',
+				model: 'gemini-1.5-pro',
+				displayName: 'Gemini 1.5 Pro',
+			},
+			{
+				provider: 'google',
+				providerDisplayName: 'Google',
+				model: 'gemini-1.5-flash',
+				displayName: 'Gemini 1.5 Flash',
+			},
+			{
+				provider: 'mistral',
+				providerDisplayName: 'Mistral AI',
+				model: 'mistral-large-latest',
+				displayName: 'Mistral Large',
+			},
+			{
+				provider: 'mistral',
+				providerDisplayName: 'Mistral AI',
+				model: 'mistral-small-latest',
+				displayName: 'Mistral Small',
+			},
+		]);
 	}
 
 	async *ask(payload: ChatPayload, abortSignal?: AbortSignal) {

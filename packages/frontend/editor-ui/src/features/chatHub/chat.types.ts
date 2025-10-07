@@ -1,7 +1,4 @@
-export interface Model {
-	provider: string;
-	model: string;
-}
+export type { ChatHubConversationModel } from '@n8n/api-types';
 
 export interface UserMessage {
 	id: string;

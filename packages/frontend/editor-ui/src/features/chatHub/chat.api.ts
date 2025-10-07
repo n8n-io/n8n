@@ -1,10 +1,10 @@
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { StreamOutput } from './chat.types';
+import type { StreamOutput, ChatHubConversationModel } from './chat.types';
 
-export const fetchChatModelsApi = async (context: IRestApiContext, provider: 'openai') => {
-	const apiEndpoint = `/chat/agents/models/${provider}`;
-	return await makeRestApiRequest<string[]>(context, 'GET', apiEndpoint);
+export const fetchChatModelsApi = async (context: IRestApiContext) => {
+	const apiEndpoint = '/chat/models';
+	return await makeRestApiRequest<ChatHubConversationModel[]>(context, 'GET', apiEndpoint);
 };
 
 export const messageChatApi = (

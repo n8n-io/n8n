@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
@@ -9,13 +9,20 @@ import ModelSelector from './components/ModelSelector.vue';
 
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { ChatMessage, Model } from './chat.types';
+import type { ChatHubConversationModel, ChatMessage } from './chat.types';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 
 const chatStore = useChatStore();
 const userStore = useUsersStore();
+
+onMounted(async () => {
+	await chatStore.fetchChatModels();
+	if (chatStore.models.length > 0) {
+		selectedModel.value = chatStore.models[0];
+	}
+});
 
 type Suggestion = {
 	title: string;
@@ -27,7 +34,7 @@ const message = ref('');
 const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
-const selectedModel = ref<Model>({
+const selectedModel = ref<ChatHubConversationModel>({
 	provider: 'openai',
 	model: 'gpt-4',
 });
@@ -90,7 +97,7 @@ watch(
 	{ immediate: true, deep: true },
 );
 
-function onModelChange(selection: Model) {
+function onModelChange(selection: ChatHubConversationModel) {
 	selectedModel.value = selection;
 }
 
@@ -136,7 +143,12 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 <template>
 	<PageViewLayout>
-		<ModelSelector :disabled="chatStore.isResponding" @change="onModelChange" />
+		<ModelSelector
+			:models="chatStore.models"
+			:selected-model="selectedModel"
+			:disabled="chatStore.isResponding"
+			@change="onModelChange"
+		/>
 		<div
 			:class="{
 				[$style.content]: true,
