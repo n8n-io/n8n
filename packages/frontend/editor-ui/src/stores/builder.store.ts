@@ -31,7 +31,7 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { useCredentialsStore } from './credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/utils/typesUtils';
-import { chatPanelState } from '@/utils/chatPanelUtils';
+import { useChatPanelStateStore } from '@/stores/chatPanelState.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -47,6 +47,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsClaimed = ref<number | undefined>();
 
 	// Store dependencies
+	const chatPanelStateStore = useChatPanelStateStore();
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
@@ -94,8 +95,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const isAssistantOpen = computed(
 		() =>
 			canShowAssistant.value &&
-			chatPanelState.isOpen.value &&
-			chatPanelState.activeMode.value === 'builder',
+			chatPanelStateStore.isOpen &&
+			chatPanelStateStore.activeMode === 'builder',
 	);
 
 	const isAIBuilderEnabled = computed(() => {

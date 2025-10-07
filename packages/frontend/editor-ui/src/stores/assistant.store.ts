@@ -30,7 +30,7 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
-import { chatPanelState } from '@/utils/chatPanelUtils';
+import { useChatPanelStateStore } from '@/stores/chatPanelState.store';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
@@ -38,6 +38,7 @@ const READABLE_TYPES = ['code-diff', 'text', 'block'];
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
+	const chatPanelStateStore = useChatPanelStateStore();
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
@@ -91,8 +92,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const isAssistantOpen = computed(
 		() =>
 			canShowAssistant.value &&
-			chatPanelState.isOpen.value &&
-			chatPanelState.activeMode.value === 'assistant',
+			chatPanelStateStore.isOpen &&
+			chatPanelStateStore.activeMode === 'assistant',
 	);
 
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
@@ -136,7 +137,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
-		const read = chatPanelState.isOpen.value && chatPanelState.activeMode.value === 'assistant';
+		const read = chatPanelStateStore.isOpen && chatPanelStateStore.activeMode === 'assistant';
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);

@@ -6,7 +6,7 @@ import { useRoute } from 'vue-router';
 import { ASK_AI_SLIDE_OUT_DURATION_MS } from '@/constants';
 import type { VIEWS } from '@/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
-import { chatPanelState, type ChatPanelMode } from '@/utils/chatPanelUtils';
+import { useChatPanelStateStore, type ChatPanelMode } from '@/stores/chatPanelState.store';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 import type { ICredentialType } from 'n8n-workflow';
@@ -16,28 +16,28 @@ export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
 export const DEFAULT_CHAT_WIDTH = 400;
 
-export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
+export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const uiStore = useUIStore();
 	const route = useRoute();
-
-	// Use shared state to avoid circular dependencies
-	const { isOpen, width, activeMode } = chatPanelState;
+	const chatPanelStateStore = useChatPanelStateStore();
 
 	// Computed
-	const isAssistantModeActive = computed(() => activeMode.value === 'assistant');
-	const isBuilderModeActive = computed(() => activeMode.value === 'builder');
+	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
+	const isBuilderModeActive = computed(() => chatPanelStateStore.activeMode === 'builder');
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode }) {
 		const mode = options?.mode;
 		if (mode) {
-			activeMode.value = mode;
+			chatPanelStateStore.activeMode = mode;
 		}
 
 		// Check if the mode is enabled in the current view
 		const enabledViews =
-			activeMode.value === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
-		const currentRoute = route.name;
+			chatPanelStateStore.activeMode === 'assistant'
+				? ASSISTANT_ENABLED_VIEWS
+				: BUILDER_ENABLED_VIEWS;
+		const currentRoute = route?.name;
 
 		if (!currentRoute || !enabledViews.includes(currentRoute as VIEWS)) {
 			// Mode is not enabled in current view, close the panel instead
@@ -46,12 +46,12 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 		}
 
 		// Handle mode-specific initialization
-		if (activeMode.value === 'builder') {
+		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
 			builderStore.chatMessages = [];
 			await builderStore.fetchBuilderCredits();
 			await builderStore.loadSessions();
-		} else if (activeMode.value === 'assistant') {
+		} else if (chatPanelStateStore.activeMode === 'assistant') {
 			const assistantStore = useAssistantStore();
 			assistantStore.chatMessages = assistantStore.chatMessages.map((msg) => ({
 				...msg,
@@ -59,16 +59,16 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 			}));
 		}
 
-		isOpen.value = true;
+		chatPanelStateStore.isOpen = true;
 		// Update UI grid dimensions when opening
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,
-			width: window.innerWidth - width.value,
+			width: window.innerWidth - chatPanelStateStore.width,
 		};
 	}
 
 	function close() {
-		isOpen.value = false;
+		chatPanelStateStore.isOpen = false;
 		// Wait for slide animation to finish before updating grid width and resetting
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
@@ -90,7 +90,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 	}
 
 	async function toggle(options?: { mode?: ChatPanelMode }) {
-		if (isOpen.value) {
+		if (chatPanelStateStore.isOpen) {
 			close();
 		} else {
 			await open(options);
@@ -100,7 +100,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 	function switchMode(mode: ChatPanelMode) {
 		// Check if the mode is enabled in the current view
 		const enabledViews = mode === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
-		const currentRoute = route.name;
+		const currentRoute = route?.name;
 
 		if (!currentRoute || !enabledViews.includes(currentRoute as VIEWS)) {
 			// Mode is not enabled in current view, close the panel
@@ -109,13 +109,13 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 		}
 
 		// Switch the mode without re-initialization
-		activeMode.value = mode;
+		chatPanelStateStore.activeMode = mode;
 	}
 
 	function updateWidth(newWidth: number) {
 		const clampedWidth = Math.min(Math.max(newWidth, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
-		width.value = clampedWidth;
-		if (isOpen.value) {
+		chatPanelStateStore.width = clampedWidth;
+		if (chatPanelStateStore.isOpen) {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth - clampedWidth,
@@ -143,15 +143,17 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 
 	// Watch route changes and close if panel can't be shown in current view
 	watch(
-		() => route.name,
+		() => route?.name,
 		(newRoute) => {
-			if (!isOpen.value || !newRoute) {
+			if (!chatPanelStateStore.isOpen || !newRoute) {
 				return;
 			}
 			const builderStore = useBuilderStore();
 
 			const enabledViews =
-				activeMode.value === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
+				chatPanelStateStore.activeMode === 'assistant'
+					? ASSISTANT_ENABLED_VIEWS
+					: BUILDER_ENABLED_VIEWS;
 
 			if (!enabledViews.includes(newRoute as VIEWS)) {
 				close();
@@ -163,10 +165,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 	);
 
 	return {
-		// State
-		isOpen,
-		width,
-		activeMode,
+		// State - expose from chatPanelStateStore
+		isOpen: computed(() => chatPanelStateStore.isOpen),
+		width: computed(() => chatPanelStateStore.width),
+		activeMode: computed(() => chatPanelStateStore.activeMode),
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
