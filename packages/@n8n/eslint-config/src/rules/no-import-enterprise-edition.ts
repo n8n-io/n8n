@@ -5,7 +5,7 @@ export const NoImportEnterpriseEditionRule = ESLintUtils.RuleCreator.withoutDocs
 		type: 'problem',
 		docs: {
 			description:
-				'Disallow imports from .ee directories in non-enteprise code. Only code in .ee directories can import from other .ee directories.',
+				'Disallow imports from .ee directories in non-enterprise code. Only code in .ee directories can import from other .ee directories.',
 		},
 		messages: {
 			noImportEnterpriseEdition:
