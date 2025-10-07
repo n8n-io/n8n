@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useRoute } from 'vue-router';

@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useSSOStore, SupportedProtocols } from '@/stores/sso.store';
+import { useSSOStore, SupportedProtocols } from '@/features/sso/sso.store';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 
 let ssoStore: ReturnType<typeof useSSOStore>;
