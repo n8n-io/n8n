@@ -8,8 +8,8 @@ import { DataTableService } from './data-table.service';
 @RestController('/data-tables-global')
 export class DataTableAggregateController {
 	constructor(
-		private readonly dataStoreAggregateService: DataTableAggregateService,
-		private readonly dataStoreService: DataTableService,
+		private readonly dataTableAggregateService: DataTableAggregateService,
+		private readonly dataTableService: DataTableService,
 	) {}
 
 	@Get('/')
@@ -19,12 +19,12 @@ export class DataTableAggregateController {
 		_res: Response,
 		@Query payload: ListDataTableQueryDto,
 	) {
-		return await this.dataStoreAggregateService.getManyAndCount(req.user, payload);
+		return await this.dataTableAggregateService.getManyAndCount(req.user, payload);
 	}
 
 	@Get('/limits')
 	@GlobalScope('dataStore:list')
 	async getDataTablesSize(req: AuthenticatedRequest) {
-		return await this.dataStoreService.getDataTablesSize(req.user);
+		return await this.dataTableService.getDataTablesSize(req.user);
 	}
 }

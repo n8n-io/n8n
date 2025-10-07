@@ -38,12 +38,14 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		securityAudit: {},
 		folder: {},
 		insights: {},
+		// TODO
 		dataStore: {},
 		execution: {},
 		workflowTags: {},
 		role: {},
 		mcp: {},
 		mcpApiKey: {},
+		chatHub: {},
 	});
 
 	function addGlobalRole(role: Role) {

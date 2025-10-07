@@ -13,7 +13,7 @@ export type FlushableResponse = Response & { flush: () => void };
 
 const getAuthMiddleware = () => Container.get(McpServerApiKeyService).getAuthMiddleware();
 
-@RootLevelController('/mcp-access')
+@RootLevelController('/mcp-server')
 export class McpController {
 	constructor(
 		private readonly errorReporter: ErrorReporter,
