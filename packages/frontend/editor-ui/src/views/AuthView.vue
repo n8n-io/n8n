@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nLogo } from '@n8n/design-system';
-import SSOLogin from '@/components/SSOLogin.vue';
+import SSOLogin from '@/features/sso/components/SSOLogin.vue';
 import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { EmailOrLdapLoginIdAndPassword } from './SigninView.vue';

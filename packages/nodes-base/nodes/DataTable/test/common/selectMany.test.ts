@@ -1,7 +1,7 @@
 import {
 	type INode,
 	NodeOperationError,
-	type IDataStoreProjectService,
+	type IDataTableProjectService,
 	type IExecuteFunctions,
 } from 'n8n-workflow';
 
@@ -13,9 +13,9 @@ import { executeSelectMany, getSelectFilter } from '../../common/selectMany';
 describe('selectMany utils', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 	const getManyRowsAndCount = jest.fn();
-	const dataStoreProxy = jest.mocked<IDataStoreProjectService>({
+	const dataTableProxy = jest.mocked<IDataTableProjectService>({
 		getManyRowsAndCount,
-	} as unknown as IDataStoreProjectService);
+	} as unknown as IDataTableProjectService);
 	const dataTableId = 2345;
 	let filters: FieldEntry[];
 	const node = { id: 1 } as unknown as INode;
@@ -29,7 +29,7 @@ describe('selectMany utils', () => {
 			},
 		];
 
-		const mockDataStoreProxy = {
+		const mockDataTableProxy = {
 			getColumns: jest.fn().mockResolvedValue([
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
@@ -50,7 +50,7 @@ describe('selectMany utils', () => {
 				}
 			}),
 			helpers: {
-				getDataStoreProxy: jest.fn().mockResolvedValue(mockDataStoreProxy),
+				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
 			},
 		} as unknown as IExecuteFunctions;
 
@@ -63,7 +63,7 @@ describe('selectMany utils', () => {
 			getManyRowsAndCount.mockReturnValue({ data: [{ id: 1 }], count: 1 });
 
 			// ACT
-			const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 			// ASSERT
 			expect(result).toEqual([{ json: { id: 1 } }]);
@@ -88,7 +88,7 @@ describe('selectMany utils', () => {
 			filters = [];
 
 			// ACT
-			const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 			// ASSERT
 			expect(result.length).toBe(2345);
@@ -101,7 +101,7 @@ describe('selectMany utils', () => {
 			getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, colA: null }], count: 1 });
 
 			// ACT
-			const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 			// ASSERT
 			expect(result).toEqual([{ json: { id: 1, colA: null } }]);
@@ -121,7 +121,7 @@ describe('selectMany utils', () => {
 			filters = [];
 
 			// ACT ASSERT
-			await expect(executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy)).rejects.toEqual(
+			await expect(executeSelectMany(mockExecuteFunctions, 0, dataTableProxy)).rejects.toEqual(
 				new NodeOperationError(
 					node,
 					'synchronization error: result count changed during pagination',
@@ -136,7 +136,7 @@ describe('selectMany utils', () => {
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'John' }], count: 1 });
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, name: 'John' } }]);
@@ -148,7 +148,7 @@ describe('selectMany utils', () => {
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'Jane' }], count: 1 });
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, name: 'Jane' } }]);
@@ -160,7 +160,7 @@ describe('selectMany utils', () => {
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, age: 30 }], count: 1 });
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, age: 30 } }]);
@@ -178,7 +178,7 @@ describe('selectMany utils', () => {
 				});
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, age: 25 } }, { json: { id: 2, age: 30 } }]);
@@ -190,7 +190,7 @@ describe('selectMany utils', () => {
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, age: 25 }], count: 1 });
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, age: 25 } }]);
@@ -208,7 +208,7 @@ describe('selectMany utils', () => {
 				});
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, age: 25 } }, { json: { id: 2, age: 30 } }]);
@@ -220,7 +220,7 @@ describe('selectMany utils', () => {
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'Anne-Marie' }], count: 1 });
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, name: 'Anne-Marie' } }]);
@@ -232,7 +232,7 @@ describe('selectMany utils', () => {
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'Anne-Marie' }], count: 1 });
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, name: 'Anne-Marie' } }]);
@@ -250,7 +250,7 @@ describe('selectMany utils', () => {
 				});
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
@@ -278,7 +278,7 @@ describe('selectMany utils', () => {
 				});
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
@@ -306,7 +306,7 @@ describe('selectMany utils', () => {
 				});
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([]);
@@ -334,7 +334,7 @@ describe('selectMany utils', () => {
 				});
 
 				// ACT
-				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
 
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
