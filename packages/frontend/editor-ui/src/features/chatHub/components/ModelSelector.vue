@@ -43,8 +43,12 @@ function onProviderChange(provider: string) {
 	}
 }
 
-function onModelChange(modelKey: string) {
-	const [provider, model] = modelKey.split('-');
+function onModelChange(event: Event) {
+	const target = event.target as HTMLSelectElement;
+	const selectedOption = target.options[target.selectedIndex];
+	const provider = selectedOption.dataset.provider;
+	const model = selectedOption.dataset.model;
+
 	const selectedModel = props.models.find((m) => m.provider === provider && m.model === model);
 	if (selectedModel) {
 		emit('change', selectedModel);
@@ -74,12 +78,14 @@ function onModelChange(modelKey: string) {
 			:model-value="selectedModelKey"
 			:class="$style.modelSelect"
 			:disabled="disabled || models.length === 0"
-			@change="onModelChange(($event.target as HTMLSelectElement).value)"
+			@change="onModelChange"
 		>
 			<option
 				v-for="model in filteredModels"
 				:key="`${model.provider}-${model.model}`"
 				:value="`${model.provider}-${model.model}`"
+				:data-provider="model.provider"
+				:data-model="model.model"
 			>
 				{{ model.displayName || model.model }}
 				{{ isModelAvailable(model) ? '' : ' 🔒' }}

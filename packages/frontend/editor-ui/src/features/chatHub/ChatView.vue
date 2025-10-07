@@ -10,6 +10,7 @@ import ModelSelector from './components/ModelSelector.vue';
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUIStore } from '@/stores/ui.store';
 import type { ChatHubConversationModel, ChatMessage } from './chat.types';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
@@ -18,9 +19,14 @@ import type MarkdownIt from 'markdown-it';
 const chatStore = useChatStore();
 const userStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
+const uiStore = useUIStore();
 
 onMounted(async () => {
-	await Promise.all([credentialsStore.fetchAllCredentials(), chatStore.fetchChatModels()]);
+	await Promise.all([
+		credentialsStore.fetchCredentialTypes(false),
+		credentialsStore.fetchAllCredentials(),
+		chatStore.fetchChatModels(),
+	]);
 	if (chatStore.availableModels.length > 0) {
 		selectedModel.value = chatStore.availableModels[0];
 	}
@@ -36,11 +42,7 @@ const message = ref('');
 const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
-const selectedModel = ref<ChatHubConversationModel>({
-	provider: 'openai',
-	model: 'gpt-4',
-	credentialType: 'openAiApi',
-});
+const selectedModel = ref<ChatHubConversationModel>();
 
 const suggestions = ref<Suggestion[]>([
 	{
@@ -67,11 +69,16 @@ const suggestions = ref<Suggestion[]>([
 
 const hasMessages = computed(() => chatStore.chatMessages.length > 0);
 const isModelAvailable = computed(() => {
-	return chatStore.availableCredentialTypes.has(selectedModel.value.credentialType);
+	return (
+		selectedModel.value &&
+		chatStore.availableCredentialTypes.has(selectedModel.value.credentialType)
+	);
 });
 const inputPlaceholder = computed(() => {
+	if (!selectedModel.value) return 'Select a model';
 	const modelName = selectedModel.value.displayName || selectedModel.value.model;
-	return isModelAvailable.value ? `Message ${modelName}` : `${modelName} - credentials needed`;
+	const hasCredentials = chatStore.availableCredentialTypes.has(selectedModel.value.credentialType);
+	return hasCredentials ? `Message ${modelName}` : `${modelName} - credentials needed`;
 });
 
 const scrollOnNewMessage = ref(true);
@@ -109,10 +116,18 @@ watch(
 
 function onModelChange(selection: ChatHubConversationModel) {
 	selectedModel.value = selection;
+
+	// If the selected model is not available, open credential modal
+	if (!chatStore.availableCredentialTypes.has(selection.credentialType)) {
+		uiStore.openNewCredential(selection.credentialType);
+	}
 }
 
 function onSubmit() {
-	if (!message.value.trim() || chatStore.isResponding) return;
+	if (!message.value.trim() || chatStore.isResponding || !selectedModel.value) {
+		return;
+	}
+
 	chatStore.askAI(message.value, sessionId.value, selectedModel.value);
 	message.value = '';
 }
