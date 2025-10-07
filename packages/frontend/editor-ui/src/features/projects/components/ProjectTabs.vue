@@ -8,9 +8,9 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
 import { processDynamicTabs, type DynamicTabOptions } from '@/utils/modules/tabUtils';
 import { usePostHog } from '@/stores/posthog.store';
-import { useProjectsStore } from '@/stores/projects.store';
 
 import { N8nTabs } from '@n8n/design-system';
+import { useProjectsStore } from '../projects.store';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
@@ -46,6 +46,8 @@ const projectId = computed(() => {
 		? route.params.projectId[0]
 		: route?.params?.projectId;
 });
+
+const isTeamProject = computed(() => projectStore.currentProject?.type === 'team');
 
 const getRouteConfigs = () => {
 	// For project pages
@@ -114,7 +116,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (isProjectVariablesEnabled.value && projectStore.currentProject?.type !== 'personal') {
+	if (isTeamProject.value && isProjectVariablesEnabled.value) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 

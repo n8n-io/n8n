@@ -167,9 +167,10 @@ describe('ProjectVariables', () => {
 			},
 		]);
 
-		const { findByText } = renderComponent();
+		const { findAllByText } = renderComponent();
 
-		const scopeBadge = await findByText('Global');
+		const globalTextElements = await findAllByText('Global');
+		const scopeBadge = globalTextElements.filter((el) => el.className.includes('scope-badge'))[0];
 		expect(scopeBadge).toBeVisible();
 	});
 
