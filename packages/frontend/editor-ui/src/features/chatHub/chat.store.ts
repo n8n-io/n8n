@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, messageChatApi } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import type {
 	StreamChunk,
 	StreamOutput,
@@ -23,6 +24,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const usersMessages = computed(() => chatMessages.value.filter((msg) => msg.role === 'user'));
 
 	const rootStore = useRootStore();
+	const credentialsStore = useCredentialsStore();
+
+	const availableCredentialTypes = computed(() => {
+		const userCredentials = credentialsStore.allCredentials;
+		return new Set(userCredentials.map((cred) => cred.type));
+	});
+
+	const availableModels = computed(() => {
+		return models.value.filter((model) => availableCredentialTypes.value.has(model.credentialType));
+	});
 
 	function setModels(newModels: ChatHubConversationModel[]) {
 		models.value = newModels;
@@ -100,6 +111,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	return {
 		models,
+		availableCredentialTypes,
+		availableModels,
 		loadingModels,
 		setModels,
 		fetchChatModels,

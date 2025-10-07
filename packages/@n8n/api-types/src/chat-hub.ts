@@ -6,4 +6,5 @@ export interface ChatHubConversationModel {
 	providerDisplayName?: string;
 	model: string;
 	displayName?: string;
+	credentialType: string;
 }

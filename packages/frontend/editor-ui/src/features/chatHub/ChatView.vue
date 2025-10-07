@@ -9,6 +9,7 @@ import ModelSelector from './components/ModelSelector.vue';
 
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import type { ChatHubConversationModel, ChatMessage } from './chat.types';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
@@ -16,11 +17,12 @@ import type MarkdownIt from 'markdown-it';
 
 const chatStore = useChatStore();
 const userStore = useUsersStore();
+const credentialsStore = useCredentialsStore();
 
 onMounted(async () => {
-	await chatStore.fetchChatModels();
-	if (chatStore.models.length > 0) {
-		selectedModel.value = chatStore.models[0];
+	await Promise.all([credentialsStore.fetchAllCredentials(), chatStore.fetchChatModels()]);
+	if (chatStore.availableModels.length > 0) {
+		selectedModel.value = chatStore.availableModels[0];
 	}
 });
 
@@ -37,6 +39,7 @@ const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const selectedModel = ref<ChatHubConversationModel>({
 	provider: 'openai',
 	model: 'gpt-4',
+	credentialType: 'openAiApi',
 });
 
 const suggestions = ref<Suggestion[]>([
@@ -63,6 +66,13 @@ const suggestions = ref<Suggestion[]>([
 ]);
 
 const hasMessages = computed(() => chatStore.chatMessages.length > 0);
+const isModelAvailable = computed(() => {
+	return chatStore.availableCredentialTypes.has(selectedModel.value.credentialType);
+});
+const inputPlaceholder = computed(() => {
+	const modelName = selectedModel.value.displayName || selectedModel.value.model;
+	return isModelAvailable.value ? `Message ${modelName}` : `${modelName} - credentials needed`;
+});
 
 const scrollOnNewMessage = ref(true);
 
@@ -144,7 +154,9 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 <template>
 	<PageViewLayout>
 		<ModelSelector
+			:class="$style.modelSelector"
 			:models="chatStore.models"
+			:available-credential-types="chatStore.availableCredentialTypes"
 			:selected-model="selectedModel"
 			:disabled="chatStore.isResponding"
 			@change="onModelChange"
@@ -251,9 +263,9 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							v-model="message"
 							:class="$style.input"
 							type="text"
-							:placeholder="'Message GPT-4'"
+							:placeholder="inputPlaceholder"
 							autocomplete="off"
-							:disabled="chatStore.isResponding"
+							:disabled="chatStore.isResponding || !isModelAvailable"
 						/>
 
 						<div :class="$style.actions">
@@ -261,7 +273,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 								:class="$style.iconBtn"
 								type="button"
 								title="Attach"
-								:disabled="chatStore.isResponding"
+								:disabled="chatStore.isResponding || !isModelAvailable"
 								@click="onAttach"
 							>
 								<N8nIcon icon="paperclip" width="20" height="20" />
@@ -270,7 +282,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 								:class="$style.iconBtn"
 								type="button"
 								title="Voice"
-								:disabled="chatStore.isResponding"
+								:disabled="chatStore.isResponding || !isModelAvailable"
 								@click="onMic"
 							>
 								<N8nIcon icon="mic" width="20" height="20" />
@@ -278,7 +290,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							<button
 								:class="$style.sendBtn"
 								type="submit"
-								:disabled="chatStore.isResponding || !message.trim()"
+								:disabled="chatStore.isResponding || !message.trim() || !isModelAvailable"
 							>
 								<span v-if="!chatStore.isResponding">Send</span>
 								<span v-else>…</span>
@@ -496,6 +508,10 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	align-items: center;
 	width: min(720px, 50vw);
 	min-width: 320px;
+
+	& input:disabled {
+		cursor: not-allowed;
+	}
 }
 .input {
 	flex: 1;
@@ -556,5 +572,12 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	margin-top: var(--spacing-xs);
 	color: var(--color-text-lighter);
 	text-align: center;
+}
+
+.modelSelector {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 100;
 }
 </style>

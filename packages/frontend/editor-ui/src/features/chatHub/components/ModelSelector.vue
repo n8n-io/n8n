@@ -6,6 +6,7 @@ import type { ChatHubConversationModel } from '../chat.types';
 const props = defineProps<{
 	disabled?: boolean;
 	models: ChatHubConversationModel[];
+	availableCredentialTypes: Set<string>;
 	selectedModel?: ChatHubConversationModel;
 }>();
 
@@ -30,6 +31,10 @@ const selectedModelKey = computed(() => {
 	if (!props.selectedModel) return '';
 	return `${props.selectedModel.provider}-${props.selectedModel.model}`;
 });
+
+function isModelAvailable(model: ChatHubConversationModel): boolean {
+	return props.availableCredentialTypes.has(model.credentialType);
+}
 
 function onProviderChange(provider: string) {
 	const firstModel = props.models.find((m) => m.provider === provider);
@@ -77,6 +82,7 @@ function onModelChange(modelKey: string) {
 				:value="`${model.provider}-${model.model}`"
 			>
 				{{ model.displayName || model.model }}
+				{{ isModelAvailable(model) ? '' : ' 🔒' }}
 			</option>
 		</select>
 	</div>
@@ -84,10 +90,6 @@ function onModelChange(modelKey: string) {
 
 <style lang="scss" module>
 .modelSelectorFixed {
-	position: absolute;
-	top: 0;
-	left: 0;
-	z-index: 100;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-s);
