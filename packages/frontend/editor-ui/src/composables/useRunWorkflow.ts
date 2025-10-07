@@ -182,7 +182,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startNodeNames.push(
 					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
-				executedNode = options.triggerNode;
 			} else if (options.destinationNode) {
 				executedNode = options.destinationNode;
 			}
