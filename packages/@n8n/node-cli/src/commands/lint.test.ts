@@ -27,6 +27,36 @@ describe('lint command', () => {
 		expect(result).toBeDefined();
 	});
 
+	tmpdirTest('successful lint with warnings - shows warnings in output', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, {
+			eslintConfig: true,
+		});
+
+		const eslintWarnings = `
+/tmp/project/src/index.ts
+  10:5  warning  Unused variable 'unusedVar'  @typescript-eslint/no-unused-vars
+  15:3  warning  Missing return type         @typescript-eslint/explicit-function-return-type
+
+✖ 2 problems (0 errors, 2 warnings)
+`;
+
+		mockSpawn('pnpm', ['exec', '--', 'eslint', '.'], {
+			exitCode: 0,
+			stdout: eslintWarnings,
+		});
+
+		const result = await CommandTester.run('lint');
+
+		expect(result).toBeDefined();
+
+		const stdoutCalls = mockProcessStdout.mock.calls.flat();
+		const allOutput = stripAnsiCodes(
+			stdoutCalls.map((call) => (Buffer.isBuffer(call) ? call.toString() : String(call))).join(''),
+		);
+
+		expect(allOutput).toContain('Unused variable');
+	});
+
 	tmpdirTest('lint with fix flag - passes --fix to eslint', async ({ tmpdir }) => {
 		await setupTestPackage(tmpdir, {
 			eslintConfig: true,
