@@ -21,7 +21,7 @@ sequenceDiagram
 
     User->>Frontend: Execute from canvas
     Frontend->>EvalTrigger: Execute (row 0)
-    EvalTrigger->>EvalTrigger: Read row from GSheet
+    EvalTrigger->>EvalTrigger: Read row from dataset
     EvalTrigger->>Workflow: Return row + _rowsLeft
     Workflow->>Frontend: Execution complete event
 
@@ -112,8 +112,8 @@ Two execution paths:
 Location: `packages/nodes-base/nodes/Evaluation/Evaluation.node.ee.ts`
 
 Operations:
-- `setInputs` (Set inputs): Captures input data fields for display in evaluation results (not saved to Google Sheets)
-- `setOutputs` (Set outputs): Updates Google Sheet row using trigger's row_number AND captures output data
+- `setInputs` (Set inputs): Captures input data fields for display in evaluation results (not saved to data source)
+- `setOutputs` (Set outputs): Updates data source (Data Table or Google Sheets) using trigger's row_number AND captures output data
 - `setMetrics` (Set metrics): Flags metrics for test runner extraction
 - `checkIfEvaluating` (Check if evaluating): Routes based on execution context
 
@@ -193,11 +193,11 @@ The evaluation feature supports capturing and displaying input/output data for e
 
 1. **Input Data Capture**: The `setInputs` operation in Evaluation nodes allows capturing specific fields from the dataset
    - These fields are displayed in the evaluation results UI
-   - They are NOT written to Google Sheets
+   - They are NOT written back to the data source (Data Table or Google Sheets)
    - Useful for tracking context like prompts, test descriptions, or reference data
 
 2. **Output Data Capture**: The `setOutputs` operation serves dual purposes:
-   - Writes results back to Google Sheets
+   - Writes results back to the data source (Data Table or Google Sheets)
    - Captures output data for display in the UI
    - Both actions happen in the same operation
 
@@ -261,12 +261,34 @@ Environment variables:
 License Quotas:
 - `quota:evaluations:maxWorkflows`: Max number of workflows having evaluations
 
+## Data Source Options
+
+The evaluation feature supports two data source options for test datasets:
+
+### 1. Data Tables (Default since v4.7+)
+
+- **Local storage**: Data is stored in n8n's database
+- **Better performance**: No external API calls during execution
+- **Simpler setup**: No need for Google Sheets credentials
+- **UI**: Uses the Data Table node for dataset management
+
+### 2. Google Sheets (Legacy)
+
+- **External storage**: Data stored in Google Sheets
+- **Requires credentials**: Google Sheets API access needed
+- **Collaborative editing**: Multiple users can edit the dataset
+- **UI**: Dataset managed via Google Sheets interface
+
+**Version Behavior:**
+- **v4.7+**: Data Tables is the default source
+- **v4.6 and earlier**: Google Sheets is the default source
+- Both nodes support a "source" parameter to switch between options
+
 ## Known Limitations
 
-1. **Google Sheets only**: Dataset source is hardcoded to Google Sheets
-2. **Sequential execution**: Both canvas mode and test runner mode execute rows sequentially, not in parallel
-3. **No recovery**: Interrupted test runs can't be resumed
-4. **Numeric metrics only**: Metrics must be numbers; boolean or string metrics are not supported
+1. **Sequential execution**: Both canvas mode and test runner mode execute rows sequentially, not in parallel
+2. **No recovery**: Interrupted test runs can't be resumed
+3. **Numeric metrics only**: Metrics must be numbers; boolean or string metrics are not supported
    - Note: Non-numeric data columns can be displayed in test results using the `setInputs` and `setOutputs` operations
    - These appear in the test case details but cannot be used for metric calculations
-5. **Average-only aggregation**: Test run metrics are calculated as simple averages of test case metrics
+4. **Average-only aggregation**: Test run metrics are calculated as simple averages of test case metrics
