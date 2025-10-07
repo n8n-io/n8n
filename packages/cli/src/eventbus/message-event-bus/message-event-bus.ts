@@ -14,7 +14,6 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import config from '@/config';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { Telemetry } from '@/telemetry';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -79,7 +78,6 @@ export class MessageEventBus extends EventEmitter {
 		private readonly recoveryService: ExecutionRecoveryService,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
-		private readonly telemetry: Telemetry,
 	) {
 		super();
 	}
@@ -167,23 +165,6 @@ export class MessageEventBus extends EventEmitter {
 			}
 
 			if (unfinishedExecutionIds.length > 0) {
-				// Track crashed workflows in telemetry
-				for (const executionId of unfinishedExecutionIds) {
-					const execution = await this.executionRepository.findOne({
-						where: { id: executionId },
-					});
-
-					if (execution) {
-						const telemetryPayload = {
-							workflow_id: execution.workflowId,
-							success: false,
-							crashed: true,
-							is_manual: execution.mode === 'manual',
-						};
-						this.telemetry.trackWorkflowExecution(telemetryPayload);
-					}
-				}
-
 				const activeWorkflows = await this.workflowRepository.find({
 					where: { active: true },
 					select: ['id', 'name'],
