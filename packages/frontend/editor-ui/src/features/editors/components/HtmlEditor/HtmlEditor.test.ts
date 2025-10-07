@@ -7,7 +7,7 @@ import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue'
 import { userEvent } from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
-import { htmlEditorEventBus } from '../event-bus';
+import { htmlEditorEventBus } from '@/event-bus';
 
 const DEFAULT_SETUP = {
 	props: {
