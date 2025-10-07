@@ -188,12 +188,6 @@ export interface IAiDataContent {
 	};
 }
 
-export interface IAiData {
-	data: IAiDataContent[];
-	node: string;
-	runIndex: number;
-}
-
 export interface IStartRunData {
 	workflowData: WorkflowData;
 	startNodes?: StartNodeData[];
@@ -1012,12 +1006,6 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
-
-export interface EnvironmentVariable {
-	id: string;
-	key: string;
-	value: string;
-}
 
 export type ExecutionFilterMetadata = {
 	key: string;

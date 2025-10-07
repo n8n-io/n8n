@@ -211,9 +211,19 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private getNativeVariables() {
+		const { mode } = this;
 		return {
 			// Exposed Node.js globals
-			Buffer,
+			Buffer: new Proxy(Buffer, {
+				get(target, prop) {
+					if (mode === 'insecure') return target[prop as keyof typeof Buffer];
+					if (prop === 'allocUnsafe' || prop === 'allocUnsafeSlow') {
+						// eslint-disable-next-line @typescript-eslint/unbound-method
+						return Buffer.alloc;
+					}
+					return target[prop as keyof typeof Buffer];
+				},
+			}),
 			setTimeout,
 			setInterval,
 			setImmediate,

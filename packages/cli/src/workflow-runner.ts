@@ -248,11 +248,12 @@ export class WorkflowRunner {
 			pinData,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			data.userId,
-			undefined,
-			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId: data.userId,
+			workflowId: workflow.id,
+			executionTimeoutTimestamp:
+				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+		});
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
