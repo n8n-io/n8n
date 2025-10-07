@@ -12,7 +12,7 @@ import type {
 } from '@/types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
-import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
+import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
 import type { TelemetryContext } from './types/telemetry';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { WorkflowState } from './composables/useWorkflowState';
@@ -228,8 +228,8 @@ export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
-export const DATA_STORE_NODE_TYPE = 'n8n-nodes-base.dataTable';
-export const DATA_STORE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
+export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
+export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -237,7 +237,7 @@ export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 // template categories
 export const TEMPLATE_CATEGORY_AI = 'categories/ai';
 
-export const DATA_STORE_NODES = [DATA_STORE_NODE_TYPE, DATA_STORE_TOOL_NODE_TYPE];
+export const DATA_TABLE_NODES = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
@@ -260,7 +260,7 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_TRANSFORM_NODE_TYPE,
 ];
 export const MODULE_ENABLED_NODES = [
-	...DATA_STORE_NODES.map((nodeType) => ({ nodeType, module: DATA_STORE_MODULE_NAME })),
+	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
 ];
 
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];

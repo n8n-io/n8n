@@ -2446,6 +2446,8 @@ export interface ITaskSubRunMetadata {
 export interface RelatedExecution {
 	executionId: string;
 	workflowId: string;
+	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
+	shouldResume?: boolean;
 }
 
 type SubNodeExecutionDataAction = {

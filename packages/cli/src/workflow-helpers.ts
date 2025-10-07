@@ -6,10 +6,12 @@ import type {
 	IRun,
 	ITaskData,
 	IWorkflowBase,
+	RelatedExecution,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { OwnershipService } from './services/ownership.service';
 
 /**
  * Returns the data of the last executed node
@@ -170,12 +172,46 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 	return workflow;
 }
 
-export async function getVariables(): Promise<IDataObject> {
-	const variables = await Container.get(VariablesService).getAllCached();
+export async function getVariables(workflowId?: string, projectId?: string): Promise<IDataObject> {
+	const [variables, project] = await Promise.all([
+		Container.get(VariablesService).getAllCached(),
+		// If projectId is not provided, try to get it from workflow
+		workflowId && !projectId
+			? Container.get(OwnershipService).getWorkflowProjectCached(workflowId)
+			: null,
+	]);
+
+	// Either projectId passed or use project from workflow
+	const projectIdToUse = projectId ?? project?.id;
+
 	return Object.freeze(
-		variables.reduce((prev, curr) => {
-			prev[curr.key] = curr.value;
-			return prev;
+		variables.reduce((acc, curr) => {
+			if (!curr.project) {
+				// always set globals
+				acc[curr.key] = curr.value;
+			} else if (projectIdToUse && curr.project.id === projectIdToUse) {
+				// project variables override globals
+				acc[curr.key] = curr.value;
+			}
+			return acc;
 		}, {} as IDataObject),
 	);
+}
+
+/**
+ * Determines if a parent execution should be restarted when a child execution completes.
+ *
+ * @param parentExecution - The parent execution metadata, if any
+ * @returns true if the parent should be restarted, false otherwise
+ */
+export function shouldRestartParentExecution(
+	parentExecution: RelatedExecution | undefined,
+): parentExecution is RelatedExecution {
+	if (parentExecution === undefined) {
+		return false;
+	}
+	if (parentExecution.shouldResume === undefined) {
+		return true; // Preserve existing behavior for executions started before the flag was introduced for backward compatibility.
+	}
+	return parentExecution.shouldResume;
 }
