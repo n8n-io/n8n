@@ -4,14 +4,14 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { mockDataStoreSizeValidator } from './test-helpers';
-import { DataStoreService } from '../data-store.service';
-import { DataStoreValidationError } from '../errors/data-store-validation.error';
+import { mockDataTableSizeValidator } from './test-helpers';
+import { DataTableService } from '../data-table.service';
+import { DataTableValidationError } from '../errors/data-table-validation.error';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
-	mockDataStoreSizeValidator();
+	mockDataTableSizeValidator();
 });
 
 beforeEach(async () => {
@@ -23,10 +23,10 @@ afterAll(async () => {
 });
 
 describe('dataStore filters', () => {
-	let dataStoreService: DataStoreService;
+	let dataTableService: DataTableService;
 
 	beforeAll(() => {
-		dataStoreService = Container.get(DataStoreService);
+		dataTableService = Container.get(DataTableService);
 	});
 
 	let project: Project;
@@ -36,20 +36,20 @@ describe('dataStore filters', () => {
 	});
 
 	afterEach(async () => {
-		// Clean up any created user data stores
-		await dataStoreService.deleteDataStoreAll();
+		// Clean up any created user data tables
+		await dataTableService.deleteDataTableAll();
 	});
 
 	describe('getManyAndCount', () => {
 		it('should retrieve by name', async () => {
 			// ARRANGE
-			const dataStore = await dataStoreService.createDataStore(project.id, {
+			const dataStore = await dataTableService.createDataTable(project.id, {
 				name: 'dataStore',
 				columns: [],
 			});
 
 			// ACT
-			const result = await dataStoreService.getManyAndCount({
+			const result = await dataTableService.getManyAndCount({
 				filter: { projectId: project.id, name: dataStore.name },
 			});
 
@@ -70,18 +70,18 @@ describe('dataStore filters', () => {
 
 		it('should retrieve by ids', async () => {
 			// ARRANGE
-			const dataStore1 = await dataStoreService.createDataStore(project.id, {
-				name: 'myDataStore1',
+			const dataStore1 = await dataTableService.createDataTable(project.id, {
+				name: 'myDataTable1',
 				columns: [],
 			});
 
-			const dataStore2 = await dataStoreService.createDataStore(project.id, {
-				name: 'myDataStore2',
+			const dataStore2 = await dataTableService.createDataTable(project.id, {
+				name: 'myDataTable2',
 				columns: [],
 			});
 
 			// ACT
-			const result = await dataStoreService.getManyAndCount({
+			const result = await dataTableService.getManyAndCount({
 				filter: { projectId: project.id, id: [dataStore1.id, dataStore2.id] },
 			});
 
@@ -100,21 +100,21 @@ describe('dataStore filters', () => {
 
 		it('should retrieve by projectId', async () => {
 			// ARRANGE
-			const dataStore = await dataStoreService.createDataStore(project.id, {
-				name: 'myDataStore',
+			const dataStore = await dataTableService.createDataTable(project.id, {
+				name: 'myDataTable',
 				columns: [],
 			});
 			const names = [dataStore.name];
 			for (let i = 0; i < 10; ++i) {
-				const ds = await dataStoreService.createDataStore(project.id, {
-					name: `anotherDataStore${i}`,
+				const ds = await dataTableService.createDataTable(project.id, {
+					name: `anotherDataTable${i}`,
 					columns: [],
 				});
 				names.push(ds.name);
 			}
 
 			// ACT
-			const result = await dataStoreService.getManyAndCount({
+			const result = await dataTableService.getManyAndCount({
 				filter: { projectId: project.id },
 			});
 
@@ -125,32 +125,32 @@ describe('dataStore filters', () => {
 
 		it('should retrieve by id with pagination', async () => {
 			// ARRANGE
-			const dataStore = await dataStoreService.createDataStore(project.id, {
-				name: 'myDataStore',
+			const dataStore = await dataTableService.createDataTable(project.id, {
+				name: 'myDataTable',
 				columns: [],
 			});
 			const names = [dataStore.name];
 
 			for (let i = 0; i < 10; ++i) {
-				const ds = await dataStoreService.createDataStore(project.id, {
-					name: `anotherDataStore${i}`,
+				const ds = await dataTableService.createDataTable(project.id, {
+					name: `anotherDataTable${i}`,
 					columns: [],
 				});
 				names.push(ds.name);
 			}
 
 			// ACT
-			const p0 = await dataStoreService.getManyAndCount({
+			const p0 = await dataTableService.getManyAndCount({
 				filter: { projectId: project.id },
 				skip: 0,
 				take: 3,
 			});
-			const p1 = await dataStoreService.getManyAndCount({
+			const p1 = await dataTableService.getManyAndCount({
 				filter: { projectId: project.id },
 				skip: 3,
 				take: 3,
 			});
-			const rest = await dataStoreService.getManyAndCount({
+			const rest = await dataTableService.getManyAndCount({
 				filter: { projectId: project.id },
 				skip: 6,
 				take: 10,
@@ -180,7 +180,7 @@ describe('dataStore filters', () => {
 		describe('equals and not equals filters', () => {
 			it("retrieves rows with 'equals' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -198,10 +198,10 @@ describe('dataStore filters', () => {
 					{ name: 'Jack', age: 35, birthday: new Date('1988-12-05T00:00:00.000Z'), isActive: true },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [
@@ -227,7 +227,7 @@ describe('dataStore filters', () => {
 
 			it("retrieves rows with 'not equals' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -241,10 +241,10 @@ describe('dataStore filters', () => {
 					{ name: 'Jack', age: 35 },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }],
@@ -261,7 +261,7 @@ describe('dataStore filters', () => {
 
 			it('supports filter by null', async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'c1', type: 'string' },
@@ -276,10 +276,10 @@ describe('dataStore filters', () => {
 					{ c1: 'Polo', c2: false },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'c1', condition: 'eq', value: null }],
@@ -296,7 +296,7 @@ describe('dataStore filters', () => {
 
 			it('supports filter by not null', async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'c1', type: 'string' },
@@ -311,10 +311,10 @@ describe('dataStore filters', () => {
 					{ c1: 'Polo', c2: false },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'c1', condition: 'neq', value: null }],
@@ -331,7 +331,7 @@ describe('dataStore filters', () => {
 
 			it('includes null values when using neq with specific value', async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -347,10 +347,10 @@ describe('dataStore filters', () => {
 					{ name: 'Bob', category: null },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'category', condition: 'neq', value: 'A' }],
@@ -369,15 +369,15 @@ describe('dataStore filters', () => {
 			});
 
 			it('should accept a valid numeric string', async () => {
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [{ name: 'age', type: 'number' }],
 				});
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [{ age: null }, { age: 30 }]);
+				await dataTableService.insertRows(dataTableId, project.id, [{ age: null }, { age: 30 }]);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', condition: 'eq', value: '30' }],
@@ -390,15 +390,15 @@ describe('dataStore filters', () => {
 			});
 
 			it('should throw on invalid numeric string', async () => {
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [{ name: 'age', type: 'number' }],
 				});
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [{ age: null }, { age: 30 }]);
+				await dataTableService.insertRows(dataTableId, project.id, [{ age: null }, { age: 30 }]);
 
 				// ACT
-				const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', condition: 'eq', value: '30dfddf' }],
@@ -406,7 +406,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				await expect(result).rejects.toThrow(DataStoreValidationError);
+				await expect(result).rejects.toThrow(DataTableValidationError);
 				await expect(result).rejects.toThrow("value '30dfddf' does not match column type 'number'");
 			});
 		});
@@ -414,7 +414,7 @@ describe('dataStore filters', () => {
 		describe('LIKE filters', () => {
 			it("retrieves rows with 'contains sensitive' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -428,10 +428,10 @@ describe('dataStore filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
@@ -448,7 +448,7 @@ describe('dataStore filters', () => {
 
 			it("retrieves rows with 'contains insensitive' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -463,10 +463,10 @@ describe('dataStore filters', () => {
 					{ name: 'Taj', age: 35 },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%J%', condition: 'ilike' }],
@@ -484,7 +484,7 @@ describe('dataStore filters', () => {
 
 			it("retrieves rows with 'starts with' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -498,10 +498,10 @@ describe('dataStore filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
@@ -515,7 +515,7 @@ describe('dataStore filters', () => {
 
 			it("retrieves rows with 'ends with' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -530,10 +530,10 @@ describe('dataStore filters', () => {
 					{ name: 'Harold', age: 40 },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
@@ -553,7 +553,7 @@ describe('dataStore filters', () => {
 				(condition) => {
 					it(`throws error when '${condition}' filter value is null`, async () => {
 						// ARRANGE
-						const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+						const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 							name: 'dataStore',
 							columns: [
 								{ name: 'name', type: 'string' },
@@ -566,10 +566,10 @@ describe('dataStore filters', () => {
 							{ name: 'Mary', age: 25 },
 						];
 
-						await dataStoreService.insertRows(dataStoreId, project.id, rows);
+						await dataTableService.insertRows(dataTableId, project.id, rows);
 
 						// ACT
-						const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 							filter: {
 								type: 'and',
 								filters: [{ columnName: 'name', value: null, condition }],
@@ -578,7 +578,7 @@ describe('dataStore filters', () => {
 
 						// ASSERT
 						await expect(result).rejects.toThrow(
-							new DataStoreValidationError(
+							new DataTableValidationError(
 								`${condition.toUpperCase()} filter value cannot be null or undefined`,
 							),
 						);
@@ -586,7 +586,7 @@ describe('dataStore filters', () => {
 
 					it(`throws error when '${condition}' filter value is not a string`, async () => {
 						// ARRANGE
-						const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+						const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 							name: 'dataStore',
 							columns: [
 								{ name: 'name', type: 'string' },
@@ -599,10 +599,10 @@ describe('dataStore filters', () => {
 							{ name: 'Mary', age: 25 },
 						];
 
-						await dataStoreService.insertRows(dataStoreId, project.id, rows);
+						await dataTableService.insertRows(dataTableId, project.id, rows);
 
 						// ACT
-						const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 							filter: {
 								type: 'and',
 								filters: [{ columnName: 'age', value: 123, condition }],
@@ -611,7 +611,7 @@ describe('dataStore filters', () => {
 
 						// ASSERT
 						await expect(result).rejects.toThrow(
-							new DataStoreValidationError(
+							new DataTableValidationError(
 								`${condition.toUpperCase()} filter value must be a string`,
 							),
 						);
@@ -620,19 +620,19 @@ describe('dataStore filters', () => {
 			);
 
 			describe('like filter with special characters', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [{ name: 'text', type: 'string' }],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 				});
 
 				it('should treat square brackets literally in like patterns', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test[abc]data' },
 						{ text: 'Test[abc]Data' },
 						{ text: 'testAdata' },
@@ -640,7 +640,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'test%[abc]%', condition: 'like' }],
@@ -654,7 +654,7 @@ describe('dataStore filters', () => {
 
 				it('should treat asterisk literally in like patterns', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test*data' },
 						{ text: 'Test*Data' },
 						{ text: 'testAdata' },
@@ -662,7 +662,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'test%*%', condition: 'like' }],
@@ -676,7 +676,7 @@ describe('dataStore filters', () => {
 
 				it('should treat question mark literally in like patterns', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test?data' },
 						{ text: 'Test?Data' },
 						{ text: 'testAdata' },
@@ -684,7 +684,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'test%?%', condition: 'like' }],
@@ -698,7 +698,7 @@ describe('dataStore filters', () => {
 
 				it('should convert LIKE % wildcard to match zero or more characters', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'data%more' },
 						{ text: 'Data%More' },
 						{ text: 'datamore' },
@@ -707,7 +707,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'data%more', condition: 'like' }],
@@ -727,7 +727,7 @@ describe('dataStore filters', () => {
 
 				it('should treat underscore literally in like patterns', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'prefix_suffix' },
 						{ text: 'Prefix_Suffix' },
 						{ text: 'prefix\\_suffix' },
@@ -736,7 +736,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'like' }],
@@ -750,7 +750,7 @@ describe('dataStore filters', () => {
 
 				it('should handle multiple special characters', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test[*?]data' },
 						{ text: 'Test[*?]Data' },
 						{ text: 'testOtherData' },
@@ -758,7 +758,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'test%[*?]%', condition: 'like' }],
@@ -772,19 +772,19 @@ describe('dataStore filters', () => {
 			});
 
 			describe('ilike filter with special characters (case-insensitive)', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [{ name: 'text', type: 'string' }],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 				});
 
 				it('should treat square brackets literally', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test[abc]data' },
 						{ text: 'Test[ABC]Data' },
 						{ text: 'testAdata' },
@@ -792,7 +792,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: '%[abc]%', condition: 'ilike' }],
@@ -811,7 +811,7 @@ describe('dataStore filters', () => {
 
 				it('should treat asterisk literally', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test*data' },
 						{ text: 'Test*Data' },
 						{ text: 'testOtherData' },
@@ -819,7 +819,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: '%*%', condition: 'ilike' }],
@@ -838,7 +838,7 @@ describe('dataStore filters', () => {
 
 				it('should treat question mark literally', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test?data' },
 						{ text: 'Test?Data' },
 						{ text: 'testSingleChar' },
@@ -846,7 +846,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: '%?%', condition: 'ilike' }],
@@ -865,7 +865,7 @@ describe('dataStore filters', () => {
 
 				it('should convert % wildcard to match zero or more characters', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'data%more' },
 						{ text: 'Data%More' },
 						{ text: 'datamore' },
@@ -876,7 +876,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'data%more', condition: 'ilike' }],
@@ -899,7 +899,7 @@ describe('dataStore filters', () => {
 
 				it('should treat underscore literally', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'prefix_suffix' },
 						{ text: 'Prefix_Suffix' },
 						{ text: 'Prefix\\_Suffix' },
@@ -908,7 +908,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'ilike' }],
@@ -927,7 +927,7 @@ describe('dataStore filters', () => {
 
 				it('should handle multiple special characters', async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ text: 'test[*?]data' },
 						{ text: 'Test[*?]Data' },
 						{ text: 'testOtherData' },
@@ -935,7 +935,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'text', value: '%[*?]%', condition: 'ilike' }],
@@ -956,17 +956,17 @@ describe('dataStore filters', () => {
 
 		describe('greater than and less than filters', () => {
 			describe('number comparisons', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [
 							{ name: 'name', type: 'string' },
 							{ name: 'age', type: 'number' },
 						],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 
 					const rows = [
 						{ name: 'John', age: 25 },
@@ -975,12 +975,12 @@ describe('dataStore filters', () => {
 						{ name: 'Alice', age: 40 },
 					];
 
-					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, rows);
 				});
 
 				it("retrieves rows with 'greater than' filter correctly", async () => {
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gt' }],
@@ -997,7 +997,7 @@ describe('dataStore filters', () => {
 
 				it("retrieves rows with 'greater than or equal' filter correctly", async () => {
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gte' }],
@@ -1015,7 +1015,7 @@ describe('dataStore filters', () => {
 
 				it("retrieves rows with 'less than' filter correctly", async () => {
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lt' }],
@@ -1032,7 +1032,7 @@ describe('dataStore filters', () => {
 
 				it("retrieves rows with 'less than or equal' filter correctly", async () => {
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lte' }],
@@ -1050,17 +1050,17 @@ describe('dataStore filters', () => {
 			});
 
 			describe('string comparisons', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [
 							{ name: 'name', type: 'string' },
 							{ name: 'category', type: 'string' },
 						],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 
 					const rows = [
 						{ name: 'Alice', category: 'Alpha' },
@@ -1069,12 +1069,12 @@ describe('dataStore filters', () => {
 						{ name: 'David', category: 'Delta' },
 					];
 
-					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, rows);
 				});
 
 				it("retrieves rows with 'greater than' string filter correctly", async () => {
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'Beta', condition: 'gt' }],
@@ -1091,7 +1091,7 @@ describe('dataStore filters', () => {
 
 				it("retrieves rows with 'less than' string filter correctly", async () => {
 					// ACT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'Delta', condition: 'lt' }],
@@ -1108,17 +1108,17 @@ describe('dataStore filters', () => {
 			});
 
 			describe('date comparisons', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [
 							{ name: 'name', type: 'string' },
 							{ name: 'registeredAt', type: 'date' },
 						],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 
 					const rows = [
 						{ name: 'Task1', registeredAt: new Date('2023-12-31') },
@@ -1127,13 +1127,13 @@ describe('dataStore filters', () => {
 						{ name: 'Task4', registeredAt: new Date('2024-01-03') },
 					];
 
-					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, rows);
 				});
 
 				it("retrieves rows with 'greater than' date filter correctly", async () => {
 					// ACT
 					const baseDate = new Date('2024-01-01');
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'gt' }],
@@ -1151,7 +1151,7 @@ describe('dataStore filters', () => {
 				it("retrieves rows with 'less than or equal' date filter correctly", async () => {
 					// ACT
 					const baseDate = new Date('2024-01-02');
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'lte' }],
@@ -1169,17 +1169,17 @@ describe('dataStore filters', () => {
 			});
 
 			describe('null value validation', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [
 							{ name: 'name', type: 'string' },
 							{ name: 'age', type: 'number' },
 						],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 
 					const rows = [
 						{ name: 'John', age: 31 },
@@ -1187,7 +1187,7 @@ describe('dataStore filters', () => {
 						{ name: 'Mary', age: null },
 					];
 
-					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, rows);
 				});
 
 				describe.each(['gt', 'gte', 'lt', 'lte'] as const)(
@@ -1195,7 +1195,7 @@ describe('dataStore filters', () => {
 					(condition) => {
 						it(`throws error when '${condition}' filter value is null`, async () => {
 							// ACT
-							const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+							const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 								filter: {
 									type: 'and',
 									filters: [{ columnName: 'age', value: null, condition }],
@@ -1204,7 +1204,7 @@ describe('dataStore filters', () => {
 
 							// ASSERT
 							await expect(result).rejects.toThrow(
-								new DataStoreValidationError(
+								new DataTableValidationError(
 									`${condition.toUpperCase()} filter value cannot be null or undefined`,
 								),
 							);
@@ -1212,7 +1212,7 @@ describe('dataStore filters', () => {
 
 						it(`handles null values in data correctly with '${condition}' filter`, async () => {
 							// ACT
-							const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+							const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 								filter: {
 									type: 'and',
 									filters: [{ columnName: 'age', value: 30, condition }],
@@ -1232,7 +1232,7 @@ describe('dataStore filters', () => {
 		describe('AND filters', () => {
 			it('retrieves rows matching all conditions in AND filter', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1241,7 +1241,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -1250,7 +1250,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'and',
 						filters: [
@@ -1269,7 +1269,7 @@ describe('dataStore filters', () => {
 
 			it('returns empty result when no conditions match', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1278,7 +1278,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: false },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -1287,7 +1287,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'and',
 						filters: [
@@ -1306,7 +1306,7 @@ describe('dataStore filters', () => {
 		describe('OR filters', () => {
 			it('retrieves rows matching any condition in OR filter', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1315,7 +1315,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: false },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -1324,7 +1324,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -1346,7 +1346,7 @@ describe('dataStore filters', () => {
 
 			it('retrieves rows when multiple conditions match the same row', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1355,7 +1355,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, [
 					{ name: 'John', age: 25, isActive: false },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Arnold', age: 35, isActive: false },
@@ -1364,7 +1364,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -1383,7 +1383,7 @@ describe('dataStore filters', () => {
 
 			it('returns empty result when no conditions match', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1393,7 +1393,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -1414,7 +1414,7 @@ describe('dataStore filters', () => {
 		describe('equals and not equals filters', () => {
 			it("updates rows with 'equals' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1426,15 +1426,15 @@ describe('dataStore filters', () => {
 
 				const maryBirthday = new Date('1998-08-25T14:30:00.000Z');
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, [
 					{ name: 'John', age: 30, birthday: new Date('1994-05-15T12:00:00.000Z'), isActive: true },
 					{ name: 'Mary', age: 25, birthday: maryBirthday, isActive: false },
 					{ name: 'Jack', age: 35, birthday: new Date('1988-12-05T10:00:00.000Z'), isActive: true },
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(
-					dataStoreId,
+				await dataTableService.updateRows(
+					dataTableId,
 					project.id,
 					{
 						filter: {
@@ -1452,7 +1452,7 @@ describe('dataStore filters', () => {
 				);
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Mary', condition: 'eq' }],
@@ -1471,7 +1471,7 @@ describe('dataStore filters', () => {
 
 			it("updates rows with 'not equals' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1479,14 +1479,14 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, [
 					{ name: 'John', age: 30 },
 					{ name: 'Mary', age: 25 },
 					{ name: 'Jack', age: 35 },
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(dataStoreId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }],
@@ -1495,7 +1495,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
 				expect(result.count).toEqual(3);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1508,7 +1508,7 @@ describe('dataStore filters', () => {
 
 			it('updates rows with filter by null', async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1516,7 +1516,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, [
 					{ name: null, active: true },
 					{ name: 'Marco', active: true },
 					{ name: null, active: false },
@@ -1524,7 +1524,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(dataStoreId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', condition: 'eq', value: null }],
@@ -1533,7 +1533,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
 				expect(result.count).toEqual(4);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1547,7 +1547,7 @@ describe('dataStore filters', () => {
 
 			it('updates rows with filter by not null', async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1555,7 +1555,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, [
 					{ name: null, active: true },
 					{ name: 'Marco', active: true },
 					{ name: null, active: false },
@@ -1563,7 +1563,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(dataStoreId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', condition: 'neq', value: null }],
@@ -1572,7 +1572,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
 				expect(result.count).toEqual(4);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1588,7 +1588,7 @@ describe('dataStore filters', () => {
 		describe('LIKE filters', () => {
 			it("updates rows with 'contains sensitive' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1596,14 +1596,14 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, [
 					{ name: 'Arnold', age: 30 },
 					{ name: 'Mary', age: 25 },
 					{ name: 'Charlie', age: 35 },
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(dataStoreId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
@@ -1612,7 +1612,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', value: 50, condition: 'eq' }],
@@ -1627,7 +1627,7 @@ describe('dataStore filters', () => {
 
 			it("updates rows with 'contains insensitive' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1641,10 +1641,10 @@ describe('dataStore filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				await dataStoreService.updateRows(dataStoreId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%ar%', condition: 'ilike' }],
@@ -1653,7 +1653,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
 				expect(result.count).toEqual(3);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1666,7 +1666,7 @@ describe('dataStore filters', () => {
 
 			it("updates rows with 'starts with' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1680,10 +1680,10 @@ describe('dataStore filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, rows);
 
 				// ACT
-				await dataStoreService.updateRows(dataStoreId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
@@ -1692,7 +1692,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', value: 60, condition: 'eq' }],
@@ -1704,7 +1704,7 @@ describe('dataStore filters', () => {
 
 			it("updates rows with 'ends with' filter correctly", async () => {
 				// ARRANGE
-				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -1712,7 +1712,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(dataStoreId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, [
 					{ name: 'Arnold', age: 30 },
 					{ name: 'Mary', age: 25 },
 					{ name: 'Charlie', age: 35 },
@@ -1720,7 +1720,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(dataStoreId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
@@ -1729,7 +1729,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', value: 65, condition: 'eq' }],
@@ -1745,10 +1745,10 @@ describe('dataStore filters', () => {
 
 		describe('greater than and less than filters', () => {
 			describe('number comparisons', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [
 							{ name: 'name', type: 'string' },
@@ -1756,12 +1756,12 @@ describe('dataStore filters', () => {
 							{ name: 'position', type: 'string' },
 						],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 				});
 
 				it("updates rows with 'greater than' filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -1769,7 +1769,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gt' }],
@@ -1778,7 +1778,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'position', value: 'senior', condition: 'eq' }],
@@ -1793,7 +1793,7 @@ describe('dataStore filters', () => {
 
 				it("updates rows with 'greater than or equal' filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -1801,7 +1801,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gte' }],
@@ -1810,7 +1810,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'position', value: 'experienced', condition: 'eq' }],
@@ -1828,7 +1828,7 @@ describe('dataStore filters', () => {
 
 				it("updates rows with 'less than' filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -1836,7 +1836,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lt' }],
@@ -1845,7 +1845,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'position', value: 'junior', condition: 'eq' }],
@@ -1862,7 +1862,7 @@ describe('dataStore filters', () => {
 
 				it("updates rows with 'less than or equal' filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -1870,7 +1870,7 @@ describe('dataStore filters', () => {
 					]);
 
 					// ACT
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lte' }],
@@ -1879,7 +1879,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'position', value: 'junior', condition: 'eq' }],
@@ -1897,10 +1897,10 @@ describe('dataStore filters', () => {
 			});
 
 			describe('string comparisons', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [
 							{ name: 'name', type: 'string' },
@@ -1908,12 +1908,12 @@ describe('dataStore filters', () => {
 							{ name: 'startDate', type: 'date' },
 						],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 				});
 
 				it("updates rows with 'greater than' string filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'Alice', category: 'A', startDate: new Date('2023-01-01T12:00:00Z') },
 						{ name: 'Bob', category: 'B', startDate: new Date('2023-01-02T12:00:00Z') },
 						{ name: 'Charlie', category: 'C', startDate: new Date('2023-01-03T12:00:00Z') },
@@ -1922,7 +1922,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const newStartDate = new Date('2024-01-01T12:00:00Z');
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'C', condition: 'gt' }],
@@ -1931,7 +1931,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'startDate', value: newStartDate, condition: 'eq' }],
@@ -1945,7 +1945,7 @@ describe('dataStore filters', () => {
 
 				it("updates rows with 'less than' string filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'Alice', category: 'A', startDate: new Date('2023-01-01T12:00:00Z') },
 						{ name: 'Bob', category: 'B', startDate: new Date('2023-01-02T12:00:00Z') },
 						{ name: 'Charlie', category: 'C', startDate: new Date('2023-01-03T12:00:00Z') },
@@ -1954,7 +1954,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const newStartDate = new Date('2024-01-01T12:00:00Z');
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'C', condition: 'lt' }],
@@ -1963,7 +1963,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'startDate', value: newStartDate, condition: 'eq' }],
@@ -1980,22 +1980,22 @@ describe('dataStore filters', () => {
 			});
 
 			describe('date comparisons', () => {
-				let dataStoreId: string;
+				let dataTableId: string;
 
 				beforeEach(async () => {
-					const { id } = await dataStoreService.createDataStore(project.id, {
+					const { id } = await dataTableService.createDataTable(project.id, {
 						name: 'dataStore',
 						columns: [
 							{ name: 'name', type: 'string' },
 							{ name: 'registeredAt', type: 'date' },
 						],
 					});
-					dataStoreId = id;
+					dataTableId = id;
 				});
 
 				it("updates rows with 'greater than' date filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'Task1', registeredAt: new Date('2023-12-31') },
 						{ name: 'Task2', registeredAt: new Date('2024-01-01') },
 						{ name: 'Task3', registeredAt: new Date('2024-01-02') },
@@ -2004,7 +2004,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const baseDate = new Date('2024-01-01');
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'gt' }],
@@ -2013,7 +2013,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'name', value: 'RECENT', condition: 'eq' }],
@@ -2028,7 +2028,7 @@ describe('dataStore filters', () => {
 
 				it("updates rows with 'less than or equal' date filter correctly", async () => {
 					// ARRANGE
-					await dataStoreService.insertRows(dataStoreId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, [
 						{ name: 'Task1', registeredAt: new Date('2023-12-31') },
 						{ name: 'Task2', registeredAt: new Date('2024-01-01') },
 						{ name: 'Task3', registeredAt: new Date('2024-01-02') },
@@ -2037,7 +2037,7 @@ describe('dataStore filters', () => {
 
 					// ACT
 					const baseDate = new Date('2024-01-02');
-					await dataStoreService.updateRows(dataStoreId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'lte' }],
@@ -2046,7 +2046,7 @@ describe('dataStore filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'name', value: 'OLD', condition: 'eq' }],
@@ -2065,7 +2065,7 @@ describe('dataStore filters', () => {
 		describe('AND filters', () => {
 			it('updates rows matching all conditions in AND filter', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -2074,7 +2074,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -2083,7 +2083,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(id, project.id, {
+				await dataTableService.updateRows(id, project.id, {
 					filter: {
 						type: 'and',
 						filters: [
@@ -2095,7 +2095,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', value: 100, condition: 'eq' }],
@@ -2111,7 +2111,7 @@ describe('dataStore filters', () => {
 		describe('OR filters', () => {
 			it('updates rows matching any condition in OR filter', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -2120,7 +2120,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: false },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -2129,7 +2129,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(id, project.id, {
+				await dataTableService.updateRows(id, project.id, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -2141,7 +2141,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', value: 99, condition: 'eq' }],
@@ -2158,7 +2158,7 @@ describe('dataStore filters', () => {
 
 			it('updates rows when multiple conditions match the same row', async () => {
 				// ARRANGE
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id } = await dataTableService.createDataTable(project.id, {
 					name: 'dataStore',
 					columns: [
 						{ name: 'name', type: 'string' },
@@ -2167,7 +2167,7 @@ describe('dataStore filters', () => {
 					],
 				});
 
-				await dataStoreService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, [
 					{ name: 'John', age: 25, isActive: false },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Arnold', age: 35, isActive: false },
@@ -2176,7 +2176,7 @@ describe('dataStore filters', () => {
 				]);
 
 				// ACT
-				await dataStoreService.updateRows(id, project.id, {
+				await dataTableService.updateRows(id, project.id, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -2188,7 +2188,7 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'age', value: 88, condition: 'eq' }],

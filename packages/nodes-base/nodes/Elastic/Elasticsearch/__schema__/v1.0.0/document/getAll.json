@@ -3,10 +3,7 @@
     "properties": {
         "_id": {
             "type": "string"
-        },
-        "timestamp": {
-            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

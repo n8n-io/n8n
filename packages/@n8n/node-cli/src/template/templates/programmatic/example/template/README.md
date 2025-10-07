@@ -4,7 +4,7 @@ This is an n8n community node. It lets you use _app/service name_ in your n8n wo
 
 _App/service name_ is _one or two sentences describing the service this node integrates with_.
 
-[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
+[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
 
 [Installation](#installation)
 [Operations](#operations)

@@ -7,7 +7,6 @@ import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell
 import ProjectMembersActionsCell from '@/components/Projects/ProjectMembersActionsCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 import type { ProjectMemberData } from '@/types/projects.types';
-
 import {
 	N8nDataTableServer,
 	N8nText,
@@ -29,6 +28,7 @@ const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: ProjectRole; userId: string }];
 	action: [value: { action: string; userId: string }];
+	'show-upgrade-dialog': [];
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
@@ -89,6 +89,8 @@ const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
 		id: role.slug as ProjectRole,
 		label: role.displayName,
 		disabled: !role.licensed,
+		badge: !role.licensed ? i18n.baseText('generic.upgrade') : undefined,
+		badgeProps: !role.licensed ? { theme: 'warning', bold: true } : undefined,
 	})),
 ]);
 
@@ -129,6 +131,7 @@ const filterActions = (member: ProjectMemberData) => {
 					:roles="roles"
 					:actions="roleActions"
 					@update:role="onRoleChange"
+					@badge-click="emit('show-upgrade-dialog')"
 				/>
 				<N8nText v-else color="text-dark">{{ roles[item.role]?.label ?? item.role }}</N8nText>
 			</template>

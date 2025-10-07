@@ -21,7 +21,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
-import { DataStoreProxyService } from '@/modules/data-table/data-store-proxy.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -34,7 +34,7 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
-mockInstance(DataStoreProxyService);
+mockInstance(DataTableProxyService);
 
 const processRunExecutionDataMock = jest.fn();
 jest.mock('n8n-core', () => {

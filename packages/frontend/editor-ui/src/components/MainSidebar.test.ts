@@ -6,7 +6,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/components/MainSidebar.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
