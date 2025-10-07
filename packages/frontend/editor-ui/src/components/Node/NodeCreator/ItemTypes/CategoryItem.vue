@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
+import { N8nIcon } from '@n8n/design-system';
 export interface Props {
 	expanded?: boolean;
 	active?: boolean;

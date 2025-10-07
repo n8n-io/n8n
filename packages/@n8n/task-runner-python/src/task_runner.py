@@ -201,6 +201,8 @@ class TaskRunner:
             try:
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
+            except websockets.ConnectionClosedOK:
+                break
             except Exception as e:
                 self.logger.error(f"Error handling message: {e}")
 
@@ -298,7 +300,6 @@ class TaskRunner:
                 stdlib_allow=self.config.stdlib_allow,
                 external_allow=self.config.external_allow,
                 builtins_deny=self.config.builtins_deny,
-                can_log=task_settings.can_log,
             )
 
             task_state.process = process

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	runningExecutionsCount: number;
 	concurrencyCap: number;

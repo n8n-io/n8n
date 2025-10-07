@@ -11,7 +11,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import {
 	ADD_DATA_STORE_MODAL_KEY,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
@@ -22,6 +22,9 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+
+import { N8nActionBox } from '@n8n/design-system';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 
 const i18n = useI18n();
 const route = useRoute();

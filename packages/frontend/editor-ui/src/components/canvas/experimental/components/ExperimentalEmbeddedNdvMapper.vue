@@ -4,7 +4,6 @@ import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Workflow } from 'n8n-workflow';
 import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
-import { N8nPopoverReka } from '@n8n/design-system';
 import { useStyles } from '@/composables/useStyles';
 import {
 	onClickOutside,
@@ -15,6 +14,7 @@ import {
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
+import { N8nPopoverReka } from '@n8n/design-system';
 type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
 
 const hoverOptions: UseElementHoverOptions = {

@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nButton, N8nText } from '@n8n/design-system';
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();

@@ -14,8 +14,8 @@ import { mock } from 'jest-mock-extended';
 
 import { createUser } from '@test-integration/db/users';
 
-import { DataStoreAggregateService } from '../data-store-aggregate.service';
-import { DataStoreService } from '../data-store.service';
+import { DataTableAggregateService } from '../data-table-aggregate.service';
+import { DataTableService } from '../data-table.service';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
@@ -31,15 +31,15 @@ afterAll(async () => {
 });
 
 describe('dataStoreAggregate', () => {
-	let dataStoreService: DataStoreService;
-	let dataStoreAggregateService: DataStoreAggregateService;
+	let dataStoreService: DataTableService;
+	let dataStoreAggregateService: DataTableAggregateService;
 	const manager = mock<EntityManager>();
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 
 	beforeAll(() => {
 		Container.set(ProjectRelationRepository, projectRelationRepository);
-		dataStoreAggregateService = Container.get(DataStoreAggregateService);
-		dataStoreService = Container.get(DataStoreService);
+		dataStoreAggregateService = Container.get(DataTableAggregateService);
+		dataStoreService = Container.get(DataTableService);
 	});
 
 	let user: User;
@@ -53,18 +53,18 @@ describe('dataStoreAggregate', () => {
 	});
 
 	afterEach(async () => {
-		// Clean up any created user data stores
-		await dataStoreService.deleteDataStoreAll();
+		// Clean up any created user data tables
+		await dataStoreService.deleteDataTableAll();
 	});
 
 	describe('getManyAndCount', () => {
-		it('should return the correct data stores for the user', async () => {
+		it('should return the correct data tables for the user', async () => {
 			// ARRANGE
-			const ds1 = await dataStoreService.createDataStore(project1.id, {
+			const ds1 = await dataStoreService.createDataTable(project1.id, {
 				name: 'store1',
 				columns: [],
 			});
-			const ds2 = await dataStoreService.createDataStore(project1.id, {
+			const ds2 = await dataStoreService.createDataTable(project1.id, {
 				name: 'store2',
 				columns: [],
 			});
@@ -92,7 +92,7 @@ describe('dataStoreAggregate', () => {
 				},
 			]);
 
-			await dataStoreService.createDataStore(project2.id, {
+			await dataStoreService.createDataTable(project2.id, {
 				name: 'store3',
 				columns: [],
 			});
@@ -118,7 +118,7 @@ describe('dataStoreAggregate', () => {
 			// ARRANGE
 			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
-			await dataStoreService.createDataStore(project1.id, {
+			await dataStoreService.createDataTable(project1.id, {
 				name: 'store1',
 				columns: [],
 			});
@@ -135,13 +135,13 @@ describe('dataStoreAggregate', () => {
 			expect(result.count).toBe(0);
 		});
 
-		it('should return only the data store matching the given data store id filter', async () => {
+		it('should return only the data table matching the given data table id filter', async () => {
 			// ARRANGE
-			await dataStoreService.createDataStore(project1.id, {
+			await dataStoreService.createDataTable(project1.id, {
 				name: 'store1',
 				columns: [],
 			});
-			const ds2 = await dataStoreService.createDataStore(project1.id, {
+			const ds2 = await dataStoreService.createDataTable(project1.id, {
 				name: 'store2',
 				columns: [],
 			});
@@ -182,15 +182,15 @@ describe('dataStoreAggregate', () => {
 
 		it('should respect pagination (skip/take)', async () => {
 			// ARRANGE
-			const ds1 = await dataStoreService.createDataStore(project1.id, {
+			const ds1 = await dataStoreService.createDataTable(project1.id, {
 				name: 'store1',
 				columns: [],
 			});
-			const ds2 = await dataStoreService.createDataStore(project1.id, {
+			const ds2 = await dataStoreService.createDataTable(project1.id, {
 				name: 'store2',
 				columns: [],
 			});
-			const ds3 = await dataStoreService.createDataStore(project1.id, {
+			const ds3 = await dataStoreService.createDataTable(project1.id, {
 				name: 'store3',
 				columns: [],
 			});

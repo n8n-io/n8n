@@ -3,7 +3,7 @@ import { h, inject } from 'vue';
 import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
 import CanvasNodeStickyNote from '@/components/canvas/elements/nodes/render-types/CanvasNodeStickyNote.vue';
 import CanvasNodeAddNodes from '@/components/canvas/elements/nodes/render-types/CanvasNodeAddNodes.vue';
-import CanvasNodeAIPrompt from '@/components/canvas/elements/nodes/render-types/CanvasNodeAIPrompt.vue';
+import CanvasNodeChoicePrompt from '@/components/canvas/elements/nodes/render-types/CanvasNodeChoicePrompt.vue';
 import { CanvasNodeKey } from '@/constants';
 import { CanvasNodeRenderType } from '@/types';
 
@@ -20,8 +20,8 @@ const Render = () => {
 		case CanvasNodeRenderType.AddNodes:
 			Component = CanvasNodeAddNodes;
 			break;
-		case CanvasNodeRenderType.AIPrompt:
-			Component = CanvasNodeAIPrompt;
+		case CanvasNodeRenderType.ChoicePrompt:
+			Component = CanvasNodeChoicePrompt;
 			break;
 		default:
 			Component = CanvasNodeDefault;

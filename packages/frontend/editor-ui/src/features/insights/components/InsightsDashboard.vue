@@ -26,6 +26,7 @@ import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 import { getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
+import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
 );

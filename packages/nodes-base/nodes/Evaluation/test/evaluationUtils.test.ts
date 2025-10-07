@@ -146,7 +146,7 @@ describe('setOutputs', () => {
 		];
 
 		const mockDataTable = {
-			updateRow: jest.fn(),
+			updateRows: jest.fn(),
 			getColumns: jest.fn().mockReturnValue(outputValues.map((o) => ({ name: o.outputName }))),
 			addColumn: jest.fn(),
 		};
@@ -175,7 +175,7 @@ describe('setOutputs', () => {
 				addExecutionHints: jest.fn(),
 				getMode: jest.fn().mockReturnValue('evaluation'),
 				helpers: {
-					getDataStoreProxy: jest.fn().mockResolvedValue(mockDataTable),
+					getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable),
 				},
 				...options,
 			});
@@ -190,7 +190,7 @@ describe('setOutputs', () => {
 
 			expect(mockDataTable.getColumns).toHaveBeenCalled();
 			expect(mockDataTable.addColumn).not.toHaveBeenCalled();
-			expect(mockDataTable.updateRow).toHaveBeenCalledWith({
+			expect(mockDataTable.updateRows).toHaveBeenCalledWith({
 				filter: {
 					type: 'and',
 					filters: [
@@ -230,7 +230,7 @@ describe('setOutputs', () => {
 			});
 			await setOutputs.call(context);
 
-			expect(mockDataTable.updateRow).toHaveBeenCalledWith(
+			expect(mockDataTable.updateRows).toHaveBeenCalledWith(
 				expect.objectContaining({
 					filter: {
 						type: 'and',
@@ -265,7 +265,7 @@ describe('setOutputs', () => {
 				name: 'new_column',
 				type: 'string',
 			});
-			expect(mockDataTable.updateRow).toHaveBeenCalledWith({
+			expect(mockDataTable.updateRows).toHaveBeenCalledWith({
 				filter: {
 					type: 'and',
 					filters: [

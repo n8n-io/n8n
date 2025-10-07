@@ -1,4 +1,4 @@
-import { DATA_STORE_COLUMN_REGEX } from '@n8n/api-types';
+import { DATA_TABLE_COLUMN_REGEX } from '@n8n/api-types';
 
 // Route and view identifiers
 export const DATA_STORE_VIEW = 'data-stores';
@@ -29,7 +29,7 @@ export const DEFAULT_ID_COLUMN_NAME = 'id';
 
 export const MAX_COLUMN_NAME_LENGTH = 128;
 
-export const COLUMN_NAME_REGEX = DATA_STORE_COLUMN_REGEX;
+export const COLUMN_NAME_REGEX = DATA_TABLE_COLUMN_REGEX;
 
 export const MIN_LOADING_TIME = 500; // ms
 

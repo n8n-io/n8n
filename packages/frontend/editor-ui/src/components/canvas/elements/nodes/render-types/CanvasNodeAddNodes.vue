@@ -8,10 +8,11 @@ import {
 } from '@/utils/experiments';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import { N8nIcon, N8nLink, N8nTooltip } from '@n8n/design-system';
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();

@@ -14,6 +14,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
+import { ElCheckbox } from 'element-plus';
+import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 const communityNodesStore = useCommunityNodesStore();
 
 const toast = useToast();

@@ -49,7 +49,7 @@ export class SidebarPage {
 	}
 
 	getUserMenu(): Locator {
-		return this.page.getByTestId('user-menu');
+		return this.page.getByTestId('main-sidebar-user-menu');
 	}
 
 	getLogoutMenuItem(): Locator {
@@ -61,10 +61,8 @@ export class SidebarPage {
 	}
 
 	async clickAboutMenuItem(): Promise<void> {
-		await this.page
-			.getByTestId('menu-item')
-			.filter({ hasText: 'About n8n' })
-			.dispatchEvent('click');
+		await this.page.getByTestId('help').click();
+		await this.page.getByTestId('about').click();
 	}
 
 	async closeAboutModal(): Promise<void> {
@@ -72,11 +70,15 @@ export class SidebarPage {
 	}
 
 	getAdminPanel(): Locator {
-		return this.page.getByRole('menuitem', { name: 'Admin Panel' });
+		return this.page.getByTestId('cloud-admin');
 	}
 
 	getTrialBanner(): Locator {
 		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	getTemplatesLink(): Locator {
+		return this.page.getByTestId('templates').locator('a');
 	}
 
 	async openUserMenu(): Promise<void> {

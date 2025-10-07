@@ -2,6 +2,14 @@
 import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
+import {
+	N8nButton,
+	N8nInfoAccordion,
+	N8nLink,
+	N8nMarkdown,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 
 const MCP_ENDPOINT = 'mcp-server/http';
 // TODO: Update once docs page is ready

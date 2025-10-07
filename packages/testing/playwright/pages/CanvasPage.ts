@@ -337,6 +337,14 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-save-button');
 	}
 
+	/**
+	 * Get the "Set up template" button that appears when credential setup is incomplete
+	 * @returns Locator for the setup workflow credentials button
+	 */
+	getSetupWorkflowCredentialsButton(): Locator {
+		return this.page.getByRole('button', { name: 'Set up template' });
+	}
+
 	// Production Checklist methods
 	getProductionChecklistButton(): Locator {
 		return this.page.getByTestId('suggested-action-count');
@@ -652,6 +660,15 @@ export class CanvasPage extends BasePage {
 			.click();
 	}
 
+	/**
+	 * Toggle node enabled/disabled state using keyboard shortcut
+	 * @param nodeName - The name of the node to toggle
+	 */
+	async toggleNodeEnabled(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click();
+		await this.page.keyboard.press('d');
+	}
+
 	// Chat open/close buttons (manual chat)
 	async clickManualChatButton(): Promise<void> {
 		await this.page.getByTestId('workflow-chat-button').click();
@@ -808,8 +825,8 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(
 			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"]`,
 		);
-  }
-  
+	}
+
 	getWorkflowName(): Locator {
 		return this.page.getByTestId('workflow-name-input');
 	}
