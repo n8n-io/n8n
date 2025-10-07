@@ -262,4 +262,182 @@ test.describe('Workflow Actions', () => {
 			await expect(nodes.nth(i)).toHaveAttribute('data-node-name');
 		}
 	});
+
+	test('should update workflow settings', async ({ n8n }) => {
+		await n8n.navigate.toHome();
+
+		const workflowsResponsePromise = n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows') && response.request().method() === 'GET',
+		);
+
+		await n8n.workflows.addResource.workflow();
+
+		const workflowsResponse = await workflowsResponsePromise;
+		const responseBody = await workflowsResponse.json();
+		const totalWorkflows = responseBody.count;
+
+		await n8n.canvas.saveWorkflow();
+
+		await n8n.workflowSettingsModal.open();
+		await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
+
+		await n8n.workflowSettingsModal.getErrorWorkflowField().click();
+		await expect(n8n.page.getByRole('option')).toHaveCount(totalWorkflows + 2);
+		await n8n.page.getByRole('option').last().click();
+
+		await n8n.workflowSettingsModal.getTimezoneField().click();
+		await expect(n8n.page.getByRole('option').first()).toBeVisible();
+		await n8n.page.getByRole('option').nth(1).click();
+
+		await n8n.workflowSettingsModal.getSaveFailedExecutionsField().click();
+		await expect(n8n.page.getByRole('option')).toHaveCount(3);
+		await n8n.page.getByRole('option').last().click();
+
+		await n8n.workflowSettingsModal.getSaveSuccessExecutionsField().click();
+		await expect(n8n.page.getByRole('option')).toHaveCount(3);
+		await n8n.page.getByRole('option').last().click();
+
+		await n8n.workflowSettingsModal.getSaveManualExecutionsField().click();
+		await expect(n8n.page.getByRole('option')).toHaveCount(3);
+		await n8n.page.getByRole('option').last().click();
+
+		await n8n.workflowSettingsModal.getSaveExecutionProgressField().click();
+		await expect(n8n.page.getByRole('option')).toHaveCount(3);
+		await n8n.page.getByRole('option').last().click();
+
+		await n8n.workflowSettingsModal.getTimeoutSwitch().click();
+		await n8n.workflowSettingsModal.getTimeoutInput().fill('1');
+
+		await n8n.workflowSettingsModal.clickSave();
+
+		await expect(n8n.workflowSettingsModal.getModal()).toBeHidden();
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+	});
+
+	test('should not be able to archive or delete unsaved workflow', async ({ n8n }) => {
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+
+		await expect(n8n.workflowSettingsModal.getDeleteMenuItem()).toBeHidden();
+		await expect(n8n.workflowSettingsModal.getArchiveMenuItem().locator('..')).toHaveClass(
+			/is-disabled/,
+		);
+	});
+
+	test('should archive nonactive workflow and then delete it', async ({ n8n }) => {
+		await n8n.canvas.saveWorkflow();
+		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
+
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickArchiveMenuItem();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.page).toHaveURL(/\/workflows$/);
+
+		await n8n.page.goBack();
+
+		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
+		await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
+
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickDeleteMenuItem();
+		await n8n.workflowSettingsModal.confirmDeleteModal();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.page).toHaveURL(/\/workflows$/);
+	});
+
+	test('should archive active workflow and then delete it', async ({ n8n }) => {
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.activateWorkflow();
+		await n8n.page.keyboard.press('Escape');
+
+		await expect(n8n.canvas.getWorkflowActivatorSwitch()).toHaveClass(/is-checked/);
+		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
+
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickArchiveMenuItem();
+		await n8n.workflowSettingsModal.confirmArchiveModal();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.page).toHaveURL(/\/workflows$/);
+
+		await n8n.page.goBack();
+
+		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
+		await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
+		await expect(n8n.canvas.getWorkflowActivatorSwitch()).not.toHaveClass(/is-checked/);
+
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickDeleteMenuItem();
+		await n8n.workflowSettingsModal.confirmDeleteModal();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.page).toHaveURL(/\/workflows$/);
+	});
+
+	test('should archive nonactive workflow and then unarchive it', async ({ n8n }) => {
+		await n8n.canvas.saveWorkflow();
+		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
+
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickArchiveMenuItem();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.page).toHaveURL(/\/workflows$/);
+
+		await n8n.page.goBack();
+
+		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
+		await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
+
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickUnarchiveMenuItem();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
+		await expect(n8n.canvas.getNodeCreatorPlusButton()).toBeVisible();
+	});
+
+	test('should deactivate active workflow on archive', async ({ n8n }) => {
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.activateWorkflow();
+		await n8n.page.keyboard.press('Escape');
+
+		await expect(n8n.canvas.getWorkflowActivatorSwitch()).toHaveClass(/is-checked/);
+
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickArchiveMenuItem();
+		await n8n.workflowSettingsModal.confirmArchiveModal();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.page).toHaveURL(/\/workflows$/);
+
+		await n8n.page.goBack();
+
+		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
+		await expect(n8n.canvas.getWorkflowActivatorSwitch()).not.toHaveClass(/is-checked/);
+		await expect(n8n.canvas.getWorkflowActivatorSwitch().locator('input').first()).toBeDisabled();
+
+		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickUnarchiveMenuItem();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
+
+		await n8n.canvas.activateWorkflow();
+		await n8n.page.keyboard.press('Escape');
+
+		await expect(n8n.canvas.getWorkflowActivatorSwitch()).toHaveClass(/is-checked/);
+	});
 });

@@ -457,6 +457,14 @@ export class CanvasPage extends BasePage {
 		return this.nodeToolbar(nodeName).getByTestId('execute-node-button');
 	}
 
+	getArchivedTag(): Locator {
+		return this.page.getByTestId('workflow-archived-tag');
+	}
+
+	getNodeCreatorPlusButton(): Locator {
+		return this.page.getByTestId('node-creator-plus-button');
+	}
+
 	canvasPane(): Locator {
 		return this.page.getByTestId('canvas-wrapper');
 	}
