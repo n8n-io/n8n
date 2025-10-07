@@ -17,4 +17,8 @@ export class GenericConfig {
 	/** Grace period (in seconds) to wait for components to shut down before process exit. */
 	@Env('N8N_GRACEFUL_SHUTDOWN_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;
+
+	/** Start n8n in safe mode, queued executions and scheduled workflows will not run. */
+	@Env('N8N_SAFE_MODE')
+	safeMode: boolean = false;
 }

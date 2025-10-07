@@ -14,6 +14,7 @@ import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
+import { checkForSafeMode, resetCrashCounter, exitSafeMode } from '@/crash-counter.utils';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
@@ -60,6 +61,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	protected server = Container.get(Server);
 
+	private isSafeMode = false;
+
 	override needsCommunityPackages = true;
 
 	override needsTaskRunner = true;
@@ -86,6 +89,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 */
 	async stopProcess() {
 		this.logger.info('\nStopping n8n...');
+
+		// Exit safe mode on graceful shutdown
+		if (this.isSafeMode) {
+			await exitSafeMode();
+			this.logger.info('SafeMode exited due to graceful shutdown');
+		}
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
@@ -190,7 +199,15 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async init() {
+		this.isSafeMode = await checkForSafeMode();
+		this.instanceSettings.setSafeMode(this.isSafeMode);
 		await this.initCrashJournal();
+
+		if (this.isSafeMode) {
+			this.logger.warn(
+				'Safe mode activated - queued executions and scheduled workflows will not run',
+			);
+		}
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
@@ -340,15 +357,17 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 
-		if (config.getEnv('executions.mode') === 'regular') {
+		if (config.getEnv('executions.mode') === 'regular' && !this.isSafeMode) {
 			await this.runEnqueuedExecutions();
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+
+		if (!this.isSafeMode) {
+			await this.activeWorkflowManager.init();
+		}
 
 		const editorUrl = this.getEditorUrl();
-
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"

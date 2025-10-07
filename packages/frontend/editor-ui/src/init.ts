@@ -82,6 +82,12 @@ export async function initializeCore() {
 	});
 
 	const banners: BannerName[] = [];
+
+	// Check for safe mode from settings
+	if (settingsStore.settings.safeMode) {
+		banners.push('SAFE_MODE');
+	}
+
 	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
 		banners.push('NON_PRODUCTION_LICENSE');
 	}

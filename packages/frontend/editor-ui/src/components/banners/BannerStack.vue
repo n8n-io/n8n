@@ -6,6 +6,7 @@ import V1Banner from '@/components/banners/V1Banner.vue';
 import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanner.vue';
 import DataStoreStorageLimitWarningBanner from '@/components/banners/DataStoreStorageLimitWarningBanner.vue';
 import DataStoreStorageLimitErrorBanner from '@/components/banners/DataStoreStorageLimitErrorBanner.vue';
+import SafeModeBanner from '@/components/banners/SafeModeBanner.vue';
 import type { Component } from 'vue';
 import type { N8nBanners } from '@/Interface';
 
@@ -14,6 +15,7 @@ import type { N8nBanners } from '@/Interface';
 // When registering a new banner, please consult this document to determine it's priority:
 // https://www.notion.so/n8n/Banner-stack-60948c4167c743718fde80d6745258d5
 export const N8N_BANNERS: N8nBanners = {
+	SAFE_MODE: { priority: 400, component: SafeModeBanner as Component },
 	V1: { priority: 350, component: V1Banner as Component },
 	TRIAL_OVER: { priority: 260, component: TrialOverBanner as Component },
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
