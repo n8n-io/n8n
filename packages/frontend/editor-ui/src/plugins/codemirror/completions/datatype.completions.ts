@@ -1,7 +1,7 @@
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n } from '@n8n/i18n';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 
 import type {
 	Completion,
@@ -1151,8 +1151,9 @@ export const secretOptions = (base: string) => {
 		if (typeof resolved !== 'object') {
 			return [];
 		}
-		return Object.entries(resolved).map(([secret, value]) =>
-			createCompletionOption({
+		return Object.entries(resolved).map(([secret, value]) => {
+			const needsBracketAccess = /\//.test(secret);
+			const option = createCompletionOption({
 				name: secret,
 				doc: {
 					name: secret,
@@ -1160,8 +1161,15 @@ export const secretOptions = (base: string) => {
 					description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
 					docURL: i18n.baseText('settings.externalSecrets.docs'),
 				},
-			}),
-		);
+			});
+
+			// Override the apply handler for keys that need bracket access
+			if (needsBracketAccess) {
+				option.apply = applyBracketAccessCompletion;
+			}
+
+			return option;
+		});
 	} catch {
 		return [];
 	}

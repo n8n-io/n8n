@@ -3,6 +3,7 @@ import { render, type RenderOptions as TestingLibraryRenderOptions } from '@test
 import { i18nInstance } from '@n8n/i18n';
 import { GlobalDirectivesPlugin } from '@/plugins/directives';
 import { FontAwesomePlugin } from '@/plugins/icons';
+import { N8nPlugin } from '@n8n/design-system';
 import type { Pinia } from 'pinia';
 import { PiniaVuePlugin } from 'pinia';
 import type { Telemetry } from '@/plugins/telemetry';
@@ -36,6 +37,7 @@ const defaultOptions = {
 			i18nInstance,
 			PiniaVuePlugin,
 			FontAwesomePlugin,
+			N8nPlugin,
 			GlobalDirectivesPlugin,
 			TelemetryPlugin,
 		],

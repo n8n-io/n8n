@@ -136,7 +136,7 @@ export const isPseudoParam = (candidate: string) => {
  * Whether a string may be used as a key in object dot access notation.
  */
 export const isAllowedInDotNotation = (str: string) => {
-	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()+\-=[\]{};':"\\|,.<>?~]/g;
+	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()+\-=[\]{};':"\\|,.<>?~\/]/g;
 
 	return !DOT_NOTATION_BANNED_CHARS.test(str);
 };

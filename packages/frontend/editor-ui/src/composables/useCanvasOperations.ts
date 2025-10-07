@@ -106,6 +106,7 @@ import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8
 import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
@@ -119,7 +120,7 @@ import { canvasEventBus } from '@/event-bus/canvas';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useParentFolder } from './useParentFolder';
 
@@ -154,6 +155,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
@@ -1660,9 +1662,9 @@ export function useCanvasOperations() {
 
 		// Reset editable workflow state
 		workflowsStore.resetWorkflow();
-		workflowsStore.resetState();
+		workflowState.resetState();
 		workflowsStore.currentWorkflowExecutions = [];
-		workflowsStore.setActiveExecutionId(undefined);
+		workflowState.setActiveExecutionId(undefined);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -2019,7 +2021,7 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
+				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
 			}
 
 			return workflowData;
@@ -2221,7 +2223,7 @@ export function useCanvasOperations() {
 
 		initializeWorkspace(data.workflowData);
 
-		workflowsStore.setWorkflowExecutionData(data);
+		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowsStore.setWorkflowPinData({});
@@ -2281,7 +2283,7 @@ export function useCanvasOperations() {
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? []);
-		await workflowsStore.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
+		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 

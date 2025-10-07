@@ -46,8 +46,6 @@ export const escape = (str: string) =>
 
 export const toVariableOption = (label: string) => ({ label, type: 'variable' });
 
-export const addVarType = (option: Completion) => ({ ...option, type: 'variable' });
-
 export const addInfoRenderer = (option: Completion): Completion => {
 	const { info } = option;
 	if (typeof info === 'string') {
