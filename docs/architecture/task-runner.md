@@ -1,6 +1,8 @@
-# @n8n/task-runner
+# Task Runner Architecture
 
-The Task Runner package provides a secure, isolated environment for executing user-provided JavaScript code in n8n workflows. It implements a distributed task execution system that runs code in separate processes, protecting the main n8n instance from potentially unsafe operations.
+> **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
+
+The Task Runner package (`@n8n/task-runner`) provides a secure, isolated environment for executing user-provided JavaScript code in n8n workflows. It implements a distributed task execution system that runs code in separate processes, protecting the main n8n instance from potentially unsafe operations.
 
 ## Overview
 
@@ -31,45 +33,45 @@ graph LR
         TB[Task Broker]
         LTR[Local Task Requester]
     end
-    
+
     subgraph "Launcher Process"
         L[Launcher]
     end
-    
+
     subgraph "Task Runner Process"
         TR[Task Runner<br/>with JS Execution]
     end
-    
+
     CN --> LTR
     LTR --> TB
     TB <--> |WebSocket| TR
     TB <--> |Manage| L
     L -.-> |Spawn| TR
-    
+
     TR <--> |RPC Calls| TB
 ```
 
 ### Key Components
 
-1. **Task Broker** (`/src/task-broker/`)
+1. **Task Broker** (`/packages/@n8n/task-runner/src/task-broker/`)
    - Central coordinator for task distribution
    - Manages runner registration and lifecycle
    - Routes tasks to available runners
    - Handles authentication and authorization
 
-2. **Task Runner** (`/src/task-runner.ts`)
+2. **Task Runner** (`/packages/@n8n/task-runner/src/task-runner.ts`)
    - Abstract base class for task execution
    - Manages task lifecycle (offer → accept → execute → result)
    - Handles WebSocket communication with broker
    - Implements timeout and cancellation logic
 
-3. **JS Task Runner** (`/src/js-task-runner/`)
+3. **JS Task Runner** (`/packages/@n8n/task-runner/src/js-task-runner/`)
    - Concrete implementation for JavaScript execution
    - Creates isolated VM contexts for code execution
    - Manages module access and security restrictions
    - Handles data serialization/deserialization
 
-4. **Message Protocol** (`/src/message-types.ts`)
+4. **Message Protocol** (`/packages/@n8n/task-runner/src/message-types.ts`)
    - Defines communication protocol between components
    - Three message namespaces: BrokerMessage, RunnerMessage, RequesterMessage
    - Supports task offers, data requests, RPC calls, and results
@@ -100,31 +102,31 @@ sequenceDiagram
     TB->>TR: broker:inforequest
     TR->>TB: runner:info (name, types)
     TB->>TR: broker:runnerregistered
-    
+
     Note over TR: Offer Loop
     loop Every 250ms
         TR->>TB: runner:taskoffer (taskType, validFor: 5000ms)
     end
-    
+
     Note over CN: Task Execution Request
     CN->>TB: Request task execution
     TB->>TR: broker:taskofferaccept (taskId, offerId)
-    
+
     alt Offer still valid
         TR->>TB: runner:taskaccepted (taskId)
     else Offer expired
         TR->>TB: runner:taskrejected (taskId, reason: "Offer expired")
         Note over TB: Find another runner
     end
-    
+
     TB->>TR: broker:tasksettings (taskId, settings)
-    
+
     Note over TR: Data Request
     TR->>TB: runner:taskdatarequest (taskId, requestParams)
     TB->>CN: Request execution data
     CN->>TB: Provide execution data
     TB->>TR: broker:taskdataresponse (taskId, data)
-    
+
     Note over TR: RPC Calls During Execution
     loop As needed
         TR->>TB: runner:rpc (callId, name: "helpers.httpRequest", params)
@@ -132,10 +134,10 @@ sequenceDiagram
         CN->>TB: Return result
         TB->>TR: broker:rpcresponse (callId, status: "success", data)
     end
-    
+
     Note over TR: Code Execution
     TR->>TR: Execute JavaScript in VM
-    
+
     alt Success
         TR->>TB: runner:taskdone (taskId, results)
         TB->>CN: Task completed
@@ -391,39 +393,9 @@ journalctl -u n8n -f | grep -i task
 wscat -c ws://localhost:5679 -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-## Development
+## Related Documentation
 
-### Running Tests
-
-```bash
-pnpm test
-```
-
-### Building
-
-```bash
-pnpm build
-```
-
-### Development Mode
-
-```bash
-pnpm dev
-```
-
-## API Reference
-
-### Main Exports
-
-- `TaskRunner`: Abstract base class for implementing task runners
-- `JsTaskRunner`: JavaScript task runner implementation
-- Message type definitions for broker communication
-- Error classes for different failure scenarios
-
-### Message Types
-
-See `/src/message-types.ts` for the complete protocol definition.
-
-### Runner Types
-
-See `/src/runner-types.ts` for data structure definitions.
+- Package location: `/packages/@n8n/task-runner`
+- Task Broker implementation: `/packages/@n8n/task-runner/src/task-broker/`
+- JS Task Runner: `/packages/@n8n/task-runner/src/js-task-runner/`
+- Message types: `/packages/@n8n/task-runner/src/message-types.ts`

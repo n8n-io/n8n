@@ -41,6 +41,12 @@ If you're new to n8n's architecture, start here:
   - Data transformation patterns
   - Context-specific features
 
+- **[Task Runner](./task-runner.md)**
+  - Isolated code execution architecture
+  - Task broker and runner lifecycle
+  - Security and module restrictions
+  - Configuration and deployment
+
 - TBD
 
 ### Frontend Architecture
