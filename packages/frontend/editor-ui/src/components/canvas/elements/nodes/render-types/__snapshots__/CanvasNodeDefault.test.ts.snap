@@ -16,13 +16,11 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
       style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
       <div
         class="nodeIconPlaceholder"
       >
         ?
       </div>
-      
     </div>
   </div>
   <div
@@ -69,13 +67,11 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
       style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
       <div
         class="nodeIconPlaceholder"
       >
         ?
       </div>
-      
     </div>
   </div>
   <!--v-if-->
@@ -115,13 +111,11 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
       style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
       <div
         class="nodeIconPlaceholder"
       >
         ?
       </div>
-      
     </div>
   </div>
   <!--v-if-->
@@ -161,13 +155,11 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
       style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
       <div
         class="nodeIconPlaceholder"
       >
         ?
       </div>
-      
     </div>
   </div>
   <div
@@ -214,13 +206,11 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
       style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
       <div
         class="nodeIconPlaceholder"
       >
         ?
       </div>
-      
     </div>
   </div>
   <div
