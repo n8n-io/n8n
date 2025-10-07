@@ -1659,8 +1659,8 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowState.executingNodes.executingNode.value = [];
-			workflowState.executingNodes.lastAddedExecutingNode.value = node1.name;
+			workflowState.executingNodes.executingNode = [];
+			workflowState.executingNodes.lastAddedExecutingNode = node1.name;
 			workflowsStore.isWorkflowRunning = true;
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
@@ -1689,8 +1689,8 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowState.executingNodes.executingNode.value = [];
-			workflowState.executingNodes.lastAddedExecutingNode.value = node1.name;
+			workflowState.executingNodes.executingNode = [];
+			workflowState.executingNodes.lastAddedExecutingNode = node1.name;
 			workflowsStore.isWorkflowRunning = false;
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
@@ -1719,8 +1719,8 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowState.executingNodes.executingNode.value = [node2.name];
-			workflowState.executingNodes.lastAddedExecutingNode.value = node1.name;
+			workflowState.executingNodes.executingNode = [node2.name];
+			workflowState.executingNodes.lastAddedExecutingNode = node1.name;
 			workflowsStore.isWorkflowRunning = false;
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({

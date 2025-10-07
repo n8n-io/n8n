@@ -208,6 +208,6 @@ describe('executionFinished', () => {
 			},
 		);
 
-		expect(workflowState.executingNodes.lastAddedExecutingNode.value).toBeNull();
+		expect(workflowState.executingNodes.lastAddedExecutingNode).toBeNull();
 	});
 });

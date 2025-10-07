@@ -209,7 +209,7 @@ const isExecutingPrevious = computed(() => {
 		return true;
 	}
 
-	if (executingNode.value.length || triggeredNode) {
+	if (executingNode.length || triggeredNode) {
 		return !!parentNodes.value.find(
 			(node) =>
 				workflowState.executingNodes.isNodeExecuting(node.name) || node.name === triggeredNode,

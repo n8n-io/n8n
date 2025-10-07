@@ -148,13 +148,11 @@ export function useWorkflowState() {
 	}
 
 	//// Execution
-
-	const executingNodes = useExecutingNode();
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
 		setActiveExecutionId(undefined);
-		executingNodes.clearNodeExecutionQueue();
+		ws.private.executingNodes.clearNodeExecutionQueue();
 		ws.executionWaitingForWebhook = false;
 		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
@@ -195,7 +193,7 @@ export function useWorkflowState() {
 		setWorkflowTagIds([]);
 
 		setActiveExecutionId(undefined);
-		executingNodes.executingNode.value.length = 0;
+		ws.private.executingNodes.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
 	}
 
@@ -215,7 +213,7 @@ export function useWorkflowState() {
 		markExecutionAsStopped,
 
 		// reexport
-		executingNodes,
+		executingNodes: ws.private.executingNodes,
 	};
 }
 
