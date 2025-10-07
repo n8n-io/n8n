@@ -189,11 +189,11 @@ describe('NodeIcon', () => {
 			expect(badge).toBeNull();
 		});
 
-		it('renders placeholder when no badge is provided', () => {
+		it('renders placeholder when icon name is not supported', () => {
 			const { getByText } = render(NodeIcon, {
 				props: {
-					type: 'file',
-					src: 'test.png',
+					type: 'icon',
+					name: 'unsupported-icon-name',
 					nodeTypeName: 'CustomNode',
 				},
 			});

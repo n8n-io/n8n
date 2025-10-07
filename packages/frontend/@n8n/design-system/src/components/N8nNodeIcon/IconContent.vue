@@ -59,11 +59,13 @@ const supportedIconName = computed((): IconName | undefined => {
 	<div v-if="type !== 'unknown'" :class="$style.icon">
 		<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 		<N8nIcon v-else-if="supportedIconName" :icon="supportedIconName" :style="fontStyleData" />
-		<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
-			<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />
-		</div>
 		<div v-else :class="$style.nodeIconPlaceholder">
 			{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
+		</div>
+
+		<!-- Badge icon, for example used for HTTP based nodes -->
+		<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
+			<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />
 		</div>
 	</div>
 	<div v-else :class="$style.nodeIconPlaceholder">
