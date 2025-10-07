@@ -36,6 +36,50 @@ const builderStore = useBuilderStore();
 // Workflow execution composable
 const { runWorkflow } = useRunWorkflow({ router });
 
+const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
+const PLACEHOLDER_SUFFIX = '__>';
+const PLACEHOLDER_MESSAGE = (label: string) => 'Fill in "' + label + '"';
+
+interface PlaceholderDetail {
+	path: string[];
+	label: string;
+}
+
+function extractPlaceholderLabel(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) return null;
+
+	const label = value
+		.slice(PLACEHOLDER_PREFIX.length, value.length - PLACEHOLDER_SUFFIX.length)
+		.trim();
+	return label.length > 0 ? label : null;
+}
+
+function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
+	const label = extractPlaceholderLabel(value);
+	if (label) return [{ path, label }];
+
+	if (Array.isArray(value)) {
+		return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
+	}
+
+	if (value !== null && typeof value === 'object') {
+		return Object.entries(value).flatMap(([key, nested]) =>
+			findPlaceholderDetails(nested, [...path, key]),
+		);
+	}
+
+	return [];
+}
+
+function formatPlaceholderPath(path: string[]): string {
+	if (path.length === 0) return 'parameters';
+
+	return path
+		.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
+		.join('');
+}
+
 let executionWatcherStop: WatchStopHandle | undefined;
 
 const containerRef = ref<HTMLElement>();
@@ -72,11 +116,47 @@ const ensureExecutionWatcher = () => {
 };
 
 // Workflow validation from store
-const workflowIssues = computed(() =>
+const baseWorkflowIssues = computed(() =>
 	workflowsStore.workflowValidationIssues.filter((issue) =>
 		['credentials', 'parameters'].includes(issue.type),
 	),
 );
+
+const placeholderIssues = computed(() => {
+	const issues: Array<{ node: string; type: string; value: string; parameterPath?: string }> = [];
+	const seen = new Set<string>();
+
+	for (const node of workflowsStore.workflow.nodes) {
+		if (!node?.parameters) continue;
+
+		const placeholders = findPlaceholderDetails(node.parameters);
+		if (placeholders.length === 0) continue;
+
+		const existingParameterIssues = (node.issues?.parameters ?? {}) as Record<string, string[]>;
+
+		for (const placeholder of placeholders) {
+			const path = formatPlaceholderPath(placeholder.path);
+			const message = PLACEHOLDER_MESSAGE(placeholder.label);
+			const existingMessages = existingParameterIssues[path] ?? [];
+
+			if (existingMessages.includes(message)) continue;
+
+			const key = `${node.name}|${path}|${placeholder.label}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+
+			issues.push({
+				node: node.name,
+				type: 'parameters',
+				value: message,
+			});
+		}
+	}
+
+	return issues;
+});
+
+const workflowIssues = computed(() => [...baseWorkflowIssues.value, ...placeholderIssues.value]);
 const hasValidationIssues = computed(() => workflowIssues.value.length > 0);
 const formatIssueMessage = workflowsStore.formatIssueMessage;
 

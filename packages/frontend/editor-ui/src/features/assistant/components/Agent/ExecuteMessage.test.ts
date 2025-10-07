@@ -155,6 +155,18 @@ describe('ExecuteMessage', () => {
 		expect(button.disabled).toBe(true);
 	});
 
+	it('disables execution when placeholder values are present', () => {
+		workflowNodes[0].parameters = {
+			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
+		};
+
+		const { getAllByTestId, getByText } = renderExecuteMessage();
+
+		expect(getByText('aiAssistant.builder.executeMessage.description')).toBeInTheDocument();
+		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
+		expect(button.disabled).toBe(true);
+	});
+
 	it('runs workflow and emits completion event when execution finishes', async () => {
 		runWorkflowMock.mockImplementation(async () => {
 			workflowExecutionDataRef.status = 'running';
