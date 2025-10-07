@@ -8,15 +8,12 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
-
 import { BOUNDARY_TEST_VALUES, insertPreMigrationRawData } from './migration-test-setup';
 
 const MIGRATION_NAME = 'ChangeValueTypesForInsights1759399811000';
 
 describe('ChangeValueTypesForInsights - insights_raw table', () => {
 	let dataSource: DataSource;
-	let rawRepository: InsightsRawRepository;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['insights']);
@@ -26,7 +23,6 @@ describe('ChangeValueTypesForInsights - insights_raw table', () => {
 		await dbConnection.init();
 
 		dataSource = Container.get(DataSource);
-		rawRepository = Container.get(InsightsRawRepository);
 
 		// Run migrations up to (but not including) target migration
 		await initDbUpToMigration(MIGRATION_NAME);
@@ -76,8 +72,11 @@ describe('ChangeValueTypesForInsights - insights_raw table', () => {
 			];
 			await insertPreMigrationRawData(context, metaId, testValues);
 
-			// Capture data before migration
-			const beforeData = await rawRepository.find({ order: { id: 'ASC' } });
+			// Capture data before migration using SQL
+			const insightsRawTableName = context.escape.tableName('insights_raw');
+			const beforeData = await context.queryRunner.query(
+				`SELECT id, metaId, value FROM ${insightsRawTableName} ORDER BY id ASC`,
+			);
 			expect(beforeData).toHaveLength(testValues.length);
 
 			// Run the migration
@@ -88,12 +87,11 @@ describe('ChangeValueTypesForInsights - insights_raw table', () => {
 
 			// Create fresh context after migration (dataSource is reinitialized)
 			const postMigrationContext = createTestMigrationContext(dataSource);
-			const tableName = postMigrationContext.escape.tableName('insights_raw');
 
 			// Verify schema change based on database type
 			if (postMigrationContext.isSqlite) {
 				const result = await postMigrationContext.queryRunner.query(
-					`PRAGMA table_info(${tableName})`,
+					`PRAGMA table_info(${insightsRawTableName})`,
 				);
 				const valueColumn = result.find((col: { name: string }) => col.name === 'value');
 				expect(valueColumn).toBeDefined();
@@ -101,25 +99,29 @@ describe('ChangeValueTypesForInsights - insights_raw table', () => {
 			} else if (postMigrationContext.isPostgres) {
 				const result = await postMigrationContext.queryRunner.query(
 					`SELECT data_type FROM information_schema.columns
-					WHERE table_name = ${tableName} AND column_name = 'value'`,
+					WHERE table_name = ${insightsRawTableName} AND column_name = 'value'`,
 				);
 				expect(result[0].data_type).toBe('bigint');
 			} else if (postMigrationContext.isMysql) {
 				const result = await postMigrationContext.queryRunner.query(
-					`SHOW COLUMNS FROM ${tableName} LIKE 'value'`,
+					`SHOW COLUMNS FROM ${insightsRawTableName} LIKE 'value'`,
 				);
 				expect(result[0].Type.toLowerCase()).toContain('bigint');
 			}
 
-			// Verify data integrity after migration
-			const afterData = await rawRepository.find({ order: { id: 'ASC' } });
+			// Verify data integrity after migration using SQL
+			const afterData = await postMigrationContext.queryRunner.query(
+				`SELECT id, metaId, value FROM ${insightsRawTableName} ORDER BY id ASC`,
+			);
 			expect(afterData).toHaveLength(beforeData.length);
 
 			// Verify all values are preserved exactly
-			afterData.forEach((afterRow, index) => {
-				expect(afterRow.value).toBe(beforeData[index].value);
-				expect(afterRow.metaId).toBe(beforeData[index].metaId);
-			});
+			afterData.forEach(
+				(afterRow: { id: number; metaId: number; value: number }, index: number) => {
+					expect(afterRow.value).toBe(beforeData[index].value);
+					expect(afterRow.metaId).toBe(beforeData[index].metaId);
+				},
+			);
 
 			// Cleanup
 			await postMigrationContext.queryRunner.release();
@@ -139,19 +141,20 @@ describe('ChangeValueTypesForInsights - insights_raw table', () => {
 
 			// Insert value exceeding INT32 max
 			const beyondIntValue = BOUNDARY_TEST_VALUES.beyondInt;
-			const tableName = context.escape.tableName('insights_raw');
+			const insightsRawTableName = context.escape.tableName('insights_raw');
 			await context.queryRunner.query(
-				`INSERT INTO ${tableName} (metaId, type, value, timestamp) VALUES (?, ?, ?, ?)`,
+				`INSERT INTO ${insightsRawTableName} (metaId, type, value, timestamp) VALUES (?, ?, ?, ?)`,
 				[metaId, 0, beyondIntValue, new Date()],
 			);
 
-			// Verify retrieval
-			const result = await rawRepository.findOne({
-				where: { value: beyondIntValue },
-			});
+			// Verify retrieval using SQL
+			const [result] = await context.queryRunner.query(
+				`SELECT id, metaId, value FROM ${insightsRawTableName} WHERE value = ?`,
+				[beyondIntValue],
+			);
 
 			expect(result).toBeDefined();
-			expect(result?.value).toBe(beyondIntValue);
+			expect(result.value).toBe(beyondIntValue);
 
 			// Cleanup
 			await context.queryRunner.release();

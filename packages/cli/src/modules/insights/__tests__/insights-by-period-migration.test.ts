@@ -8,15 +8,12 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
-
 import { BOUNDARY_TEST_VALUES, insertPreMigrationPeriodData } from './migration-test-setup';
 
 const MIGRATION_NAME = 'ChangeValueTypesForInsights1759399811000';
 
 describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 	let dataSource: DataSource;
-	let periodRepository: InsightsByPeriodRepository;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['insights']);
@@ -26,7 +23,6 @@ describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 		await dbConnection.init();
 
 		dataSource = Container.get(DataSource);
-		periodRepository = Container.get(InsightsByPeriodRepository);
 
 		// Run migrations up to (but not including) target migration
 		await initDbUpToMigration(MIGRATION_NAME);
@@ -76,8 +72,11 @@ describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 			];
 			await insertPreMigrationPeriodData(context, metaId, testValues);
 
-			// Capture data before migration
-			const beforeData = await periodRepository.find({ order: { id: 'ASC' } });
+			// Capture data before migration using SQL
+			const insightsByPeriodTableName = context.escape.tableName('insights_by_period');
+			const beforeData = await context.queryRunner.query(
+				`SELECT id, metaId, value FROM ${insightsByPeriodTableName} ORDER BY id ASC`,
+			);
 			expect(beforeData).toHaveLength(testValues.length);
 
 			// Run the migration
@@ -88,12 +87,11 @@ describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 
 			// Create fresh context after migration (dataSource is reinitialized)
 			const postMigrationContext = createTestMigrationContext(dataSource);
-			const tableName = postMigrationContext.escape.tableName('insights_by_period');
 
 			// Verify schema change based on database type
 			if (postMigrationContext.isSqlite) {
 				const result = await postMigrationContext.queryRunner.query(
-					`PRAGMA table_info(${tableName})`,
+					`PRAGMA table_info(${insightsByPeriodTableName})`,
 				);
 				const valueColumn = result.find((col: { name: string }) => col.name === 'value');
 				expect(valueColumn).toBeDefined();
@@ -101,25 +99,29 @@ describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 			} else if (postMigrationContext.isPostgres) {
 				const result = await postMigrationContext.queryRunner.query(
 					`SELECT data_type FROM information_schema.columns
-					WHERE table_name = ${tableName} AND column_name = 'value'`,
+					WHERE table_name = ${insightsByPeriodTableName} AND column_name = 'value'`,
 				);
 				expect(result[0].data_type).toBe('bigint');
 			} else if (postMigrationContext.isMysql) {
 				const result = await postMigrationContext.queryRunner.query(
-					`SHOW COLUMNS FROM ${tableName} LIKE 'value'`,
+					`SHOW COLUMNS FROM ${insightsByPeriodTableName} LIKE 'value'`,
 				);
 				expect(result[0].Type.toLowerCase()).toContain('bigint');
 			}
 
-			// Verify data integrity after migration
-			const afterData = await periodRepository.find({ order: { id: 'ASC' } });
+			// Verify data integrity after migration using SQL
+			const afterData = await postMigrationContext.queryRunner.query(
+				`SELECT id, metaId, value FROM ${insightsByPeriodTableName} ORDER BY id ASC`,
+			);
 			expect(afterData).toHaveLength(beforeData.length);
 
 			// Verify all values are preserved exactly
-			afterData.forEach((afterRow, index) => {
-				expect(afterRow.value).toBe(beforeData[index].value);
-				expect(afterRow.metaId).toBe(beforeData[index].metaId);
-			});
+			afterData.forEach(
+				(afterRow: { id: number; metaId: number; value: number }, index: number) => {
+					expect(afterRow.value).toBe(beforeData[index].value);
+					expect(afterRow.metaId).toBe(beforeData[index].metaId);
+				},
+			);
 
 			// Cleanup
 			await postMigrationContext.queryRunner.release();
@@ -139,19 +141,20 @@ describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 
 			// Insert value exceeding INT32 max
 			const beyondIntValue = BOUNDARY_TEST_VALUES.beyondInt;
-			const tableName = context.escape.tableName('insights_by_period');
+			const insightsByPeriodTableName = context.escape.tableName('insights_by_period');
 			await context.queryRunner.query(
-				`INSERT INTO ${tableName} (metaId, type, value, periodUnit, periodStart) VALUES (?, ?, ?, ?, ?)`,
+				`INSERT INTO ${insightsByPeriodTableName} (metaId, type, value, periodUnit, periodStart) VALUES (?, ?, ?, ?, ?)`,
 				[metaId, 0, beyondIntValue, 0, new Date()],
 			);
 
-			// Verify retrieval
-			const result = await periodRepository.findOne({
-				where: { value: beyondIntValue },
-			});
+			// Verify retrieval using SQL
+			const [result] = await context.queryRunner.query(
+				`SELECT id, metaId, value FROM ${insightsByPeriodTableName} WHERE value = ?`,
+				[beyondIntValue],
+			);
 
 			expect(result).toBeDefined();
-			expect(result?.value).toBe(beyondIntValue);
+			expect(result.value).toBe(beyondIntValue);
 
 			// Cleanup
 			await context.queryRunner.release();
