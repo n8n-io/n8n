@@ -39,6 +39,10 @@ describe('UserService', () => {
 		roleService,
 	);
 
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
 		password: 'passwordHash',
@@ -100,6 +104,51 @@ describe('UserService', () => {
 
 			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
 			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
+		});
+
+		it('should provide ai assistant defaults', async () => {
+			const userWithSettings = Object.assign(new User(), {
+				id: uuid(),
+				role: GLOBAL_MEMBER_ROLE,
+				settings: { easyAIWorkflowOnboarded: true },
+			});
+
+			const publicUser = await userService.toPublic(userWithSettings);
+
+			expect(publicUser.settings?.aiAssistant).toEqual({
+				allowAssistantToSendParameterValues: false,
+				allowAssistantToSendExpressions: false,
+			});
+		});
+	});
+
+	describe('updateSettings', () => {
+		it('merges ai assistant settings with existing values', async () => {
+			const existingUser = Object.assign(new User(), {
+				id: uuid(),
+				settings: {
+					aiAssistant: {
+						allowAssistantToSendExpressions: true,
+					},
+				},
+			});
+
+			userRepository.findOneOrFail.mockResolvedValue(existingUser);
+
+			await userService.updateSettings(existingUser.id, {
+				aiAssistant: { allowAssistantToSendParameterValues: true },
+			});
+
+			expect(userRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					settings: {
+						aiAssistant: {
+							allowAssistantToSendExpressions: true,
+							allowAssistantToSendParameterValues: true,
+						},
+					},
+				}),
+			);
 		});
 	});
 
