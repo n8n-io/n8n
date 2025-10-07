@@ -2,6 +2,7 @@ import fs from 'fs';
 
 import {
 	CODE_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	NOTION_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
@@ -439,5 +440,93 @@ test.describe('Workflow Actions', () => {
 		await n8n.page.keyboard.press('Escape');
 
 		await expect(n8n.canvas.getWorkflowActivatorSwitch()).toHaveClass(/is-checked/);
+	});
+
+	test.describe('duplicate workflow', () => {
+		const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
+		const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
+
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+		});
+
+		test('should duplicate unsaved workflow', async ({ n8n }) => {
+			await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, DUPLICATE_WORKFLOW_TAG);
+
+			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
+		});
+
+		test('should duplicate saved workflow', async ({ n8n }) => {
+			await n8n.canvas.saveWorkflow();
+			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+
+			await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, DUPLICATE_WORKFLOW_TAG);
+
+			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
+		});
+	});
+
+	test('should keep endpoint click working when switching between execution and editor tab', async ({
+		n8n,
+	}) => {
+		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.saveWorkflow();
+
+		await n8n.canvas.clickNodePlusEndpoint('Edit Fields');
+		await expect(n8n.canvas.nodeCreatorSearchBar()).toBeVisible();
+		await n8n.page.keyboard.press('Escape');
+
+		const executionsResponsePromise = n8n.page.waitForResponse((response) =>
+			response.url().includes('/rest/executions?filter='),
+		);
+		await n8n.canvas.clickExecutionsTab();
+		await executionsResponsePromise;
+
+		await n8n.canvas.clickEditorTab();
+
+		await n8n.canvas.clickNodePlusEndpoint('Edit Fields');
+		await expect(n8n.canvas.nodeCreatorSearchBar()).toBeVisible();
+	});
+
+	test('should run workflow on button click', async ({ n8n }) => {
+		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+		await n8n.canvas.saveWorkflow();
+
+		await n8n.canvas.clickExecuteWorkflowButton();
+		await expect(
+			n8n.notifications.getNotificationByTitle('Workflow executed successfully'),
+		).toBeVisible();
+	});
+
+	test('should run workflow using keyboard shortcut', async ({ n8n }) => {
+		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+		await n8n.canvas.saveWorkflow();
+
+		await n8n.canvas.hitExecuteWorkflow();
+		await expect(
+			n8n.notifications.getNotificationByTitle('Workflow executed successfully'),
+		).toBeVisible();
+	});
+
+	test('should not run empty workflows', async ({ n8n }) => {
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
+
+		await expect(n8n.canvas.getExecuteWorkflowButton()).not.toBeAttached();
+
+		await n8n.canvas.hitExecuteWorkflow();
+		await expect(n8n.notifications.getSuccessNotifications()).toHaveCount(0);
+	});
+
+	test.describe('Menu entry Push To Git', () => {
+		test('should not show up in the menu for members @auth:member', async ({ n8n }) => {
+			await n8n.workflowSettingsModal.getWorkflowMenu().click();
+			await expect(n8n.workflowSettingsModal.getPushToGitMenuItem()).not.toBeAttached();
+		});
+
+		test('should show up for owners @auth:owner', async ({ n8n }) => {
+			await n8n.workflowSettingsModal.getWorkflowMenu().click();
+			await expect(n8n.workflowSettingsModal.getPushToGitMenuItem()).toBeVisible();
+		});
 	});
 });

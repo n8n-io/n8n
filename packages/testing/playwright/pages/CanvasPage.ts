@@ -811,6 +811,10 @@ export class CanvasPage extends BasePage {
 		await this.page.keyboard.press('ControlOrMeta+s');
 	}
 
+	async hitExecuteWorkflow(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+Enter');
+	}
+
 	async getNodePosition(nodeName: string): Promise<{ x: number; y: number }> {
 		const node = this.nodeByName(nodeName);
 		const boundingBox = await node.boundingBox();

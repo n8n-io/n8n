@@ -63,8 +63,28 @@ export class WorkflowSettingsModal extends BasePage {
 		return this.page.getByTestId('workflow-menu-item-unarchive');
 	}
 
+	getPushToGitMenuItem(): Locator {
+		return this.page.getByTestId('workflow-menu-item-push');
+	}
+
 	getSaveButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
+	}
+
+	getDuplicateModal(): Locator {
+		return this.page.getByTestId('duplicate-modal');
+	}
+
+	getDuplicateNameInput(): Locator {
+		return this.getDuplicateModal().locator('input').first();
+	}
+
+	getDuplicateTagsInput(): Locator {
+		return this.getDuplicateModal().locator('.el-select__tags input');
+	}
+
+	getDuplicateSaveButton(): Locator {
+		return this.getDuplicateModal().getByRole('button', { name: /duplicate|save/i });
 	}
 
 	async open(): Promise<void> {
