@@ -2902,10 +2902,6 @@ export type PublicInstalledPackage = {
 	failedLoading?: boolean;
 };
 
-export interface CommunityPackageMap {
-	[name: string]: PublicInstalledPackage;
-}
-
 export type PublicInstalledNode = {
 	name: string;
 	type: string;

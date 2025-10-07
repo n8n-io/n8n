@@ -80,11 +80,11 @@ export class TelemetryEventRelay extends EventRelay {
 			'ldap-settings-updated': (event) => this.ldapSettingsUpdated(event),
 			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
-			'workflow-created': async (event) => await this.workflowCreated(event),
+			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
-			'workflow-sharing-updated': async (event) => await this.workflowSharingUpdated(event),
+			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'server-started': async () => await this.serverStarted(),
 			'session-started': (event) => this.sessionStarted(event),
@@ -524,7 +524,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Workflow
 
-	private async workflowCreated({
+	private workflowCreated({
 		user,
 		workflow,
 		publicApi,
@@ -573,7 +573,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private async workflowSharingUpdated({
+	private workflowSharingUpdated({
 		workflowId,
 		userIdSharer,
 		userIdList,

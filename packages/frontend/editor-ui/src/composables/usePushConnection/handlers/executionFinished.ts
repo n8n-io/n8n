@@ -303,6 +303,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				),
 				workflow_id: workflowsStore.workflowId,
 			};
+
 			if (
 				error.context.nodeCause &&
 				['paired_item_no_info', 'paired_item_invalid_info'].includes(error.context.type as string)
