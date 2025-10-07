@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -12,6 +12,8 @@ const emit = defineEmits<{
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+
+const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -56,11 +58,18 @@ async function undoCodeDiff(index: number) {
 		action: 'undo_code_replace',
 	});
 }
+
+defineExpose({
+	focusInput: () => {
+		n8nChatRef.value?.focusInput();
+	},
+});
 </script>
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" class="wrapper" @keydown.stop>
 		<N8nAskAssistantChat
+			ref="n8nChatRef"
 			:user="user"
 			:messages="assistantStore.chatMessages"
 			:streaming="assistantStore.streaming"

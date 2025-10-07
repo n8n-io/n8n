@@ -9,7 +9,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';

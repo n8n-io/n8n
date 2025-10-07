@@ -204,6 +204,7 @@ import IconLucideUsers from '~icons/lucide/users';
 import IconLucideVariable from '~icons/lucide/variable';
 import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
+import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
 import IconLucideWrench from '~icons/lucide/wrench';
 import IconLucideX from '~icons/lucide/x';
@@ -630,6 +631,7 @@ export const updatedIconSet = {
 	users: IconLucideUsers,
 	vault: IconLucideVault,
 	video: IconLucideVideo,
+	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
 	wrench: IconLucideWrench,
 	x: IconLucideX,

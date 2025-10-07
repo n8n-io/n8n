@@ -12,8 +12,11 @@ import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
+import type { WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+
 const emit = defineEmits<{
 	close: [];
 }>();
@@ -32,6 +35,7 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
+const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -63,6 +67,14 @@ const showExecuteMessage = computed(() => {
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
+
+const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
+	// Only show suggestions when no messages in chat yet (blank state)
+	if (builderStore.chatMessages.length === 0) {
+		return WORKFLOW_SUGGESTIONS;
+	}
+	return undefined;
+});
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -254,11 +266,18 @@ watch(
 watch(currentRoute, () => {
 	onNewWorkflow();
 });
+
+defineExpose({
+	focusInput: () => {
+		n8nChatRef.value?.focusInput();
+	},
+});
 </script>
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
 		<N8nAskAssistantChat
+			ref="n8nChatRef"
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
@@ -269,6 +288,7 @@ watch(currentRoute, () => {
 			:credits-quota="creditsQuota"
 			:credits-remaining="creditsRemaining"
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
+			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"

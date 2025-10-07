@@ -30,11 +30,10 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
-import { useBuilderStore } from './builder.store';
 
 export const MAX_CHAT_WIDTH = 425;
-export const MIN_CHAT_WIDTH = 300;
-export const DEFAULT_CHAT_WIDTH = 330;
+export const MIN_CHAT_WIDTH = 380;
+export const DEFAULT_CHAT_WIDTH = 400;
 export const ENABLED_VIEWS = [
 	...EDITABLE_CANVAS_VIEWS,
 	VIEWS.EXECUTION_PREVIEW,
@@ -63,7 +62,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
-	const builderStore = useBuilderStore();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -173,15 +171,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
-	function toggleChatOpen() {
-		if (chatWindowOpen.value) {
+	function toggleChat() {
+		if (isAssistantOpen.value) {
 			closeChat();
 		} else {
-			if (builderStore.isAIBuilderEnabled) {
-				// If builder is enabled, open it instead of assistant
-				void builderStore.openChat();
-				return;
-			}
 			openChat();
 		}
 	}
@@ -852,9 +845,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isFloatingButtonShown,
 		onNodeExecution,
 		trackUserOpenedAssistant,
-		closeChat,
 		openChat,
-		toggleChatOpen,
+		closeChat,
+		toggleChat,
 		updateWindowWidth,
 		isNodeErrorActive,
 		initErrorHelper,

@@ -7,8 +7,8 @@ import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { CredentialsPage } from './CredentialsPage';
-import { DataStoreDetails } from './DataStoreDetails';
-import { DataStoreView } from './DataStoreView';
+import { DataTableDetails } from './DataTableDetails';
+import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
@@ -77,8 +77,8 @@ export class n8nPage {
 	readonly credentials: CredentialsPage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
-	readonly dataTable: DataStoreView;
-	readonly dataTableDetails: DataStoreDetails;
+	readonly dataTable: DataTableView;
+	readonly dataTableDetails: DataTableDetails;
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
@@ -137,8 +137,8 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
-		this.dataTable = new DataStoreView(page);
-		this.dataTableDetails = new DataStoreDetails(page);
+		this.dataTable = new DataTableView(page);
+		this.dataTableDetails = new DataTableDetails(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		// Modals

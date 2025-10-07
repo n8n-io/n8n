@@ -52,7 +52,7 @@ import type {
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
