@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
@@ -8,7 +8,7 @@ import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
-import HubSwitcher from '@/components/AskAssistant/HubSwitcher.vue';
+import HubSwitcher from '@/features/assistant/components/HubSwitcher.vue';
 
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();

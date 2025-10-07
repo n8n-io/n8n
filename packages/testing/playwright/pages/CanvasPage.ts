@@ -337,6 +337,21 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-save-button');
 	}
 
+	getWorkflowActivatorSwitch(): Locator {
+		return this.page.getByTestId('workflow-activate-switch');
+	}
+
+	getLoadingMask(): Locator {
+		return this.page.locator('.el-loading-mask');
+	}
+
+	getWorkflowIdFromUrl(): string {
+		const url = new URL(this.page.url());
+		const workflowId = url.pathname.split('/workflow/')[1]?.split('/')[0];
+		if (!workflowId) throw new Error('Workflow ID not found in URL');
+		return workflowId;
+	}
+
 	/**
 	 * Get the "Set up template" button that appears when credential setup is incomplete
 	 * @returns Locator for the setup workflow credentials button
@@ -440,6 +455,14 @@ export class CanvasPage extends BasePage {
 
 	nodeExecuteButton(nodeName: string): Locator {
 		return this.nodeToolbar(nodeName).getByTestId('execute-node-button');
+	}
+
+	getArchivedTag(): Locator {
+		return this.page.getByTestId('workflow-archived-tag');
+	}
+
+	getNodeCreatorPlusButton(): Locator {
+		return this.page.getByTestId('node-creator-plus-button');
 	}
 
 	canvasPane(): Locator {
@@ -784,6 +807,14 @@ export class CanvasPage extends BasePage {
 		await this.page.keyboard.press('ControlOrMeta+V');
 	}
 
+	async hitSaveWorkflow(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+s');
+	}
+
+	async hitExecuteWorkflow(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+Enter');
+	}
+
 	async getNodePosition(nodeName: string): Promise<{ x: number; y: number }> {
 		const node = this.nodeByName(nodeName);
 		const boundingBox = await node.boundingBox();
@@ -829,5 +860,9 @@ export class CanvasPage extends BasePage {
 
 	getWorkflowName(): Locator {
 		return this.page.getByTestId('workflow-name-input');
+	}
+
+	getWorkflowNameInput(): Locator {
+		return this.page.getByTestId('inline-edit-input');
 	}
 }

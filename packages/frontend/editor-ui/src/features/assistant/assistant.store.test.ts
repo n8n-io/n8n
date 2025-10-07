@@ -6,14 +6,14 @@ import {
 	MAX_CHAT_WIDTH,
 	MIN_CHAT_WIDTH,
 	useAssistantStore,
-} from '@/stores/assistant.store';
-import { useWorkflowsStore } from './workflows.store';
-import type { ChatRequest } from '@/types/assistant.types';
-import { usePostHog } from './posthog.store';
+} from '@/features/assistant/assistant.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
+import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { defaultSettings } from '../__tests__/defaults';
+import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
-import { DEFAULT_POSTHOG_SETTINGS } from './posthog.store.test';
+import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
 import { VIEWS } from '@/constants';
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';

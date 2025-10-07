@@ -1,18 +1,20 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
+import type { IUsedCredential } from '@/Interface';
 import type {
 	ChangeLocationSearchResult,
 	FolderCreateResponse,
 	FolderShortInfo,
 	FolderTreeResponseItem,
-	IUsedCredential,
-} from '@/Interface';
+	DragTarget,
+	DropTarget,
+} from './folders.types';
+import * as foldersApi from './folders.api';
 import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 const BREADCRUMBS_MIN_LOADING_TIME = 300;
@@ -54,19 +56,14 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		projectId: string,
 		parentFolderId?: string,
 	): Promise<FolderCreateResponse> {
-		return await workflowsApi.createFolder(
-			rootStore.restApiContext,
-			projectId,
-			name,
-			parentFolderId,
-		);
+		return await foldersApi.createFolder(rootStore.restApiContext, projectId, name, parentFolderId);
 	}
 
 	async function getFolderPath(
 		projectId: string,
 		folderId: string,
 	): Promise<FolderTreeResponseItem[]> {
-		const tree = await workflowsApi.getFolderPath(rootStore.restApiContext, projectId, folderId);
+		const tree = await foldersApi.getFolderPath(rootStore.restApiContext, projectId, folderId);
 		const forCache = extractFoldersForCache(tree);
 		cacheFolders(forCache);
 
@@ -118,15 +115,15 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	};
 
 	async function deleteFolder(projectId: string, folderId: string, newParentId?: string) {
-		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId, newParentId);
+		await foldersApi.deleteFolder(rootStore.restApiContext, projectId, folderId, newParentId);
 	}
 
 	async function renameFolder(projectId: string, folderId: string, name: string) {
-		await workflowsApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
+		await foldersApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
 	}
 
 	async function fetchProjectFolders(projectId: string) {
-		return await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
+		return await foldersApi.getProjectFolders(rootStore.restApiContext, projectId);
 	}
 
 	async function fetchFoldersAvailableForMove(
@@ -142,7 +139,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		let allFolders: ChangeLocationSearchResult[] = [];
 
 		do {
-			const { data: folders, count } = await workflowsApi.getProjectFolders(
+			const { data: folders, count } = await foldersApi.getProjectFolders(
 				rootStore.restApiContext,
 				projectId,
 				{
@@ -205,7 +202,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		projectId: string,
 		folderId: string,
 	): Promise<IUsedCredential[]> {
-		const usedCredentials = await workflowsApi.getFolderUsedCredentials(
+		const usedCredentials = await foldersApi.getFolderUsedCredentials(
 			rootStore.restApiContext,
 			projectId,
 			folderId,
@@ -219,7 +216,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		folderId: string,
 		parentFolderId?: string,
 	): Promise<void> {
-		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
+		await foldersApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
 		// Update the cache after moving the folder
 		delete breadcrumbsCache.value[folderId];
 	}
@@ -248,7 +245,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		projectId: string,
 		folderId: string,
 	): Promise<{ totalWorkflows: number; totalSubFolders: number }> {
-		return await workflowsApi.getFolderContent(rootStore.restApiContext, projectId, folderId);
+		return await foldersApi.getFolderContent(rootStore.restApiContext, projectId, folderId);
 	}
 
 	/**

@@ -1,4 +1,4 @@
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 

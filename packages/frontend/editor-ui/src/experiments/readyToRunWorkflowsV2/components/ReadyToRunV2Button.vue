@@ -7,7 +7,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { useToast } from '@/composables/useToast';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
 

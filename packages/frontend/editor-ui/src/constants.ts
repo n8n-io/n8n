@@ -81,8 +81,6 @@ export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
-export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
-export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
@@ -478,28 +476,6 @@ export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
 export const MODAL_CLOSE = 'close';
 
-export const ILLEGAL_FOLDER_CHARACTERS = [
-	'[',
-	']',
-	'^',
-	'\\',
-	'/',
-	':',
-	'*',
-	'?',
-	'"',
-	'<',
-	'>',
-	'|',
-];
-export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
-	`[${ILLEGAL_FOLDER_CHARACTERS.map((char) => {
-		return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	}).join('')}]`,
-);
-
-export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
-export const FOLDER_NAME_MAX_LENGTH = 128;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
