@@ -310,6 +310,211 @@ describe('operations-processor', () => {
 			});
 		});
 
+		describe('removeConnection operation', () => {
+			it('should remove a specific connection between two nodes', () => {
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node2',
+						connectionType: 'main',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// Connection should be removed and cleaned up entirely
+				expect(result.connections.node1).toBeUndefined();
+				// Other connections should remain
+				expect(result.connections.node2.main[0]).toEqual([
+					{ node: 'node3', type: 'main', index: 0 },
+				]);
+			});
+
+			it('should remove connection and clean up empty structures', () => {
+				// Workflow with only one connection from node1
+				const simpleWorkflow: SimpleWorkflow = {
+					name: 'Simple',
+					nodes: [node1, node2],
+					connections: {
+						node1: {
+							main: [[{ node: 'node2', type: 'main', index: 0 }]],
+						},
+					},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node2',
+						connectionType: 'main',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(simpleWorkflow, operations);
+
+				// Empty structures are cleaned up completely
+				expect(result.connections.node1).toBeUndefined();
+			});
+
+			it('should remove one connection when multiple exist at same output', () => {
+				// Add multiple connections from node1 output 0
+				baseWorkflow.connections.node1.main = [
+					[
+						{ node: 'node2', type: 'main', index: 0 },
+						{ node: 'node3', type: 'main', index: 0 },
+					],
+				];
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node2',
+						connectionType: 'main',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// Only node2 connection removed, node3 connection remains
+				expect(result.connections.node1.main[0]).toEqual([
+					{ node: 'node3', type: 'main', index: 0 },
+				]);
+			});
+
+			it('should remove connection at specific output index', () => {
+				// Setup multi-output connection
+				baseWorkflow.connections.node1.main = [
+					[{ node: 'node2', type: 'main', index: 0 }], // Output 0
+					[{ node: 'node3', type: 'main', index: 0 }], // Output 1
+				];
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node3',
+						connectionType: 'main',
+						sourceOutputIndex: 1,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// Output 0 unchanged
+				expect(result.connections.node1.main[0]).toEqual([
+					{ node: 'node2', type: 'main', index: 0 },
+				]);
+				// Output 1 connection removed
+				expect(result.connections.node1.main[1]).toEqual([]);
+			});
+
+			it('should handle AI connection types', () => {
+				// Setup AI connection
+				baseWorkflow.connections.node1.ai_languageModel = [
+					[{ node: 'node2', type: 'ai_languageModel', index: 0 }],
+				];
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node2',
+						connectionType: 'ai_languageModel',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// AI connection type removed, but main connection remains
+				expect(result.connections.node1.ai_languageModel).toBeUndefined();
+				expect(result.connections.node1.main).toBeDefined();
+			});
+
+			it('should handle non-existent connection gracefully', () => {
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node3', // No direct connection
+						connectionType: 'main',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// Workflow unchanged
+				expect(result.connections).toEqual(baseWorkflow.connections);
+			});
+
+			it('should handle non-existent source node gracefully', () => {
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'non-existent',
+						targetNode: 'node2',
+						connectionType: 'main',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// Workflow unchanged
+				expect(result.connections).toEqual(baseWorkflow.connections);
+			});
+
+			it('should handle non-existent connection type gracefully', () => {
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node2',
+						connectionType: 'ai_tool', // Does not exist
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// Workflow unchanged
+				expect(result.connections).toEqual(baseWorkflow.connections);
+			});
+
+			it('should handle out-of-range output index gracefully', () => {
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'node1',
+						targetNode: 'node2',
+						connectionType: 'main',
+						sourceOutputIndex: 99, // Out of range
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(baseWorkflow, operations);
+
+				// Workflow unchanged
+				expect(result.connections).toEqual(baseWorkflow.connections);
+			});
+		});
+
 		describe('multiple operations', () => {
 			it('should apply operations in sequence', () => {
 				const newNode = createNode({ id: 'node4', name: 'Node 4' });
