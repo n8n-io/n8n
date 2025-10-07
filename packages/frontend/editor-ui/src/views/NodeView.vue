@@ -1177,6 +1177,10 @@ function onClickReplaceNode(nodeId: string) {
 			(output) => (typeof output === 'string' ? output : output.type),
 		);
 
+		// We want to infer a matching filter to show, e.g. when swapping out tools
+		// But without direct identification on various node types
+		// Our best bet is to rely in input and/or output types, and defaulting
+		// back to showing all nodes in edge cases
 		if (inputs[0] && outputs[0] && inputs[0] !== outputs[0]) {
 			nodeCreatorStore.openNodeCreatorForRegularNodes(
 				NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION,
