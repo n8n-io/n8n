@@ -1154,6 +1154,7 @@ function onClickConnectionAdd(connection: Connection) {
 }
 
 function onClickReplaceNode(nodeId: string) {
+	debugger;
 	const node = workflowsStore.getNodeById(nodeId);
 	if (!node) return;
 	const nodeType = nodeTypesStore.getNodeType(node.type);
@@ -1163,7 +1164,7 @@ function onClickReplaceNode(nodeId: string) {
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
 	} else {
-		const inputs = NodeHelpers.getNodeOutputs(editableWorkflowObject.value, node, nodeType).map(
+		const inputs = NodeHelpers.getNodeInputs(editableWorkflowObject.value, node, nodeType).map(
 			(output) => (typeof output === 'string' ? output : output.type),
 		);
 		const outputs = NodeHelpers.getNodeOutputs(editableWorkflowObject.value, node, nodeType).map(
