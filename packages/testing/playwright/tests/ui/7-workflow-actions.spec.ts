@@ -1,9 +1,13 @@
+import fs from 'fs';
+
 import {
+	CODE_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	NOTION_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
+import { resolveFromRoot } from '../../utils/path-helper';
 
 test.describe('Workflow Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
@@ -178,5 +182,84 @@ test.describe('Workflow Actions', () => {
 		await patchPromise;
 
 		expect(patchCount).toBe(1);
+	});
+
+	test('should not save workflow twice when save is in progress', async ({ n8n }) => {
+		const oldName = await n8n.canvas.getWorkflowNameInput().inputValue();
+
+		await n8n.canvas.getWorkflowName().click();
+		await n8n.canvas.getWorkflowNameInput().press('ControlOrMeta+a');
+		await n8n.canvas.getWorkflowNameInput().pressSequentially('Test');
+		await n8n.canvas.getWorkflowSaveButton().click();
+
+		await expect(n8n.canvas.getWorkflowNameInput()).toHaveValue('Test');
+
+		await n8n.navigate.toHome();
+
+		await expect(n8n.workflows.cards.getWorkflow(oldName)).toBeHidden();
+	});
+
+	test('should copy nodes', async ({ n8n }) => {
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
+
+		await expect(n8n.canvas.nodeCreator.getRoot()).not.toBeAttached();
+
+		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+
+		await n8n.canvas.selectAll();
+		await n8n.canvas.copyNodes();
+
+		await n8n.notifications.waitForNotificationAndClose('Copied to clipboard');
+		const clipboardText = await n8n.page.evaluate(() => navigator.clipboard.readText());
+		const copiedWorkflow = JSON.parse(clipboardText);
+
+		expect(copiedWorkflow.nodes).toHaveLength(2);
+	});
+
+	test('should paste nodes (both current and old node versions)', async ({ n8n }) => {
+		const workflowJson = fs.readFileSync(
+			resolveFromRoot('workflows', 'Test_workflow-actions_paste-data.json'),
+			'utf-8',
+		);
+
+		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+		await n8n.page.evaluate(async (data) => {
+			await navigator.clipboard.writeText(data);
+		}, workflowJson);
+
+		await n8n.canvas.canvasPane().click();
+		await n8n.canvas.hitPaste();
+		await n8n.canvas.clickZoomToFitButton();
+
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
+		await expect(n8n.canvas.nodeConnections()).toHaveCount(5);
+	});
+
+	test('should allow importing nodes without names', async ({ n8n }) => {
+		const workflowJson = fs.readFileSync(
+			resolveFromRoot('workflows', 'Test_workflow-actions_import_nodes_empty_name.json'),
+			'utf-8',
+		);
+
+		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+		await n8n.page.evaluate(async (data) => {
+			await navigator.clipboard.writeText(data);
+		}, workflowJson);
+
+		await n8n.canvas.canvasPane().click();
+		await n8n.canvas.hitPaste();
+		await n8n.canvas.clickZoomToFitButton();
+
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+		await expect(n8n.canvas.nodeConnections()).toHaveCount(2);
+
+		const nodes = n8n.canvas.getCanvasNodes();
+		const count = await nodes.count();
+		for (let i = 0; i < count; i++) {
+			await expect(nodes.nth(i)).toHaveAttribute('data-node-name');
+		}
 	});
 });
