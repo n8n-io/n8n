@@ -74,7 +74,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		appendMessage(chunk, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
-	function onEndMessage(messageId: string, nodeId: string, runIndex?: number) {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
 		isResponding.value = false;
 	}
 
@@ -102,13 +103,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function onStreamDone() {
-		// No-op for now
-		console.log('Streaming done!');
 		isResponding.value = false;
 	}
 
-	function onStreamError(e: Error) {
-		console.error('Streaming error:', e);
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	function onStreamError(_e: Error) {
 		isResponding.value = false;
 	}
 

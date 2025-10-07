@@ -376,6 +376,9 @@ describe('GlobalConfig', () => {
 		ai: {
 			enabled: false,
 		},
+		chat: {
+			openAiApiKey: '',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
