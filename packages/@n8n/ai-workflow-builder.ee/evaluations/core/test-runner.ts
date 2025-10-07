@@ -4,8 +4,10 @@ import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
 import type { EvaluationInput, EvaluationResult, TestCase } from '../types/evaluation';
-import { isWorkflowStateValues } from '../types/langsmith';
+import { isWorkflowStateValues, safeExtractUsage } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
+import { calculateCacheStats } from '../utils/cache-analyzer';
+import { CacheLogger, extractPerMessageCacheStats } from '../utils/cache-logger';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 /**
@@ -58,6 +60,7 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
  * @param llm - Language model for evaluation
  * @param testCase - Test case to execute
  * @param userId - User ID for the session
+ * @param cacheLogger - Optional logger for detailed per-message cache statistics
  * @returns Test result with generated workflow and evaluation
  */
 export async function runSingleTest(
@@ -65,6 +68,7 @@ export async function runSingleTest(
 	llm: BaseChatModel,
 	testCase: TestCase,
 	userId: string = 'test-user',
+	cacheLogger?: CacheLogger,
 ): Promise<TestResult> {
 	try {
 		// Generate workflow
@@ -82,6 +86,18 @@ export async function runSingleTest(
 
 		const generatedWorkflow = state.values.workflowJSON;
 
+		// Extract cache statistics from messages
+		const usage = safeExtractUsage(state.values.messages);
+		const cacheStats = calculateCacheStats(usage);
+
+		// Log per-message cache statistics if logger provided
+		if (cacheLogger && state.values.messages) {
+			const perMessageStats = extractPerMessageCacheStats(state.values.messages);
+			for (const msgStats of perMessageStats) {
+				cacheLogger.logMessage(msgStats);
+			}
+		}
+
 		// Evaluate
 		const evaluationInput: EvaluationInput = {
 			userPrompt: testCase.prompt,
@@ -96,6 +112,7 @@ export async function runSingleTest(
 			generatedWorkflow,
 			evaluationResult,
 			generationTime,
+			cacheStats,
 		};
 	} catch (error) {
 		return createErrorResult(testCase, error);

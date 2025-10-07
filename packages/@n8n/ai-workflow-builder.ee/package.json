@@ -22,7 +22,8 @@
     "deps:all": "pnpm run deps:graph && pnpm run deps:graph:service && pnpm run deps:graph:tools && pnpm run deps:circular && pnpm run deps:report",
     "eval": "tsx evaluations",
     "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
-    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations"
+    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
+    "eval:cache": "tsx evaluations/test-cache-quality.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
