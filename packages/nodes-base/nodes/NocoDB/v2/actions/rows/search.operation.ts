@@ -204,7 +204,7 @@ const v4Options: INodeProperties = {
 							displayName: 'Field Name or ID',
 							name: 'field',
 							type: 'resourceLocator',
-							description: 'Name of the field to select on',
+							description: 'Name of the field to sort on',
 							default: { mode: 'list', value: '' },
 							typeOptions: {
 								loadOptionsDependsOn: ['table.value'],
