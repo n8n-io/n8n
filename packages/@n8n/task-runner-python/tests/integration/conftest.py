@@ -44,14 +44,12 @@ def create_task_settings(
     node_mode: str,
     items: Items | None = None,
     continue_on_fail: bool = False,
-    can_log: bool = False,
 ):
     return {
         "code": code,
         "nodeMode": NODE_MODE_TO_BROKER_STYLE[node_mode],
         "items": items if items is not None else [],
         "continueOnFail": continue_on_fail,
-        "canLog": can_log,
     }
 
 

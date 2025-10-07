@@ -3,6 +3,7 @@ from src.errors import (
     TaskRuntimeError,
     TaskTimeoutError,
     SecurityViolationError,
+    WebsocketConnectionError,
 )
 
 # Messages
@@ -77,6 +78,7 @@ IGNORED_ERROR_TYPES = (
     TaskCancelledError,
     TaskTimeoutError,
     SecurityViolationError,
+    WebsocketConnectionError,
     SyntaxError,
 )
 
