@@ -1,4 +1,4 @@
-import { DATA_TABLE_SYSTEM_COLUMNS, NodeOperationError } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, NodeOperationError } from 'n8n-workflow';
 import type {
 	DataTableFilter,
 	DataTableRowReturn,
@@ -6,6 +6,7 @@ import type {
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeProperties,
+	DataTableColumnType,
 } from 'n8n-workflow';
 
 import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
@@ -117,15 +118,19 @@ export async function getSelectFilter(
 	}
 
 	// Validate filter conditions against current table schema
+	let allColumnsWithTypes: Record<string, DataTableColumnType> = DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP;
+
 	if (fields.length > 0) {
 		const dataTableProxy = await getDataTableProxyExecute(ctx, index);
 		const availableColumns = await dataTableProxy.getColumns();
-		const allColumns = new Set([
-			...DATA_TABLE_SYSTEM_COLUMNS,
-			...availableColumns.map((col) => col.name),
-		]);
 
-		const invalidConditions = fields.filter((field) => !allColumns.has(field.keyName));
+		// Add system columns with their types
+		allColumnsWithTypes = {
+			...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+			...Object.fromEntries(availableColumns.map((col) => [col.name, col.type])),
+		};
+
+		const invalidConditions = fields.filter((field) => !allColumnsWithTypes[field.keyName]);
 
 		if (invalidConditions.length > 0) {
 			const invalidColumnNames = invalidConditions.map((c) => c.keyName).join(', ');
@@ -138,7 +143,7 @@ export async function getSelectFilter(
 		}
 	}
 
-	return buildGetManyFilter(fields, matchType);
+	return buildGetManyFilter(fields, matchType, allColumnsWithTypes, node);
 }
 
 export async function executeSelectMany(
