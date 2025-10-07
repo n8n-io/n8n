@@ -248,12 +248,26 @@ export class SplitInBatchesV4 implements INodeType {
 		const newCount = currentCount + 1;
 		SplitInBatchesV4.executionCounters.set(globalKey, newCount);
 
-		// Calculate expected batches only on first execution, cache for subsequent runs
+		// Calculate expected batches based on initial input size
+		// Use cached value if available, otherwise calculate from current input
 		let expectedBatches = SplitInBatchesV4.expectedBatchesCache.get(globalKey);
 		if (expectedBatches === undefined) {
+			// First execution: check if node context has stored the initial item count
+			const nodeContext = executeFunctions.getContext('node') as {
+				maxRunIndex?: number;
+			};
 			const inputItems = executeFunctions.getInputData();
 			const batchSize = (executeFunctions.getNodeParameter('batchSize', 0) as number) || 1;
-			expectedBatches = Math.ceil(inputItems.length / Math.max(batchSize, 1));
+
+			// If this is truly the first execution, use current input length
+			// Otherwise, use stored maxRunIndex if available (accounts for items already processed)
+			if (typeof nodeContext.maxRunIndex === 'number') {
+				expectedBatches = nodeContext.maxRunIndex;
+			} else {
+				// First time through: calculate from input items
+				expectedBatches = Math.ceil(inputItems.length / Math.max(batchSize, 1));
+			}
+
 			SplitInBatchesV4.expectedBatchesCache.set(globalKey, expectedBatches);
 		}
 

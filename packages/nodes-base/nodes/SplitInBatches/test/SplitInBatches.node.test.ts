@@ -724,6 +724,38 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 			// Expected batches = 1, so counter should track properly
 			expect(SplitInBatchesV4.hasCounterForTest('test-execution-id', 'SplitInBatches')).toBe(true);
 		});
+
+		it('should use maxRunIndex from context for expectedBatches calculation', () => {
+			// Simulate a mid-loop execution where input data has changed
+			const mockFunctions = {
+				...mockExecuteFunctions,
+				getInputData: jest.fn().mockReturnValue([{ json: { item: 1 } }]), // Only 1 item left
+				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'batchSize') return 1;
+					if (paramName === 'options') return {};
+					return undefined;
+				}),
+				getContext: jest.fn().mockReturnValue({
+					maxRunIndex: 10, // Original batch count was 10
+				}),
+			};
+
+			// First call should use maxRunIndex (10), not current input length (1)
+			SplitInBatchesV4.checkExecutionLimit(mockFunctions as IExecuteFunctions);
+
+			// Expected batches should be 10 (from maxRunIndex), not 1 (from current input)
+			// Limit = max(10*2, 10) = 20, with 2x tolerance = 40
+			for (let i = 0; i < 39; i++) {
+				expect(() => {
+					SplitInBatchesV4.checkExecutionLimit(mockFunctions as IExecuteFunctions);
+				}).not.toThrow();
+			}
+
+			// 41st execution should throw (proves it used maxRunIndex=10, not inputLength=1)
+			expect(() => {
+				SplitInBatchesV4.checkExecutionLimit(mockFunctions as IExecuteFunctions);
+			}).toThrow(NodeOperationError);
+		});
 	});
 });
 
