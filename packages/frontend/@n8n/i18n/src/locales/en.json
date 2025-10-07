@@ -768,7 +768,7 @@
 	"experiments.personalizedTemplatesV3.couldntFind": "Need something different?",
 	"experiments.personalizedTemplatesV3.exploreTemplates": "Get started with HubSpot workflows:",
 	"experiments.personalizedTemplatesV3.loadingTemplates": "Loading recommendations...",
-	"experiments.personalizedTemplatesV3.recommendationTooltip": "Speed up your automation with these workflows",
+	"experiments.personalizedTemplatesV3.recommendationTooltip": "Recommended workflows for you",
 	"experiments.personalizedTemplatesV3.recommendedForYou": "Recommended for you",
 	"error": "Error",
 	"error.goBack": "Go back",
