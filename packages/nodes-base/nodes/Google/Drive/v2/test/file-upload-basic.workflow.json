@@ -1,0 +1,76 @@
+{
+	"_comment": "This workflow tests basic file upload functionality with small embedded binary data. It uses the regular upload path (not resumable), as resumable uploads require binary data with an 'id' field which is not easily testable in workflow tests. Large file upload functionality is covered by dedicated unit tests.",
+	"name": "Google Drive V2 File Upload Basic Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"inputDataFieldName": "data",
+				"name": "small-file.pdf"
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 3,
+			"position": [200, 0],
+			"id": "file-upload-basic",
+			"name": "Upload Small File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Drive OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"When clicking 'Execute Workflow'": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "JVBERi0xLjQKJcfsj6IKNSAwIG9iago8PAovTGVuZ3RoIDYgMCBSCi9GaWx0ZXIgL0ZsYXRlRGVjb2RlCj4+CnN0cmVhbQp4nEWQwQrCMBBE",
+						"mimeType": "application/pdf",
+						"fileName": "small-file.pdf"
+					}
+				}
+			}
+		],
+		"Upload Small File": [
+			{
+				"json": {
+					"id": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+					"name": "small-file.pdf",
+					"mimeType": "application/pdf",
+					"size": "81",
+					"createdTime": "2024-01-01T00:00:00.000Z",
+					"modifiedTime": "2024-01-01T00:00:00.000Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Upload Small File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

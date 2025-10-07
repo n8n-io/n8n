@@ -9,6 +9,7 @@ import { CONNECT_NODES_TOOL, createConnectNodesTool } from './connect-nodes.tool
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import { createNodeDetailsTool, NODE_DETAILS_TOOL } from './node-details.tool';
 import { createNodeSearchTool, NODE_SEARCH_TOOL } from './node-search.tool';
+import { createRemoveConnectionTool, REMOVE_CONNECTION_TOOL } from './remove-connection.tool';
 import { createRemoveNodeTool, REMOVE_NODE_TOOL } from './remove-node.tool';
 import {
 	createUpdateNodeParametersTool,
@@ -31,6 +32,7 @@ export function getBuilderTools({
 		createNodeDetailsTool(parsedNodeTypes),
 		createAddNodeTool(parsedNodeTypes),
 		createConnectNodesTool(parsedNodeTypes, logger),
+		createRemoveConnectionTool(logger),
 		createRemoveNodeTool(logger),
 		createUpdateNodeParametersTool(parsedNodeTypes, llmComplexTask, logger, instanceUrl),
 		createGetNodeParameterTool(),
@@ -50,6 +52,7 @@ export function getBuilderToolsForDisplay({
 		NODE_DETAILS_TOOL,
 		getAddNodeToolBase(nodeTypes),
 		CONNECT_NODES_TOOL,
+		REMOVE_CONNECTION_TOOL,
 		REMOVE_NODE_TOOL,
 		UPDATING_NODE_PARAMETER_TOOL,
 		GET_NODE_PARAMETER_TOOL,

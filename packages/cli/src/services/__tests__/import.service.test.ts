@@ -7,6 +7,7 @@ import type { Cipher } from 'n8n-core';
 
 import { ImportService } from '../import.service';
 import type { CredentialsRepository, TagRepository } from '@n8n/db';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -24,6 +25,10 @@ jest.mock('@n8n/db', () => ({
 	DataSource: mock<DataSource>(),
 }));
 
+jest.mock('@/active-workflow-manager', () => ({
+	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
+}));
+
 describe('ImportService', () => {
 	let importService: ImportService;
 	let mockLogger: Logger;
@@ -32,6 +37,7 @@ describe('ImportService', () => {
 	let mockTagRepository: TagRepository;
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
+	let mockActiveWorkflowManager: ActiveWorkflowManager;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -42,6 +48,7 @@ describe('ImportService', () => {
 		mockTagRepository = mock<TagRepository>();
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
+		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 
 		// Set up cipher mock
 		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
@@ -86,6 +93,7 @@ describe('ImportService', () => {
 			mockTagRepository,
 			mockDataSource,
 			mockCipher,
+			mockActiveWorkflowManager,
 		);
 	});
 

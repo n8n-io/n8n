@@ -1,0 +1,21 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0],
+			"id": "e3fa278e-1cb1-48fb-88e4-301c7d04d22c",
+			"name": "When Executed by Another Workflow"
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [[]]
+		}
+	},
+	"pinData": {},
+	"meta": {}
+}
