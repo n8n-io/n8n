@@ -1,6 +1,7 @@
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { parseToApiNodeOperationError } from '../helpers';
 import { ColumnsFetcher } from '../helpers/columns-fetcher';
 import { apiRequest } from '../transport';
 
@@ -32,15 +33,24 @@ export async function getDownloadFields(this: ILoadOptionsFunctions) {
 	const version = this.getNodeParameter('version', 0) as number;
 
 	const fetcher = new ColumnsFetcher(this);
-	const fields = await fetcher.fetchFromDefinedParam();
-	return fields
-		.filter((field: any) => (version === 4 ? field.type : field.uidt) === 'Attachment')
-		.map((field: any) => {
-			return {
-				name: field.title,
-				value: field.title,
-			};
+	try {
+		const fields = await fetcher.fetchFromDefinedParam();
+		return fields
+			.filter((field: any) => (version === 4 ? field.type : field.uidt) === 'Attachment')
+			.map((field: any) => {
+				return {
+					name: field.title,
+					value: field.title,
+				};
+			});
+	} catch (e) {
+		throw parseToApiNodeOperationError({
+			error: e as NodeApiError,
+			errorLevel: 'warning',
+			subject: 'Error while fetching fields:',
+			node: this.getNode(),
 		});
+	}
 }
 
 export async function getFields(this: ILoadOptionsFunctions) {
@@ -68,14 +78,12 @@ export async function getFields(this: ILoadOptionsFunctions) {
 				};
 			});
 		} catch (e) {
-			const message = e.messages?.[0] ?? '';
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error(`Error while fetching fields: ${message}`, { cause: e }),
-				{
-					level: 'warning',
-				},
-			);
+			throw parseToApiNodeOperationError({
+				error: e as NodeApiError,
+				errorLevel: 'warning',
+				subject: 'Error while fetching fields:',
+				node: this.getNode(),
+			});
 		}
 	} else {
 		throw new NodeOperationError(this.getNode(), 'No table selected!', {
