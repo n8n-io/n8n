@@ -357,7 +357,7 @@ describe('GET /projects/:projectId/data-tables', () => {
 
 		expect(response.body.data.count).toBe(5); // Total count should be 5
 		expect(response.body.data.data).toHaveLength(3); // But only 3 returned
-		expect((response.body.data.data as DataTable[]).map((store) => store.name)).toEqual([
+		expect((response.body.data.data as DataTable[]).map((dataTable) => dataTable.name)).toEqual([
 			'Data Table 5',
 			'Data Table 4',
 			'Data Table 3',
@@ -381,7 +381,7 @@ describe('GET /projects/:projectId/data-tables', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(3);
-		expect((response.body.data.data as DataTable[]).map((store) => store.name)).toEqual([
+		expect((response.body.data.data as DataTable[]).map((dataTable) => dataTable.name)).toEqual([
 			'Data Table 3',
 			'Data Table 2',
 			'Data Table 1',
@@ -405,7 +405,7 @@ describe('GET /projects/:projectId/data-tables', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(2);
-		expect((response.body.data.data as DataTable[]).map((store) => store.name)).toEqual([
+		expect((response.body.data.data as DataTable[]).map((dataTable) => dataTable.name)).toEqual([
 			'Data Table 4',
 			'Data Table 3',
 		]);
@@ -421,7 +421,7 @@ describe('GET /projects/:projectId/data-tables', () => {
 			.query({ sortBy: 'name:asc' })
 			.expect(200);
 
-		expect((response.body.data.data as DataTable[]).map((store) => store.name)).toEqual([
+		expect((response.body.data.data as DataTable[]).map((dataTable) => dataTable.name)).toEqual([
 			'A Data Table',
 			'M Data Table',
 			'Z Data Table',
@@ -518,7 +518,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		};
 
 		await authOwnerAgent
-			.patch('/projects/non-existing-id/data-tables/some-data-store-id')
+			.patch('/projects/non-existing-id/data-tables/some-data-table-id')
 			.send(payload)
 			.expect(403);
 	});
@@ -531,7 +531,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${project.id}/data-tables/non-existing-data-store`)
+			.patch(`/projects/${project.id}/data-tables/non-existing-data-table`)
 			.send(payload)
 			.expect(404);
 	});
@@ -661,7 +661,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 	test('should not delete data table when project does not exist', async () => {
 		await authOwnerAgent
-			.delete('/projects/non-existing-id/data-tables/some-data-store-id')
+			.delete('/projects/non-existing-id/data-tables/some-data-table-id')
 			.send({})
 			.expect(403);
 	});
@@ -670,7 +670,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
-			.delete(`/projects/${project.id}/data-tables/non-existing-data-store`)
+			.delete(`/projects/${project.id}/data-tables/non-existing-data-table`)
 			.send({})
 			.expect(404);
 	});
@@ -887,7 +887,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post('/projects/non-existing-id/data-tables/some-data-store-id/columns')
+			.post('/projects/non-existing-id/data-tables/some-data-table-id/columns')
 			.send(payload)
 			.expect(403);
 	});
@@ -902,7 +902,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-tables/non-existing-data-store/columns`)
+			.post(`/projects/${project.id}/data-tables/non-existing-data-table/columns`)
 			.send(payload)
 			.expect(404);
 	});
@@ -1113,7 +1113,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/columns', () => {
 describe('DELETE /projects/:projectId/data-tables/:dataTableId/columns/:columnId', () => {
 	test('should not delete column when project does not exist', async () => {
 		await authOwnerAgent
-			.delete('/projects/non-existing-id/data-tables/some-data-store-id/columns/some-column-id')
+			.delete('/projects/non-existing-id/data-tables/some-data-table-id/columns/some-column-id')
 			.send({})
 			.expect(403);
 	});
@@ -1300,7 +1300,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/
 		};
 
 		await authOwnerAgent
-			.patch('/projects/non-existing-id/data-tables/some-data-store-id/columns/some-column-id/move')
+			.patch('/projects/non-existing-id/data-tables/some-data-table-id/columns/some-column-id/move')
 			.send(payload)
 			.expect(403);
 	});
@@ -1313,7 +1313,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/
 
 		await authOwnerAgent
 			.patch(
-				`/projects/${project.id}/data-tables/non-existing-data-store/columns/some-column-id/move`,
+				`/projects/${project.id}/data-tables/non-existing-data-table/columns/some-column-id/move`,
 			)
 			.send(payload)
 			.expect(404);
@@ -1525,7 +1525,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/
 describe('GET /projects/:projectId/data-tables/:dataTableId/rows', () => {
 	test('should not list rows when project does not exist', async () => {
 		await authOwnerAgent
-			.get('/projects/non-existing-id/data-tables/some-data-store-id/rows')
+			.get('/projects/non-existing-id/data-tables/some-data-table-id/rows')
 			.expect(403);
 	});
 
@@ -1905,7 +1905,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 		};
 
 		await authOwnerAgent
-			.post('/projects/non-existing-id/data-tables/some-data-store-id/insert')
+			.post('/projects/non-existing-id/data-tables/some-data-table-id/insert')
 			.send(payload)
 			.expect(403);
 	});
@@ -2501,7 +2501,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 	test('should not delete rows when project does not exist', async () => {
 		await authOwnerAgent
-			.delete('/projects/non-existing-id/data-tables/some-data-store-id/rows')
+			.delete('/projects/non-existing-id/data-tables/some-data-table-id/rows')
 			.query({
 				filter: JSON.stringify({
 					type: 'and',
@@ -2872,7 +2872,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 		};
 
 		await authOwnerAgent
-			.post('/projects/non-existing-id/data-tables/some-data-store-id/upsert')
+			.post('/projects/non-existing-id/data-tables/some-data-table-id/upsert')
 			.send(payload)
 			.expect(403);
 	});
@@ -3119,7 +3119,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
 		};
 
 		await authOwnerAgent
-			.patch('/projects/non-existing-id/data-tables/some-data-store-id/rows')
+			.patch('/projects/non-existing-id/data-tables/some-data-table-id/rows')
 			.send(payload)
 			.expect(403);
 	});

@@ -216,7 +216,7 @@ describe('dataTable', () => {
 	});
 
 	describe('deleteDataTable', () => {
-		it('should succeed with deleting a store', async () => {
+		it('should succeed with deleting a data table', async () => {
 			// ARRANGE
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
 				name: 'myDataTable1',
@@ -230,8 +230,8 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const deletedDatastore = await dataTableRepository.findOneBy({ id: dataTableId });
-			expect(deletedDatastore).toBeNull();
+			const deletedDataTable = await dataTableRepository.findOneBy({ id: dataTableId });
+			expect(deletedDataTable).toBeNull();
 
 			const queryUserTable = dataTableRepository.manager
 				.createQueryBuilder()

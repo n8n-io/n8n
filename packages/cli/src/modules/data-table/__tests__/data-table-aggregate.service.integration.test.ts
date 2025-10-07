@@ -30,16 +30,16 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('dataStoreAggregate', () => {
-	let dataStoreService: DataTableService;
-	let dataStoreAggregateService: DataTableAggregateService;
+describe('dataTableAggregate', () => {
+	let dataTableService: DataTableService;
+	let dataTableAggregateService: DataTableAggregateService;
 	const manager = mock<EntityManager>();
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 
 	beforeAll(() => {
 		Container.set(ProjectRelationRepository, projectRelationRepository);
-		dataStoreAggregateService = Container.get(DataTableAggregateService);
-		dataStoreService = Container.get(DataTableService);
+		dataTableAggregateService = Container.get(DataTableAggregateService);
+		dataTableService = Container.get(DataTableService);
 	});
 
 	let user: User;
@@ -54,18 +54,18 @@ describe('dataStoreAggregate', () => {
 
 	afterEach(async () => {
 		// Clean up any created user data tables
-		await dataStoreService.deleteDataTableAll();
+		await dataTableService.deleteDataTableAll();
 	});
 
 	describe('getManyAndCount', () => {
 		it('should return the correct data tables for the user', async () => {
 			// ARRANGE
-			const ds1 = await dataStoreService.createDataTable(project1.id, {
-				name: 'store1',
+			const ds1 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable1',
 				columns: [],
 			});
-			const ds2 = await dataStoreService.createDataTable(project1.id, {
-				name: 'store2',
+			const ds2 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable2',
 				columns: [],
 			});
 
@@ -92,13 +92,13 @@ describe('dataStoreAggregate', () => {
 				},
 			]);
 
-			await dataStoreService.createDataTable(project2.id, {
-				name: 'store3',
+			await dataTableService.createDataTable(project2.id, {
+				name: 'dataTable3',
 				columns: [],
 			});
 
 			// ACT
-			const result = await dataStoreAggregateService.getManyAndCount(user, {
+			const result = await dataTableAggregateService.getManyAndCount(user, {
 				filter: { projectId: project1.id },
 				skip: 0,
 				take: 10,
@@ -118,14 +118,14 @@ describe('dataStoreAggregate', () => {
 			// ARRANGE
 			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
-			await dataStoreService.createDataTable(project1.id, {
-				name: 'store1',
+			await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable1',
 				columns: [],
 			});
 			projectRelationRepository.find.mockResolvedValueOnce([]);
 
 			// ACT
-			const result = await dataStoreAggregateService.getManyAndCount(currentUser, {
+			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
 				skip: 0,
 				take: 10,
 			});
@@ -137,12 +137,12 @@ describe('dataStoreAggregate', () => {
 
 		it('should return only the data table matching the given data table id filter', async () => {
 			// ARRANGE
-			await dataStoreService.createDataTable(project1.id, {
-				name: 'store1',
+			await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable1',
 				columns: [],
 			});
-			const ds2 = await dataStoreService.createDataTable(project1.id, {
-				name: 'store2',
+			const ds2 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable2',
 				columns: [],
 			});
 			projectRelationRepository.find.mockResolvedValueOnce([
@@ -169,7 +169,7 @@ describe('dataStoreAggregate', () => {
 			]);
 
 			// ACT
-			const result = await dataStoreAggregateService.getManyAndCount(user, {
+			const result = await dataTableAggregateService.getManyAndCount(user, {
 				filter: { id: ds2.id },
 				skip: 0,
 				take: 10,
@@ -182,16 +182,16 @@ describe('dataStoreAggregate', () => {
 
 		it('should respect pagination (skip/take)', async () => {
 			// ARRANGE
-			const ds1 = await dataStoreService.createDataTable(project1.id, {
-				name: 'store1',
+			const ds1 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable1',
 				columns: [],
 			});
-			const ds2 = await dataStoreService.createDataTable(project1.id, {
-				name: 'store2',
+			const ds2 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable2',
 				columns: [],
 			});
-			const ds3 = await dataStoreService.createDataTable(project1.id, {
-				name: 'store3',
+			const ds3 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable3',
 				columns: [],
 			});
 			projectRelationRepository.find.mockResolvedValueOnce([
@@ -208,7 +208,7 @@ describe('dataStoreAggregate', () => {
 			]);
 
 			// ACT
-			const result = await dataStoreAggregateService.getManyAndCount(user, {
+			const result = await dataTableAggregateService.getManyAndCount(user, {
 				filter: { projectId: project1.id },
 				skip: 1,
 				take: 1,
