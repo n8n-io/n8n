@@ -9,6 +9,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from '@/constants';
+import { createPinia, setActivePinia } from 'pinia';
 
 describe('CanvasRunWorkflowButton', () => {
 	const renderComponent = createComponentRenderer(CanvasRunWorkflowButton, {
@@ -16,6 +17,10 @@ describe('CanvasRunWorkflowButton', () => {
 			triggerNodes: [createTestNode({ type: MANUAL_CHAT_TRIGGER_NODE_TYPE })],
 			getNodeType: () => null,
 		},
+	});
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
 	});
 
 	it('should render correctly', () => {
