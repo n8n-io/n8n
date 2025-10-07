@@ -143,11 +143,5 @@
     "vitest-mock-extended": "catalog:",
     "vue-tsc": "catalog:frontend",
     "z-vue-scan": "^0.0.35"
-  },
-  "peerDependencies": {
-    "@fortawesome/fontawesome-svg-core": "*",
-    "@fortawesome/free-regular-svg-icons": "*",
-    "@fortawesome/free-solid-svg-icons": "*",
-    "@fortawesome/vue-fontawesome": "*"
   }
 }
