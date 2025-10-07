@@ -98,7 +98,7 @@ const workflowOwnerName = computed(() => {
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
-const isElibibleForMCPAccess = computed(() => {
+const isEligibleForMCPAccess = computed(() => {
 	if (!workflow.value?.active) {
 		return false;
 	}
@@ -858,7 +858,7 @@ onBeforeUnmount(() => {
 							<N8nTooltip placement="top">
 								<template #content>
 									{{
-										isElibibleForMCPAccess
+										isEligibleForMCPAccess
 											? i18n.baseText('workflowSettings.availableInMCP.tooltip')
 											: i18n.baseText('mcp.workflowNotEligable.description')
 									}}
@@ -869,13 +869,13 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<N8nTooltip placement="top" :disabled="isElibibleForMCPAccess">
+							<N8nTooltip placement="top" :disabled="isEligibleForMCPAccess">
 								<template #content>
 									{{ i18n.baseText('mcp.workflowNotEligable.description') }}
 								</template>
 								<ElSwitch
 									ref="inputField"
-									:disabled="readOnlyEnv || !workflowPermissions.update || !isElibibleForMCPAccess"
+									:disabled="readOnlyEnv || !workflowPermissions.update || !isEligibleForMCPAccess"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"
