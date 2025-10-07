@@ -145,13 +145,19 @@ export const useChatPanelStore = defineStore(STORES.CHAT_WINDOW, () => {
 	watch(
 		() => route.name,
 		(newRoute) => {
-			if (!isOpen.value || !newRoute) return;
+			if (!isOpen.value || !newRoute) {
+				return;
+			}
+			const builderStore = useBuilderStore();
 
 			const enabledViews =
 				activeMode.value === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
 
 			if (!enabledViews.includes(newRoute as VIEWS)) {
 				close();
+			} else if (BUILDER_ENABLED_VIEWS.includes(newRoute as VIEWS)) {
+				// If entering an editable canvas view with builder mode active, refresh state
+				builderStore.resetBuilderChat();
 			}
 		},
 	);
