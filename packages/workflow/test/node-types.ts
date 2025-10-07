@@ -1404,8 +1404,8 @@ export class NodeTypes implements INodeTypes {
 			description: {
 				properties: [],
 				name: nodeType,
+				communityNodePackageVersion: undefined,
 			},
-			packageVersion: undefined,
 		});
 	}
 

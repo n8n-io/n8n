@@ -1598,13 +1598,19 @@ describe('generateNodesGraph', () => {
 					if (nodeType === 'n8n-nodes-community-installed-node.communityInstalledNode') {
 						return {
 							...orig,
-							packageVersion: '1.0.0',
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.0',
+							},
 						};
 					}
 					if (nodeType === 'n8n-nodes-community-installed-node2.communityInstalledNode') {
 						return {
 							...orig,
-							packageVersion: '1.0.1',
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.1',
+							},
 						};
 					}
 					return orig;
