@@ -2,7 +2,6 @@
 import type { NodeIconSource } from '@/utils/nodeIcon';
 import { N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
 
 const props = defineProps<{
 	nodeName: string;
@@ -15,8 +14,6 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const emit = defineEmits<{ close: []; rename: [name: string] }>();
-
-const hasCustomName = computed(() => props.nodeName !== props.nodeTypeName);
 
 function onRename(newNodeName: string) {
 	emit('rename', newNodeName || props.nodeTypeName);
@@ -37,9 +34,6 @@ function onRename(newNodeName: string) {
 					@update:model-value="onRename"
 				/>
 			</div>
-			<N8nText v-if="hasCustomName && !docsUrl" size="small" bold>
-				{{ nodeTypeName }}
-			</N8nText>
 		</div>
 
 		<div :class="$style.actions">
@@ -74,7 +68,7 @@ function onRename(newNodeName: string) {
 
 .content {
 	display: flex;
-	align-items: flex-end;
+	align-items: center;
 	gap: var(--spacing-2xs);
 	margin-left: var(--spacing-2xs);
 }
@@ -97,13 +91,6 @@ function onRename(newNodeName: string) {
 .title {
 	color: var(--color-text-dark);
 	font-size: var(--font-size-s);
-}
-
-.subtitle {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing-2xs);
-	margin: 0;
 }
 
 .docsLabel {
