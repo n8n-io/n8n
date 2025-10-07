@@ -32,15 +32,15 @@ import {
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import { useProjectPages } from '@/composables/useProjectPages';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useProjectsStore } from '@/stores/projects.store';
 import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/environments.ee/components/VariablesUsageBadge.vue';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
