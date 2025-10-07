@@ -1,6 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line import-x/order
 import { ALL_SCOPES, ALL_ROLES, scopeInformation } from '@n8n/permissions';
+
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 
 import { Scope } from '../entities';
 import { RoleRepository, ScopeRepository } from '../repositories';
@@ -71,14 +75,13 @@ export class AuthRolesService {
 			const obsoleteScopeSlugs = scopesToDelete.map((s) => s.slug);
 			const rolesWithObsoleteScopes = await this.roleRepository.find({
 				relations: ['scopes'],
+				where: { scopes: { slug: In(obsoleteScopeSlugs) } },
 			});
 
-			const rolesToUpdate = rolesWithObsoleteScopes
-				.filter((role) => role.scopes.some((scope) => obsoleteScopeSlugs.includes(scope.slug)))
-				.map((role) => {
-					role.scopes = role.scopes.filter((scope) => !obsoleteScopeSlugs.includes(scope.slug));
-					return role;
-				});
+			const rolesToUpdate = rolesWithObsoleteScopes.map((role) => {
+				role.scopes = role.scopes.filter((scope) => !obsoleteScopeSlugs.includes(scope.slug));
+				return role;
+			});
 
 			if (rolesToUpdate.length > 0) {
 				this.logger.debug(`Removing obsolete scopes from ${rolesToUpdate.length} roles...`);
