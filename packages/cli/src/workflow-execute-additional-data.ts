@@ -36,7 +36,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
-// eslint-disable-next-line import-x/no-cycle
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import {
@@ -363,17 +362,31 @@ export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) 
 
 /**
  * Returns the base additional data without webhooks
+ * @returns {IWorkflowExecuteAdditionalData}
+ * param userId - The ID of the user executing the workflow, if available
+ * param workflowId - The ID of the workflow being executed, if available
+ * param projectId - The ID of the project the workflow is owned by, if available
+ * param currentNodeParameters - The parameters of the currently executing node
+ * param executionTimeoutTimestamp - The timestamp (in ms) when the execution should time out
  */
-export async function getBase(
-	userId?: string,
-	currentNodeParameters?: INodeParameters,
-	executionTimeoutTimestamp?: number,
-): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase({
+	userId,
+	workflowId,
+	projectId,
+	currentNodeParameters,
+	executionTimeoutTimestamp,
+}: {
+	userId?: string;
+	workflowId?: string;
+	projectId?: string;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
+} = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
-	const variables = await WorkflowHelpers.getVariables();
+	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
 

@@ -2,10 +2,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataTableSizeStatus, DataTablesSizeData } from 'n8n-workflow';
 
-import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { DataTableValidationError } from './errors/data-table-validation.error';
 
 @Service()
-export class DataStoreSizeValidator {
+export class DataTableSizeValidator {
 	private lastCheck: Date | undefined;
 	private cachedSizeData: DataTablesSizeData | undefined;
 	private pendingCheck: Promise<DataTablesSizeData> | null = null;
@@ -53,8 +53,8 @@ export class DataStoreSizeValidator {
 	): Promise<void> {
 		const size = await this.getCachedSizeData(fetchSizeFn, now);
 		if (size.totalBytes >= this.globalConfig.dataTable.maxSize) {
-			throw new DataStoreValidationError(
-				`Data store size limit exceeded: ${this.toMb(size.totalBytes)}MB used, limit is ${this.toMb(this.globalConfig.dataTable.maxSize)}MB`,
+			throw new DataTableValidationError(
+				`Data table size limit exceeded: ${this.toMb(size.totalBytes)}MB used, limit is ${this.toMb(this.globalConfig.dataTable.maxSize)}MB`,
 			);
 		}
 	}

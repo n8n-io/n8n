@@ -14,9 +14,9 @@ import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
 import type {
-	IDataStoreProjectAggregateService,
-	IDataStoreProjectService,
-} from './data-store.types';
+	IDataTableProjectAggregateService,
+	IDataTableProjectService,
+} from './data-table.types';
 import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
@@ -925,24 +925,24 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 
 export type ContextType = 'flow' | 'node';
 
-export type DataStoreProxyProvider = {
-	getDataStoreAggregateProxy(
+export type DataTableProxyProvider = {
+	getDataTableAggregateProxy(
 		workflow: Workflow,
 		node: INode,
 		projectId?: string,
-	): Promise<IDataStoreProjectAggregateService>;
-	getDataStoreProxy(
+	): Promise<IDataTableProjectAggregateService>;
+	getDataTableProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreId: string,
+		dataTableId: string,
 		projectId?: string,
-	): Promise<IDataStoreProjectService>;
+	): Promise<IDataTableProjectService>;
 };
 
-export type DataStoreProxyFunctions = {
-	// These are optional to account for situations where the data-store module is disabled
-	getDataStoreAggregateProxy?(): Promise<IDataStoreProjectAggregateService>;
-	getDataStoreProxy?(dataStoreId: string): Promise<IDataStoreProjectService>;
+export type DataTableProxyFunctions = {
+	// These are optional to account for situations where the data-table module is disabled
+	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
+	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
@@ -1008,7 +1008,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataStoreProxyFunctions & {
+			DataTableProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1093,7 +1093,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataStoreProxyFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };

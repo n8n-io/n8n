@@ -2,8 +2,8 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
+import { dataTableColumnNameSchema } from '../../schemas/data-table.schema';
 import { paginationSchema } from '../pagination/pagination.dto';
 
 const filterValidator = z
@@ -51,7 +51,7 @@ const sortByValidator = z
 		let [column, direction] = val.split(':');
 
 		try {
-			column = dataStoreColumnNameSchema.parse(column);
+			column = dataTableColumnNameSchema.parse(column);
 		} catch {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
@@ -74,7 +74,7 @@ const sortByValidator = z
 		return [column, direction] as const;
 	});
 
-export class ListDataStoreContentQueryDto extends Z.class({
+export class ListDataTableContentQueryDto extends Z.class({
 	take: paginationSchema.take.optional(),
 	skip: paginationSchema.skip.optional(),
 	filter: filterValidator.optional(),

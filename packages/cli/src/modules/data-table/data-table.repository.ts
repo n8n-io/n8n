@@ -1,7 +1,7 @@
 import {
-	DATA_STORE_COLUMN_ERROR_MESSAGE,
-	type DataStoreCreateColumnSchema,
-	type ListDataStoreQueryDto,
+	DATA_TABLE_COLUMN_ERROR_MESSAGE,
+	type DataTableCreateColumnSchema,
+	type ListDataTableQueryDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Project, withTransaction } from '@n8n/db';
@@ -10,40 +10,40 @@ import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/
 import { UnexpectedError } from 'n8n-workflow';
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
-import { DataStoreRowsRepository } from './data-store-rows.repository';
-import { DataStoreUserTableName } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTable } from './data-table.entity';
-import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
-import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { DataTableUserTableName } from './data-table.types';
+import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
+import { DataTableValidationError } from './errors/data-table-validation.error';
 import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
 @Service()
-export class DataStoreRepository extends Repository<DataTable> {
+export class DataTableRepository extends Repository<DataTable> {
 	constructor(
 		dataSource: DataSource,
-		private dataStoreRowsRepository: DataStoreRowsRepository,
+		private dataTableRowsRepository: DataTableRowsRepository,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(DataTable, dataSource.manager);
 	}
 
-	async createDataStore(
+	async createDataTable(
 		projectId: string,
 		name: string,
-		columns: DataStoreCreateColumnSchema[],
+		columns: DataTableCreateColumnSchema[],
 		trx?: EntityManager,
 	) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
-				throw new DataStoreValidationError(DATA_STORE_COLUMN_ERROR_MESSAGE);
+				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 			}
 
-			const dataStore = em.create(DataTable, { name, columns, projectId });
+			const dataTable = em.create(DataTable, { name, columns, projectId });
 
 			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
-			await em.insert(DataTable, dataStore);
-			const dataTableId = dataStore.id;
+			await em.insert(DataTable, dataTable);
+			const dataTableId = dataTable.id;
 
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
@@ -61,30 +61,30 @@ export class DataStoreRepository extends Repository<DataTable> {
 			}
 
 			// create user table (will create empty table with just id column if no columns)
-			await this.dataStoreRowsRepository.createTableWithColumns(dataTableId, columnEntities, em);
+			await this.dataTableRowsRepository.createTableWithColumns(dataTableId, columnEntities, em);
 
 			if (!dataTableId) {
-				throw new UnexpectedError('Data store creation failed');
+				throw new UnexpectedError('Data table creation failed');
 			}
 
-			const createdDataStore = await em.findOneOrFail(DataTable, {
+			const createdDataTable = await em.findOneOrFail(DataTable, {
 				where: { id: dataTableId },
 				relations: ['project', 'columns'],
 			});
 
-			return createdDataStore;
+			return createdDataTable;
 		});
 	}
 
-	async deleteDataStore(dataStoreId: string, trx?: EntityManager) {
+	async deleteDataTable(dataTableId: string, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			await em.delete(DataTable, { id: dataStoreId });
-			await this.dataStoreRowsRepository.dropTable(dataStoreId, em);
+			await em.delete(DataTable, { id: dataTableId });
+			await this.dataTableRowsRepository.dropTable(dataTableId, em);
 			return true;
 		});
 	}
 
-	async transferDataStoreByProjectId(
+	async transferDataTableByProjectId(
 		fromProjectId: string,
 		toProjectId: string,
 		trx?: EntityManager,
@@ -112,8 +112,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 					});
 
 					if (stillHasNameClash) {
-						throw new DataStoreNameConflictError(
-							`Failed to transfer data store "${existing.name}" to the target project "${toProjectId}". A data table with the same name already exists in the target project.`,
+						throw new DataTableNameConflictError(
+							`Failed to transfer data table "${existing.name}" to the target project "${toProjectId}". A data table with the same name already exists in the target project.`,
 						);
 					}
 				}
@@ -126,13 +126,13 @@ export class DataStoreRepository extends Repository<DataTable> {
 		});
 	}
 
-	async deleteDataStoreByProjectId(projectId: string, trx?: EntityManager) {
+	async deleteDataTableByProjectId(projectId: string, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId });
 
 			let changed = false;
 			for (const match of existingTables) {
-				const result = await this.deleteDataStore(match.id, em);
+				const result = await this.deleteDataTable(match.id, em);
 				changed = changed || result;
 			}
 
@@ -140,14 +140,14 @@ export class DataStoreRepository extends Repository<DataTable> {
 		});
 	}
 
-	async deleteDataStoreAll(trx?: EntityManager) {
+	async deleteDataTableAll(trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, {});
 
 			let changed = false;
 			for (const match of existingTables) {
 				const result = await em.delete(DataTable, { id: match.id });
-				await this.dataStoreRowsRepository.dropTable(match.id, em);
+				await this.dataTableRowsRepository.dropTable(match.id, em);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
 
@@ -155,19 +155,19 @@ export class DataStoreRepository extends Repository<DataTable> {
 		});
 	}
 
-	async getManyAndCount(options: Partial<ListDataStoreQueryDto>) {
+	async getManyAndCount(options: Partial<ListDataTableQueryDto>) {
 		const query = this.getManyQuery(options);
 		const [data, count] = await query.getManyAndCount();
 		return { count, data };
 	}
 
-	async getMany(options: Partial<ListDataStoreQueryDto>) {
+	async getMany(options: Partial<ListDataTableQueryDto>) {
 		const query = this.getManyQuery(options);
 		return await query.getMany();
 	}
 
-	private getManyQuery(options: Partial<ListDataStoreQueryDto>): SelectQueryBuilder<DataTable> {
-		const query = this.createQueryBuilder('dataStore');
+	private getManyQuery(options: Partial<ListDataTableQueryDto>): SelectQueryBuilder<DataTable> {
+		const query = this.createQueryBuilder('dataTable');
 
 		this.applySelections(query);
 		this.applyFilters(query, options.filter);
@@ -183,13 +183,13 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<DataTable>,
-		filter: Partial<ListDataStoreQueryDto>['filter'],
+		filter: Partial<ListDataTableQueryDto>['filter'],
 	): void {
 		for (const x of ['id', 'projectId'] as const) {
 			const content = [filter?.[x]].flat().filter((x) => x !== undefined);
 			if (content.length === 0) continue;
 
-			query.andWhere(`dataStore.${x} IN (:...${x}s)`, {
+			query.andWhere(`dataTable.${x} IN (:...${x}s)`, {
 				/*
 				 * If list is empty, add a dummy value to prevent an error
 				 * when using the IN operator with an empty array.
@@ -202,7 +202,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			const nameFilters = Array.isArray(filter.name) ? filter.name : [filter.name];
 
 			nameFilters.forEach((name, i) => {
-				query.andWhere(`LOWER(dataStore.name) LIKE LOWER(:name${i})`, {
+				query.andWhere(`LOWER(dataTable.name) LIKE LOWER(:name${i})`, {
 					['name' + i]: `%${name}%`,
 				});
 			});
@@ -211,7 +211,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 	private applySorting(query: SelectQueryBuilder<DataTable>, sortBy?: string): void {
 		if (!sortBy) {
-			query.orderBy('dataStore.updatedAt', 'DESC');
+			query.orderBy('dataTable.updatedAt', 'DESC');
 			return;
 		}
 
@@ -231,16 +231,16 @@ export class DataStoreRepository extends Repository<DataTable> {
 	): void {
 		if (field === 'name') {
 			query
-				.addSelect('LOWER(dataStore.name)', 'datastore_name_lower')
-				.orderBy('datastore_name_lower', direction);
+				.addSelect('LOWER(dataTable.name)', 'datatable_name_lower')
+				.orderBy('datatable_name_lower', direction);
 		} else if (['createdAt', 'updatedAt'].includes(field)) {
-			query.orderBy(`dataStore.${field}`, direction);
+			query.orderBy(`dataTable.${field}`, direction);
 		}
 	}
 
 	private applyPagination(
 		query: SelectQueryBuilder<DataTable>,
-		options: Partial<ListDataStoreQueryDto>,
+		options: Partial<ListDataTableQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
 		if (options.take !== undefined) query.take(options.take);
@@ -248,16 +248,16 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 	private applyDefaultSelect(query: SelectQueryBuilder<DataTable>): void {
 		query
-			.leftJoinAndSelect('dataStore.project', 'project')
-			.leftJoinAndSelect('dataStore.columns', 'data_store_column')
+			.leftJoinAndSelect('dataTable.project', 'project')
+			.leftJoinAndSelect('dataTable.columns', 'data_table_column')
 			.select([
-				'dataStore',
-				...this.getDataStoreColumnFields('data_store_column'),
+				'dataTable',
+				...this.getDataTableColumnFields('data_table_column'),
 				...this.getProjectFields('project'),
 			]);
 	}
 
-	private getDataStoreColumnFields(alias: string): string[] {
+	private getDataTableColumnFields(alias: string): string[] {
 		return [
 			`${alias}.id`,
 			`${alias}.name`,
@@ -377,9 +377,9 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 		for (const row of result) {
 			if (row.table_bytes !== null && row.table_name) {
-				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
+				const dataTableId = toTableId(row.table_name as DataTableUserTableName);
 				const sizeBytes = this.parseSize(row.table_bytes);
-				sizeMap.set(dataStoreId, (sizeMap.get(dataStoreId) ?? 0) + sizeBytes);
+				sizeMap.set(dataTableId, (sizeMap.get(dataTableId) ?? 0) + sizeBytes);
 			}
 		}
 

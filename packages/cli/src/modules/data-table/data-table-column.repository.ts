@@ -1,4 +1,4 @@
-import { DataStoreCreateColumnSchema } from '@n8n/api-types';
+import { DataTableCreateColumnSchema } from '@n8n/api-types';
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
@@ -8,18 +8,18 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTable } from './data-table.entity';
-import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
-import { DataStoreSystemColumnNameConflictError } from './errors/data-store-system-column-name-conflict.error';
-import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
+import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
+import { DataTableValidationError } from './errors/data-table-validation.error';
 
 @Service()
-export class DataStoreColumnRepository extends Repository<DataTableColumn> {
+export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	constructor(
 		dataSource: DataSource,
-		private dataStoreRowsRepository: DataStoreRowsRepository,
+		private dataTableRowsRepository: DataTableRowsRepository,
 	) {
 		super(DataTableColumn, dataSource.manager);
 	}
@@ -44,13 +44,13 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 		);
 	}
 
-	async addColumn(dataTableId: string, schema: DataStoreCreateColumnSchema, trx?: EntityManager) {
+	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (DATA_TABLE_SYSTEM_COLUMNS.includes(schema.name)) {
-				throw new DataStoreSystemColumnNameConflictError(schema.name);
+				throw new DataTableSystemColumnNameConflictError(schema.name);
 			}
 			if (schema.name === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
-				throw new DataStoreSystemColumnNameConflictError(schema.name, 'testing');
+				throw new DataTableSystemColumnNameConflictError(schema.name, 'testing');
 			}
 
 			const existingColumnMatch = await em.existsBy(DataTableColumn, {
@@ -61,9 +61,9 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 			if (existingColumnMatch) {
 				const dataTable = await em.findOneBy(DataTable, { id: dataTableId });
 				if (!dataTable) {
-					throw new UnexpectedError('Data store not found');
+					throw new UnexpectedError('Data table not found');
 				}
-				throw new DataStoreColumnNameConflictError(schema.name, dataTable.name);
+				throw new DataTableColumnNameConflictError(schema.name, dataTable.name);
 			}
 
 			if (schema.index === undefined) {
@@ -81,7 +81,7 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTableColumn, column);
 
-			await this.dataStoreRowsRepository.addColumn(
+			await this.dataTableRowsRepository.addColumn(
 				dataTableId,
 				column,
 				em.connection.options.type,
@@ -92,17 +92,17 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 		});
 	}
 
-	async deleteColumn(dataStoreId: string, column: DataTableColumn, trx?: EntityManager) {
+	async deleteColumn(dataTableId: string, column: DataTableColumn, trx?: EntityManager) {
 		await withTransaction(this.manager, trx, async (em) => {
 			await em.remove(DataTableColumn, column);
 
-			await this.dataStoreRowsRepository.dropColumnFromTable(
-				dataStoreId,
+			await this.dataTableRowsRepository.dropColumnFromTable(
+				dataTableId,
 				column.name,
 				em.connection.options.type,
 				em,
 			);
-			await this.shiftColumns(dataStoreId, column.index, -1, em);
+			await this.shiftColumns(dataTableId, column.index, -1, em);
 		});
 	}
 
@@ -116,11 +116,11 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 			const columnCount = await em.countBy(DataTableColumn, { dataTableId });
 
 			if (targetIndex < 0) {
-				throw new DataStoreValidationError('tried to move column to negative index');
+				throw new DataTableValidationError('tried to move column to negative index');
 			}
 
 			if (targetIndex >= columnCount) {
-				throw new DataStoreValidationError(
+				throw new DataTableValidationError(
 					'tried to move column to an index larger than column count',
 				);
 			}

@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import {
-	type IDataStoreProjectService,
+	type IDataTableProjectService,
 	NodeOperationError,
 	type AssignmentCollectionValue,
 	type IExecuteFunctions,
@@ -15,14 +15,14 @@ describe('Test Evaluation', () => {
 	const sheetName = 'Sheet5';
 	const spreadsheetId = '1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA';
 
-	const mockDataTable = mock<IDataStoreProjectService>({
+	const mockDataTable = mock<IDataTableProjectService>({
 		getColumns: jest.fn(),
 		addColumn: jest.fn(),
 		updateRows: jest.fn(),
 	});
 
 	const mockExecuteFunctions = mock<IExecuteFunctions>({
-		helpers: { getDataStoreProxy: jest.fn().mockResolvedValue(mockDataTable) },
+		helpers: { getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable) },
 	});
 
 	beforeEach(() => {
