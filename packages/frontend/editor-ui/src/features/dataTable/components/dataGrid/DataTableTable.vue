@@ -396,7 +396,7 @@ defineExpose({
 	}
 
 	:global(.ag-row-last) {
-		border-bottom: none;
+		border-bottom-color: var(--ag-border-color);
 	}
 
 	:global(.ag-filter-body-wrapper) {
