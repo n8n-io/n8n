@@ -5,6 +5,7 @@ import { expect } from 'vitest';
 
 import type { CommandResult } from './command-tester';
 import type { MockPrompt } from './mock-prompts';
+import { isEnoentError } from '../utils/validation';
 
 export function stripAnsiCodes(text: string): string {
 	// Need to strip ANSI escape codes for colors and styles
@@ -51,7 +52,7 @@ expect.extend({
 		try {
 			content = await fs.readFile(fullPath, 'utf8');
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			if (isEnoentError(error)) {
 				content = undefined;
 			} else {
 				throw error;
@@ -88,7 +89,7 @@ expect.extend({
 		try {
 			content = await fs.readFile(fullPath, 'utf8');
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			if (isEnoentError(error)) {
 				content = undefined;
 			} else {
 				throw error;
@@ -112,14 +113,14 @@ expect.extend({
 		try {
 			content = await fs.readFile(fullPath, 'utf8');
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			if (isEnoentError(error)) {
 				content = undefined;
 			} else {
 				throw error;
 			}
 		}
 
-		const matches = content ? pattern.test(content) : false;
+		const matches = content ? new RegExp(pattern).test(content) : false;
 
 		return {
 			pass: matches,

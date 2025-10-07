@@ -20,17 +20,23 @@ export interface CommandMockConfig {
 	options?: MockSpawnOptions;
 }
 
-function createMockProcess(): MockChildProcess {
+function createMockProcess(): ChildProcess {
 	const emitter = new EventEmitter();
 	const mockProcess: MockChildProcess = Object.assign(emitter, {
 		stdout: new EventEmitter(),
 		stderr: new EventEmitter(),
 	});
-	return mockProcess;
+	return mockProcess as unknown as ChildProcess;
 }
 
 function emitProcessEvents(mockProcess: MockChildProcess, options: MockSpawnOptions): void {
-	const { exitCode = 0, signal = null, stdout = '', stderr = '', error } = options;
+	const {
+		exitCode = options.signal ? null : 0,
+		signal = null,
+		stdout = '',
+		stderr = '',
+		error,
+	} = options;
 
 	setImmediate(() => {
 		if (error) {

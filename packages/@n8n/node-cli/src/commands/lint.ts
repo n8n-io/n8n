@@ -7,10 +7,7 @@ import { ChildProcessError, runCommand } from '../utils/child-process';
 import { suggestCloudSupportCommand } from '../utils/command-suggestions';
 import { getPackageJson } from '../utils/package';
 import { ensureN8nPackage } from '../utils/prompts';
-
-function isNodeErrnoException(error: unknown): error is NodeJS.ErrnoException {
-	return error instanceof Error && 'code' in error;
-}
+import { isEnoentError } from '../utils/validation';
 
 export default class Lint extends Command {
 	static override description =
@@ -102,7 +99,7 @@ To disable strict mode: set ${picocolors.yellow('"strict": false')} in ${picocol
 				process.exit(1);
 			}
 		} catch (error: unknown) {
-			if (isNodeErrnoException(error) && error.code === 'ENOENT') {
+			if (isEnoentError(error)) {
 				const enableCommand = await suggestCloudSupportCommand('enable');
 
 				this.log(
