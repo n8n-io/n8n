@@ -62,6 +62,9 @@ const supportedIconName = computed((): IconName | undefined => {
 		<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
 			<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />
 		</div>
+		<div v-else :class="$style.nodeIconPlaceholder">
+			{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
+		</div>
 	</div>
 	<div v-else :class="$style.nodeIconPlaceholder">
 		{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}

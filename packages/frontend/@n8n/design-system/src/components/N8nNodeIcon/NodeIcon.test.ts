@@ -188,5 +188,17 @@ describe('NodeIcon', () => {
 			const badge = container.querySelector('[class*="badge"]');
 			expect(badge).toBeNull();
 		});
+
+		it('renders placeholder when no badge is provided', () => {
+			const { getByText } = render(NodeIcon, {
+				props: {
+					type: 'file',
+					src: 'test.png',
+					nodeTypeName: 'CustomNode',
+				},
+			});
+
+			expect(getByText('C')).toBeTruthy();
+		});
 	});
 });
