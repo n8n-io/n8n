@@ -27,8 +27,6 @@ import {
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	SOURCE_CONTROL_PULL_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
@@ -48,7 +46,10 @@ import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/folders/folders.constants';
-
+import {
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+} from '@/features/sourceControl.ee/sourceControl.constants';
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
@@ -80,8 +81,8 @@ import PreBuiltAgentsModal from '@/components/PreBuiltAgentsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 import SetupWorkflowCredentialsModal from '@/features/templates/components/SetupWorkflowCredentialsModal.vue';
-import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
-import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
+import SourceControlPullModal from '@/features/sourceControl.ee/components/SourceControlPullModal.vue';
+import SourceControlPushModal from '@/features/sourceControl.ee/components/SourceControlPushModal.vue';
 import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
