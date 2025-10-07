@@ -347,7 +347,7 @@ export class CanvasPage extends BasePage {
 
 	getWorkflowIdFromUrl(): string {
 		const url = new URL(this.page.url());
-		const workflowId = url.pathname.split('/workflow/')[1];
+		const workflowId = url.pathname.split('/workflow/')[1]?.split('/')[0];
 		if (!workflowId) throw new Error('Workflow ID not found in URL');
 		return workflowId;
 	}
