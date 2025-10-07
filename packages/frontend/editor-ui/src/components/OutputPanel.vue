@@ -358,7 +358,13 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<template v-if="isNDVV2">
 				<NDVEmptyState
 					v-if="isReadOnly"
-					:title="i18n.baseText('ndv.output.noOutputData.v2.title')"
+					:title="
+						i18n.baseText(
+							isTriggerNode
+								? 'ndv.output.noOutputData.trigger.title'
+								: 'ndv.output.noOutputData.v2.title',
+						)
+					"
 				/>
 				<NDVEmptyState
 					v-else
