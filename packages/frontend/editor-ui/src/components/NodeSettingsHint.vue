@@ -71,8 +71,7 @@ const activeSettings = computed(() => {
 	<div v-if="activeSettings.length > 0" :class="$style.settingsHint">
 		<div v-for="setting in activeSettings" :key="setting.key" :class="$style.settingItem">
 			<div :class="$style.iconWrapper">
-				<FontAwesomeIcon v-if="setting.icon === 'power'" icon="power" :class="$style.icon" />
-				<N8nIcon v-else :icon="setting.icon" :class="$style.icon" />
+				<N8nIcon :icon="setting.icon" :class="$style.icon" />
 			</div>
 			<N8nText size="small" :class="$style.message">
 				{{ setting.message }}
