@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { PRE_BUILT_AGENTS_MODAL_KEY } from '@/constants';
-import { N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import type { INodeCreateElement } from '@/Interface';
+import ItemsRenderer from '@/components/Node/NodeCreator/Renderers/ItemsRenderer.vue';
 
+import { N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
 const modalBus = createEventBus();
 

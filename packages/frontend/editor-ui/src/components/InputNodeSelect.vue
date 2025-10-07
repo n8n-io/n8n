@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 type Props = {
 	nodes: IConnectedNode[];
 	workflow: Workflow;
@@ -117,7 +118,7 @@ function onInputNodeChange(value: string) {
 </script>
 
 <template>
-	<n8n-select
+	<N8nSelect
 		:model-value="modelValue"
 		:no-data-text="i18n.baseText('ndv.input.noNodesFound')"
 		:placeholder="i18n.baseText('ndv.input.parentNodes')"
@@ -137,7 +138,7 @@ function onInputNodeChange(value: string) {
 			/>
 		</template>
 
-		<n8n-option
+		<N8nOption
 			v-for="{ node, type, depth } of inputNodes"
 			:key="node.name"
 			:value="node.name"
@@ -160,8 +161,8 @@ function onInputNodeChange(value: string) {
 			<span :class="$style.subtitle">{{
 				connectedTo(node.name) ? connectedTo(node.name) : subtitle(node.name, depth)
 			}}</span>
-		</n8n-option>
-	</n8n-select>
+		</N8nOption>
+	</N8nSelect>
 </template>
 
 <style lang="scss" module>

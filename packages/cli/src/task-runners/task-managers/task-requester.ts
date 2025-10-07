@@ -59,6 +59,8 @@ export abstract class TaskRequester {
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
+	private readonly executionIdsToTaskIds: Map<string, Set<string>> = new Map();
+
 	constructor(
 		private readonly nodeTypes: NodeTypes,
 		private readonly eventService: EventService,
@@ -134,6 +136,12 @@ export abstract class TaskRequester {
 		};
 		this.tasks.set(task.taskId, task);
 
+		if (additionalData.executionId) {
+			const taskIds = this.executionIdsToTaskIds.get(additionalData.executionId) ?? new Set();
+			taskIds.add(taskId);
+			this.executionIdsToTaskIds.set(additionalData.executionId, taskIds);
+		}
+
 		this.eventService.emit('runner-task-requested', {
 			taskId: task.taskId,
 			nodeId: task.data.node.id,
@@ -184,6 +192,48 @@ export abstract class TaskRequester {
 			return createResultError(e as TError);
 		} finally {
 			this.tasks.delete(taskId);
+			this.clearExecutionsMap(taskId);
+		}
+	}
+
+	cancelTasks(executionId: string) {
+		for (const taskId of this.getTaskIds(executionId)) {
+			this.cancelTask(taskId);
+		}
+	}
+
+	private getTaskIds(executionId: string): Set<string> {
+		return this.executionIdsToTaskIds.get(executionId) ?? new Set();
+	}
+
+	private cancelTask(taskId: string, reason = 'Task cancelled by user') {
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		this.tasks.delete(taskId);
+
+		this.sendMessage({
+			type: 'requester:taskcancel',
+			taskId,
+			reason,
+		});
+
+		const acceptReject = this.taskAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(new Error(`Task cancelled: ${reason}`));
+			this.taskAcceptRejects.delete(taskId);
+		}
+	}
+
+	private clearExecutionsMap(taskId: string) {
+		for (const [executionId, taskIds] of this.executionIdsToTaskIds.entries()) {
+			if (taskIds.has(taskId)) {
+				taskIds.delete(taskId);
+				if (taskIds.size === 0) {
+					this.executionIdsToTaskIds.delete(executionId);
+				}
+				break;
+			}
 		}
 	}
 

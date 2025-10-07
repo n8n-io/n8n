@@ -8,7 +8,7 @@ import {
 	AiSessionRetrievalRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -39,6 +39,7 @@ export class AiController {
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
 	// "Cannot set headers after they are sent" error for streaming responses.
 	// This ensures errors during streaming are handled within the stream itself.
+	@Licensed('feat:aiBuilder')
 	@Post('/build', { rateLimit: { limit: 100 }, usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest,
@@ -53,7 +54,7 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { text, workflowContext } = payload.payload;
+			const { text, workflowContext, useDeprecatedCredentials } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					message: text,
@@ -62,6 +63,7 @@ export class AiController {
 						executionData: workflowContext.executionData,
 						executionSchema: workflowContext.executionSchema,
 					},
+					useDeprecatedCredentials,
 				},
 				req.user,
 				signal,
@@ -207,6 +209,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiBuilder')
 	@Post('/sessions', { rateLimit: { limit: 100 } })
 	async getSessions(
 		req: AuthenticatedRequest,
@@ -216,6 +219,20 @@ export class AiController {
 		try {
 			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
 			return sessions;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Get('/build/credits')
+	async getBuilderCredits(
+		req: AuthenticatedRequest,
+		_: Response,
+	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
+		try {
+			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

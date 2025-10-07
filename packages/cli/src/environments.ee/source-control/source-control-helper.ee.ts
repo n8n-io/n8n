@@ -30,6 +30,10 @@ export function getWorkflowExportPath(workflowId: string, workflowExportFolder: 
 	return safeJoinPath(workflowExportFolder, `${workflowId}.json`);
 }
 
+export function getProjectExportPath(projectId: string, projectExportFolder: string): string {
+	return safeJoinPath(projectExportFolder, `${projectId}.json`);
+}
+
 export function getCredentialExportPath(
 	credentialId: string,
 	credentialExportFolder: string,

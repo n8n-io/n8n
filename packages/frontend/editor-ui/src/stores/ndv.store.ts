@@ -5,7 +5,6 @@ import type {
 	IRunDataDisplayMode,
 	MainPanelDimensions,
 	MainPanelType,
-	NDVState,
 	NodePanelType,
 	OutputPanel,
 	TargetItem,
@@ -312,7 +311,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		};
 	};
 
-	const setDraggableTarget = (target: NDVState['draggable']['activeTarget']): void => {
+	const setDraggableTarget = (target: Draggable['activeTarget']): void => {
 		draggable.value.activeTarget = target;
 	};
 

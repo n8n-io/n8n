@@ -2,7 +2,6 @@ import { waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { createCanvasNodeElement, createCanvasConnection } from '@/__tests__/data';
 import type { Workflow } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STICKY_NODE_TYPE } from '@/constants';
@@ -27,12 +26,12 @@ vi.mock('@vueuse/core', async () => {
 const renderComponent = createComponentRenderer(WorkflowCanvas, {
 	props: {
 		id: 'canvas',
-		workflow: {
+		workflow: createTestWorkflow({
 			id: '1',
 			name: 'Test Workflow',
 			nodes: [],
-			connections: [],
-		},
+			connections: {},
+		}),
 		workflowObject: {} as Workflow,
 		eventBus: createEventBus(),
 	},
@@ -58,24 +57,27 @@ describe('WorkflowCanvas', () => {
 	});
 
 	it('should render nodes and connections', async () => {
-		const nodes = [
-			createCanvasNodeElement({ id: '1', label: 'Node 1' }),
-			createCanvasNodeElement({ id: '2', label: 'Node 2' }),
-		];
-		const connections = [createCanvasConnection(nodes[0], nodes[1])];
-
+		const workflow = createTestWorkflow({
+			nodes: [
+				createTestNode({ id: '1', name: 'Node 1' }),
+				createTestNode({ id: '2', name: 'Node 2' }),
+			],
+			connections: { 'Node 1': { main: [[{ node: 'Node 2', type: 'main', index: 0 }]] } },
+		});
 		const { container } = renderComponent({
 			props: {
-				nodes,
-				connections,
+				workflow,
+				workflowObject: createTestWorkflowObject(workflow),
 			},
 		});
 
 		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
 
-		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
-		expect(container.querySelector(`[data-id="${nodes[1].id}"]`)).toBeInTheDocument();
-		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
+		expect(container.querySelector('[data-id="1"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-id="2"]')).toBeInTheDocument();
+		expect(
+			container.querySelector('[data-id="[1/outputs/main/0][2/inputs/main/0]"]'),
+		).toBeInTheDocument();
 	});
 
 	it('should handle empty nodes and connections gracefully', async () => {

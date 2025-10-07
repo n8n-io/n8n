@@ -50,8 +50,8 @@ const versionId = faker.string.nanoid();
 const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 	global: {
 		stubs: {
-			'workflow-history-content': true,
-			'workflow-history-list': defineComponent({
+			WorkflowHistoryContent: true,
+			WorkflowHistoryList: defineComponent({
 				props: {
 					id: {
 						type: String,

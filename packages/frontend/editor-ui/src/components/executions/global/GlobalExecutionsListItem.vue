@@ -1,11 +1,19 @@
 <script lang="ts" setup>
 import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
+import GlobalExecutionsListItemQueuedTooltip from '@/components/executions/global/GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import type { IconColor } from '@n8n/design-system/types/icon';
+import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
+import { WAIT_INDEFINITELY } from 'n8n-workflow';
+import { computed, ref, useCssModule } from 'vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import {
 	N8nButton,
 	N8nCheckbox,
@@ -14,12 +22,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { IconColor } from '@n8n/design-system/types/icon';
-import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
-import { WAIT_INDEFINITELY } from 'n8n-workflow';
-import { computed, ref, useCssModule } from 'vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{

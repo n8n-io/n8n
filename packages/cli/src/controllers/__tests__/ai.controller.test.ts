@@ -122,6 +122,7 @@ describe('AiController', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow123' },
 				},
+				useDeprecatedCredentials: false,
 			},
 		};
 
@@ -150,6 +151,7 @@ describe('AiController', () => {
 						executionData: undefined,
 						executionSchema: undefined,
 					},
+					useDeprecatedCredentials: false,
 				},
 				request.user,
 				expect.any(AbortSignal),
@@ -393,6 +395,32 @@ describe('AiController', () => {
 				expect(onSpy).toHaveBeenCalledWith('close', expect.any(Function));
 				expect(offSpy).toHaveBeenCalledWith('close', expect.any(Function));
 			});
+		});
+	});
+
+	describe('getBuilderCredits', () => {
+		it('should return builder instance credits successfully', async () => {
+			const expectedCredits: AiAssistantSDK.BuilderInstanceCreditsResponse = {
+				creditsQuota: 100,
+				creditsClaimed: 25,
+			};
+
+			workflowBuilderService.getBuilderInstanceCredits.mockResolvedValue(expectedCredits);
+
+			const result = await controller.getBuilderCredits(request, response);
+
+			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
+			expect(result).toEqual(expectedCredits);
+		});
+
+		it('should throw InternalServerError if getting credits fails', async () => {
+			const mockError = new Error('Failed to get credits');
+			workflowBuilderService.getBuilderInstanceCredits.mockRejectedValue(mockError);
+
+			await expect(controller.getBuilderCredits(request, response)).rejects.toThrow(
+				InternalServerError,
+			);
+			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
 		});
 	});
 });

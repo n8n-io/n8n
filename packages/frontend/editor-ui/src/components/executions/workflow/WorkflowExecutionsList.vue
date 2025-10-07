@@ -92,7 +92,7 @@ onBeforeRouteLeave(async (to, _, next) => {
 			@retry-execution="onRetryExecution"
 		/>
 		<div v-if="!hidePreview" :class="$style.content">
-			<router-view
+			<RouterView
 				name="executionPreview"
 				:execution="execution"
 				@delete-current-execution="onDeleteCurrentExecution"

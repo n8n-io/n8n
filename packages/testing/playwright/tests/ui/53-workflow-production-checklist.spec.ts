@@ -5,7 +5,7 @@ const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 test.describe('Workflow Production Checklist', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 	});
 
 	test('should show suggested actions automatically when workflow is first activated', async ({
@@ -30,9 +30,8 @@ test.describe('Workflow Production Checklist', () => {
 
 	test('should display evaluations action when AI node exists and feature is enabled', async ({
 		n8n,
-		api,
 	}) => {
-		await api.enableFeature('evaluation');
+		await n8n.api.enableFeature('evaluation');
 
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.addNode('OpenAI', { action: 'Create an assistant', closeNDV: true });

@@ -1,12 +1,11 @@
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useI18n } from '@n8n/i18n';
 import {
 	isTextMessage,
 	isWorkflowUpdatedMessage,
 	isToolMessage,
-	isPlanMessage,
-} from '@/types/assistant.types';
+} from '@/features/assistant/assistant.types';
 
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];
@@ -82,7 +81,7 @@ export function useBuilderMessages() {
 				return {
 					...message,
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 				};
 			}
 			// Remove any existing rating from other messages
@@ -93,64 +92,6 @@ export function useBuilderMessages() {
 			}
 			return message;
 		});
-	}
-
-	/**
-	 * Process a single message and add it to the messages array
-	 */
-	function processSingleMessage(
-		messages: ChatUI.AssistantMessage[],
-		msg: ChatRequest.MessageResponse,
-		messageId: string,
-		retry?: () => Promise<void>,
-	): boolean {
-		let shouldClearThinking = false;
-
-		if (isTextMessage(msg)) {
-			messages.push({
-				id: messageId,
-				role: 'assistant',
-				type: 'text',
-				content: msg.text,
-				read: false,
-			} satisfies ChatUI.AssistantMessage);
-			shouldClearThinking = true;
-		} else if (isWorkflowUpdatedMessage(msg)) {
-			messages.push({
-				...msg,
-				id: messageId,
-				read: false,
-			} satisfies ChatUI.AssistantMessage);
-			// Don't clear thinking for workflow updates - they're just state changes
-		} else if (isToolMessage(msg)) {
-			processToolMessage(messages, msg, messageId);
-		} else if (isPlanMessage(msg)) {
-			// Add new plan message
-			messages.push({
-				id: messageId,
-				role: 'assistant',
-				type: 'custom',
-				customType: 'nodesPlan',
-				message: msg.message,
-				data: msg.plan,
-			} satisfies ChatUI.CustomMessage);
-			// Plan messages are informational, clear thinking
-			shouldClearThinking = true;
-		} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
-			// Handle error messages from the API
-			// API sends error messages with type: 'error' and content field
-			messages.push({
-				id: messageId,
-				role: 'assistant',
-				type: 'error',
-				content: msg.content,
-				read: false,
-				retry,
-			});
-			shouldClearThinking = true;
-		}
-
-		return shouldClearThinking;
 	}
 
 	/**
@@ -197,6 +138,60 @@ export function useBuilderMessages() {
 	}
 
 	/**
+	 * Process a single message and add it to the messages array
+	 */
+	function processSingleMessage(
+		messages: ChatUI.AssistantMessage[],
+		msg: ChatRequest.MessageResponse,
+		messageId: string,
+		retry?: () => Promise<void>,
+	): boolean {
+		let shouldClearThinking = false;
+
+		if (isTextMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'text',
+				content: msg.text,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isWorkflowUpdatedMessage(msg)) {
+			messages.push({
+				...msg,
+				id: messageId,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			// Don't clear thinking for workflow updates - they're just state changes
+		} else if (isToolMessage(msg)) {
+			processToolMessage(messages, msg, messageId);
+		} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
+			// Handle error messages from the API
+			// API sends error messages with type: 'error' and content field
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'error',
+				content: msg.content,
+				read: false,
+				retry,
+			});
+			shouldClearThinking = true;
+		}
+
+		return shouldClearThinking;
+	}
+
+	function getToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.ToolMessage[] {
+		return messages.filter((msg): msg is ChatUI.ToolMessage => msg.type === 'tool');
+	}
+
+	function getRunningTools(messages: ChatUI.AssistantMessage[]) {
+		return getToolMessages(messages).filter((msg) => msg.status === 'running');
+	}
+
+	/**
 	 * If any tools are running, then it's still running tools and not done thinking
 	 * If all tools are done and no text response yet, then it's still thinking
 	 * Otherwise, it's done
@@ -208,10 +203,7 @@ export function useBuilderMessages() {
 		hasAnyRunningTools: boolean;
 		isStillThinking: boolean;
 	} {
-		const allToolMessages = messages.filter(
-			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
-		);
-		const hasAnyRunningTools = allToolMessages.some((msg) => msg.status === 'running');
+		const hasAnyRunningTools = getRunningTools(messages).length > 0;
 		if (hasAnyRunningTools) {
 			return {
 				hasAnyRunningTools: true,
@@ -219,7 +211,7 @@ export function useBuilderMessages() {
 			};
 		}
 
-		const hasCompletedTools = allToolMessages.some((msg) => msg.status === 'completed');
+		const hasCompletedTools = getToolMessages(messages).some((msg) => msg.status === 'completed');
 
 		// Find the last completed tool message
 		let lastCompletedToolIndex = -1;
@@ -257,6 +249,20 @@ export function useBuilderMessages() {
 	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
 		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
+		if (hasAnyRunningTools) {
+			const runningTools = getRunningTools(messages);
+			const lastRunningTool = runningTools[runningTools.length - 1];
+			if (lastRunningTool) {
+				const toolName = lastRunningTool.customDisplayTitle || lastRunningTool.displayTitle;
+				if (toolName) {
+					return toolName;
+				}
+			}
+
+			return locale.baseText('aiAssistant.thinkingSteps.thinking');
+		}
+
+		// If no tools are running but we're still thinking (all tools completed, waiting for response)
 		if (!hasAnyRunningTools && isStillThinking) {
 			return locale.baseText('aiAssistant.thinkingSteps.thinking');
 		}
@@ -390,17 +396,6 @@ export function useBuilderMessages() {
 			} satisfies ChatUI.AssistantMessage;
 		}
 
-		if (isPlanMessage(message)) {
-			return {
-				id,
-				role: 'assistant',
-				type: 'custom',
-				customType: 'nodesPlan',
-				data: message.plan,
-				message: message.message,
-			} satisfies ChatUI.CustomMessage;
-		}
-
 		// Handle event messages
 		if ('type' in message && message.type === 'event') {
 			return {
@@ -430,5 +425,6 @@ export function useBuilderMessages() {
 		mapAssistantMessageToUI,
 		applyRatingLogic,
 		clearRatingLogic,
+		getRunningTools,
 	};
 }

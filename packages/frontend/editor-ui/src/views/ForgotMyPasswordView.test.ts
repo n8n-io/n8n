@@ -39,7 +39,7 @@ vi.mock('@/composables/useToast', () => {
 const renderComponent = createComponentRenderer(ForgotMyPasswordView, {
 	global: {
 		stubs: {
-			'router-link': {
+			RouterLink: {
 				template: '<a href="#"><slot /></a>',
 			},
 		},

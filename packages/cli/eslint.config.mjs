@@ -2,7 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs']),
+	globalIgnores(['scripts/**/*.mjs', 'jest.config.integration.js']),
 	nodeConfig,
 	{
 		rules: {

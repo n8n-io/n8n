@@ -17,7 +17,6 @@ import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import { useLocalStorage } from '@vueuse/core';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const initialized = ref(false);
@@ -68,7 +67,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const nodeJsVersion = computed(() => settings.value.nodeJsVersion);
 
+	const nodeEnv = computed(() => settings.value.nodeEnv);
+
 	const concurrency = computed(() => settings.value.concurrency);
+
+	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
 
 	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
@@ -82,9 +85,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const publicApiPath = computed(() => api.value.path);
 
-	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
+	const isAiAssistantEnabled = computed(
+		() => settings.value.aiAssistant?.enabled && settings.value.aiAssistant?.setup,
+	);
 
 	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
+
+	const isAiBuilderEnabled = computed(() => settings.value.aiBuilder?.enabled);
 
 	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
 
@@ -97,23 +104,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isModuleActive = (moduleName: string) => {
 		return activeModules.value?.includes(moduleName);
 	};
-
-	const partialExecutionVersion = computed<1 | 2>(() => {
-		const defaultVersion = settings.value.partialExecution?.version ?? 1;
-		// -1 means we pick the defaultVersion
-		//  1 is the old flow
-		//  2 is the new flow
-		const userVersion = useLocalStorage('PartialExecution.version', -1).value;
-		const version = userVersion === -1 ? defaultVersion : userVersion;
-
-		// For backwards compatibility, e.g. if the user has 0 in their local
-		// storage, which used to be allowed, but not anymore.
-		if (![1, 2].includes(version)) {
-			return 1;
-		}
-
-		return version as 1 | 2;
-	});
 
 	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
 
@@ -141,7 +131,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
 
-	const isDataStoreFeatureEnabled = computed(() => isModuleActive('data-table'));
+	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
@@ -184,6 +174,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
+
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
 			userManagement.value.showSetupOnFirstLoad =
@@ -328,7 +319,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		pruning,
 		security,
 		nodeJsVersion,
+		nodeEnv,
 		concurrency,
+		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
@@ -366,9 +359,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution,
 		isCommunityPlan,
 		isAskAiEnabled,
+		isAiBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		partialExecutionVersion,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
@@ -383,6 +376,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
-		isDataStoreFeatureEnabled,
+		isDataTableFeatureEnabled,
 	};
 });

@@ -10,6 +10,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 import { useActions } from '../composables/useActions';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nNodeCreatorNode } from '@n8n/design-system';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	action: ActionTypeDescription;
@@ -98,7 +99,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 </script>
 
 <template>
-	<n8n-node-creator-node
+	<N8nNodeCreatorNode
 		draggable
 		:class="$style.action"
 		:title="action.displayName"
@@ -116,7 +117,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 		<template #icon>
 			<NodeIcon :node-type="action" />
 		</template>
-	</n8n-node-creator-node>
+	</N8nNodeCreatorNode>
 </template>
 
 <style lang="scss" module>

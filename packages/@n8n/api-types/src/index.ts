@@ -45,14 +45,34 @@ export {
 	type User,
 	type UsersList,
 	usersListSchema,
+	userBaseSchema,
+	userDetailSchema,
 } from './schemas/user.schema';
 
 export {
-	DATA_STORE_COLUMN_REGEX,
-	type DataStore,
-	type DataStoreColumn,
-	type DataStoreCreateColumnSchema,
-	type DataStoreListFilter,
-	type DataStoreListOptions,
+	DATA_TABLE_COLUMN_REGEX,
+	DATA_TABLE_COLUMN_MAX_LENGTH,
+	DATA_TABLE_COLUMN_ERROR_MESSAGE,
+	type DataTable,
+	type DataTableColumn,
+	type DataTableCreateColumnSchema,
+	type DataTableListFilter,
+	type DataTableListOptions,
 	dateTimeSchema,
-} from './schemas/data-store.schema';
+	dataTableColumnNameSchema,
+} from './schemas/data-table.schema';
+
+export type {
+	DataTableFilter,
+	DataTableFilterConditionType,
+} from './schemas/data-table-filter.schema';
+
+export type {
+	ExternalSecretsProvider,
+	ExternalSecretsProviderSecret,
+	ExternalSecretsProviderData,
+	ExternalSecretsProviderProperty,
+	ExternalSecretsProviderState,
+} from './schemas/external-secrets.schema';
+
+export type { UsageState } from './schemas/usage.schema';

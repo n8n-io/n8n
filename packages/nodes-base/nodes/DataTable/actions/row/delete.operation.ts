@@ -7,8 +7,8 @@ import {
 } from 'n8n-workflow';
 
 import { DRY_RUN } from '../../common/fields';
-import { executeSelectMany, getSelectFields } from '../../common/selectMany';
-import { getDataTableProxyExecute } from '../../common/utils';
+import { getSelectFields, getSelectFilter } from '../../common/selectMany';
+import { getDataTableProxyExecute, getDryRunParameter } from '../../common/utils';
 
 // named `deleteRows` since `delete` is a reserved keyword
 export const FIELD: string = 'deleteRows';
@@ -37,25 +37,15 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const dataStoreProxy = await getDataTableProxyExecute(this, index);
+	const dataTableProxy = await getDataTableProxyExecute(this, index);
+	const dryRun = getDryRunParameter(this, index);
+	const filter = await getSelectFilter(this, index);
 
-	const dryRun = this.getNodeParameter(`options.${DRY_RUN.name}`, index, false);
-
-	if (typeof dryRun !== 'boolean') {
-		throw new NodeOperationError(
-			this.getNode(),
-			`unexpected input ${JSON.stringify(dryRun)} for boolean dryRun`,
-		);
+	if (filter.filters.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'At least one condition is required');
 	}
 
-	const matches = await executeSelectMany(this, index, dataStoreProxy);
+	const result = await dataTableProxy.deleteRows({ filter, dryRun });
 
-	if (!dryRun) {
-		const success = await dataStoreProxy.deleteRows(matches.map((x) => x.json.id));
-		if (!success) {
-			throw new NodeOperationError(this.getNode(), `failed to delete rows for index ${index}`);
-		}
-	}
-
-	return matches;
+	return result.map((json) => ({ json }));
 }

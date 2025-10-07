@@ -1,15 +1,26 @@
 {
     "type": "object",
     "properties": {
-        "dealId": {
-            "type": "integer"
-        },
         "isDeleted": {
             "type": "boolean"
         },
         "portalId": {
             "type": "integer"
+        },
+        "stateChanges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "changeFlag": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    }
+                }
+            }
         }
     },
-    "version": 6
+    "version": 7
 }

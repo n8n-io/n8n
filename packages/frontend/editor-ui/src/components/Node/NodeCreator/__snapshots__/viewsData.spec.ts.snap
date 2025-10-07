@@ -17,6 +17,7 @@ exports[`viewsData > AIView > should return ai view with ai transform node 1`] =
         "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
       },
       "type": "link",
+      "uuid": "ai_templates_root",
     },
     {
       "key": "agent",
@@ -90,6 +91,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
         "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
       },
       "type": "link",
+      "uuid": "ai_templates_root",
     },
     {
       "key": "agent",
@@ -150,6 +152,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
         "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
       },
       "type": "link",
+      "uuid": "ai_templates_root",
     },
     {
       "key": "agent",

@@ -8,6 +8,7 @@ exports[`useDebugInfo > should generate debug info 1`] = `
 - n8nVersion: 0.123.0
 - platform: docker (cloud)
 - nodeJsVersion: 14.17.0
+- nodeEnv: production
 - database: postgres
 - executionMode: regular
 - concurrency: 10

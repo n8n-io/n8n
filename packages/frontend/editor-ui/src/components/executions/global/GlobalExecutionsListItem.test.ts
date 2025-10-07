@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
-import { WAIT_INDEFINITELY } from 'n8n-workflow';
+import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
@@ -20,12 +20,11 @@ const globalExecutionsListItemQueuedTooltipRenderSpy = vi.fn();
 
 const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 	global: {
-		//stubs: ['font-awesome-icon', 'n8n-tooltip', 'n8n-button', 'i18n-t'],
 		stubs: {
-			'font-awesome-icon': true,
-			'n8n-tooltip': true,
-			'n8n-button': true,
-			'i18n-t': true,
+			FontAwesomeIcon: true,
+			N8nTooltip: true,
+			N8nButton: true,
+			I18nT: true,
 			GlobalExecutionsListItemQueuedTooltip: {
 				render: globalExecutionsListItemQueuedTooltipRenderSpy,
 			},
@@ -36,7 +35,9 @@ const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 describe('GlobalExecutionsListItem', () => {
 	it('should render the status text for an execution', () => {
 		const { getByTestId } = renderComponent({
-			props: { execution: { status: 'running', id: 123, workflowName: 'Test Workflow' } },
+			props: {
+				execution: { status: 'running', id: 123, workflowName: 'Test Workflow' },
+			} as unknown as ExecutionSummary,
 		});
 
 		expect(getByTestId('execution-status')).toBeInTheDocument();
@@ -44,7 +45,9 @@ describe('GlobalExecutionsListItem', () => {
 
 	it('should emit stop event on stop button click for a running execution', async () => {
 		const { getByTestId, emitted } = renderComponent({
-			props: { execution: { status: 'running', id: 123, stoppedAt: undefined, waitTill: true } },
+			props: {
+				execution: { status: 'running', id: 123, stoppedAt: undefined, waitTill: true },
+			} as unknown as ExecutionSummary,
 		});
 
 		const stopButton = getByTestId('stop-execution-button');
@@ -66,7 +69,7 @@ describe('GlobalExecutionsListItem', () => {
 					retryOf: undefined,
 					retrySuccessfulId: undefined,
 					waitTill: false,
-				},
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {
 					execute: true,
 				},
@@ -87,7 +90,7 @@ describe('GlobalExecutionsListItem', () => {
 					status: 'error',
 					id: 123,
 					stoppedAt: undefined,
-				},
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {
 					update: true,
 				},
@@ -102,7 +105,11 @@ describe('GlobalExecutionsListItem', () => {
 		const testDate = '2022-01-01T12:00:00Z';
 		const { getByText } = renderComponent({
 			props: {
-				execution: { status: 'success', id: 123, startedAt: testDate },
+				execution: {
+					status: 'success',
+					id: 123,
+					startedAt: testDate,
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {},
 			},
 		});
@@ -120,7 +127,7 @@ describe('GlobalExecutionsListItem', () => {
 					waitTill: new Date(Date.now() + 10000000).toISOString(),
 					id: 123,
 					workflowName: 'Test Workflow',
-				},
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -137,7 +144,7 @@ describe('GlobalExecutionsListItem', () => {
 					waitTill: WAIT_INDEFINITELY,
 					id: 123,
 					workflowName: 'Test Workflow',
-				},
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -149,7 +156,11 @@ describe('GlobalExecutionsListItem', () => {
 	it('should render queued tooltip for a new execution', async () => {
 		renderComponent({
 			props: {
-				execution: { status: 'new', id: 123, workflowName: 'Test Workflow' },
+				execution: {
+					status: 'new',
+					id: 123,
+					workflowName: 'Test Workflow',
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -168,7 +179,12 @@ describe('GlobalExecutionsListItem', () => {
 		vitest.useFakeTimers({ now });
 		const { getByTestId } = renderComponent({
 			props: {
-				execution: { status: 'running', id: 123, workflowName: 'Test Workflow', createdAt },
+				execution: {
+					status: 'running',
+					id: 123,
+					workflowName: 'Test Workflow',
+					createdAt,
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -191,7 +207,7 @@ describe('GlobalExecutionsListItem', () => {
 					workflowName: 'Test Workflow',
 					createdAt,
 					stoppedAt: now,
-				},
+				} as unknown as ExecutionSummary,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},

@@ -1,32 +1,42 @@
-ARG PYTHON_IMAGE=python:3.13-slim
+ARG NODE_VERSION=22.19
+ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM alpine:3.22.1 AS app-artifact-processor
+FROM node:${NODE_VERSION}-alpine AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
+
+WORKDIR /app/task-runner-javascript
+
+RUN corepack enable pnpm
+
+# Install extra runtime-only npm packages. Allow usage in the Code node via
+# 'NODE_FUNCTION_ALLOW_EXTERNAL' env variable on n8n-task-runners.json.
+RUN rm -f node_modules/.modules.yaml
+RUN mv package.json package.json.bak
+COPY docker/images/runners/package.json /app/task-runner-javascript/package.json
+RUN pnpm install --prod --no-lockfile --silent
+RUN mv package.json extras.json
+RUN mv package.json.bak package.json
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
-# Produces a relocatable venv tied to PYTHON_IMAGE
+# Produces a relocatable venv tied to the python version used
 # ==============================================================================
-FROM ${PYTHON_IMAGE} AS python-runner-builder
+FROM python:${PYTHON_VERSION}-alpine AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl ca-certificates build-essential pkg-config git \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN set -e; \
   case "$TARGETPLATFORM" in \
-    "linux/amd64") UV_ARCH="x86_64-unknown-linux-gnu" ;; \
-    "linux/arm64") UV_ARCH="aarch64-unknown-linux-gnu" ;; \
+    "linux/amd64") UV_ARCH="x86_64-unknown-linux-musl" ;; \
+    "linux/arm64") UV_ARCH="aarch64-unknown-linux-musl" ;; \
     *) echo "Unsupported platform: $TARGETPLATFORM" >&2; exit 1 ;; \
   esac; \
   mkdir -p /tmp/uv && cd /tmp/uv; \
-  curl -fsSLO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz"; \
-  curl -fsSLO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz.sha256"; \
+  wget -q "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz"; \
+  wget -q "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz.sha256"; \
   sha256sum -c "uv-${UV_ARCH}.tar.gz.sha256"; \
 	tar -xzf "uv-${UV_ARCH}.tar.gz"; \
   install -m 0755 "uv-${UV_ARCH}/uv" /usr/local/bin/uv; \
@@ -44,19 +54,27 @@ RUN uv sync \
 			--frozen \
 			--no-editable \
 			--no-install-project \
+			--no-dev \
 			--all-extras
 
 COPY packages/@n8n/task-runner-python/ ./
 RUN uv sync \
       --frozen \
+			--no-dev \
+			--all-extras \
       --no-editable
+
+# Install extra runtime-only Python packages. Allow usage in the Code node via
+# 'N8N_RUNNERS_EXTERNAL_ALLOW' env variable on n8n-task-runners.json.
+COPY docker/images/runners/extras.txt /app/task-runner-python/extras.txt
+RUN uv pip install -r /app/task-runner-python/extras.txt
 
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
 FROM alpine:3.22.1 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.3.0
+ARG LAUNCHER_VERSION=1.3.1
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -74,40 +92,42 @@ RUN set -e; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================
-# STAGE 4: Runtime
+# STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
-FROM ${PYTHON_IMAGE} AS runtime
-ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-alpine AS node-alpine
+
+# ==============================================================================
+# STAGE 5: Runtime
+# ==============================================================================
+FROM python:${PYTHON_VERSION}-alpine AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
-ENV NODE_ENV=production
-ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
-ENV SHELL=/bin/sh
+ENV NODE_ENV=production \
+    N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
+    SHELL=/bin/sh
 
-RUN apt-get update \
-	&& apt-get install -y --no-install-recommends curl gnupg ca-certificates tini \
-	&& mkdir -p /etc/apt/keyrings \
-	&& curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-		| gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-	&& echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_VERSION}.x nodistro main" \
-		> /etc/apt/sources.list.d/nodesource.list \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends nodejs \
-	&& apt-get remove curl -y \
-	&& apt-get clean \
-	&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+# Bring `uv` over from python-runner-builder
+COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 
-RUN useradd -m -u 1000 runner
+# Bring node over from node-alpine
+COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
+
+# libstdc++ is required by Node
+# libc6-compat is required by task-runner-launcher
+RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
+
+RUN addgroup -g 1000 -S runner \
+ && adduser  -u 1000 -S -G runner -h /home/runner -D runner \
+ && install -d -o runner -g runner /opt/runners
+
 WORKDIR /home/runner
 
-COPY --from=app-artifact-processor /app/task-runner-javascript /opt/runners/task-runner-javascript
-COPY --from=python-runner-builder /app/task-runner-python /opt/runners/task-runner-python
+COPY --from=javascript-runner-builder --chown=runner:runner /app/task-runner-javascript /opt/runners/task-runner-javascript
+COPY --from=python-runner-builder --chown=runner:runner /app/task-runner-python /opt/runners/task-runner-python
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
+COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 
-COPY docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
-
-RUN chown -R runner:runner /opt/runners /home/runner
 USER runner
 
 EXPOSE 5680/tcp

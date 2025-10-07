@@ -1,18 +1,21 @@
 import type { CredentialsEntity, SharedCredentials, User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, rolesWithScope } from '@n8n/permissions';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
+import { RoleService } from '@/services/role.service';
+
 @Service()
 export class CredentialsFinderService {
 	constructor(
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly roleService: RoleService,
 	) {}
 
 	/**
@@ -26,8 +29,10 @@ export class CredentialsFinderService {
 		let where: FindOptionsWhere<CredentialsEntity> = {};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = rolesWithScope('project', scopes);
-			const credentialRoles = rolesWithScope('credential', scopes);
+			const [projectRoles, credentialRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('credential', scopes),
+			]);
 			where = {
 				...where,
 				shared: {
@@ -50,8 +55,10 @@ export class CredentialsFinderService {
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = rolesWithScope('project', scopes);
-			const credentialRoles = rolesWithScope('credential', scopes);
+			const [projectRoles, credentialRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('credential', scopes),
+			]);
 			where = {
 				...where,
 				role: In(credentialRoles),
@@ -82,8 +89,10 @@ export class CredentialsFinderService {
 		let where: FindOptionsWhere<SharedCredentials> = {};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = rolesWithScope('project', scopes);
-			const credentialRoles = rolesWithScope('credential', scopes);
+			const [projectRoles, credentialRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('credential', scopes),
+			]);
 			where = {
 				role: In(credentialRoles),
 				project: {
@@ -111,9 +120,13 @@ export class CredentialsFinderService {
 		trx?: EntityManager,
 	) {
 		const projectRoles =
-			'scopes' in options ? rolesWithScope('project', options.scopes) : options.projectRoles;
+			'scopes' in options
+				? await this.roleService.rolesWithScope('project', options.scopes)
+				: options.projectRoles;
 		const credentialRoles =
-			'scopes' in options ? rolesWithScope('credential', options.scopes) : options.credentialRoles;
+			'scopes' in options
+				? await this.roleService.rolesWithScope('credential', options.scopes)
+				: options.credentialRoles;
 
 		const sharings = await this.sharedCredentialsRepository.findCredentialsByRoles(
 			userIds,

@@ -6,11 +6,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const renderComponent = createComponentRenderer(WorkflowPreview);
 
 let pinia: ReturnType<typeof createPinia>;
 let executionsStore: ReturnType<typeof useExecutionsStore>;
+let projectsStore: ReturnType<typeof useProjectsStore>;
 let postMessageSpy: Mock;
 let focusSpy: Mock;
 let consoleErrorSpy: MockInstance;
@@ -24,6 +26,10 @@ describe('WorkflowPreview', () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 		executionsStore = useExecutionsStore();
+		projectsStore = useProjectsStore();
+
+		// Mock currentProjectId for all tests
+		vi.spyOn(projectsStore, 'currentProjectId', 'get').mockReturnValue('test-project-id');
 
 		consoleErrorSpy = vi.spyOn(console, 'error');
 		postMessageSpy = vi.fn();
@@ -105,6 +111,7 @@ describe('WorkflowPreview', () => {
 					workflow,
 					canOpenNDV: true,
 					hideNodeIssues: false,
+					projectId: 'test-project-id',
 				}),
 				'*',
 			);
@@ -147,6 +154,7 @@ describe('WorkflowPreview', () => {
 					executionId,
 					executionMode: '',
 					canOpenNDV: true,
+					projectId: 'test-project-id',
 				}),
 				'*',
 			);
@@ -176,6 +184,7 @@ describe('WorkflowPreview', () => {
 					executionId,
 					executionMode: '',
 					canOpenNDV: true,
+					projectId: 'test-project-id',
 				}),
 				'*',
 			);
@@ -190,7 +199,7 @@ describe('WorkflowPreview', () => {
 		});
 	});
 
-	it('iframe should toggle "openNDV" class with postmessages', async () => {
+	it('iframe should toggle "openNDV" class with postMessages', async () => {
 		const nodes = [{ name: 'Start' }] as INodeUi[];
 		const workflow = { nodes } as IWorkflowDb;
 		const { container } = renderComponent({
@@ -213,6 +222,7 @@ describe('WorkflowPreview', () => {
 					workflow,
 					canOpenNDV: true,
 					hideNodeIssues: false,
+					projectId: 'test-project-id',
 				}),
 				'*',
 			);
@@ -249,6 +259,7 @@ describe('WorkflowPreview', () => {
 					workflow,
 					canOpenNDV: false,
 					hideNodeIssues: false,
+					projectId: 'test-project-id',
 				}),
 				'*',
 			);
@@ -260,7 +271,6 @@ describe('WorkflowPreview', () => {
 			pinia,
 			props: {},
 		});
-
 		sendPostMessageCommand('error');
 
 		await waitFor(() => {

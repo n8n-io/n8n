@@ -1,15 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { ToolMessage, AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { ToolMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import {
-	StateGraph,
-	MemorySaver,
-	END,
-	GraphRecursionError,
-	Command,
-	interrupt,
-} from '@langchain/langgraph';
+import type { MemorySaver } from '@langchain/langgraph';
+import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
@@ -23,25 +18,18 @@ import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_AI_BUILDER_PROMPT_LENGTH,
 	MAX_INPUT_TOKENS,
-	PLAN_APPROVAL_MESSAGE,
 } from '@/constants';
-import { createGetNodeParameterTool } from '@/tools/get-node-parameter.tool';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
-import { type WorkflowPlanNode, createWorkflowPlannerAgent } from './agents/workflow-planner-agent';
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
-import { createAddNodeTool } from './tools/add-node.tool';
-import { createConnectNodesTool } from './tools/connect-nodes.tool';
-import { createNodeDetailsTool } from './tools/node-details.tool';
-import { createNodeSearchTool } from './tools/node-search.tool';
-import { mainAgentPrompt, planFormatter } from './tools/prompts/main-agent.prompt';
-import { createRemoveNodeTool } from './tools/remove-node.tool';
-import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
+import { SessionManagerService } from './session-manager.service';
+import { getBuilderTools } from './tools/builder-tools';
+import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, formatMessages, type BuilderTool } from './utils/stream-processor';
+import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
 import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
@@ -51,10 +39,11 @@ export interface WorkflowBuilderAgentConfig {
 	llmSimpleTask: BaseChatModel;
 	llmComplexTask: BaseChatModel;
 	logger?: Logger;
-	checkpointer?: MemorySaver;
+	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
+	onGenerationSuccess?: () => Promise<void>;
 }
 
 export interface ChatPayload {
@@ -64,6 +53,12 @@ export interface ChatPayload {
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
 	};
+	/**
+	 * Calls AI Assistant Service using deprecated credentials and endpoints
+	 * These credentials/endpoints will soon be removed
+	 * As new implementation is rolled out and builder experiment is released
+	 */
+	useDeprecatedCredentials?: boolean;
 }
 
 export class WorkflowBuilderAgent {
@@ -75,34 +70,28 @@ export class WorkflowBuilderAgent {
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
+	private onGenerationSuccess?: () => Promise<void>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.llmSimpleTask = config.llmSimpleTask;
 		this.llmComplexTask = config.llmComplexTask;
 		this.logger = config.logger;
-		this.checkpointer = config.checkpointer ?? new MemorySaver();
+		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
 		this.autoCompactThresholdTokens =
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
+		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
 	private getBuilderTools(): BuilderTool[] {
-		return [
-			createNodeSearchTool(this.parsedNodeTypes),
-			createNodeDetailsTool(this.parsedNodeTypes),
-			createAddNodeTool(this.parsedNodeTypes),
-			createConnectNodesTool(this.parsedNodeTypes, this.logger),
-			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(
-				this.parsedNodeTypes,
-				this.llmComplexTask,
-				this.logger,
-				this.instanceUrl,
-			),
-			createGetNodeParameterTool(),
-		];
+		return getBuilderTools({
+			parsedNodeTypes: this.parsedNodeTypes,
+			instanceUrl: this.instanceUrl,
+			llmComplexTask: this.llmComplexTask,
+			logger: this.logger,
+		});
 	}
 
 	private createWorkflow() {
@@ -129,7 +118,6 @@ export class WorkflowBuilderAgent {
 				workflowJSON: trimWorkflowJSON(state.workflowJSON),
 				executionData: state.workflowContext?.executionData ?? {},
 				executionSchema: state.workflowContext?.executionSchema ?? [],
-				workflowPlan: planFormatter(state.workflowPlan),
 				instanceUrl: this.instanceUrl,
 			});
 
@@ -165,145 +153,8 @@ export class WorkflowBuilderAgent {
 			return tokensUsed > this.autoCompactThresholdTokens;
 		};
 
-		/**
-		 * Creates a plan for the workflow based on user requirements
-		 */
-		const createPlan = async (state: typeof WorkflowState.State) => {
-			const { messages } = state;
-			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!;
-
-			if (typeof lastHumanMessage.content !== 'string') {
-				throw new ValidationError('Invalid message content for planning');
-			}
-
-			// Create the planner agent with tools
-			const plannerAgent = createWorkflowPlannerAgent(this.llmSimpleTask, this.parsedNodeTypes);
-
-			// Generate the workflow plan
-			const plannerResult = await plannerAgent.plan(lastHumanMessage.content);
-
-			// If we got a structured plan, return it
-			if ('plan' in plannerResult) {
-				const { plan, toolMessages } = plannerResult;
-				this.logger?.debug('Generated workflow plan: ' + JSON.stringify(plan, null, 2));
-
-				return {
-					workflowPlan: plan,
-					planStatus: 'pending' as const,
-					messages: toolMessages,
-				};
-			}
-
-			// If we didn't get a plan, just return the text response
-			this.logger?.debug('Planner returned text response: ' + plannerResult.text);
-			return {
-				messages: [
-					new AIMessage({
-						content: plannerResult.text,
-					}),
-				],
-			};
-		};
-
-		/**
-		 * Reviews the plan with the user for approval
-		 */
-		const reviewPlan = async (state: typeof WorkflowState.State) => {
-			const { workflowPlan } = state;
-
-			if (!workflowPlan) {
-				throw new ValidationError('No workflow plan to review');
-			}
-
-			// Use interrupt to pause and show the plan to the user
-			// The frontend will display the plan and wait for user action
-			const userResponse = interrupt<
-				{ plan: WorkflowPlanNode[]; message: string },
-				{ action: 'approve' | 'adjust'; feedback?: string }
-			>({
-				plan: workflowPlan.plan,
-				message: workflowPlan.intro,
-			});
-
-			// Process the user's response
-			if (userResponse.action === 'approve') {
-				// User approved the plan, mark as approved and continue
-				return {
-					planStatus: 'approved' as const,
-				};
-			} else if (userResponse.action === 'adjust') {
-				// User wants adjustments, add feedback and mark for adjustment
-				return {
-					planStatus: 'rejected' as const,
-					planFeedback: userResponse.feedback ?? 'Please adjust the plan',
-				};
-			}
-
-			return {};
-		};
-
-		/**
-		 * Adjusts the plan based on user feedback
-		 */
-		const adjustPlan = async (state: typeof WorkflowState.State) => {
-			const { messages, planFeedback, workflowPlan } = state;
-			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!;
-
-			if (typeof lastHumanMessage.content !== 'string') {
-				throw new ValidationError('Invalid message content for plan adjustment');
-			}
-
-			// Create the planner agent with tools
-			const plannerAgent = createWorkflowPlannerAgent(this.llmSimpleTask, this.parsedNodeTypes);
-
-			// Generate an adjusted plan with feedback
-			const adjustedPlan = await plannerAgent.plan(
-				lastHumanMessage.content,
-				workflowPlan ?? undefined,
-				planFeedback ?? undefined,
-			);
-
-			// If we get a text response instead of a plan, just return that
-			if ('text' in adjustedPlan) {
-				return {
-					messages: [
-						new AIMessage({
-							content: adjustedPlan.text,
-						}),
-					],
-				};
-			}
-
-			// Remove previous plan tool messages to avoid confusion
-			const filteredMessages = messages.map((m) => {
-				if (m instanceof ToolMessage && m.name === 'generate_workflow_plan') {
-					return new RemoveMessage({ id: m.id! });
-				}
-
-				if (m instanceof AIMessage && m.tool_calls && m.tool_calls.length > 0) {
-					const hasPlanCall = m.tool_calls.find((tc) => tc.name === 'generate_workflow_plan');
-					if (hasPlanCall) {
-						return new RemoveMessage({ id: m.id! });
-					}
-				}
-
-				return m;
-			});
-
-			const planAdjustmentMessage = new HumanMessage({ content: planFeedback ?? '' });
-
-			this.logger?.debug('Adjusted workflow plan: ' + JSON.stringify(adjustedPlan, null, 2));
-
-			return {
-				workflowPlan: adjustedPlan.plan,
-				messages: [...filteredMessages, planAdjustmentMessage, ...adjustedPlan.toolMessages],
-				planStatus: 'pending' as const,
-				planFeedback: null,
-			};
-		};
-
 		const shouldModifyState = (state: typeof WorkflowState.State) => {
-			const { messages, workflowContext, planStatus } = state;
+			const { messages, workflowContext } = state;
 			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
 
 			if (lastHumanMessage.content === '/compact') {
@@ -324,11 +175,6 @@ export class WorkflowBuilderAgent {
 				return 'auto_compact_messages';
 			}
 
-			// If we don't have a plan yet, and the workflow is empty, create a plan
-			if (!planStatus && workflowContext?.currentWorkflow?.nodes?.length === 0) {
-				return 'create_plan';
-			}
-
 			return 'agent';
 		};
 
@@ -337,6 +183,13 @@ export class WorkflowBuilderAgent {
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
+			}
+
+			// Call success callback when agent finishes without tool calls (successful generation)
+			if (this.onGenerationSuccess) {
+				void Promise.resolve(this.onGenerationSuccess()).catch((error) => {
+					this.logger?.warn('Failed to execute onGenerationSuccess callback', { error });
+				});
 			}
 			return END;
 		};
@@ -356,9 +209,6 @@ export class WorkflowBuilderAgent {
 					connections: {},
 					name: '',
 				},
-				workflowPlan: null,
-				planStatus: null,
-				planFeedback: null,
 			};
 
 			return stateUpdate;
@@ -447,24 +297,11 @@ export class WorkflowBuilderAgent {
 			.addNode('compact_messages', compactSession)
 			.addNode('auto_compact_messages', compactSession)
 			.addNode('create_workflow_name', createWorkflowName)
-			.addNode('create_plan', createPlan)
-			.addNode('review_plan', reviewPlan)
-			.addNode('adjust_plan', adjustPlan)
 			.addConditionalEdges('__start__', shouldModifyState)
-			// .addEdge('create_plan', 'review_plan')
-			.addConditionalEdges('create_plan', (state) => {
-				// If a plan was created, move to review, otherwise back to planning
-				return state.workflowPlan ? 'review_plan' : END;
-			})
-			.addConditionalEdges('review_plan', (state) => {
-				// Route based on the plan status after review
-				return state.planStatus === 'approved' ? 'agent' : 'adjust_plan';
-			})
-			.addEdge('adjust_plan', 'review_plan')
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')
-			.addEdge('create_workflow_name', 'create_plan')
+			.addEdge('create_workflow_name', 'agent')
 			.addEdge('delete_messages', END)
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
@@ -478,12 +315,6 @@ export class WorkflowBuilderAgent {
 		return await agent.getState({
 			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
 		});
-	}
-
-	static generateThreadId(workflowId?: string, userId?: string) {
-		return workflowId
-			? `workflow-${workflowId}-user-${userId ?? new Date().getTime()}`
-			: crypto.randomUUID();
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
@@ -505,7 +336,7 @@ export class WorkflowBuilderAgent {
 		);
 
 		try {
-			const stream = await this.createAgentStream(payload, streamConfig, agent, threadConfig);
+			const stream = await this.createAgentStream(payload, streamConfig, agent);
 			yield* this.processAgentStream(stream, agent, threadConfig);
 		} catch (error: unknown) {
 			this.handleStreamError(error);
@@ -530,7 +361,7 @@ export class WorkflowBuilderAgent {
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
-		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
@@ -551,33 +382,7 @@ export class WorkflowBuilderAgent {
 		payload: ChatPayload,
 		streamConfig: RunnableConfig,
 		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
-		threadConfig: RunnableConfig,
 	) {
-		const currentState = await agent.getState(threadConfig);
-
-		// Check if there are pending interrupts (e.g., plan review)
-		const interruptedTask = currentState.tasks.find(
-			(task) => task.interrupts && task.interrupts.length > 0,
-		);
-
-		if (interruptedTask) {
-			// We have a pending interrupt - likely a plan review
-
-			// Check if the message is an approval message, right now we only check for exact match
-			// in the future we might want to use a LLM classifier for more flexibility
-			const action = payload.message.trim() === PLAN_APPROVAL_MESSAGE ? 'approve' : 'adjust';
-
-			// Resume with the appropriate command
-			const resumeCommand = new Command({
-				resume: {
-					action,
-					feedback: action === 'adjust' ? payload.message : undefined,
-				},
-			});
-
-			return await agent.stream(resumeCommand, streamConfig);
-		}
-
 		return await agent.stream(
 			{
 				messages: [new HumanMessage({ content: payload.message })],
@@ -633,7 +438,7 @@ export class WorkflowBuilderAgent {
 
 			// Handle abort errors gracefully
 			const abortedAiMessage = new AIMessage({
-				content: '[Task aborted]',
+				content: 'Task aborted',
 				id: crypto.randomUUID(),
 			});
 			// TODO: Should we clear tool calls that are in progress?
@@ -674,44 +479,5 @@ export class WorkflowBuilderAgent {
 		}
 
 		return undefined;
-	}
-
-	async getSessions(workflowId: string | undefined, userId?: string) {
-		// For now, we'll return the current session if we have a workflowId
-		// MemorySaver doesn't expose a way to list all threads, so we'll need to
-		// track this differently if we want to list all sessions
-		const sessions = [];
-
-		if (workflowId) {
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			const threadConfig: RunnableConfig = {
-				configurable: {
-					thread_id: threadId,
-				},
-			};
-
-			try {
-				// Try to get the checkpoint for this thread
-				const checkpoint = await this.checkpointer.getTuple(threadConfig);
-
-				if (checkpoint?.checkpoint) {
-					const messages =
-						(checkpoint.checkpoint.channel_values?.messages as Array<
-							AIMessage | HumanMessage | ToolMessage
-						>) ?? [];
-
-					sessions.push({
-						sessionId: threadId,
-						messages: formatMessages(messages, this.getBuilderTools()),
-						lastUpdated: checkpoint.checkpoint.ts,
-					});
-				}
-			} catch (error) {
-				// Thread doesn't exist yet
-				this.logger?.debug('No session found for workflow:', { workflowId, error });
-			}
-		}
-
-		return { sessions };
 	}
 }

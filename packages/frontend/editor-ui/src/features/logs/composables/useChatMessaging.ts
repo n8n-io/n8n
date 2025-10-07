@@ -28,22 +28,22 @@ export type RunWorkflowChatPayload = {
 };
 export interface ChatMessagingDependencies {
 	chatTrigger: Ref<INodeUi | null>;
-	messages: Ref<ChatMessage[]>;
-	sessionId: Ref<string>;
+	sessionId: string;
 	executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
 	onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
 	) => Promise<IExecutionPushResponse | undefined>;
 	ws: Ref<WebSocket | null>;
+	onNewMessage: (message: ChatMessage) => void;
 }
 
 export function useChatMessaging({
 	chatTrigger,
-	messages,
 	sessionId,
 	executionResultData,
 	onRunChatWorkflow,
 	ws,
+	onNewMessage,
 }: ChatMessagingDependencies) {
 	const locale = useI18n();
 	const { showError } = useToast();
@@ -116,7 +116,7 @@ export function useChatMessaging({
 
 		const inputPayload: INodeExecutionData = {
 			json: {
-				sessionId: sessionId.value,
+				sessionId,
 				action: 'sendMessage',
 				[inputKey]: message,
 			},
@@ -166,7 +166,7 @@ export function useChatMessaging({
 			: undefined;
 
 		if (chatMessage !== undefined) {
-			messages.value.push(chatMessage);
+			onNewMessage(chatMessage);
 		}
 	}
 
@@ -200,16 +200,16 @@ export function useChatMessaging({
 		const newMessage: ChatMessage & { sessionId: string } = {
 			text: message,
 			sender: 'user',
-			sessionId: sessionId.value,
+			sessionId,
 			id: uuid(),
 			files,
 		};
-		messages.value.push(newMessage);
+		onNewMessage(newMessage);
 
 		if (ws.value?.readyState === WebSocket.OPEN && !isLoading.value) {
 			ws.value.send(
 				JSON.stringify({
-					sessionId: sessionId.value,
+					sessionId,
 					action: 'sendMessage',
 					chatInput: message,
 					files: await processFiles(files),

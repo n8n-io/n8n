@@ -2,7 +2,7 @@
 import { type INodeProperties, type NodePropertyAction } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
-import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
+import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -14,9 +14,9 @@ import {
 	getTextareaCursorPosition,
 } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '../../utils/mappingUtils';
-
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{
@@ -195,7 +195,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 
 <template>
 	<div>
-		<n8n-input-label
+		<N8nInputLabel
 			v-if="hasInputField"
 			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 			:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
@@ -203,7 +203,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			size="small"
 			color="text-dark"
 		>
-		</n8n-input-label>
+		</N8nInputLabel>
 		<div
 			:class="[$style.inputContainer, { [$style.disabled]: isReadOnly }]"
 			:hidden="!hasInputField"

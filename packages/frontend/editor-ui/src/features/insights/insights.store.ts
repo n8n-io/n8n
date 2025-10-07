@@ -38,7 +38,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const summary = useAsyncState(
-		async (filter?: { dateRange: InsightsDateRange['key'] }) => {
+		async (filter?: { dateRange: InsightsDateRange['key']; projectId?: string }) => {
 			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, filter);
 			return transformInsightsSummary(raw);
 		},
@@ -47,7 +47,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const charts = useAsyncState(
-		async (filter?: { dateRange: InsightsDateRange['key'] }) => {
+		async (filter?: { dateRange: InsightsDateRange['key']; projectId?: string }) => {
 			const dataFetcher = isDashboardEnabled.value
 				? insightsApi.fetchInsightsByTime
 				: insightsApi.fetchInsightsTimeSaved;

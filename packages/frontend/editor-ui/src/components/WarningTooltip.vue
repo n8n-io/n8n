@@ -1,11 +1,15 @@
+<script setup lang="ts">
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+</script>
+
 <template>
 	<span>
-		<n8n-tooltip content=" " placement="top">
+		<N8nTooltip content=" " placement="top">
 			<template #content>
 				<slot />
 			</template>
-			<n8n-icon :class="$style['icon']" icon="triangle-alert" />
-		</n8n-tooltip>
+			<N8nIcon :class="$style['icon']" icon="triangle-alert" />
+		</N8nTooltip>
 	</span>
 </template>
 

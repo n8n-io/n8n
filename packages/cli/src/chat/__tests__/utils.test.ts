@@ -146,6 +146,51 @@ describe('getMessage', () => {
 		const result = getMessage(execution);
 		expect(result).toBeUndefined();
 	});
+
+	it('should return message from the second output branch when first is empty', () => {
+		const execution = createMockExecution({}, undefined, [
+			{
+				data: {
+					main: [
+						[], // First output branch is empty
+						[
+							{
+								json: { test: 'data' },
+								sendMessage: 'Message from second branch',
+							},
+						], // Second output branch has the message
+					],
+				},
+			},
+		]);
+		const result = getMessage(execution);
+		expect(result).toBe('Message from second branch');
+	});
+
+	it('should prioritize message from the first branch when multiple branches have messages', () => {
+		const execution = createMockExecution({}, undefined, [
+			{
+				data: {
+					main: [
+						[
+							{
+								json: { test: 'data1' },
+								sendMessage: 'Message from first branch',
+							},
+						],
+						[
+							{
+								json: { test: 'data2' },
+								sendMessage: 'Message from second branch',
+							},
+						],
+					],
+				},
+			},
+		]);
+		const result = getMessage(execution);
+		expect(result).toBe('Message from first branch');
+	});
 });
 
 describe('getLastNodeExecuted', () => {

@@ -4,12 +4,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
-import { cleanupAppModals, createAppModals, retry } from '@/__tests__/utils';
+import { retry } from '@/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
-	props: {
-		appendToBody: false,
-	},
 	data() {
 		return {
 			packageName: 'n8n-nodes-hello',
@@ -34,13 +31,6 @@ const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
 });
 
 describe('CommunityPackageInstallModal', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
-	});
 	it('should disable install button until user agrees', async () => {
 		const { getByTestId } = renderComponent();
 

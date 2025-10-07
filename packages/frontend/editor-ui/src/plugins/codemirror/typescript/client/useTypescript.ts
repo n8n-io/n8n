@@ -2,7 +2,7 @@ import { useDataSchema } from '@/composables/useDataSchema';
 import { useDebounce } from '@/composables/useDebounce';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/plugins/codemirror/completions/utils';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { forceParse } from '@/utils/forceParse';

@@ -1,6 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { microsoftApiRequest } from '../transport';
+import { parseAddress } from '../helpers/utils';
 
 export async function getWorksheetColumnRow(
 	this: ILoadOptionsFunctions,
@@ -27,12 +28,9 @@ export async function getWorksheetColumnRow(
 
 		columns = worksheetData.values[0] as string[];
 	} else {
-		const [rangeFrom, rangeTo] = range.split(':');
-		const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-		const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+		const { cellFrom, cellTo } = parseAddress(range);
 
-		range = `${rangeFrom}:${cellDataTo[1]}${cellDataFrom[2]}`;
-
+		range = `${cellFrom.value}:${cellTo.column}${cellFrom.row}`;
 		const worksheetData = await microsoftApiRequest.call(
 			this,
 			'PATCH',

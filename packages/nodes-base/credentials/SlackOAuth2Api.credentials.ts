@@ -19,6 +19,7 @@ const userScopes = [
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
+	'search:read',
 ];
 
 export class SlackOAuth2Api implements ICredentialType {

@@ -1,20 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "errors": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "message": {
-                        "type": "string"
-                    },
-                    "statusCode": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "id": {
             "type": "string"
         },
@@ -22,5 +8,5 @@
             "type": "boolean"
         }
     },
-    "version": 2
+    "version": 3
 }

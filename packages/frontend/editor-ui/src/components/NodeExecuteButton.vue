@@ -33,6 +33,7 @@ import { useUIStore } from '@/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nButton, N8nTooltip } from '@n8n/design-system';
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
 const POPUP_UPDATE_DELAY = 3000;
@@ -52,11 +53,13 @@ const props = withDefaults(
 		hideLabel?: boolean;
 		tooltip?: string;
 		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
+		showLoadingSpinner?: boolean;
 	}>(),
 	{
 		disabled: false,
 		transparent: false,
 		square: false,
+		showLoadingSpinner: true,
 	},
 );
 
@@ -402,8 +405,8 @@ async function onClick() {
 		</template>
 		<N8nButton
 			v-bind="$attrs"
-			:loading="isLoading"
-			:disabled="disabled || !!disabledHint"
+			:loading="isLoading && showLoadingSpinner"
+			:disabled="disabled || !!disabledHint || (isLoading && !showLoadingSpinner)"
 			:label="buttonLabel"
 			:type="type"
 			:size="size"

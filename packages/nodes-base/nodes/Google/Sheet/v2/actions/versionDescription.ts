@@ -69,6 +69,24 @@ export const versionDescription: INodeTypeDescription = {
 			whenToDisplay: 'beforeExecution',
 			location: 'outputPane',
 		},
+		{
+			type: 'info',
+			message:
+				'Note on using an expression for Sheet: It will be evaluated only once, so all items will use the <em>same</em> sheet. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
+			displayCondition:
+				'={{ $rawParameter.sheetName?.startsWith("=") && $input.all().length > 1 }}',
+			whenToDisplay: 'always',
+			location: 'outputPane',
+		},
+		{
+			type: 'info',
+			message:
+				'Note on using an expression for Document: It will be evaluated only once, so all items will use the <em>same</em> document. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
+			displayCondition:
+				'={{ $rawParameter.documentId?.startsWith("=") && $input.all().length > 1 }}',
+			whenToDisplay: 'always',
+			location: 'outputPane',
+		},
 	],
 	credentials: [
 		{

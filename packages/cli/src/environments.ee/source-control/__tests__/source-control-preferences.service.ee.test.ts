@@ -1,3 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
+import type { SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, Cipher } from 'n8n-core';
 import { readFile, access, mkdir } from 'fs/promises';
@@ -13,11 +15,14 @@ jest.unmock('node:fs/promises');
 
 describe('SourceControlPreferencesService', () => {
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '' });
+	const mockCipher = mock<Cipher>();
+	const mockLogger = mock<Logger>();
+	const mockSettingsRepository = mock<SettingsRepository>();
 	const service = new SourceControlPreferencesService(
 		instanceSettings,
-		mock(),
-		mock(),
-		mock(),
+		mockLogger,
+		mockCipher,
+		mockSettingsRepository,
 		mock(),
 	);
 
@@ -237,6 +242,67 @@ describe('SourceControlPreferencesService', () => {
 			expect(tempFilePath2).toBe(tempFilePath1);
 			const fileContent = await readFile(tempFilePath2, 'utf8');
 			expect(fileContent).toBe(testKey);
+		});
+	});
+
+	describe('setPreferences', () => {
+		it('should not store https credentials in memory when provided in the new preferences', async () => {
+			const preferencesWithCredentials: Partial<SourceControlPreferences> = {
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/example/repo.git',
+				connectionType: 'https',
+				httpsUsername: 'testuser',
+				httpsPassword: 'testpassword',
+			};
+
+			const saveHttpsCredentialsSpy = jest.spyOn(service as any, 'saveHttpsCredentials');
+
+			const result = await service.setPreferences(preferencesWithCredentials);
+
+			// credentials should not be present in the returned preferences
+			expect(result.httpsUsername).toBeUndefined();
+			expect(result.httpsPassword).toBeUndefined();
+
+			// credentials should not be present in the internal state
+			const internalPreferences = service.getPreferences();
+			expect(internalPreferences.httpsUsername).toBeUndefined();
+			expect(internalPreferences.httpsPassword).toBeUndefined();
+
+			expect(saveHttpsCredentialsSpy).toHaveBeenCalledWith(
+				preferencesWithCredentials.httpsUsername,
+				preferencesWithCredentials.httpsPassword,
+			);
+		});
+	});
+
+	describe('getDecryptedHttpsCredentials', () => {
+		it('should throw error when no https credentials in database', async () => {
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue(null);
+
+			await expect(service.getDecryptedHttpsCredentials()).rejects.toThrow(
+				'No credentials found for https connection',
+			);
+		});
+
+		it('should return decrypted https credentials when present in database', async () => {
+			const encryptedCredentialsJsonString =
+				'{ "encryptedUsername": "encryptedUser", "encryptedPassword": "encryptedPass"}';
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue(
+				Promise.resolve({
+					key: 'features.sourceControl.httpsCredentials',
+					value: encryptedCredentialsJsonString,
+					column: 'testing',
+					loadOnStartup: false,
+				}),
+			);
+			mockCipher.decrypt.mockImplementation((value) => `decrypted-${value}`);
+
+			const result = await service.getDecryptedHttpsCredentials();
+
+			expect(result).toEqual({
+				username: 'decrypted-encryptedUser',
+				password: 'decrypted-encryptedPass',
+			});
 		});
 	});
 });

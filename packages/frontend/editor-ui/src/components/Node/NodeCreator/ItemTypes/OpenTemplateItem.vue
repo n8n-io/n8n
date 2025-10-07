@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { OpenTemplateItemProps } from '@/Interface';
 
+import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
+import NodeIcon from '@/components/NodeIcon.vue';
 export interface Props {
 	openTemplate: OpenTemplateItemProps;
 }
@@ -18,7 +20,7 @@ defineProps<Props>();
 		:is-trigger="false"
 	>
 		<template v-if="openTemplate.icon" #icon>
-			<n8n-node-icon
+			<N8nNodeIcon
 				type="icon"
 				:name="openTemplate.icon"
 				:circle="false"

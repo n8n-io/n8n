@@ -15,13 +15,14 @@ import {
 	EnterpriseEditionFeature,
 	INVITE_USER_MODAL_KEY,
 } from '@/constants';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
@@ -30,6 +31,19 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 
+import { ElSwitch } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nBadge,
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
 
@@ -79,6 +93,13 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 			value: 'reinvite',
 			guard: (user) =>
 				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.delete'),
+			value: 'delete',
+			guard: (user) =>
+				hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+				user.id !== usersStore.currentUserId,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.copyPasswordResetLink'),
@@ -334,15 +355,16 @@ const onSearch = (value: string) => {
 	void debouncedUpdateUsersTableData();
 };
 
-async function onUpdateMfaEnforced(value: boolean) {
+async function onUpdateMfaEnforced(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
 	try {
-		await usersStore.updateEnforceMfa(value);
+		await usersStore.updateEnforceMfa(boolValue);
 		showToast({
 			type: 'success',
-			title: value
+			title: boolValue
 				? i18n.baseText('settings.personal.mfa.enforce.enabled.title')
 				: i18n.baseText('settings.personal.mfa.enforce.disabled.title'),
-			message: value
+			message: boolValue
 				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
 				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
 		});
@@ -406,7 +428,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			</div>
 			<div :class="$style.settingsContainerAction">
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-					<el-switch
+					<ElSwitch
 						:model-value="settingsStore.isMFAEnforced"
 						size="large"
 						data-test-id="enable-force-mfa"
@@ -414,7 +436,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 					/>
 					<template #fallback>
 						<N8nTooltip>
-							<el-switch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
+							<ElSwitch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
 							<template #content>
 								<I18nT :keypath="tooltipKey" tag="span" scope="global">
 									<template #action>

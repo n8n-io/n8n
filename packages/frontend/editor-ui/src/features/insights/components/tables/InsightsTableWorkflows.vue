@@ -7,14 +7,14 @@ import {
 	transformInsightsTimeSaved,
 } from '@/features/insights/insights.utils';
 import type { InsightsByWorkflow } from '@n8n/api-types';
-import { N8nTooltip, N8nDataTableServer } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
-import { type RouteLocationRaw, type LocationQueryRaw } from 'vue-router';
+import { type RouteLocationRaw, type LocationQueryRaw, RouterLink } from 'vue-router';
 
+import { N8nDataTableServer, N8nHeading, N8nTooltip } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
 );
@@ -169,7 +169,7 @@ watch(sortBy, (newValue) => {
 		>
 			<template #[`item.workflowName`]="{ item }">
 				<component
-					:is="item.workflowId ? 'router-link' : 'div'"
+					:is="item.workflowId ? RouterLink : 'div'"
 					v-bind="
 						item.workflowId
 							? {
@@ -188,13 +188,13 @@ watch(sortBy, (newValue) => {
 				</component>
 			</template>
 			<template #[`item.timeSaved`]="{ item, value }">
-				<router-link
+				<RouterLink
 					v-if="!item.timeSaved && item.workflowId"
 					:to="getWorkflowLink(item, { settings: 'true' })"
 					:class="$style.link"
 				>
 					{{ i18n.baseText('insights.dashboard.table.estimate') }}
-				</router-link>
+				</RouterLink>
 				<template v-else>
 					{{ value }}
 				</template>

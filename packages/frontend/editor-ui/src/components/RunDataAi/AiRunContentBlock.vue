@@ -6,8 +6,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, NodeError } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataParsedAiContent.vue';
 import { parseAiContent } from '@/utils/aiUtils';
-import { N8nRadioButtons } from '@n8n/design-system';
-
+import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 const props = defineProps<{
 	runData: IAiDataContent;
 	error?: NodeError;

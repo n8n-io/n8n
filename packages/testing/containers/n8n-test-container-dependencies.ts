@@ -316,6 +316,79 @@ export async function pollContainerHttpEndpoint(
 	);
 }
 
+export async function setupProxyServer({
+	proxyServerImage,
+	projectName,
+	network,
+	hostname,
+	port,
+}: {
+	proxyServerImage: string;
+	projectName: string;
+	network: StartedNetwork;
+	hostname: string;
+	port: number;
+}): Promise<StartedTestContainer> {
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(proxyServerImage)
+			.withNetwork(network)
+			.withNetworkAliases(hostname)
+			.withExposedPorts(port)
+			// Wait.forListeningPorts strategy did not work here for some reason
+			.withWaitStrategy(Wait.forLogMessage(`INFO ${port} started on port: ${port}`))
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'proxyserver',
+			})
+			.withName(`${projectName}-proxyserver`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}
+
+const TASK_RUNNER_IMAGE = 'n8nio/runners:nightly';
+
+export async function setupTaskRunner({
+	projectName,
+	network,
+	taskBrokerUri,
+}: {
+	projectName: string;
+	network: StartedNetwork;
+	taskBrokerUri: string;
+}): Promise<StartedTestContainer> {
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(TASK_RUNNER_IMAGE)
+			.withNetwork(network)
+			.withNetworkAliases(`${projectName}-task-runner`)
+			.withExposedPorts(5680)
+			.withEnvironment({
+				N8N_RUNNERS_AUTH_TOKEN: 'test',
+				N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug',
+				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
+				N8N_RUNNERS_MAX_CONCURRENCY: '5',
+				N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '15',
+			})
+			.withWaitStrategy(Wait.forListeningPorts())
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'task-runner',
+			})
+			.withName(`${projectName}-task-runner`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}
+
 // TODO: Look at Ollama container?
 // TODO: Look at MariaDB container?
-// TODO: Look at MockServer container, could we use this for mocking out external services?

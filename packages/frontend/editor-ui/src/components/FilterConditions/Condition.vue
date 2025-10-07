@@ -24,6 +24,7 @@ import {
 } from './utils';
 import { useDebounce } from '@/composables/useDebounce';
 
+import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	path: string;
 	condition: FilterConditionValue;
@@ -224,25 +225,25 @@ const onBlur = (): void => {
 		<div :class="$style.status">
 			<ParameterIssues v-if="allIssues.length > 0" :issues="allIssues" />
 
-			<n8n-tooltip
+			<N8nTooltip
 				v-else-if="conditionResult.status === 'success' && conditionResult.result === true"
 				:show-after="500"
 			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedTrue') }}
 				</template>
-				<n8n-icon icon="circle-check" size="medium" color="text-light" />
-			</n8n-tooltip>
+				<N8nIcon icon="circle-check" size="medium" color="text-light" />
+			</N8nTooltip>
 
-			<n8n-tooltip
+			<N8nTooltip
 				v-else-if="conditionResult.status === 'success' && conditionResult.result === false"
 				:show-after="500"
 			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedFalse') }}
 				</template>
-				<n8n-icon icon="circle-x" size="medium" color="text-light" />
-			</n8n-tooltip>
+				<N8nIcon icon="circle-x" size="medium" color="text-light" />
+			</N8nTooltip>
 		</div>
 	</div>
 </template>

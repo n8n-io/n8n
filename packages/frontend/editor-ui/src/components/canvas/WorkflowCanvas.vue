@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Canvas from '@/components/canvas/Canvas.vue';
-import { computed, ref, toRef, useCssModule } from 'vue';
+import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
@@ -9,6 +9,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 defineOptions({
 	inheritAttrs: false,
@@ -24,15 +25,18 @@ const props = withDefaults(
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 		executing?: boolean;
+		suppressInteraction?: boolean;
 	}>(),
 	{
 		id: 'canvas',
 		eventBus: () => createEventBus<CanvasEventBusEvents>(),
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
+		suppressInteraction: false,
 	},
 );
 
+const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 
 const { onNodesInitialized } = useVueFlow(props.id);
@@ -63,6 +67,11 @@ onNodesInitialized(() => {
 
 const mappedNodesThrottled = throttledRef(mappedNodes, 200);
 const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
+
+defineExpose({
+	executeContextMenuAction: (action: ContextMenuAction, nodeIds: string[]) =>
+		canvasRef.value?.executeContextMenuAction(action, nodeIds),
+});
 </script>
 
 <template>
@@ -71,11 +80,13 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 			<Canvas
 				v-if="workflow"
 				:id="id"
+				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:executing="executing"
+				:suppress-interaction="suppressInteraction"
 				v-bind="$attrs"
 			/>
 		</div>

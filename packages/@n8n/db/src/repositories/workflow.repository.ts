@@ -435,6 +435,31 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
+		this.applyNodeTypesFilter(qb, filter);
+		this.applyAvailableInMCPFilter(qb, filter);
+	}
+
+	private applyAvailableInMCPFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.availableInMCP === 'boolean') {
+			const dbType = this.globalConfig.database.type;
+
+			if (['postgresdb'].includes(dbType)) {
+				qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
+					availableInMCP: filter.availableInMCP.toString(),
+				});
+			} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP,
+				});
+			} else if (dbType === 'sqlite') {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
+				});
+			}
+		}
 	}
 
 	private applyNameFilter(
@@ -519,6 +544,22 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 	}
 
+	private applyNodeTypesFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		const nodeTypes = isStringArray(filter?.nodeTypes) ? filter.nodeTypes : [];
+
+		if (!nodeTypes.length) return;
+
+		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
+			nodeTypes,
+			this.globalConfig.database.type,
+		);
+
+		qb.andWhere(whereClause, parameters);
+	}
+
 	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
 		// Check if 'shared' join already exists from project filter
 		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'shared')) {
@@ -559,6 +600,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.createdAt',
 				'workflow.updatedAt',
 				'workflow.versionId',
+				'workflow.settings',
 			]);
 			return;
 		}

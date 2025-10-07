@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nCard from './Card.vue';
 import N8nButton from '../N8nButton/Button.vue';

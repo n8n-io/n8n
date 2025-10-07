@@ -50,6 +50,32 @@ export async function createCustomRoleWithScopes(
 }
 
 /**
+ * Creates a custom role with specific scope slugs (using existing permission system scopes)
+ */
+export async function createCustomRoleWithScopeSlugs(
+	scopeSlugs: string[],
+	overrides: Partial<Role> = {},
+): Promise<Role> {
+	const scopeRepository = Container.get(ScopeRepository);
+
+	// Find existing scopes by their slugs
+	const scopes = await scopeRepository.findByList(scopeSlugs);
+
+	if (scopes.length !== scopeSlugs.length) {
+		const missingScopes = scopeSlugs.filter((slug) => !scopes.some((scope) => scope.slug === slug));
+		throw new Error(
+			`Could not find all scopes. Expected ${scopeSlugs.length}, found ${scopes.length}, missing: ${missingScopes.join(', ')}`,
+		);
+	}
+
+	return await createRole({
+		scopes,
+		systemRole: false,
+		...overrides,
+	});
+}
+
+/**
  * Creates a test scope with given parameters
  */
 export async function createScope(overrides: Partial<Scope> = {}): Promise<Scope> {
