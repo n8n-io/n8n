@@ -9,7 +9,14 @@ export function useThrottleWithReactiveDelay<T>(state: Ref<T>, delay: Ref<number
 
 	watch(
 		state,
-		useThrottleFn((latest) => (throttled.value = latest), delay, true, true),
+		useThrottleFn(
+			(latest: T) => {
+				throttled.value = latest;
+			},
+			delay,
+			true,
+			true,
+		),
 		{ immediate: true },
 	);
 
