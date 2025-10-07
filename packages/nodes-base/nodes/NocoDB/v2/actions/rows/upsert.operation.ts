@@ -88,13 +88,17 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const id = this.getNodeParameter('id', i, undefined, {
 				extractValue: true,
 			}) as string;
-			if (!id) {
-				requestMethod = 'POST';
-			}
-			const newItem: {
-				id: string;
+
+			let newItem: {
+				id?: string;
 				fields: IDataObject;
 			} = { id, fields: {} };
+			if (!id) {
+				requestMethod = 'POST';
+				newItem = {
+					fields: {},
+				};
+			}
 			const dataToSend = this.getNodeParameter('dataToSend', i) as
 				| 'defineBelow'
 				| 'mapWithFields'
