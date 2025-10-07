@@ -2,11 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, type Ref } from 'vue';
 import { useDataTableColumnFilters } from '../useDataTableColumnFilters';
 import type { ColDef, GridApi } from 'ag-grid-community';
-import { GRID_FILTER_CONFIG } from '../utils/filterMappings';
 
 describe('useDataTableColumnFilters', () => {
 	let mockGridApi: GridApi;
-	let mockSetGridData: ReturnType<typeof vi.fn>;
 	let colDefs: Ref<ColDef[]>;
 
 	beforeEach(() => {
@@ -15,37 +13,11 @@ describe('useDataTableColumnFilters', () => {
 			getFilterModel: vi.fn(),
 		} as unknown as GridApi;
 
-		mockSetGridData = vi.fn();
-
 		colDefs = ref([
 			{ field: 'name', colId: 'name' },
 			{ field: 'age', colId: 'age' },
 			{ field: 'add-column', colId: 'add-column' },
 		]);
-	});
-
-	describe('initializeFilters', () => {
-		it('should set defaultColDef only and not mutate colDefs', () => {
-			const gridApi = ref(mockGridApi);
-			const { initializeFilters } = useDataTableColumnFilters({
-				gridApi,
-				colDefs,
-				setGridData: mockSetGridData,
-			});
-
-			initializeFilters();
-
-			expect(mockGridApi.setGridOption).toHaveBeenCalledWith(
-				'defaultColDef',
-				GRID_FILTER_CONFIG.defaultColDef,
-			);
-			expect(colDefs.value).toEqual([
-				{ field: 'name', colId: 'name' },
-				{ field: 'age', colId: 'age' },
-				{ field: 'add-column', colId: 'add-column' },
-			]);
-			expect(mockSetGridData).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('onFilterChanged', () => {
@@ -58,7 +30,6 @@ describe('useDataTableColumnFilters', () => {
 			const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
 				gridApi,
 				colDefs,
-				setGridData: mockSetGridData,
 			});
 
 			mockGridApi.getFilterModel = vi.fn().mockReturnValue({
@@ -90,7 +61,6 @@ describe('useDataTableColumnFilters', () => {
 			const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
 				gridApi,
 				colDefs,
-				setGridData: mockSetGridData,
 			});
 
 			mockGridApi.getFilterModel = vi.fn().mockReturnValue({});
@@ -107,7 +77,6 @@ describe('useDataTableColumnFilters', () => {
 			const { hasActiveFilters } = useDataTableColumnFilters({
 				gridApi,
 				colDefs,
-				setGridData: mockSetGridData,
 			});
 
 			expect(hasActiveFilters.value).toBe(false);
@@ -118,7 +87,6 @@ describe('useDataTableColumnFilters', () => {
 			const { onFilterChanged, hasActiveFilters } = useDataTableColumnFilters({
 				gridApi,
 				colDefs,
-				setGridData: mockSetGridData,
 			});
 
 			mockGridApi.getFilterModel = vi.fn().mockReturnValue({

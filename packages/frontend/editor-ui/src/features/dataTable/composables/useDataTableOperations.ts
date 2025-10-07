@@ -21,6 +21,7 @@ import { MODAL_CONFIRM } from '@/constants';
 import { isDataTableValue, isAGGridCellType } from '@/features/dataTable/typeGuards';
 import { useDataTableTypes } from '@/features/dataTable/composables/useDataTableTypes';
 import { areValuesEqual } from '@/features/dataTable/utils/typeUtils';
+import { ResponseError } from '@n8n/rest-api-client';
 
 export type UseDataTableOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -84,6 +85,28 @@ export const useDataTableOperations = ({
 	const telemetry = useTelemetry();
 	const dataTableTypes = useDataTableTypes();
 
+	const getAddColumnError = (error: unknown): { httpStatus: number; message: string } => {
+		const DEFAULT_HTTP_STATUS = 500;
+		const DEFAULT_MESSAGE = i18n.baseText('generic.unknownError');
+
+		if (error instanceof ResponseError) {
+			return {
+				httpStatus: error.httpStatusCode ?? 500,
+				message: error.message,
+			};
+		}
+		if (error instanceof Error) {
+			return {
+				httpStatus: DEFAULT_HTTP_STATUS,
+				message: error.message,
+			};
+		}
+		return {
+			httpStatus: DEFAULT_HTTP_STATUS,
+			message: DEFAULT_MESSAGE,
+		};
+	};
+
 	async function onDeleteColumn(columnId: string) {
 		const columnToDelete = colDefs.value.find((col) => col.colId === columnId);
 		if (!columnToDelete) return;
@@ -110,7 +133,7 @@ export const useDataTableOperations = ({
 			const { [columnToDelete.field!]: _, ...rest } = row;
 			return rest;
 		});
-		setGridData({ rowData: rowData.value });
+		setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 		try {
 			await dataTableStore.deleteDataTableColumn(dataTableId, projectId, columnId);
 			telemetry.track('User deleted data table column', {
@@ -122,7 +145,7 @@ export const useDataTableOperations = ({
 			toast.showError(error, i18n.baseText('dataTable.deleteColumn.error'));
 			insertGridColumnAtIndex(columnToDelete, columnToDeleteIndex);
 			rowData.value = rowDataOldValue;
-			setGridData({ rowData: rowData.value });
+			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 		}
 	}
 
@@ -133,7 +156,7 @@ export const useDataTableOperations = ({
 			rowData.value = rowData.value.map((row) => {
 				return { ...row, [newColumn.name]: null };
 			});
-			setGridData({ rowData: rowData.value });
+			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 			telemetry.track('User added data table column', {
 				column_id: newColumn.id,
 				column_type: newColumn.type,
@@ -141,7 +164,7 @@ export const useDataTableOperations = ({
 			});
 			return { success: true, httpStatus: 200 };
 		} catch (error) {
-			const addColumnError = dataTableTypes.getAddColumnError(error);
+			const addColumnError = getAddColumnError(error);
 			return {
 				success: false,
 				httpStatus: addColumnError.httpStatus,
