@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import * as dataStoreApi from '@/features/dataStore/dataStore.api';
+import * as dataTableApi from '@/features/dataTable/dataTable.api';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
@@ -255,7 +255,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		const [credentials, workflows, dataTables] = await Promise.all([
 			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
 			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
-			dataStoreApi.fetchDataStoresApi(rootStore.restApiContext, projectId),
+			dataTableApi.fetchDataTablesApi(rootStore.restApiContext, projectId),
 		]);
 
 		return {

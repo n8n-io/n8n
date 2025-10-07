@@ -1,6 +1,6 @@
 import { type Router } from 'vue-router';
 import { VIEWS } from '@/constants';
-import { DataTableModule } from '@/features/dataStore/module.descriptor';
+import { DataTableModule } from '@/features/dataTable/module.descriptor';
 import { registerResource } from '@/moduleInitializer/resourceRegistry';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
