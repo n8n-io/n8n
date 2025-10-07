@@ -1,5 +1,5 @@
 import type {
-	IDataStoreProjectService,
+	IDataTableProjectService,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -65,7 +65,7 @@ export async function execute(
 
 export async function executeBulk(
 	this: IExecuteFunctions,
-	proxy: IDataStoreProjectService,
+	proxy: IDataTableProjectService,
 ): Promise<INodeExecutionData[]> {
 	const optimizeBulkEnabled = this.getNodeParameter('options.optimizeBulk', 0, false);
 	const rows = this.getInputData().flatMap((_, i) => [getAddRow(this, i)]);

@@ -24,7 +24,7 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
-import { DataStoreProxyService } from '@/modules/data-table/data-store-proxy.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
@@ -99,7 +99,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
-	mockInstance(DataStoreProxyService);
+	mockInstance(DataTableProxyService);
 
 	const urlService = mockInstance(UrlService);
 	Container.set(UrlService, urlService);

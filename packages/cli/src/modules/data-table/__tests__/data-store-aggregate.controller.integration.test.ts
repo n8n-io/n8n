@@ -1,4 +1,4 @@
-import type { DataStore } from '@n8n/api-types';
+import type { DataTable } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -8,7 +8,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createDataStore } from '@test-integration/db/data-stores';
+import { createDataTable } from '@test-integration/db/data-tables';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -51,67 +51,66 @@ afterAll(async () => {
 });
 
 describe('GET /data-tables-global', () => {
-	test('should not list data stores when no data stores exist', async () => {
+	test('should not list data tables when no data tables exist', async () => {
 		const response = await authOwnerAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
 
-	test('should not list data stores from projects member has no access to', async () => {
+	test('should not list data tables from projects member has no access to', async () => {
 		const project = await createTeamProject('test project', owner);
-		await createDataStore(project, { name: 'Test Data Store' });
-
+		await createDataTable(project, { name: 'Test Data Table' });
 		const response = await authMemberAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
 
-	test('should not list data stores from projects admin has no access to', async () => {
+	test('should not list data tables from projects admin has no access to', async () => {
 		const project = await createTeamProject('test project', owner);
-		await createDataStore(project, { name: 'Test Data Store' });
+		await createDataTable(project, { name: 'Test Data Table' });
 
 		const response = await authAdminAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
 
-	test("should not list data stores from another user's personal project", async () => {
-		await createDataStore(ownerProject, { name: 'Personal Data Store' });
+	test("should not list data tables from another user's personal project", async () => {
+		await createDataTable(ownerProject, { name: 'Personal Data Table' });
 
 		const response = await authAdminAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
 
-	test('should list data stores from team projects where user has project:viewer role', async () => {
+	test('should list data tables from team projects where user has project:viewer role', async () => {
 		const project = await createTeamProject('test project', owner);
 		await linkUserToProject(member, project, 'project:viewer');
-		await createDataStore(project, { name: 'Test Data Store' });
+		await createDataTable(project, { name: 'Test Data Table' });
 
 		const response = await authMemberAgent.get('/data-tables-global').expect(200);
 
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
-		expect(response.body.data.data[0].name).toBe('Test Data Store');
+		expect(response.body.data.data[0].name).toBe('Test Data Table');
 	});
 
-	test("should list data stores from user's own personal project", async () => {
-		await createDataStore(ownerProject, { name: 'Personal Data Store 1' });
-		await createDataStore(ownerProject, { name: 'Personal Data Store 2' });
+	test("should list data tables from user's own personal project", async () => {
+		await createDataTable(ownerProject, { name: 'Personal Data Table 1' });
+		await createDataTable(ownerProject, { name: 'Personal Data Table 2' });
 
 		const response = await authOwnerAgent.get('/data-tables-global').expect(200);
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: DataStore) => f.name).sort()).toEqual(
-			['Personal Data Store 1', 'Personal Data Store 2'].sort(),
+		expect(response.body.data.data.map((f: DataTable) => f.name).sort()).toEqual(
+			['Personal Data Table 1', 'Personal Data Table 2'].sort(),
 		);
 	});
 
-	test('should filter data stores by projectId', async () => {
-		await createDataStore(ownerProject, { name: 'Test Data Store 1' });
-		await createDataStore(ownerProject, { name: 'Test Data Store 2' });
-		await createDataStore(memberProject, { name: 'Another Data Store' });
+	test('should filter data tables by projectId', async () => {
+		await createDataTable(ownerProject, { name: 'Test Data Table 1' });
+		await createDataTable(ownerProject, { name: 'Test Data Table 2' });
+		await createDataTable(memberProject, { name: 'Another Data Table' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
@@ -120,15 +119,15 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: DataStore) => f.name).sort()).toEqual(
-			['Test Data Store 1', 'Test Data Store 2'].sort(),
+		expect(response.body.data.data.map((f: DataTable) => f.name).sort()).toEqual(
+			['Test Data Table 1', 'Test Data Table 2'].sort(),
 		);
 	});
 
 	test('should not list projects the user cant access even with project filters', async () => {
-		await createDataStore(ownerProject, { name: 'Test Data Store 1' });
-		await createDataStore(ownerProject, { name: 'Test Data Store 2' });
-		await createDataStore(memberProject, { name: 'Another Data Store' });
+		await createDataTable(ownerProject, { name: 'Test Data Table 1' });
+		await createDataTable(ownerProject, { name: 'Test Data Table 2' });
+		await createDataTable(memberProject, { name: 'Another Data Table' });
 
 		const response = await authMemberAgent
 			.get('/data-tables-global')
@@ -139,12 +138,12 @@ describe('GET /data-tables-global', () => {
 		expect(response.body.data.data).toHaveLength(0);
 	});
 
-	test('should filter data stores by name', async () => {
+	test('should filter data tables by name', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await createDataStore(ownerProject, { name: 'Test Data Store' });
-		await createDataStore(ownerProject, { name: 'Another Data Store' });
-		await createDataStore(project, { name: 'Test Something Else' });
+		await createDataTable(ownerProject, { name: 'Test Data Table' });
+		await createDataTable(ownerProject, { name: 'Another Data Table' });
+		await createDataTable(project, { name: 'Test Something Else' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
@@ -154,14 +153,14 @@ describe('GET /data-tables-global', () => {
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
 		expect(response.body.data.data.map((f: any) => f.name).sort()).toEqual(
-			['Test Data Store', 'Test Something Else'].sort(),
+			['Test Data Table', 'Test Something Else'].sort(),
 		);
 	});
 
-	test('should filter data stores by id', async () => {
-		const dataStore1 = await createDataStore(ownerProject, { name: 'Data Store 1' });
-		await createDataStore(ownerProject, { name: 'Data Store 2' });
-		await createDataStore(ownerProject, { name: 'Data Store 3' });
+	test('should filter data tables by id', async () => {
+		const dataStore1 = await createDataTable(ownerProject, { name: 'Data Table 1' });
+		await createDataTable(ownerProject, { name: 'Data Table 2' });
+		await createDataTable(ownerProject, { name: 'Data Table 3' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
@@ -170,15 +169,15 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
-		expect(response.body.data.data[0].name).toBe('Data Store 1');
+		expect(response.body.data.data[0].name).toBe('Data Table 1');
 	});
 
-	test('should filter data stores by multiple names (AND operator)', async () => {
+	test('should filter data tables by multiple names (AND operator)', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await createDataStore(ownerProject, { name: 'Data Store' });
-		await createDataStore(ownerProject, { name: 'Test Store' });
-		await createDataStore(project, { name: 'Another Store' });
+		await createDataTable(ownerProject, { name: 'Data Table' });
+		await createDataTable(ownerProject, { name: 'Test Store' });
+		await createDataTable(project, { name: 'Another Store' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
@@ -193,8 +192,8 @@ describe('GET /data-tables-global', () => {
 	test('should apply pagination with take parameter', async () => {
 		const project = await createTeamProject('test project', owner);
 		for (let i = 1; i <= 5; i++) {
-			await createDataStore(i % 2 ? ownerProject : project, {
-				name: `Data Store ${i}`,
+			await createDataTable(i % 2 ? ownerProject : project, {
+				name: `Data Table ${i}`,
 				updatedAt: DateTime.now()
 					.minus({ minutes: 6 - i })
 					.toJSDate(),
@@ -205,18 +204,18 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(5); // Total count should be 5
 		expect(response.body.data.data).toHaveLength(3); // But only 3 returned
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
-			'Data Store 5',
-			'Data Store 4',
-			'Data Store 3',
+		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+			'Data Table 5',
+			'Data Table 4',
+			'Data Table 3',
 		]);
 	});
 
 	test('should apply pagination with skip parameter', async () => {
 		const project = await createTeamProject('test project', owner);
 		for (let i = 1; i <= 5; i++) {
-			await createDataStore(i % 2 ? ownerProject : project, {
-				name: `Data Store ${i}`,
+			await createDataTable(i % 2 ? ownerProject : project, {
+				name: `Data Table ${i}`,
 				updatedAt: DateTime.now()
 					.minus({ minutes: 6 - i })
 					.toJSDate(),
@@ -227,18 +226,18 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(3);
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
-			'Data Store 3',
-			'Data Store 2',
-			'Data Store 1',
+		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+			'Data Table 3',
+			'Data Table 2',
+			'Data Table 1',
 		]);
 	});
 
 	test('should apply combined skip and take parameters', async () => {
 		const project = await createTeamProject('test project', owner);
 		for (let i = 1; i <= 5; i++) {
-			await createDataStore(i % 2 ? ownerProject : project, {
-				name: `Data Store ${i}`,
+			await createDataTable(i % 2 ? ownerProject : project, {
+				name: `Data Table ${i}`,
 				updatedAt: DateTime.now()
 					.minus({ minutes: 6 - i })
 					.toJSDate(),
@@ -252,57 +251,57 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
-			'Data Store 4',
-			'Data Store 3',
+		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+			'Data Table 4',
+			'Data Table 3',
 		]);
 	});
 
-	test('should sort data stores by name ascending', async () => {
-		await createDataStore(ownerProject, { name: 'Z Data Store' });
-		await createDataStore(ownerProject, { name: 'A Data Store' });
-		await createDataStore(ownerProject, { name: 'M Data Store' });
+	test('should sort data tables by name ascending', async () => {
+		await createDataTable(ownerProject, { name: 'Z Data Table' });
+		await createDataTable(ownerProject, { name: 'A Data Table' });
+		await createDataTable(ownerProject, { name: 'M Data Table' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
 			.query({ sortBy: 'name:asc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
-			'A Data Store',
-			'M Data Store',
-			'Z Data Store',
+		expect(response.body.data.data.map((store: DataTable) => store.name)).toEqual([
+			'A Data Table',
+			'M Data Table',
+			'Z Data Table',
 		]);
 	});
 
-	test('should sort data stores by name descending', async () => {
-		await createDataStore(ownerProject, { name: 'Z Data Store' });
-		await createDataStore(ownerProject, { name: 'A Data Store' });
-		await createDataStore(ownerProject, { name: 'M Data Store' });
+	test('should sort data tables by name descending', async () => {
+		await createDataTable(ownerProject, { name: 'Z Data Table' });
+		await createDataTable(ownerProject, { name: 'A Data Table' });
+		await createDataTable(ownerProject, { name: 'M Data Table' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
 			.query({ sortBy: 'name:desc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((f: DataStore) => f.name)).toEqual([
-			'Z Data Store',
-			'M Data Store',
-			'A Data Store',
+		expect(response.body.data.data.map((f: DataTable) => f.name)).toEqual([
+			'Z Data Table',
+			'M Data Table',
+			'A Data Table',
 		]);
 	});
 
-	test('should sort data stores by updatedAt', async () => {
-		await createDataStore(ownerProject, {
-			name: 'Older Data Store',
+	test('should sort data tables by updatedAt', async () => {
+		await createDataTable(ownerProject, {
+			name: 'Older Data Table',
 			updatedAt: DateTime.now().minus({ days: 2 }).toJSDate(),
 		});
-		await createDataStore(ownerProject, {
-			name: 'Newest Data Store',
+		await createDataTable(ownerProject, {
+			name: 'Newest Data Table',
 			updatedAt: DateTime.now().toJSDate(),
 		});
-		await createDataStore(ownerProject, {
-			name: 'Middle Data Store',
+		await createDataTable(ownerProject, {
+			name: 'Middle Data Table',
 			updatedAt: DateTime.now().minus({ days: 1 }).toJSDate(),
 		});
 
@@ -311,16 +310,16 @@ describe('GET /data-tables-global', () => {
 			.query({ sortBy: 'updatedAt:desc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((f: DataStore) => f.name)).toEqual([
-			'Newest Data Store',
-			'Middle Data Store',
-			'Older Data Store',
+		expect(response.body.data.data.map((f: DataTable) => f.name)).toEqual([
+			'Newest Data Table',
+			'Middle Data Table',
+			'Older Data Table',
 		]);
 	});
 
 	test('should combine multiple query parameters correctly', async () => {
-		const dataStore1 = await createDataStore(ownerProject, { name: 'Test Data Store' });
-		await createDataStore(ownerProject, { name: 'Another Data Store' });
+		const dataStore1 = await createDataTable(ownerProject, { name: 'Test Data Table' });
+		await createDataTable(ownerProject, { name: 'Another Data Table' });
 
 		const response = await authOwnerAgent
 			.get('/data-tables-global')
@@ -329,12 +328,12 @@ describe('GET /data-tables-global', () => {
 
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
-		expect(response.body.data.data[0].name).toBe('Test Data Store');
+		expect(response.body.data.data[0].name).toBe('Test Data Table');
 	});
 
 	test('should include columns', async () => {
-		await createDataStore(ownerProject, {
-			name: 'Test Data Store',
+		await createDataTable(ownerProject, {
+			name: 'Test Data Table',
 			columns: [
 				{
 					name: 'test_column_1',

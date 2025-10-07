@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
-import { DataStoreSizeValidator } from '../data-store-size-validator.service';
+import { DataTableSizeValidator } from '../data-table-size-validator.service';
 
-describe('DataStoreSizeValidator', () => {
-	let validator: DataStoreSizeValidator;
+describe('DataTableSizeValidator', () => {
+	let validator: DataTableSizeValidator;
 	let fetchSizeFn: jest.Mock;
 	const globalConfig = mockInstance(GlobalConfig, {
 		dataTable: {
@@ -14,7 +14,7 @@ describe('DataStoreSizeValidator', () => {
 		},
 	});
 	beforeEach(() => {
-		validator = new DataStoreSizeValidator(globalConfig);
+		validator = new DataTableSizeValidator(globalConfig);
 		fetchSizeFn = jest.fn();
 	});
 
@@ -40,7 +40,7 @@ describe('DataStoreSizeValidator', () => {
 
 			await expect(
 				validator.validateSize(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
-			).rejects.toThrow('Data store size limit exceeded: 150MB used, limit is 100MB');
+			).rejects.toThrow('Data table size limit exceeded: 150MB used, limit is 100MB');
 		});
 
 		it('should throw error when size equals limit', async () => {
@@ -48,7 +48,7 @@ describe('DataStoreSizeValidator', () => {
 
 			await expect(
 				validator.validateSize(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
-			).rejects.toThrow('Data store size limit exceeded: 100MB used, limit is 100MB');
+			).rejects.toThrow('Data table size limit exceeded: 100MB used, limit is 100MB');
 		});
 	});
 
@@ -95,13 +95,13 @@ describe('DataStoreSizeValidator', () => {
 			const time1 = new Date('2024-01-01T00:00:00Z');
 
 			await expect(validator.validateSize(fetchSizeFn, time1)).rejects.toThrow(
-				'Data store size limit exceeded: 100MB used, limit is 100MB',
+				'Data table size limit exceeded: 100MB used, limit is 100MB',
 			);
 
 			// Subsequent calls within cache duration should also fail
 			const time2 = new Date('2024-01-01T00:00:00.500Z');
 			await expect(validator.validateSize(fetchSizeFn, time2)).rejects.toThrow(
-				'Data store size limit exceeded: 100MB used, limit is 100MB',
+				'Data table size limit exceeded: 100MB used, limit is 100MB',
 			);
 
 			// Size was only fetched once
@@ -161,13 +161,13 @@ describe('DataStoreSizeValidator', () => {
 
 			// All should fail with the same error
 			await expect(promise1).rejects.toThrow(
-				'Data store size limit exceeded: 150MB used, limit is 100MB',
+				'Data table size limit exceeded: 150MB used, limit is 100MB',
 			);
 			await expect(promise2).rejects.toThrow(
-				'Data store size limit exceeded: 150MB used, limit is 100MB',
+				'Data table size limit exceeded: 150MB used, limit is 100MB',
 			);
 			await expect(promise3).rejects.toThrow(
-				'Data store size limit exceeded: 150MB used, limit is 100MB',
+				'Data table size limit exceeded: 150MB used, limit is 100MB',
 			);
 
 			// Should only fetch once
@@ -219,13 +219,13 @@ describe('DataStoreSizeValidator', () => {
 			fetchSizeFn.mockResolvedValueOnce({ totalBytes: 100 * 1024 * 1024, dataTables: {} });
 			const time3 = new Date('2024-01-01T00:00:01.001Z');
 			await expect(validator.validateSize(fetchSizeFn, time3)).rejects.toThrow(
-				'Data store size limit exceeded: 100MB used, limit is 100MB',
+				'Data table size limit exceeded: 100MB used, limit is 100MB',
 			);
 
 			// Subsequent calls use the cached "full" state and continue to fail correctly
 			const time4 = new Date('2024-01-01T00:00:01.500Z');
 			await expect(validator.validateSize(fetchSizeFn, time4)).rejects.toThrow(
-				'Data store size limit exceeded: 100MB used, limit is 100MB',
+				'Data table size limit exceeded: 100MB used, limit is 100MB',
 			);
 
 			expect(fetchSizeFn).toHaveBeenCalledTimes(2);

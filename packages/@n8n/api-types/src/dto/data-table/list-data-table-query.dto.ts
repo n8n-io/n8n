@@ -15,7 +15,7 @@ const VALID_SORT_OPTIONS = [
 	'sizeBytes:desc',
 ] as const;
 
-export type ListDataStoreQuerySortOptions = (typeof VALID_SORT_OPTIONS)[number];
+export type ListDataTableQuerySortOptions = (typeof VALID_SORT_OPTIONS)[number];
 
 const FILTER_OPTIONS = {
 	id: z.union([z.string(), z.array(z.string())]).optional(),
@@ -63,7 +63,7 @@ const sortByValidator = z
 	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
 	.optional();
 
-export class ListDataStoreQueryDto extends Z.class({
+export class ListDataTableQueryDto extends Z.class({
 	...paginationSchema,
 	filter: filterValidator,
 	sortBy: sortByValidator,
