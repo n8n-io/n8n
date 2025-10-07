@@ -47,6 +47,8 @@ const projectId = computed(() => {
 		: route?.params?.projectId;
 });
 
+const isTeamProject = computed(() => projectStore.currentProject?.type === 'team');
+
 const getRouteConfigs = () => {
 	// For project pages
 	if (projectId.value) {
@@ -114,7 +116,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (isProjectVariablesEnabled.value && projectStore.currentProject?.type !== 'personal') {
+	if (isTeamProject.value && isProjectVariablesEnabled.value) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 
