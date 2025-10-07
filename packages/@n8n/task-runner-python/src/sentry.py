@@ -45,8 +45,10 @@ class TaskRunnerSentry:
         if "exc_info" in hint:
             exc_type, _, _ = hint["exc_info"]
             for ignored_type in IGNORED_ERROR_TYPES:
-                if isinstance(ignored_type, type) and issubclass(
-                    exc_type, ignored_type
+                if (
+                    isinstance(exc_type, type)
+                    and isinstance(ignored_type, type)
+                    and issubclass(exc_type, ignored_type)
                 ):
                     return None
 
