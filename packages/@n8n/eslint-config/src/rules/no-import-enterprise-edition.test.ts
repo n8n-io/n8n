@@ -5,7 +5,8 @@ const ruleTester = new RuleTester();
 
 ruleTester.run('no-import-enterprise-edition', NoImportEnterpriseEditionRule, {
 	valid: [
-		// Non-enterprise code importing from non-enterprise directories
+		{
+			// Non-enterprise code importing from non-enterprise directories
 			code: 'import { SomeService } from "./services/some-service"',
 			filename: '/Users/test/project/src/services/regular-service.ts',
 		},
@@ -41,7 +42,6 @@ ruleTester.run('no-import-enterprise-edition', NoImportEnterpriseEditionRule, {
 				'/Users/test/project/packages/cli/test/integration/services/enterprise.integration.test.ts',
 		},
 	],
-
 	invalid: [
 		{
 			code: 'import { something } from "@n8n/package/environments.ee/file"',
