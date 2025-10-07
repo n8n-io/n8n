@@ -54,7 +54,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
                 <div
                   class="icon"
                 >
@@ -64,7 +63,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                   />
                   <!--v-if-->
                 </div>
-                
               </div>
             </div>
             <div
@@ -342,7 +340,6 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
       style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
       <div
         class="icon"
       >
@@ -352,7 +349,6 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
         />
         <!--v-if-->
       </div>
-      
     </div>
   </div>
   <div
@@ -427,7 +423,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
                 <div
                   class="icon"
                 >
@@ -437,7 +432,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
               </div>
             </div>
             <div
@@ -1318,7 +1312,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
                 <div
                   class="icon"
                 >
@@ -1328,7 +1321,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
               </div>
             </div>
             <div
@@ -1722,7 +1714,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
                 <div
                   class="icon"
                 >
@@ -1732,7 +1723,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
               </div>
             </div>
             <div
@@ -1854,7 +1844,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
                 <div
                   class="icon"
                 >
@@ -1864,7 +1853,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
               </div>
             </div>
             <div
@@ -2678,7 +2666,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
                 <div
                   class="icon"
                 >
@@ -2688,7 +2675,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
               </div>
             </div>
             <div
@@ -2817,7 +2803,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
                 <div
                   class="icon"
                 >
@@ -2827,7 +2812,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
               </div>
             </div>
             <div
