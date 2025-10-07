@@ -143,6 +143,7 @@ const onUpdateMCPEnabled = async (value: string | number | boolean) => {
 		const updated = await mcpStore.setMcpAccessEnabled(boolValue);
 		if (updated) {
 			await fetchAvailableWorkflows();
+			await fetchApiKey();
 		} else {
 			workflowsLoading.value = false;
 		}
