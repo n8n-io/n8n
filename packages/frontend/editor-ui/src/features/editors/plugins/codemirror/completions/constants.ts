@@ -439,6 +439,17 @@ export const STRING_SECTIONS: Record<string, CompletionSection> = {
 	}),
 };
 
+export const VARIABLE_SECTIONS: Record<string, CompletionSection> = {
+	project: withSectionHeader({
+		name: i18n.baseText('codeNodeEditor.completer.section.variable.project'),
+		rank: 1,
+	}),
+	global: withSectionHeader({
+		name: i18n.baseText('codeNodeEditor.completer.section.variable.global'),
+		rank: 2,
+	}),
+};
+
 export const TARGET_NODE_PARAMETER_FACET = Facet.define<
 	TargetNodeParameterContext | undefined,
 	TargetNodeParameterContext | undefined

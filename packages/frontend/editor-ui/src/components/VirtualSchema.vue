@@ -233,7 +233,7 @@ const contextItems = computed(() => {
 				return renderItem;
 			}
 
-			if (isVarsOpen && environmentsStore.variables.length === 0) {
+			if (isVarsOpen && environmentsStore.scopedVariables.length === 0) {
 				const variablesEmptyNotice: RenderNotice = {
 					type: 'notice',
 					id: 'notice-variablesEmpty',
