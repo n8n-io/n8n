@@ -13,6 +13,10 @@ export class AIAssistantPage extends BasePage {
 		return this.page.getByTestId('ask-assistant-chat');
 	}
 
+	getAskAssistantSidebar() {
+		return this.page.getByTestId('ask-assistant-sidebar');
+	}
+
 	getPlaceholderMessage() {
 		return this.page.getByTestId('placeholder-message');
 	}
@@ -30,10 +34,7 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getAskAssistantSidebarResizer() {
-		return this.page
-			.getByTestId('ask-assistant-sidebar')
-			.locator('[class*="_resizer"][data-dir="left"]')
-			.first();
+		return this.getAskAssistantSidebar().locator('[class*="_resizer"][data-dir="left"]').first();
 	}
 
 	getNodeErrorViewAssistantButton() {
@@ -60,7 +61,35 @@ export class AIAssistantPage extends BasePage {
 		return this.page.getByTestId('quick-replies').locator('button');
 	}
 
+	getQuickReplies() {
+		return this.page.getByTestId('quick-replies');
+	}
+
 	getNewAssistantSessionModal() {
 		return this.page.getByTestId('new-assistant-session-modal');
+	}
+
+	getCodeDiffs() {
+		return this.page.getByTestId('code-diff-suggestion');
+	}
+
+	getApplyCodeDiffButtons() {
+		return this.page.getByTestId('replace-code-button');
+	}
+
+	getUndoReplaceCodeButtons() {
+		return this.page.getByTestId('undo-replace-button');
+	}
+
+	getCodeReplacedMessage() {
+		return this.page.getByTestId('code-replaced-message');
+	}
+
+	getCredentialEditAssistantButton() {
+		return this.page.getByTestId('credential-edit-ask-assistant-button');
+	}
+
+	getCodeSnippet() {
+		return this.page.getByTestId('assistant-code-snippet-content');
 	}
 }
