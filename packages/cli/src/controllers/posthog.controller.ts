@@ -88,7 +88,7 @@ export class PostHogController {
 		rateLimit: { limit: 20, windowMs: 60_000 },
 		usesTemplates: true,
 	})
-	async arrayConfig(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+	arrayConfig(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		void this.proxy(req, res, next);
 	}
 }
