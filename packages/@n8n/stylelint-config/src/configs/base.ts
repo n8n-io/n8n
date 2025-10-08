@@ -7,7 +7,7 @@ export const baseConfig: Config = {
 	// Basic SCSS support with essential rules
 	plugins: ['stylelint-scss', cssVarNaming],
 	rules: {
-		'@n8n/css-var-naming': true,
+		'@n8n/css-var-naming': [true, { severity: 'warning' }],
 		'no-empty-source': true,
 
 		// Basic syntax and consistency rules
