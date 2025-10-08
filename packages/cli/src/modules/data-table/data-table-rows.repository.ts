@@ -21,6 +21,7 @@ import {
 	DataTableInsertRowsReturnType,
 	DataTableInsertRowsResult,
 	DataTableRowReturnWithState,
+	DataTableRawRowReturn,
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -455,7 +456,7 @@ export class DataTableRowsRepository {
 					this.applyFilters(selectQuery, filter, 'dataTable', columns);
 				}
 
-				const rawRows = await selectQuery.getRawMany<DataTableRowReturn>();
+				const rawRows = await selectQuery.getRawMany<DataTableRawRowReturn>();
 				affectedRows = normalizeRows(rawRows, columns);
 			}
 
@@ -659,7 +660,7 @@ export class DataTableRowsRepository {
 					.select(selectColumns)
 					.from(table, 'dataTable')
 					.where({ id: In(ids) })
-					.getRawMany<DataTableRowReturn>();
+					.getRawMany<DataTableRawRowReturn>();
 
 				return normalizeRows(rows, columns);
 			},

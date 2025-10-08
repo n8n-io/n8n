@@ -7,13 +7,19 @@ import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataTableColumnJsType, DataTableRowReturn, DataTableRowsReturn } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type {
+	DataTableColumnJsType,
+	DataTableColumnType,
+	DataTableRawRowsReturn,
+	DataTableRowReturn,
+	DataTableRowsReturn,
+} from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -183,18 +189,45 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
-export function normalizeRows(rows: DataTableRowsReturn, columns: DataTableColumn[]) {
-	// we need to normalize system dates as well
-	const systemColumns = [
-		{ name: 'createdAt', type: 'date' },
-		{ name: 'updatedAt', type: 'date' },
-	];
+// Convert date objects or strings to dates in UTC
+function normalizeDate(value: DataTableColumnJsType): Date | null {
+	if (value instanceof Date) return value;
 
-	const typeMap = new Map([...columns, ...systemColumns].map((col) => [col.name, col.type]));
+	if (typeof value === 'string') {
+		// sqlite returns date strings without timezone information, but we store them as UTC
+		const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+		if (!isNaN(parsed.getTime())) return parsed;
+	}
+
+	if (typeof value === 'number') {
+		const parsed = new Date(value);
+		if (!isNaN(parsed.getTime())) return parsed;
+	}
+
+	return null;
+}
+
+export function normalizeRows(
+	rows: DataTableRawRowsReturn,
+	columns: DataTableColumn[],
+): DataTableRowsReturn {
+	const typeMap: Record<string, DataTableColumnType> = {
+		...Object.fromEntries(columns.map((col) => [col.name, col.type])),
+		// we need to normalize system dates as well
+		...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	};
 	return rows.map((row) => {
-		const normalized = { ...row };
-		for (const [key, value] of Object.entries(row)) {
-			const type = typeMap.get(key);
+		const { id, createdAt, updatedAt, ...rest } = row;
+
+		const normalized: DataTableRowReturn = {
+			...rest,
+			id,
+			createdAt: normalizeDate(createdAt) ?? new Date(), // fallback should not happen
+			updatedAt: normalizeDate(updatedAt) ?? new Date(), // fallback should not happen
+		};
+
+		for (const [key, value] of Object.entries(rest)) {
+			const type = typeMap[key];
 
 			if (type === 'boolean') {
 				// Convert boolean values to true/false
@@ -206,26 +239,9 @@ export function normalizeRows(rows: DataTableRowsReturn, columns: DataTableColum
 					normalized[key] = false;
 				}
 			}
+
 			if (type === 'date' && value !== null && value !== undefined) {
-				// Convert date objects or strings to dates in UTC
-				let dateObj: Date | null = null;
-
-				if (value instanceof Date) {
-					dateObj = value;
-				} else if (typeof value === 'string') {
-					// sqlite returns date strings without timezone information, but we store them as UTC
-					const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
-					if (!isNaN(parsed.getTime())) {
-						dateObj = parsed;
-					}
-				} else if (typeof value === 'number') {
-					const parsed = new Date(value);
-					if (!isNaN(parsed.getTime())) {
-						dateObj = parsed;
-					}
-				}
-
-				normalized[key] = dateObj ?? value;
+				normalized[key] = normalizeDate(value) ?? value; // fallback to original value
 			}
 		}
 		return normalized;
