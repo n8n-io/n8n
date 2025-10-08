@@ -17,6 +17,7 @@ import {
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '@/Interface';
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
@@ -97,9 +98,6 @@ const renderComponent = createComponentRenderer(ExecutionsList, {
 			},
 		},
 	}),
-	props: {
-		autoRefreshEnabled: false,
-	},
 	global: {
 		mocks: {
 			$route: {
@@ -126,7 +124,7 @@ describe('GlobalExecutionsList', () => {
 		const { queryAllByTestId, queryByTestId, getByTestId } = renderComponent({
 			props: {
 				executions: [],
-				filters: {},
+				filters: {} as ExecutionFilterType,
 				total: 0,
 				estimated: false,
 			},
@@ -146,10 +144,9 @@ describe('GlobalExecutionsList', () => {
 		async () => {
 			const { getByTestId, getAllByTestId, queryByTestId, rerender } = renderComponent({
 				props: {
-					executions: executionsData[0].results,
+					executions: executionsData[0].results as ExecutionSummaryWithScopes[],
 					total: executionsData[0].count,
-					filteredExecutions: executionsData[0].results,
-					filters: {},
+					filters: {} as ExecutionFilterType,
 					estimated: false,
 				},
 			});
@@ -211,10 +208,9 @@ describe('GlobalExecutionsList', () => {
 
 		const { queryAllByText } = renderComponent({
 			props: {
-				executions: executionsData[0].results,
+				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
 				total: executionsData[0].count,
-				filteredExecutions: executionsData[0].results,
-				filters: {},
+				filters: {} as ExecutionFilterType,
 				estimated: false,
 			},
 		});
@@ -228,8 +224,8 @@ describe('GlobalExecutionsList', () => {
 		settingsStore.concurrency = 5;
 		const { getByTestId } = renderComponent({
 			props: {
-				executions: executionsData[0].results,
-				filters: {},
+				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+				filters: {} as ExecutionFilterType,
 			},
 		});
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
@@ -21,6 +22,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
 import { useProjectsStore } from '@/stores/projects.store';
 
+import { ElCol, ElRow } from 'element-plus';
+import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
 type Value = string | number | boolean | null | undefined;
 
 const props = defineProps<{

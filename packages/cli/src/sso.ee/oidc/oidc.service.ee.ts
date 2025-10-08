@@ -340,9 +340,11 @@ export class OidcService {
 
 		if (configFromDB) {
 			try {
-				const oidcConfig = OidcConfigDto.parse(jsonParse<OidcConfigDto>(configFromDB.value));
+				const configValue = jsonParse<OidcConfigDto>(configFromDB.value);
 
-				if (oidcConfig.discoveryEndpoint === '') return undefined;
+				if (configValue.discoveryEndpoint === '') return undefined;
+
+				const oidcConfig = OidcConfigDto.parse(configValue);
 
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 

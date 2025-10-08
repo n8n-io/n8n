@@ -2,13 +2,13 @@ import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import debounce from 'lodash/debounce';
-import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
 import type { CommandGroup, CommandBarItem } from './types';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type { DataTable } from '@/features/dataTable/dataTable.types';
 import { N8nIcon } from '@n8n/design-system';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
@@ -23,7 +23,7 @@ export function useDataTableNavigationCommands(options: {
 }): CommandGroup {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
-	const dataStoreStore = useDataStoreStore();
+	const dataTableStore = useDataTableStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
 
@@ -43,7 +43,7 @@ export function useDataTableNavigationCommands(options: {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
 	});
 
-	function orderResultByCurrentProjectFirst<T extends DataStore>(results: T[]) {
+	function orderResultByCurrentProjectFirst<T extends DataTable>(results: T[]) {
 		return results.sort((a, b) => {
 			if (a.project?.id === currentProjectId.value) return -1;
 			if (b.project?.id === currentProjectId.value) return 1;
@@ -55,14 +55,14 @@ export function useDataTableNavigationCommands(options: {
 		try {
 			const trimmed = (query || '').trim();
 
-			await dataStoreStore.fetchDataStores(
+			await dataTableStore.fetchDataTables(
 				'',
 				1,
 				100, // TODO: pagination/lazy loading
 			);
 
 			const trimmedLower = trimmed.toLowerCase();
-			const filtered = dataStoreStore.dataStores.filter((dataTable) =>
+			const filtered = dataTableStore.dataTables.filter((dataTable) =>
 				dataTable.name.toLowerCase().includes(trimmedLower),
 			);
 
@@ -76,14 +76,14 @@ export function useDataTableNavigationCommands(options: {
 
 	const fetchDataTablesDebounced = debounce(fetchDataTablesImpl, 300);
 
-	const getDataTableProjectSuffix = (dataTable: DataStore) => {
+	const getDataTableProjectSuffix = (dataTable: DataTable) => {
 		if (dataTable.project && dataTable.project.type === 'personal') {
 			return i18n.baseText('projects.menu.personal');
 		}
 		return dataTable.project?.name ?? '';
 	};
 
-	const createDataTableCommand = (dataTable: DataStore): CommandBarItem => {
+	const createDataTableCommand = (dataTable: DataTable): CommandBarItem => {
 		// Add data table name to keywords since we're using a custom component for the title
 		const keywords = [dataTable.name];
 
@@ -101,7 +101,7 @@ export function useDataTableNavigationCommands(options: {
 			keywords,
 			handler: () => {
 				void router.push({
-					name: DATA_STORE_DETAILS,
+					name: DATA_TABLE_DETAILS,
 					params: {
 						projectId: dataTable.projectId,
 						id: dataTable.id,
@@ -140,7 +140,7 @@ export function useDataTableNavigationCommands(options: {
 			handler: () => {
 				if (!currentProjectId.value) return;
 				void router.push({
-					name: PROJECT_DATA_STORES,
+					name: PROJECT_DATA_TABLES,
 					params: { projectId: currentProjectId.value, new: 'new' },
 				});
 			},

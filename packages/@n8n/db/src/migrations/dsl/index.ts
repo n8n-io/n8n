@@ -47,6 +47,7 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		columnName: string,
 		reference: [string, string],
 		customConstraintName?: string,
+		onDelete?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL',
 	) =>
 		new AddForeignKey(
 			tableName,
@@ -55,6 +56,7 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 			tablePrefix,
 			queryRunner,
 			customConstraintName,
+			onDelete,
 		),
 
 	dropForeignKey: (

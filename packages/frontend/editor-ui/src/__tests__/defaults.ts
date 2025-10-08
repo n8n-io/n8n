@@ -134,6 +134,9 @@ export const defaultSettings: FrontendSettings = {
 	askAi: {
 		enabled: false,
 	},
+	aiBuilder: {
+		enabled: false,
+	},
 	workflowHistory: {
 		pruneTime: 0,
 		licensePruneTime: 0,

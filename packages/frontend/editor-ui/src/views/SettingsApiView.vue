@@ -15,6 +15,11 @@ import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { ElCol, ElRow } from 'element-plus';
+import { N8nActionBox, N8nButton, N8nHeading, N8nLink, N8nText } from '@n8n/design-system';
+import { I18nT } from 'vue-i18n';
+import ApiKeyCard from '@/components/ApiKeyCard.vue';
+
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();

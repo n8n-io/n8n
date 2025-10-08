@@ -17,7 +17,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import * as permissions from '@/utils/rbac/permissions';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();

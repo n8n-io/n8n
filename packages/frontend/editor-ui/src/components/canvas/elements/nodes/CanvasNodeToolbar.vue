@@ -9,6 +9,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import CanvasNodeStickyColorSelector from '@/components/canvas/elements/nodes/toolbar/CanvasNodeStickyColorSelector.vue';
+
 const emit = defineEmits<{
 	delete: [];
 	toggle: [];

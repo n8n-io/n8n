@@ -9,13 +9,23 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
-import N8nInfoTip from '@n8n/design-system/components/N8nInfoTip';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
+import { ElDialog } from 'element-plus';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nHeading,
+	N8nInfoTip,
+	N8nInput,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();

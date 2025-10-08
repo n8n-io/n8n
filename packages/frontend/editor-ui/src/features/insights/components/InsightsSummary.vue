@@ -11,9 +11,10 @@ import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { RouterLink, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { getTimeRangeLabels } from '../insights.utils';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
 	timeRange: InsightsDateRange['key'];

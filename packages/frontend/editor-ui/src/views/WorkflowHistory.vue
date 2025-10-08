@@ -23,6 +23,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { IUser } from 'n8n-workflow';
 
+import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };

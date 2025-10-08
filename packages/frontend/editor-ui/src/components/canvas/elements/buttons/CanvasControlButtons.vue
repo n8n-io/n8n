@@ -5,8 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
-import { N8nIconButton } from '@n8n/design-system';
-
+import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		zoom?: number;

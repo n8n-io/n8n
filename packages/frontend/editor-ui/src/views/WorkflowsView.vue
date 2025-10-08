@@ -1,6 +1,9 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import EmptySharedSectionActionBox from '@/features/folders/components/EmptySharedSectionActionBox.vue';
+import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
+import FolderCard from '@/features/folders/components/FolderCard.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/folders/folders.constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
@@ -8,8 +11,8 @@ import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { DragTarget, DropTarget } from '@/composables/useFolders';
-import { useFolders } from '@/composables/useFolders';
+import type { DragTarget, DropTarget, FolderListItem } from '@/features/folders/folders.types';
+import { useFolders } from '@/features/folders/composables/useFolders';
 import { useMessage } from '@/composables/useMessage';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -37,7 +40,6 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
 	BaseFilters,
-	FolderListItem,
 	FolderResource,
 	Resource,
 	SortingAndPaginationUpdates,
@@ -46,34 +48,23 @@ import type {
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { getEasyAiWorkflowJson } from '@/utils/templates/workflowSamples';
+import { getEasyAiWorkflowJson } from '@/features/templates/utils/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
 } from '@/utils/experiments';
-import {
-	N8nButton,
-	N8nCard,
-	N8nHeading,
-	N8nIcon,
-	N8nInlineTextEdit,
-	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-} from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -83,6 +74,24 @@ import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nCallout,
+	N8nCard,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInlineTextEdit,
+	N8nInputLabel,
+	N8nLink,
+	N8nLoading,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
 

@@ -214,6 +214,7 @@ describe('TelemetryEventRelay', () => {
 				readOnlyInstance: false,
 				repoType: 'github',
 				connected: true,
+				connectionType: 'ssh',
 			};
 
 			eventService.emit('source-control-settings-updated', event);
@@ -223,6 +224,7 @@ describe('TelemetryEventRelay', () => {
 				read_only_instance: false,
 				repo_type: 'github',
 				connected: true,
+				connection_type: 'ssh',
 			});
 		});
 

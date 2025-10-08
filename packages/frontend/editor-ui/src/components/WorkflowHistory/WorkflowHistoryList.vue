@@ -12,6 +12,7 @@ import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistor
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 
+import { N8nLoading } from '@n8n/design-system';
 const props = defineProps<{
 	items: WorkflowHistory[];
 	activeItem: WorkflowHistory | null;

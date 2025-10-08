@@ -13,14 +13,6 @@ import get from 'lodash/get';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nIconButton,
-	N8nSelect,
-	N8nOption,
-	N8nInputLabel,
-	N8nText,
-	N8nButton,
-} from '@n8n/design-system';
 import ParameterInputList from './ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -28,6 +20,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 const locale = useI18n();
 
 export type Props = {

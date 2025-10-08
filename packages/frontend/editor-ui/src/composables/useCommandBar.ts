@@ -17,7 +17,7 @@ import { useGenericCommands } from './commandBar/useGenericCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
-import { PROJECT_DATA_STORES, DATA_STORE_VIEW } from '@/features/dataStore/constants';
+import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/dataTable/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function useCommandBar() {
@@ -165,8 +165,8 @@ export function useCommandBar() {
 			case VIEWS.EXECUTIONS:
 			case VIEWS.PROJECTS_EXECUTIONS:
 				return executionsListViewGroups;
-			case PROJECT_DATA_STORES:
-			case DATA_STORE_VIEW:
+			case PROJECT_DATA_TABLES:
+			case DATA_TABLE_VIEW:
 				return dataStoresListViewGroups;
 			case VIEWS.EVALUATION:
 			case VIEWS.EVALUATION_EDIT:
@@ -198,8 +198,8 @@ export function useCommandBar() {
 			case VIEWS.EXECUTIONS:
 			case VIEWS.PROJECTS_EXECUTIONS:
 				return i18n.baseText('commandBar.sections.executions');
-			case PROJECT_DATA_STORES:
-			case DATA_STORE_VIEW:
+			case PROJECT_DATA_TABLES:
+			case DATA_TABLE_VIEW:
 				return i18n.baseText('commandBar.sections.dataTables');
 			case VIEWS.EVALUATION:
 			case VIEWS.EVALUATION_EDIT:

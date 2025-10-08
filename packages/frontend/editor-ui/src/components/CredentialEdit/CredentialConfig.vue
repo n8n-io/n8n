@@ -30,10 +30,17 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
-import { useAssistantStore } from '@/stores/assistant.store';
-import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
+import {
+	N8nInlineAskAssistantButton,
+	N8nCallout,
+	N8nInfoTip,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 type Props = {
 	mode: string;
 	credentialType: ICredentialType;
@@ -316,7 +323,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:class="$style.askAssistantButton"
 					data-test-id="credential-edit-ask-assistant-button"
 				>
-					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+					<N8nInlineAskAssistantButton
+						:asked="assistantAlreadyAsked"
+						@click="onAskAssistantClick"
+					/>
 					<span>for setup instructions</span>
 				</div>
 

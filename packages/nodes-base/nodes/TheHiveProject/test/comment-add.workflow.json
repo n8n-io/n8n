@@ -1,0 +1,67 @@
+{
+	"name": "TheHive Comment Add Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "add",
+				"addTo": "case",
+				"id": {
+					"__rl": true,
+					"mode": "id",
+					"value": "~123789"
+				},
+				"message": "This is a test comment for the case"
+			},
+			"type": "n8n-nodes-base.theHiveProject",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "thehive-node",
+			"name": "TheHive Comment Add",
+			"credentials": {
+				"theHiveProjectApi": {
+					"id": "thehive-creds",
+					"name": "TheHive API Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"TheHive Comment Add": [
+			{
+				"json": {
+					"_id": "~789123",
+					"_type": "Comment",
+					"message": "This is a test comment for the case",
+					"createdAt": 1698753600000,
+					"updatedAt": 1698753600000
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "TheHive Comment Add",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

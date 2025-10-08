@@ -10,6 +10,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
+import { N8nActionToggle, N8nBadge, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	item: WorkflowHistory;
 	index: number;

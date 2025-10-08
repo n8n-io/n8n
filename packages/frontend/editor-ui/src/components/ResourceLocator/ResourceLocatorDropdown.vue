@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
-import { N8nLoading } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
+import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 

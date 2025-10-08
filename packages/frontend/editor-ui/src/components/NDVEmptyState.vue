@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nIcon } from '@n8n/design-system';
 const { icon } = defineProps<{ title?: string; wide?: boolean; icon?: IconName }>();
 
 defineSlots<{

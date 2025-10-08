@@ -7,6 +7,7 @@ import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useProjectsStore } from '@/stores/projects.store';
 
+import { N8nLoading, N8nSpinner } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		loading?: boolean;

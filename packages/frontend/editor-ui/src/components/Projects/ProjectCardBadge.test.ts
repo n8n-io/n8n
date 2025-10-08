@@ -1,5 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import type { WorkflowResource } from '@/Interface';
+import type { Project } from '@/types/projects.types';
+import { ResourceType } from '@/utils/projects.utils';
 import { truncate } from '@n8n/utils/string/truncate';
 
 const renderComponent = createComponentRenderer(ProjectCardBadge, {
@@ -16,8 +19,8 @@ describe('ProjectCardBadge', () => {
 	it('should show "Personal" badge if there is no homeProject', () => {
 		const { getByText } = renderComponent({
 			props: {
-				resource: {},
-				personalProject: {},
+				resource: {} as WorkflowResource,
+				personalProject: {} as Project,
 			},
 		});
 
@@ -32,11 +35,11 @@ describe('ProjectCardBadge', () => {
 						id: '1',
 						name: 'John',
 					},
-				},
-				resourceType: 'workflow',
+				} as WorkflowResource,
+				resourceType: ResourceType.Workflow,
 				personalProject: {
 					id: '1',
-				},
+				} as Project,
 			},
 		});
 
@@ -52,11 +55,11 @@ describe('ProjectCardBadge', () => {
 						id: '1',
 						name: 'John',
 					},
-				},
-				resourceType: 'workflow',
+				} as WorkflowResource,
+				resourceType: ResourceType.Workflow,
 				personalProject: {
 					id: '1',
-				},
+				} as Project,
 			},
 		});
 
@@ -79,11 +82,11 @@ describe('ProjectCardBadge', () => {
 						id: '1',
 						name,
 					},
-				},
-				resourceType: 'workflow',
+				} as WorkflowResource,
+				resourceType: ResourceType.Workflow,
 				personalProject: {
 					id: '2',
-				},
+				} as Project,
 			},
 		});
 		expect(getByText(truncate(result, 20))).toBeVisible();

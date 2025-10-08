@@ -46,6 +46,8 @@ export function safeJoinPath(parentPath, ...paths) {
 			`Path traversal detected, refusing to join paths: ${parentPath} and ${JSON.stringify(paths)}`,
 		);
 	}
+
+	return candidate;
 }
 
 export const resolvePackage = (packageSpec) => {

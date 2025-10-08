@@ -9,7 +9,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { CommandGroup, CommandBarItem } from './types';
 import { VIEWS } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 

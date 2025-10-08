@@ -11,6 +11,7 @@ import { useToast } from '@/composables/useToast';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
 defineProps<{
 	modalName: ModalKey;
 }>();

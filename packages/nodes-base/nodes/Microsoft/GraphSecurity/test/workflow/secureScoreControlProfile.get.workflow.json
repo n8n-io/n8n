@@ -1,0 +1,83 @@
+{
+	"name": "Microsoft GraphSecurity SecureScoreControlProfile Get Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-id",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "secureScoreControlProfile",
+				"operation": "get",
+				"secureScoreControlProfileId": "test-control-profile-id"
+			},
+			"id": "node-id",
+			"name": "Microsoft Graph Security",
+			"type": "n8n-nodes-base.microsoftGraphSecurity",
+			"typeVersion": 1,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftGraphSecurityOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft Graph Security OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Graph Security": [
+			{
+				"json": {
+					"id": "test-control-profile-id",
+					"azureTenantId": "tenant-123",
+					"controlName": "Enable multifactor authentication",
+					"controlCategory": "Identity",
+					"actionType": "Config",
+					"service": "AAD",
+					"maxScore": 10,
+					"tier": "Core",
+					"userImpact": "Low",
+					"implementationCost": "Low",
+					"rank": 1,
+					"threats": ["Account Breach", "Credential Theft"],
+					"deprecated": false,
+					"remediation": "Enable multi-factor authentication for all users",
+					"remediationImpact": "Users will need to use an additional authentication method",
+					"actionUrl": "https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/MFA",
+					"controlStateUpdates": [],
+					"vendorInformation": {
+						"provider": "Microsoft",
+						"vendor": "Microsoft"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Graph Security",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"id": "test-workflow-id",
+	"meta": {
+		"instanceId": "test-instance-id"
+	},
+	"tags": []
+}

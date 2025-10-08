@@ -9,6 +9,8 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { useI18n } from '@n8n/i18n';
 
+import { ElRadio } from 'element-plus';
+import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: {

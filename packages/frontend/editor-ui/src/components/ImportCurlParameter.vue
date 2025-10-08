@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
+import { N8nButton } from '@n8n/design-system';
 defineProps<{
 	isReadOnly?: boolean;
 }>();

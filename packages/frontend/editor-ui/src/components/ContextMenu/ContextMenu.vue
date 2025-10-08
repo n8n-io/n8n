@@ -2,10 +2,10 @@
 import { useContextMenu } from '@/composables/useContextMenu';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useStyles } from '@/composables/useStyles';
-import { N8nActionDropdown } from '@n8n/design-system';
 import { ref, watch } from 'vue';
 import { type ComponentExposed } from 'vue-component-type-helpers';
 
+import { N8nActionDropdown } from '@n8n/design-system';
 const contextMenu = useContextMenu();
 const { position, isOpen, actions, target } = contextMenu;
 const dropdown = ref<ComponentExposed<typeof N8nActionDropdown>>();

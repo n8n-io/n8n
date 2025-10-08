@@ -10,6 +10,8 @@ import { WebhookServer } from '@/webhooks/webhook-server';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 
 import { BaseCommand } from './base-command';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 
 @Command({
 	name: 'webhook',
@@ -75,6 +77,11 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
+
+		await Container.get(MessageEventBus).initialize({
+			webhookProcessorId: this.instanceSettings.hostId,
+		});
+		Container.get(LogStreamingEventRelay).init();
 
 		await this.moduleRegistry.initModules();
 	}

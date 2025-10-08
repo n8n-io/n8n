@@ -1,21 +1,21 @@
 import {
-	dataStoreColumnNameSchema,
-	DATA_STORE_COLUMN_ERROR_MESSAGE,
-	type DataStoreCreateColumnSchema,
+	dataTableColumnNameSchema,
+	DATA_TABLE_COLUMN_ERROR_MESSAGE,
+	type DataTableCreateColumnSchema,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataStoreColumnJsType, DataStoreRowReturn, DataStoreRowsReturn } from 'n8n-workflow';
+import type { DataTableColumnJsType, DataTableRowReturn, DataTableRowsReturn } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { DataStoreUserTableName } from '../data-store.types';
 import type { DataTableColumn } from '../data-table-column.entity';
+import type { DataTableUserTableName } from '../data-table.types';
 
-export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
+export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
 		const name = new DslColumn(col.name.trim());
 
@@ -34,8 +34,8 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 	});
 }
 
-function dataStoreColumnTypeToSql(
-	type: DataStoreCreateColumnSchema['type'],
+function dataTableColumnTypeToSql(
+	type: DataTableCreateColumnSchema['type'],
 	dbType: DataSourceOptions['type'],
 ) {
 	switch (type) {
@@ -66,24 +66,24 @@ function dataStoreColumnTypeToSql(
 }
 
 function columnToWildcardAndType(
-	column: DataStoreCreateColumnSchema,
+	column: DataTableCreateColumnSchema,
 	dbType: DataSourceOptions['type'],
 ) {
-	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type, dbType)}`;
+	return `${quoteIdentifier(column.name, dbType)} ${dataTableColumnTypeToSql(column.type, dbType)}`;
 }
 
 export function isValidColumnName(name: string) {
-	return dataStoreColumnNameSchema.safeParse(name).success;
+	return dataTableColumnNameSchema.safeParse(name).success;
 }
 
 export function addColumnQuery(
-	tableName: DataStoreUserTableName,
-	column: DataStoreCreateColumnSchema,
+	tableName: DataTableUserTableName,
+	column: DataTableCreateColumnSchema,
 	dbType: DataSourceOptions['type'],
 ) {
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
-		throw new UnexpectedError(DATA_STORE_COLUMN_ERROR_MESSAGE);
+		throw new UnexpectedError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 	}
 
 	const quotedTableName = quoteIdentifier(tableName, dbType);
@@ -92,7 +92,7 @@ export function addColumnQuery(
 }
 
 export function deleteColumnQuery(
-	tableName: DataStoreUserTableName,
+	tableName: DataTableUserTableName,
 	column: string,
 	dbType: DataSourceOptions['type'],
 ): string {
@@ -129,7 +129,7 @@ function hasInsertId(data: unknown): data is WithInsertId {
 	return typeof data === 'object' && data !== null && 'insertId' in data && isNumber(data.insertId);
 }
 
-function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
+function hasRowReturnData(data: unknown): data is DataTableRowReturn {
 	return (
 		typeof data === 'object' &&
 		data !== null &&
@@ -142,11 +142,11 @@ function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
 	);
 }
 
-function hasRowId(data: unknown): data is Pick<DataStoreRowReturn, 'id'> {
+function hasRowId(data: unknown): data is Pick<DataTableRowReturn, 'id'> {
 	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
 }
 
-export function extractReturningData(raw: unknown): DataStoreRowReturn[] {
+export function extractReturningData(raw: unknown): DataTableRowReturn[] {
 	if (!isArrayOf(raw, hasRowReturnData)) {
 		throw new UnexpectedError(
 			`Expected INSERT INTO raw to be { id: number; createdAt: string; updatedAt: string }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
@@ -183,7 +183,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
-export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColumn[]) {
+export function normalizeRows(rows: DataTableRowsReturn, columns: DataTableColumn[]) {
 	// we need to normalize system dates as well
 	const systemColumns = [
 		{ name: 'createdAt', type: 'date' },
@@ -242,10 +242,10 @@ function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): 
 }
 
 export function normalizeValue(
-	value: DataStoreColumnJsType,
+	value: DataTableColumnJsType,
 	columnType: string | undefined,
 	dbType?: DataSourceOptions['type'],
-): DataStoreColumnJsType {
+): DataTableColumnJsType {
 	if (columnType !== 'date' || value === null || value === undefined) {
 		return value;
 	}
@@ -292,11 +292,11 @@ export function escapeLikeSpecials(input: string): string {
 		.replace(/_/g, '\\_'); // make '_' literal ('%' stays a wildcard)
 }
 
-export function toTableName(dataStoreId: string): DataStoreUserTableName {
+export function toTableName(dataTableId: string): DataTableUserTableName {
 	const { tablePrefix } = Container.get(GlobalConfig).database;
-	return `${tablePrefix}data_table_user_${dataStoreId}`;
+	return `${tablePrefix}data_table_user_${dataTableId}`;
 }
 
-export function toTableId(tableName: DataStoreUserTableName) {
+export function toTableId(tableName: DataTableUserTableName) {
 	return tableName.replace(/.*data_table_user_/, '');
 }

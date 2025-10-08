@@ -7,7 +7,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';

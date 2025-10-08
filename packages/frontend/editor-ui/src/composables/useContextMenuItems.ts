@@ -1,7 +1,7 @@
 import type { ActionDropdownItem, INodeUi } from '@/Interface';
 import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';

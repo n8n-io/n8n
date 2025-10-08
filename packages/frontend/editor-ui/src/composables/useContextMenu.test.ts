@@ -3,7 +3,7 @@ import { useContextMenu } from '@/composables/useContextMenu';
 import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { faker } from '@faker-js/faker';
 import { createPinia, setActivePinia } from 'pinia';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {

@@ -60,6 +60,21 @@ export const frontendConfig = tseslint.config(
 			'vue/no-multiple-template-root': 'error',
 			'vue/v-slot-style': 'error',
 			'vue/no-unused-components': 'error',
+			'vue/no-undef-components': [
+				'error',
+				{
+					ignorePatterns: [
+						'FontAwesomeIcon', // Globally registered in plugins/icons/index.ts
+						'RouterLink', // Vue Router global component
+						'RouterView', // Vue Router global component
+						'Teleport', // Vue 3 built-in
+						'Transition', // Vue 3 built-in
+						'TransitionGroup', // Vue 3 built-in
+						'KeepAlive', // Vue 3 built-in
+						'Suspense', // Vue 3 built-in
+					],
+				},
+			],
 			'vue/multi-word-component-names': 'off',
 			'vue/component-name-in-template-casing': [
 				'error',

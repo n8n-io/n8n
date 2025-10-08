@@ -3,12 +3,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onClickOutside } from '@vueuse/core';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/composables/useToast';
 
+import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];

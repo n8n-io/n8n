@@ -25,6 +25,7 @@ import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
 
+import { N8nButton, N8nInputLabel } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	value: FilterValue;
