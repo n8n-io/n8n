@@ -42,6 +42,7 @@ const headers = ref<Array<TableHeader<Role>>>([
 		key: 'usedByUsers',
 		disableSort: true,
 		align: 'end',
+		value: (item: Role) => item.usedByUsers ?? 0,
 		width: 75,
 	},
 	{
