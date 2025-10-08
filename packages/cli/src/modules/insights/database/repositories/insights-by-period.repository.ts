@@ -287,7 +287,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.select(
 				sql`
 						CASE
-							WHEN insights.periodStart >= date_ranges.start_date AND insights.periodStart <= date_ranges.end_date
+							WHEN insights.periodStart >= date_ranges.start_date AND insights.periodStart < date_ranges.end_date
 							THEN 'current'
 							ELSE 'previous'
 						END
@@ -299,7 +299,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			// Use a cross join with the CTE
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
 			.where('insights.periodStart >= date_ranges.prev_start_date')
-			.andWhere('insights.periodStart <= date_ranges.end_date')
+			.andWhere('insights.periodStart < date_ranges.end_date')
 			// Group by both period and type
 			.groupBy('period')
 			.addGroupBy('insights.type');
@@ -365,7 +365,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			// Use a cross join with the CTE
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
 			.where('insights.periodStart >= date_ranges.start_date')
-			.andWhere('insights.periodStart <= date_ranges.end_date')
+			.andWhere('insights.periodStart < date_ranges.end_date')
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')

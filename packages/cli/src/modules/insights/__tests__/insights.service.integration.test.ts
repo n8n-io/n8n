@@ -1200,25 +1200,29 @@ describe('InsightsService', () => {
 			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
 			licenseStateMock.getInsightsMaxHistory.mockReturnValue(30);
 
-			const today = DateTime.now().startOf('day');
-			const startDate = today.minus({ hours: 12 }).toJSDate();
-			const endDate = today.toJSDate();
+			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
+			const endDate = startDate.plus({ hours: 10 });
 
-			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
-				new UserError('Hourly data is not available with your current license'),
-			);
+			expect(() =>
+				insightsService.validateDateFiltersLicense({
+					startDate: startDate.toJSDate(),
+					endDate: endDate.toJSDate(),
+				}),
+			).toThrowError(new UserError('Hourly data is not available with your current license'));
 		});
 
 		test('does not throw if granularity is hour and hourly data is licensed', () => {
 			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
 			licenseStateMock.getInsightsMaxHistory.mockReturnValue(30);
 
-			const today = DateTime.now().startOf('day');
-			const startDate = today.minus({ hours: 12 }).toJSDate();
-			const endDate = today.toJSDate();
+			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
+			const endDate = startDate.endOf('day');
 
 			expect(() =>
-				insightsService.validateDateFiltersLicense({ startDate, endDate }),
+				insightsService.validateDateFiltersLicense({
+					startDate: startDate.toJSDate(),
+					endDate: endDate.toJSDate(),
+				}),
 			).not.toThrow();
 		});
 
