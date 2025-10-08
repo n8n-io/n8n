@@ -91,7 +91,7 @@ describe('Ollama Router', () => {
 
 			await expect(router.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
 			await expect(router.call(executeFunctionsMock)).rejects.toThrow(
-				'The operation "test" is not supported!',
+				'The resource "unsupported" is not supported!',
 			);
 		});
 
