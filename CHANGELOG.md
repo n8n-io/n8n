@@ -1,3 +1,12 @@
+## [1.115.1](https://github.com/n8n-io/n8n/compare/n8n@1.115.0...n8n@1.115.1) (2025-10-08)
+
+
+### Bug Fixes
+
+* **core:** Fix worker setup completion ([#20495](https://github.com/n8n-io/n8n/issues/20495)) ([09ecd9c](https://github.com/n8n-io/n8n/commit/09ecd9cb92a344154d78461c4286d3c437b6cc23))
+
+
+
 # [1.115.0](https://github.com/n8n-io/n8n/compare/n8n@1.114.0...n8n@1.115.0) (2025-10-06)
 
 
