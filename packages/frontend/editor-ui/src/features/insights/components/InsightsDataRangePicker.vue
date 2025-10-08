@@ -126,7 +126,7 @@ function isActiveRange(presetValue: number) {
 </script>
 
 <template>
-	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value :locale="'en-UK'">
+	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value>
 		<template #trigger>
 			<N8nButton icon="calendar" type="secondary">{{ formattedRange }}</N8nButton>
 		</template>
