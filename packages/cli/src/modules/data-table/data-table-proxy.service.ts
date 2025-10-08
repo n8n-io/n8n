@@ -22,9 +22,9 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { OwnershipService } from '@/services/ownership.service';
-
 import { DataTableService } from './data-table.service';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',
@@ -42,7 +42,7 @@ export function isAllowedNode(s: string): s is AllowedNode {
 @Service()
 export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
-		private readonly dataStoreService: DataTableService,
+		private readonly dataTableService: DataTableService,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 	) {
@@ -74,17 +74,17 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	async getDataTableProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreId: string,
+		dataTableId: string,
 		projectId?: string,
 	): Promise<IDataTableProjectService> {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
-		return this.makeDataTableOperations(projectId, dataStoreId);
+		return this.makeDataTableOperations(projectId, dataTableId);
 	}
 
 	private makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {
-		const dataStoreService = this.dataStoreService;
+		const dataTableService = this.dataTableService;
 		return {
 			getProjectId() {
 				return projectId;
@@ -95,67 +95,67 @@ export class DataTableProxyService implements DataTableProxyProvider {
 					...options,
 					filter: { projectId, ...(options.filter ?? {}) },
 				};
-				return await dataStoreService.getManyAndCount(serviceOptions);
+				return await dataTableService.getManyAndCount(serviceOptions);
 			},
 
 			async createDataTable(options: CreateDataTableOptions): Promise<DataTable> {
-				return await dataStoreService.createDataTable(projectId, options);
+				return await dataTableService.createDataTable(projectId, options);
 			},
 
 			async deleteDataTableAll(): Promise<boolean> {
-				return await dataStoreService.deleteDataTableByProjectId(projectId);
+				return await dataTableService.deleteDataTableByProjectId(projectId);
 			},
 		};
 	}
 
 	private makeDataTableOperations(
 		projectId: string,
-		dataStoreId: string,
+		dataTableId: string,
 	): Omit<IDataTableProjectService, keyof IDataTableProjectAggregateService> {
-		const dataStoreService = this.dataStoreService;
+		const dataTableService = this.dataTableService;
 
 		return {
 			// DataTable management
 			async updateDataTable(options: UpdateDataTableOptions): Promise<boolean> {
-				return await dataStoreService.updateDataTable(dataStoreId, projectId, options);
+				return await dataTableService.updateDataTable(dataTableId, projectId, options);
 			},
 
 			async deleteDataTable(): Promise<boolean> {
-				return await dataStoreService.deleteDataTable(dataStoreId, projectId);
+				return await dataTableService.deleteDataTable(dataTableId, projectId);
 			},
 
 			// Column operations
 			async getColumns(): Promise<DataTableColumn[]> {
-				return await dataStoreService.getColumns(dataStoreId, projectId);
+				return await dataTableService.getColumns(dataTableId, projectId);
 			},
 
 			async addColumn(options: AddDataTableColumnOptions): Promise<DataTableColumn> {
-				return await dataStoreService.addColumn(dataStoreId, projectId, options);
+				return await dataTableService.addColumn(dataTableId, projectId, options);
 			},
 
 			async moveColumn(columnId: string, options: MoveDataTableColumnOptions): Promise<boolean> {
-				return await dataStoreService.moveColumn(dataStoreId, projectId, columnId, options);
+				return await dataTableService.moveColumn(dataTableId, projectId, columnId, options);
 			},
 
 			async deleteColumn(columnId: string): Promise<boolean> {
-				return await dataStoreService.deleteColumn(dataStoreId, projectId, columnId);
+				return await dataTableService.deleteColumn(dataTableId, projectId, columnId);
 			},
 
 			// Row operations
 			async getManyRowsAndCount(options: Partial<ListDataTableRowsOptions>) {
-				return await dataStoreService.getManyRowsAndCount(dataStoreId, projectId, options);
+				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, options);
 			},
 
 			async insertRows<T extends DataTableInsertRowsReturnType>(
 				rows: DataTableRows,
 				returnType: T,
 			) {
-				return await dataStoreService.insertRows(dataStoreId, projectId, rows, returnType);
+				return await dataTableService.insertRows(dataTableId, projectId, rows, returnType);
 			},
 
 			async updateRows(options: UpdateDataTableRowOptions) {
-				return await dataStoreService.updateRows(
-					dataStoreId,
+				return await dataTableService.updateRows(
+					dataTableId,
 					projectId,
 					{ filter: options.filter, data: options.data },
 					true,
@@ -164,8 +164,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			},
 
 			async upsertRow(options: UpsertDataTableRowOptions) {
-				return await dataStoreService.upsertRow(
-					dataStoreId,
+				return await dataTableService.upsertRow(
+					dataTableId,
 					projectId,
 					options,
 					true,
@@ -174,8 +174,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			},
 
 			async deleteRows(options: DeleteDataTableRowsOptions) {
-				return await dataStoreService.deleteRows(
-					dataStoreId,
+				return await dataTableService.deleteRows(
+					dataTableId,
 					projectId,
 					{ filter: options.filter },
 					true,

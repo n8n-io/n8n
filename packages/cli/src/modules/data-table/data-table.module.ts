@@ -3,7 +3,7 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 @BackendModule({ name: 'data-table' })
-export class DataStoreModule implements ModuleInterface {
+export class DataTableModule implements ModuleInterface {
 	async init() {
 		await import('./data-table.controller');
 		await import('./data-table-aggregate.controller');

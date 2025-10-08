@@ -6,8 +6,8 @@ import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
-import JsEditor from '@/components/JsEditor/JsEditor.vue';
+import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 

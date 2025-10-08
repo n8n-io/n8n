@@ -15,8 +15,8 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'mcp' isn't (yet) eligible module by default
-		const NON_DEFAULT_MODULES = ['mcp'];
+		// 'mcp' and 'chat-hub' aren't (yet) eligible modules by default
+		const NON_DEFAULT_MODULES = ['mcp', 'chat-hub'];
 		const expectedModules = MODULE_NAMES.filter((name) => !NON_DEFAULT_MODULES.includes(name));
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
