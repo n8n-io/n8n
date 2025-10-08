@@ -7,10 +7,10 @@ import { ASK_AI_SLIDE_OUT_DURATION_MS } from '@/constants';
 import type { VIEWS } from '@/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
 import { useChatPanelStateStore, type ChatPanelMode } from '@/stores/chatPanelState.store';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 import type { ICredentialType } from 'n8n-workflow';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
