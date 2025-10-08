@@ -229,6 +229,7 @@ describe('InsightsService', () => {
 
 		test('mixed period data are summarized correctly', async () => {
 			// ARRANGE
+
 			// current period
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
@@ -336,13 +337,15 @@ describe('InsightsService', () => {
 			// ACT
 			const summary = await insightsService.getInsightsSummary({ startDate, endDate });
 
+			console.log(summary);
+
 			// ASSERT
 			expect(summary).toEqual({
-				averageRunTime: { value: 0, unit: 'millisecond', deviation: -7157.8 },
+				averageRunTime: { value: 0, unit: 'millisecond', deviation: -8947.25 },
 				failed: { value: 20, unit: 'count', deviation: 18 },
-				failureRate: { value: 0.909, unit: 'ratio', deviation: 0.509 },
+				failureRate: { value: 0.87, unit: 'ratio', deviation: 0.37 },
 				timeSaved: { value: 0, unit: 'minute', deviation: -15 },
-				total: { value: 22, unit: 'count', deviation: 17 },
+				total: { value: 23, unit: 'count', deviation: 19 },
 			});
 		});
 

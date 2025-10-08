@@ -269,18 +269,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		}
 	}
 
-	private getAgeLimitQuery(maxAgeInDays: number) {
-		if (maxAgeInDays === 0) {
-			return dbType === 'sqlite' ? "datetime('now')" : 'NOW()';
-		}
-
-		return dbType === 'sqlite'
-			? `datetime('now', '-${maxAgeInDays} days')`
-			: dbType === 'postgresdb'
-				? `NOW() - INTERVAL '${maxAgeInDays} days'`
-				: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
-	}
-
 	async getPreviousAndCurrentPeriodTypeAggregates({
 		startDate,
 		endDate,
@@ -292,25 +280,14 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			total_value: string | number;
 		}>
 	> {
-		const { daysFromStartDateToToday, daysFromEndDateToToday, dateRangeInDays } =
-			this.getDateRangesDaysLimits({
-				startDate,
-				endDate,
-			});
-
-		const cte = sql`
-			SELECT
-				${this.getAgeLimitQuery(daysFromStartDateToToday)} AS current_start,
-				${this.getAgeLimitQuery(daysFromEndDateToToday)} AS current_end,
-				${this.getAgeLimitQuery(daysFromStartDateToToday + dateRangeInDays)}  AS previous_start
-		`;
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
 			.select(
 				sql`
 						CASE
-							WHEN insights.periodStart >= date_ranges.current_start AND insights.periodStart <= date_ranges.current_end
+							WHEN insights.periodStart >= date_ranges.start_date AND insights.periodStart <= date_ranges.end_date
 							THEN 'current'
 							ELSE 'previous'
 						END
@@ -321,8 +298,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.addSelect('SUM(value)', 'total_value')
 			// Use a cross join with the CTE
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
-			.where('insights.periodStart >= date_ranges.previous_start')
-			.andWhere('insights.periodStart <= date_ranges.current_end')
+			.where('insights.periodStart >= date_ranges.prev_start_date')
+			.andWhere('insights.periodStart <= date_ranges.end_date')
 			// Group by both period and type
 			.groupBy('period')
 			.addGroupBy('insights.type');
@@ -442,28 +419,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return aggregatedInsightsByTimeParser.parse(rawRows);
-	}
-
-	private getDateRangesDaysLimits({ startDate, endDate }: { startDate: Date; endDate: Date }) {
-		const today = DateTime.now().startOf('day');
-		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
-		const endDateStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
-
-		let daysFromStartDateToToday = today.diff(startDateStartOfDay, 'days').days;
-		const daysFromEndDateToToday = today.diff(endDateStartOfDay, 'days').days;
-
-		// ensure that at least one day is covered
-		if (daysFromStartDateToToday < 1) {
-			daysFromStartDateToToday = 1;
-		}
-
-		const dateRangeInDays = daysFromStartDateToToday - daysFromEndDateToToday;
-
-		return {
-			daysFromStartDateToToday,
-			daysFromEndDateToToday,
-			dateRangeInDays,
-		};
 	}
 
 	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
