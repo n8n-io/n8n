@@ -6,6 +6,7 @@ import type {
 	IRun,
 	ITaskData,
 	IWorkflowBase,
+	RelatedExecution,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -195,4 +196,22 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 			return acc;
 		}, {} as IDataObject),
 	);
+}
+
+/**
+ * Determines if a parent execution should be restarted when a child execution completes.
+ *
+ * @param parentExecution - The parent execution metadata, if any
+ * @returns true if the parent should be restarted, false otherwise
+ */
+export function shouldRestartParentExecution(
+	parentExecution: RelatedExecution | undefined,
+): parentExecution is RelatedExecution {
+	if (parentExecution === undefined) {
+		return false;
+	}
+	if (parentExecution.shouldResume === undefined) {
+		return true; // Preserve existing behavior for executions started before the flag was introduced for backward compatibility.
+	}
+	return parentExecution.shouldResume;
 }

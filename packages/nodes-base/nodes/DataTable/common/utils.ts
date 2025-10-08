@@ -8,6 +8,7 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	DataTableColumnJsType,
+	DataTableColumnType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -86,6 +87,8 @@ export function isMatchType(obj: unknown): obj is FilterType {
 export function buildGetManyFilter(
 	fieldEntries: FieldEntry[],
 	matchType: FilterType,
+	columnTypeMap: Record<string, DataTableColumnType>,
+	node: INode,
 ): DataTableFilter {
 	const filters = fieldEntries.map((x) => {
 		switch (x.condition) {
@@ -113,12 +116,27 @@ export function buildGetManyFilter(
 					condition: 'eq' as const,
 					value: false,
 				};
-			default:
+			default: {
+				let value = x.keyValue;
+				const columnType = columnTypeMap[x.keyName];
+
+				// Convert ISO date strings to Date objects for date columns
+				if (columnType === 'date' && typeof value === 'string') {
+					const parsed = new Date(value);
+					if (isNaN(parsed.getTime())) {
+						throw new NodeOperationError(
+							node,
+							`Invalid date string '${value}' for column '${x.keyName}'`,
+						);
+					}
+					value = parsed;
+				}
 				return {
 					columnName: x.keyName,
 					condition: x.condition ?? 'eq',
-					value: x.keyValue,
+					value,
 				};
+			}
 		}
 	});
 	return { type: matchType === ALL_CONDITIONS ? 'and' : 'or', filters };

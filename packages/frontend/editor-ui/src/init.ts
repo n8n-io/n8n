@@ -28,7 +28,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from './stores/roles.store';
-import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 
 export const state = {
 	initialized: false,
@@ -136,7 +136,7 @@ export async function initializeAuthenticatedFeatures(
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
 	const versionsStore = useVersionsStore();
-	const dataStoreStore = useDataStoreStore();
+	const dataTableStore = useDataTableStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -176,13 +176,13 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		void dataStoreStore
-			.fetchDataStoreSize()
+		void dataTableStore
+			.fetchDataTableSize()
 			.then(({ quotaStatus }) => {
 				if (quotaStatus === 'error') {
-					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
 				} else if (quotaStatus === 'warn') {
-					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
 				}
 			})
 			.catch((error) => {
