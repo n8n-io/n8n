@@ -151,7 +151,10 @@ export class WorkflowExecutionService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase({
+				userId: user.id,
+				workflowId: workflowData.id,
+			});
 
 			const needsWebhook = await this.testWebhooks.needsWebhook({
 				userId: user.id,

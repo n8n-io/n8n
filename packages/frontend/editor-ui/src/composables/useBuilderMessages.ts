@@ -1,7 +1,11 @@
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useI18n } from '@n8n/i18n';
-import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '@/types/assistant.types';
+import {
+	isTextMessage,
+	isWorkflowUpdatedMessage,
+	isToolMessage,
+} from '@/features/assistant/assistant.types';
 
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];

@@ -4,14 +4,14 @@ import { onClickOutside } from '@vueuse/core';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
-import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
-import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
+import InlineExpressionEditorInput from '@/features/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
+import InlineExpressionEditorOutput from '@/features/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/features/editors/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
