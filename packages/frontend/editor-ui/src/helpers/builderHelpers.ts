@@ -31,7 +31,10 @@ export function createBuilderPayload(
 	}
 
 	if (options.executionData) {
-		workflowContext.executionData = assistantHelpers.simplifyResultData(options.executionData);
+		workflowContext.executionData = assistantHelpers.simplifyResultData(
+			options.executionData,
+			true,
+		);
 	}
 
 	if (options.nodesForSchema?.length) {

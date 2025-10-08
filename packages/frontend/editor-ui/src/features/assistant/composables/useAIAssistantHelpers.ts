@@ -217,9 +217,12 @@ export const useAIAssistantHelpers = () => {
 	/**
 	 * Prepare workflow execution result data for the AI assistant
 	 * by removing data from nodes
+	 * @param data The execution result data to simplify
+	 * @param compact If true, truncates large inputOverride fields to max 2000 characters
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
+		compact = false,
 	): ChatRequest.ExecutionResultData {
 		const simplifiedResultData: ChatRequest.ExecutionResultData = {
 			runData: {},
@@ -229,22 +232,40 @@ export const useAIAssistantHelpers = () => {
 		if (data.error) {
 			simplifiedResultData.error = data.error;
 		}
+
 		// Map runData, excluding the `data` field from ITaskData
-		for (const key of Object.keys(data.runData)) {
+		for (const key of Object.keys(data.runData || {})) {
 			const taskDataArray = data.runData[key];
 			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
-				const { data: taskDataContent, ...taskDataWithoutData } = taskData;
+				const { data: _taskDataContent, ...taskDataWithoutData } = taskData;
+
+				// If compact mode is enabled, truncate large inputOverride fields
+				if (compact && taskDataWithoutData.inputOverride) {
+					const inputOverrideStr = JSON.stringify(taskDataWithoutData.inputOverride);
+
+					if (inputOverrideStr.length > 2000) {
+						taskDataWithoutData.inputOverride = {
+							_truncated: true,
+							_originalSize: inputOverrideStr.length,
+							_preview: inputOverrideStr.substring(0, 2000),
+						} as unknown as typeof taskDataWithoutData.inputOverride;
+					}
+				}
+
 				return taskDataWithoutData;
 			});
 		}
+
 		// Handle lastNodeExecuted if it exists
 		if (data.lastNodeExecuted) {
 			simplifiedResultData.lastNodeExecuted = data.lastNodeExecuted;
 		}
+
 		// Handle metadata if it exists
 		if (data.metadata) {
 			simplifiedResultData.metadata = data.metadata;
 		}
+
 		return simplifiedResultData;
 	}
 

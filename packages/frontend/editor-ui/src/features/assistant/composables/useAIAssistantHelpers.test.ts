@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
 	deepCopy,
+	IDataObject,
+	ITaskDataConnections,
 	type INode,
 	type IRunExecutionData,
 	type NodeConnectionType,
@@ -539,6 +541,11 @@ describe('Simplify assistant payloads', () => {
 		aiAssistantHelpers = useAIAssistantHelpers();
 	});
 
+	// Helper to create properly typed inputOverride objects
+	const createInputOverride = (data: IDataObject): ITaskDataConnections => ({
+		main: [[{ json: data }]],
+	});
+
 	it('simplifyWorkflowForAssistant: Should remove unnecessary properties from workflow object', () => {
 		const simplifiedWorkflow = aiAssistantHelpers.simplifyWorkflowForAssistant(testWorkflow);
 		const removedProperties = [
@@ -562,6 +569,206 @@ describe('Simplify assistant payloads', () => {
 		for (const nodeName of Object.keys(simplifiedResultData.runData)) {
 			expect(simplifiedResultData.runData[nodeName][0]).not.toHaveProperty('data');
 		}
+	});
+
+	it('simplifyResultData: Should not modify inputOverride when compact is false', () => {
+		const largeInputOverride = createInputOverride({ someData: 'x'.repeat(3000) });
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: largeInputOverride,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, false);
+		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toEqual(largeInputOverride);
+	});
+
+	it('simplifyResultData: Should not truncate small inputOverride when compact is true', () => {
+		const smallInputOverride = createInputOverride({ someData: 'small data' });
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: smallInputOverride,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toEqual(smallInputOverride);
+	});
+
+	it('simplifyResultData: Should truncate large inputOverride when compact is true', () => {
+		const largeInputOverride = createInputOverride({ someData: 'x'.repeat(3000) });
+		const inputOverrideStr = JSON.stringify(largeInputOverride);
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: largeInputOverride,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+		const truncated = simplifiedResultData.runData.TestNode[0].inputOverride;
+
+		expect(truncated).toHaveProperty('_truncated', true);
+		expect(truncated).toHaveProperty('_originalSize', inputOverrideStr.length);
+		expect(truncated).toHaveProperty('_preview');
+		// @ts-expect-error - accessing _preview on truncated object
+		expect(truncated._preview).toBe(inputOverrideStr.substring(0, 2000));
+		// @ts-expect-error - accessing _preview on truncated object
+		expect(truncated._preview.length).toBe(2000);
+	});
+
+	it('simplifyResultData: Should handle multiple nodes with different inputOverride sizes', () => {
+		const smallInput = createInputOverride({ data: 'small' });
+		const largeInput = createInputOverride({ data: 'x'.repeat(3000) });
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				SmallNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: smallInput,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+				LargeNode: [
+					{
+						hints: [],
+						startTime: 1732882780589,
+						executionIndex: 1,
+						executionTime: 5,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: largeInput,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+				NoInputNode: [
+					{
+						hints: [],
+						startTime: 1732882780590,
+						executionIndex: 2,
+						executionTime: 3,
+						source: [],
+						executionStatus: 'success',
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+
+		// Small input should not be truncated
+		expect(simplifiedResultData.runData.SmallNode[0].inputOverride).toEqual(smallInput);
+
+		// Large input should be truncated
+		const truncated = simplifiedResultData.runData.LargeNode[0].inputOverride;
+		expect(truncated).toHaveProperty('_truncated', true);
+		expect(truncated).toHaveProperty('_originalSize');
+		expect(truncated).toHaveProperty('_preview');
+
+		// Node without inputOverride should not have it added
+		expect(simplifiedResultData.runData.NoInputNode[0]).not.toHaveProperty('inputOverride');
+	});
+
+	it('simplifyResultData: Should handle multiple task data entries for the same node', () => {
+		const largeInput1 = createInputOverride({ data: 'x'.repeat(3000) });
+		const largeInput2 = createInputOverride({ data: 'y'.repeat(3000) });
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: largeInput1,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+					{
+						hints: [],
+						startTime: 1732882780589,
+						executionIndex: 1,
+						executionTime: 5,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: largeInput2,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+
+		// Both entries should be truncated
+		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toHaveProperty(
+			'_truncated',
+			true,
+		);
+		expect(simplifiedResultData.runData.TestNode[1].inputOverride).toHaveProperty(
+			'_truncated',
+			true,
+		);
 	});
 });
 
