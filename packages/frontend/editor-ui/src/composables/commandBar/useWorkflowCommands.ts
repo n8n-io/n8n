@@ -14,6 +14,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { canvasEventBus } from '@/event-bus/canvas';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -57,6 +58,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = useWorkflowState();
 	const sourceControlStore = useSourceControlStore();
 
 	const router = useRouter();
@@ -148,7 +150,7 @@ export function useWorkflowCommands(): CommandGroup {
 						],
 						handler: () => {
 							// Lazily instantiate useRunWorkflow only when the handler runs to avoid early initialization side effects
-							void useRunWorkflow({ router }).runEntireWorkflow('main');
+							void useRunWorkflow({ router, workflowState }).runEntireWorkflow('main');
 						},
 						icon: {
 							component: N8nIcon as Component,
