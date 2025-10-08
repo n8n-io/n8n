@@ -120,6 +120,16 @@ function onModelChange(selection: ChatHubConversationModel) {
 	}
 }
 
+function onConfigure(provider: string) {
+	const credentialType = chatStore.models.find(
+		(model) => model.provider === provider,
+	)?.credentialType;
+
+	if (credentialType) {
+		uiStore.openNewCredential(credentialType);
+	}
+}
+
 function onSubmit() {
 	if (!message.value.trim() || chatStore.isResponding || !selectedModel.value) {
 		return;
@@ -172,6 +182,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 			:selected-model="selectedModel"
 			:disabled="chatStore.isResponding"
 			@change="onModelChange"
+			@configure="onConfigure"
 		/>
 		<div
 			:class="{

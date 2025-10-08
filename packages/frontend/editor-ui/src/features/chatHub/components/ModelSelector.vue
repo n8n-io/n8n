@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton } from '@n8n/design-system';
 import type { ChatHubConversationModel } from '../chat.types';
+import { type ComponentProps } from 'vue-component-type-helpers';
 
 const props = defineProps<{
 	disabled?: boolean;
@@ -12,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	change: [ChatHubConversationModel];
+	configure: [provider: string];
 }>();
 
 function isModelAvailable(model: ChatHubConversationModel): boolean {
@@ -32,14 +34,26 @@ const menu = computed(() => {
 	// Build menu structure
 	return Array.from(providerMap.entries()).map(([provider, models]) => {
 		const firstModel = models[0];
+		const modelOptions = models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>(
+			(model) => ({
+				id: `${model.provider}::${model.model}`,
+				title: model.displayName ?? model.model,
+				icon: isModelAvailable(model) ? undefined : 'lock',
+				disabled: false,
+			}),
+		);
+
 		return {
 			id: provider,
 			title: firstModel.providerDisplayName || provider,
-			submenu: models.map((model) => ({
-				id: `${model.provider}::${model.model}`,
-				title: `${model.displayName || model.model}${isModelAvailable(model) ? '' : ' 🔒'}`,
-				disabled: false,
-			})),
+			submenu: modelOptions.concat([
+				...(modelOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
+				{
+					id: `${provider}::configure`,
+					title: 'Configure credentials...',
+					disabled: false,
+				},
+			]),
 		};
 	});
 });
@@ -52,7 +66,14 @@ const selectedLabel = computed(() => {
 function onSelect(id: string) {
 	// Format is "provider::model"
 	const [provider, model] = id.split('::');
+
+	if (model === 'configure') {
+		emit('configure', provider);
+		return;
+	}
+
 	const selectedModel = props.models.find((m) => m.provider === provider && m.model === model);
+
 	if (selectedModel) {
 		emit('change', selectedModel);
 	}
