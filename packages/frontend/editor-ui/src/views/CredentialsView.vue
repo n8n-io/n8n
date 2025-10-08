@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CredentialCard from '@/components/CredentialCard.vue';
-import EmptySharedSectionActionBox from '@/components/Folders/EmptySharedSectionActionBox.vue';
+import EmptySharedSectionActionBox from '@/features/folders/components/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type { BaseFilters, Resource, ICredentialTypeMap } from '@/Interface';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
@@ -22,7 +22,7 @@ import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecr
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { Project } from '@/types/projects.types';

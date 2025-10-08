@@ -1,10 +1,10 @@
 import { nextTick, ref } from 'vue';
 import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
+import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import {
-	WORKFLOW_DIFF_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
-} from '@/constants';
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+} from '@/features/sourceControl.ee/sourceControl.constants';
 
 // Mock vue-router
 const mockRoute = ref({
