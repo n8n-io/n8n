@@ -143,7 +143,7 @@ watch(
 		</template>
 		<template #empty>
 			<N8nActionBox
-				data-test-id="empty-shared-action-box"
+				data-test-id="empty-data-table-action-box"
 				:heading="i18n.baseText('dataTable.empty.label')"
 				:description="i18n.baseText('dataTable.empty.description')"
 				:button-text="i18n.baseText('dataTable.add.button.label')"
