@@ -507,6 +507,32 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
+		it('should reject invalid CSS variables with unknown property in var() references', async () => {
+			const invalidVarReferences = `
+				.button {
+					background: var(--button--unknown);
+				}
+			`;
+			const result = await lintCSS(invalidVarReferences);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must include a valid property'),
+			});
+		});
+
+		it('should reject invalid CSS variables with mixed order in var() references', async () => {
+			const invalidVarReferences = `
+				.button {
+					background: var(--button--background--primary--hover--solid);
+				}
+			`;
+			const result = await lintCSS(invalidVarReferences);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Invalid CSS variable'),
+			});
+		});
+
 		it('should accept var() with fallback values', async () => {
 			const varWithFallback = `
 				.button {
