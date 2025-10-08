@@ -5,6 +5,8 @@ import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/U
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref } from 'vue';
+import ProjectMembersActionsCell from './ProjectMembersActionsCell.vue';
+import ProjectMembersRoleCell from './ProjectMembersRoleCell.vue';
 
 import {
 	N8nDataTableServer,
