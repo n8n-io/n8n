@@ -34,13 +34,15 @@ import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import useEnvironmentsStore from '@/features/environments.ee/environments.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/environments.ee/components/VariablesUsageBadge.vue';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useProjectPages } from '@/features/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
+import { isVariableResource } from '@/utils/typeGuards';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -181,18 +183,18 @@ const onSearchUpdated = (search: string) => {
 };
 
 const handleFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean): boolean => {
-	const Resource = resource as EnvironmentVariable;
+	if (!isVariableResource(resource)) return false;
 	const filtersToApply = newFilters as Filters;
 
 	if (filtersToApply.incomplete) {
-		matches = matches && !Resource.value;
+		matches = matches && !resource.value;
 	}
 
 	if (filtersToApply.projectId) {
 		if (filtersToApply.projectId === 'global') {
-			matches = matches && !Resource.project;
+			matches = matches && !resource.project;
 		} else {
-			matches = matches && Resource.project?.id === filtersToApply.projectId;
+			matches = matches && resource.project?.id === filtersToApply.projectId;
 		}
 	}
 
@@ -209,28 +211,43 @@ const sortFns = {
 	nameDesc: (a: Resource, b: Resource) => nameSortFn(a, b, 'desc'),
 };
 
-const projectOptions = computed<Array<{ value: string; label: string }>>(() => {
-	const options: Array<{ value: string; label: string }> = [
-		{
-			value: '',
-			label: i18n.baseText('variables.modal.scope.all'),
-		},
+const projectOptions = computed<Array<{ value: string; label: string; icon: IconOrEmoji }>>(() => {
+	const options: Array<{
+		value: string;
+		label: string;
+		icon: IconOrEmoji;
+	}> = [
 		{
 			value: 'global',
 			label: i18n.baseText('variables.modal.scope.global'),
+			icon: { type: 'icon', value: 'database' },
 		},
 	];
 
 	options.push(
 		...projectsStore.availableProjects
 			.filter((project) => project.type !== 'personal')
-			.map((project) => ({
-				value: project.id,
-				label: project.name ?? project.id,
-			})),
+			.map((project) => {
+				const icon = (project.icon ?? {
+					type: 'icon' as const,
+					value: 'layer-group',
+				}) as IconOrEmoji;
+				return {
+					value: project.id,
+					label: project.name ?? project.id,
+					icon,
+				};
+			}),
 	);
 
 	return options;
+});
+
+const selectedProjectIcon = computed<IconOrEmoji>(() => {
+	const selectedOption = projectOptions.value.find(
+		(option) => option.value === filters.value.projectId,
+	);
+	return selectedOption?.icon ?? { type: 'icon' as const, value: 'database' };
 });
 
 function goToUpgrade() {
@@ -345,13 +362,32 @@ onMounted(() => {
 					size="large"
 					filterable
 					data-test-id="variable-modal-scope-select"
+					@update:model-value="setKeyValue('projectId', $event)"
 				>
+					<template #prefix>
+						<N8nText v-if="selectedProjectIcon?.type === 'emoji'" :class="$style.menuItemEmoji">{{
+							selectedProjectIcon?.value
+						}}</N8nText>
+						<N8nIcon v-else-if="selectedProjectIcon?.value" :icon="selectedProjectIcon.value" />
+					</template>
 					<N8nOption
 						v-for="option in projectOptions"
 						:key="option.value || 'global'"
 						:value="option.value"
 						:label="option.label"
-					/>
+						:class="{ [$style.globalOption]: option.value === 'global' }"
+					>
+						<div :class="$style.optionContent">
+							<N8nText
+								v-if="option.icon && option.icon?.type === 'emoji'"
+								:class="$style.menuItemEmoji"
+							>
+								{{ option.icon.value }}
+							</N8nText>
+							<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
+							<span>{{ option.label }}</span>
+						</div>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 		</template>
@@ -477,6 +513,35 @@ onMounted(() => {
 
 	.variables-actions-column {
 		width: 170px;
+	}
+}
+</style>
+
+<style lang="scss" module>
+.optionContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+}
+
+.menuItemEmoji {
+	font-size: var(--font-size-s);
+	line-height: 1;
+}
+
+.globalOption {
+	position: relative;
+	margin-bottom: var(--spacing-s);
+	overflow: visible;
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: calc(var(--spacing-s) / -2);
+		left: var(--spacing-xs);
+		right: var(--spacing-xs);
+		height: 1px;
+		background-color: var(--color-foreground-base);
 	}
 }
 </style>

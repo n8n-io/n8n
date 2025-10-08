@@ -425,6 +425,19 @@ describe('VariableModal', () => {
 			expect(queryByTestId('variable-modal-global-exists-warning')).toBeInTheDocument();
 			expect(saveButton).toBeEnabled();
 		});
+
+		it('should hide scope field when editing', () => {
+			const { queryByTestId } = renderModal({
+				props: {
+					mode: 'edit',
+					variable: existingVariable,
+				},
+				global,
+				pinia,
+			});
+
+			expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('validation', () => {

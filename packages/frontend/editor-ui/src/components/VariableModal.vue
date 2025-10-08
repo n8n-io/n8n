@@ -12,12 +12,15 @@ import {
 	N8nSelect,
 	N8nOption,
 	N8nCallout,
+	N8nText,
+	N8nIcon,
 } from '@n8n/design-system';
 import type { Rule, RuleGroup } from '@/Interface';
 import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
 import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const props = withDefaults(
 	defineProps<{
@@ -122,11 +125,22 @@ const modalTitle = computed(() =>
 		: i18n.baseText('variables.modal.title.edit'),
 );
 
-const projectOptions = computed<Array<{ value: string; label: string }>>(() => {
-	const options: Array<{ value: string; label: string }> = [
+const projectOptions = computed<
+	Array<{
+		value: string;
+		label: string;
+		icon: IconOrEmoji;
+	}>
+>(() => {
+	const options: Array<{
+		value: string;
+		label: string;
+		icon: IconOrEmoji;
+	}> = [
 		{
 			value: '',
 			label: i18n.baseText('variables.modal.scope.global'),
+			icon: { type: 'icon', value: 'database' },
 		},
 	];
 
@@ -134,19 +148,31 @@ const projectOptions = computed<Array<{ value: string; label: string }>>(() => {
 		options.push(
 			...projectsStore.availableProjects
 				.filter((project) => project.type !== 'personal')
-				.map((project) => ({
-					value: project.id,
-					label: project.name || project.id,
-				})),
+				.map((project) => {
+					const icon = (project.icon || {
+						type: 'icon' as const,
+						value: 'layer-group',
+					}) as IconOrEmoji;
+					return {
+						value: project.id,
+						label: project.name ?? project.id,
+						icon,
+					};
+				}),
 		);
 	}
 
 	return options;
 });
 
+const selectedProjectIcon = computed<IconOrEmoji>(() => {
+	const selectedOption = projectOptions.value.find((option) => option.value === form.projectId);
+	return selectedOption?.icon ?? { type: 'icon' as const, value: 'database' };
+});
+
 const showScopeField = computed(() => {
 	// Show scope field only when creating a new variable and not in a project context
-	return !projectsStore.currentProjectId;
+	return props.mode === 'new' && !projectsStore.currentProjectId;
 });
 
 function closeModal() {
@@ -248,25 +274,40 @@ async function handleSubmit() {
 					@validate="(value: boolean) => (formValidation.value = value)"
 				/>
 
-				<N8nInputLabel
-					v-if="showScopeField"
-					:label="i18n.baseText('variables.modal.scope.label')"
-					color="text-dark"
-				>
-					<N8nSelect
-						v-model="form.projectId"
-						size="large"
-						filterable
-						data-test-id="variable-modal-scope-select"
-					>
-						<N8nOption
-							v-for="option in projectOptions"
-							:key="option.value || 'global'"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
-				</N8nInputLabel>
+				<div v-if="showScopeField">
+					<N8nInputLabel :label="i18n.baseText('variables.modal.scope.label')" color="text-dark">
+						<N8nSelect
+							v-model="form.projectId"
+							size="large"
+							filterable
+							data-test-id="variable-modal-scope-select"
+						>
+							<template #prefix>
+								<N8nText
+									v-if="selectedProjectIcon?.type === 'emoji'"
+									:class="$style.menuItemEmoji"
+									>{{ selectedProjectIcon.value }}</N8nText
+								>
+								<N8nIcon v-else-if="selectedProjectIcon?.value" :icon="selectedProjectIcon.value" />
+							</template>
+							<N8nOption
+								v-for="option in projectOptions"
+								:key="option.value || 'global'"
+								:value="option.value"
+								:label="option.label"
+								:class="{ [$style.globalOption]: option.value === '' }"
+							>
+								<div :class="$style.optionContent">
+									<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">{{
+										option.icon.value
+									}}</N8nText>
+									<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
+									<span>{{ option.label }}</span>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+					</N8nInputLabel>
+				</div>
 			</div>
 		</template>
 		<template #footer>
@@ -302,5 +343,32 @@ async function handleSubmit() {
 	justify-content: flex-end;
 	align-items: center;
 	gap: var(--spacing-xs);
+}
+
+.optionContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+}
+
+.iconEmoji {
+	font-size: var(--font-size-s);
+	line-height: 1;
+}
+
+.globalOption {
+	position: relative;
+	margin-bottom: var(--spacing-s);
+	overflow: visible;
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: calc(var(--spacing-s) / -2);
+		left: var(--spacing-xs);
+		right: var(--spacing-xs);
+		height: 1px;
+		background-color: var(--color-foreground-base);
+	}
 }
 </style>
