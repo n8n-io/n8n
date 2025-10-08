@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { CommandGroup, CommandBarItem } from './types';
+import type { CommandBarItem } from './types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
@@ -17,7 +17,7 @@ const ITEM_ID = {
 export function useProjectNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
-}): CommandGroup {
+}) {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId } = options;
 	const projectsStore = useProjectsStore();

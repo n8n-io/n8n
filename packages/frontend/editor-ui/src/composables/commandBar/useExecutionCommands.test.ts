@@ -101,7 +101,7 @@ describe('useExecutionCommands', () => {
 		annotation,
 	});
 
-	beforeEach(async () => {
+	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 
 		mockExecutionsStore = useExecutionsStore();
