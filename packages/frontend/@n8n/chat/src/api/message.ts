@@ -152,24 +152,7 @@ export async function sendMessageStreaming(
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'tool':
-					hasReceivedChunks = true;
-					// Format tool data for display in chat
-					let toolContent: string;
-					if (typeof value.content === 'object' && value.content !== null) {
-						// Handle object content (tool data)
-						try {
-							// Parse the object content safely
-							const contentObj = value.content as Record<string, unknown>;
-							const name = typeof contentObj.name === 'string' ? contentObj.name : 'Tool';
-							const data = contentObj.toolData !== undefined ? contentObj.toolData : contentObj;
-							toolContent = `${name}: ${JSON.stringify(data, null, 2)}`;
-						} catch {
-							toolContent = `Tool: ${JSON.stringify(value.content, null, 2)}`;
-						}
-					} else {
-						toolContent = `Tool: ${value.content ?? 'No data'}`;
-					}
-					handlers.onChunk(toolContent, nodeId, runIndex);
+					// Not outpoutting tool calls on purpose.
 					break;
 				case 'end':
 					handlers.onEndMessage(nodeId, runIndex);
