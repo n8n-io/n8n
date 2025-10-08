@@ -8,11 +8,12 @@ import { useInstalledCommunityPackage } from './useInstalledCommunityPackage';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
+import type * as n8nWorkflow from 'n8n-workflow';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const original = await importOriginal();
 	return {
-		...(original as any),
+		...(original as typeof n8nWorkflow),
 		isCommunityPackageName: vi.fn(),
 	};
 });
