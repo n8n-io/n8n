@@ -6,6 +6,7 @@ import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
+import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
 import { InsightsByPeriod } from '../entities/insights-by-period';
 import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
@@ -140,7 +141,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		}>;
 	}
 
-	getAggregationQuery(periodUnit: PeriodUnit) {
+	private getAggregationQuery(periodUnit: PeriodUnit) {
 		// Get the start period expression depending on the period unit and database type
 		const periodStartExpr = this.getPeriodStartExpr(periodUnit);
 
@@ -426,16 +427,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate: Date;
 		endDate: Date;
 	}) {
-		const { daysFromStartDateToToday, daysFromEndDateToToday } = this.getDateRangesDaysLimits({
-			startDate,
-			endDate,
-		});
-
-		const cte = sql`
-			SELECT
-				${this.getAgeLimitQuery(daysFromStartDateToToday)} AS start_date,
-				${this.getAgeLimitQuery(daysFromEndDateToToday)} AS end_date
-		`;
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
 
 		const typesAggregation = insightTypes.map((type) => {
 			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
@@ -467,11 +459,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const endDateStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
 
 		let daysFromStartDateToToday = today.diff(startDateStartOfDay, 'days').days;
+		const daysFromEndDateToToday = today.diff(endDateStartOfDay, 'days').days;
+
 		// ensure that at least one day is covered
 		if (daysFromStartDateToToday < 1) {
 			daysFromStartDateToToday = 1;
 		}
-		const daysFromEndDateToToday = today.diff(endDateStartOfDay, 'days').days;
 
 		const dateRangeInDays = daysFromStartDateToToday - daysFromEndDateToToday;
 
