@@ -337,8 +337,6 @@ describe('InsightsService', () => {
 			// ACT
 			const summary = await insightsService.getInsightsSummary({ startDate, endDate });
 
-			console.log(summary);
-
 			// ASSERT
 			expect(summary).toEqual({
 				averageRunTime: { value: 0, unit: 'millisecond', deviation: -8947.25 },
