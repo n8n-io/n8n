@@ -417,7 +417,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
-					? assistantHelpers.simplifyResultData(executionResult)
+					? assistantHelpers.simplifyResultData(executionResult, true)
 					: undefined,
 		};
 	}
