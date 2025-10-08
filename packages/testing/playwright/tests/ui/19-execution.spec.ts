@@ -1,12 +1,6 @@
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
 
-/**
- * Node names used in test workflows:
- * - Multiple_trigger_node_rerun.json
- * - Check_manual_node_run_for_pinned_and_rundata.json
- * - Test_Workflow_pairedItem_incomplete_manual_bug.json
- */
 const NODE_NAMES = {
 	PROCESS_THE_DATA: 'Process The Data',
 	START_ON_SCHEDULE: 'Start on Schedule',
