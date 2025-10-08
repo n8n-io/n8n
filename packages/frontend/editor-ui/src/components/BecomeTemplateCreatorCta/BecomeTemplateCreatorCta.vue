@@ -14,11 +14,7 @@ const onClick = () => {
 </script>
 
 <template>
-	<div
-		v-if="store.showBecomeCreatorCta"
-		:class="$style.container"
-		data-test-id="become-template-creator-cta"
-	>
+	<div v-if="true" :class="$style.container" data-test-id="become-template-creator-cta">
 		<div :class="$style.textAndCloseButton">
 			<p :class="$style.text">
 				{{ i18n.baseText('becomeCreator.text') }}
