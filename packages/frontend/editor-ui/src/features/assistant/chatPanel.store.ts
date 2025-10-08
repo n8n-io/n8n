@@ -16,6 +16,17 @@ export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
 export const DEFAULT_CHAT_WIDTH = 400;
 
+/**
+ * Type guard to check if a route name is a valid VIEWS value within the enabled views
+ * Performs runtime validation to safely narrow the type without unsafe assertions
+ */
+function isEnabledView(
+	route: string | symbol | undefined,
+	views: readonly VIEWS[],
+): route is VIEWS {
+	return typeof route === 'string' && (views as readonly string[]).includes(route);
+}
+
 export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const uiStore = useUIStore();
 	const route = useRoute();
@@ -39,7 +50,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				: BUILDER_ENABLED_VIEWS;
 		const currentRoute = route?.name;
 
-		if (!currentRoute || !enabledViews.includes(currentRoute as VIEWS)) {
+		if (!isEnabledView(currentRoute, enabledViews)) {
 			// Mode is not enabled in current view, close the panel instead
 			close();
 			return;
@@ -102,7 +113,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		const enabledViews = mode === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
 		const currentRoute = route?.name;
 
-		if (!currentRoute || !enabledViews.includes(currentRoute as VIEWS)) {
+		if (!isEnabledView(currentRoute, enabledViews)) {
 			// Mode is not enabled in current view, close the panel
 			close();
 			return;
@@ -155,9 +166,9 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 					? ASSISTANT_ENABLED_VIEWS
 					: BUILDER_ENABLED_VIEWS;
 
-			if (!enabledViews.includes(newRoute as VIEWS)) {
+			if (!isEnabledView(newRoute, enabledViews)) {
 				close();
-			} else if (BUILDER_ENABLED_VIEWS.includes(newRoute as VIEWS)) {
+			} else if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)) {
 				// If entering an editable canvas view with builder mode active, refresh state
 				builderStore.resetBuilderChat();
 			}

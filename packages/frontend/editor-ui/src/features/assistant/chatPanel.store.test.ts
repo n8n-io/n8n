@@ -8,7 +8,7 @@ import {
 	MAX_CHAT_WIDTH,
 } from './chatPanel.store';
 import { useChatPanelStateStore } from './chatPanelState.store';
-import { useUIStore } from './ui.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from './builder.store';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
