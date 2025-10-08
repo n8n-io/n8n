@@ -22,8 +22,7 @@ export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jotform Trigger',
 		name: 'jotFormTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:jotform.png',
+		icon: { light: 'file:jotform.svg', dark: 'file:jotform.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Jotform events via webhooks',
