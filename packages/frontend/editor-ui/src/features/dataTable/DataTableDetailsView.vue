@@ -104,7 +104,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style['data-table-details-view']">
+	<div :class="$style['data-table-details-view']" data-test-id="data-table-details-view">
 		<div v-if="loading" data-test-id="data-table-details-loading">
 			<N8nLoading
 				variant="h1"
@@ -123,9 +123,11 @@ onMounted(async () => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
-					<N8nButton @click="dataTableTableRef?.addRow">{{
-						i18n.baseText('dataTable.addRow.label')
-					}}</N8nButton>
+					<N8nButton
+						data-test-id="data-table-header-add-row-button"
+						@click="dataTableTableRef?.addRow"
+						>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
+					>
 					<AddColumnButton
 						:use-text-trigger="true"
 						:popover-id="'ds-details-add-column-popover'"

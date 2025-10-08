@@ -79,7 +79,7 @@ import NpsSurvey from '@/components/NpsSurvey.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import PreBuiltAgentsModal from '@/components/PreBuiltAgentsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
-import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
+import EventDestinationSettingsModal from '@/features/logStreaming.ee/components/EventDestinationSettingsModal.vue';
 import SetupWorkflowCredentialsModal from '@/features/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/sourceControl.ee/components/SourceControlPullModal.vue';
 import SourceControlPushModal from '@/features/sourceControl.ee/components/SourceControlPushModal.vue';
