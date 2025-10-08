@@ -27,18 +27,18 @@ import {
 	resolveRelativePath,
 } from 'n8n-workflow';
 
-import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import type { CodeNodeLanguageOption } from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
-import InlineExpressionTip from '@/components/InlineExpressionEditor/InlineExpressionTip.vue';
-import JsEditor from '@/components/JsEditor/JsEditor.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
+import InlineExpressionTip from '@/features/editors/components/InlineExpressionEditor/InlineExpressionTip.vue';
+import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
-import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+import SqlEditor from '@/features/editors/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
 import WorkflowSelectorParameterInput from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 
@@ -89,7 +89,7 @@ import {
 	isSelectableEl,
 } from '@/utils/typesUtils';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
-import CssEditor from './CssEditor/CssEditor.vue';
+import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';

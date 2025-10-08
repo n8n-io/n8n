@@ -19,7 +19,7 @@ import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
-import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import { PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
 import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -113,7 +113,7 @@ const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
-	DATA_STORE: 'dataStore',
+	DATA_TABLE: 'dataTable',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -150,8 +150,8 @@ const menu = computed(() => {
 	if (settingsStore.isDataTableFeatureEnabled) {
 		// TODO: this should probably be moved to the module descriptor as a setting
 		items.push({
-			value: ACTION_TYPES.DATA_STORE,
-			label: i18n.baseText('dataStore.add.button.label'),
+			value: ACTION_TYPES.DATA_TABLE,
+			label: i18n.baseText('dataTable.add.button.label'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
@@ -224,9 +224,9 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
 	},
-	[ACTION_TYPES.DATA_STORE]: (projectId: string) => {
+	[ACTION_TYPES.DATA_TABLE]: (projectId: string) => {
 		void router.push({
-			name: PROJECT_DATA_STORES,
+			name: PROJECT_DATA_TABLES,
 			params: { projectId, new: 'new' },
 		});
 	},
