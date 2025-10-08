@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import type { ProjectRole } from '@n8n/permissions';
+import type { ProjectRole, AllRolesMap } from '@n8n/permissions';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -140,7 +140,7 @@ const mockRoles = [
 		slug: 'project:personalOwner',
 		displayName: 'Personal Owner',
 	},
-];
+] as AllRolesMap['project'];
 
 const mockActions: Array<ActionDropdownItem<string>> = [
 	{ id: 'project:admin', label: 'Admin', description: 'Can manage project settings and members' },

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import type { ProjectRole } from '@n8n/permissions';
+import type { ProjectRole, AllRolesMap } from '@n8n/permissions';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersTable from '@/components/Projects/ProjectMembersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -146,7 +146,7 @@ const mockProjectRoles = [
 	{ slug: 'project:admin', displayName: 'Admin', licensed: true },
 	{ slug: 'project:editor', displayName: 'Editor', licensed: true },
 	{ slug: 'project:viewer', displayName: 'Viewer', licensed: false },
-];
+] as AllRolesMap['project'];
 
 const mockData = {
 	items: mockMembers,
