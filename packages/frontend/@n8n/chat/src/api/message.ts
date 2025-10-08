@@ -156,17 +156,14 @@ export async function sendMessageStreaming(
 					// Format tool data for display in chat
 					let toolContent: string;
 					if (typeof value.content === 'object' && value.content !== null) {
-						// Type guard function to check if the content is a tool data object
-						const isToolData = (obj: unknown): obj is { name?: string; toolData?: unknown } => {
-							return typeof obj === 'object' && obj !== null;
-						};
-
-						const content = value.content as unknown; // Cast to unknown first, then use type guard
-						if (isToolData(content)) {
-							const name = typeof content.name === 'string' ? content.name : 'Tool';
-							const data = content.toolData !== undefined ? content.toolData : content;
+						// Handle object content (tool data)
+						try {
+							// Parse the object content safely
+							const contentObj = value.content as Record<string, unknown>;
+							const name = typeof contentObj.name === 'string' ? contentObj.name : 'Tool';
+							const data = contentObj.toolData !== undefined ? contentObj.toolData : contentObj;
 							toolContent = `${name}: ${JSON.stringify(data, null, 2)}`;
-						} else {
+						} catch {
 							toolContent = `Tool: ${JSON.stringify(value.content, null, 2)}`;
 						}
 					} else {
