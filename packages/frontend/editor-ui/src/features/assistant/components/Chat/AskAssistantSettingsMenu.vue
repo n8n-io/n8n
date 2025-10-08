@@ -14,11 +14,13 @@ import { useCssVar } from '@vueuse/core';
 import { type CheckboxValueType } from 'element-plus';
 import type { IAiAssistantUserSettings } from 'n8n-workflow';
 import { ref, computed } from 'vue';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 
 const i18n = useI18n();
 const toast = useToast();
 
 const usersStore = useUsersStore();
+const assistantStore = useAssistantStore();
 
 const zIndex = useCssVar('--z-index-ask-assistant-chat');
 const isOpen = ref(false);
@@ -65,6 +67,7 @@ const onSaveClick = async () => {
 			},
 		});
 		isOpen.value = false;
+		assistantStore.workflowDataStale = true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('aiAssistant.privacySettings.save.error'));
 	} finally {
