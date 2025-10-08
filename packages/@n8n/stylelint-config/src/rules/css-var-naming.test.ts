@@ -1,5 +1,4 @@
 import { lint } from 'stylelint';
-import type { LinterResult } from 'stylelint';
 import plugin from './css-var-naming';
 
 const config = {
