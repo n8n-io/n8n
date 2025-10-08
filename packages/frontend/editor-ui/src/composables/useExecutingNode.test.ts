@@ -3,13 +3,13 @@ import { useExecutingNode } from './useExecutingNode';
 describe('useExecutingNode composable', () => {
 	it('should initialize with an empty executingNode queue', () => {
 		const { executingNode } = useExecutingNode();
-		expect(executingNode).toEqual([]);
+		expect(executingNode.value).toEqual([]);
 	});
 
 	it('should add a node to the executing queue', () => {
 		const { executingNode, addExecutingNode } = useExecutingNode();
 		addExecutingNode('node1');
-		expect(executingNode).toEqual(['node1']);
+		expect(executingNode.value).toEqual(['node1']);
 	});
 
 	it('should remove an executing node from the queue (removes one occurrence at a time)', () => {
@@ -22,7 +22,7 @@ describe('useExecutingNode composable', () => {
 
 		// After removal, only the first occurrence of "node1" should be removed.
 		removeExecutingNode('node1');
-		expect(executingNode).toEqual(['node2', 'node1']);
+		expect(executingNode.value).toEqual(['node2', 'node1']);
 	});
 
 	it('should not remove a node that does not exist', () => {
@@ -31,7 +31,7 @@ describe('useExecutingNode composable', () => {
 		// Manually set the state for testing.
 		executingNode.value = ['node1'];
 		removeExecutingNode('node2'); // Trying to remove a non-existent node.
-		expect(executingNode).toEqual(['node1']);
+		expect(executingNode.value).toEqual(['node1']);
 	});
 
 	it('should return true if a node is executing', () => {
@@ -49,8 +49,8 @@ describe('useExecutingNode composable', () => {
 		const { executingNode, addExecutingNode, clearNodeExecutionQueue } = useExecutingNode();
 		addExecutingNode('node1');
 		addExecutingNode('node2');
-		expect(executingNode).toEqual(['node1', 'node2']);
+		expect(executingNode.value).toEqual(['node1', 'node2']);
 		clearNodeExecutionQueue();
-		expect(executingNode).toEqual([]);
+		expect(executingNode.value).toEqual([]);
 	});
 });
