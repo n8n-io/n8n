@@ -151,7 +151,7 @@ watch(mergedCredentials, async (credentials) => {
 	const models = await chatStore.fetchChatModels(credentials);
 	const selected = selectedModel.value;
 
-	if (selected === null || modelsResponseContains(models, selected)) {
+	if (selected === null || !modelsResponseContains(models, selected)) {
 		selectedModel.value = findOneFromModelsResponse(models) ?? null;
 	}
 });
