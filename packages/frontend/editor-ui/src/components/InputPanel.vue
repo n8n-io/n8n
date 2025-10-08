@@ -199,12 +199,12 @@ const isExecutingPrevious = computed(() => {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
-	const executingNode = workflowState.executingNodes.executingNode;
+	const executingNode = workflowState.executingNode.executingNode;
 
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		workflowState.executingNodes.isNodeExecuting(props.currentNodeName)
+		workflowState.executingNode.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
@@ -212,7 +212,7 @@ const isExecutingPrevious = computed(() => {
 	if (executingNode.length || triggeredNode) {
 		return !!parentNodes.value.find(
 			(node) =>
-				workflowState.executingNodes.isNodeExecuting(node.name) || node.name === triggeredNode,
+				workflowState.executingNode.isNodeExecuting(node.name) || node.name === triggeredNode,
 		);
 	}
 	return false;

@@ -329,7 +329,7 @@ export function useCanvasMapping({
 
 	const nodeExecutionRunningById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
-			acc[node.id] = workflowState.executingNodes.isNodeExecuting(node.name);
+			acc[node.id] = workflowState.executingNode.isNodeExecuting(node.name);
 			return acc;
 		}, {}),
 	);
@@ -337,8 +337,8 @@ export function useCanvasMapping({
 	const nodeExecutionWaitingForNextById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			acc[node.id] =
-				node.name === workflowState.executingNodes.lastAddedExecutingNode &&
-				workflowState.executingNodes.executingNode.length === 0 &&
+				node.name === workflowState.executingNode.lastAddedExecutingNode &&
+				workflowState.executingNode.executingNode.length === 0 &&
 				workflowsStore.isWorkflowRunning;
 
 			return acc;

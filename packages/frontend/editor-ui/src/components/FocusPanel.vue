@@ -230,7 +230,7 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 });
 
 const isNodeExecuting = computed(() =>
-	workflowState.executingNodes.isNodeExecuting(node.value?.name ?? ''),
+	workflowState.executingNode.isNodeExecuting(node.value?.name ?? ''),
 );
 
 const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));

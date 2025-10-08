@@ -11,6 +11,6 @@ export async function nodeExecuteBefore(
 ) {
 	const workflowsStore = useWorkflowsStore();
 
-	workflowState.executingNodes.addExecutingNode(data.nodeName);
+	workflowState.executingNode.addExecutingNode(data.nodeName);
 	workflowsStore.addNodeExecutionStartedData(data);
 }

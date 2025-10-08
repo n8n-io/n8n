@@ -51,7 +51,7 @@ export async function nodeExecuteAfter(
 	};
 
 	workflowsStore.updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
-	workflowState.executingNodes.removeExecutingNode(pushData.nodeName);
+	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);
 }

@@ -146,7 +146,7 @@ const isNodeRunning = computed(() => {
 	return (
 		workflowRunning.value &&
 		!!node.value &&
-		workflowState.executingNodes.isNodeExecuting(node.value.name)
+		workflowState.executingNode.isNodeExecuting(node.value.name)
 	);
 });
 

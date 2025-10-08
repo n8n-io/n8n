@@ -153,7 +153,7 @@ export function useWorkflowState() {
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
 		setActiveExecutionId(undefined);
-		workflowStateStore.executingNodes.clearNodeExecutionQueue();
+		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		ws.executionWaitingForWebhook = false;
 		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
@@ -214,7 +214,7 @@ export function useWorkflowState() {
 		markExecutionAsStopped,
 
 		// reexport
-		executingNodes: workflowStateStore.executingNode,
+		executingNode: workflowStateStore.executingNode,
 	};
 }
 

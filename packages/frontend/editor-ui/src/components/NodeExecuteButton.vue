@@ -104,7 +104,7 @@ const isNodeRunning = computed(() => {
 	if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
 	const triggeredNode = workflowsStore.executedNode;
 	return (
-		workflowState.executingNodes.isNodeExecuting(node.value?.name ?? '') ||
+		workflowState.executingNode.isNodeExecuting(node.value?.name ?? '') ||
 		triggeredNode === node.value?.name
 	);
 });

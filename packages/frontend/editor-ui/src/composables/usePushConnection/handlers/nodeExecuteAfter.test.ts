@@ -49,8 +49,8 @@ describe('nodeExecuteAfter', () => {
 		await nodeExecuteAfter(event, mockOptions);
 
 		expect(workflowsStore.updateNodeExecutionStatus).toHaveBeenCalledTimes(1);
-		expect(mockOptions.workflowState.executingNodes.removeExecutingNode).toHaveBeenCalledTimes(1);
-		expect(mockOptions.workflowState.executingNodes.removeExecutingNode).toHaveBeenCalledWith(
+		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
+		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
 		);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);

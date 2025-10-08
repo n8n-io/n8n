@@ -205,7 +205,7 @@ describe('NodeExecuteButton', () => {
 	it('displays "Stop Listening" when node is running and is a trigger node', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		workflowsStore.getNodeByName.mockReturnValue(node);
-		workflowState.executingNodes.isNodeExecuting = vi.fn().mockReturnValue(true);
+		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
 		workflowsStore.isWorkflowRunning = true;
 
@@ -216,7 +216,7 @@ describe('NodeExecuteButton', () => {
 	it('sets button to loading state when node is executing', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		workflowsStore.getNodeByName.mockReturnValue(node);
-		workflowState.executingNodes.isNodeExecuting = vi.fn().mockReturnValue(true);
+		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		workflowsStore.isWorkflowRunning = true;
 
 		const { getByRole } = renderComponent();
@@ -242,7 +242,7 @@ describe('NodeExecuteButton', () => {
 
 	it('should be disabled when workflow is running but node is not executing', async () => {
 		workflowsStore.isWorkflowRunning = true;
-		workflowState.executingNodes.isNodeExecuting = vi.fn().mockReturnValue(false);
+		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(false);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
@@ -294,7 +294,7 @@ describe('NodeExecuteButton', () => {
 		workflowsStore.isWorkflowRunning = true;
 		nodeTypesStore.isTriggerNode = () => true;
 		useWorkflowState().setActiveExecutionId('test-execution-id');
-		workflowState.executingNodes.isNodeExecuting = vi.fn().mockReturnValue(true);
+		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);

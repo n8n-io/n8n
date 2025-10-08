@@ -53,7 +53,7 @@ export async function executionFinished(
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 
-	options.workflowState.executingNodes.lastAddedExecutingNode = null;
+	options.workflowState.executingNode.lastAddedExecutingNode = null;
 
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
@@ -426,7 +426,7 @@ export function setRunExecutionData(
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 
 	// @TODO(ckolb): Should this call `clearNodeExecutionQueue` instead?
-	workflowState.executingNodes.executingNode.length = 0;
+	workflowState.executingNode.executingNode.length = 0;
 
 	if (workflowExecution === null) {
 		return;
