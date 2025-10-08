@@ -224,7 +224,7 @@ async function processEventStream(
 				// Capture tool execution results and match with action
 				if (event.data) {
 					const toolData = event.data as { output?: string };
-					const toolContent = { name: event.name, toolData: toolData.output || '{}' };
+					const toolContent = { name: event.name, toolData: toolData.output ?? '{}' };
 					// Stream the final tool result
 					if (enableStreamingToolCalls) {
 						ctx.sendChunk('tool', itemIndex, toolContent);
