@@ -311,12 +311,6 @@ export class ChatHubService {
 	}
 
 	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
-		const providerNodeTypeMap: Record<ChatHubProvider, string> = {
-			openai: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			google: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			anthropic: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-		};
-
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
 			{
@@ -344,18 +338,7 @@ export class ChatHubService {
 				id: uuidv4(),
 				name: 'AI Agent',
 			},
-			{
-				parameters: {
-					model: { __rl: true, mode: 'list', value: payload.model.model },
-					options: {},
-				},
-				type: providerNodeTypeMap[payload.model.provider],
-				typeVersion: 1.2,
-				position: [80, 200],
-				id: uuidv4(),
-				name: 'Chat Model',
-				credentials: payload.credentials,
-			},
+			this.createModelNode(payload),
 		];
 
 		const connections: IConnections = {
@@ -446,5 +429,52 @@ export class ChatHubService {
 
 		res.on('close', onClose);
 		res.on('error', onClose);
+	}
+
+	private createModelNode(payload: ChatPayloadWithCredentials): INode {
+		const common = {
+			position: [80, 200] as [number, number],
+			id: uuidv4(),
+			name: 'Chat Model',
+			credentials: payload.credentials,
+		};
+
+		switch (payload.model.provider) {
+			case 'openai':
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'list', value: payload.model.model },
+						options: {},
+					},
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+				};
+			case 'anthropic':
+				return {
+					...common,
+					parameters: {
+						model: {
+							__rl: true,
+							mode: 'list',
+							value: payload.model.model,
+							cachedResultName: payload.model.model,
+						},
+						options: {},
+					},
+					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+					typeVersion: 1.3,
+				};
+			case 'google':
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'list', value: payload.model.model },
+						options: {},
+					},
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1.2,
+				};
+		}
 	}
 }
