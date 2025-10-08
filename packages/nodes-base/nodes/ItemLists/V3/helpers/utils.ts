@@ -23,7 +23,7 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 	);
 };
 
-const returnRegExp = /\breturn\b/g;
+const returnRegExp = /\breturn\b/;
 
 export function sortByCode(
 	this: IExecuteFunctions,
