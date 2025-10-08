@@ -91,6 +91,7 @@ const scrollRight = () => scroll(50);
 				v-for="option in options"
 				:id="option.value.toString()"
 				:key="option.value"
+				:data-test-id="`tab-${option.value.toString()}`"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
@@ -134,7 +135,6 @@ const scrollRight = () => scroll(50);
 							[$style.noText]: !option.label,
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
-						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
 						<N8nIcon
