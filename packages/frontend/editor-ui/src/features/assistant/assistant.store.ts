@@ -506,6 +506,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
 			context.node,
+			{
+				allowSendingParameters: currentUserPreferences?.value?.allowAssistantToSendParameterValues,
+			},
 		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
@@ -519,10 +522,17 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			error: context.error,
-			node: assistantHelpers.processNodeForAssistant(context.node, [
-				'position',
-				'parameters.notice',
-			]),
+			node: assistantHelpers.processNodeForAssistant(
+				context.node,
+				['position', 'parameters.notice'],
+				{
+					// TODO: Get these types in line
+					allowSendingParameters:
+						currentUserPreferences?.value?.allowAssistantToSendParameterValues,
+					allowSendingResolvedExpressions:
+						currentUserPreferences?.value?.allowAssistantToSendExpressions,
+				},
+			),
 			nodeInputData,
 			executionSchema: schemas,
 			authType,
@@ -876,5 +886,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		initCredHelp,
 		isCredTypeActive,
 		handleServiceError,
+		workflowDataStale,
 	};
 });
