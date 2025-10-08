@@ -195,10 +195,6 @@ const selectItem = (item: CommandBarItem) => {
 		void item.handler();
 	}
 
-	if (item.href) {
-		window.location.href = item.href;
-	}
-
 	closeCommandBar();
 };
 

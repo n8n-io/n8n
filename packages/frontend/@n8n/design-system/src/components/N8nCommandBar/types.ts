@@ -7,7 +7,6 @@ export interface CommandBarItem {
 	section?: string;
 	keywords?: string[];
 	handler?: () => void | Promise<void>;
-	href?: string;
 	children?: CommandBarItem[];
 	placeholder?: string;
 	hasMoreChildren?: boolean;
