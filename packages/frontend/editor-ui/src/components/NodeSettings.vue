@@ -652,7 +652,7 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 		</div>
 		<NodeSettingsHeader
-			v-else-if="node"
+			v-else-if="node && nodeValid"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"

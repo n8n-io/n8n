@@ -321,16 +321,11 @@ const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
 
 const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
 
-const hasInputPanel = computed(
-	() => !!activeNodeType.value && (!isTriggerNode.value || showTriggerPanel.value),
-);
-const hasOutputPanel = computed(() => !!activeNodeType.value);
+const hasInputPanel = computed(() => !isTriggerNode.value || showTriggerPanel.value);
 
 const supportedResizeDirections = computed<Array<'left' | 'right'>>(() =>
 	hasInputPanel.value ? ['left', 'right'] : ['right'],
 );
-
-const shouldShowResizeWrapper = computed(() => hasInputPanel.value || hasOutputPanel.value);
 
 const nodeSettingsProps = computed(() => ({
 	eventBus: settingsEventBus,
@@ -790,7 +785,6 @@ onBeforeUnmount(() => {
 					</div>
 
 					<N8nResizeWrapper
-						v-if="shouldShowResizeWrapper"
 						:width="panelWidthPixels.main"
 						:min-width="260"
 						:supported-directions="supportedResizeDirections"
@@ -823,20 +817,8 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</N8nResizeWrapper>
-					<div v-else ref="mainPanelRef" :class="$style.main">
-						<NodeSettings
-							v-bind="nodeSettingsProps"
-							:class="$style.settings"
-							@execute="onNodeExecute"
-							@stop-execution="onStopExecution"
-							@activate="onWorkflowActivate"
-							@switch-selected-node="onSwitchSelectedNode"
-							@open-connection-node-creator="onOpenConnectionNodeCreator"
-						/>
-					</div>
 
 					<div
-						v-if="hasOutputPanel"
 						:class="[$style.column, $style.dataColumn]"
 						:style="{ width: `${panelWidthPercentage.right}%` }"
 					>
