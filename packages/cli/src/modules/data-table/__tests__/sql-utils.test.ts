@@ -1,6 +1,198 @@
-import { addColumnQuery, deleteColumnQuery } from '../utils/sql-utils';
+import type { DataTableColumnType } from 'n8n-workflow';
+
+import type { DataTableColumn } from '../data-table-column.entity';
+import { addColumnQuery, deleteColumnQuery, normalizeRows } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
+	describe('normalizeRows', () => {
+		const createColumn = (name: string, type: DataTableColumnType): DataTableColumn =>
+			({
+				id: '1',
+				name,
+				type,
+				dataTableId: 'test-table',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}) as DataTableColumn;
+
+		it('should normalize boolean values from numbers', () => {
+			const columns = [createColumn('active', 'boolean')];
+			const rows = [
+				{ id: 1, active: 1, createdAt: new Date(), updatedAt: new Date() },
+				{ id: 2, active: 0, createdAt: new Date(), updatedAt: new Date() },
+			];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].active).toEqual(true);
+			expect(result[1].active).toEqual(false);
+		});
+
+		it('should normalize boolean values from strings', () => {
+			const columns = [createColumn('active', 'boolean')];
+			const rows = [
+				{ id: 1, active: '1', createdAt: new Date(), updatedAt: new Date() },
+				{ id: 2, active: '0', createdAt: new Date(), updatedAt: new Date() },
+			];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].active).toEqual(true);
+			expect(result[1].active).toEqual(false);
+		});
+
+		it('should keep boolean values as-is when already boolean', () => {
+			const columns = [createColumn('active', 'boolean')];
+			const rows = [
+				{ id: 1, active: true, createdAt: new Date(), updatedAt: new Date() },
+				{ id: 2, active: false, createdAt: new Date(), updatedAt: new Date() },
+			];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].active).toEqual(true);
+			expect(result[1].active).toEqual(false);
+		});
+
+		it('should keep date values unchanged for Date objects', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const testDate = new Date('2024-01-15T10:30:00Z');
+			const rows = [{ id: 1, birthday: testDate, createdAt: new Date(), updatedAt: new Date() }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toEqual(testDate);
+		});
+
+		it('should normalize date values from ISO strings', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const dateString = '2024-01-15T10:30:00Z';
+			const rows = [{ id: 1, birthday: dateString, createdAt: dateString, updatedAt: dateString }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toEqual(new Date(dateString));
+			expect(result[0].createdAt).toEqual(new Date(dateString));
+			expect(result[0].updatedAt).toEqual(new Date(dateString));
+		});
+
+		it('should normalize date values from strings of sqlite format', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const dateString = '2024-01-15 10:30:00';
+			const rows = [{ id: 1, birthday: dateString, createdAt: dateString, updatedAt: dateString }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toEqual(new Date('2024-01-15T10:30:00Z'));
+			expect(result[0].createdAt).toEqual(new Date('2024-01-15T10:30:00Z'));
+			expect(result[0].updatedAt).toEqual(new Date('2024-01-15T10:30:00Z'));
+		});
+
+		it('should normalize date values from timestamps', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const timestamp = 1705318200000; // 2024-01-15T10:30:00Z
+			const rows = [{ id: 1, birthday: timestamp, createdAt: timestamp, updatedAt: timestamp }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toEqual(new Date(timestamp));
+			expect(result[0].createdAt).toEqual(new Date(timestamp));
+			expect(result[0].updatedAt).toEqual(new Date(timestamp));
+		});
+
+		it('should handle invalid date strings gracefully', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const rows = [
+				{ id: 1, birthday: 'not-a-date', createdAt: new Date(), updatedAt: new Date() },
+			];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toBe('not-a-date');
+		});
+
+		it('should handle null date values', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const rows = [{ id: 1, birthday: null, createdAt: new Date(), updatedAt: new Date() }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toBeNull();
+		});
+
+		it('should handle multiple rows', () => {
+			const columns = [
+				createColumn('name', 'string'),
+				createColumn('age', 'number'),
+				createColumn('active', 'boolean'),
+			];
+			const date = new Date();
+			const rows = [
+				{
+					id: 1,
+					name: 'John Doe',
+					age: 30,
+					active: 1,
+					createdAt: date,
+					updatedAt: date,
+				},
+				{
+					id: 2,
+					name: 'Jane Doe',
+					age: 25,
+					active: 0,
+					createdAt: date,
+					updatedAt: date,
+				},
+				{
+					id: 3,
+					name: 'Jim Doe',
+					age: 35,
+					active: true,
+					createdAt: date,
+					updatedAt: date,
+				},
+			];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result).toEqual([
+				{
+					id: 1,
+					active: true,
+					age: 30,
+					name: 'John Doe',
+					createdAt: date,
+					updatedAt: date,
+				},
+				{
+					id: 2,
+					active: false,
+					age: 25,
+					name: 'Jane Doe',
+					createdAt: date,
+					updatedAt: date,
+				},
+				{
+					id: 3,
+					active: true,
+					age: 35,
+					name: 'Jim Doe',
+					createdAt: date,
+					updatedAt: date,
+				},
+			]);
+		});
+
+		it('should handle empty rows array', () => {
+			const columns = [createColumn('active', 'boolean')];
+
+			const result = normalizeRows([], columns);
+
+			expect(result).toEqual([]);
+		});
+	});
+
 	describe('addColumnQuery', () => {
 		it('should generate a valid SQL query for adding columns to a table, sqlite', () => {
 			const tableName = 'data_table_user_abc';
