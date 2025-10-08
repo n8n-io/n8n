@@ -334,6 +334,7 @@ const properties: INodeProperties[] = [
 ];
 
 interface MessageOptions {
+	system?: string;
 	temperature?: number;
 	top_p?: number;
 	top_k?: number;
@@ -355,6 +356,8 @@ interface MessageOptions {
 	use_mlock?: boolean;
 	use_mmap?: boolean;
 	vocab_only?: boolean;
+	format?: string;
+	keep_alive?: string;
 }
 
 const displayOptions = {
