@@ -152,7 +152,33 @@ export async function sendMessageStreaming(
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'tool':
-					// Not outputting tool calls on purpose.
+					// Format tool data for display in chat
+					let toolContent: string;
+					// Type guard for tool content object
+					const isToolContentObject = (
+						content: unknown,
+					): content is { name: unknown; toolData: unknown } => {
+						return (
+							typeof content === 'object' &&
+							content !== null &&
+							'name' in content &&
+							'toolData' in content
+						);
+					};
+					if (isToolContentObject(value.content)) {
+						// Handle object content (tool data)
+						try {
+							const name = typeof value.content.name === 'string' ? value.content.name : 'Tool';
+							const data =
+								value.content.toolData !== undefined ? value.content.toolData : value.content;
+							toolContent = `${name}: ${JSON.stringify(data, null, 2)}`;
+						} catch {
+							toolContent = `Tool: ${JSON.stringify(value.content, null, 2)}`;
+						}
+					} else {
+						toolContent = `Tool: ${value.content ?? 'No data'}`;
+					}
+					handlers.onChunk(toolContent, nodeId, runIndex);
 					break;
 				case 'end':
 					handlers.onEndMessage(nodeId, runIndex);
