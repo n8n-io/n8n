@@ -39,7 +39,10 @@ export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 /**
  * Response type for fetching available chat models
  */
-export type ChatModelsResponse = ChatHubConversationModel[];
+export type ChatModelsResponse = Record<
+	ChatHubProvider,
+	{ models: Array<{ name: string }>; error?: string }
+>;
 
 export const chatHubSendMessageRequestSchema = z.object({
 	messageId: z.string().uuid(),

@@ -6,12 +6,13 @@ import {
 	type ChatHubConversationModel,
 	type ChatHubProvider,
 	chatHubProviderSchema,
+	type ChatModelsResponse,
 } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/chatHub/constants';
 
 const props = defineProps<{
 	disabled?: boolean;
-	models: ChatHubConversationModel[];
+	models: ChatModelsResponse | null;
 	selectedModel: ChatHubConversationModel | null;
 }>();
 
@@ -22,13 +23,18 @@ const emit = defineEmits<{
 
 const menu = computed(() =>
 	chatHubProviderSchema.options.map((provider) => {
-		const modelOptions = props.models
-			.filter((model) => model.provider === provider)
-			.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
-				id: `${model.provider}::${model.model}`,
-				title: model.model,
-				disabled: false,
-			}));
+		const models = props.models?.[provider].models ?? [];
+		const error = props.models?.[provider].error;
+		const modelOptions =
+			models.length > 0
+				? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
+						id: `${provider}::${model.name}`,
+						title: model.name,
+						disabled: false,
+					}))
+				: error
+					? [{ id: `${provider}::error`, disabled: true, title: error }]
+					: [];
 
 		return {
 			id: provider,
@@ -55,25 +61,21 @@ function onSelect(id: string) {
 	const [provider, model] = id.split('::');
 	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
 
-	if (model === 'configure' && parsedProvider) {
+	if (!parsedProvider) {
+		return;
+	}
+
+	if (model === 'configure') {
 		emit('configure', parsedProvider);
 		return;
 	}
 
-	const selectedModel = props.models.find((m) => m.provider === provider && m.model === model);
-
-	if (selectedModel) {
-		emit('change', selectedModel);
-	}
+	emit('change', { provider: parsedProvider, model });
 }
 </script>
 
 <template>
-	<N8nNavigationDropdown
-		:menu="menu"
-		:disabled="disabled || models.length === 0"
-		@select="onSelect"
-	>
+	<N8nNavigationDropdown :menu="menu" :disabled="disabled" @select="onSelect">
 		<N8nButton :class="$style.dropdownButton" type="secondary">
 			<span>{{ selectedLabel }}</span>
 			<N8nIcon icon="chevron-down" size="small" />

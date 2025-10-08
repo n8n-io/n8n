@@ -10,6 +10,7 @@ import { providerDisplayNames } from '@/features/chatHub/constants';
 
 const props = defineProps<{
 	provider: ChatHubProvider;
+	initialValue: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -19,7 +20,7 @@ const emit = defineEmits<{
 
 const credentialsStore = useCredentialsStore();
 const modalBus = ref(createEventBus());
-const selectedCredentialId = ref<string>();
+const selectedCredentialId = ref<string | null>(props.initialValue);
 
 const availableCredentials = computed<ICredentialsResponse[]>(() => {
 	return credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[props.provider]);
