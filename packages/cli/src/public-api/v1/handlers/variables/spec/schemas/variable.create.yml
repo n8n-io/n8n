@@ -15,14 +15,7 @@ properties:
   type:
     type: string
     readOnly: true
-  project:
-    type: object
-    properties:
-      id:
-        type: string
-        readOnly: true
-      name:
-        type: string
-      type:
-        type: string
-        readOnly: true
+  projectId:
+    type: string
+    example: VmwOO9HeTEj20kxM
+    nullable: true
