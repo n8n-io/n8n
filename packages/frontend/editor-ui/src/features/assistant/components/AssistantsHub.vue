@@ -7,6 +7,9 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
+import { useRoute } from 'vue-router';
+import { BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
+import type { VIEWS } from '@/constants';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/assistant/components/HubSwitcher.vue';
@@ -14,12 +17,23 @@ import HubSwitcher from '@/features/assistant/components/HubSwitcher.vue';
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
+const route = useRoute();
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
 const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
 const chatWidth = computed(() => chatPanelStore.width);
+
+// Show toggle only when both modes are available in current view
+const canToggleModes = computed(() => {
+	const currentRoute = route?.name;
+	return (
+		builderStore.isAIBuilderEnabled &&
+		currentRoute &&
+		BUILDER_ENABLED_VIEWS.includes(currentRoute as VIEWS)
+	);
+});
 
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
@@ -102,13 +116,13 @@ onBeforeUnmount(() => {
 			<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
 				<div :class="$style.assistantContent">
 					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
-						<template #header>
+						<template v-if="canToggleModes" #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>
 					</AskAssistantBuild>
 					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
-						<!-- Header switcher is only visible when AIBuilder is enabled -->
-						<template v-if="builderStore.isAIBuilderEnabled" #header>
+						<!-- Header switcher is only visible when both modes are available in current view -->
+						<template v-if="canToggleModes" #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>
 					</AskAssistantChat>
