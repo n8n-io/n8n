@@ -1,4 +1,4 @@
-import { ApplicationError, jsonParse, isCommunityPackageName } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
@@ -36,9 +36,13 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		const { nodes, credentials } = n8n;
 
+		const packageVersion = !['n8n-nodes-base', '@n8n/n8n-nodes-langchain'].includes(name)
+			? version
+			: undefined;
+
 		if (Array.isArray(nodes)) {
 			for (const nodePath of nodes) {
-				this.loadNodeFromFile(nodePath, isCommunityPackageName(name) ? version : undefined);
+				this.loadNodeFromFile(nodePath, packageVersion);
 			}
 		}
 
