@@ -20,9 +20,10 @@ export const MAX_PARAMETER_VALUE_LENGTH = 30_000;
 /**
  * Token threshold for automatically compacting conversation history.
  * When conversation exceeds this limit, older messages are summarized to free up space.
- * Set to 180k tokens to allow cache buildup before triggering compaction.
+ * Set to 150k tokens to provide a safety margin before hitting the MAX_INPUT_TOKENS limit (179k).
+ * This includes all token types: input, output, cache_creation, and cache_read tokens.
  */
-export const DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS = MAX_TOTAL_TOKENS - 20_000;
+export const DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS = 150_000;
 
 /**
  * Maximum token count for workflow JSON after trimming.

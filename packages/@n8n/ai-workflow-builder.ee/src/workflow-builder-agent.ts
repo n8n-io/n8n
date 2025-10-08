@@ -225,6 +225,12 @@ export class WorkflowBuilderAgent {
 
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
+			this.logger?.debug('Token estimation before LLM call', {
+				estimatedTokens,
+				maxInputTokens: MAX_INPUT_TOKENS,
+				messagesCount: prompt.messages.length,
+			});
+
 			if (estimatedTokens > MAX_INPUT_TOKENS) {
 				throw new WorkflowStateError(
 					'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.',
@@ -233,26 +239,59 @@ export class WorkflowBuilderAgent {
 
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
+			// Log actual token usage from API response
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const actualTokenUsage = response.response_metadata?.usage;
+			if (actualTokenUsage) {
+				this.logger?.debug('Actual token usage from LLM API', {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					inputTokens: actualTokenUsage.input_tokens,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					outputTokens: actualTokenUsage.output_tokens,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					cacheCreationInputTokens: actualTokenUsage.cache_creation_input_tokens,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					cacheReadInputTokens: actualTokenUsage.cache_read_input_tokens,
+				});
+			} else {
+				this.logger?.debug('No token usage metadata in LLM response');
+			}
+
 			return { messages: [response] };
 		};
 
 		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
-			const tokenUsage = extractLastTokenUsage(messages);
+			// Estimate the current conversation size by counting tokens in all messages
+			// This is more accurate than using the last API call's token usage,
+			// because the conversation may have grown since the last call
+			const estimatedTokens = estimateTokenCountFromMessages(messages);
 
-			if (!tokenUsage) {
-				this.logger?.debug('No token usage metadata found');
-				return false;
-			}
+			// Also log the last API call's token usage for comparison
+			const lastTokenUsage = extractLastTokenUsage(messages);
 
-			const tokensUsed = tokenUsage.input_tokens + tokenUsage.output_tokens;
+			const shouldCompact = estimatedTokens > this.autoCompactThresholdTokens;
 
-			this.logger?.debug('Token usage', {
-				inputTokens: tokenUsage.input_tokens,
-				outputTokens: tokenUsage.output_tokens,
-				totalTokens: tokensUsed,
+			this.logger?.debug('Auto-compact threshold check', {
+				estimatedCurrentTokens: estimatedTokens,
+				lastApiCallTokens: lastTokenUsage
+					? {
+							inputTokens: lastTokenUsage.input_tokens,
+							outputTokens: lastTokenUsage.output_tokens,
+							cacheCreationInputTokens: lastTokenUsage.cache_creation_input_tokens ?? 0,
+							cacheReadInputTokens: lastTokenUsage.cache_read_input_tokens ?? 0,
+							total:
+								lastTokenUsage.input_tokens +
+								lastTokenUsage.output_tokens +
+								(lastTokenUsage.cache_creation_input_tokens ?? 0) +
+								(lastTokenUsage.cache_read_input_tokens ?? 0),
+						}
+					: null,
+				threshold: this.autoCompactThresholdTokens,
+				shouldCompact,
+				decision: shouldCompact ? 'COMPACT' : 'CONTINUE',
 			});
 
-			return tokensUsed > this.autoCompactThresholdTokens;
+			return shouldCompact;
 		};
 
 		const shouldModifyState = (state: typeof WorkflowState.State) => {
@@ -331,8 +370,23 @@ export class WorkflowBuilderAgent {
 			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
-			this.logger?.debug('Compacting conversation history', {
+			// Get current token usage before compacting
+			const currentTokenUsage = extractLastTokenUsage(messages);
+			const estimatedCurrentTokens = estimateTokenCountFromMessages(messages);
+
+			this.logger?.debug('Starting conversation compacting', {
 				isAutoCompact,
+				messagesCount: messages.length,
+				estimatedTokens: estimatedCurrentTokens,
+				lastTokenUsage: currentTokenUsage
+					? {
+							inputTokens: currentTokenUsage.input_tokens,
+							outputTokens: currentTokenUsage.output_tokens,
+							cacheCreationTokens: currentTokenUsage.cache_creation_input_tokens,
+							cacheReadTokens: currentTokenUsage.cache_read_input_tokens,
+						}
+					: null,
+				hasPreviousSummary: !!previousSummary && previousSummary !== 'EMPTY',
 			});
 
 			const compactedMessages = await conversationCompactChain(
@@ -340,6 +394,11 @@ export class WorkflowBuilderAgent {
 				messages,
 				previousSummary,
 			);
+
+			this.logger?.debug('Conversation compacting completed', {
+				summaryLength: compactedMessages.summaryPlain.length,
+				messagesBeforeCompact: messages.length,
+			});
 
 			// The summarized conversation history will become a part of system prompt
 			// and will be used in the next LLM call.
