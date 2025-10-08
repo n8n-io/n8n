@@ -497,6 +497,12 @@ export class Aws implements ICredentialType {
 		const requestWithForm = requestOptions as unknown as { form?: Record<string, string> };
 		let bodyContent = body !== '' ? body : undefined;
 		let contentTypeHeader: string | undefined = undefined;
+
+		// body must be a string or a buffer
+		if (typeof bodyContent === 'object' && bodyContent !== null && !Buffer.isBuffer(bodyContent)) {
+			bodyContent = JSON.stringify(bodyContent);
+		}
+
 		if (requestWithForm.form) {
 			const params = new URLSearchParams();
 			for (const key in requestWithForm.form) {
