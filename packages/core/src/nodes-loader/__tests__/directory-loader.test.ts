@@ -718,7 +718,10 @@ describe('DirectoryLoader', () => {
 
 			loader.loadNodeFromFile(filePath, '1.0.0');
 
-			expect(loader.nodeTypes.node1.type.packageVersion).toBe('1.0.0');
+			expect(
+				(loader.nodeTypes.node1.type.description as INodeTypeDescription)
+					.communityNodePackageVersion,
+			).toBe('1.0.0');
 		});
 
 		it('should update node icon paths', () => {
