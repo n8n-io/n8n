@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, messageChatApi } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import type { ChatHubProvider } from '@n8n/api-types';
 import type {
 	StreamChunk,
 	StreamOutput,
@@ -24,29 +24,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const usersMessages = computed(() => chatMessages.value.filter((msg) => msg.role === 'user'));
 
 	const rootStore = useRootStore();
-	const credentialsStore = useCredentialsStore();
-
-	const availableCredentialTypes = computed(() => {
-		const userCredentials = credentialsStore.allCredentials;
-		return new Set(userCredentials.map((cred) => cred.type));
-	});
-
-	const availableModels = computed(() => {
-		return models.value.filter(isAvailableModel);
-	});
-
-	function isAvailableModel(model: ChatHubConversationModel): boolean {
-		return availableCredentialTypes.value.has(model.credentialType);
-	}
 
 	function setModels(newModels: ChatHubConversationModel[]) {
 		models.value = newModels;
 	}
 
-	async function fetchChatModels() {
+	async function fetchChatModels(credentialMap: Record<ChatHubProvider, string | null>) {
 		loadingModels.value = true;
-		models.value = await fetchChatModelsApi(rootStore.restApiContext);
+		models.value = await fetchChatModelsApi(rootStore.restApiContext, {
+			credentials: credentialMap,
+		});
 		loadingModels.value = false;
+		return models.value;
 	}
 
 	function addUserMessage(content: string, id: string) {
@@ -115,8 +104,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	return {
 		models,
-		availableCredentialTypes,
-		availableModels,
 		loadingModels,
 		setModels,
 		fetchChatModels,
@@ -127,6 +114,5 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		usersMessages,
 		addUserMessage,
 		addAssistantMessages,
-		isAvailableModel,
 	};
 });

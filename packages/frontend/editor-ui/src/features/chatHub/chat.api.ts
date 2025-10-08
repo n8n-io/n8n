@@ -1,10 +1,14 @@
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { StreamOutput, ChatHubConversationModel } from './chat.types';
+import type { ChatModelsRequest, ChatModelsResponse } from '@n8n/api-types';
+import type { StreamOutput } from './chat.types';
 
-export const fetchChatModelsApi = async (context: IRestApiContext) => {
+export const fetchChatModelsApi = async (
+	context: IRestApiContext,
+	payload: ChatModelsRequest,
+): Promise<ChatModelsResponse> => {
 	const apiEndpoint = '/chat/models';
-	return await makeRestApiRequest<ChatHubConversationModel[]>(context, 'GET', apiEndpoint);
+	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
 export const messageChatApi = (

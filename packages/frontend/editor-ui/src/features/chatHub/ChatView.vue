@@ -12,13 +12,20 @@ import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { ChatMessage, Suggestion } from './chat.types';
-import { chatHubConversationModelSchema, type ChatHubConversationModel } from '@n8n/api-types';
+import {
+	chatHubConversationModelSchema,
+	type ChatHubProvider,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubConversationModel,
+	chatHubProviderSchema,
+} from '@n8n/api-types';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import { useLocalStorage } from '@vueuse/core';
 import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
 import { SUGGESTIONS } from '@/features/chatHub/constants';
+import { isSameModel } from '@/features/chatHub/chat.utils';
 
 const chatStore = useChatStore();
 const userStore = useUsersStore();
@@ -29,14 +36,21 @@ onMounted(async () => {
 	await Promise.all([
 		credentialsStore.fetchCredentialTypes(false),
 		credentialsStore.fetchAllCredentials(),
-		chatStore.fetchChatModels(),
 	]);
 
-	if (
-		chatStore.availableModels.length > 0 &&
-		(selectedModel.value === null || !chatStore.isAvailableModel(selectedModel.value))
-	) {
-		selectedModel.value = chatStore.availableModels[0];
+	const models = await chatStore.fetchChatModels(
+		Object.fromEntries(
+			chatHubProviderSchema.options.map((provider) => [
+				provider,
+				credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])[0]?.id ??
+					null,
+			]),
+		) as Record<ChatHubProvider, string | null>,
+	);
+	const selected = selectedModel.value;
+
+	if (selected === null || models.every((model) => !isSameModel(model, selected))) {
+		selectedModel.value = models[0] ?? null;
 	}
 });
 
@@ -65,17 +79,14 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 );
 
 const hasMessages = computed(() => chatStore.chatMessages.length > 0);
-const isModelAvailable = computed(() => {
-	return (
-		selectedModel.value &&
-		chatStore.availableCredentialTypes.has(selectedModel.value.credentialType)
-	);
-});
 const inputPlaceholder = computed(() => {
-	if (!selectedModel.value) return 'Select a model';
-	const modelName = selectedModel.value.displayName || selectedModel.value.model;
-	const hasCredentials = chatStore.availableCredentialTypes.has(selectedModel.value.credentialType);
-	return hasCredentials ? `Message ${modelName}` : `${modelName} - credentials needed`;
+	if (!selectedModel.value) {
+		return 'Select a model';
+	}
+
+	const modelName = selectedModel.value.model;
+
+	return `Message ${modelName}`;
 });
 
 const scrollOnNewMessage = ref(true);
@@ -113,21 +124,10 @@ watch(
 
 function onModelChange(selection: ChatHubConversationModel) {
 	selectedModel.value = selection;
-
-	// If the selected model is not available, open credential modal
-	if (!chatStore.availableCredentialTypes.has(selection.credentialType)) {
-		uiStore.openNewCredential(selection.credentialType);
-	}
 }
 
-function onConfigure(provider: string) {
-	const credentialType = chatStore.models.find(
-		(model) => model.provider === provider,
-	)?.credentialType;
-
-	if (credentialType) {
-		uiStore.openNewCredential(credentialType);
-	}
+function onConfigure(provider: ChatHubProvider) {
+	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
 function onSubmit() {
@@ -178,7 +178,6 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		<ModelSelector
 			:class="$style.modelSelector"
 			:models="chatStore.models"
-			:available-credential-types="chatStore.availableCredentialTypes"
 			:selected-model="selectedModel"
 			:disabled="chatStore.isResponding"
 			@change="onModelChange"
@@ -288,7 +287,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							type="text"
 							:placeholder="inputPlaceholder"
 							autocomplete="off"
-							:disabled="chatStore.isResponding || !isModelAvailable"
+							:disabled="chatStore.isResponding"
 						/>
 
 						<div :class="$style.actions">
@@ -296,7 +295,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 								:class="$style.iconBtn"
 								type="button"
 								title="Attach"
-								:disabled="chatStore.isResponding || !isModelAvailable"
+								:disabled="chatStore.isResponding"
 								@click="onAttach"
 							>
 								<N8nIcon icon="paperclip" width="20" height="20" />
@@ -305,7 +304,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 								:class="$style.iconBtn"
 								type="button"
 								title="Voice"
-								:disabled="chatStore.isResponding || !isModelAvailable"
+								:disabled="chatStore.isResponding"
 								@click="onMic"
 							>
 								<N8nIcon icon="mic" width="20" height="20" />
@@ -313,7 +312,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							<button
 								:class="$style.sendBtn"
 								type="submit"
-								:disabled="chatStore.isResponding || !message.trim() || !isModelAvailable"
+								:disabled="chatStore.isResponding || !message.trim()"
 							>
 								<span v-if="!chatStore.isResponding">Send</span>
 								<span v-else>…</span>

@@ -9,6 +9,12 @@ export type * from './community-node-types';
 export {
 	chatHubConversationModelSchema,
 	type ChatHubConversationModel,
+	chatHubProviderSchema,
+	type ChatHubProvider,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatModelsRequestSchema,
+	type ChatModelsRequest,
+	type ChatModelsResponse,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';

@@ -3,49 +3,38 @@ import { computed } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton } from '@n8n/design-system';
 import type { ChatHubConversationModel } from '../chat.types';
 import { type ComponentProps } from 'vue-component-type-helpers';
+import { type ChatHubProvider, chatHubProviderSchema } from '@n8n/api-types';
 
 const props = defineProps<{
 	disabled?: boolean;
 	models: ChatHubConversationModel[];
-	availableCredentialTypes: Set<string>;
 	selectedModel: ChatHubConversationModel | null;
 }>();
 
 const emit = defineEmits<{
 	change: [ChatHubConversationModel];
-	configure: [provider: string];
+	configure: [ChatHubProvider];
 }>();
 
-function isModelAvailable(model: ChatHubConversationModel): boolean {
-	return props.availableCredentialTypes.has(model.credentialType);
-}
+const providerDisplayNames: Record<ChatHubProvider, string> = {
+	openai: 'Open AI',
+	anthropic: 'Anthropic',
+	google: 'Google',
+};
 
-const menu = computed(() => {
-	const providerMap = new Map<string, ChatHubConversationModel[]>();
-
-	// Group models by provider
-	props.models.forEach((model) => {
-		if (!providerMap.has(model.provider)) {
-			providerMap.set(model.provider, []);
-		}
-		providerMap.get(model.provider)!.push(model);
-	});
-
-	// Build menu structure
-	return Array.from(providerMap.entries()).map(([provider, models]) => {
-		const firstModel = models[0];
-		const modelOptions = models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>(
-			(model) => ({
+const menu = computed(() =>
+	chatHubProviderSchema.options.map((provider) => {
+		const modelOptions = props.models
+			.filter((model) => model.provider === provider)
+			.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
 				id: `${model.provider}::${model.model}`,
-				title: model.displayName ?? model.model,
-				icon: isModelAvailable(model) ? undefined : 'lock',
+				title: model.model,
 				disabled: false,
-			}),
-		);
+			}));
 
 		return {
 			id: provider,
-			title: firstModel.providerDisplayName || provider,
+			title: providerDisplayNames[provider],
 			submenu: modelOptions.concat([
 				...(modelOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
 				{
@@ -55,20 +44,21 @@ const menu = computed(() => {
 				},
 			]),
 		};
-	});
-});
+	}),
+);
 
 const selectedLabel = computed(() => {
 	if (!props.selectedModel) return 'Select model';
-	return props.selectedModel.displayName || props.selectedModel.model;
+	return props.selectedModel.model;
 });
 
 function onSelect(id: string) {
 	// Format is "provider::model"
 	const [provider, model] = id.split('::');
+	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
 
-	if (model === 'configure') {
-		emit('configure', provider);
+	if (model === 'configure' && parsedProvider) {
+		emit('configure', parsedProvider);
 		return;
 	}
 
