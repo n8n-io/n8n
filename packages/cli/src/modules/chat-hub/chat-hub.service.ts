@@ -5,8 +5,6 @@ import {
 	type ChatModelsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OpenAiChatAgent } from '@n8n/chat-hub';
-import { ChatConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	IExecutionResponse,
@@ -30,31 +28,24 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ChatPayloadWithCredentials, type ChatPayload } from './chat-hub.types';
+import type { ChatPayloadWithCredentials } from './chat-hub.types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+
 @Service()
 export class ChatHubService {
-	private agent: OpenAiChatAgent;
-
 	constructor(
 		private readonly logger: Logger,
-		private readonly chatConfig: ChatConfig,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-	) {
-		this.agent = new OpenAiChatAgent({
-			logger: this.logger,
-			apiKey: this.chatConfig.openAiApiKey,
-		});
-	}
+	) {}
 
 	async getModels(
 		userId: string,
@@ -256,10 +247,6 @@ export class ChatHubService {
 				// All providers use 'apiKey' field
 				return typeof creds.apiKey === 'string' ? creds.apiKey : undefined;
 		}
-	}
-
-	async *ask(payload: ChatPayload, abortSignal?: AbortSignal) {
-		yield* this.agent.ask(payload, abortSignal);
 	}
 
 	private async createChatWorkflow(
