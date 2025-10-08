@@ -6,6 +6,7 @@ import {
 	deleteColumnQuery,
 	normalizeRows,
 	normalizeValueForDatabase,
+	toSqliteGlobFromPercent,
 } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
@@ -295,6 +296,43 @@ describe('sql-utils', () => {
 
 				expect(result).toBe('not-a-date');
 			});
+		});
+	});
+
+	describe('toSqliteGlobFromPercent', () => {
+		it('should convert % to *', () => {
+			expect(toSqliteGlobFromPercent('test%')).toBe('test*');
+			expect(toSqliteGlobFromPercent('%test')).toBe('*test');
+			expect(toSqliteGlobFromPercent('%test%')).toBe('*test*');
+		});
+
+		it('should escape [ with [[]', () => {
+			expect(toSqliteGlobFromPercent('test[abc')).toBe('test[[]abc');
+		});
+
+		it('should escape ] with []]', () => {
+			expect(toSqliteGlobFromPercent('test]abc')).toBe('test[]]abc');
+		});
+
+		it('should escape * with [*]', () => {
+			expect(toSqliteGlobFromPercent('test*abc')).toBe('test[*]abc');
+		});
+
+		it('should escape ? with [?]', () => {
+			expect(toSqliteGlobFromPercent('test?abc')).toBe('test[?]abc');
+		});
+
+		it('should handle multiple special characters', () => {
+			expect(toSqliteGlobFromPercent('%test*[abc]?%')).toBe('*test[*][[]abc[]][?]*');
+		});
+
+		it('should handle empty string', () => {
+			expect(toSqliteGlobFromPercent('')).toBe('');
+		});
+
+		it('should keep regular characters unchanged', () => {
+			expect(toSqliteGlobFromPercent('abc123')).toBe('abc123');
+			expect(toSqliteGlobFromPercent('test_value')).toBe('test_value');
 		});
 	});
 });
