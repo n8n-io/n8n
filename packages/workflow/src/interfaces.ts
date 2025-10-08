@@ -1620,6 +1620,10 @@ export interface INodePropertyOptions {
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
+	displayOptions?: IDisplayOptions;
+	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
+	// it needs to be implemented, if needed
+	disabledOptions?: undefined;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2166,6 +2170,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
 	hints?: NodeHint[];
+	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
