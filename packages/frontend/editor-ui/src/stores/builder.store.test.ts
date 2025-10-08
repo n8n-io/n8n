@@ -25,7 +25,11 @@ import {
 } from '@/composables/useWorkflowState';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import {
+	DEFAULT_CHAT_WIDTH,
+	MAX_CHAT_WIDTH,
+	MIN_CHAT_WIDTH,
+} from '@/features/assistant/assistant.store';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import type {} from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
@@ -455,8 +459,26 @@ describe('AI Builder store', () => {
 	});
 
 	describe('isAIBuilderEnabled computed property', () => {
-		it('should return true when release experiment is set to variant', () => {
+		it('should return false when license does not have aiBuilder feature', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			expect(builderStore.isAIBuilderEnabled).toBe(false);
+		});
+
+		it('should return true when license has aiBuilder and release experiment is set to variant', () => {
+			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
@@ -466,8 +488,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 
-		it('should return true when release experiment is control but deprecated experiment is variant', () => {
+		it('should return true when license has aiBuilder and release experiment is control but deprecated experiment is variant', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
@@ -477,8 +502,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 
-		it('should return false when both experiments are set to control', () => {
+		it('should return false when license has aiBuilder but both experiments are set to control', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
@@ -488,8 +516,11 @@ describe('AI Builder store', () => {
 			expect(builderStore.isAIBuilderEnabled).toBe(false);
 		});
 
-		it('should prioritize release experiment over deprecated experiment', () => {
+		it('should prioritize release experiment over deprecated experiment when license has aiBuilder', () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
+
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
 				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
 					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
@@ -696,7 +727,9 @@ describe('AI Builder store', () => {
 			expect(builderStore.chatMessages[0].role).toBe('user');
 			expect(builderStore.chatMessages[1].role).toBe('assistant');
 			expect(builderStore.chatMessages[1].type).toBe('text');
-			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe('[Task aborted]');
+			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
+				'aiAssistant.builder.streamAbortedMessage',
+			);
 
 			// Verify streaming state was reset
 			expect(builderStore.streaming).toBe(false);
@@ -823,7 +856,9 @@ describe('AI Builder store', () => {
 			const assistantMessages = builderStore.chatMessages.filter((msg) => msg.role === 'assistant');
 			expect(assistantMessages).toHaveLength(1);
 			expect(assistantMessages[0].type).toBe('text');
-			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe('[Task aborted]');
+			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe(
+				'aiAssistant.builder.streamAbortedMessage',
+			);
 		});
 	});
 

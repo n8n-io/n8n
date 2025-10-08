@@ -9,7 +9,7 @@ import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet4 } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
@@ -41,7 +41,7 @@ export class AiWorkflowBuilderService {
 		authHeaders?: Record<string, string>;
 		apiKey?: string;
 	} = {}): Promise<ChatAnthropic> {
-		return await anthropicClaudeSonnet4({
+		return await anthropicClaudeSonnet45({
 			baseUrl,
 			apiKey,
 			headers: {

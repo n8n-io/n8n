@@ -231,7 +231,7 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
-		if (lastSelectedNode.value && lastSelectedNode.value.id !== CanvasNodeRenderType.AIPrompt) {
+		if (lastSelectedNode.value) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		}
 	},

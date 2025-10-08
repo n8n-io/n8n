@@ -119,9 +119,9 @@ import { canvasEventBus } from '@/event-bus/canvas';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { useParentFolder } from './useParentFolder';
+import { useParentFolder } from '@/features/folders/composables/useParentFolder';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2282,7 +2282,7 @@ export function useCanvasOperations() {
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? []);
-		await workflowsStore.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
+		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 

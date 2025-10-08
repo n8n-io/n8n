@@ -133,6 +133,9 @@ export interface FrontendSettings {
 	askAi: {
 		enabled: boolean;
 	};
+	aiBuilder: {
+		enabled: boolean;
+	};
 	deployment: {
 		type: string;
 	};

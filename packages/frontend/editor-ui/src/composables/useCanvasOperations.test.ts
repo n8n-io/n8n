@@ -64,7 +64,7 @@ import {
 
 import { TelemetryHelpers } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 
 const mockRoute = reactive({
 	query: {},
@@ -3743,6 +3743,11 @@ describe('useCanvasOperations', () => {
 				},
 			};
 
+			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
+				workflowState,
+				'getNewWorkflowDataAndMakeShareable',
+			);
+
 			const { importTemplate } = useCanvasOperations();
 
 			const templateId = 'template-id';
@@ -3766,7 +3771,7 @@ describe('useCanvasOperations', () => {
 				disabled: false,
 			});
 			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
-			expect(workflowsStore.getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
+			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
 				templateName,
 				projectsStore.currentProjectId,
 			);
@@ -4222,12 +4227,10 @@ describe('useCanvasOperations', () => {
 
 	describe('openWorkflowTemplate', () => {
 		let templatesStore: ReturnType<typeof mockedStore<typeof useTemplatesStore>>;
-		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 		let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 		beforeEach(() => {
 			templatesStore = mockedStore(useTemplatesStore);
-			workflowsStore = mockedStore(useWorkflowsStore);
 			projectsStore = mockedStore(useProjectsStore);
 
 			projectsStore.currentProjectId = 'test-project-id';
@@ -4243,11 +4246,16 @@ describe('useCanvasOperations', () => {
 				workflow: { nodes: [], connections: {} },
 			});
 
+			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
+				workflowState,
+				'getNewWorkflowDataAndMakeShareable',
+			);
+
 			const { openWorkflowTemplate } = useCanvasOperations();
 			await openWorkflowTemplate('template-id');
 
 			expect(templatesStore.getFixedWorkflowTemplate).toHaveBeenCalledWith('template-id');
-			expect(workflowsStore.getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
+			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
 				'Template Name',
 				'test-project-id',
 			);
@@ -4266,12 +4274,10 @@ describe('useCanvasOperations', () => {
 
 	describe('openWorkflowTempalateFromJSON', () => {
 		let router: ReturnType<typeof useRouter>;
-		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 		let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 		beforeEach(() => {
 			router = useRouter();
-			workflowsStore = mockedStore(useWorkflowsStore);
 			projectsStore = mockedStore(useProjectsStore);
 
 			projectsStore.currentProjectId = 'test-project-id';
@@ -4286,10 +4292,15 @@ describe('useCanvasOperations', () => {
 				meta: { templateId: 'template-id' },
 			};
 
+			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
+				workflowState,
+				'getNewWorkflowDataAndMakeShareable',
+			);
+
 			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
 			await openWorkflowTemplateFromJSON(template);
 
-			expect(workflowsStore.getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
+			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
 				'Template Name',
 				'test-project-id',
 			);

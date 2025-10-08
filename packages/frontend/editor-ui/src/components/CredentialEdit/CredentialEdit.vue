@@ -56,10 +56,11 @@ import { useRouter } from 'vue-router';
 import {
 	N8nIconButton,
 	N8nInlineTextEdit,
-	N8nMenu,
+	N8nMenuItem,
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
+
 type Props = {
 	modalName: string;
 	activeId?: string;
@@ -1139,12 +1140,13 @@ const { width } = useElementSize(credNameRef);
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
-					<N8nMenu
-						mode="tabs"
-						:items="sidebarItems"
-						:transparent-background="true"
-						@select="onTabSelect"
-					></N8nMenu>
+					<N8nMenuItem
+						v-for="item in sidebarItems"
+						:item="item"
+						:key="item.id"
+						:active="activeTab === item.id"
+						@click="() => onTabSelect(item.id)"
+					/>
 				</div>
 				<div
 					v-if="activeTab === 'connection' && credentialType"

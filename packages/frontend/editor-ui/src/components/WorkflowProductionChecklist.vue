@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ActionType, WorkflowSettings } from '@/composables/useWorkflowsCache';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
@@ -19,7 +19,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 const props = defineProps<{

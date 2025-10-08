@@ -1,14 +1,36 @@
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WorkflowStateKey } from '@/constants';
-import type { IExecutionResponse } from '@/Interface';
+import {
+	DEFAULT_NEW_WORKFLOW_NAME,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WorkflowStateKey,
+} from '@/constants';
+import type { IExecutionResponse, INewWorkflowData } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import type { IDataObject, IWorkflowSettings } from 'n8n-workflow';
 import { inject } from 'vue';
+import * as workflowsApi from '@/api/workflows';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { isEmpty } from '@/utils/typesUtils';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const uiStore = useUIStore();
+	const rootStore = useRootStore();
+
+	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
+		if (data.setStateDirty) {
+			uiStore.stateIsDirty = true;
+		}
+		ws.workflow.name = data.newName;
+		ws.workflowObject.name = data.newName;
+
+		if (ws.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID && ws.workflowsById[ws.workflow.id]) {
+			ws.workflowsById[ws.workflow.id].name = data.newName;
+		}
+	}
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
 		if (data?.setStateDirty) {
@@ -61,10 +83,6 @@ export function useWorkflowState() {
 		ws.workflowObject.id = ws.workflow.id;
 	}
 
-	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
-		ws.private.setWorkflowName(data);
-	}
-
 	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
 		ws.private.setWorkflowSettings(workflowSettings);
 	}
@@ -75,6 +93,55 @@ export function useWorkflowState() {
 
 	function setActiveExecutionId(id: string | null | undefined) {
 		ws.private.setActiveExecutionId(id);
+	}
+
+	async function getNewWorkflowData(
+		name?: string,
+		projectId?: string,
+		parentFolderId?: string,
+	): Promise<INewWorkflowData> {
+		let workflowData = {
+			name: '',
+			settings: { ...ws.defaults.settings },
+		};
+		try {
+			const data: IDataObject = {
+				name,
+				projectId,
+				parentFolderId,
+			};
+
+			workflowData = await workflowsApi.getNewWorkflow(
+				rootStore.restApiContext,
+				isEmpty(data) ? undefined : data,
+			);
+		} catch (e) {
+			// in case of error, default to original name
+			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
+		}
+
+		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+
+		return workflowData;
+	}
+
+	function makeNewWorkflowShareable() {
+		const { currentProject, personalProject } = useProjectsStore();
+		const homeProject = currentProject ?? personalProject ?? {};
+		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
+
+		ws.workflow.homeProject = homeProject as ProjectSharingData;
+		ws.workflow.scopes = scopes;
+	}
+
+	async function getNewWorkflowDataAndMakeShareable(
+		name?: string,
+		projectId?: string,
+		parentFolderId?: string,
+	): Promise<INewWorkflowData> {
+		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
+		makeNewWorkflowShareable();
+		return workflowData;
 	}
 
 	function resetState() {
@@ -107,6 +174,7 @@ export function useWorkflowState() {
 		setWorkflowSettings,
 		setWorkflowTagIds,
 		setActiveExecutionId,
+		getNewWorkflowDataAndMakeShareable,
 	};
 }
 
@@ -116,7 +184,11 @@ export function injectWorkflowState() {
 	return inject(
 		WorkflowStateKey,
 		() => {
-			console.error('Attempted to inject workflowState outside of NodeView tree');
+			// While we're migrating we're happy to fall back onto a separate instance since
+			// all data is still stored in the workflowsStore
+			// Once we're ready to move the actual refs to `useWorkflowState` we should error here
+			// to track down remaining usages that would break
+			// console.error('Attempted to inject workflowState outside of NodeView tree');
 			return useWorkflowState();
 		},
 		true,

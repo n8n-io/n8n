@@ -873,6 +873,7 @@ onBeforeUnmount(() => {
 	padding: 0;
 	margin: 0;
 	display: flex;
+	outline: none;
 }
 
 .container {
@@ -933,7 +934,7 @@ onBeforeUnmount(() => {
 }
 
 .draggable {
-	--draggable-height: 22px;
+	--draggable-height: 18px;
 	position: absolute;
 	top: calc(-1 * var(--draggable-height));
 	left: 50%;

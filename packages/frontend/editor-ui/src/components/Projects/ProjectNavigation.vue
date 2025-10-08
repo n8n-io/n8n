@@ -9,8 +9,8 @@ import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount } from 'vue';
 
-import { ElMenu } from 'element-plus';
-import { N8nButton, N8nMenuItem, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nMenuItem, N8nTooltip, N8nHeading } from '@n8n/design-system';
+
 type Props = {
 	collapsed: boolean;
 	planName?: string;
@@ -93,20 +93,18 @@ onBeforeMount(async () => {
 
 <template>
 	<div :class="$style.projects">
-		<ElMenu :collapse="props.collapsed" class="home">
+		<div class="home">
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
+				:active="activeTabId === 'home'"
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 				:item="personalProject"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
+				:active="activeTabId === personalProject.id"
 				data-test-id="project-personal-menu-item"
 			/>
 			<N8nMenuItem
@@ -116,17 +114,17 @@ onBeforeMount(async () => {
 				"
 				:item="shared"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
+				:active="activeTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
 			/>
-		</ElMenu>
-		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
-		<N8nText
+		</div>
+		<N8nHeading
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
 			:class="[$style.projectsLabel]"
-			tag="h3"
 			bold
+			size="small"
+			color="text-light"
+			tag="h3"
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
 			<N8nTooltip
@@ -144,10 +142,9 @@ onBeforeMount(async () => {
 					@click="globalEntityCreation.createProject('add_icon')"
 				/>
 			</N8nTooltip>
-		</N8nText>
-		<ElMenu
+		</N8nHeading>
+		<div
 			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
-			:collapse="props.collapsed"
 			:class="$style.projectItems"
 		>
 			<N8nMenuItem
@@ -158,11 +155,10 @@ onBeforeMount(async () => {
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
+				:active="activeTabId === project.id"
 				data-test-id="project-menu-item"
 			/>
-		</ElMenu>
+		</div>
 		<N8nTooltip
 			v-if="showAddFirstProject"
 			placement="right"
@@ -185,16 +181,12 @@ onBeforeMount(async () => {
 				<span>{{ locale.baseText('projects.menu.addFirstProject') }}</span>
 			</N8nButton>
 		</N8nTooltip>
-		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
 
 <style lang="scss" module>
 .projects {
-	display: grid;
-	grid-auto-rows: auto;
 	width: 100%;
-	overflow: hidden;
 	align-items: start;
 	gap: var(--spacing-3xs);
 	&:hover {
@@ -205,9 +197,7 @@ onBeforeMount(async () => {
 }
 
 .projectItems {
-	height: 100%;
-	padding: 0 var(--spacing-xs) var(--spacing-s);
-	overflow: auto;
+	padding: var(--spacing-xs);
 }
 
 .upgradeLink {
@@ -215,19 +205,14 @@ onBeforeMount(async () => {
 	cursor: pointer;
 }
 
-.collapsed {
-	text-transform: uppercase;
-}
-
 .projectsLabel {
 	display: flex;
 	justify-content: space-between;
-	margin: 0 0 var(--spacing-s) var(--spacing-xs);
-	padding: 0 var(--spacing-s);
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
-	color: var(--color-text-base);
+	padding: 0 var(--spacing-s);
+	margin-top: var(--spacing-m);
 
 	&.collapsed {
 		padding: 0;
@@ -245,8 +230,8 @@ onBeforeMount(async () => {
 
 .addFirstProjectBtn {
 	font-size: var(--font-size-xs);
-	padding: var(--spacing-3xs);
-	margin: 0 var(--spacing-m) var(--spacing-m);
+	margin: 0 var(--spacing-s);
+	width: calc(100% - var(--spacing-s) * 2);
 
 	&.collapsed {
 		> span:last-child {
@@ -260,9 +245,5 @@ onBeforeMount(async () => {
 <style lang="scss" scoped>
 .home {
 	padding: 0 var(--spacing-xs);
-
-	:deep(.el-menu-item) {
-		padding: var(--spacing-m) var(--spacing-xs) !important;
-	}
 }
 </style>
