@@ -4,7 +4,7 @@ import { useWorkflowCommands } from './useWorkflowCommands';
 import * as useCanvasOperations from '@/composables/useCanvasOperations';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import { nodeViewEventBus } from '@/event-bus';

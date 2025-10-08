@@ -7,7 +7,7 @@ import type { ICredentialsResponse } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { CommandGroup, CommandBarItem } from './types';
+import type { CommandBarItem } from './types';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import CredentialIcon from '@/components/CredentialIcon.vue';
@@ -22,7 +22,7 @@ export function useCredentialNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
-}): CommandGroup {
+}) {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const credentialsStore = useCredentialsStore();

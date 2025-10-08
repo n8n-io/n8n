@@ -8,8 +8,8 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
