@@ -240,7 +240,7 @@ export function generateNodesGraph(
 		};
 
 		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (nodeType.description.communityNodePackageVersion) {
+		if (nodeType?.description?.communityNodePackageVersion) {
 			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
 		}
 
@@ -564,7 +564,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 

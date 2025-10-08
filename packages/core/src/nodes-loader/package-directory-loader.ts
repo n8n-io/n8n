@@ -1,4 +1,4 @@
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse, isCommunityPackageName } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
@@ -31,14 +31,14 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 	}
 
 	override async loadAll() {
-		const { n8n, version } = this.packageJson;
+		const { n8n, version, name } = this.packageJson;
 		if (!n8n) return;
 
 		const { nodes, credentials } = n8n;
 
 		if (Array.isArray(nodes)) {
 			for (const nodePath of nodes) {
-				this.loadNodeFromFile(nodePath, version);
+				this.loadNodeFromFile(nodePath, isCommunityPackageName(name) ? version : undefined);
 			}
 		}
 

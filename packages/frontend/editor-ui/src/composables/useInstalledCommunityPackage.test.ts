@@ -9,17 +9,20 @@ import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
 
-// Mock the utility functions
-vi.mock('@/utils/nodeTypesUtils', () => ({
-	isCommunityPackageName: vi.fn(),
-}));
+vi.mock('n8n-workflow', async (importOriginal) => {
+	const original = await importOriginal();
+	return {
+		...(original as any),
+		isCommunityPackageName: vi.fn(),
+	};
+});
 
 vi.mock('@/utils/communityNodeUtils', () => ({
 	fetchInstalledPackageInfo: vi.fn(),
 }));
 
 // Import mocked functions
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { isCommunityPackageName } from 'n8n-workflow';
 import { fetchInstalledPackageInfo } from '@/utils/communityNodeUtils';
 
 const mockIsCommunityPackageName = vi.mocked(isCommunityPackageName);
