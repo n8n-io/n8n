@@ -28,6 +28,15 @@ import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFuncti
 import { removeTrailingSlash } from '../../utils/utilities';
 import { defaultWebhookDescription } from '../Webhook/description';
 
+const waitingTooltip = (parameters: { operation: string }, resumeUrl: string) => {
+	if (parameters?.operation === 'dispatchAndWait') {
+		const message = 'Execution will continue when the following webhook URL is called: ';
+		return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+	}
+
+	return '';
+};
+
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
@@ -46,6 +55,7 @@ export class Github implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
