@@ -108,15 +108,15 @@ describe('ProjectRolesView', () => {
 
 		const { getByText, getByRole } = renderComponent();
 
-		expect(getByText('Project Roles')).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Add Role' })).toBeInTheDocument();
+		expect(getByText('Project roles')).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Add role' })).toBeInTheDocument();
 	});
 
 	it('should navigate to new role page when Add Role button is clicked', async () => {
 		rolesStore.processedProjectRoles = [];
 
 		const { getByRole } = renderComponent();
-		const addButton = getByRole('button', { name: 'Add Role' });
+		const addButton = getByRole('button', { name: 'Add role' });
 
 		await userEvent.click(addButton);
 
@@ -208,8 +208,8 @@ describe('ProjectRolesView', () => {
 		const { getByText, getByRole } = renderComponent();
 
 		// Should still show the heading and add button
-		expect(getByText('Project Roles')).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Add Role' })).toBeInTheDocument();
+		expect(getByText('Project roles')).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Add role' })).toBeInTheDocument();
 
 		// Data table should be present but empty
 		expect(getByText('Name')).toBeInTheDocument();
