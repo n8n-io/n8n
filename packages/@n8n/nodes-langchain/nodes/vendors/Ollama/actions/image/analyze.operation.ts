@@ -431,9 +431,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		options: processedOptions,
 	};
 
-	const response = (await apiRequest.call(this, 'POST', '/api/chat', {
+	const response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
 		body,
-	})) as OllamaChatResponse;
+	});
 
 	if (simplify) {
 		return [

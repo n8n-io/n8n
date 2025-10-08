@@ -1,7 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
-import type { IDataObject } from 'n8n-workflow/src';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -400,44 +399,55 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		options: processedOptions,
 	};
 
-	let response = (await apiRequest.call(this, 'POST', '/api/chat', {
+	let response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
 		body,
-	})) as OllamaChatResponse;
+	});
 
 	if (tools.length > 0 && response.message.tool_calls && response.message.tool_calls.length > 0) {
 		const toolCalls = response.message.tool_calls;
 
-		for (const toolCall of toolCalls) {
-			messages.push(response.message);
+		messages.push(response.message);
 
+		for (const toolCall of toolCalls) {
 			let toolResponse = '';
+			let toolFound = false;
+
 			for (const tool of connectedTools) {
 				if (tool.name === toolCall.function.name) {
+					toolFound = true;
 					try {
-						const result = (await tool.invoke(toolCall.function.arguments)) as IDataObject;
-						toolResponse = typeof result === 'object' ? JSON.stringify(result) : String(result);
+						const result: unknown = await tool.invoke(toolCall.function.arguments);
+						toolResponse =
+							typeof result === 'object' && result !== null
+								? JSON.stringify(result)
+								: String(result);
 					} catch (error) {
 						toolResponse = `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
 					}
-
-					messages.push({
-						role: 'tool',
-						content: toolResponse,
-						tool_name: toolCall.function.name,
-					});
 					break;
 				}
 			}
 
-			const updatedBody = {
-				...body,
-				messages,
-			};
+			// Add tool response even if tool wasn't found to prevent silent failure
+			if (!toolFound) {
+				toolResponse = `Error: Tool '${toolCall.function.name}' not found`;
+			}
 
-			response = (await apiRequest.call(this, 'POST', '/api/chat', {
-				body: updatedBody,
-			})) as OllamaChatResponse;
+			messages.push({
+				role: 'tool',
+				content: toolResponse,
+				tool_name: toolCall.function.name,
+			});
 		}
+
+		const updatedBody = {
+			...body,
+			messages,
+		};
+
+		response = await apiRequest.call(this, 'POST', '/api/chat', {
+			body: updatedBody,
+		});
 	}
 
 	if (simplify) {

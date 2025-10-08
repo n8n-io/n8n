@@ -20,13 +20,16 @@ export async function apiRequest(
 ) {
 	const { body, qs, option } = parameters ?? {};
 
-	const credentials = await this.getCredentials('ollamaApi');
+	const credentials = await this.getCredentials<{
+		apiKey?: string;
+		baseUrl: string;
+	}>('ollamaApi');
 	const apiKey = credentials.apiKey;
 	if (apiKey !== undefined && typeof apiKey !== 'string') {
 		throw new Error('API key must be a string');
 	}
 
-	const baseUrl = credentials.baseUrl as string;
+	const baseUrl = credentials.baseUrl;
 	const url = `${baseUrl}${endpoint}`;
 
 	const headers = parameters?.headers ?? {};

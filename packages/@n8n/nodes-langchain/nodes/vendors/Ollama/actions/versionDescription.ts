@@ -15,6 +15,7 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Ollama',
 	},
+	usableAsTool: true,
 	codex: {
 		alias: ['LangChain', 'image', 'vision', 'AI', 'local'],
 		categories: ['AI'],
