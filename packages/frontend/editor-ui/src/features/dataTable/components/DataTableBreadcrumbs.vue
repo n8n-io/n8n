@@ -11,7 +11,7 @@ import { useToast } from '@/composables/useToast';
 import { telemetry } from '@/plugins/telemetry';
 
 import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
-import ProjectBreadcrumb from '@/components/Folders/ProjectBreadcrumb.vue';
+import ProjectBreadcrumb from '@/features/folders/components/ProjectBreadcrumb.vue';
 const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
@@ -100,7 +100,7 @@ watch(
 </script>
 
 <template>
-	<div :class="$style['data-table-breadcrumbs']">
+	<div :class="$style['data-table-breadcrumbs']" data-test-id="data-table-breadcrumbs">
 		<N8nBreadcrumbs
 			:items="breadcrumbs"
 			:separator="BREADCRUMBS_SEPARATOR"

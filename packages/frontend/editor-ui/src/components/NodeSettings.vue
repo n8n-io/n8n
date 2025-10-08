@@ -751,6 +751,7 @@ function handleSelectAction(params: INodeParameters) {
 					data-test-id="update-available"
 					:package-name="packageName"
 					style="margin-top: var(--spacing-s)"
+					source="node settings"
 				/>
 				<ParameterInputList
 					:parameters="parametersByTab.settings"

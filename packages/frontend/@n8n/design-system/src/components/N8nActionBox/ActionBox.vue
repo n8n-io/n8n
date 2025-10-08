@@ -55,6 +55,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				:disabled="buttonDisabled"
 				:icon="buttonIcon"
 				size="large"
+				role="button"
 				@click="$emit('click:button', $event)"
 			/>
 		</N8nTooltip>

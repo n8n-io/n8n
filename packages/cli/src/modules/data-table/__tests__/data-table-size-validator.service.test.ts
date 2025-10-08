@@ -1,6 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
+import { Telemetry } from '@/telemetry';
+
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
 
 describe('DataTableSizeValidator', () => {
@@ -13,9 +15,11 @@ describe('DataTableSizeValidator', () => {
 			maxSize: 100 * 1024 * 1024,
 		},
 	});
+	const telemetry = mockInstance(Telemetry);
 	beforeEach(() => {
-		validator = new DataTableSizeValidator(globalConfig);
+		validator = new DataTableSizeValidator(globalConfig, telemetry);
 		fetchSizeFn = jest.fn();
+		jest.clearAllMocks();
 	});
 
 	describe('basic functionality', () => {
