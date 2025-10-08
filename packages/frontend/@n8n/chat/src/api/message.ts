@@ -154,15 +154,24 @@ export async function sendMessageStreaming(
 				case 'tool':
 					hasReceivedChunks = true;
 					// Format tool data for display in chat
-					const toolContent =
-						typeof value.content === 'object' && value.content !== null
-							? (() => {
-									const content = value.content as { name?: string; toolData?: unknown };
-									const name = typeof content.name === 'string' ? content.name : 'Tool';
-									const data = content.toolData !== undefined ? content.toolData : content;
-									return `${name}: ${JSON.stringify(data, null, 2)}`;
-								})()
-							: `Tool: ${value.content ?? 'No data'}`;
+					let toolContent: string;
+					if (typeof value.content === 'object' && value.content !== null) {
+						// Type guard function to check if the content is a tool data object
+						const isToolData = (obj: unknown): obj is { name?: string; toolData?: unknown } => {
+							return typeof obj === 'object' && obj !== null;
+						};
+
+						const content = value.content as unknown; // Cast to unknown first, then use type guard
+						if (isToolData(content)) {
+							const name = typeof content.name === 'string' ? content.name : 'Tool';
+							const data = content.toolData !== undefined ? content.toolData : content;
+							toolContent = `${name}: ${JSON.stringify(data, null, 2)}`;
+						} else {
+							toolContent = `Tool: ${JSON.stringify(value.content, null, 2)}`;
+						}
+					} else {
+						toolContent = `Tool: ${value.content ?? 'No data'}`;
+					}
 					handlers.onChunk(toolContent, nodeId, runIndex);
 					break;
 				case 'end':
