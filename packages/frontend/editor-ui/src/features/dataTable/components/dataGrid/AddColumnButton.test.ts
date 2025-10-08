@@ -98,7 +98,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 
 		// Properly trigger v-model binding by setting value and firing input event
 		nameInput.value = 'newColumn';
@@ -142,7 +142,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 
 		// Test invalid name starting with hyphen
 		nameInput.value = '-invalid';
@@ -165,7 +165,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 
 		// Test valid names
 		const validNames = ['column1', 'my_column', 'Column123', 'a1b2c3'];
@@ -190,7 +190,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 
 		// Enter invalid name
 		nameInput.value = '-invalid';
@@ -234,7 +234,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 		nameInput.value = 'numberColumn';
 		await fireEvent.input(nameInput);
 
@@ -275,7 +275,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 		nameInput.value = 'testColumn';
 		await fireEvent.input(nameInput);
 
@@ -296,7 +296,7 @@ describe('AddColumnButton', () => {
 		await fireEvent.click(addButton);
 
 		await waitFor(() => {
-			const resetNameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+			const resetNameInput = getByTestId('add-column-name-input');
 			expect(resetNameInput.value).toBe('');
 		});
 	});
@@ -311,7 +311,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 		nameInput.value = 'testColumn';
 		await fireEvent.input(nameInput);
 
@@ -342,7 +342,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 		nameInput.value = 'testColumn';
 		await fireEvent.input(nameInput);
 
@@ -369,7 +369,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 		nameInput.value = 'enterColumn';
 		await fireEvent.input(nameInput);
 		await fireEvent.keyUp(nameInput, { key: 'Enter' });
@@ -413,7 +413,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 		nameInput.value = 'dateColumn';
 		await fireEvent.input(nameInput);
 
@@ -453,7 +453,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input') as HTMLInputElement;
+		const nameInput = getByTestId('add-column-name-input');
 		nameInput.value = '-invalid';
 		await fireEvent.input(nameInput);
 
