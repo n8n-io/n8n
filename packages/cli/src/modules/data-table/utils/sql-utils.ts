@@ -207,6 +207,7 @@ function normalizeDate(value: DataTableColumnJsType): Date | null {
 	return null;
 }
 
+// Normalize rows fetched from the database according to the column types
 export function normalizeRows(
 	rows: DataTableRawRowsReturn,
 	columns: DataTableColumn[],
@@ -248,34 +249,37 @@ export function normalizeRows(
 	});
 }
 
-function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): string {
-	// MySQL/MariaDB DATETIME format doesn't accept ISO strings with 'Z' timezone
-	if (dbType === 'mysql' || dbType === 'mariadb') {
+function formatDateForDatabase(
+	date: DataTableColumnJsType,
+	dbType?: DataSourceOptions['type'],
+): string {
+	if (typeof date === 'string') {
+		date = new Date(date);
+		if (isNaN(date.getTime())) {
+			throw new UnexpectedError(`Invalid date: ${date.toString()}`);
+		}
+	} else if (!(date instanceof Date)) {
+		throw new UnexpectedError(`Invalid date: ${date?.toString() ?? date}`);
+	}
+
+	// These dbs use DATETIME format without 'T' and 'Z'
+	if (dbType && ['sqlite', 'sqlite-pooled', 'mysql', 'mariadb'].includes(dbType)) {
 		return date.toISOString().replace('T', ' ').replace('Z', '');
 	}
-	// PostgreSQL and SQLite accept ISO strings
+
 	return date.toISOString();
 }
 
-export function normalizeValue(
+export function normalizeValueForDatabase(
 	value: DataTableColumnJsType,
 	columnType: string | undefined,
 	dbType?: DataSourceOptions['type'],
 ): DataTableColumnJsType {
-	if (columnType !== 'date' || value === null || value === undefined) {
-		return value;
-	}
-
-	// Convert Date objects to appropriate string format for database parameter binding
-	if (value instanceof Date) {
-		return formatDateForDatabase(value, dbType);
-	}
-
-	if (typeof value === 'string') {
-		const date = new Date(value);
-		if (!isNaN(date.getTime())) {
-			// Convert parsed date strings to appropriate format
-			return formatDateForDatabase(date, dbType);
+	if (columnType === 'date' && value !== null) {
+		try {
+			return formatDateForDatabase(value, dbType);
+		} catch {
+			return value;
 		}
 	}
 

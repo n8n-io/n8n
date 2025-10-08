@@ -32,7 +32,7 @@ import {
 	extractInsertedIds,
 	extractReturningData,
 	normalizeRows,
-	normalizeValue,
+	normalizeValueForDatabase,
 	quoteIdentifier,
 	toDslColumns,
 	toSqliteGlobFromPercent,
@@ -78,7 +78,9 @@ function getConditionAndParams(
 
 	// Find the column type to normalize the value consistently
 	const columnInfo = columns?.find((col) => col.name === filter.columnName);
-	const value = columnInfo ? normalizeValue(filter.value, columnInfo?.type, dbType) : filter.value;
+	const value = columnInfo
+		? normalizeValueForDatabase(filter.value, columnInfo?.type, dbType)
+		: filter.value;
 
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {
@@ -201,7 +203,7 @@ export class DataTableRowsRepository {
 						const column = columns[h];
 						// Fill missing columns with null values to support partial data insertion
 						const value = rows[j][column.name] ?? null;
-						insertArray[h] = normalizeValue(value, column.type, dbType);
+						insertArray[h] = normalizeValueForDatabase(value, column.type, dbType);
 					}
 					completeRows[j - start] = insertArray;
 				}
@@ -259,7 +261,11 @@ export class DataTableRowsRepository {
 					if (!(column.name in completeRow)) {
 						completeRow[column.name] = null;
 					}
-					completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
+					completeRow[column.name] = normalizeValueForDatabase(
+						completeRow[column.name],
+						column.type,
+						dbType,
+					);
 				}
 
 				const query = em.createQueryBuilder().insert().into(table).values(completeRow);
@@ -334,7 +340,7 @@ export class DataTableRowsRepository {
 				affectedRows = await this.getAffectedRowsForUpdate(dataTableId, filter, columns, true, trx);
 			}
 
-			setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
+			setData.updatedAt = normalizeValueForDatabase(new Date(), 'date', dbType);
 
 			const query = em.createQueryBuilder().update(table);
 			// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
@@ -520,7 +526,7 @@ export class DataTableRowsRepository {
 		const setData = { ...data };
 		for (const column of columns) {
 			if (column.name in setData) {
-				setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
+				setData[column.name] = normalizeValueForDatabase(setData[column.name], column.type, dbType);
 			}
 		}
 		return setData;

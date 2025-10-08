@@ -1,7 +1,12 @@
 import type { DataTableColumnType } from 'n8n-workflow';
 
 import type { DataTableColumn } from '../data-table-column.entity';
-import { addColumnQuery, deleteColumnQuery, normalizeRows } from '../utils/sql-utils';
+import {
+	addColumnQuery,
+	deleteColumnQuery,
+	normalizeRows,
+	normalizeValueForDatabase,
+} from '../utils/sql-utils';
 
 describe('sql-utils', () => {
 	describe('normalizeRows', () => {
@@ -239,6 +244,57 @@ describe('sql-utils', () => {
 			const query = deleteColumnQuery(tableName, column, 'sqlite');
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" DROP COLUMN "email"');
+		});
+	});
+
+	describe('normalizeValueForDatabase', () => {
+		it('should return value unchanged for non-date column types', () => {
+			expect(normalizeValueForDatabase('test', 'string')).toBe('test');
+			expect(normalizeValueForDatabase(123, 'number')).toBe(123);
+			expect(normalizeValueForDatabase(true, 'boolean')).toBe(true);
+		});
+
+		it('should return null for null', () => {
+			expect(normalizeValueForDatabase(null, 'string')).toBeNull();
+			expect(normalizeValueForDatabase(null, 'number')).toBeNull();
+			expect(normalizeValueForDatabase(null, 'boolean')).toBeNull();
+			expect(normalizeValueForDatabase(null, 'date')).toBeNull();
+		});
+
+		describe('date columns', () => {
+			it.each([
+				['sqlite', '2024-01-15 10:30:00.123'],
+				['sqlite-pooled', '2024-01-15 10:30:00.123'],
+				['mysql', '2024-01-15 10:30:00.123'],
+				['mariadb', '2024-01-15 10:30:00.123'],
+				['postgres', '2024-01-15T10:30:00.123Z'],
+			] as const)('should parse and format Date object for %s', (dbType, expected) => {
+				const result = normalizeValueForDatabase(
+					new Date('2024-01-15T10:30:00.123Z'),
+					'date',
+					dbType,
+				);
+
+				expect(result).toBe(expected);
+			});
+
+			it.each([
+				['sqlite', '2024-01-15 10:30:00.123'],
+				['sqlite-pooled', '2024-01-15 10:30:00.123'],
+				['mysql', '2024-01-15 10:30:00.123'],
+				['mariadb', '2024-01-15 10:30:00.123'],
+				['postgres', '2024-01-15T10:30:00.123Z'],
+			] as const)('should parse and format date string for %s', (dbType, expected) => {
+				const result = normalizeValueForDatabase('2024-01-15T10:30:00.123Z', 'date', dbType);
+
+				expect(result).toBe(expected);
+			});
+
+			it('should return invalid date string unchanged', () => {
+				const result = normalizeValueForDatabase('not-a-date', 'date', 'sqlite');
+
+				expect(result).toBe('not-a-date');
+			});
 		});
 	});
 });
