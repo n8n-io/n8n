@@ -20,13 +20,13 @@ interface IQuestionData {
 
 export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'JotForm Trigger',
+		displayName: 'Jotform Trigger',
 		name: 'jotFormTrigger',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:jotform.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Handle JotForm events via webhooks',
+		description: 'Handle Jotform events via webhooks',
 		defaults: {
 			name: 'JotForm Trigger',
 		},
