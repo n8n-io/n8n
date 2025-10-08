@@ -17,7 +17,7 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<N8nText v-if="search" :class="$style.itemsText">
+	<N8nText v-if="search" :class="$style.itemsText" data-test-id="run-data-item-count">
 		{{
 			i18n.baseText('ndv.search.items', {
 				adjustToNumber: unfilteredDataCount,
@@ -25,7 +25,7 @@ const i18n = useI18n();
 			})
 		}}
 	</N8nText>
-	<N8nText v-else :class="$style.itemsText">
+	<N8nText v-else :class="$style.itemsText" data-test-id="run-data-item-count">
 		<span>
 			{{
 				i18n.baseText('ndv.output.items', {
