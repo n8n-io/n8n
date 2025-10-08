@@ -8,8 +8,6 @@ import { ChatHubService } from './chat-hub.service';
 import { AskAiWithCredentialsRequestDto } from './dto/ask-ai-with-credentials-request.dto';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
-export type FlushableResponse = Response & { flush: () => void };
-
 @RestController('/chat')
 export class ChatHubController {
 	constructor(private readonly chatService: ChatHubService) {}
