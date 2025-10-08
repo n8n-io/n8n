@@ -97,6 +97,16 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 	return await dataTableTableRef.value.addColumn(column);
 };
 
+const onRefresh = async () => {
+	if (!dataTableTableRef.value) {
+		return {
+			success: false,
+			errorMessage: i18n.baseText('dataTable.error.tableNotInitialized'),
+		};
+	}
+	return await dataTableTableRef.value.refreshData();
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
 	await initialize();
@@ -133,6 +143,13 @@ onMounted(async () => {
 						:popover-id="'ds-details-add-column-popover'"
 						:params="{ onAddColumn }"
 					/>
+					<N8nButton
+						@click="onRefresh"
+						ariaLabel="refresh"
+						icon="refresh-cw"
+						square
+						type="tertiary"
+					></N8nButton>
 				</div>
 			</div>
 			<div :class="$style.content">
