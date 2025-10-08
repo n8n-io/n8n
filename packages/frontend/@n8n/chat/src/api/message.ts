@@ -151,6 +151,15 @@ export async function sendMessageStreaming(
 					hasReceivedChunks = true;
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
+				case 'tool':
+					hasReceivedChunks = true;
+					// Format tool data for display in chat
+					const toolContent =
+						typeof value.content === 'object' && value.content !== null
+							? `${(value.content as any).name || 'Tool'}: ${JSON.stringify((value.content as any).toolData || value.content, null, 2)}`
+							: `Tool: ${value.content ?? 'No data'}`;
+					handlers.onChunk(toolContent, nodeId, runIndex);
+					break;
 				case 'end':
 					handlers.onEndMessage(nodeId, runIndex);
 					break;

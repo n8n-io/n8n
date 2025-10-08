@@ -1,4 +1,4 @@
-export type ChunkType = 'begin' | 'item' | 'end' | 'error';
+export type ChunkType = 'begin' | 'item' | 'tool' | 'end' | 'error';
 export interface StructuredChunk {
 	type: ChunkType;
 	content?: string;
