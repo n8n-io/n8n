@@ -101,7 +101,7 @@ describe('AddColumnButton', () => {
 		const nameInput = getByTestId('add-column-name-input');
 
 		// Properly trigger v-model binding by setting value and firing input event
-		nameInput.value = 'newColumn';
+		(nameInput as HTMLInputElement).value = 'newColumn';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
@@ -145,7 +145,7 @@ describe('AddColumnButton', () => {
 		const nameInput = getByTestId('add-column-name-input');
 
 		// Test invalid name starting with hyphen
-		nameInput.value = '-invalid';
+		(nameInput as HTMLInputElement).value = '-invalid';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
@@ -171,7 +171,7 @@ describe('AddColumnButton', () => {
 		const validNames = ['column1', 'my_column', 'Column123', 'a1b2c3'];
 
 		for (const name of validNames) {
-			nameInput.value = name;
+			(nameInput as HTMLInputElement).value = name;
 			await fireEvent.input(nameInput);
 
 			await waitFor(() => {
@@ -193,7 +193,7 @@ describe('AddColumnButton', () => {
 		const nameInput = getByTestId('add-column-name-input');
 
 		// Enter invalid name
-		nameInput.value = '-invalid';
+		(nameInput as HTMLInputElement).value = '-invalid';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
@@ -201,7 +201,7 @@ describe('AddColumnButton', () => {
 		});
 
 		// Correct the name
-		nameInput.value = 'valid';
+		(nameInput as HTMLInputElement).value = 'valid';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
@@ -235,7 +235,7 @@ describe('AddColumnButton', () => {
 		});
 
 		const nameInput = getByTestId('add-column-name-input');
-		nameInput.value = 'numberColumn';
+		(nameInput as HTMLInputElement).value = 'numberColumn';
 		await fireEvent.input(nameInput);
 
 		// Click on the select to open dropdown
@@ -276,7 +276,7 @@ describe('AddColumnButton', () => {
 		});
 
 		const nameInput = getByTestId('add-column-name-input');
-		nameInput.value = 'testColumn';
+		(nameInput as HTMLInputElement).value = 'testColumn';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
@@ -297,7 +297,7 @@ describe('AddColumnButton', () => {
 
 		await waitFor(() => {
 			const resetNameInput = getByTestId('add-column-name-input');
-			expect(resetNameInput.value).toBe('');
+			expect((resetNameInput as HTMLInputElement).value).toBe('');
 		});
 	});
 
@@ -312,7 +312,7 @@ describe('AddColumnButton', () => {
 		});
 
 		const nameInput = getByTestId('add-column-name-input');
-		nameInput.value = 'testColumn';
+		(nameInput as HTMLInputElement).value = 'testColumn';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
@@ -343,7 +343,7 @@ describe('AddColumnButton', () => {
 		});
 
 		const nameInput = getByTestId('add-column-name-input');
-		nameInput.value = 'testColumn';
+		(nameInput as HTMLInputElement).value = 'testColumn';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
@@ -370,7 +370,7 @@ describe('AddColumnButton', () => {
 		});
 
 		const nameInput = getByTestId('add-column-name-input');
-		nameInput.value = 'enterColumn';
+		(nameInput as HTMLInputElement).value = 'enterColumn';
 		await fireEvent.input(nameInput);
 		await fireEvent.keyUp(nameInput, { key: 'Enter' });
 
@@ -414,7 +414,7 @@ describe('AddColumnButton', () => {
 		});
 
 		const nameInput = getByTestId('add-column-name-input');
-		nameInput.value = 'dateColumn';
+		(nameInput as HTMLInputElement).value = 'dateColumn';
 		await fireEvent.input(nameInput);
 
 		const selectElement = getByRole('combobox');
@@ -454,7 +454,7 @@ describe('AddColumnButton', () => {
 		});
 
 		const nameInput = getByTestId('add-column-name-input');
-		nameInput.value = '-invalid';
+		(nameInput as HTMLInputElement).value = '-invalid';
 		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
