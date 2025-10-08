@@ -55,13 +55,13 @@ export async function magentoApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await magentoApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		query.current_page = query.current_page ? (query.current_page as number)++ : 1;
 	} while (returnData.length < responseData.total_count);
 

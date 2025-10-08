@@ -126,7 +126,7 @@ export async function handleMatrixCall(
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const returnAll = this.getNodeParameter('returnAll', index);
 			const otherOptions = this.getNodeParameter('otherOptions', index) as IDataObject;
-			const returnData: IDataObject[] = [];
+			let returnData: IDataObject[] = [];
 
 			if (returnAll) {
 				let responseData;
@@ -148,7 +148,7 @@ export async function handleMatrixCall(
 						{},
 						qs,
 					);
-					returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
+					returnData = returnData.concat(responseData.chunk as IDataObject[]);
 					from = responseData.end;
 				} while (responseData.chunk.length > 0);
 			} else {
@@ -169,7 +169,7 @@ export async function handleMatrixCall(
 					{},
 					qs,
 				);
-				returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
+				returnData = returnData.concat(responseData.chunk as IDataObject[]);
 			}
 
 			return returnData;

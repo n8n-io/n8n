@@ -88,7 +88,7 @@ export async function apiRequestAllItems(
 	query: IDataObject = {},
 	uri?: string,
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.maxResults = 100;
@@ -96,7 +96,7 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

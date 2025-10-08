@@ -150,7 +150,7 @@ export class Twist implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -740,7 +740,7 @@ export class Twist implements INodeType {
 					}
 				}
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				} else {
 					returnData.push(responseData as IDataObject);
 				}

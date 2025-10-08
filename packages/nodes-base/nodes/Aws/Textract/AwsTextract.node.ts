@@ -109,7 +109,7 @@ export class AwsTextract implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
@@ -143,7 +143,7 @@ export class AwsTextract implements INodeType {
 				}
 
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				} else {
 					returnData.push(responseData as unknown as IDataObject);
 				}

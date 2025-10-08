@@ -73,7 +73,7 @@ export async function erpNextApiRequestAllItems(
 	body: IDataObject,
 	query: IDataObject = {},
 ) {
-	const returnData: any[] = [];
+	let returnData: any[] = [];
 
 	let responseData;
 	query.limit_start = 0;
@@ -81,7 +81,7 @@ export async function erpNextApiRequestAllItems(
 
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		query.limit_start += query.limit_page_length - 1;
 	} while (responseData.data && responseData.data.length > 0);
 

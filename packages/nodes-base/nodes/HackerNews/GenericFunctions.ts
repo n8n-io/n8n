@@ -47,14 +47,14 @@ export async function hackerNewsApiRequestAllItems(
 ): Promise<any> {
 	qs.hitsPerPage = 100;
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let itemsReceived = 0;
 
 	do {
 		responseData = await hackerNewsApiRequest.call(this, method, endpoint, qs);
-		returnData.push.apply(returnData, responseData.hits as IDataObject[]);
+		returnData = returnData.concat(responseData.hits as IDataObject[]);
 
 		if (returnData !== undefined) {
 			itemsReceived += returnData.length;

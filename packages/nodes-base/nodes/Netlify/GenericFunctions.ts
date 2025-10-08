@@ -57,7 +57,7 @@ export async function netlifyRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 0;
@@ -68,7 +68,7 @@ export async function netlifyRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 		query.page++;
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 	} while (responseData.headers.link.includes('next'));
 
 	return returnData;

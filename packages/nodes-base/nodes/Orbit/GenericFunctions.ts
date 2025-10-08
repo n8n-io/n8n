@@ -92,14 +92,14 @@ export async function orbitApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
 
 	do {
 		responseData = await orbitApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 
 		if (query.resolveIdentities === true) {
 			resolveIdentities(responseData as IRelation);

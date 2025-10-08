@@ -149,7 +149,7 @@ export async function salesforceApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
@@ -157,7 +157,7 @@ export async function salesforceApiRequestAllItems(
 	do {
 		responseData = await salesforceApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = `${endpoint}/${responseData.nextRecordsUrl?.split('/')?.pop()}`;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
 	return returnData;
@@ -220,16 +220,16 @@ export function getDefaultFields(sobject: string) {
 }
 
 export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
-	const fields: string[] = [];
+	let fields: string[] = [];
 	if (options.fields) {
 		// options.fields is comma separated in standard Salesforce objects and array in custom Salesforce objects -- handle both cases
 		if (typeof options.fields === 'string') {
-			fields.push.apply(fields, options.fields.split(','));
+			fields = fields.concat(options.fields.split(','));
 		} else {
-			fields.push.apply(fields, options.fields as string[]);
+			fields = fields.concat(options.fields as string[]);
 		}
 	} else {
-		fields.push.apply(fields, ((getDefaultFields(sobject) as string) || 'id').split(','));
+		fields = fields.concat(((getDefaultFields(sobject) as string) || 'id').split(','));
 	}
 	const conditions = getConditions(options);
 

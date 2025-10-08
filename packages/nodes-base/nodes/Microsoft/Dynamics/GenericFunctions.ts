@@ -59,7 +59,7 @@ export async function microsoftApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
@@ -68,7 +68,7 @@ export async function microsoftApiRequestAllItems(
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData['@odata.nextLink'];
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;

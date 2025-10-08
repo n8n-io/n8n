@@ -231,7 +231,7 @@ export class Ldap implements INodeType {
 		const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 
 		const items = this.getInputData();
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		if (nodeDebug) {
 			this.logger.info(
@@ -411,8 +411,7 @@ export class Ldap implements INodeType {
 					}
 					resolveBinaryAttributes(results.searchEntries);
 
-					returnItems.push.apply(
-						returnItems,
+					returnItems = returnItems.concat(
 						results.searchEntries.map((result) => ({
 							json: result,
 							pairedItem: { item: itemIndex },

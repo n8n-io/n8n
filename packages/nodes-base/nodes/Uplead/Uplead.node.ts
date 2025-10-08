@@ -64,7 +64,7 @@ export class Uplead implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -107,7 +107,7 @@ export class Uplead implements INodeType {
 					}
 				}
 				if (Array.isArray(responseData.data)) {
-					returnData.push.apply(returnData, responseData.data as IDataObject[]);
+					returnData = returnData.concat(responseData.data as IDataObject[]);
 				} else {
 					if (responseData.data !== null) {
 						returnData.push(responseData.data as IDataObject);

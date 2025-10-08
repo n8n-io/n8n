@@ -70,7 +70,7 @@ export async function egoiApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -79,7 +79,7 @@ export async function egoiApiRequestAllItems(
 
 	do {
 		responseData = await egoiApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		query.offset += query.count;
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 

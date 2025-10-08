@@ -67,7 +67,7 @@ export async function storyblokApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -78,7 +78,7 @@ export async function storyblokApiRequestAllItems(
 	do {
 		responseData = await storyblokApiRequest.call(this, method, resource, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData[propertyName].length !== 0);
 
 	return returnData;

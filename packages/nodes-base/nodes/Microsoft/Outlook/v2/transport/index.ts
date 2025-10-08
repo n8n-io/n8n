@@ -85,7 +85,7 @@ export async function microsoftApiRequestAllItems(
 	query: IDataObject = {},
 	headers: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let nextLink: string | undefined;
@@ -102,7 +102,7 @@ export async function microsoftApiRequestAllItems(
 			headers,
 		);
 		nextLink = responseData['@odata.nextLink'];
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;

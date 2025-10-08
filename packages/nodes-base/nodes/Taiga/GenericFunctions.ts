@@ -93,7 +93,7 @@ export async function taigaApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -103,7 +103,7 @@ export async function taigaApiRequestAllItems(
 		responseData = await taigaApiRequest.call(this, method, resource, body, query, uri, {
 			resolveWithFullResponse: true,
 		});
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 		uri = responseData.headers['x-pagination-next'];
 		const limit = query.limit as number | undefined;
 		if (limit && returnData.length >= limit) {

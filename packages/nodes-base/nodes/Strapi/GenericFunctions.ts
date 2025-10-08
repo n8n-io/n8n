@@ -94,7 +94,7 @@ export async function strapiApiRequestAllItems(
 	headers: IDataObject = {},
 	apiVersion: string = 'v3',
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	if (apiVersion === 'v4') {
@@ -111,7 +111,7 @@ export async function strapiApiRequestAllItems(
 				headers,
 			));
 			query['pagination[page]']++;
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData = returnData.concat(responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	} else {
 		query._limit = 20;
@@ -127,7 +127,7 @@ export async function strapiApiRequestAllItems(
 				headers,
 			);
 			query._start += query._limit;
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData = returnData.concat(responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	}
 	return returnData;

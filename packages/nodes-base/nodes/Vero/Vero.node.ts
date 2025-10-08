@@ -62,7 +62,7 @@ export class Vero implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
 		for (let i = 0; i < length; i++) {
@@ -219,7 +219,7 @@ export class Vero implements INodeType {
 					}
 				}
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				} else {
 					returnData.push(responseData as IDataObject);
 				}

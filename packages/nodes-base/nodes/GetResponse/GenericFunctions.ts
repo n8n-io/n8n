@@ -56,7 +56,7 @@ export async function getResponseApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
@@ -72,7 +72,7 @@ export async function getResponseApiRequestAllItems(
 			{ resolveWithFullResponse: true },
 		);
 		query.page++;
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 	} while (responseData.headers.TotalPages !== responseData.headers.CurrentPage);
 
 	return returnData;

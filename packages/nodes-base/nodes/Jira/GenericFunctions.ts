@@ -135,13 +135,13 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	query: IDataObject = {},
 	paginationType: 'offset' | 'token' = 'offset',
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let hasNextPage = handlePagination(method, body, query, paginationType);
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		hasNextPage = handlePagination(method, body, query, paginationType, responseData);
 	} while (hasNextPage);
 

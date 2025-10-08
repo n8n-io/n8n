@@ -47,13 +47,13 @@ export async function pushbulletApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await pushbulletApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.cursor !== undefined);
 
 	return returnData;

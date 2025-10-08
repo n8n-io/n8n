@@ -124,13 +124,10 @@ export async function pgQuery(
 		return (await db.multi(pgp.helpers.concat(allQueries))).flat(1);
 	} else if (mode === 'transaction') {
 		return await db.tx(async (t) => {
-			const result: IDataObject[] = [];
+			let result: IDataObject[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(
-						result,
-						await t.any(allQueries[i].query, allQueries[i].values),
-					);
+					result = result.concat(await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -145,13 +142,10 @@ export async function pgQuery(
 		});
 	} else if (mode === 'independently') {
 		return await db.task(async (t) => {
-			const result: IDataObject[] = [];
+			let result: IDataObject[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(
-						result,
-						await t.any(allQueries[i].query, allQueries[i].values),
-					);
+					result = result.concat(await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -545,12 +539,11 @@ export async function pgUpdate(
 				.join(' AND ');
 		if (mode === 'transaction') {
 			return await db.tx(async (t) => {
-				const result: IDataObject[] = [];
+				let result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						Array.prototype.push.apply(
-							result,
+						result = result.concat(
 							await t.any(
 								(pgp.helpers.update(itemCopy, cs) as string) +
 									pgp.as.format(where, itemCopy) +
@@ -571,12 +564,11 @@ export async function pgUpdate(
 			});
 		} else if (mode === 'independently') {
 			return await db.task(async (t) => {
-				const result: IDataObject[] = [];
+				let result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						Array.prototype.push.apply(
-							result,
+						result = result.concat(
 							await t.any(
 								(pgp.helpers.update(itemCopy, cs) as string) +
 									pgp.as.format(where, itemCopy) +

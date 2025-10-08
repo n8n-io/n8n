@@ -74,7 +74,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
 ): Promise<INodeExecutionData[][]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const chooseBranchMode = this.getNodeParameter('chooseBranchMode', 0) as string;
 
@@ -91,7 +91,7 @@ export async function execute(
 
 			const inputData = inputsData[useDataOfInput - 1];
 
-			returnData.push.apply(returnData, inputData);
+			returnData = returnData.concat(inputData);
 		}
 		if (output === 'empty') {
 			const pairedItem = [

@@ -70,7 +70,7 @@ export class SplitInBatchesV2 implements INodeType {
 
 		const batchSize = this.getNodeParameter('batchSize', 0) as number;
 
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		const options = this.getNodeParameter('options', 0, {});
 
@@ -84,7 +84,7 @@ export class SplitInBatchesV2 implements INodeType {
 			nodeContext.sourceData = deepCopy(sourceData);
 
 			// Get the items which should be returned
-			returnItems.push.apply(returnItems, items.splice(0, batchSize));
+			returnItems = returnItems.concat(items.splice(0, batchSize));
 
 			// Save the incoming items to be able to return them for later runs
 			nodeContext.items = [...items];
@@ -94,8 +94,7 @@ export class SplitInBatchesV2 implements INodeType {
 		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
-			returnItems.push.apply(
-				returnItems,
+			returnItems = returnItems.concat(
 				(nodeContext.items as INodeExecutionData[]).splice(0, batchSize),
 			);
 

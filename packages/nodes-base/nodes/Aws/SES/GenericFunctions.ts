@@ -92,7 +92,7 @@ export async function awsApiRequestSOAPAllItems(
 	_option: IDataObject = {},
 	_region?: string,
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -110,7 +110,7 @@ export async function awsApiRequestSOAPAllItems(
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
-				returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
+				returnData = returnData.concat(get(responseData, propertyName) as IDataObject[]);
 			} else {
 				returnData.push(get(responseData, propertyName) as IDataObject);
 			}

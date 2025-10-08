@@ -252,8 +252,7 @@ export class GoogleCalendar implements INodeType {
 						if (additionalFields.attendees) {
 							body.attendees = [];
 							(additionalFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
+								body.attendees = body.attendees!.concat(
 									attendee
 										.split(',')
 										.map((a) => a.trim())
@@ -648,8 +647,7 @@ export class GoogleCalendar implements INodeType {
 						if (updateFields.attendees) {
 							body.attendees = [];
 							(updateFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
+								body.attendees = body.attendees!.concat(
 									attendee
 										.split(',')
 										.map((a) => a.trim())
@@ -679,8 +677,7 @@ export class GoogleCalendar implements INodeType {
 								});
 							}
 							attendees.forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
+								body.attendees = body.attendees!.concat(
 									attendee
 										.split(',')
 										.map((a) => a.trim())

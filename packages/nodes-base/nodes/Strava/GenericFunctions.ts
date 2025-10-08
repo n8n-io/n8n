@@ -62,7 +62,7 @@ export async function stravaApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -73,7 +73,7 @@ export async function stravaApiRequestAllItems(
 	do {
 		responseData = await stravaApiRequest.call(this, method, resource, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData as IDataObject[]);
+		returnData = returnData.concat(responseData as IDataObject[]);
 	} while (responseData.length !== 0);
 
 	return returnData;

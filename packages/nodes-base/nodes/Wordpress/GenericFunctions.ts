@@ -53,7 +53,7 @@ export async function wordpressApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -65,7 +65,7 @@ export async function wordpressApiRequestAllItems(
 		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, {
 			resolveWithFullResponse: true,
 		});
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 	} while (
 		responseData.headers['x-wp-totalpages'] !== undefined &&
 		responseData.headers['x-wp-totalpages'] !== '0' &&

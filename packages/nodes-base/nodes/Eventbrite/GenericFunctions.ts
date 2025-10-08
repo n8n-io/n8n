@@ -62,14 +62,14 @@ export async function eventbriteApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await eventbriteApiRequest.call(this, method, resource, body, query);
 		query.continuation = responseData.pagination.continuation;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (
 		responseData.pagination?.has_more_items !== undefined &&
 		responseData.pagination.has_more_items !== false

@@ -320,8 +320,7 @@ export class Hunter implements INodeType {
 									tempReturnData = responseData[index];
 									continue;
 								}
-								(tempReturnData.emails as IDataObject[]).push.apply(
-									tempReturnData.emails,
+								tempReturnData.emails = (tempReturnData.emails as IDataObject[]).concat(
 									responseData[index].emails as IDataObject[],
 								);
 							}
@@ -340,7 +339,7 @@ export class Hunter implements INodeType {
 
 						if (Array.isArray(responseData)) {
 							for (const data of responseData) {
-								tempReturnData.push.apply(tempReturnData, data.emails as IDataObject[]);
+								tempReturnData = tempReturnData.concat(data.emails as IDataObject[]);
 							}
 						} else {
 							tempReturnData = responseData.emails;

@@ -51,7 +51,7 @@ export async function spotifyApiRequestAllItems(
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -60,7 +60,7 @@ export async function spotifyApiRequestAllItems(
 	do {
 		responseData = await spotifyApiRequest.call(this, method, endpoint, body, query, uri);
 
-		returnData.push.apply(returnData, get(responseData, propertyName));
+		returnData = returnData.concat(get(responseData, propertyName));
 		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
 		//remove the query as the query parameters are already included in the next, else api throws error.
 		query = {};

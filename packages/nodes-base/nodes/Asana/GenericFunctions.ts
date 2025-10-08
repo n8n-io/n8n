@@ -47,7 +47,7 @@ export async function asanaApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
@@ -64,7 +64,7 @@ export async function asanaApiRequestAllItems(
 		);
 		uri = get(responseData, 'next_page.uri');
 		query = {}; // query is not needed once we have next_page.uri
-		returnData.push.apply(returnData, responseData.data as IDataObject[]);
+		returnData = returnData.concat(responseData.data as IDataObject[]);
 	} while (responseData.next_page !== null);
 
 	return returnData;

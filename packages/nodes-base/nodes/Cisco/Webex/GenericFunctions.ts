@@ -59,7 +59,7 @@ export async function webexApiRequestAllItems(
 	query: IDataObject = {},
 	options: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
@@ -72,7 +72,7 @@ export async function webexApiRequestAllItems(
 		if (responseData.headers.link) {
 			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData.body[propertyName] as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }

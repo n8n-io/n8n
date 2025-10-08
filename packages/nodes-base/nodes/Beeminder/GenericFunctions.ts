@@ -61,14 +61,14 @@ export async function beeminderApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
 	do {
 		responseData = await beeminderApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData as IDataObject[]);
+		returnData = returnData.concat(responseData as IDataObject[]);
 	} while (responseData.length !== 0);
 
 	return returnData;

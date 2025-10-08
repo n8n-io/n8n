@@ -52,7 +52,7 @@ export async function ghostApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -62,7 +62,7 @@ export async function ghostApiRequestAllItems(
 	do {
 		responseData = await ghostApiRequest.call(this, method, endpoint, body, query);
 		query.page = responseData.meta.pagination.next;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (query.page !== null);
 	return returnData;
 }

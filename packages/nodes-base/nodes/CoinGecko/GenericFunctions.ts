@@ -52,7 +52,7 @@ export async function coinGeckoRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let respData;
@@ -66,7 +66,7 @@ export async function coinGeckoRequestAllItems(
 		if (propertyName !== '') {
 			respData = responseData[propertyName];
 		}
-		returnData.push.apply(returnData, respData as IDataObject[]);
+		returnData = returnData.concat(respData as IDataObject[]);
 	} while (respData.length !== 0);
 
 	return returnData;

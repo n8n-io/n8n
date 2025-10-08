@@ -45,13 +45,13 @@ export async function discourseApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
 	do {
 		responseData = await discourseApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData as IDataObject[]);
+		returnData = returnData.concat(responseData as IDataObject[]);
 		query.page++;
 	} while (responseData.length !== 0);
 	return returnData;

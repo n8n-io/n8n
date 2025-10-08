@@ -118,7 +118,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
@@ -144,7 +144,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionData);
+				returnData = returnData.concat(executionData);
 			} else if (responseData !== undefined) {
 				returnData.push({ json: responseData });
 			}

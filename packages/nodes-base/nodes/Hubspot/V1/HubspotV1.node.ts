@@ -965,7 +965,7 @@ export class HubspotV1 implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
+					returnData = returnData.concat(responseData as INodeExecutionData[]);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

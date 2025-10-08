@@ -54,7 +54,7 @@ export async function FlowApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -67,7 +67,7 @@ export async function FlowApiRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 		uri = responseData.headers.link;
-		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData.body[propertyName] as IDataObject[]);
 	} while (responseData.headers.link !== undefined && responseData.headers.link !== '');
 
 	return returnData;

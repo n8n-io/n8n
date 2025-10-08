@@ -57,7 +57,7 @@ export async function autopilotApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 
 	const base = endpoint;
@@ -66,7 +66,7 @@ export async function autopilotApiRequestAllItems(
 	do {
 		responseData = await autopilotApiRequest.call(this, method, endpoint, body, query);
 		endpoint = `${base}/${responseData.bookmark}`;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		const limit = query.limit as number | undefined;
 		if (limit && returnData.length >= limit && !returnAll) {
 			return returnData;

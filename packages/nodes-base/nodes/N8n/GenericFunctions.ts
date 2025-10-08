@@ -61,7 +61,7 @@ export async function apiRequestAllItems(
 	query?: IDataObject,
 ): Promise<any> {
 	query = query || {};
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let nextCursor: string | undefined = undefined;
 	let responseData;
@@ -70,7 +70,7 @@ export async function apiRequestAllItems(
 		query.cursor = nextCursor;
 		query.limit = 100;
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.data as IDataObject[]);
+		returnData = returnData.concat(responseData.data as IDataObject[]);
 		nextCursor = responseData.nextCursor as string | undefined;
 	} while (nextCursor);
 	return returnData;

@@ -58,7 +58,7 @@ export async function affinityApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -67,7 +67,7 @@ export async function affinityApiRequestAllItems(
 	do {
 		responseData = await affinityApiRequest.call(this, method, resource, body, query);
 		query.page_token = responseData.page_token;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.page_token !== undefined && responseData.page_token !== null);
 
 	return returnData;

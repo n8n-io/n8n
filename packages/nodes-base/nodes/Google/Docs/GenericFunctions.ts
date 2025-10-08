@@ -63,7 +63,7 @@ export async function googleApiRequestAllItems(
 	qs?: IDataObject,
 	uri?: string,
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	const query: IDataObject = { ...qs };
@@ -73,7 +73,7 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

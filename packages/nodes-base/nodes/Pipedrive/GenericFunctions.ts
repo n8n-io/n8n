@@ -113,7 +113,7 @@ export async function pipedriveApiRequestAllItems(
 	query.limit = 100;
 	query.start = 0;
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -121,9 +121,9 @@ export async function pipedriveApiRequestAllItems(
 		responseData = await pipedriveApiRequest.call(this, method, endpoint, body, query);
 		// the search path returns data diferently
 		if (responseData.data.items) {
-			returnData.push.apply(returnData, responseData.data.items as IDataObject[]);
+			returnData = returnData.concat(responseData.data.items as IDataObject[]);
 		} else {
-			returnData.push.apply(returnData, responseData.data as IDataObject[]);
+			returnData = returnData.concat(responseData.data as IDataObject[]);
 		}
 
 		query.start = responseData.additionalData.pagination.next_start;

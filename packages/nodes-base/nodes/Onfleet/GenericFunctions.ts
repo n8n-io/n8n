@@ -55,14 +55,14 @@ export async function onfleetApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await onfleetApiRequest.call(this, method, endpoint, body, query);
 		query.lastId = responseData.lastId;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.lastId !== undefined);
 
 	return returnData;

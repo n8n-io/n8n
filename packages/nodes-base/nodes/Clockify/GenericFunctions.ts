@@ -41,7 +41,7 @@ export async function clockifyApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -52,7 +52,7 @@ export async function clockifyApiRequestAllItems(
 	do {
 		responseData = await clockifyApiRequest.call(this, method, endpoint, body, query);
 
-		returnData.push.apply(returnData, responseData as IDataObject[]);
+		returnData = returnData.concat(responseData as IDataObject[]);
 
 		const limit = query.limit as number | undefined;
 		if (limit && returnData.length >= limit) {

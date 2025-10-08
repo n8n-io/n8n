@@ -76,7 +76,7 @@ export async function hubspotApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -92,7 +92,7 @@ export async function hubspotApiRequestAllItems(
 		if (responseData.paging) {
 			body.after = responseData.paging.next.after;
 		}
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
 		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length && endpoint.includes('/tickets/paged')) {

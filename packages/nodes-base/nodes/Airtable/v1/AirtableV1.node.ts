@@ -731,7 +731,7 @@ export class AirtableV1 implements INodeType {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				returnData.push.apply(returnData, responseData.records as INodeExecutionData[]);
+				returnData = returnData.concat(responseData.records as INodeExecutionData[]);
 
 				if (downloadAttachments === true) {
 					const downloadFieldNames = (
