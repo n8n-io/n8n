@@ -117,7 +117,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				sessionId,
 				message,
 				credentials: {
-					openAiApi: { id: 'EZQozpOZDJhVjSJD', name: 'OpenAi account' },
+					openAiApi: { id: 'Jtx6ADZkQZARdxae', name: 'OpenAi account' },
 				},
 			},
 			(chunk: StructuredChunk) => onStreamMessage(chunk, messageId),
