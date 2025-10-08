@@ -67,6 +67,7 @@ describe('toolsAgentExecute', () => {
 					maxIterations: 10,
 					returnIntermediateSteps: false,
 					passthroughBinaryImages: true,
+					enableStreamingToolCalls: false,
 				};
 			return defaultValue;
 		});

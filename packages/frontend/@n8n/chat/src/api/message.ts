@@ -152,7 +152,7 @@ export async function sendMessageStreaming(
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'tool':
-					// Not outpoutting tool calls on purpose.
+					// Not outputting tool calls on purpose.
 					break;
 				case 'end':
 					handlers.onEndMessage(nodeId, runIndex);
