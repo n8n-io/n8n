@@ -11,7 +11,7 @@ import { useChatPanelStateStore } from './chatPanelState.store';
 import { useUIStore } from './ui.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from './builder.store';
-import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
+import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { VIEWS } from '@/constants';
 import { reactive } from 'vue';
 import { mockedStore } from '@/__tests__/utils';

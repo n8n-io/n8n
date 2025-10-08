@@ -6,7 +6,7 @@ import {
 	MAX_CHAT_WIDTH,
 	MIN_CHAT_WIDTH,
 } from './chatPanel.store';
-import { ASSISTANT_ENABLED_VIEWS } from '@/constants.assistant';
+import { ASSISTANT_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 import { useAssistantStore } from '@/features/assistant/assistant.store';

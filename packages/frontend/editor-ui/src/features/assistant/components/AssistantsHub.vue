@@ -8,7 +8,7 @@ import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 import { useRoute } from 'vue-router';
-import { BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
+import { BUILDER_ENABLED_VIEWS } from '../constants';
 import type { VIEWS } from '@/constants';
 
 import { N8nResizeWrapper } from '@n8n/design-system';

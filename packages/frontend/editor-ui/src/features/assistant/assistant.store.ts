@@ -5,7 +5,7 @@ import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	EDITABLE_CANVAS_VIEWS,
 } from '@/constants';
-import { ASSISTANT_ENABLED_VIEWS } from '@/constants.assistant';
+import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';

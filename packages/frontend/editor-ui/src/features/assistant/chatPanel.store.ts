@@ -5,7 +5,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import { ASK_AI_SLIDE_OUT_DURATION_MS } from '@/constants';
 import type { VIEWS } from '@/constants';
-import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
+import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';

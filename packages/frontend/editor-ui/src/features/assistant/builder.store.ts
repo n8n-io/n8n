@@ -5,7 +5,7 @@ import {
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
 	EDITABLE_CANVAS_VIEWS,
 } from '@/constants';
-import { BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
+import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';

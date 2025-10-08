@@ -11,7 +11,7 @@ import {
 	MAX_CHAT_WIDTH,
 	MIN_CHAT_WIDTH,
 } from './chatPanel.store';
-import { BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
+import { BUILDER_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from '@/stores/posthog.store';
