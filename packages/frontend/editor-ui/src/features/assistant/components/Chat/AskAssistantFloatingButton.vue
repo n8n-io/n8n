@@ -32,7 +32,7 @@ const onClick = async () => {
 	if (builderStore.isAIBuilderEnabled) {
 		// Toggle with appropriate mode based on current state
 		if (chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive) {
-			await chatPanelStore.close();
+			chatPanelStore.close();
 		} else {
 			await chatPanelStore.open({ mode: 'builder' });
 		}
