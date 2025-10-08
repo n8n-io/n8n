@@ -843,21 +843,20 @@ describe('InsightsService', () => {
 				});
 
 				// Barely in range insight (should be included)
-				// 1 hour before 14 days ago
 				await createCompactedInsightsEvent(workflow, {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
-				// 14 days ago
+				// 15 days ago
 				await createCompactedInsightsEvent(workflow, {
 					type: 'success',
 					value: 1,
 					periodUnit: 'day',
-					periodStart: now.minus({ days: 14 }),
+					periodStart: now.minus({ days: 15 }),
 				});
 			}
 
@@ -1001,12 +1000,11 @@ describe('InsightsService', () => {
 				});
 
 				// Barely in range insight (should be included)
-				// 1 hour before 14 days ago
 				await createCompactedInsightsEvent(workflow, {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
+					periodStart: DateTime.utc().minus({ days: 14 }).startOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
@@ -1015,7 +1013,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'day',
-					periodStart: DateTime.utc().minus({ days: 14 }),
+					periodStart: DateTime.utc().minus({ days: 15 }),
 				});
 			}
 
