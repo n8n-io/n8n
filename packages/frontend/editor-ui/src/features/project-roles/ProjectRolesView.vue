@@ -155,7 +155,7 @@ function handleRowClick(item: Role) {
 			:items-length="rolesStore.processedProjectRoles.length"
 			:items-per-page="rolesStore.processedProjectRoles.length"
 			:page-sizes="[rolesStore.processedProjectRoles.length]"
-			@click:row="(event, { item }) => handleRowClick(item)"
+			@click:row="(_event, { item }) => handleRowClick(item)"
 		>
 			<template #[`item.displayName`]="{ item }">
 				<N8nText tag="div" class="mb-5xs">{{ item.displayName }}</N8nText>
