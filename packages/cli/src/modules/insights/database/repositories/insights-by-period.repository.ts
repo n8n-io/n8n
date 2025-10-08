@@ -361,16 +361,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
-		const { daysFromStartDateToToday, daysFromEndDateToToday } = this.getDateRangesDaysLimits({
-			startDate,
-			endDate,
-		});
-
-		const cte = sql`
-			SELECT
-				${this.getAgeLimitQuery(daysFromStartDateToToday)} AS start_date,
-				${this.getAgeLimitQuery(daysFromEndDateToToday)} AS end_date
-		`;
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')

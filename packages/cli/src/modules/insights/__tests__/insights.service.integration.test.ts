@@ -687,7 +687,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
@@ -696,7 +696,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'day',
-					periodStart: now.minus({ days: 14 }),
+					periodStart: now.minus({ days: 15 }),
 				});
 			}
 
