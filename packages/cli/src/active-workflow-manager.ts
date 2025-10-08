@@ -48,6 +48,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
+import { ScheduleValidationService } from 'n8n-core';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -88,6 +89,7 @@ export class ActiveWorkflowManager {
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
+		private readonly scheduleValidationService: ScheduleValidationService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -597,6 +599,9 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// Validate schedule triggers before activation
+			this.validateScheduleTriggers(workflow);
+
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
 			});
@@ -993,5 +998,29 @@ export class ActiveWorkflowManager {
 	 */
 	shouldAddTriggersAndPollers() {
 		return this.instanceSettings.isLeader;
+	}
+
+	/**
+	 * Validates schedule triggers against minimum interval requirements
+	 */
+	private validateScheduleTriggers(workflow: Workflow): void {
+		const scheduleNodes = Object.values(workflow.nodes).filter(
+			(node: INode) => node.type === 'n8n-nodes-base.scheduleTrigger',
+		);
+
+		if (scheduleNodes.length === 0) return;
+
+		for (const node of scheduleNodes) {
+			const rule = node.parameters.rule as { interval: any[] } | undefined;
+			if (!rule?.interval) continue;
+
+			for (const interval of rule.interval) {
+				if (interval.field === 'cronExpression') {
+					this.scheduleValidationService.validateCronExpression(interval.expression);
+				} else {
+					this.scheduleValidationService.validateScheduleInterval(interval);
+				}
+			}
+		}
 	}
 }
