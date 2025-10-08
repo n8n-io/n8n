@@ -4,5 +4,5 @@ export function isSameModel(
 	one: ChatHubConversationModel,
 	another: ChatHubConversationModel,
 ): boolean {
-	return one.model !== another.model && one.provider === another.provider;
+	return one.model === another.model && one.provider === another.provider;
 }
