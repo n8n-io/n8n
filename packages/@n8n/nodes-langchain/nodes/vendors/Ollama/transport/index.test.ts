@@ -189,7 +189,7 @@ describe('Ollama Transport', () => {
 			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'ollamaApi',
 				expect.objectContaining({
-					url: 'http://localhost:11434//api/tags',
+					url: 'http://localhost:11434/api/tags',
 				}),
 			);
 		});

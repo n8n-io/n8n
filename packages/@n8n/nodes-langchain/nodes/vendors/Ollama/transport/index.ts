@@ -29,8 +29,7 @@ export async function apiRequest(
 		throw new Error('API key must be a string');
 	}
 
-	const baseUrl = credentials.baseUrl;
-	const url = `${baseUrl}${endpoint}`;
+	const url = new URL(endpoint, credentials.baseUrl).toString();
 
 	const headers = parameters?.headers ?? {};
 	if (apiKey) {
