@@ -231,6 +231,8 @@ export class Telemetry {
 			context: {},
 		};
 
+		this.postHog?.track(payload);
+
 		return this.rudderStack.track({
 			...payload,
 			// provide a fake IP address to instruct RudderStack to not use the user's IP address
