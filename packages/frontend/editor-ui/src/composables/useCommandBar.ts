@@ -18,6 +18,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/dataTable/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
@@ -27,6 +28,7 @@ export function useCommandBar() {
 	const route = useRoute();
 	const postHog = usePostHog();
 	const i18n = useI18n();
+	const telemetry = useTelemetry();
 
 	const placeholder = i18n.baseText('commandBar.placeholder');
 
@@ -209,8 +211,49 @@ export function useCommandBar() {
 		}
 	});
 
+	const trackCommand = (item: CommandBarItem, view: string, parentItem?: CommandBarItem) => {
+		telemetry.track('User executed command bar command', {
+			command_id: item.id,
+			command_section: item.section,
+			view,
+			parent_command_id: parentItem?.id,
+		});
+	};
+
+	const wrapItemWithTelemetry = (item: CommandBarItem): CommandBarItem => {
+		const wrappedItem: CommandBarItem = { ...item };
+		const routeName = (router.currentRoute.value.name ?? '').toString();
+
+		if (item.handler) {
+			const originalHandler = item.handler;
+			wrappedItem.handler = async () => {
+				trackCommand(item, routeName);
+				return await originalHandler();
+			};
+		}
+
+		if (item.children) {
+			wrappedItem.children = item.children.map((child) => {
+				if (child.handler) {
+					const originalChildHandler = child.handler;
+					return {
+						...child,
+						handler: async () => {
+							trackCommand(child, routeName, item);
+							return await originalChildHandler();
+						},
+					};
+				}
+				return child;
+			});
+		}
+
+		return wrappedItem;
+	};
+
 	const items = computed<CommandBarItem[]>(() => {
-		return activeCommandGroups.value.flatMap((group) => group.commands.value);
+		const allItems = activeCommandGroups.value.flatMap((group) => group.commands.value);
+		return allItems.map(wrapItemWithTelemetry);
 	});
 
 	const isLoading = computed(() => {
