@@ -56,7 +56,7 @@ export default {
 	'assistantChat.aiAssistantBetaLabel': 'Beta',
 	'assistantChat.aiAssistantName': 'n8n AI',
 	'assistantChat.sessionEndMessage.1':
-		'This Assistant session has ended. To start a new session with the Assistant, click an',
+		'This n8n AI session has ended. To start a new session with n8n AI, click a',
 	'assistantChat.sessionEndMessage.2': 'button in n8n',
 	'assistantChat.you': 'You',
 	'assistantChat.quickRepliesTitle': 'Quick reply 👇',
