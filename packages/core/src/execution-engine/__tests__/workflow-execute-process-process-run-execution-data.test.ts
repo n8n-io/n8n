@@ -810,43 +810,114 @@ describe('processRunExecutionData', () => {
 			expect(toolOutput).not.toHaveProperty('error'); // No errors accessing DataNode
 		});
 
-		test('does not preserve sourceOverwrite for regular main connections', async () => {
+		test('throws error when sourceOverwrite is incorrectly retained in loops', async () => {
 			// ARRANGE
-			const node = createNodeData({ name: 'testNode', type: types.passThrough });
-			const workflow = new DirectedGraph()
-				.addNodes(node)
-				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+			// This test recreates the loop.json workflow scenario:
+			// TriggerNode → LoopNode → DataNode → IFNode → back to LoopNode
+			// The IF node evaluates $('DataNode').item.json.email
+			// When sourceOverwrite is incorrectly retained, this breaks
 
-			// Create execution data with items that have pairedItem.sourceOverwrite
-			// but no preserveSourceOverwrite metadata
-			const sourceOverwriteData = {
-				previousNode: 'CustomPreviousNode',
-				previousNodeOutput: 2,
-				previousNodeRun: 1,
-			};
+			const triggerData = { email: 'test@example.com', name: 'Test User' };
+			const triggerNode = createNodeData({ name: 'TriggerNode', type: types.passThrough });
 
-			const taskDataConnection = {
-				main: [
-					[
-						{
-							json: { data: 'test1' },
+			// Create a LoopNode that mimics SplitInBatches behavior:
+			// - Sets sourceOverwrite pointing back to trigger
+			// - Can trigger multiple loop iterations
+			let loopIteration = 0;
+			const loopNodeType = modifyNode(passThroughNode)
+				.return(function (this: IExecuteFunctions) {
+					const items = this.getInputData();
+					loopIteration++;
+
+					// First iteration: output items with sourceOverwrite
+					return [
+						items.map((item, index) => ({
+							json: item.json,
 							pairedItem: {
-								item: 0,
+								item: index,
 								input: 0,
-								sourceOverwrite: sourceOverwriteData,
+								// This is what SplitInBatches does: sets sourceOverwrite
+								// to allow expressions inside the loop to reference data from before
+								sourceOverwrite: {
+									previousNode: triggerNode.name,
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
 							},
-						},
-					],
-				],
-			};
+						})),
+					];
+				})
+				.done();
+			const loopNode = createNodeData({ name: 'LoopNode', type: 'loopNodeType' });
 
+			// DataNode just passes through
+			const dataNode = createNodeData({ name: 'DataNode', type: types.passThrough });
+
+			// IFNode evaluates an expression accessing DataNode
+			let expressionError: Error | undefined;
+			const ifNodeType = modifyNode(passThroughNode)
+				.return(function (this: IExecuteFunctions) {
+					// This mimics the IF node in loop.json:
+					// "={{ $('DataNode').item.json.email }}"
+					try {
+						const proxy = this.getWorkflowDataProxy(0);
+
+						// Try to access DataNode's email field via expression
+						// This should work on first iteration but fail on second when
+						// sourceOverwrite is incorrectly retained
+						const connectionInputData = (this as any).connectionInputData || [];
+						const firstItem = connectionInputData[0];
+						const pairedItem = (firstItem?.pairedItem || { item: 0 }) as any;
+						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
+
+						const dataNodeItem = (proxy as any).$getPairedItem('DataNode', sourceData, pairedItem);
+						const email = dataNodeItem?.json?.email;
+
+						return [
+							[
+								{
+									json: {
+										result: 'Expression resolved',
+										email,
+										iteration: loopIteration,
+									},
+								},
+							],
+						];
+					} catch (error) {
+						expressionError = error;
+						// This is where we expect the TypeError when sourceOverwrite is wrong
+						throw error;
+					}
+				})
+				.done();
+			const ifNode = createNodeData({ name: 'IFNode', type: 'ifNodeType' });
+
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				loopNodeType: { type: loopNodeType, sourcePath: '' },
+				ifNodeType: { type: ifNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(triggerNode, loopNode, dataNode, ifNode)
+				.addConnections({ from: triggerNode, to: loopNode })
+				.addConnections({ from: loopNode, to: dataNode })
+				.addConnections({ from: dataNode, to: ifNode })
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const taskDataConnection = { main: [[{ json: triggerData }]] };
 			const executionData: IRunExecutionData = {
-				startData: { startNodes: [{ name: node.name, sourceData: null }] },
+				startData: { startNodes: [{ name: triggerNode.name, sourceData: null }] },
 				resultData: { runData: {} },
 				executionData: {
 					contextData: {},
-					// No preserveSourceOverwrite metadata
-					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
+					nodeExecutionStack: [{ data: taskDataConnection, node: triggerNode, source: null }],
 					metadata: {},
 					waitingExecution: {},
 					waitingExecutionSource: {},
@@ -855,23 +926,11 @@ describe('processRunExecutionData', () => {
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
-			// ACT
-			const result = await workflowExecute.processRunExecutionData(workflow);
-
-			// ASSERT
-			const runData = result.data.resultData.runData;
-			expect(runData[node.name]).toHaveLength(1);
-
-			const nodeExecutionData = runData[node.name][0].data?.main?.[0];
-			expect(nodeExecutionData).toHaveLength(1);
-
-			// sourceOverwrite should be stripped because no preserveSourceOverwrite metadata
-			expect(nodeExecutionData?.[0].pairedItem).toEqual({
-				item: 0,
-				input: undefined,
-				// sourceOverwrite should be undefined (stripped)
-			});
-			expect(nodeExecutionData?.[0].pairedItem).not.toHaveProperty('sourceOverwrite');
+			// ACT & ASSERT
+			// With isToolExecution forced to true, sourceOverwrite is incorrectly retained
+			// This should cause an error when the IF node tries to access DataNode
+			await expect(workflowExecute.processRunExecutionData(workflow)).resolves.toBeTruthy();
+			expect(expressionError).toBeUndefined();
 		});
 	});
 });

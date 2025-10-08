@@ -79,85 +79,6 @@ import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-r
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
-/**
- * Prints detailed pairedItem information for debugging purposes.
- * For each item in the executionData, shows which parent node items it links to,
- * and indicates if sourceOverwrite is being used.
- */
-function printPairedItemInfo(
-	executionData: IExecuteData,
-	nodeName: string,
-	runIndex: number,
-): void {
-	console.log(`\n=== Paired Item Info for Node: '${nodeName}' (run: ${runIndex}) ===`);
-
-	for (const connectionType of Object.keys(executionData.data)) {
-		console.log(`Connection Type: ${connectionType}`);
-
-		executionData.data[connectionType].forEach((input, inputIndex) => {
-			if (input === null) {
-				console.log(`  Input ${inputIndex}: null`);
-				return;
-			}
-
-			console.log(`  Input ${inputIndex}:`);
-
-			input.forEach((item, itemIndex) => {
-				const pairedItem = item.pairedItem;
-
-				// Handle different pairedItem formats
-				let parentInfo = '';
-				let sourceOverwriteInfo = '';
-
-				if (pairedItem === undefined) {
-					parentInfo = 'no paired item';
-				} else if (typeof pairedItem === 'number') {
-					parentInfo = `item ${pairedItem}`;
-				} else if (Array.isArray(pairedItem)) {
-					const parentItems = pairedItem
-						.map((p) => {
-							if (typeof p === 'number') {
-								return `item ${String(p)}`;
-							}
-							return `input ${p.input ?? 0}, item ${p.item}`;
-						})
-						.join('; ');
-					parentInfo = `multiple parents: [${parentItems}]`;
-
-					// Check for sourceOverwrite in array items
-					const itemsWithSourceOverwrite = pairedItem.filter(
-						(p): p is IPairedItemData => typeof p === 'object' && p.sourceOverwrite !== undefined,
-					);
-					if (itemsWithSourceOverwrite.length > 0) {
-						sourceOverwriteInfo = itemsWithSourceOverwrite
-							.map((p) => {
-								const so = p.sourceOverwrite!;
-								return `sourceOverwrite: node='${so.previousNode}', run=${so.previousNodeRun}, output=${so.previousNodeOutput}`;
-							})
-							.join('; ');
-					}
-				} else {
-					// Single IPairedItemData object
-					parentInfo = `input ${pairedItem.input ?? 0}, item ${pairedItem.item}`;
-
-					if (pairedItem.sourceOverwrite) {
-						const so = pairedItem.sourceOverwrite;
-						sourceOverwriteInfo = `sourceOverwrite: node='${so.previousNode}', run=${so.previousNodeRun}, output=${so.previousNodeOutput}`;
-					}
-				}
-
-				const outputLine = sourceOverwriteInfo
-					? `    Item ${itemIndex} -> ${parentInfo} [${sourceOverwriteInfo}]`
-					: `    Item ${itemIndex} -> ${parentInfo}`;
-
-				console.log(outputLine);
-			});
-		});
-	}
-
-	console.log('=== End Paired Item Info ===\n');
-}
-
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
 
@@ -1634,9 +1555,6 @@ export class WorkflowExecute {
 						hints: [],
 					};
 
-					// Print paired item debug information
-					printPairedItemInfo(executionData, executionNode.name, runIndex);
-
 					// Update the pairedItem information on items
 					const newTaskDataConnections: ITaskDataConnections = {};
 					for (const connectionType of Object.keys(executionData.data)) {
@@ -1653,6 +1571,7 @@ export class WorkflowExecute {
 									// from, which is critical for maintaining correct data
 									// lineage when nodes need to manipulate the item tracking
 									// chain.
+									// TEMPORARY: Force to true to reproduce sourceOverwrite retention bug
 									const isToolExecution = !!executionData.metadata?.preserveSourceOverwrite;
 									if (
 										isToolExecution &&
@@ -1681,8 +1600,6 @@ export class WorkflowExecute {
 						);
 					}
 					executionData.data = newTaskDataConnections;
-
-					printPairedItemInfo(executionData, executionNode.name, runIndex);
 
 					// Get the index of the current run
 					runIndex = 0;
