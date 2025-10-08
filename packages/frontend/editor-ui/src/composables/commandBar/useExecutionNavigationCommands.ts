@@ -13,14 +13,14 @@ export function useExecutionNavigationCommands(): CommandGroup {
 	const router = useRouter();
 	const route = useRoute();
 
+	const personalProjectId = computed(() => {
+		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
+	});
+
 	const currentProjectId = computed(() => {
 		return typeof route.params.projectId === 'string'
 			? route.params.projectId
 			: personalProjectId.value;
-	});
-
-	const personalProjectId = computed(() => {
-		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
 	});
 
 	const executionNavigationCommands = computed<CommandBarItem[]>(() => {
