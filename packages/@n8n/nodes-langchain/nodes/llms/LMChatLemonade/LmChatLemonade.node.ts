@@ -96,12 +96,6 @@ export class LmChatLemonade implements INodeType {
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
-		// Ensure the model has the correct LangChain namespace for AI Agent compatibility
-		// This is required for the isChatInstance() check in ConversationalAgent
-		if (!model.lc_namespace.includes('chat_models')) {
-			model.lc_namespace = [...model.lc_namespace, 'chat_models'];
-		}
-
 		return {
 			response: model,
 		};

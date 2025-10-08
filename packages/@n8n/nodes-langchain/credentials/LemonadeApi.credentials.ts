@@ -3,7 +3,13 @@ import type {
 	ICredentialType,
 	INodeProperties,
 	IAuthenticateGeneric,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
+
+export type LemonadeApiCredentialsType = {
+	baseUrl: string;
+	apiKey?: string;
+};
 
 export class LemonadeApi implements ICredentialType {
 	name = 'lemonadeApi';
@@ -31,14 +37,19 @@ export class LemonadeApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.apiKey}}',
-			},
-		},
-	};
+	async authenticate(
+		credentials: LemonadeApiCredentialsType,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		// Only add Authorization header if API key is provided and not empty
+		if (credentials.apiKey && credentials.apiKey.trim() !== '') {
+			requestOptions.headers = {
+				...requestOptions.headers,
+				Authorization: `Bearer ${credentials.apiKey}`,
+			};
+		}
+		return requestOptions;
+	}
 
 	test: ICredentialTestRequest = {
 		request: {
