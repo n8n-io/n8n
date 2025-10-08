@@ -31,17 +31,3 @@ jobs:
         with:
           build-command: pnpm lint
           node-version: ${{ inputs.nodeVersion }}
-
-  lint-styles:
-    name: Lint Styles
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          ref: ${{ inputs.ref }}
-
-      - name: Build and Lint Styles
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
-        with:
-          build-command: pnpm lint:styles
-          node-version: ${{ inputs.nodeVersion }}
