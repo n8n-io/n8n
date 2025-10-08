@@ -117,6 +117,7 @@ describe('createBotMessage', () => {
 		expect(message.text).toBe('');
 		expect(message.sender).toBe('bot');
 		expect(message.id).toBeDefined();
+		expect(message.timestamp).toBeInstanceOf(Date);
 	});
 
 	it('should create a bot message with custom id', () => {
@@ -124,6 +125,7 @@ describe('createBotMessage', () => {
 		const message = createBotMessage(customId);
 
 		expect(message.id).toBe(customId);
+		expect(message.timestamp).toBeInstanceOf(Date);
 	});
 });
 
