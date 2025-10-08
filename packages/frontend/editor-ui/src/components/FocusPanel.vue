@@ -1,7 +1,15 @@
 <script setup lang="ts">
+import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
+import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import SqlEditor from '@/features/editors/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
 import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -21,9 +29,10 @@ import {
 	type CodeNodeEditorLanguage,
 	type EditorType,
 	HTML_NODE_TYPE,
+	type INodeProperties,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
@@ -39,7 +48,16 @@ import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/compo
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/types';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
+import {
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nRadioButtons,
+	N8nResizeWrapper,
+	N8nText,
+} from '@n8n/design-system';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -70,6 +88,7 @@ const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 const activeElement = useActiveElement();
+const { renameNode } = useCanvasOperations();
 
 useTelemetryContext({ view_shown: 'focus_panel' });
 
@@ -144,9 +163,9 @@ const hasNodeRun = computed(() => {
 	);
 });
 
-function getTypeOption<T>(optionName: string): T | undefined {
+function getTypeOption<T extends keyof NonNullable<INodeProperties['typeOptions']>>(optionName: T) {
 	return resolvedParameter.value
-		? getParameterTypeOption<T>(resolvedParameter.value.parameter, optionName)
+		? getParameterTypeOption(resolvedParameter.value.parameter, optionName)
 		: undefined;
 }
 
@@ -165,7 +184,7 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	return getTypeOption('editorLanguage') ?? 'javaScript';
 });
 
-const editorRows = computed(() => getTypeOption<number>('rows'));
+const editorRows = computed(() => getTypeOption('rows'));
 
 const isToolNode = computed(() =>
 	resolvedParameter.value ? nodeTypesStore.isToolNode(resolvedParameter.value?.node.type) : false,
@@ -419,6 +438,12 @@ function onOpenNdv() {
 		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
 	}
 }
+
+function onRenameNode(value: string) {
+	if (node.value) {
+		void renameNode(node.value.name, value);
+	}
+}
 </script>
 
 <template>
@@ -428,6 +453,7 @@ function onOpenNdv() {
 		data-test-id="focus-panel"
 		:class="[
 			$style.wrapper,
+			'ignore-key-press-canvas',
 			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },
 		]"
 		@keydown.stop
@@ -447,9 +473,11 @@ function onOpenNdv() {
 					:node="node"
 					:parameter="resolvedParameter?.parameter"
 					:is-executable="isExecutable"
+					:read-only="isCanvasReadOnly"
 					@execute="onExecute"
 					@open-ndv="onOpenNdv"
 					@clear-parameter="closeFocusPanel"
+					@rename-node="onRenameNode"
 				/>
 				<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
 					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">

@@ -1,9 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import type { EvaluationInput, EvaluationResult, TestCase } from '../types/evaluation';
+import { programmaticEvaluation } from '../programmatic/programmatic';
+import type { EvaluationInput, TestCase } from '../types/evaluation';
 import { isWorkflowStateValues } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
@@ -26,8 +27,34 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 			connections: { score: 0, violations: [] },
 			expressions: { score: 0, violations: [] },
 			nodeConfiguration: { score: 0, violations: [] },
+			efficiency: {
+				score: 0,
+				violations: [],
+				redundancyScore: 0,
+				pathOptimization: 0,
+				nodeCountEfficiency: 0,
+			},
+			dataFlow: {
+				score: 0,
+				violations: [],
+			},
+			maintainability: {
+				score: 0,
+				violations: [],
+				nodeNamingQuality: 0,
+				workflowOrganization: 0,
+				modularity: 0,
+			},
 			structuralSimilarity: { score: 0, violations: [], applicable: false },
 			summary: `Evaluation failed: ${errorMessage}`,
+		},
+		programmaticEvaluationResult: {
+			overallScore: 0,
+			connections: { violations: [], score: 0 },
+			trigger: { violations: [], score: 0 },
+			agentPrompt: { violations: [], score: 0 },
+			tools: { violations: [], score: 0 },
+			fromAi: { violations: [], score: 0 },
 		},
 		generationTime: 0,
 		error: errorMessage,
@@ -46,6 +73,7 @@ export async function runSingleTest(
 	agent: WorkflowBuilderAgent,
 	llm: BaseChatModel,
 	testCase: TestCase,
+	nodeTypes: INodeTypeDescription[],
 	userId: string = 'test-user',
 ): Promise<TestResult> {
 	try {
@@ -72,11 +100,13 @@ export async function runSingleTest(
 		};
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
+		const programmaticEvaluationResult = await programmaticEvaluation(evaluationInput, nodeTypes);
 
 		return {
 			testCase,
 			generatedWorkflow,
 			evaluationResult,
+			programmaticEvaluationResult,
 			generationTime,
 		};
 	} catch (error) {
@@ -97,26 +127,4 @@ export function initializeTestTracking(
 		tracking[testCase.id] = 'pending';
 	}
 	return tracking;
-}
-
-/**
- * Create a test result from a workflow state
- * @param testCase - The test case
- * @param workflow - Generated workflow
- * @param evaluationResult - Evaluation result
- * @param generationTime - Time taken to generate workflow
- * @returns TestResult
- */
-export function createTestResult(
-	testCase: TestCase,
-	workflow: SimpleWorkflow,
-	evaluationResult: EvaluationResult,
-	generationTime: number,
-): TestResult {
-	return {
-		testCase,
-		generatedWorkflow: workflow,
-		evaluationResult,
-		generationTime,
-	};
 }

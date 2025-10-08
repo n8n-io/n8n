@@ -2,12 +2,6 @@
 import { computed, ref } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nUserInfo,
-	N8nDataTableServer,
-	type UserAction,
-	type ActionDropdownItem,
-} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
@@ -17,6 +11,13 @@ import SettingsUsersLastActiveCell from '@/components/SettingsUsers/SettingsUser
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
+import {
+	N8nDataTableServer,
+	N8nText,
+	N8nUserInfo,
+	type ActionDropdownItem,
+	type UserAction,
+} from '@n8n/design-system';
 type Item = UsersList['items'][number];
 
 const i18n = useI18n();

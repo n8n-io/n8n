@@ -3,7 +3,6 @@ import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 import { computed, provide, ref } from 'vue';
@@ -17,6 +16,7 @@ import { useCanvas } from '@/composables/useCanvas';
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nText } from '@n8n/design-system';
 const { nodeId, isReadOnly } = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;

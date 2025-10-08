@@ -15,7 +15,10 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
+		// 'mcp' and 'chat-hub' aren't (yet) eligible modules by default
+		const NON_DEFAULT_MODULES = ['mcp', 'chat-hub'];
+		const expectedModules = MODULE_NAMES.filter((name) => !NON_DEFAULT_MODULES.includes(name));
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {

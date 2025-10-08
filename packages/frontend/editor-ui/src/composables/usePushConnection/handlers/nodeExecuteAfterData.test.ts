@@ -36,7 +36,7 @@ describe('nodeExecuteAfterData', () => {
 
 		await nodeExecuteAfterData(event);
 
-		expect(workflowsStore.updateNodeExecutionData).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.updateNodeExecutionData).toHaveBeenCalledWith(event.data);
+		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
 	});
 });

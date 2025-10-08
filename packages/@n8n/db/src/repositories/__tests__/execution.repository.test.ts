@@ -1,9 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container } from '@n8n/di';
 import { In, LessThan, And, Not } from '@n8n/typeorm';
+
+import type { IExecutionResponse } from 'entities/types-db';
 
 import { ExecutionEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { ExecutionRepository } from '../execution.repository';
+
+const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
 /**
  * TODO: add tests for all the other methods
@@ -303,6 +308,56 @@ describe('ExecutionRepository', () => {
 				where: { status: 'running', mode: In(['webhook', 'trigger']) },
 			});
 			expect(result).toBe(mockCount);
+		});
+	});
+
+	describe('markAsCrashed', () => {
+		test('should batch updates above a threshold', async () => {
+			// Generates a list of many execution ids.
+			// NOTE: GREATER_THAN_MAX_UPDATE_THRESHOLD is selected to be just above the default threshold.
+			const manyExecutionsToMarkAsCrashed: string[] = Array(GREATER_THAN_MAX_UPDATE_THRESHOLD)
+				.fill(undefined)
+				.map((_, i) => i.toString());
+			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
+			expect(entityManager.update).toBeCalledTimes(2);
+		});
+	});
+
+	describe('stopDuringRun', () => {
+		test('should update execution with ManualExecutionCancelledError', async () => {
+			const mockExecution = {
+				id: '123',
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			} as unknown;
+
+			const updateSpy = jest.spyOn(executionRepository, 'updateExistingExecution');
+
+			const result = await executionRepository.stopDuringRun(mockExecution as IExecutionResponse);
+
+			// Verify updateExistingExecution was called with the execution
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.objectContaining({
+					status: 'canceled',
+					stoppedAt: expect.any(Date),
+					waitTill: null,
+					data: expect.objectContaining({
+						resultData: expect.objectContaining({
+							error: expect.objectContaining({
+								message: 'The execution was cancelled manually',
+							}),
+						}),
+					}),
+				}),
+			);
+
+			// Verify the execution was marked as canceled
+			expect(result.status).toBe('canceled');
+			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
 		});
 	});
 });

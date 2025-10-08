@@ -22,6 +22,7 @@ import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
+	isOidcCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
@@ -55,7 +56,7 @@ export class AuthController {
 			throw new BadRequestError('Invalid email address');
 		}
 
-		if (isSamlCurrentAuthenticationMethod()) {
+		if (isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			// if the user is an owner, continue with the login

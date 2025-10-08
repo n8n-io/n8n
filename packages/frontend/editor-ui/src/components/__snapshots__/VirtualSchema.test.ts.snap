@@ -217,7 +217,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -973,7 +973,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -1161,7 +1161,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -1222,7 +1222,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -1655,7 +1655,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -1957,7 +1957,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2018,7 +2018,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2211,7 +2211,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2272,7 +2272,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2333,7 +2333,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2460,7 +2460,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2521,7 +2521,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2748,7 +2748,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />
@@ -2881,7 +2881,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              icon="case-upper"
+              icon="type"
               size="small"
               spin="false"
             />

@@ -111,7 +111,6 @@ export class WorkflowExecutionService {
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
-		partialExecutionVersion: 1 | 2 = 1,
 	) {
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
@@ -152,7 +151,10 @@ export class WorkflowExecutionService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase({
+				userId: user.id,
+				workflowId: workflowData.id,
+			});
 
 			const needsWebhook = await this.testWebhooks.needsWebhook({
 				userId: user.id,
@@ -180,7 +182,6 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
-			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
 			agentRequest,
@@ -215,7 +216,6 @@ export class WorkflowExecutionService {
 				},
 				manualData: {
 					userId: data.userId,
-					partialExecutionVersion: data.partialExecutionVersion,
 					dirtyNodeNames,
 					triggerToStartFrom,
 				},

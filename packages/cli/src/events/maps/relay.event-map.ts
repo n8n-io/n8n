@@ -370,6 +370,10 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'execution-cancelled': {
+		executionId: string;
+	};
+
 	// #endregion
 
 	// #region Project
@@ -404,6 +408,7 @@ export type RelayEventMap = {
 		readOnlyInstance: boolean;
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
+		connectionType: 'ssh' | 'https';
 	};
 
 	'source-control-user-started-pull-ui': {

@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`CanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
+exports[`N8nCanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
 <div>
   <div
     class="thinkingPill"

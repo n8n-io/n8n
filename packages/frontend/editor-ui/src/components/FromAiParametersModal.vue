@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
@@ -6,6 +7,7 @@ import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRe
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
+	type INode,
 	type FromAIArgument,
 	type IDataObject,
 	NodeConnectionTypes,
@@ -19,8 +21,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { INode } from 'n8n-workflow';
 
+import { ElCol, ElRow } from 'element-plus';
+import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
 type Value = string | number | boolean | null | undefined;
 
 const props = defineProps<{
@@ -294,19 +297,19 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 			</N8nCallout>
 		</template>
 		<template v-else #content>
-			<el-col>
-				<el-row :class="$style.row">
-					<n8n-text data-testid="from-ai-parameters-modal-description">
+			<ElCol>
+				<ElRow :class="$style.row">
+					<N8nText data-testid="from-ai-parameters-modal-description">
 						{{
 							i18n.baseText('fromAiParametersModal.description', {
 								interpolate: { parentNodeName: parentNode || '' },
 							})
 						}}
-					</n8n-text>
-				</el-row>
-			</el-col>
-			<el-col>
-				<el-row :class="$style.row">
+					</N8nText>
+				</ElRow>
+			</ElCol>
+			<ElCol>
+				<ElRow :class="$style.row">
 					<N8nFormInputs
 						ref="inputs"
 						:inputs="parameters"
@@ -315,20 +318,20 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 						@submit="onExecute"
 						@update="onUpdate"
 					></N8nFormInputs>
-				</el-row>
-			</el-col>
+				</ElRow>
+			</ElCol>
 		</template>
 		<template v-if="!error" #footer>
-			<el-row justify="end">
-				<el-col :span="5" :offset="19">
-					<n8n-button
+			<ElRow justify="end">
+				<ElCol :span="5" :offset="19">
+					<N8nButton
 						data-test-id="execute-workflow-button"
 						icon="flask-conical"
 						:label="i18n.baseText('fromAiParametersModal.execute')"
 						@click="onExecute"
 					/>
-				</el-col>
-			</el-row>
+				</ElCol>
+			</ElRow>
 		</template>
 	</Modal>
 </template>

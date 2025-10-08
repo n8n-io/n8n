@@ -18,6 +18,8 @@ import type {
 } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 
+import { ElRadio } from 'element-plus';
+import { N8nInputLabel } from '@n8n/design-system';
 export interface Props {
 	credentialType: ICredentialType;
 }
@@ -107,8 +109,9 @@ function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
 	return shouldDisplay;
 }
 
-function onAuthTypeChange(newType: string): void {
-	emit('authTypeChanged', newType);
+function onAuthTypeChange(newType: string | number | boolean): void {
+	const stringValue = typeof newType === 'string' ? newType : String(newType);
+	emit('authTypeChanged', stringValue);
 }
 
 function valueChanged(data: IUpdateInformation): void {
@@ -135,13 +138,13 @@ defineExpose({
 			/>
 		</div>
 		<div>
-			<n8n-input-label
+			<N8nInputLabel
 				:label="i18n.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
 				:tooltip-text="i18n.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
 				:required="true"
 			/>
 		</div>
-		<el-radio
+		<ElRadio
 			v-for="prop in filteredNodeAuthOptions"
 			:key="prop.value"
 			v-model="selected"
@@ -149,7 +152,7 @@ defineExpose({
 			:class="$style.authRadioButton"
 			border
 			@update:model-value="onAuthTypeChange"
-			>{{ prop.name }}</el-radio
+			>{{ prop.name }}</ElRadio
 		>
 	</div>
 </template>

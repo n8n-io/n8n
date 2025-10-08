@@ -26,7 +26,7 @@ describe('TypeSelect.vue', () => {
 		);
 
 		const options = baseElement.querySelectorAll('.option');
-		expect(options.length).toEqual(5);
+		expect(options.length).toEqual(6);
 
 		expect(options[0]).toHaveTextContent('String');
 		expect(options[1]).toHaveTextContent('Number');

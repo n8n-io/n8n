@@ -74,7 +74,7 @@ RUN uv pip install -r /app/task-runner-python/extras.txt
 # ==============================================================================
 FROM alpine:3.22.1 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.3.1
+ARG LAUNCHER_VERSION=1.4.0
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -106,6 +106,9 @@ ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production \
     N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
     SHELL=/bin/sh
+
+# Bring `uv` over from python-runner-builder
+COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 
 # Bring node over from node-alpine
 COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node

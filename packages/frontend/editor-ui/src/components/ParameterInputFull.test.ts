@@ -7,6 +7,7 @@ import ParameterInputFull from './ParameterInputFull.vue';
 import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNodeProperties } from '@/__tests__/mocks';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 
@@ -68,11 +69,11 @@ const renderComponent = createComponentRenderer(ParameterInputFull, {
 	props: {
 		path: 'myParam',
 		value: '',
-		parameter: {
+		parameter: createTestNodeProperties({
 			displayName: 'My Param',
 			name: 'myParam',
 			type: 'string',
-		},
+		}),
 	},
 });
 

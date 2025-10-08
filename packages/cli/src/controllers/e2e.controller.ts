@@ -116,6 +116,7 @@ export class E2EController {
 		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
 		[LICENSE_FEATURES.WORKFLOW_DIFFS]: false,
 		[LICENSE_FEATURES.CUSTOM_ROLES]: false,
+		[LICENSE_FEATURES.AI_BUILDER]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {

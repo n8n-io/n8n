@@ -253,9 +253,8 @@ function hookFunctionsPush(
 		if (status === 'waiting') {
 			pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
 		} else {
-			const rawData = stringify(fullRunData.data);
 			pushInstance.send(
-				{ type: 'executionFinished', data: { executionId, workflowId, status, rawData } },
+				{ type: 'executionFinished', data: { executionId, workflowId, status } },
 				pushRef,
 			);
 		}

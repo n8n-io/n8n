@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LinkItemProps } from '@/Interface';
 
+import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
 export interface Props {
 	link: LinkItemProps;
 }
@@ -9,7 +10,7 @@ defineProps<Props>();
 </script>
 
 <template>
-	<n8n-node-creator-node
+	<N8nNodeCreatorNode
 		:class="$style.creatorLink"
 		:title="link.title"
 		:is-trigger="false"
@@ -18,7 +19,7 @@ defineProps<Props>();
 		:show-action-arrow="true"
 	>
 		<template #icon>
-			<n8n-node-icon
+			<N8nNodeIcon
 				type="icon"
 				:name="link.icon"
 				:circle="false"
@@ -26,7 +27,7 @@ defineProps<Props>();
 				:use-updated-icons="true"
 			/>
 		</template>
-	</n8n-node-creator-node>
+	</N8nNodeCreatorNode>
 </template>
 
 <style lang="scss" module>

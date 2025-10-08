@@ -1,3 +1,12 @@
+from src.errors import (
+    ConfigurationError,
+    TaskCancelledError,
+    TaskRuntimeError,
+    TaskTimeoutError,
+    SecurityViolationError,
+    WebsocketConnectionError,
+)
+
 # Messages
 BROKER_INFO_REQUEST = "broker:inforequest"
 BROKER_RUNNER_REGISTERED = "broker:runnerregistered"
@@ -33,6 +42,7 @@ EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_internal_circular_ref__"
 EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
 EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
+SIGTERM_EXIT_CODE = -15
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -64,11 +74,20 @@ ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
+IGNORED_ERROR_TYPES = (
+    ConfigurationError,
+    TaskRuntimeError,
+    TaskCancelledError,
+    TaskTimeoutError,
+    SecurityViolationError,
+    WebsocketConnectionError,
+    SyntaxError,
+)
 
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
+LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} ({result_size}) for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL = 'Cancelled task {task_id} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL_UNKNOWN = (
     "Received cancel for unknown task: {task_id}. Discarding message."
@@ -86,7 +105,7 @@ TASK_REJECTED_REASON_OFFER_EXPIRED = (
 TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capacity"
 
 # Security
-BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__"
+BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals"
 ALWAYS_BLOCKED_ATTRIBUTES = {
     "__subclasses__",
     "__globals__",

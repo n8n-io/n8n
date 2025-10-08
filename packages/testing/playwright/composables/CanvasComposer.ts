@@ -41,6 +41,22 @@ export class CanvasComposer {
 	}
 
 	/**
+	 * Get workflow JSON from clipboard
+	 * Grants permissions, selects all, copies, and returns parsed workflow
+	 * @returns The parsed workflow object from clipboard
+	 */
+	async getWorkflowFromClipboard(): Promise<{
+		nodes: Array<{ credentials?: Record<string, unknown> }>;
+		meta?: Record<string, unknown>;
+	}> {
+		await this.n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+		await this.n8n.canvas.selectAll();
+		await this.n8n.canvas.copyNodes();
+		const workflowJSON = await this.n8n.page.evaluate(() => navigator.clipboard.readText());
+		return JSON.parse(workflowJSON);
+	}
+
+	/**
 	 * Switch between editor and workflow history and back
 	 */
 	async switchBetweenEditorAndHistory(): Promise<void> {
@@ -56,7 +72,7 @@ export class CanvasComposer {
 	 */
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
 		await this.n8n.page.getByTestId('menu-item').first().click();
-		await this.n8n.page.getByTestId('resources-list-item-workflow').first().click();
+		await this.n8n.workflows.cards.getWorkflows().first().click();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -96,5 +112,31 @@ export class CanvasComposer {
 					`Initial: ${initialNodeSize.toFixed(1)}px, Final: ${finalNodeSize.toFixed(1)}px`,
 			);
 		}
+	}
+
+	/**
+	 * Delay workflow GET request to simulate loading during page reload.
+	 * Useful for testing save-blocking behavior during real loading states.
+	 *
+	 * @param workflowId - The workflow ID to delay loading for
+	 * @param delayMs - Delay in milliseconds (default: 2000)
+	 */
+	async delayWorkflowLoad(workflowId: string, delayMs: number = 2000): Promise<void> {
+		await this.n8n.page.route(`**/rest/workflows/${workflowId}`, async (route) => {
+			if (route.request().method() === 'GET') {
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+			}
+			await route.continue();
+		});
+	}
+
+	/**
+	 * Remove the workflow load delay route handler.
+	 * Should be called after delayWorkflowLoad() when testing is complete.
+	 *
+	 * @param workflowId - The workflow ID to stop delaying
+	 */
+	async undelayWorkflowLoad(workflowId: string): Promise<void> {
+		await this.n8n.page.unroute(`**/rest/workflows/${workflowId}`);
 	}
 }

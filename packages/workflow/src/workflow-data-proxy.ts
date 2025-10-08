@@ -1040,10 +1040,19 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
-			const inputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
-				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			let inputData;
+			let placeholdersDataInputData;
+
+			if (!resultData) {
+				inputData = this.connectionInputData?.[runIndex];
+				placeholdersDataInputData = inputData.json;
+			} else {
+				inputData =
+					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+				placeholdersDataInputData = inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+			}
 
 			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {

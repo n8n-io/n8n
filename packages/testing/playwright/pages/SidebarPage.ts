@@ -11,8 +11,16 @@ export class SidebarPage {
 		await this.page.getByTestId('project-plus-button').click();
 	}
 
+	async clickHomeButton() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async universalAdd() {
 		await this.page.getByTestId('universal-add').click();
+	}
+
+	async clickHomeMenuItem() {
+		await this.page.getByTestId('project-home-menu-item').click();
 	}
 
 	async addProjectFromUniversalAdd() {
@@ -37,11 +45,64 @@ export class SidebarPage {
 	}
 
 	async clickProjectMenuItem(projectName: string) {
+		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
 	}
 
 	getAddFirstProjectButton(): Locator {
 		return this.page.getByTestId('add-first-project-button');
+	}
+
+	getUserMenu(): Locator {
+		return this.page.getByTestId('main-sidebar-user-menu');
+	}
+
+	getLogoutMenuItem(): Locator {
+		return this.page.getByTestId('user-menu-item-logout');
+	}
+
+	getAboutModal(): Locator {
+		return this.page.getByTestId('about-modal');
+	}
+
+	async clickAboutMenuItem(): Promise<void> {
+		await this.page.getByTestId('help').click();
+		await this.page.getByTestId('about').click();
+	}
+
+	async closeAboutModal(): Promise<void> {
+		await this.page.getByTestId('close-about-modal-button').click();
+	}
+
+	getAdminPanel(): Locator {
+		return this.page.getByTestId('cloud-admin');
+	}
+
+	getTrialBanner(): Locator {
+		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	getTemplatesLink(): Locator {
+		return this.page.getByTestId('templates').locator('a');
+	}
+
+	async openUserMenu(): Promise<void> {
+		await this.getUserMenu().click();
+	}
+
+	async clickSignout(): Promise<void> {
+		await this.expand();
+		await this.openUserMenu();
+		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async goToWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
 	}
 
 	async expand() {

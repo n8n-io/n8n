@@ -2,6 +2,7 @@
 import type { ProjectMemberData } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system';
 
+import { N8nActionToggle } from '@n8n/design-system';
 const props = defineProps<{
 	data: ProjectMemberData;
 	actions: Array<UserAction<ProjectMemberData>>;

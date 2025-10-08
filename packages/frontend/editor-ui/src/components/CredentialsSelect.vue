@@ -4,10 +4,10 @@ import { computed, ref } from 'vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 type Props = {
 	activeCredentialType: string;
 	parameter: INodeProperties;

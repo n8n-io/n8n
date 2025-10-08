@@ -15,7 +15,7 @@ import type {
 	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
-	CanvasNodeAIPromptRender,
+	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
@@ -96,9 +96,10 @@ export function useCanvasMapping({
 			options: {},
 		};
 	}
-	function createAIPromptRenderType(): CanvasNodeAIPromptRender {
+
+	function createChoicePromptRenderType(): CanvasNodeChoicePromptRender {
 		return {
-			type: CanvasNodeRenderType.AIPrompt,
+			type: CanvasNodeRenderType.ChoicePrompt,
 			options: {},
 		};
 	}
@@ -140,8 +141,8 @@ export function useCanvasMapping({
 					case `${CanvasNodeRenderType.AddNodes}`:
 						acc[node.id] = createAddNodesRenderType();
 						break;
-					case `${CanvasNodeRenderType.AIPrompt}`:
-						acc[node.id] = createAIPromptRenderType();
+					case `${CanvasNodeRenderType.ChoicePrompt}`:
+						acc[node.id] = createChoicePromptRenderType();
 						break;
 					default:
 						acc[node.id] = createDefaultNodeRenderType(node);
@@ -500,6 +501,8 @@ export function useCanvasMapping({
 						acc[node.id] = i18n.baseText(
 							'node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall',
 						);
+
+						return acc;
 					}
 
 					acc[node.id] = i18n.baseText('node.nodeIsWaitingTill', {
@@ -689,8 +692,8 @@ export function useCanvasMapping({
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
 		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-		const runDataTotal =
-			nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index]?.total ?? 0;
+		const runData = nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index];
+		const runDataTotal = runData?.total ?? 0;
 
 		const sourceTasks = nodeExecutionRunDataById.value[connection.source] ?? [];
 		let lastSourceTask: ITaskData | undefined = sourceTasks[sourceTasks.length - 1];
@@ -699,7 +702,7 @@ export function useCanvasMapping({
 		}
 
 		let status: CanvasConnectionData['status'];
-		if (nodeExecutionRunningById.value[connection.source]) {
+		if (nodeExecutionRunningById.value[connection.source] && runDataTotal === 0) {
 			status = 'running';
 		} else if (
 			nodePinnedDataById.value[connection.source] &&

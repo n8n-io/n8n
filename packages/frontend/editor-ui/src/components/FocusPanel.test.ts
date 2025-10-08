@@ -106,7 +106,7 @@ describe('FocusPanel', () => {
 			vueFlow.addSelectedNodes([graphNode]);
 
 			expect(await rendered.findByTestId('node-parameters')).toBeInTheDocument();
-			expect(rendered.getByText('N0')).toBeInTheDocument(); // title in header
+			expect(rendered.getAllByText('N0')).not.toHaveLength(0); // title in header
 			expect(rendered.getByText('P0')).toBeInTheDocument(); // parameter 0
 			expect(rendered.getByText('P1')).toBeInTheDocument(); // parameter 1
 		});

@@ -6,6 +6,7 @@ import { ErrorReporter } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
+import { EventService } from '@/events/event.service';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
@@ -41,6 +42,7 @@ export class TaskRunnerModule {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly runnerConfig: TaskRunnersConfig,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('task-runner');
 	}
@@ -54,6 +56,10 @@ export class TaskRunnerModule {
 
 		await this.loadTaskRequester();
 		await this.loadTaskBroker();
+
+		this.eventService.on('execution-cancelled', ({ executionId }) => {
+			this.taskRequester?.cancelTasks(executionId);
+		});
 
 		if (mode === 'internal') await this.startInternalTaskRunners();
 	}

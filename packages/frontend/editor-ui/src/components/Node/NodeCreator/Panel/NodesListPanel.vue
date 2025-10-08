@@ -28,6 +28,7 @@ import CommunityNodeDocsLink from './CommunityNodeDocsLink.vue';
 import CommunityNodeFooter from './CommunityNodeFooter.vue';
 import { useUsersStore } from '@/stores/users.store';
 
+import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
 
@@ -160,7 +161,7 @@ function onBackButton() {
 </script>
 
 <template>
-	<transition
+	<Transition
 		v-if="viewStacks.length > 0"
 		:name="`panel-slide-${activeViewStack.transitionDirection}`"
 		@after-leave="onTransitionEnd"
@@ -184,7 +185,7 @@ function onBackButton() {
 						:class="$style.backButton"
 						@click="onBackButton"
 					>
-						<n8n-icon :class="$style.backButtonIcon" icon="arrow-left" :size="22" />
+						<N8nIcon :class="$style.backButtonIcon" icon="arrow-left" :size="22" />
 					</button>
 					<NodeIcon
 						v-if="activeViewStack.nodeIcon"
@@ -223,7 +224,7 @@ function onBackButton() {
 			<CommunityNodeInfo v-if="communityNodeDetails && !isActionsMode" />
 
 			<div :class="$style.renderedItems">
-				<n8n-notice
+				<N8nNotice
 					v-if="activeViewStack.info && !activeViewStack.search"
 					:class="$style.info"
 					:content="activeViewStack.info"
@@ -242,7 +243,7 @@ function onBackButton() {
 				:show-manage="communityNodeDetails.installed && isInstanceOwner"
 			/>
 		</aside>
-	</transition>
+	</Transition>
 </template>
 
 <style lang="scss" module>

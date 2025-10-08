@@ -41,6 +41,8 @@ import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -696,7 +698,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<el-dialog
+	<ElDialog
 		id="ndv"
 		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
@@ -708,7 +710,7 @@ onBeforeUnmount(() => {
 		data-test-id="ndv"
 		:z-index="APP_Z_INDEXES.NDV"
 	>
-		<n8n-tooltip
+		<N8nTooltip
 			placement="bottom-start"
 			:visible="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
@@ -719,12 +721,12 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
-				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
-				<n8n-text color="text-xlight" size="medium" :bold="true">
+				<N8nIcon icon="arrow-left" color="text-xlight" size="medium" />
+				<N8nText color="text-xlight" size="medium" :bold="true">
 					{{ i18n.baseText('ndv.backToCanvas') }}
-				</n8n-text>
+				</N8nText>
 			</div>
-		</n8n-tooltip>
+		</N8nTooltip>
 
 		<div
 			v-if="activeNode"
@@ -768,7 +770,7 @@ onBeforeUnmount(() => {
 						:push-ref="pushRef"
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
-						:is-pane-active="isInputPaneActive"
+						:search-shortcut="isInputPaneActive ? '/' : undefined"
 						:display-mode="inputPanelDisplayMode"
 						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 						:focused-mappable-input="ndvStore.focusedMappableInput"
@@ -832,13 +834,13 @@ onBeforeUnmount(() => {
 						target="_blank"
 						@click="onFeatureRequestClick"
 					>
-						<n8n-icon icon="lightbulb" />
+						<N8nIcon icon="lightbulb" />
 						{{ i18n.baseText('ndv.featureRequest') }}
 					</a>
 				</template>
 			</NDVDraggablePanels>
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style lang="scss">

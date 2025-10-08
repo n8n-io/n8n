@@ -14,9 +14,9 @@ import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
 import type {
-	IDataStoreProjectAggregateService,
-	IDataStoreProjectService,
-} from './data-store.types';
+	IDataTableProjectAggregateService,
+	IDataTableProjectService,
+} from './data-table.types';
 import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
@@ -904,7 +904,11 @@ export interface FunctionsBase {
 	): NodeTypeAndVersion[];
 	getParentNodes(
 		nodeName: string,
-		options?: { includeNodeParameters?: boolean },
+		options?: {
+			includeNodeParameters?: boolean;
+			connectionType?: NodeConnectionType;
+			depth?: number;
+		},
 	): NodeTypeAndVersion[];
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
@@ -921,24 +925,24 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 
 export type ContextType = 'flow' | 'node';
 
-export type DataStoreProxyProvider = {
-	getDataStoreAggregateProxy(
+export type DataTableProxyProvider = {
+	getDataTableAggregateProxy(
 		workflow: Workflow,
 		node: INode,
 		projectId?: string,
-	): Promise<IDataStoreProjectAggregateService>;
-	getDataStoreProxy(
+	): Promise<IDataTableProjectAggregateService>;
+	getDataTableProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreId: string,
+		dataTableId: string,
 		projectId?: string,
-	): Promise<IDataStoreProjectService>;
+	): Promise<IDataTableProjectService>;
 };
 
-export type DataStoreProxyFunctions = {
-	// These are optional to account for situations where the data-store module is disabled
-	getDataStoreAggregateProxy?(): Promise<IDataStoreProjectAggregateService>;
-	getDataStoreProxy?(dataStoreId: string): Promise<IDataStoreProjectService>;
+export type DataTableProxyFunctions = {
+	// These are optional to account for situations where the data-table module is disabled
+	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
+	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
@@ -1004,7 +1008,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataStoreProxyFunctions & {
+			DataTableProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1089,7 +1093,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataStoreProxyFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -1423,6 +1427,7 @@ export interface INodePropertyTypeOptions {
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
 	calloutAction?: CalloutAction; // Supported by: callout
+	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
 }
 
@@ -1561,9 +1566,10 @@ export interface INodePropertyModeTypeOptions {
 	skipCredentialsCheckInRLC?: boolean;
 	allowNewResource?: {
 		label: string;
-		defaultName: string;
-		method: string;
-	};
+	} & (
+		| { method: string; url?: never; defaultName: string }
+		| { method?: never; url: string; defaultName?: never }
+	);
 }
 
 export interface INodePropertyMode {
@@ -1614,6 +1620,10 @@ export interface INodePropertyOptions {
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
+	displayOptions?: IDisplayOptions;
+	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
+	// it needs to be implemented, if needed
+	disabledOptions?: undefined;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2160,6 +2170,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
 	hints?: NodeHint[];
+	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
@@ -2405,7 +2416,7 @@ export interface IRunExecutionData {
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
+		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
 }
 export type SchemaType =
@@ -2440,6 +2451,8 @@ export interface ITaskSubRunMetadata {
 export interface RelatedExecution {
 	executionId: string;
 	workflowId: string;
+	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
+	shouldResume?: boolean;
 }
 
 type SubNodeExecutionDataAction = {
@@ -2563,13 +2576,6 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
-	/**
-	 * Defines which version of the partial execution flow is used.
-	 * Possible values are:
-	 *  1 - use the old flow
-	 *  2 - use the new flow
-	 */
-	partialExecutionVersion?: 1 | 2;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3194,3 +3200,5 @@ export interface StructuredChunk {
 		timestamp: number;
 	};
 }
+
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

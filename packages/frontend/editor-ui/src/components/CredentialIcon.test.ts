@@ -13,7 +13,7 @@ describe('CredentialIcon', () => {
 	const renderComponent = createComponentRenderer(CredentialIcon, {
 		pinia: createTestingPinia(),
 		global: {
-			stubs: ['n8n-tooltip'],
+			stubs: ['N8nTooltip'],
 		},
 	});
 	let pinia: TestingPinia;

@@ -5,6 +5,8 @@ import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
 import type { ResourceCounts } from '@/stores/projects.store';
 
+import { ElDialog, ElRadio } from 'element-plus';
+import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 type Props = {
 	currentProject: Project | null;
 	projects: ProjectListItem[];
@@ -54,7 +56,7 @@ const onDelete = () => {
 };
 </script>
 <template>
-	<el-dialog
+	<ElDialog
 		v-model="visible"
 		:title="
 			locale.baseText('projects.settings.delete.title', {
@@ -63,28 +65,26 @@ const onDelete = () => {
 		"
 		width="650"
 	>
-		<n8n-text v-if="!hasMovableResources" color="text-base">{{
+		<N8nText v-if="!hasMovableResources" color="text-base">{{
 			locale.baseText('projects.settings.delete.message.empty')
-		}}</n8n-text>
+		}}</N8nText>
 		<div v-else-if="hasMovableResources">
-			<n8n-text color="text-base">{{
-				locale.baseText('projects.settings.delete.message')
-			}}</n8n-text>
+			<N8nText color="text-base">{{ locale.baseText('projects.settings.delete.message') }}</N8nText>
 			<div class="pt-l">
-				<el-radio
-					:model-value="operation"
+				<ElRadio
+					:model-value="operation ?? ''"
 					label="transfer"
 					class="mb-s"
 					@update:model-value="operation = 'transfer'"
 				>
-					<n8n-text color="text-dark">{{
+					<N8nText color="text-dark">{{
 						locale.baseText('projects.settings.delete.question.transfer.label')
-					}}</n8n-text>
-				</el-radio>
+					}}</N8nText>
+				</ElRadio>
 				<div v-if="operation === 'transfer'" :class="$style.operation">
-					<n8n-text color="text-dark">{{
+					<N8nText color="text-dark">{{
 						locale.baseText('projects.settings.delete.question.transfer.title')
-					}}</n8n-text>
+					}}</N8nText>
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
@@ -93,24 +93,24 @@ const onDelete = () => {
 					/>
 				</div>
 
-				<el-radio
-					:model-value="operation"
+				<ElRadio
+					:model-value="operation ?? ''"
 					label="wipe"
 					class="mb-s"
 					@update:model-value="operation = 'wipe'"
 				>
-					<n8n-text color="text-dark">{{
+					<N8nText color="text-dark">{{
 						locale.baseText('projects.settings.delete.question.wipe.label')
-					}}</n8n-text>
-				</el-radio>
+					}}</N8nText>
+				</ElRadio>
 				<div v-if="operation === 'wipe'" :class="$style.operation">
-					<n8n-input-label :label="locale.baseText('projects.settings.delete.question.wipe.title')">
-						<n8n-input
+					<N8nInputLabel :label="locale.baseText('projects.settings.delete.question.wipe.title')">
+						<N8nInput
 							v-model="wipeConfirmText"
 							data-test-id="project-delete-confirm-input"
 							:placeholder="locale.baseText('projects.settings.delete.question.wipe.placeholder')"
 						/>
-					</n8n-input-label>
+					</N8nInputLabel>
 				</div>
 			</div>
 		</div>
@@ -124,7 +124,7 @@ const onDelete = () => {
 				>{{ locale.baseText('projects.settings.danger.deleteProject') }}</N8nButton
 			>
 		</template>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style lang="scss" module>

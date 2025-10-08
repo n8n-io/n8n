@@ -4,11 +4,11 @@ import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
+import istanbul from 'vite-plugin-istanbul';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
-import iconsResolver from 'unplugin-icons/resolver';
-import components from 'unplugin-vue-components/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
@@ -75,24 +75,26 @@ const alias = [
 	},
 ];
 
+const { RELEASE: release } = process.env;
+
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
 	icons({
 		compiler: 'vue3',
 		autoInstall: true,
 	}),
-	components({
-		dts: './src/components.d.ts',
-		resolvers: [
-			(componentName) => {
-				if (componentName.startsWith('N8n'))
-					return { name: componentName, from: '@n8n/design-system' };
-			},
-			iconsResolver({
-				prefix: 'Icon',
-			}),
-		],
-	}),
+	// Add istanbul coverage plugin for E2E tests
+	...(process.env.BUILD_WITH_COVERAGE === 'true'
+		? [
+				istanbul({
+					include: 'src/**/*',
+					exclude: ['node_modules', 'tests/', 'dist/'],
+					extension: ['.js', '.ts', '.vue'],
+					forceBuildInstrument: true,
+					requireEnv: false,
+				}),
+			]
+		: []),
 	viteStaticCopy({
 		targets: [
 			{
@@ -166,9 +168,21 @@ const plugins: UserConfig['plugins'] = [
 			return [];
 		},
 	},
+	...(release
+		? [
+				sentryVitePlugin({
+					org: 'n8nio',
+					project: 'instance-frontend',
+					authToken: process.env.SENTRY_AUTH_TOKEN,
+					telemetry: false,
+					release: {
+						name: `n8n@${release}`,
+					},
+				}),
+			]
+		: []),
 ];
 
-const { RELEASE: release } = process.env;
 const target = browserslistToEsbuild(browsers);
 
 export default mergeConfig(

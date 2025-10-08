@@ -20,9 +20,9 @@ const SERIAL_EXECUTION = /@db:reset/;
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'standard', config: { proxyServerEnabled: true, taskRunner: true } },
-	{ name: 'postgres', config: { postgres: true } },
-	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
+	{ name: 'postgres', config: { proxyServerEnabled: true, postgres: true } },
+	{ name: 'queue', config: { proxyServerEnabled: true, queueMode: true } },
+	{ name: 'multi-main', config: { proxyServerEnabled: true, queueMode: { mains: 2, workers: 1 } } },
 ];
 
 export function getProjects(): Project[] {

@@ -35,18 +35,18 @@ const MockN8nPopoverReka = {
 };
 
 const stubs = {
-	'n8n-text': { template: '<span><slot /></span>' },
-	'n8n-link': {
+	N8nText: { template: '<span><slot /></span>' },
+	N8nLink: {
 		props: ['to', 'href'],
 		template: '<a :href="to || href"><slot /></a>',
 	},
-	'n8n-icon': true,
-	'n8n-heading': { template: '<h4><slot /></h4>' },
-	'n8n-tag': {
+	N8nIcon: true,
+	N8nHeading: { template: '<h4><slot /></h4>' },
+	N8nTag: {
 		props: ['text'],
 		template: '<span>{{ text }}</span>',
 	},
-	'n8n-callout': {
+	N8nCallout: {
 		props: ['theme'],
 		template: '<div data-test-id="n8n-callout" :class="theme"><slot /></div>',
 	},

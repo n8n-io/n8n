@@ -27,9 +27,11 @@ class TaskRunnerManager:
         self,
         task_broker_url: str = LOCAL_TASK_BROKER_URL,
         graceful_shutdown_timeout: float | None = None,
+        custom_env: dict[str, str] | None = None,
     ):
         self.task_broker_url = task_broker_url
         self.graceful_shutdown_timeout = graceful_shutdown_timeout
+        self.custom_env = custom_env or {}
         self.subprocess: asyncio.subprocess.Process | None = None
         self.stdout_buffer: list[str] = []
         self.stderr_buffer: list[str] = []
@@ -49,6 +51,7 @@ class TaskRunnerManager:
                 self.graceful_shutdown_timeout
             )
         env_vars["PYTHONPATH"] = str(project_root)
+        env_vars.update(self.custom_env)
 
         self.subprocess = await asyncio.create_subprocess_exec(
             sys.executable,

@@ -5,6 +5,7 @@ import { Position } from '@vue-flow/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import CanvasEdge, { type CanvasEdgeProps } from './CanvasEdge.vue';
+import type { CanvasConnectionPort } from '@/types';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -162,7 +163,7 @@ describe('CanvasEdge', () => {
 					...DEFAULT_PROPS.data,
 					source: {
 						type: NodeConnectionTypes.AiTool,
-					},
+					} as CanvasConnectionPort,
 				},
 				sourceX: 0,
 				sourceY: 0,

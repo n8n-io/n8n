@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { N8nResizeObserver } from '@n8n/design-system';
+
 type Props = {
 	middleWidth?: string;
 };
@@ -6,7 +8,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 </script>
 
 <template>
-	<n8n-resize-observer
+	<N8nResizeObserver
 		:class="{ [$style.observer]: true }"
 		:breakpoints="[
 			{ bp: 'stacked', width: 400 },
@@ -40,7 +42,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 				</div>
 			</div>
 		</template>
-	</n8n-resize-observer>
+	</N8nResizeObserver>
 </template>
 
 <style lang="scss" module>

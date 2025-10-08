@@ -7,8 +7,8 @@ export class FocusPanel {
 	 * Accessors
 	 */
 
-	getHeader(): Locator {
-		return this.root.locator('header');
+	getHeaderNodeName(): Locator {
+		return this.root.locator('header').getByTestId('inline-edit-preview');
 	}
 
 	getParameterInputField(path: string): Locator {

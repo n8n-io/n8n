@@ -15,6 +15,9 @@ vi.mock('vue-router', () => ({
 vi.mock('@/api/projects.api', () => ({
 	updateProject: vi.fn(),
 	getProject: vi.fn(),
+	addProjectMembers: vi.fn(),
+	updateProjectMemberRole: vi.fn(),
+	deleteProjectMember: vi.fn(),
 }));
 
 // Typed mocked facade for the API module
@@ -93,14 +96,71 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
 	});
 
-	it('refetches project when relations are provided and does not touch name/icon/description', async () => {
+	it('addMember calls API and refreshes current project', async () => {
 		const store = makeStoreWithProject();
-		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
+		mockedProjectsApi.addProjectMembers.mockResolvedValue(undefined);
 		const now = new Date().toISOString();
 		const serverProject: Project = {
 			id: 'p1',
-			name: 'SERVER',
-			description: 'SERVER',
+			name: 'A',
+			description: 'desc',
+			icon: { type: 'icon', value: 'layers' },
+			type: ProjectTypes.Team,
+			createdAt: now,
+			updatedAt: now,
+			relations: [
+				{ id: 'u1', email: 'x@y.z', firstName: 'X', lastName: 'Y', role: 'project:editor' },
+				{ id: 'u2', email: 'a@b.c', firstName: 'A', lastName: 'B', role: 'project:viewer' },
+			],
+			scopes: ['project:read' as Scope],
+		};
+		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
+
+		await store.addMember('p1', { userId: 'u2', role: 'project:viewer' });
+		expect(mockedProjectsApi.addProjectMembers).toHaveBeenCalledWith(expect.anything(), 'p1', [
+			{ userId: 'u2', role: 'project:viewer' },
+		]);
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'p1');
+		expect(store.currentProject?.relations.length).toBe(2);
+	});
+
+	it('updateMemberRole calls API and refreshes current project', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.updateProjectMemberRole.mockResolvedValue(undefined);
+		const now = new Date().toISOString();
+		const serverProject: Project = {
+			id: 'p1',
+			name: 'A',
+			description: 'desc',
+			icon: { type: 'icon', value: 'layers' },
+			type: ProjectTypes.Team,
+			createdAt: now,
+			updatedAt: now,
+			relations: [
+				{ id: 'u1', email: 'x@y.z', firstName: 'X', lastName: 'Y', role: 'project:viewer' },
+			],
+			scopes: ['project:read' as Scope],
+		};
+		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
+
+		await store.updateMemberRole('p1', 'u1', 'project:viewer');
+		expect(mockedProjectsApi.updateProjectMemberRole).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'u1',
+			'project:viewer',
+		);
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'p1');
+	});
+
+	it('removeMember calls API and refreshes current project', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.deleteProjectMember.mockResolvedValue(undefined);
+		const now = new Date().toISOString();
+		const serverProject: Project = {
+			id: 'p1',
+			name: 'A',
+			description: 'desc',
 			icon: { type: 'icon', value: 'layers' },
 			type: ProjectTypes.Team,
 			createdAt: now,
@@ -110,18 +170,13 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		};
 		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
 
-		await store.updateProject('p1', { relations: [{ userId: 'u2', role: 'project:viewer' }] });
-
-		// Ensure only relations were sent
-		expect(mockedProjectsApi.updateProject).toHaveBeenCalledWith(expect.anything(), 'p1', {
-			relations: [{ userId: 'u2', role: 'project:viewer' }],
-		});
-		// Refetch invoked
+		await store.removeMember('p1', 'u1');
+		expect(mockedProjectsApi.deleteProjectMember).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'u1',
+		);
 		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'p1');
-		// Local name/description remain unchanged eagerly; currentProject then replaced by getProject
-		expect(store.myProjects[0].name).toBe('A');
-		expect(store.myProjects[0].description).toBe('desc');
-		expect(store.currentProject?.name).toBe('SERVER');
-		expect(store.currentProject?.description).toBe('SERVER');
+		expect(store.currentProject?.relations.length).toBe(0);
 	});
 });

@@ -30,7 +30,6 @@ test.describe('Webhook Trigger node', () => {
 
 	test('should listen for a GET request and respond with Respond to Webhook node', async ({
 		n8n,
-		api,
 	}) => {
 		const webhookPath = nanoid();
 
@@ -46,7 +45,7 @@ test.describe('Webhook Trigger node', () => {
 
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
-		const response = await api.request.get(`/webhook-test/${webhookPath}`);
+		const response = await n8n.api.request.get(`/webhook-test/${webhookPath}`);
 		expect(response.ok()).toBe(true);
 
 		const responseData = await response.json();
@@ -55,7 +54,6 @@ test.describe('Webhook Trigger node', () => {
 
 	test('should listen for a GET request and respond with custom status code 201', async ({
 		n8n,
-		api,
 	}) => {
 		const webhookPath = nanoid();
 
@@ -66,11 +64,11 @@ test.describe('Webhook Trigger node', () => {
 		await n8n.ndv.execute();
 		await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
-		const response = await api.request.get(`/webhook-test/${webhookPath}`);
+		const response = await n8n.api.request.get(`/webhook-test/${webhookPath}`);
 		expect(response.status()).toBe(201);
 	});
 
-	test('should listen for a GET request and respond with last node', async ({ n8n, api }) => {
+	test('should listen for a GET request and respond with last node', async ({ n8n }) => {
 		const webhookPath = nanoid();
 
 		await n8n.canvas.addNode('Webhook');
@@ -87,7 +85,7 @@ test.describe('Webhook Trigger node', () => {
 
 		await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
 
-		const response = await api.request.get(`/webhook-test/${webhookPath}`);
+		const response = await n8n.api.request.get(`/webhook-test/${webhookPath}`);
 		expect(response.ok()).toBe(true);
 
 		const responseData = await response.json();
@@ -96,7 +94,6 @@ test.describe('Webhook Trigger node', () => {
 
 	test('should listen for a GET request and respond with last node binary data', async ({
 		n8n,
-		api,
 	}) => {
 		const webhookPath = nanoid();
 
@@ -122,14 +119,14 @@ test.describe('Webhook Trigger node', () => {
 
 		await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
 
-		const response = await api.request.get(`/webhook-test/${webhookPath}`);
+		const response = await n8n.api.request.get(`/webhook-test/${webhookPath}`);
 		expect(response.ok()).toBe(true);
 
 		const responseData = await response.json();
 		expect('data' in responseData).toBe(true);
 	});
 
-	test('should listen for a GET request and respond with an empty body', async ({ n8n, api }) => {
+	test('should listen for a GET request and respond with an empty body', async ({ n8n }) => {
 		const webhookPath = nanoid();
 
 		await n8n.canvas.addNode('Webhook');
@@ -142,14 +139,14 @@ test.describe('Webhook Trigger node', () => {
 		await n8n.ndv.execute();
 		await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
-		const response = await api.request.get(`/webhook-test/${webhookPath}`);
+		const response = await n8n.api.request.get(`/webhook-test/${webhookPath}`);
 		expect(response.ok()).toBe(true);
 
 		const responseData = await response.text();
 		expect(responseData).toBe('');
 	});
 
-	test('should listen for a GET request with Basic Authentication', async ({ n8n, api }) => {
+	test('should listen for a GET request with Basic Authentication', async ({ n8n }) => {
 		const webhookPath = nanoid();
 		const credentialName = `test-${nanoid()}`;
 		const user = `test-${nanoid()}`;
@@ -173,14 +170,14 @@ test.describe('Webhook Trigger node', () => {
 		await n8n.ndv.execute();
 		await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
-		const failResponse = await api.request.get(`/webhook-test/${webhookPath}`, {
+		const failResponse = await n8n.api.request.get(`/webhook-test/${webhookPath}`, {
 			headers: {
 				Authorization: 'Basic ' + Buffer.from('wrong:wrong').toString('base64'),
 			},
 		});
 		expect(failResponse.status()).toBe(403);
 
-		const successResponse = await api.request.get(`/webhook-test/${webhookPath}`, {
+		const successResponse = await n8n.api.request.get(`/webhook-test/${webhookPath}`, {
 			headers: {
 				Authorization: 'Basic ' + Buffer.from(`${user}:${password}`).toString('base64'),
 			},

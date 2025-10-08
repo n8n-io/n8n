@@ -14,6 +14,7 @@ import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { getTimeRangeLabels } from '../insights.utils';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
 	timeRange: InsightsDateRange['key'];
@@ -86,7 +87,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 							</template>
 						</I18nT>
 					</template>
-					<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+					<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
 						<strong>
 							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 								<template #content>
@@ -136,7 +137,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</N8nTooltip>
 							</small>
 						</span>
-					</router-link>
+					</RouterLink>
 				</N8nTooltip>
 			</li>
 		</ul>

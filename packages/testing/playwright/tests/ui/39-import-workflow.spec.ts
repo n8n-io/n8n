@@ -3,8 +3,8 @@ import onboardingWorkflow from '../../workflows/Onboarding_workflow.json';
 
 test.describe('Import workflow', () => {
 	test.describe('From URL', () => {
-		test.beforeEach(async ({ page }) => {
-			await page.route('**/rest/workflows/from-url*', async (route) => {
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.page.route('**/rest/workflows/from-url*', async (route) => {
 				await route.fulfill({
 					status: 200,
 					contentType: 'application/json',

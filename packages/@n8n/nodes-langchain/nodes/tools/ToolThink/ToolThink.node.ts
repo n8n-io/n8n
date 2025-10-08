@@ -1,15 +1,36 @@
 import { DynamicTool } from 'langchain/tools';
 import {
+	type IExecuteFunctions,
 	NodeConnectionTypes,
 	nodeNameToToolName,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+async function getTool(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	itemIndex: number,
+): Promise<DynamicTool> {
+	const node = ctx.getNode();
+	const { typeVersion } = node;
+
+	const name = typeVersion === 1 ? 'thinking_tool' : nodeNameToToolName(node);
+	const description = ctx.getNodeParameter('description', itemIndex) as string;
+
+	return new DynamicTool({
+		name,
+		description,
+		func: async (subject: string) => {
+			return subject;
+		},
+	});
+}
 
 // A thinking tool, see https://www.anthropic.com/engineering/claude-think-tool
 
@@ -63,22 +84,30 @@ export class ToolThink implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const node = this.getNode();
-		const { typeVersion } = node;
-
-		const name = typeVersion === 1 ? 'thinking_tool' : nodeNameToToolName(node);
-		const description = this.getNodeParameter('description', itemIndex) as string;
-
-		const tool = new DynamicTool({
-			name,
-			description,
-			func: async (subject: string) => {
-				return subject;
-			},
-		});
+		const tool = await getTool(this, itemIndex);
 
 		return {
 			response: logWrapper(tool, this),
 		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const input = this.getInputData();
+		const response: INodeExecutionData[] = [];
+		for (let i = 0; i < input.length; i++) {
+			const inputItem = input[i];
+			const tool = await getTool(this, i);
+			const result = await tool.invoke(inputItem.json);
+			response.push({
+				json: {
+					response: result,
+				},
+				pairedItem: {
+					item: i,
+				},
+			});
+		}
+
+		return [response];
 	}
 }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import { ElTag } from 'element-plus';
+import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 interface Props {
 	theme: 'success' | 'danger';
 	message: string;
@@ -36,8 +38,8 @@ const onClick = () => {
 </script>
 
 <template>
-	<el-tag :type="theme" :disable-transitions="true" :class="$style.container">
-		<n8n-icon
+	<ElTag :type="theme" :disable-transitions="true" :class="$style.container">
+		<N8nIcon
 			:icon="theme === 'success' ? 'circle-check' : 'triangle-alert'"
 			:class="theme === 'success' ? $style.icon : $style.dangerIcon"
 		/>
@@ -47,14 +49,14 @@ const onClick = () => {
 					<span :class="theme === 'success' ? $style.message : $style.dangerMessage">
 						{{ message }}&nbsp;
 					</span>
-					<n8n-link v-if="details && !expanded" :bold="true" size="small" @click="expand">
+					<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
 						<span :class="$style.moreDetails">More details</span>
-					</n8n-link>
+					</N8nLink>
 				</div>
 			</div>
 
 			<slot v-if="$slots.button" name="button" />
-			<n8n-button
+			<N8nButton
 				v-else-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
@@ -69,7 +71,7 @@ const onClick = () => {
 		<div v-if="expanded" :class="$style.details">
 			{{ details }}
 		</div>
-	</el-tag>
+	</ElTag>
 </template>
 
 <style module lang="scss">

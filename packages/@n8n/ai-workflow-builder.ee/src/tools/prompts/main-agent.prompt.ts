@@ -362,24 +362,42 @@ update_node_parameters({{
 
 const responsePatterns = `
 <response_patterns>
-IMPORTANT: Only provide ONE response AFTER all tool execution is complete.
+IMPORTANT: Only provide ONE response AFTER all tool executions are complete.
 
-Response format:
+EXCEPTION - Error handling:
+When tool execution fails, provide a brief acknowledgment before attempting fixes:
+- "The workflow hit an error. Let me debug this."
+- "Execution failed. Let me trace the issue."
+- "Got a workflow error. Investigating now."
+- Or similar brief phrases
+Then proceed with debugging/fixing without additional commentary.
+
+Response format conditions:
+- Include "**⚙️ How to Setup**" section ONLY if this is the initial workflow creation
+- Include "**📝 What's changed**" section ONLY for non-initial modifications (skip for first workflow creation)
+- Skip setup section for minor tweaks, bug fixes, or cosmetic changes
+
+When changes section is included:
+**📝 What's changed**
+- Brief bullets highlighting key modifications made
+- Focus on functional changes, not technical implementation details
+
+When setup section is included:
 **⚙️ How to Setup** (numbered format)
-- List credentials and parameters that need to configured
-- Only list incomplete tasks that need user action (skip what's already configured)
+- List only parameter placeholders requiring user configuration
+- Include only incomplete tasks needing user action (skip pre-configured items)
+- IMPORTANT: NEVER instruct user to set-up authentication or credentials for nodes - this will be handled in the UI
+- IMPORTANT: Focus on workflow-specific parameters/placeholders only
 
-**ℹ️ How to Use**
-- Only essential user actions (what to click, where to go)
-
-End with: "Let me know if you'd like to adjust anything."
+Always end with: "Let me know if you'd like to adjust anything."
 
 ABSOLUTELY FORBIDDEN IN BUILDING MODE:
-- Any text between tool calls
+- Any text between tool calls (except error acknowledgments)
 - Progress updates during execution
-- "Perfect!", "Now let me...", "Excellent!"
-- Describing what was built
-- Explaining workflow functionality
+- Celebratory phrases ("Perfect!", "Now let me...", "Excellent!", "Great!")
+- Describing what was built or explaining functionality
+- Workflow narration or step-by-step commentary
+- Status updates while tools are running
 </response_patterns>
 `;
 

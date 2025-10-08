@@ -2,11 +2,12 @@
 import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import { ElDropdown } from 'element-plus';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute } from 'vue-router';
 
+import { ElDropdown } from 'element-plus';
+import { N8nBadge, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	execution: ExecutionSummary & {
 		customData?: Record<string, string>;
@@ -62,9 +63,9 @@ function onDropdownVisibleChange(visible: boolean) {
 			data-test-id="execution-preview-ellipsis-button"
 			@blur="onEllipsisButtonBlur"
 		>
-			<n8n-badge v-if="customDataLength > 0" :class="$style.badge" theme="primary">
+			<N8nBadge v-if="customDataLength > 0" :class="$style.badge" theme="primary">
 				{{ customDataLength.toString() }}
-			</n8n-badge>
+			</N8nBadge>
 		</N8nButton>
 		<template #dropdown>
 			<div
@@ -74,9 +75,9 @@ function onDropdownVisibleChange(visible: boolean) {
 			>
 				<div :class="$style.section">
 					<div :class="$style.heading">
-						<n8n-heading tag="h3" size="small" color="text-dark">
+						<N8nHeading tag="h3" size="small" color="text-dark">
 							{{ i18n.baseText('generic.annotationData') }}
-						</n8n-heading>
+						</N8nHeading>
 					</div>
 					<div
 						v-if="execution?.customData && Object.keys(execution?.customData).length > 0"
@@ -87,12 +88,12 @@ function onDropdownVisibleChange(visible: boolean) {
 							:key="attr"
 							:class="$style.customDataEntry"
 						>
-							<n8n-text :class="$style.key" size="small" color="text-base">
+							<N8nText :class="$style.key" size="small" color="text-base">
 								{{ attr }}
-							</n8n-text>
-							<n8n-text :class="$style.value" size="small" color="text-base">
+							</N8nText>
+							<N8nText :class="$style.value" size="small" color="text-base">
 								{{ execution?.customData[attr] }}
-							</n8n-text>
+							</N8nText>
 						</div>
 					</div>
 					<div
@@ -100,9 +101,9 @@ function onDropdownVisibleChange(visible: boolean) {
 						:class="$style.noResultsContainer"
 						data-test-id="execution-annotation-data-empty"
 					>
-						<n8n-text color="text-base" size="small" align="center">
+						<N8nText color="text-base" size="small" align="center">
 							<span v-n8n-html="i18n.baseText('executionAnnotationView.data.notFound')" />
-						</n8n-text>
+						</N8nText>
 					</div>
 				</div>
 			</div>

@@ -48,7 +48,7 @@ describe('ItemsRenderer', () => {
 			pinia: createTestingPinia(),
 			props: { elements: items },
 			global: {
-				stubs: ['n8n-loading'],
+				stubs: ['N8nLoading'],
 			},
 		});
 

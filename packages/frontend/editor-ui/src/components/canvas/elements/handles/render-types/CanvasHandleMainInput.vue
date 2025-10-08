@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { computed, useCssModule } from 'vue';
+import CanvasHandleRectangle from '@/components/canvas/elements/handles/render-types/parts/CanvasHandleRectangle.vue';
 
 const $style = useCssModule();
 
