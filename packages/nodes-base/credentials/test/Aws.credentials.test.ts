@@ -297,6 +297,44 @@ describe('Aws Credential', () => {
 				expect(result.body).toBe(JSON.stringify(objectBody));
 			});
 
+			it('should not stringify object body content when Content-Length header is present', async () => {
+				const objectBody = { key: 'value', nested: { prop: 'test' } };
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: objectBody,
+					headers: {
+						'Content-Length': '100',
+					},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: objectBody,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(objectBody);
+			});
+
+			it('should not stringify object body content when content-length header is present (lowercase)', async () => {
+				const objectBody = { key: 'value', nested: { prop: 'test' } };
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: objectBody,
+					headers: {
+						'content-length': '100',
+					},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: objectBody,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(objectBody);
+			});
+
 			it('should not stringify string body content', async () => {
 				const stringBody = 'test string body';
 				const result = await aws.authenticate(credentials, {

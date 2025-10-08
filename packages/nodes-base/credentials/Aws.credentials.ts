@@ -237,6 +237,20 @@ function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
 	return { service, region };
 }
 
+function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
+	if (
+		typeof value === 'object' &&
+		value !== null &&
+		!headers['Content-Length'] &&
+		!headers['content-length'] &&
+		!Buffer.isBuffer(value)
+	) {
+		return true;
+	}
+
+	return false;
+}
+
 export class Aws implements ICredentialType {
 	name = 'aws';
 
@@ -498,8 +512,8 @@ export class Aws implements ICredentialType {
 		let bodyContent = body !== '' ? body : undefined;
 		let contentTypeHeader: string | undefined = undefined;
 
-		// body must be a string or a buffer
-		if (typeof bodyContent === 'object' && bodyContent !== null && !Buffer.isBuffer(bodyContent)) {
+		// body must be a string or a buffer, check if it needs to be stringified
+		if (shouldStringifyBody(bodyContent, requestOptions.headers ?? {})) {
 			bodyContent = JSON.stringify(bodyContent);
 		}
 
