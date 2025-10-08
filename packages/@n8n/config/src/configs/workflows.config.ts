@@ -22,4 +22,8 @@ export class WorkflowsConfig {
 	/** Whether workflow sharing is disabled */
 	@Env('N8N_DISABLE_WORKFLOW_SHARING')
 	disableSharing: boolean = false;
+
+	/** Minimum allowed schedule interval in seconds for schedule triggers */
+	@Env('N8N_MIN_SCHEDULE_INTERVAL_SECONDS')
+	minScheduleIntervalSeconds: number = 300;
 }
