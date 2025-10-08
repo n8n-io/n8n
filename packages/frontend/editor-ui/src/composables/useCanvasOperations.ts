@@ -539,12 +539,22 @@ export function useCanvasOperations() {
 				node: pair[1].node === previousNode.name ? newNode.name : pair[1].node,
 			};
 
-			if (!isConnectionAllowed(sourceNode, targetNode, newSourceIConnection, newTargetIConnection))
+			const newSourceNode = sourceNode.name === previousNode.name ? newNode : sourceNode;
+			const newTargetNode = targetNode.name === previousNode.name ? newNode : targetNode;
+
+			if (
+				!isConnectionAllowed(
+					newSourceNode,
+					newTargetNode,
+					newSourceIConnection,
+					newTargetIConnection,
+				)
+			)
 				continue;
 
 			const newCanvasConnection = mapLegacyConnectionToCanvasConnection(
-				sourceNode.name === previousNode.name ? newNode : sourceNode,
-				targetNode.name === previousNode.name ? newNode : targetNode,
+				newSourceNode,
+				newTargetNode,
 				[newSourceIConnection, newTargetIConnection],
 			);
 
@@ -2325,8 +2335,6 @@ export function useCanvasOperations() {
 			trackHistory,
 		});
 		deleteNode(previousId, { trackHistory, trackBulk: false });
-		revalidateNodeInputConnections(newId);
-		revalidateNodeOutputConnections(newId);
 
 		uiStore.stateIsDirty = true;
 
