@@ -29,7 +29,7 @@ catalog:
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
-  eslint-plugin-n8n-nodes-base: 1.16.3
+  eslint-plugin-n8n-nodes-base: 1.16.4
   fast-glob: 3.2.12
   flatted: 3.2.7
   form-data: 4.0.0
