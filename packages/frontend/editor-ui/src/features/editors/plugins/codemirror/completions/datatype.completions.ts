@@ -710,16 +710,21 @@ export const variablesOptions = () => {
 	const environmentsStore = useEnvironmentsStore();
 	const variables = environmentsStore.scopedVariables;
 
-	const getDescription = (isGlobal: boolean, isOverridden: boolean, projectName?: string) =>
-		isGlobal
-			? isOverridden
-				? i18n.baseText('codeNodeEditor.completer.$vars.varName.global.overridden', {
-						interpolate: { projectName: projectName ?? '' },
-					})
-				: i18n.baseText('codeNodeEditor.completer.$vars.varName.global')
-			: i18n.baseText('codeNodeEditor.completer.$vars.varName.project', {
-					interpolate: { projectName: projectName ?? '' },
-				});
+	const getDescription = (isGlobal: boolean, isOverridden: boolean, projectName?: string) => {
+		if (isGlobal && isOverridden) {
+			return i18n.baseText('codeNodeEditor.completer.$vars.varName.global.overridden', {
+				interpolate: { projectName: projectName ?? '' },
+			});
+		}
+
+		if (isGlobal) {
+			return i18n.baseText('codeNodeEditor.completer.$vars.varName.global');
+		}
+
+		return i18n.baseText('codeNodeEditor.completer.$vars.varName.project', {
+			interpolate: { projectName: projectName ?? '' },
+		});
+	};
 
 	return applySections({
 		options: variables.map((variable) => {
