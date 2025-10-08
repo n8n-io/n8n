@@ -28,7 +28,7 @@ export class JotFormTrigger implements INodeType {
 		version: 1,
 		description: 'Handle Jotform events via webhooks',
 		defaults: {
-			name: 'JotForm Trigger',
+			name: 'Jotform Trigger',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
