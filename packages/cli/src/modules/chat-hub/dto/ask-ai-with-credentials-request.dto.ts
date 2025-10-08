@@ -7,13 +7,12 @@ export const NodeCredentialsDetailsSchema = z.object({
 });
 
 export const SupportedNodeTypesSchema = z.enum(['@n8n/n8n-nodes-langchain.lmChatOpenAi']);
-export const SupportedModelsSchema = z.enum(['gpt-4', 'gpt-3.5-turbo']);
 
 export class AskAiWithCredentialsRequestDto extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
 	message: z.string(),
 	provider: SupportedNodeTypesSchema,
-	model: SupportedModelsSchema,
+	model: z.string(),
 	credentials: z.record(NodeCredentialsDetailsSchema),
 }) {}

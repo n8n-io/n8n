@@ -1,11 +1,7 @@
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-<<<<<<< HEAD
 import type { ChatModelsRequest, ChatModelsResponse } from '@n8n/api-types';
-import type { StreamOutput } from './chat.types';
-=======
 import type { StructuredChunk } from './chat.types';
->>>>>>> 562658def6 (feat(core): Make the UI handle streamed chat responses from the new api)
 import type { INodeCredentials } from 'n8n-workflow';
 
 export const fetchChatModelsApi = async (

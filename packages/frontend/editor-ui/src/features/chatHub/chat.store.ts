@@ -5,14 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, sendText } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ChatHubProvider } from '@n8n/api-types';
-import type {
-	StreamChunk,
-	StreamOutput,
-	ChatMessage,
-	ChatHubConversationModel,
-} from './chat.types';
-
-import type { ChatMessage, StructuredChunk } from './chat.types';
+import type { StructuredChunk, ChatMessage, ChatHubConversationModel } from './chat.types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
