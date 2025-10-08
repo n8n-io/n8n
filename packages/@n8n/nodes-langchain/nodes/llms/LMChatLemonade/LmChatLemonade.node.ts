@@ -7,6 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
+
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { lemonadeModel, lemonadeOptions, lemonadeDescription } from '../LMLemonade/description';
@@ -53,7 +55,7 @@ export class LmChatLemonade implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('lemonadeApi');
+		const credentials = (await this.getCredentials('lemonadeApi')) as LemonadeApiCredentialsType;
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -66,24 +68,35 @@ export class LmChatLemonade implements INodeType {
 		};
 
 		// Process stop sequences if provided
-		const processedOptions = { ...options };
+		const processedOptions: {
+			temperature?: number;
+			topP?: number;
+			frequencyPenalty?: number;
+			presencePenalty?: number;
+			maxTokens?: number;
+			stop?: string[] | undefined;
+		} = {
+			...options,
+			stop: undefined, // Will be set below if options.stop exists
+		};
+
 		if (options.stop) {
 			const stopSequences = options.stop
 				.split(',')
 				.map((s) => s.trim())
 				.filter((s) => s.length > 0);
-			(processedOptions as any).stop = stopSequences.length > 0 ? stopSequences : undefined;
+			processedOptions.stop = stopSequences.length > 0 ? stopSequences : undefined;
 		}
 
 		// Build configuration object like official OpenAI node
 		const configuration: any = {
-			baseURL: credentials.baseUrl as string,
+			baseURL: credentials.baseUrl,
 		};
 
 		// Add custom headers if API key is provided
 		if (credentials.apiKey) {
 			configuration.defaultHeaders = {
-				Authorization: `Bearer ${credentials.apiKey as string}`,
+				Authorization: `Bearer ${credentials.apiKey}`,
 			};
 		}
 

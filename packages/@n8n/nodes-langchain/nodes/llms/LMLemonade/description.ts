@@ -102,9 +102,9 @@ export const lemonadeOptions: INodeProperties = {
 			name: 'frequencyPenalty',
 			type: 'number',
 			default: 0.0,
-			typeOptions: { minValue: 0, maxValue: 2, numberPrecision: 1 },
+			typeOptions: { minValue: -2, maxValue: 2, numberPrecision: 1 },
 			description:
-				'Adjusts the penalty for tokens that have already appeared in the generated text. Higher values discourage repetition.',
+				'Adjusts the penalty for tokens that have already appeared in the generated text. Positive values discourage repetition, negative values encourage it.',
 		},
 		{
 			displayName: 'Presence Penalty',
