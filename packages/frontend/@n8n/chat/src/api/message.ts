@@ -156,7 +156,12 @@ export async function sendMessageStreaming(
 					// Format tool data for display in chat
 					const toolContent =
 						typeof value.content === 'object' && value.content !== null
-							? `${(value.content as any).name || 'Tool'}: ${JSON.stringify((value.content as any).toolData || value.content, null, 2)}`
+							? (() => {
+									const content = value.content as { name?: string; toolData?: unknown };
+									const name = typeof content.name === 'string' ? content.name : 'Tool';
+									const data = content.toolData !== undefined ? content.toolData : content;
+									return `${name}: ${JSON.stringify(data, null, 2)}`;
+								})()
 							: `Tool: ${value.content ?? 'No data'}`;
 					handlers.onChunk(toolContent, nodeId, runIndex);
 					break;
