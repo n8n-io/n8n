@@ -1,8 +1,5 @@
-import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
 import { CHAT_VIEW } from './constants';
-
-const i18n = useI18n();
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const ChatView = async () => await import('@/features/chatHub/ChatView.vue');

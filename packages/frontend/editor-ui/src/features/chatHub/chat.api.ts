@@ -1,7 +1,8 @@
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { ChatModelsRequest, ChatModelsResponse } from '@n8n/api-types';
-import type { StreamOutput } from './chat.types';
+import type { StructuredChunk } from './chat.types';
+import type { INodeCredentials } from 'n8n-workflow';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
@@ -11,20 +12,27 @@ export const fetchChatModelsApi = async (
 	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
-export const messageChatApi = (
+export const sendText = (
 	ctx: IRestApiContext,
-	provider: 'openai',
-	payload: { model: string; messageId: string; sessionId: string; message: string },
-	onMessageUpdated: (data: StreamOutput) => void,
+	payload: {
+		message: string;
+		provider: string;
+		model: string;
+		messageId: string;
+		sessionId: string;
+		credentials: INodeCredentials;
+	},
+	onMessageUpdated: (data: StructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ): void => {
-	void streamRequest<StreamOutput>(
+	void streamRequest<StructuredChunk>(
 		ctx,
-		`/chat/agents/${provider}`,
+		'/chat/send',
 		payload,
 		onMessageUpdated,
 		onDone,
 		onError,
+		'\n',
 	);
 };
