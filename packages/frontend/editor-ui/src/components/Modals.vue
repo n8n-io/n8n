@@ -12,7 +12,6 @@ import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
-	DELETE_FOLDER_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -22,7 +21,6 @@ import {
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
-	MOVE_FOLDER_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
@@ -45,14 +43,17 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
 import {
+	DELETE_FOLDER_MODAL_KEY,
+	MOVE_FOLDER_MODAL_KEY,
+} from '@/features/folders/folders.constants';
+import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
-
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
-import NewAssistantSessionModal from '@/components/AskAssistant/Chat/NewAssistantSessionModal.vue';
+import NewAssistantSessionModal from '@/features/assistant/components/Chat/NewAssistantSessionModal.vue';
 import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
 import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
@@ -63,8 +64,8 @@ import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
-import DeleteFolderModal from '@/components/Folders/DeleteFolderModal.vue';
-import MoveToFolderModal from '@/components/Folders/MoveToFolderModal.vue';
+import DeleteFolderModal from '@/features/folders/components/DeleteFolderModal.vue';
+import MoveToFolderModal from '@/features/folders/components/MoveToFolderModal.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/externalSecrets/components/ExternalSecretsProviderModal.ee.vue';

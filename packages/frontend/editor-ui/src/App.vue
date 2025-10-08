@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import '@/polyfills';
 
-import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
+import AssistantsHub from '@/features/assistant/components/AssistantsHub.vue';
+import AskAssistantFloatingButton from '@/features/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -15,8 +15,8 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useAssistantStore } from '@/stores/assistant.store';
 import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -210,6 +210,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
 }
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -229,6 +230,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 		display: block;
 	}
 }
+
 .contentWrapper {
 	display: flex;
 	grid-area: content;

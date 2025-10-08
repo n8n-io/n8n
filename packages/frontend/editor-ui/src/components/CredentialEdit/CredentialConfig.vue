@@ -30,8 +30,8 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
-import { useAssistantStore } from '@/stores/assistant.store';
 import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
 import {
@@ -42,6 +42,7 @@ import {
 	N8nNotice,
 	N8nText,
 } from '@n8n/design-system';
+
 type Props = {
 	mode: string;
 	credentialType: ICredentialType;
@@ -416,6 +417,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 .askAssistantButton {
 	display: flex;
 	align-items: center;
+
 	> span {
 		margin-left: var(--spacing-3xs);
 		font-size: var(--font-size-s);

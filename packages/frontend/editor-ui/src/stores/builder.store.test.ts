@@ -5,7 +5,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useBuilderStore } from '@/stores/builder.store';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import {
+	useChatPanelStore,
+	DEFAULT_CHAT_WIDTH,
+	MAX_CHAT_WIDTH,
+	MIN_CHAT_WIDTH,
+} from '@/stores/chatPanel.store';
 import { BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -29,9 +34,7 @@ import {
 } from '@/composables/useWorkflowState';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './chatPanel.store';
 import { type INodeTypeDescription } from 'n8n-workflow';
-import type {} from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -119,8 +122,10 @@ describe('AI Builder store', () => {
 			}),
 		);
 		window.posthog = {
-			init: () => {},
-			identify: () => {},
+			init: () => {
+			},
+			identify: () => {
+			},
 		};
 		posthogStore = usePostHog();
 		posthogStore.init();
@@ -691,7 +696,8 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 
 			// First start a request to create an abort controller
-			apiSpy.mockImplementationOnce(() => {});
+			apiSpy.mockImplementationOnce(() => {
+			});
 			builderStore.sendChatMessage({ text: 'test' });
 
 			// Verify controller was created
@@ -787,7 +793,8 @@ describe('AI Builder store', () => {
 			expect(builderStore.streaming).toBe(false);
 
 			// Mock for second request
-			apiSpy.mockImplementationOnce(() => {});
+			apiSpy.mockImplementationOnce(() => {
+			});
 
 			// Now we can send a new message
 			builderStore.sendChatMessage({ text: 'second message' });
@@ -803,7 +810,8 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 
 			// Mock the API to prevent actual network calls
-			apiSpy.mockImplementationOnce(() => {});
+			apiSpy.mockImplementationOnce(() => {
+			});
 
 			builderStore.sendChatMessage({ text: 'test' });
 
@@ -890,7 +898,8 @@ describe('AI Builder store', () => {
 			];
 
 			// Mock API to prevent actual network calls
-			apiSpy.mockImplementationOnce(() => {});
+			apiSpy.mockImplementationOnce(() => {
+			});
 
 			// Send new message which calls prepareForStreaming
 			builderStore.sendChatMessage({ text: 'New message' });
@@ -1265,7 +1274,8 @@ describe('AI Builder store', () => {
 			});
 
 			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
+			apiSpy.mockImplementationOnce(() => {
+			});
 
 			builderStore.sendChatMessage({ text: 'test message' });
 
@@ -1293,7 +1303,8 @@ describe('AI Builder store', () => {
 			});
 
 			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
+			apiSpy.mockImplementationOnce(() => {
+			});
 
 			builderStore.sendChatMessage({ text: 'test message' });
 
@@ -1321,7 +1332,8 @@ describe('AI Builder store', () => {
 			});
 
 			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
+			apiSpy.mockImplementationOnce(() => {
+			});
 
 			builderStore.sendChatMessage({ text: 'test message' });
 

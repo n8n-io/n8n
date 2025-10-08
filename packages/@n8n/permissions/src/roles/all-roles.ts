@@ -27,6 +27,21 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'workflow:editor': 'Workflow Editor',
 };
 
+const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
+	'global:owner': 'Owner',
+	'global:admin': 'Admin',
+	'global:member': 'Member',
+	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
+	[PROJECT_ADMIN_ROLE_SLUG]:
+		'Full control of settings, members, workflows, credentials and executions',
+	[PROJECT_EDITOR_ROLE_SLUG]: 'Create, edit, and delete workflows, credentials, and executions',
+	[PROJECT_VIEWER_ROLE_SLUG]: 'Read-only access to workflows, credentials, and executions',
+	'credential:user': 'Credential User',
+	'credential:owner': 'Credential Owner',
+	'workflow:owner': 'Workflow Owner',
+	'workflow:editor': 'Workflow Editor',
+};
+
 const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
 	roles: Record<T, Scope[]>,
 	roleType: 'global' | 'project' | 'credential' | 'workflow',
@@ -35,7 +50,7 @@ const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
 		slug: role,
 		displayName: ROLE_NAMES[role],
 		scopes: getRoleScopes(role),
-		description: ROLE_NAMES[role],
+		description: ROLE_DESCRIPTIONS[role],
 		licensed: false,
 		systemRole: true,
 		roleType,
