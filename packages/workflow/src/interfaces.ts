@@ -2166,6 +2166,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
 	hints?: NodeHint[];
+	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
