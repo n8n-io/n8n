@@ -356,6 +356,7 @@ interface MessageOptions {
 	use_mmap?: boolean;
 	vocab_only?: boolean;
 	format?: string;
+	keep_alive?: string;
 }
 
 const displayOptions = {

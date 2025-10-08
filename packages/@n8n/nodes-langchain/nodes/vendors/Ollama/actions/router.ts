@@ -25,10 +25,7 @@ export async function router(this: IExecuteFunctions) {
 			execute = text[ollamaTypeData.operation].execute;
 			break;
 		default:
-			throw new NodeOperationError(
-				this.getNode(),
-				`The operation "${operation}" is not supported!`,
-			);
+			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported!`);
 	}
 
 	for (let i = 0; i < items.length; i++) {
