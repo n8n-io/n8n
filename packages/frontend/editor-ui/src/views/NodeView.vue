@@ -70,7 +70,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
@@ -106,7 +106,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
-import { sourceControlEventBus } from '@/event-bus/source-control';
+import { sourceControlEventBus } from '@/features/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -143,7 +143,7 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
-import { useParentFolder } from '@/composables/useParentFolder';
+import { useParentFolder } from '@/features/folders/composables/useParentFolder';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 

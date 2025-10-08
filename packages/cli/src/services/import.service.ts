@@ -20,6 +20,7 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 @Service()
 export class ImportService {
@@ -50,6 +51,7 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 	) {}
 
 	async initRecords() {
@@ -70,6 +72,11 @@ export class ImportService {
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
+
+			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
+			if (workflow.id) {
+				await this.activeWorkflowManager.remove(workflow.id);
+			}
 		}
 
 		const { manager: dbManager } = this.credentialsRepository;

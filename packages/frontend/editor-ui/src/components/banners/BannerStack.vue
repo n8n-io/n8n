@@ -4,8 +4,8 @@ import TrialOverBanner from '@/components/banners/TrialOverBanner.vue';
 import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
 import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanner.vue';
-import DataStoreStorageLimitWarningBanner from '@/components/banners/DataStoreStorageLimitWarningBanner.vue';
-import DataStoreStorageLimitErrorBanner from '@/components/banners/DataStoreStorageLimitErrorBanner.vue';
+import DataTableStorageLimitWarningBanner from '@/components/banners/DataTableStorageLimitWarningBanner.vue';
+import DataTableStorageLimitErrorBanner from '@/components/banners/DataTableStorageLimitErrorBanner.vue';
 import type { Component } from 'vue';
 import type { N8nBanners } from '@/Interface';
 
@@ -19,13 +19,13 @@ export const N8N_BANNERS: N8nBanners = {
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
 	TRIAL: { priority: 150, component: TrialBanner as Component },
 	NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
-	DATA_STORE_STORAGE_LIMIT_WARNING: {
+	DATA_TABLE_STORAGE_LIMIT_WARNING: {
 		priority: 300,
-		component: DataStoreStorageLimitWarningBanner as Component,
+		component: DataTableStorageLimitWarningBanner as Component,
 	},
-	DATA_STORE_STORAGE_LIMIT_ERROR: {
+	DATA_TABLE_STORAGE_LIMIT_ERROR: {
 		priority: 400,
-		component: DataStoreStorageLimitErrorBanner as Component,
+		component: DataTableStorageLimitErrorBanner as Component,
 	},
 };
 </script>

@@ -358,6 +358,17 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #node-not-run>
 			<template v-if="isNDVV2">
 				<NDVEmptyState
+					v-if="isReadOnly"
+					:title="
+						i18n.baseText(
+							isTriggerNode
+								? 'ndv.output.noOutputData.trigger.title'
+								: 'ndv.output.noOutputData.v2.title',
+						)
+					"
+				/>
+				<NDVEmptyState
+					v-else
 					:title="
 						i18n.baseText(
 							isTriggerNode
@@ -379,6 +390,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					</template>
 					<template #default>
 						<I18nT
+							v-if="!canPinData || isSubNodeType"
 							tag="span"
 							:keypath="
 								isSubNodeType
@@ -406,6 +418,28 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<br />
 							</template>
 						</I18nT>
+						<template v-else>
+							<NodeExecuteButton
+								hide-icon
+								transparent
+								type="secondary"
+								:node-name="activeNode?.name ?? ''"
+								:label="
+									i18n.baseText(
+										isTriggerNode
+											? 'ndv.output.noOutputData.trigger.action'
+											: 'ndv.output.noOutputData.v2.action',
+									)
+								"
+								telemetry-source="inputs"
+								@execute="emit('execute')"
+							/>
+							<br />
+							{{ i18n.baseText('generic.or') }}
+							<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
+								{{ i18n.baseText('ndv.output.insertTestData') }}
+							</N8nText>
+						</template>
 					</template>
 				</NDVEmptyState>
 			</template>
