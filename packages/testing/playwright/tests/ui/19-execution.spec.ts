@@ -15,11 +15,11 @@ const NOTIFICATIONS = {
 	WORKFLOW_EXECUTED_SUCCESSFULLY: 'Workflow executed successfully',
 	EXECUTION_STOPPED: 'Execution stopped',
 	EXECUTION_DELETED: 'Execution deleted',
-} as const;
+};
 
 const TIMEOUTS = {
 	NODE_SUCCESS_WAIT: 5000,
-} as const;
+};
 
 /**
  * Helper function to assert node execution states (success/running indicators)
