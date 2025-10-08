@@ -116,7 +116,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (isTeamProject.value && isProjectVariablesEnabled.value) {
+	if ((props.pageType === 'overview' || isTeamProject.value) && isProjectVariablesEnabled.value) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 
