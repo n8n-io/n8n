@@ -38,7 +38,7 @@ import {
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -1989,13 +1989,14 @@ defineExpose({ enterEditMode });
 	border-top: 0;
 	border-left: 0;
 	border-right: 0;
+	height: 40px;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--ndv-spacing);
-	padding: var(--ndv-spacing) var(--ndv-spacing) 0 var(--ndv-spacing);
+	padding: var(--ndv-spacing) var(--spacing-3xs) 0 var(--ndv-spacing);
 	position: relative;
 	overflow-x: auto;
 	overflow-y: hidden;

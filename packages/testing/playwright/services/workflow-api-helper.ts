@@ -155,14 +155,21 @@ export class WorkflowApiHelper {
 	 * The workflow will be created with its original active state from the JSON file.
 	 * Returns detailed information about what was imported, including webhook info if present.
 	 */
-	async importWorkflow(
+	async importWorkflowFromFile(
 		fileName: string,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const workflowDefinition: IWorkflowBase = JSON.parse(
-			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),
-		);
+		const filePath = resolveFromRoot('workflows', fileName);
+		const fileContent = readFileSync(filePath, 'utf8');
+		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
 
+		return await this.importWorkflowFromDefinition(workflowDefinition, options);
+	}
+
+	async importWorkflowFromDefinition(
+		workflowDefinition: IWorkflowBase,
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
 		// Ensure the workflow is in the correct active state as specified in the JSON
@@ -177,7 +184,6 @@ export class WorkflowApiHelper {
 		const params = new URLSearchParams();
 		if (workflowId) params.set('workflowId', workflowId);
 		params.set('limit', limit.toString());
-
 		const response = await this.api.request.get('/rest/executions', { params });
 
 		if (!response.ok()) {
