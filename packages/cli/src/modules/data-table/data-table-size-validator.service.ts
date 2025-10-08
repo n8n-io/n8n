@@ -59,8 +59,8 @@ export class DataTableSizeValidator {
 		const size = await this.getCachedSizeData(fetchSizeFn, now);
 		if (size.totalBytes >= this.globalConfig.dataTable.maxSize) {
 			this.telemetry.track('User hit data table storage limit', {
-				totalBytes: size.totalBytes,
-				maxBytes: this.globalConfig.dataTable.maxSize,
+				total_bytes: size.totalBytes,
+				max_bytes: this.globalConfig.dataTable.maxSize,
 			});
 
 			throw new DataTableValidationError(
