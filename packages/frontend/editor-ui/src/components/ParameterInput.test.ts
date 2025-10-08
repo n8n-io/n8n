@@ -361,6 +361,7 @@ describe('ParameterInput.vue', () => {
 		// @ts-expect-error Readonly property
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test',
+			properties: [],
 			credentials: [
 				{
 					name: 'openAiApi',
