@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton } from '@n8n/design-system';
-import type { ChatHubConversationModel } from '../chat.types';
 import { type ComponentProps } from 'vue-component-type-helpers';
-import { type ChatHubProvider, chatHubProviderSchema } from '@n8n/api-types';
+import {
+	type ChatHubConversationModel,
+	type ChatHubProvider,
+	chatHubProviderSchema,
+} from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/chatHub/constants';
 
 const props = defineProps<{

@@ -1,5 +1,3 @@
-export type { ChatHubConversationModel } from '@n8n/api-types';
-
 export interface UserMessage {
 	id: string;
 	role: 'user';

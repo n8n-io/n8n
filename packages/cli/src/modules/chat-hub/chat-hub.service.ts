@@ -18,6 +18,8 @@ import {
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
 	type IConnections,
 	type INode,
@@ -309,6 +311,12 @@ export class ChatHubService {
 	}
 
 	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
+		const providerNodeTypeMap: Record<ChatHubProvider, string> = {
+			openai: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			google: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+			anthropic: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+		};
+
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
 			{
@@ -317,7 +325,7 @@ export class ChatHubService {
 					mode: 'webhook',
 					options: { responseMode: 'streaming' },
 				},
-				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
 				typeVersion: 1.3,
 				position: [0, 0],
 				id: uuidv4(),
@@ -330,7 +338,7 @@ export class ChatHubService {
 						enableStreaming: true,
 					},
 				},
-				type: '@n8n/n8n-nodes-langchain.agent',
+				type: AGENT_LANGCHAIN_NODE_TYPE,
 				typeVersion: 3,
 				position: [200, 0],
 				id: uuidv4(),
@@ -338,10 +346,10 @@ export class ChatHubService {
 			},
 			{
 				parameters: {
-					model: { __rl: true, mode: 'list', value: payload.model },
+					model: { __rl: true, mode: 'list', value: payload.model.model },
 					options: {},
 				},
-				type: payload.provider,
+				type: providerNodeTypeMap[payload.model.provider],
 				typeVersion: 1.2,
 				position: [80, 200],
 				id: uuidv4(),

@@ -1,16 +1,19 @@
-import type { ChatModelsResponse } from '@n8n/api-types';
+import type { ChatHubSendMessageRequest, ChatModelsResponse } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Post, Body, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
 import { ChatHubService } from './chat-hub.service';
-import { AskAiWithCredentialsRequestDto } from './dto/ask-ai-with-credentials-request.dto';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 @RestController('/chat')
 export class ChatHubController {
-	constructor(private readonly chatService: ChatHubService) {}
+	constructor(
+		private readonly chatService: ChatHubService,
+		private readonly logger: Logger,
+	) {}
 
 	@Post('/models')
 	async getModels(
@@ -23,11 +26,7 @@ export class ChatHubController {
 
 	@GlobalScope('chatHub:message')
 	@Post('/send')
-	async sendMessage(
-		req: AuthenticatedRequest,
-		res: Response,
-		@Body payload: AskAiWithCredentialsRequestDto,
-	) {
+	async sendMessage(req: AuthenticatedRequest<{}, {}, ChatHubSendMessageRequest>, res: Response) {
 		res.header('Content-type', 'application/json-lines; charset=utf-8');
 		res.header('Transfer-Encoding', 'chunked');
 		res.header('Connection', 'keep-alive');
@@ -38,14 +37,18 @@ export class ChatHubController {
 
 		const replyId = crypto.randomUUID();
 
+		this.logger.info(`Chat send request received: ${JSON.stringify(req.body)}`);
+
 		try {
 			await this.chatService.askN8n(res, req.user, {
-				...payload,
+				...req.body,
 				userId: req.user.id,
 				replyId,
 			});
 		} catch (executionError: unknown) {
 			assert(executionError instanceof Error);
+
+			this.logger.error('Error in chat send endpoint', { error: executionError });
 
 			if (!res.headersSent) {
 				res.status(500).json({

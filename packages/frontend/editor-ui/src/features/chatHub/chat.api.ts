@@ -1,6 +1,10 @@
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { ChatModelsRequest, ChatModelsResponse } from '@n8n/api-types';
+import type {
+	ChatHubConversationModel,
+	ChatModelsRequest,
+	ChatModelsResponse,
+} from '@n8n/api-types';
 import type { StructuredChunk } from './chat.types';
 import type { INodeCredentials } from 'n8n-workflow';
 
@@ -16,8 +20,7 @@ export const sendText = (
 	ctx: IRestApiContext,
 	payload: {
 		message: string;
-		provider: string;
-		model: string;
+		model: ChatHubConversationModel;
 		messageId: string;
 		sessionId: string;
 		credentials: INodeCredentials;

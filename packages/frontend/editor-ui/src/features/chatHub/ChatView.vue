@@ -154,7 +154,17 @@ function onSubmit() {
 		return;
 	}
 
-	chatStore.askAI(message.value, sessionId.value, selectedModel.value);
+	const credentials = credentialsStore.getCredentialsByType(
+		PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider],
+	);
+
+	if (credentials.length === 0) {
+		return;
+	}
+
+	chatStore.askAI(message.value, sessionId.value, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: credentials[0],
+	});
 	message.value = '';
 }
 

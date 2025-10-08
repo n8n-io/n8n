@@ -4,8 +4,9 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, sendText } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ChatHubProvider } from '@n8n/api-types';
-import type { StructuredChunk, ChatMessage, ChatHubConversationModel } from './chat.types';
+import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
+import type { StructuredChunk, ChatMessage } from './chat.types';
+import type { INodeCredentials } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -104,21 +105,23 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		isResponding.value = false;
 	}
 
-	const askAI = (message: string, sessionId: string, model: ChatHubConversationModel) => {
+	const askAI = (
+		message: string,
+		sessionId: string,
+		model: ChatHubConversationModel,
+		credentials: INodeCredentials,
+	) => {
 		const messageId = uuidv4();
 		addUserMessage(message, messageId);
 
 		sendText(
 			rootStore.restApiContext,
 			{
-				model: model.model,
-				provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				model,
 				messageId,
 				sessionId,
 				message,
-				credentials: {
-					openAiApi: { id: 'Jtx6ADZkQZARdxae', name: 'OpenAi account' },
-				},
+				credentials,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(chunk, messageId),
 			onStreamDone,

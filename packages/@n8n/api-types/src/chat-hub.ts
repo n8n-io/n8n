@@ -40,3 +40,18 @@ export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
  * Response type for fetching available chat models
  */
 export type ChatModelsResponse = ChatHubConversationModel[];
+
+export const chatHubSendMessageRequestSchema = z.object({
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	message: z.string(),
+	model: chatHubConversationModelSchema,
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+});
+
+export type ChatHubSendMessageRequest = z.infer<typeof chatHubSendMessageRequestSchema>;
