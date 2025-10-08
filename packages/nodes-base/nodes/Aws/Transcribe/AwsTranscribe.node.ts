@@ -188,7 +188,7 @@ export class AwsTranscribe implements INodeType {
 					},
 					{
 						name: 'Chinese, Cantonese',
-						value: 'zh-HK (yue-HK)',
+						value: 'zh-HK',
 					},
 					{
 						name: 'Chinese, Simplified',
@@ -251,11 +251,11 @@ export class AwsTranscribe implements INodeType {
 						value: 'en-WL',
 					},
 					{
-						name: 'Estonian',
+						name: 'Estonian (et-EE)',
 						value: 'et-EE',
 					},
 					{
-						name: 'Estonian',
+						name: 'Estonian (et-ET)',
 						value: 'et-ET',
 					},
 					{
