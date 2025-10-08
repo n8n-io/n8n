@@ -100,19 +100,21 @@ export function useProjectNavigationCommands(options: {
 			});
 		}
 
-		commands.push({
-			id: ITEM_ID.OPEN_PROJECT,
-			title: i18n.baseText('commandBar.projects.open'),
-			section: i18n.baseText('commandBar.sections.projects'),
-			placeholder: i18n.baseText('commandBar.projects.searchPlaceholder'),
-			children: openProjectCommands.value,
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'arrow-right',
+		if (projectsStore.availableProjects.length > 0) {
+			commands.push({
+				id: ITEM_ID.OPEN_PROJECT,
+				title: i18n.baseText('commandBar.projects.open'),
+				section: i18n.baseText('commandBar.sections.projects'),
+				placeholder: i18n.baseText('commandBar.projects.searchPlaceholder'),
+				children: openProjectCommands.value,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'arrow-right',
+					},
 				},
-			},
-		});
+			});
+		}
 
 		return [...commands, ...rootProjectItems.value];
 	});

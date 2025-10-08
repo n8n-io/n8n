@@ -30,7 +30,7 @@ export function useDataTableNavigationCommands(options: {
 	const router = useRouter();
 	const route = useRoute();
 
-	const dataTableResults = ref<DataStore[]>([]);
+	const dataTableResults = ref<DataTable[]>([]);
 	const isLoading = ref(false);
 
 	const currentProjectId = computed(() => {

@@ -90,6 +90,7 @@ export function useEvaluationCommands(): CommandGroup {
 		const commands: CommandBarItem[] = [];
 
 		if (!workflowPermissions.value.execute && !workflowPermissions.value.update) {
+			// TODO: this is entered incorrectly for new unsaved workflows
 			return commands;
 		}
 
@@ -213,6 +214,7 @@ export function useEvaluationCommands(): CommandGroup {
 		return commands;
 	});
 
+	console.log('evaluationCommands', evaluationCommands.value);
 	return {
 		commands: evaluationCommands,
 	};
