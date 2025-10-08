@@ -4,6 +4,7 @@ import { N8nNavigationDropdown, N8nIcon, N8nButton } from '@n8n/design-system';
 import type { ChatHubConversationModel } from '../chat.types';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import { type ChatHubProvider, chatHubProviderSchema } from '@n8n/api-types';
+import { providerDisplayNames } from '@/features/chatHub/constants';
 
 const props = defineProps<{
 	disabled?: boolean;
@@ -15,12 +16,6 @@ const emit = defineEmits<{
 	change: [ChatHubConversationModel];
 	configure: [ChatHubProvider];
 }>();
-
-const providerDisplayNames: Record<ChatHubProvider, string> = {
-	openai: 'Open AI',
-	anthropic: 'Anthropic',
-	google: 'Google',
-};
 
 const menu = computed(() =>
 	chatHubProviderSchema.options.map((provider) => {

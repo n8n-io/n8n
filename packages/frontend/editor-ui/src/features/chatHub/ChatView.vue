@@ -6,6 +6,7 @@ import hljs from 'highlight.js/lib/core';
 import { N8nHeading, N8nIcon, N8nText, N8nScrollArea } from '@n8n/design-system';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import ModelSelector from './components/ModelSelector.vue';
+import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -38,15 +39,7 @@ onMounted(async () => {
 		credentialsStore.fetchAllCredentials(),
 	]);
 
-	const models = await chatStore.fetchChatModels(
-		Object.fromEntries(
-			chatHubProviderSchema.options.map((provider) => [
-				provider,
-				credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])[0]?.id ??
-					null,
-			]),
-		) as Record<ChatHubProvider, string | null>,
-	);
+	const models = await chatStore.fetchChatModels(createCredentials());
 	const selected = selectedModel.value;
 
 	if (selected === null || models.every((model) => !isSameModel(model, selected))) {
@@ -58,6 +51,7 @@ const message = ref('');
 const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
 const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	null,
@@ -67,8 +61,7 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 		serializer: {
 			read: (value) => {
 				try {
-					const result = chatHubConversationModelSchema.parse(JSON.parse(value));
-					return result;
+					return chatHubConversationModelSchema.parse(JSON.parse(value));
 				} catch (error) {
 					return null;
 				}
@@ -127,6 +120,32 @@ function onModelChange(selection: ChatHubConversationModel) {
 }
 
 function onConfigure(provider: ChatHubProvider) {
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0) {
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+
+	credentialSelectorProvider.value = provider;
+	uiStore.openModal('chatCredentialSelector');
+}
+
+function createCredentials(): Record<ChatHubProvider, string | null> {
+	return Object.fromEntries(
+		chatHubProviderSchema.options.map((p) => [
+			p,
+			credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[p])[0]?.id ?? null,
+		]),
+	) as Record<ChatHubProvider, string | null>;
+}
+
+function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
+	void chatStore.fetchChatModels({ ...createCredentials(), [provider]: credentialId });
+}
+
+function onCreateNewCredential(provider: ChatHubProvider) {
 	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
@@ -182,6 +201,12 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 			:disabled="chatStore.isResponding"
 			@change="onModelChange"
 			@configure="onConfigure"
+		/>
+		<CredentialSelectorModal
+			v-if="credentialSelectorProvider"
+			:provider="credentialSelectorProvider"
+			@select="onCredentialSelected"
+			@create-new="onCreateNewCredential"
 		/>
 		<div
 			:class="{
