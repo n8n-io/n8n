@@ -76,7 +76,7 @@ export function useNodeCommands(options: {
 					component: NodeIcon as Component,
 					props: {
 						nodeType: node,
-						size: 24,
+						size: 16,
 					},
 				},
 				handler: async () => {
@@ -117,7 +117,7 @@ export function useNodeCommands(options: {
 					component: NodeIcon,
 					props: {
 						nodeType,
-						size: 24,
+						size: 16,
 					},
 				},
 				handler: () => {
