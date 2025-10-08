@@ -101,6 +101,7 @@ describe('GlobalConfig', () => {
 		},
 		credentials: {
 			defaultName: 'My credentials',
+			disableSharing: false,
 			overwrite: {
 				data: '{}',
 				endpoint: '',
