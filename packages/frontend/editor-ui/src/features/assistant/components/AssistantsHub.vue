@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { useBuilderStore } from '@/stores/builder.store';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { computed, onBeforeUnmount, ref } from 'vue';

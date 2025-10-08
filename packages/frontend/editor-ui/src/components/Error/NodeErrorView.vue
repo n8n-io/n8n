@@ -20,7 +20,7 @@ import type {
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useUIStore } from '@/stores/ui.store';
@@ -124,8 +124,7 @@ const prepareRawMessages = computed(() => {
 					returnData.push(parsed);
 					return;
 				}
-			} catch (error) {
-			}
+			} catch (error) {}
 		}
 		//if message is the same as error message, do not include it
 		if (message === errorMessage) return;

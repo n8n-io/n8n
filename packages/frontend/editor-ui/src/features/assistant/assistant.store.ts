@@ -28,7 +28,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
-import { useChatPanelStateStore } from '@/stores/chatPanelState.store';
+import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 
@@ -342,9 +342,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const nodeError = currentNodeHasError ? (executionResult.error as NodeError) : undefined;
 		const executionStatus = isCurrentNodeExecuted
 			? {
-				status: nodeError ? 'error' : 'success',
-				error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
-			}
+					status: nodeError ? 'error' : 'success',
+					error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
+				}
 			: undefined;
 		return {
 			currentView: {
@@ -360,10 +360,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			activeCredentials: activeCredential
 				? {
-					name: activeCredential?.name,
-					displayName: activeCredential?.displayName,
-					authType: nodeInfo?.authType?.name,
-				}
+						name: activeCredential?.name,
+						displayName: activeCredential?.displayName,
+						authType: nodeInfo?.authType?.name,
+					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
 				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
@@ -603,23 +603,23 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function trackUserOpenedAssistant({
-																			source,
-																			task,
-																			has_existing_session,
-																		}: { has_existing_session: boolean } & (
+		source,
+		task,
+		has_existing_session,
+	}: { has_existing_session: boolean } & (
 		| {
-		source: 'error';
-		task: 'error';
-	}
+				source: 'error';
+				task: 'error';
+		  }
 		| {
-		source: 'canvas';
-		task: 'placeholder';
-	}
+				source: 'canvas';
+				task: 'placeholder';
+		  }
 		| {
-		source: 'credential';
-		task: 'credentials';
-	}
-		)) {
+				source: 'credential';
+				task: 'credentials';
+		  }
+	)) {
 		telemetry.track('User opened assistant', {
 			source,
 			task,

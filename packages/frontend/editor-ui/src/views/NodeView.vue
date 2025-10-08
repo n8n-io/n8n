@@ -127,7 +127,7 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getSampleWorkflowByTemplateId } from '@/features/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
 import { usePostHog } from '@/stores/posthog.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';

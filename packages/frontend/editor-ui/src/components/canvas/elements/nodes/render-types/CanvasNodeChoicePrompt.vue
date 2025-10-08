@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 

@@ -20,8 +20,8 @@ import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
-import { useBuilderStore } from '@/stores/builder.store';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 

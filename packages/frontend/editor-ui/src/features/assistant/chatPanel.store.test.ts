@@ -9,14 +9,14 @@ import {
 } from './chatPanel.store';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useUIStore } from './ui.store';
-import { useAssistantStore } from './assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from './builder.store';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from '@/constants.assistant';
 import { VIEWS } from '@/constants';
 import { reactive } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 // Mock vue-router

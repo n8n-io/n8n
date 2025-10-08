@@ -3,7 +3,7 @@ import { NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useChatPanelStore } from '../../chatPanel.store';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import type { ICredentialType } from 'n8n-workflow';

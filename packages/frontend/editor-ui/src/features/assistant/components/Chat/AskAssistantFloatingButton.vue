@@ -2,8 +2,8 @@
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
-import { useBuilderStore } from '@/stores/builder.store';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useBuilderStore } from '../../builder.store';
+import { useChatPanelStore } from '../../chatPanel.store';
 import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';

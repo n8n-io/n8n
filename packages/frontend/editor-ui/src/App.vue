@@ -15,7 +15,7 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useChatPanelStore } from '@/stores/chatPanel.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';

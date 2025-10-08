@@ -5,13 +5,11 @@ import {
 	DEFAULT_CHAT_WIDTH,
 	MAX_CHAT_WIDTH,
 	MIN_CHAT_WIDTH,
-} from '@/stores/chatPanel.store';
+} from './chatPanel.store';
 import { ASSISTANT_ENABLED_VIEWS } from '@/constants.assistant';
 
 const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
-import {
-	useAssistantStore,
-} from '@/features/assistant/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { usePostHog } from '@/stores/posthog.store';
@@ -74,10 +72,8 @@ describe('AI Assistant store', () => {
 			}),
 		);
 		window.posthog = {
-			init: () => {
-			},
-			identify: () => {
-			},
+			init: () => {},
+			identify: () => {},
 		};
 		posthogStore = usePostHog();
 		posthogStore.init();
