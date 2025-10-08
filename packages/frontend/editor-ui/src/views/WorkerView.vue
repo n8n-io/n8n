@@ -4,6 +4,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nActionBox } from '@n8n/design-system';
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const i18n = useI18n();

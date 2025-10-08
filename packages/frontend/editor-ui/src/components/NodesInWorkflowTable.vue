@@ -9,6 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/utils/projects.utils';
 import { useProjectsStore } from '@/stores/projects.store';
 
+import { N8nDataTableServer, N8nText } from '@n8n/design-system';
 type WorkflowData = WorkflowResource[];
 
 type WorkflowDataItem = WorkflowData[number];

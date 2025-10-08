@@ -15,6 +15,7 @@ import { NoConstructorInBackendModuleRule } from './no-constructor-in-backend-mo
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 import { NoArrayPushSpreadRule } from './no-array-push-spread.js';
 import { NoInternalPackageImportRule } from './no-internal-package-import.js';
+import { NoImportEnterpriseEditionRule } from './no-import-enterprise-edition.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -33,4 +34,5 @@ export const rules = {
 	'no-constructor-in-backend-module': NoConstructorInBackendModuleRule,
 	'no-array-push-spread': NoArrayPushSpreadRule,
 	'no-internal-package-import': NoInternalPackageImportRule,
+	'no-import-enterprise-edition': NoImportEnterpriseEditionRule,
 } satisfies Record<string, AnyRuleModule>;

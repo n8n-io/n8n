@@ -2,6 +2,7 @@
 import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -30,6 +31,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	data: {
 		id: string;

@@ -3,7 +3,6 @@ import { computed, ref } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
-
 const props = defineProps<{ data: UsersList['items'][number] }>();
 
 const i18n = useI18n();

@@ -5,7 +5,6 @@ import { ViewableMimeTypes } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { IBinaryKeyData } from 'n8n-workflow';
 import { N8nButton, N8nText } from '@n8n/design-system';
-
 const { binaryData } = defineProps<{ binaryData: IBinaryKeyData[] }>();
 
 const emit = defineEmits<{ preview: [index: number, key: string | number] }>();

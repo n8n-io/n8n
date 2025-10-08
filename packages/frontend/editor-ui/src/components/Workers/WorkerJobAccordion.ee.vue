@@ -3,6 +3,7 @@ import type { RunningJobSummary } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	items: RunningJobSummary[];
 }>();

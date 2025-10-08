@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ViewItemProps } from '@/Interface';
 
+import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
 export interface Props {
 	view: ViewItemProps;
 }

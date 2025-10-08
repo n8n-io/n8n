@@ -16,6 +16,40 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
 const registry = 'https://registry.npmjs.org/';
 
+/**
+ * Checks if the given childPath is contained within the parentPath. Resolves
+ * the paths before comparing them, so that relative paths are also supported.
+ */
+export function isContainedWithin(parentPath, childPath) {
+	parentPath = path.resolve(parentPath);
+	childPath = path.resolve(childPath);
+
+	if (parentPath === childPath) {
+		return true;
+	}
+
+	return childPath.startsWith(parentPath + path.sep);
+}
+
+/**
+ * Joins the given paths to the parentPath, ensuring that the resulting path
+ * is still contained within the parentPath. If not, it throws an error to
+ * prevent path traversal vulnerabilities.
+ *
+ * @throws {UnexpectedError} If the resulting path is not contained within the parentPath.
+ */
+export function safeJoinPath(parentPath, ...paths) {
+	const candidate = path.join(parentPath, ...paths);
+
+	if (!isContainedWithin(parentPath, candidate)) {
+		throw new Error(
+			`Path traversal detected, refusing to join paths: ${parentPath} and ${JSON.stringify(paths)}`,
+		);
+	}
+
+	return candidate;
+}
+
 export const resolvePackage = (packageSpec) => {
 	// Validate input to prevent command injection
 	if (!/^[a-zA-Z0-9@/_.-]+$/.test(packageSpec)) {
@@ -57,7 +91,7 @@ const downloadAndExtractPackage = async (packageName, version) => {
 		}
 
 		// Unpack the tarball
-		const packageDir = path.join(TEMP_DIR, `${packageName}-${version}`);
+		const packageDir = safeJoinPath(TEMP_DIR, `${packageName}-${version}`);
 		fs.mkdirSync(packageDir, { recursive: true });
 		const tarResult = spawnSync(
 			'tar',
@@ -70,7 +104,7 @@ const downloadAndExtractPackage = async (packageName, version) => {
 		if (tarResult.status !== 0) {
 			throw new Error(`tar extraction failed: ${tarResult.stderr?.toString()}`);
 		}
-		fs.unlinkSync(path.join(TEMP_DIR, tarballName));
+		fs.unlinkSync(safeJoinPath(TEMP_DIR, tarballName));
 
 		return packageDir;
 	} catch (error) {

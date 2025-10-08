@@ -20,6 +20,15 @@ import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
+import {
+	N8nButton,
+	N8nFormInputs,
+	N8nIconButton,
+	N8nLink,
+	N8nNotice,
+	N8nTooltip,
+	N8nUsersList,
+} from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: {

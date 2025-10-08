@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
-import { N8nText } from '@n8n/design-system';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
 
+import { N8nInlineTextEdit, N8nText } from '@n8n/design-system';
 defineProps<{
 	node: INode;
 	readOnly: boolean;

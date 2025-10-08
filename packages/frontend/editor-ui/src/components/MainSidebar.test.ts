@@ -6,7 +6,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/components/MainSidebar.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
@@ -53,6 +53,7 @@ describe('MainSidebar', () => {
 		versionsStore.hasVersionUpdates = false;
 		versionsStore.nextVersions = [];
 		usersStore.canUserUpdateVersion = true;
+		uiStore.sidebarMenuCollapsed = false;
 	});
 
 	it('renders the sidebar without error', () => {
@@ -86,26 +87,30 @@ describe('MainSidebar', () => {
 			expect(queryByTestId('version-update-cta-button')).not.toBeInTheDocument();
 		});
 
-		it('should render version update CTA disabled when canUserUpdateVersion is false', () => {
+		it('should render version update CTA disabled when canUserUpdateVersion is false', async () => {
 			versionsStore.hasVersionUpdates = true;
 			versionsStore.nextVersions = [mockVersion];
 			usersStore.canUserUpdateVersion = false;
 
-			const { getByTestId } = renderComponent();
+			const { findByTestId, getByText } = renderComponent();
 
-			const updateButton = getByTestId('version-update-cta-button');
+			getByText('What’s New').click();
+
+			const updateButton = await findByTestId('version-update-cta-button');
 			expect(updateButton).toBeInTheDocument();
 			expect(updateButton).toBeDisabled();
 		});
 
-		it('should render version update CTA enabled when canUserUpdateVersion is true and hasVersionUpdates is true', () => {
+		it('should render version update CTA enabled when canUserUpdateVersion is true and hasVersionUpdates is true', async () => {
 			versionsStore.hasVersionUpdates = true;
 			versionsStore.nextVersions = [mockVersion];
 			usersStore.canUserUpdateVersion = true;
 
-			const { getByTestId } = renderComponent();
+			const { getByText, findByTestId } = renderComponent();
 
-			const updateButton = getByTestId('version-update-cta-button');
+			getByText('What’s New').click();
+
+			const updateButton = await findByTestId('version-update-cta-button');
 			expect(updateButton).toBeInTheDocument();
 			expect(updateButton).toBeEnabled();
 		});

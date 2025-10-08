@@ -11,28 +11,29 @@ import { useProvideViewportSync } from '@/features/workflow-diff/useViewportSync
 import { NodeDiffStatus, useWorkflowDiff } from '@/features/workflow-diff/useWorkflowDiff';
 import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
-import {
-	N8nButton,
-	N8nCheckbox,
-	N8nHeading,
-	N8nIconButton,
-	N8nRadioButtons,
-	N8nText,
-} from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
 }>();

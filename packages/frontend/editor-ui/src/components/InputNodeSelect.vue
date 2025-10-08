@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 type Props = {
 	nodes: IConnectedNode[];
 	workflow: Workflow;

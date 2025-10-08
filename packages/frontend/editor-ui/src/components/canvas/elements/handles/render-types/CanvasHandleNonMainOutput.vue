@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { computed, useCssModule } from 'vue';
+import CanvasHandleDiamond from '@/components/canvas/elements/handles/render-types/parts/CanvasHandleDiamond.vue';
 
 const $style = useCssModule();
 const { label, isRequired } = useCanvasNodeHandle();

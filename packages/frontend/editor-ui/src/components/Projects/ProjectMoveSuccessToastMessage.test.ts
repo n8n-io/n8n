@@ -2,7 +2,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
 import { ResourceType } from '@/utils/projects.utils';
 import { VIEWS } from '@/constants';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes, type ProjectListItem } from '@/types/projects.types';
+import type { ComponentProps } from 'vue-component-type-helpers';
 
 const renderComponent = createComponentRenderer(ProjectMoveSuccessToastMessage, {
 	global: {
@@ -16,13 +17,13 @@ const renderComponent = createComponentRenderer(ProjectMoveSuccessToastMessage, 
 
 describe('ProjectMoveSuccessToastMessage', () => {
 	it('should show credentials message if the resource is a workflow', async () => {
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveSuccessToastMessage> = {
 			routeName: VIEWS.PROJECTS_WORKFLOWS,
 			resourceType: ResourceType.Workflow,
 			targetProject: {
 				id: '2',
 				name: 'My Project',
-			},
+			} as ProjectListItem,
 			isShareCredentialsChecked: false,
 			areAllUsedCredentialsShareable: false,
 		};
@@ -31,13 +32,13 @@ describe('ProjectMoveSuccessToastMessage', () => {
 	});
 
 	it('should show all credentials shared message if the resource is a workflow', async () => {
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveSuccessToastMessage> = {
 			routeName: VIEWS.PROJECTS_WORKFLOWS,
 			resourceType: ResourceType.Workflow,
 			targetProject: {
 				id: '2',
 				name: 'My Project',
-			},
+			} as ProjectListItem,
 			isShareCredentialsChecked: true,
 			areAllUsedCredentialsShareable: true,
 		};
@@ -46,13 +47,13 @@ describe('ProjectMoveSuccessToastMessage', () => {
 	});
 
 	it('should show not all credentials shared message if the resource is a workflow', async () => {
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveSuccessToastMessage> = {
 			routeName: VIEWS.PROJECTS_WORKFLOWS,
 			resourceType: ResourceType.Workflow,
 			targetProject: {
 				id: '2',
 				name: 'My Project',
-			},
+			} as ProjectListItem,
 			isShareCredentialsChecked: true,
 			areAllUsedCredentialsShareable: false,
 		};
@@ -61,14 +62,14 @@ describe('ProjectMoveSuccessToastMessage', () => {
 	});
 
 	it('should show link if the target project type is team project', async () => {
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveSuccessToastMessage> = {
 			routeName: VIEWS.PROJECTS_WORKFLOWS,
 			resourceType: ResourceType.Workflow,
 			targetProject: {
 				id: '2',
 				name: 'Team Project',
 				type: ProjectTypes.Team,
-			},
+			} as ProjectListItem,
 			isShareCredentialsChecked: false,
 			areAllUsedCredentialsShareable: false,
 		};
@@ -77,14 +78,14 @@ describe('ProjectMoveSuccessToastMessage', () => {
 	});
 
 	it('should show only general if the resource is credential and moved to a personal project', async () => {
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveSuccessToastMessage> = {
 			routeName: VIEWS.PROJECTS_WORKFLOWS,
 			resourceType: ResourceType.Credential,
 			targetProject: {
 				id: '2',
 				name: 'Personal Project',
 				type: ProjectTypes.Personal,
-			},
+			} as ProjectListItem,
 			isShareCredentialsChecked: false,
 			areAllUsedCredentialsShareable: false,
 		};

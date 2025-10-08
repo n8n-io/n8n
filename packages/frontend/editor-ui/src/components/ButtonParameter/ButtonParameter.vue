@@ -2,7 +2,7 @@
 import { type INodeProperties, type NodePropertyAction } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
-import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
+import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -14,9 +14,9 @@ import {
 	getTextareaCursorPosition,
 } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '../../utils/mappingUtils';
-
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{

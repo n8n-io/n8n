@@ -1013,7 +1013,7 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.activateParameterExpressionEditor(fieldName);
 		const editor = this.getInlineExpressionEditorInput(fieldName);
 		await editor.click();
-		await this.page.keyboard.type(invalidExpression ?? '{{ invalid_expression');
+		await this.page.keyboard.type(invalidExpression ?? '{{ =()');
 	}
 
 	/**

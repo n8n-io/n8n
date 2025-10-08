@@ -25,6 +25,16 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { computed, h, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: {

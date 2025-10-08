@@ -3,6 +3,8 @@ import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExe
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
+import type { ComponentProps } from 'vue-component-type-helpers';
+import type { ExecutionSummary } from 'n8n-workflow';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
@@ -133,7 +135,7 @@ describe('WorkflowExecutionsCard', () => {
 		'with execution %j retry button visibility is %s and if visible is disabled %s',
 		(props, shouldRenderRetryBtn, disabled) => {
 			const { queryByTestId } = renderComponent({
-				props,
+				props: props as ComponentProps<typeof WorkflowExecutionsCard>,
 			});
 
 			const retryButton = queryByTestId('retry-execution-button');
@@ -154,13 +156,13 @@ describe('WorkflowExecutionsCard', () => {
 
 	test('displays correct text for new execution', () => {
 		const createdAt = new Date('2024-09-27T12:00:00Z');
-		const props = {
+		const props: ComponentProps<typeof WorkflowExecutionsCard> = {
 			execution: {
 				id: '1',
 				mode: 'manual',
 				status: 'new',
 				createdAt: createdAt.toISOString(),
-			},
+			} as unknown as ExecutionSummary,
 			workflowPermissions: {
 				execute: true,
 			},
@@ -181,13 +183,13 @@ describe('WorkflowExecutionsCard', () => {
 		const createdAt = new Date('2024-09-27T12:00:00Z');
 		const now = new Date('2024-09-27T12:30:00Z');
 		vitest.useFakeTimers({ now });
-		const props = {
+		const props: ComponentProps<typeof WorkflowExecutionsCard> = {
 			execution: {
 				id: '1',
 				mode: 'webhook',
 				status: 'running',
 				createdAt: createdAt.toISOString(),
-			},
+			} as unknown as ExecutionSummary,
 			workflowPermissions: { execute: true },
 		};
 

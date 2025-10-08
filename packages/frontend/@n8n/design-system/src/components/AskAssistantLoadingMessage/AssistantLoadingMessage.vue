@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 
 withDefaults(
@@ -14,13 +15,12 @@ withDefaults(
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style['message-container']">
-			<Transition :name="animationType" mode="out-in">
-				<N8nText v-if="message" :key="message" :class="$style.message" :shimmer="true">{{
-					message
-				}}</N8nText>
-			</Transition>
+		<div :class="$style.loadingSpinner">
+			<N8nIcon icon="spinner" spin color="secondary" size="large" />
 		</div>
+		<Transition :name="animationType" mode="out-in">
+			<N8nText v-if="message" :key="message" size="small" bold>{{ message }}</N8nText>
+		</Transition>
 	</div>
 </template>
 
@@ -30,27 +30,16 @@ withDefaults(
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-2xs);
 	user-select: none;
 }
 
-.message-container {
-	display: inline-flex;
-	position: relative;
-	overflow: hidden;
-	line-height: 1.4rem;
-	height: var(--spacing-xl);
+.loadingSpinner {
+	display: flex;
 	align-items: center;
-}
-.message {
-	margin: 0;
-	padding: 0;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	text-align: left;
-
-	@include animations.shimmer;
+	justify-content: center;
+	width: var(--spacing-m);
+	flex-shrink: 0;
 }
 </style>
 

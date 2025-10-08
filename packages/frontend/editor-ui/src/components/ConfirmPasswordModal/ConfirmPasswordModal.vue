@@ -7,6 +7,7 @@ import type { IFormInputs, IFormInput, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { confirmPasswordEventBus } from './confirm-password.event-bus';
 
+import { N8nButton, N8nFormInputs, N8nText } from '@n8n/design-system';
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
 const loading = ref(false);

@@ -13,12 +13,12 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nIcon, N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;

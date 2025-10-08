@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
+import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
 export interface Props {
 	item: SubcategoryItemProps;
 }

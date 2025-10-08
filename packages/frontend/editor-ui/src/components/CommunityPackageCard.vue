@@ -10,6 +10,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { computed, ref, watch } from 'vue';
 import semver from 'semver';
 
+import {
+	N8nActionToggle,
+	N8nButton,
+	N8nIcon,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 interface Props {
 	communityPackage?: PublicInstalledPackage | null;
 	loading?: boolean;
@@ -74,7 +82,7 @@ async function onAction(value: string) {
 
 function onUpdateClick() {
 	if (!props.communityPackage) return;
-	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName);
+	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName, 'instance settings');
 }
 
 watch(

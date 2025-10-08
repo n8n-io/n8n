@@ -3,6 +3,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 
+import { N8nInputLabel } from '@n8n/design-system';
 type Props = {
 	label?: string;
 	hint?: string;

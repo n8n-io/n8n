@@ -438,7 +438,7 @@ export class WorkflowBuilderAgent {
 
 			// Handle abort errors gracefully
 			const abortedAiMessage = new AIMessage({
-				content: '[Task aborted]',
+				content: 'Task aborted',
 				id: crypto.randomUUID(),
 			});
 			// TODO: Should we clear tool calls that are in progress?

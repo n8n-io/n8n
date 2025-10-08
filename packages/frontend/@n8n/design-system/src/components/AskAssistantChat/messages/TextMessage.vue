@@ -17,6 +17,7 @@ interface Props {
 	};
 	streaming?: boolean;
 	isLastMessage?: boolean;
+	color?: string;
 }
 
 defineProps<Props>();
@@ -52,16 +53,17 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<span
 				v-if="message.role === 'user'"
 				v-n8n-html="renderMarkdown(message.content)"
-				:class="$style['rendered-content']"
+				:class="$style.renderedContent"
 			></span>
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
-				:class="[$style.assistantText, $style['rendered-content']]"
+				:class="[$style.assistantText, $style.renderedContent]"
+				:style="color ? { color } : undefined"
 			></div>
 			<div
 				v-if="message?.codeSnippet"
-				:class="$style['code-snippet']"
+				:class="$style.codeSnippet"
 				data-test-id="assistant-code-snippet"
 			>
 				<header v-if="isClipboardSupported">
@@ -78,7 +80,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				<div
 					v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
 					data-test-id="assistant-code-snippet-content"
-					:class="[$style['snippet-content'], $style['rendered-content']]"
+					:class="[$style.snippetContent, $style.renderedContent]"
 				></div>
 			</div>
 			<BlinkingCursor v-if="streaming && isLastMessage && message.role === 'assistant'" />
@@ -96,7 +98,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	word-break: break-word;
 }
 
-.code-snippet {
+.codeSnippet {
 	position: relative;
 	border: var(--border-base);
 	background-color: var(--color-foreground-xlight);
@@ -119,7 +121,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		}
 	}
 
-	.snippet-content {
+	.snippetContent {
 		padding: var(--spacing-2xs);
 	}
 
@@ -138,7 +140,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	flex-direction: column;
 }
 
-.rendered-content {
+.renderedContent {
 	p {
 		margin: 0;
 		margin: var(--spacing-4xs) 0;

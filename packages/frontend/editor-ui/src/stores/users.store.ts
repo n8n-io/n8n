@@ -36,6 +36,7 @@ const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
+const _isAdmin = (user: IUserResponse | null) => user?.role === ROLE.Admin;
 
 export type LoginHook = (user: CurrentUserResponse) => void;
 type LogoutHook = () => void;
@@ -68,6 +69,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const isDefaultUser = computed(() => _isDefaultUser(currentUser.value));
 
 	const isInstanceOwner = computed(() => _isInstanceOwner(currentUser.value));
+
+	const isAdmin = computed(() => _isAdmin(currentUser.value));
 
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
@@ -445,6 +448,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		userActivated,
 		isDefaultUser,
 		isInstanceOwner,
+		isAdmin,
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,

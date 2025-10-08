@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
+import { ApplicationError, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 
@@ -296,7 +296,7 @@ describe('ScalingService', () => {
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
 			expect(job.discard).toHaveBeenCalled();
-			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
+			expect(job.moveToFailed).toHaveBeenCalledWith(new ManualExecutionCancelledError('123'), true);
 			expect(result).toBe(true);
 		});
 

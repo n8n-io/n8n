@@ -12,6 +12,14 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 
+import {
+	N8nActionDropdown,
+	N8nIcon,
+	N8nSpinner,
+	N8nTags,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const props = defineProps<{
 	execution: ExecutionSummary;
 	highlight?: boolean;

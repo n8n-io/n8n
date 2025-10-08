@@ -8,6 +8,7 @@ import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 import { computed } from 'vue';
 
+import { N8nNotice } from '@n8n/design-system';
 type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;

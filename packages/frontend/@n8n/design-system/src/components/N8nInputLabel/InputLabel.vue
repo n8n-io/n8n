@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import type { TextColor } from '@n8n/design-system/types/text';
-
+import type { TextColor } from '../../types/text';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';

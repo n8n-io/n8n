@@ -3,6 +3,8 @@ import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
+import { ElDialog } from 'element-plus';
+import { N8nButton } from '@n8n/design-system';
 type Props = {
 	limit: number;
 	planName?: string;

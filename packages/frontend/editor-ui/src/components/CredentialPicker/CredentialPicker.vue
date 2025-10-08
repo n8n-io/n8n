@@ -7,6 +7,7 @@ import CredentialsDropdown from './CredentialsDropdown.vue';
 import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
 
+import { N8nButton, N8nIconButton } from '@n8n/design-system';
 const props = defineProps<{
 	appName: string;
 	credentialType: string;

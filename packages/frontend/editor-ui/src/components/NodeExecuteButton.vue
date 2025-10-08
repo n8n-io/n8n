@@ -33,6 +33,7 @@ import { useUIStore } from '@/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nButton, N8nTooltip } from '@n8n/design-system';
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
 const POPUP_UPDATE_DELAY = 3000;

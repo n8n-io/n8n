@@ -1,4 +1,4 @@
-import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
+import SourceControlInitializationErrorMessage from '@/features/sourceControl.ee/components/SourceControlInitializationErrorMessage.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
@@ -18,8 +18,8 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
@@ -28,28 +28,12 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from './stores/roles.store';
-import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 
 export const state = {
 	initialized: false,
 };
 let authenticatedFeaturesInitialized = false;
-
-/**
- * EXP: Ready to run V2
- * Tracks user visits and determines if trial banner should show
- * Returns true if this is not the user's first visit
- */
-function shouldShowTrialBanner(): boolean {
-	const VISIT_COUNT_KEY = 'n8n-trial-visit-count';
-	const currentCount = parseInt(localStorage.getItem(VISIT_COUNT_KEY) ?? '0', 10);
-	const newCount = currentCount + 1;
-
-	localStorage.setItem(VISIT_COUNT_KEY, newCount.toString());
-
-	// Don't show banner on first visit
-	return newCount > 1;
-}
 
 /**
  * Initializes the core application stores and hooks
@@ -152,7 +136,7 @@ export async function initializeAuthenticatedFeatures(
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
 	const versionsStore = useVersionsStore();
-	const dataStoreStore = useDataStoreStore();
+	const dataTableStore = useDataTableStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -179,7 +163,7 @@ export async function initializeAuthenticatedFeatures(
 				if (cloudPlanStore.userIsTrialing) {
 					if (cloudPlanStore.trialExpired) {
 						uiStore.pushBannerToStack('TRIAL_OVER');
-					} else if (shouldShowTrialBanner()) {
+					} else {
 						uiStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
@@ -192,13 +176,13 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		void dataStoreStore
-			.fetchDataStoreSize()
+		void dataTableStore
+			.fetchDataTableSize()
 			.then(({ quotaStatus }) => {
 				if (quotaStatus === 'error') {
-					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
 				} else if (quotaStatus === 'warn') {
-					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
 				}
 			})
 			.catch((error) => {

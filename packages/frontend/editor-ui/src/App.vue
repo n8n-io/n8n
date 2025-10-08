@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import '@/polyfills';
 
-import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
+import AssistantsHub from '@/features/assistant/components/AssistantsHub.vue';
+import AskAssistantFloatingButton from '@/features/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -15,14 +15,14 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import LoadingView from '@/views/LoadingView.vue';
-import { locale } from '@n8n/design-system';
+import { locale, N8nCommandBar } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -32,6 +32,8 @@ import { useRoute } from 'vue-router';
 import { useStyles } from './composables/useStyles';
 import { useExposeCssVar } from '@/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
+import { useCommandBar } from './composables/useCommandBar';
+import { hasPermission } from './utils/rbac/permissions';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -41,6 +43,18 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+
+const {
+	initialize: initializeCommandBar,
+	isEnabled: isCommandBarEnabled,
+	items,
+	onCommandBarChange,
+	onCommandBarNavigateTo,
+} = useCommandBar();
+
+const showCommandBar = computed(
+	() => isCommandBarEnabled.value && hasPermission(['authenticated']),
+);
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -68,6 +82,12 @@ onMounted(async () => {
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
+});
+
+watch(showCommandBar, (newVal) => {
+	if (newVal) {
+		void initializeCommandBar();
+	}
 });
 
 onBeforeUnmount(() => {
@@ -149,6 +169,13 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
 			</div>
+
+			<N8nCommandBar
+				v-if="showCommandBar"
+				:items="items"
+				@input-change="onCommandBarChange"
+				@navigate-to="onCommandBarNavigateTo"
+			/>
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 		</div>

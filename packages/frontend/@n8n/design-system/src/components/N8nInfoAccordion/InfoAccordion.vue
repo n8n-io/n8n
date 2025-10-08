@@ -2,8 +2,7 @@
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { onMounted, ref } from 'vue';
 
-import type { IconColor } from '@n8n/design-system/types/icon';
-
+import type { IconColor } from '../../types/icon';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';

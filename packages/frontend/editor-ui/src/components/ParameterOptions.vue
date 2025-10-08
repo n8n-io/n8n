@@ -13,6 +13,7 @@ import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
+import { N8nActionToggle, N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	isReadOnly: boolean;

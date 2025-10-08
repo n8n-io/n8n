@@ -4,6 +4,7 @@ import type { XYPosition } from '@/Interface';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 export interface Props {
 	showTooltip: boolean;
 	position: XYPosition;

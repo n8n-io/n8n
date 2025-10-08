@@ -17,6 +17,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { ElCheckbox } from 'element-plus';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -134,8 +136,9 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
-function onAutoRefreshChange(enabled: boolean) {
-	emit('update:autoRefresh', enabled);
+function onAutoRefreshChange(enabled: string | number | boolean) {
+	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
+	emit('update:autoRefresh', boolValue);
 }
 
 function checkListSize(): void {

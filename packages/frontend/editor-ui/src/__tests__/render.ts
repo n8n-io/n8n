@@ -1,20 +1,19 @@
-import type { Component, Plugin } from 'vue';
-import { render } from '@testing-library/vue';
+import type { Plugin } from 'vue';
+import { render, type RenderOptions as TestingLibraryRenderOptions } from '@testing-library/vue';
 import { i18nInstance } from '@n8n/i18n';
-import { GlobalComponentsPlugin } from '@/plugins/components';
 import { GlobalDirectivesPlugin } from '@/plugins/directives';
 import { FontAwesomePlugin } from '@/plugins/icons';
+import { N8nPlugin } from '@n8n/design-system';
 import type { Pinia } from 'pinia';
 import { PiniaVuePlugin } from 'pinia';
 import type { Telemetry } from '@/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
 import merge from 'lodash/merge';
 import type { TestingPinia } from '@pinia/testing';
-import * as components from '@n8n/design-system/components';
 
-export type RenderComponent = Parameters<typeof render>[0];
-export type RenderOptions = Parameters<typeof render>[1] & {
+export type RenderOptions<T> = Omit<TestingLibraryRenderOptions<T>, 'props'> & {
 	pinia?: TestingPinia | Pinia;
+	props?: Partial<TestingLibraryRenderOptions<T>['props']>;
 };
 
 const TelemetryPlugin: Plugin<{}> = {
@@ -26,33 +25,26 @@ const TelemetryPlugin: Plugin<{}> = {
 	},
 };
 
-const TestingGlobalComponentsPlugin: Plugin<{}> = {
-	install(app) {
-		for (const [name, component] of Object.entries(components)) {
-			app.component(name, component as unknown as Component);
-		}
-	},
-};
-
 const defaultOptions = {
 	global: {
 		stubs: {
-			RouterLink: true,
+			RouterLink: {
+				template: '<a><slot /></a>',
+			},
 			VueJsonPretty: vueJsonPretty,
 		},
 		plugins: [
 			i18nInstance,
 			PiniaVuePlugin,
 			FontAwesomePlugin,
-			GlobalComponentsPlugin,
+			N8nPlugin,
 			GlobalDirectivesPlugin,
 			TelemetryPlugin,
-			TestingGlobalComponentsPlugin,
 		],
 	},
 };
 
-export function renderComponent(component: RenderComponent, options: RenderOptions = {}) {
+export function renderComponent<T>(component: T, options: RenderOptions<T> = {}) {
 	const { pinia, ...renderOptions } = options;
 
 	return render(component, {
@@ -68,24 +60,21 @@ export function renderComponent(component: RenderComponent, options: RenderOptio
 				...(pinia ? [pinia] : []),
 			],
 		},
-	});
+	} as TestingLibraryRenderOptions<T>);
 }
 
-export function createComponentRenderer(
-	component: RenderComponent,
-	defaultOptions: RenderOptions = {},
-) {
-	return (options: RenderOptions = {}, rendererOptions: { merge?: boolean } = {}) =>
+export function createComponentRenderer<T>(component: T, defaultOptions: RenderOptions<T> = {}) {
+	return (options: RenderOptions<T> = {}, rendererOptions: { merge?: boolean } = {}) =>
 		renderComponent(
 			component,
 			rendererOptions.merge
 				? merge(defaultOptions, options)
-				: {
+				: ({
 						...defaultOptions,
 						...options,
 						props: {
-							...defaultOptions.props,
-							...options.props,
+							...(defaultOptions.props ?? {}),
+							...(options.props ?? {}),
 						},
 						global: {
 							...defaultOptions.global,
@@ -95,6 +84,6 @@ export function createComponentRenderer(
 								...options.global?.provide,
 							},
 						},
-					},
+					} as RenderOptions<T>),
 		);
 }
