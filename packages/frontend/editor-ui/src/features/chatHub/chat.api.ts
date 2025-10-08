@@ -28,7 +28,7 @@ export const sendText = (
 ): void => {
 	void streamRequest<StructuredChunk>(
 		ctx,
-		'/chat/ask',
+		'/chat/send',
 		payload,
 		onMessageUpdated,
 		onDone,

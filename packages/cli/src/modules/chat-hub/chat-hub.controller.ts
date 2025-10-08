@@ -22,8 +22,8 @@ export class ChatHubController {
 	}
 
 	@GlobalScope('chatHub:message')
-	@Post('/ask')
-	async ask(
+	@Post('/send')
+	async sendMessage(
 		req: AuthenticatedRequest,
 		res: Response,
 		@Body payload: AskAiWithCredentialsRequestDto,
