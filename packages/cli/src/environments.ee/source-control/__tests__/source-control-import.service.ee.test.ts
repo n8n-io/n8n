@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import {
 	type FolderRepository,
 	GLOBAL_ADMIN_ROLE,
@@ -38,9 +39,10 @@ describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const projectRepository = mock<ProjectRepository>();
+	const mockLogger = mock<Logger>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const service = new SourceControlImportService(
-		mock(),
+		mockLogger,
 		mock(),
 		mock(),
 		mock(),
@@ -94,6 +96,24 @@ describe('SourceControlImportService', () => {
 					versionId: 'v1',
 					name: 'Test Workflow',
 				}),
+			);
+		});
+
+		it('should log and throw an error if a workflow file cannot be parsed', async () => {
+			globMock.mockResolvedValue([mockWorkflowFile]);
+
+			// Mock invalid JSON that will cause parsing to fail
+			fsReadFile.mockResolvedValue('{ invalid json');
+
+			await expect(service.getRemoteVersionIdsFromFiles(globalAdminContext)).rejects.toThrow(
+				`Failed to parse workflow file ${mockWorkflowFile}`,
+			);
+
+			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });
+			expect(mockLogger.debug).toHaveBeenCalledWith(`Parsing workflow file ${mockWorkflowFile}`);
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				`Failed to parse workflow file ${mockWorkflowFile}`,
+				expect.any(Object),
 			);
 		});
 
