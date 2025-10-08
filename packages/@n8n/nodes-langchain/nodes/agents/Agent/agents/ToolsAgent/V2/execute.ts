@@ -215,7 +215,11 @@ export async function toolsAgentExecute(
 
 	// Check if streaming is enabled
 	const enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
-	const enableStreamingToolCalls = this.getNodeParameter('options.enableStreamingToolCalls', 0, true) as boolean;
+	const enableStreamingToolCalls = this.getNodeParameter(
+		'options.enableStreamingToolCalls',
+		0,
+		false,
+	) as boolean;
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -238,6 +242,7 @@ export async function toolsAgentExecute(
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				enableStreamingToolCalls?: boolean;
 			};
 
 			// Prepare the prompt messages and prompt template.

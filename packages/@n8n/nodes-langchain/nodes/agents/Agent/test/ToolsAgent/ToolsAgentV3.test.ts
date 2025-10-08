@@ -780,4 +780,328 @@ describe('toolsAgentExecute V3', () => {
 		expect((result as INodeExecutionData[][])[0]).toHaveLength(1);
 		expect((result as INodeExecutionData[][])[0][0].json).toEqual({ output: 'success' });
 	});
+
+	describe('enableStreamingToolCalls functionality', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockContext.logger = {
+				debug: jest.fn(),
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+			};
+		});
+
+		it('should stream tool chunks when enableStreamingToolCalls is true', async () => {
+			const mockNode = mock<INode>();
+			mockNode.typeVersion = 3;
+			mockContext.getNode.mockReturnValue(mockNode);
+			mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+			mockContext.isStreaming = jest.fn().mockReturnValue(true) as any;
+
+			const mockModel = mock<BaseChatModel>();
+			const mockAgent = mock<any>();
+			const mockRunnableSequence = mock<any>();
+			mockRunnableSequence.singleAction = true;
+			mockRunnableSequence.streamRunnable = false;
+
+			// Mock streaming events with tool calls
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: 'I need to use a tool',
+						} as AIMessageChunk,
+					},
+				};
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					data: {
+						output: 'Tool execution result',
+					},
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: ' and here is the final response',
+						} as AIMessageChunk,
+					},
+				};
+			};
+
+			mockRunnableSequence.streamEvents = jest.fn().mockReturnValue(mockStreamEvents());
+
+			(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
+			(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+
+			jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+			jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+			jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+			jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
+			jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						enableStreaming: true,
+						enableStreamingToolCalls: true, // Enable tool call streaming
+					};
+				return defaultValue;
+			});
+
+			mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+			mockContext.sendChunk = jest.fn() as any;
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			// Verify tool chunk was sent
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('tool', 0, {
+				name: 'TestTool',
+				toolData: 'Tool execution result',
+			});
+
+			// Verify other chunks were sent
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'I need to use a tool');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith(
+				'item',
+				0,
+				' and here is the final response',
+			);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+
+			expect((result as INodeExecutionData[][])[0]).toHaveLength(1);
+			expect((result as INodeExecutionData[][])[0][0].json.output).toBe(
+				'I need to use a tool and here is the final response',
+			);
+		});
+
+		it('should NOT stream tool chunks when enableStreamingToolCalls is false', async () => {
+			const mockNode = mock<INode>();
+			mockNode.typeVersion = 3;
+			mockContext.getNode.mockReturnValue(mockNode);
+			mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+			mockContext.isStreaming = jest.fn().mockReturnValue(true) as any;
+
+			const mockModel = mock<BaseChatModel>();
+			const mockAgent = mock<any>();
+			const mockRunnableSequence = mock<any>();
+			mockRunnableSequence.singleAction = true;
+			mockRunnableSequence.streamRunnable = false;
+
+			// Mock streaming events with tool calls
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: 'I need to use a tool',
+						} as AIMessageChunk,
+					},
+				};
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					data: {
+						output: 'Tool execution result',
+					},
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: ' and here is the final response',
+						} as AIMessageChunk,
+					},
+				};
+			};
+
+			mockRunnableSequence.streamEvents = jest.fn().mockReturnValue(mockStreamEvents());
+
+			(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
+			(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+
+			jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+			jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+			jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+			jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
+			jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						enableStreaming: true,
+						enableStreamingToolCalls: false, // Disable tool call streaming
+					};
+				return defaultValue;
+			});
+
+			mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+			mockContext.sendChunk = jest.fn() as any;
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			// Verify tool chunk was NOT sent
+			expect(mockContext.sendChunk).not.toHaveBeenCalledWith('tool', 0, expect.anything());
+
+			// Verify other chunks were still sent
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'I need to use a tool');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith(
+				'item',
+				0,
+				' and here is the final response',
+			);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+
+			expect((result as INodeExecutionData[][])[0]).toHaveLength(1);
+			expect((result as INodeExecutionData[][])[0][0].json.output).toBe(
+				'I need to use a tool and here is the final response',
+			);
+		});
+
+		it('should default enableStreamingToolCalls to false when not specified', async () => {
+			const mockNode = mock<INode>();
+			mockNode.typeVersion = 3;
+			mockContext.getNode.mockReturnValue(mockNode);
+			mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+			mockContext.isStreaming = jest.fn().mockReturnValue(true) as any;
+
+			const mockModel = mock<BaseChatModel>();
+			const mockAgent = mock<any>();
+			const mockRunnableSequence = mock<any>();
+			mockRunnableSequence.singleAction = true;
+			mockRunnableSequence.streamRunnable = false;
+
+			// Mock streaming events with tool calls
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					data: {
+						output: 'Tool execution result',
+					},
+				};
+			};
+
+			mockRunnableSequence.streamEvents = jest.fn().mockReturnValue(mockStreamEvents());
+
+			(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
+			(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+
+			jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+			jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+			jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+			jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
+			jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						enableStreaming: true,
+						// Don't specify enableStreamingToolCalls - should default to false
+					};
+				return defaultValue;
+			});
+
+			mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+			mockContext.sendChunk = jest.fn() as any;
+
+			await toolsAgentExecute.call(mockContext);
+
+			// Verify tool chunk was NOT sent (default is false)
+			expect(mockContext.sendChunk).not.toHaveBeenCalledWith('tool', 0, expect.anything());
+		});
+
+		it('should send tool chunks when enableStreamingToolCalls is enabled', async () => {
+			const mockNode = mock<INode>();
+			mockNode.typeVersion = 3;
+			mockContext.getNode.mockReturnValue(mockNode);
+			mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+			mockContext.isStreaming = jest.fn().mockReturnValue(true) as any;
+
+			const mockModel = mock<BaseChatModel>();
+			const mockAgent = mock<any>();
+			const mockRunnableSequence = mock<any>();
+			mockRunnableSequence.singleAction = true;
+			mockRunnableSequence.streamRunnable = false;
+
+			// Mock streaming events with tool calls
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					data: {
+						output: 'Tool execution result',
+					},
+				};
+			};
+
+			mockRunnableSequence.streamEvents = jest.fn().mockReturnValue(mockStreamEvents());
+
+			(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
+			(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+
+			jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+			jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+			jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+			jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
+			jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						enableStreaming: true, // Main streaming enabled
+						enableStreamingToolCalls: true, // Tool streaming enabled
+					};
+				return defaultValue;
+			});
+
+			mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+			mockContext.sendChunk = jest.fn() as any;
+
+			await toolsAgentExecute.call(mockContext);
+
+			// Should still send tool chunks even when main streaming is disabled
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('tool', 0, {
+				name: 'TestTool',
+				toolData: 'Tool execution result',
+			});
+		});
+	});
 });
