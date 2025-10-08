@@ -38,9 +38,6 @@ export class PythonTaskRunnerSandbox {
 			nodeName: node.name,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
-
-			/** Whether this task can log to the browser console. */
-			canLog: this.executeFunctions.getMode() === 'manual',
 		};
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(

@@ -130,7 +130,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!personalizedTemplatesV2Store.isFeatureEnabled(),
+			!(
+				personalizedTemplatesV2Store.isFeatureEnabled() ||
+				personalizedTemplatesV3Store.isFeatureEnabled()
+			),
 		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
 	},
 	{
@@ -141,7 +144,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			(personalizedTemplatesV2Store.isFeatureEnabled() ||
 				personalizedTemplatesV3Store.isFeatureEnabled()),
 	},
