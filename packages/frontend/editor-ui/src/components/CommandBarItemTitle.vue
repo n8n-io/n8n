@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 
 interface Props {
 	title: string;

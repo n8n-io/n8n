@@ -2,7 +2,7 @@ import { type Component, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
