@@ -4,10 +4,16 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, messageChatApi } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { StreamChunk, StreamOutput, ChatMessage } from './chat.types';
+import type { ChatHubProvider } from '@n8n/api-types';
+import type {
+	StreamChunk,
+	StreamOutput,
+	ChatMessage,
+	ChatHubConversationModel,
+} from './chat.types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
-	const models = ref<string[]>([]);
+	const models = ref<ChatHubConversationModel[]>([]);
 	const loadingModels = ref(false);
 
 	const isResponding = ref(false);
@@ -19,14 +25,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	const rootStore = useRootStore();
 
-	function setModels(newModels: string[]) {
+	function setModels(newModels: ChatHubConversationModel[]) {
 		models.value = newModels;
 	}
 
-	async function fetchChatModels() {
+	async function fetchChatModels(credentialMap: Record<ChatHubProvider, string | null>) {
 		loadingModels.value = true;
-		models.value = await fetchChatModelsApi(rootStore.restApiContext, 'openai');
+		models.value = await fetchChatModelsApi(rootStore.restApiContext, {
+			credentials: credentialMap,
+		});
 		loadingModels.value = false;
+		return models.value;
 	}
 
 	function addUserMessage(content: string, id: string) {
@@ -70,15 +79,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		isResponding.value = false;
 	}
 
-	const askAI = (message: string, sessionId: string) => {
+	const askAI = (message: string, sessionId: string, model: ChatHubConversationModel) => {
 		const messageId = uuidv4();
 		addUserMessage(message, messageId);
 
+		if (model.provider !== 'openai') {
+			throw Error('not supported');
+		}
+
 		messageChatApi(
 			rootStore.restApiContext,
-			'openai',
+			model.provider,
 			{
-				model: 'gpt-4',
+				model: model.model,
 				messageId,
 				sessionId,
 				message,

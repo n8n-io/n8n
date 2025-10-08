@@ -1,12 +1,14 @@
 import { STREAM_SEPARATOR } from '@/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Body, GlobalScope } from '@n8n/decorators';
+import { RestController, Post, Body, GlobalScope } from '@n8n/decorators';
 import type { StreamOutput } from '@n8n/chat-hub';
+import type { ChatModelsResponse } from '@n8n/api-types';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
 import { ChatHubService } from './chat-hub.service';
 import { ChatMessageRequestDto } from './dto/chat-message-request.dto';
+import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -14,10 +16,13 @@ export type FlushableResponse = Response & { flush: () => void };
 export class ChatHubController {
 	constructor(private readonly chatService: ChatHubService) {}
 
-	@Get('/agents/models/openai')
-	async getModels(_req: AuthenticatedRequest, res: FlushableResponse) {
-		const models = await this.chatService.getModels();
-		res.json(models);
+	@Post('/models')
+	async getModels(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ChatModelsRequestDto,
+	): Promise<ChatModelsResponse> {
+		return await this.chatService.getModels(req.user.id, payload.credentials);
 	}
 
 	@GlobalScope('chatHub:message')

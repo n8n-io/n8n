@@ -1,58 +1,93 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
 import { N8nHeading, N8nIcon, N8nText, N8nScrollArea } from '@n8n/design-system';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
+import ModelSelector from './components/ModelSelector.vue';
 
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { ChatMessage } from './chat.types';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUIStore } from '@/stores/ui.store';
+import type { ChatMessage, Suggestion } from './chat.types';
+import {
+	chatHubConversationModelSchema,
+	type ChatHubProvider,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubConversationModel,
+	chatHubProviderSchema,
+} from '@n8n/api-types';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
+import { useLocalStorage } from '@vueuse/core';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
+import { SUGGESTIONS } from '@/features/chatHub/constants';
+import { isSameModel } from '@/features/chatHub/chat.utils';
 
-const i18n = useI18n();
 const chatStore = useChatStore();
 const userStore = useUsersStore();
+const credentialsStore = useCredentialsStore();
+const uiStore = useUIStore();
 
-type Suggestion = {
-	title: string;
-	subtitle: string;
-	icon?: string;
-};
+onMounted(async () => {
+	await Promise.all([
+		credentialsStore.fetchCredentialTypes(false),
+		credentialsStore.fetchAllCredentials(),
+	]);
+
+	const models = await chatStore.fetchChatModels(
+		Object.fromEntries(
+			chatHubProviderSchema.options.map((provider) => [
+				provider,
+				credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])[0]?.id ??
+					null,
+			]),
+		) as Record<ChatHubProvider, string | null>,
+	);
+	const selected = selectedModel.value;
+
+	if (selected === null || models.every((model) => !isSameModel(model, selected))) {
+		selectedModel.value = models[0] ?? null;
+	}
+});
 
 const message = ref('');
 const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
-
-const suggestions = ref<Suggestion[]>([
+const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	null,
 	{
-		title: 'Brainstorm ideas',
-		subtitle: 'for a product launch or campaign',
-		icon: '💡',
+		writeDefaults: false,
+		shallow: true,
+		serializer: {
+			read: (value) => {
+				try {
+					const result = chatHubConversationModelSchema.parse(JSON.parse(value));
+					return result;
+				} catch (error) {
+					return null;
+				}
+			},
+			write: (value) => JSON.stringify(value),
+		},
 	},
-	{
-		title: 'Explain a concept',
-		subtitle: "like Docker as if I'm 12",
-		icon: '📘',
-	},
-	{
-		title: 'Summarize text',
-		subtitle: 'paste content and get a TL;DR',
-		icon: '📝',
-	},
-	{
-		title: 'Draft an email',
-		subtitle: 'polite follow-up about a bug',
-		icon: '✉️',
-	},
-]);
+);
 
 const hasMessages = computed(() => chatStore.chatMessages.length > 0);
+const inputPlaceholder = computed(() => {
+	if (!selectedModel.value) {
+		return 'Select a model';
+	}
+
+	const modelName = selectedModel.value.model;
+
+	return `Message ${modelName}`;
+});
 
 const scrollOnNewMessage = ref(true);
 
@@ -87,9 +122,20 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+function onModelChange(selection: ChatHubConversationModel) {
+	selectedModel.value = selection;
+}
+
+function onConfigure(provider: ChatHubProvider) {
+	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
+}
+
 function onSubmit() {
-	if (!message.value.trim() || chatStore.isResponding) return;
-	chatStore.askAI(message.value, sessionId.value);
+	if (!message.value.trim() || chatStore.isResponding || !selectedModel.value) {
+		return;
+	}
+
+	chatStore.askAI(message.value, sessionId.value, selectedModel.value);
 	message.value = '';
 }
 
@@ -129,6 +175,14 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 <template>
 	<PageViewLayout>
+		<ModelSelector
+			:class="$style.modelSelector"
+			:models="chatStore.models"
+			:selected-model="selectedModel"
+			:disabled="chatStore.isResponding"
+			@change="onModelChange"
+			@configure="onConfigure"
+		/>
 		<div
 			:class="{
 				[$style.content]: true,
@@ -151,7 +205,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 				<div v-if="!hasMessages" :class="$style.suggestions">
 					<button
-						v-for="s in suggestions"
+						v-for="s in SUGGESTIONS"
 						:key="s.title"
 						type="button"
 						:class="$style.card"
@@ -231,7 +285,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							v-model="message"
 							:class="$style.input"
 							type="text"
-							:placeholder="'Message GPT-4'"
+							:placeholder="inputPlaceholder"
 							autocomplete="off"
 							:disabled="chatStore.isResponding"
 						/>
@@ -476,6 +530,10 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	align-items: center;
 	width: min(720px, 50vw);
 	min-width: 320px;
+
+	& input:disabled {
+		cursor: not-allowed;
+	}
 }
 .input {
 	flex: 1;
@@ -536,5 +594,12 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	margin-top: var(--spacing-xs);
 	color: var(--color-text-lighter);
 	text-align: center;
+}
+
+.modelSelector {
+	position: absolute;
+	top: var(--spacing-s);
+	left: var(--spacing-s);
+	z-index: 100;
 }
 </style>

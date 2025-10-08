@@ -1,10 +1,14 @@
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import type { ChatModelsRequest, ChatModelsResponse } from '@n8n/api-types';
 import type { StreamOutput } from './chat.types';
 
-export const fetchChatModelsApi = async (context: IRestApiContext, provider: 'openai') => {
-	const apiEndpoint = `/chat/agents/models/${provider}`;
-	return await makeRestApiRequest<string[]>(context, 'GET', apiEndpoint);
+export const fetchChatModelsApi = async (
+	context: IRestApiContext,
+	payload: ChatModelsRequest,
+): Promise<ChatModelsResponse> => {
+	const apiEndpoint = '/chat/models';
+	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
 export const messageChatApi = (

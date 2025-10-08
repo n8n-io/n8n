@@ -1,3 +1,5 @@
+export type { ChatHubConversationModel } from '@n8n/api-types';
+
 export interface UserMessage {
 	id: string;
 	role: 'user';
@@ -25,3 +27,9 @@ export type ChatMessage = UserMessage | AssistantMessage | ErrorMessage;
 export interface StreamOutput {
 	messages: StreamChunk[];
 }
+
+export type Suggestion = {
+	title: string;
+	subtitle: string;
+	icon?: string;
+};
