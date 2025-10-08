@@ -146,7 +146,7 @@ async function processEventStream(
 				// Capture tool execution results and match with action
 				if (event.data) {
 					const toolData = event.data as any;
-					const toolContent = { name: event.name, toolData: toolData.output || '{}' };
+					const toolContent = { name: event.name, toolData: toolData.output ?? '{}' };
 					// Stream the final tool result
 					if (enableStreamingToolCalls) {
 						ctx.sendChunk('tool', itemIndex, toolContent);
@@ -159,7 +159,7 @@ async function processEventStream(
 							(step) => !step.observation && step.action.tool === event.name,
 						);
 						if (matchingStep) {
-							matchingStep.observation = toolData.output || '';
+							matchingStep.observation = toolData.output ?? '';
 						}
 					}
 				}
