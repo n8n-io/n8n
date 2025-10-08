@@ -176,6 +176,7 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			disableSharing: false,
 		},
 		endpoints: {
 			metrics: {
