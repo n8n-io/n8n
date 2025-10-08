@@ -741,7 +741,7 @@ test.describe('AI Assistant::enabled', () => {
 		await n8n.ndv
 			.getCodeEditor()
 			.fill(
-				`// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();`,
+				"// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();",
 			);
 
 		await n8n.ndv.execute();
@@ -751,7 +751,7 @@ test.describe('AI Assistant::enabled', () => {
 		await n8n.ndv
 			.getCodeEditor()
 			.fill(
-				`// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1aaaa!;\n}\n\nreturn $input.all();`,
+				"// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1aaaa!;\n}\n\nreturn $input.all();",
 			);
 
 		await n8n.ndv.execute();
