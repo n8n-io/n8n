@@ -29,7 +29,7 @@ import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
-import { type SearchShortcut } from '@/types';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 

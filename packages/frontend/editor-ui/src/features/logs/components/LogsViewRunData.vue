@@ -10,7 +10,7 @@ import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
-import { type SearchShortcut } from '@/types';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 import { N8nLink, N8nText } from '@n8n/design-system';

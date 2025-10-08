@@ -24,7 +24,7 @@ import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import get from 'lodash/get';
 
-import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import ExperimentalEmbeddedNdvHeader from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import NodeActionsList from '@/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';

@@ -9,7 +9,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle 
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
-import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
+import CanvasRunWorkflowButton from '@/features/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import { useToast } from '@/composables/useToast';

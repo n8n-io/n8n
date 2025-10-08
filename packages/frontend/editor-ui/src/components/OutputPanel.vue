@@ -14,7 +14,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { CanvasNodeDirtiness } from '@/types';
+import { CanvasNodeDirtiness } from '@/features/canvas/canvas.types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
