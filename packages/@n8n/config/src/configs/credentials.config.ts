@@ -28,6 +28,10 @@ export class CredentialsConfig {
 	@Env('CREDENTIALS_DEFAULT_NAME')
 	defaultName: string = 'My credentials';
 
+	/** Whether credential sharing is disabled */
+	@Env('N8N_DISABLE_CREDENTIAL_SHARING')
+	disableSharing: boolean = false;
+
 	@Nested
 	overwrite: CredentialsOverwrite;
 }
