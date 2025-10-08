@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
-import EmptySharedSectionActionBox from '@/components/Folders/EmptySharedSectionActionBox.vue';
-import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
-import FolderCard from '@/components/Folders/FolderCard.vue';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import EmptySharedSectionActionBox from '@/features/folders/components/EmptySharedSectionActionBox.vue';
+import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
+import FolderCard from '@/features/folders/components/FolderCard.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/folders/folders.constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
@@ -11,8 +11,8 @@ import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { DragTarget, DropTarget } from '@/composables/useFolders';
-import { useFolders } from '@/composables/useFolders';
+import type { DragTarget, DropTarget, FolderListItem } from '@/features/folders/folders.types';
+import { useFolders } from '@/features/folders/composables/useFolders';
 import { useMessage } from '@/composables/useMessage';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -40,7 +40,6 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
 	BaseFilters,
-	FolderListItem,
 	FolderResource,
 	Resource,
 	SortingAndPaginationUpdates,
@@ -49,7 +48,7 @@ import type {
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
