@@ -12,7 +12,6 @@ import { useCredentialNavigationCommands } from './commandBar/useCredentialNavig
 import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigationCommands';
 import { useProjectNavigationCommands } from './commandBar/useProjectNavigationCommands';
 import { useExecutionCommands } from './commandBar/useExecutionCommands';
-import { useEvaluationCommands } from './commandBar/useEvaluationCommands';
 import { useGenericCommands } from './commandBar/useGenericCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
@@ -54,7 +53,6 @@ export function useCommandBar() {
 	});
 	const workflowCommandGroup = useWorkflowCommands();
 	const executionCommandGroup = useExecutionCommands();
-	const evaluationCommandGroup = useEvaluationCommands();
 	const workflowNavigationGroup = useWorkflowNavigationCommands({
 		lastQuery,
 		activeNodeId,
@@ -130,7 +128,6 @@ export function useCommandBar() {
 	];
 
 	const evaluationViewGroups: CommandGroup[] = [
-		evaluationCommandGroup,
 		workflowNavigationGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,

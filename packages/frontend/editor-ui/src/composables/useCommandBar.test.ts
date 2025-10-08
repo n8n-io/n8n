@@ -89,9 +89,6 @@ vi.mock('./commandBar/useProjectNavigationCommands', () => ({
 vi.mock('./commandBar/useExecutionCommands', () => ({
 	useExecutionCommands: () => mkGroup('execcmd'),
 }));
-vi.mock('./commandBar/useEvaluationCommands', () => ({
-	useEvaluationCommands: () => mkGroup('eval'),
-}));
 vi.mock('./commandBar/useGenericCommands', () => ({
 	useGenericCommands: () => mkGroup('gen'),
 }));
