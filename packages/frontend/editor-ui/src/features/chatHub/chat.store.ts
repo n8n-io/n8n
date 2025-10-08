@@ -4,9 +4,12 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, sendText } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ChatHubConversationModel, ChatModelsResponse } from '@n8n/api-types';
+import type {
+	ChatHubConversationModel,
+	ChatHubSendMessageRequest,
+	ChatModelsResponse,
+} from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
-import type { INodeCredentials } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -105,7 +108,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message: string,
 		sessionId: string,
 		model: ChatHubConversationModel,
-		credentials: INodeCredentials,
+		credentials: ChatHubSendMessageRequest['credentials'],
 	) => {
 		const messageId = uuidv4();
 		addUserMessage(message, messageId);
