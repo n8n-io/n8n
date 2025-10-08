@@ -584,7 +584,7 @@ export class DataTableService {
 			async () => await this.dataTableRepository.findDataTablesSize(),
 		);
 
-		const roles = await this.roleService.rolesWithScope('project', ['dataStore:listProject']);
+		const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
 
 		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
 			user.id,
