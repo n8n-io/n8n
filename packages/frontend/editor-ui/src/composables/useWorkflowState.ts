@@ -14,12 +14,13 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { useExecutingNode } from './useExecutingNode';
 import { clearPopupWindowState } from '@/utils/executionUtils';
 import { useDocumentTitle } from './useDocumentTitle';
+import { useWorkflowStateStore } from '@/stores/workflowState.store';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
+	const workflowStateStore = useWorkflowStateStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 
@@ -152,7 +153,7 @@ export function useWorkflowState() {
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
 		setActiveExecutionId(undefined);
-		ws.private.executingNodes.clearNodeExecutionQueue();
+		workflowStateStore.executingNodes.clearNodeExecutionQueue();
 		ws.executionWaitingForWebhook = false;
 		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
@@ -193,7 +194,7 @@ export function useWorkflowState() {
 		setWorkflowTagIds([]);
 
 		setActiveExecutionId(undefined);
-		ws.private.executingNodes.executingNode.length = 0;
+		workflowStateStore.executingNode.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
 	}
 
@@ -213,7 +214,7 @@ export function useWorkflowState() {
 		markExecutionAsStopped,
 
 		// reexport
-		executingNodes: ws.private.executingNodes,
+		executingNodes: workflowStateStore.executingNode,
 	};
 }
 

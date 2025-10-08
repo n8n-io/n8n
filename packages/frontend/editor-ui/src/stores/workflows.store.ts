@@ -98,7 +98,6 @@ import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
-import { useExecutingNode } from '@/composables/useExecutingNode';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -125,7 +124,6 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
-	const executingNodes = useExecutingNode();
 	const workflowHelpers = useWorkflowHelpers();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
@@ -2004,11 +2002,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		private: {
 			setWorkflowSettings,
 			setActiveExecutionId,
-			// This should be defined in useWorkflowState(), but needs to be defined
-			// here until we move the actual ownership over the workflow to useWorkflowState
-			// as currently e.g. the push connection is initiated outside of the NodeView which
-			// injects the workflowState instance, thus creating an unrelated executingNode
-			executingNodes,
 		},
 	};
 });

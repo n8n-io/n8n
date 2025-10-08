@@ -17,26 +17,26 @@ export function useExecutingNode() {
 	const lastAddedExecutingNode = ref<string | null>(null);
 
 	function addExecutingNode(nodeName: string) {
-		executingNode.push(nodeName);
-		lastAddedExecutingNode = nodeName;
+		executingNode.value.push(nodeName);
+		lastAddedExecutingNode.value = nodeName;
 	}
 
 	function removeExecutingNode(nodeName: string) {
-		const executionIndex = executingNode.indexOf(nodeName);
+		const executionIndex = executingNode.value.indexOf(nodeName);
 		if (executionIndex === -1) {
 			return;
 		}
 
-		executingNode.splice(executionIndex, 1);
+		executingNode.value.splice(executionIndex, 1);
 	}
 
 	function clearNodeExecutionQueue() {
-		executingNode = [];
-		lastAddedExecutingNode = null;
+		executingNode.value = [];
+		lastAddedExecutingNode.value = null;
 	}
 
 	function isNodeExecuting(nodeName: string): boolean {
-		return executingNode.includes(nodeName);
+		return executingNode.value.includes(nodeName);
 	}
 
 	return {
