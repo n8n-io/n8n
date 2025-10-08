@@ -20,6 +20,10 @@ import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 
+// Keywords to identify specific infrastructure errors in error messages
+const DATABASE_ERROR_KEYWORDS = ['sqllite'];
+const MEMORY_ERROR_KEYWORDS = ['out-of-memory'];
+
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
 interface IExecutionTrackData {
@@ -33,6 +37,8 @@ interface IExecutionsBuffer {
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
+		prod_workflow_database_error?: IExecutionTrackData;
+		prod_workflow_memory_error?: IExecutionTrackData;
 		user_id: string | undefined;
 	};
 }
@@ -115,6 +121,27 @@ export class Telemetry {
 			});
 		}
 
+		const workflowIdsWithInfraErrors = Object.keys(this.executionCountsBuffer).filter(
+			(workflowId) => {
+				const data = this.executionCountsBuffer[workflowId];
+				const infraSum =
+					(data.prod_workflow_database_error?.count ?? 0) +
+					(data.prod_workflow_memory_error?.count ?? 0);
+				return infraSum > 0;
+			},
+		);
+
+		for (const workflowId of workflowIdsWithInfraErrors) {
+			this.track('Workflow failed due to infrastructure', {
+				event_version: '1',
+				workflow_id: workflowId,
+				prod_workflow_database_error:
+					this.executionCountsBuffer[workflowId].prod_workflow_database_error,
+				prod_workflow_memory_error:
+					this.executionCountsBuffer[workflowId].prod_workflow_memory_error,
+			});
+		}
+
 		this.executionCountsBuffer = {};
 
 		const sourceControlPreferences = Container.get(
@@ -138,6 +165,7 @@ export class Telemetry {
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
+		console.log(properties);
 		if (this.rudderStack) {
 			const execTime = new Date();
 			const workflowId = properties.workflow_id;
@@ -159,6 +187,36 @@ export class Telemetry {
 				};
 			} else {
 				executionTrackDataKey.count++;
+			}
+
+			if (properties.error_message && !properties.is_manual) {
+				// Check for database errors
+				if (
+					DATABASE_ERROR_KEYWORDS.some((kw) => new RegExp(kw, 'i').test(properties.error_message!))
+				) {
+					if (!this.executionCountsBuffer[workflowId].prod_workflow_database_error) {
+						this.executionCountsBuffer[workflowId].prod_workflow_database_error = {
+							count: 1,
+							first: execTime,
+						};
+					} else {
+						this.executionCountsBuffer[workflowId].prod_workflow_database_error.count++;
+					}
+				}
+
+				// Check for memory errors
+				if (
+					MEMORY_ERROR_KEYWORDS.some((kw) => new RegExp(kw, 'i').test(properties.error_message!))
+				) {
+					if (!this.executionCountsBuffer[workflowId].prod_workflow_memory_error) {
+						this.executionCountsBuffer[workflowId].prod_workflow_memory_error = {
+							count: 1,
+							first: execTime,
+						};
+					} else {
+						this.executionCountsBuffer[workflowId].prod_workflow_memory_error.count++;
+					}
+				}
 			}
 
 			if (
