@@ -248,12 +248,28 @@ export const useAIAssistantHelpers = () => {
 		return simplifiedResultData;
 	}
 
-	const simplifyWorkflowForAssistant = (workflow: IWorkflowDb): Partial<IWorkflowDb> => ({
-		name: workflow.name,
-		active: workflow.active,
-		connections: workflow.connections,
-		nodes: workflow.nodes,
-	});
+	const simplifyWorkflowForAssistant = (
+		workflow: IWorkflowDb,
+		options?: { allowSendingParameterValues?: boolean },
+	): Partial<IWorkflowDb> => {
+		const nodes = deepCopy(workflow.nodes);
+		if (!options?.allowSendingParameterValues) {
+			nodes.forEach((node) => {
+				if (node.parameters && Object.keys(node.parameters).length > 0) {
+					node.parameters = {
+						value: 'Not available',
+						description: locale.baseText('aiAssistant.propmpt.sharingParametersNotAllowed'),
+					};
+				}
+			});
+		}
+		return {
+			name: workflow.name,
+			active: workflow.active,
+			connections: workflow.connections,
+			nodes,
+		};
+	};
 
 	/**
 	 * Reduces AI Assistant request payload size to make it fit the specified content length.
