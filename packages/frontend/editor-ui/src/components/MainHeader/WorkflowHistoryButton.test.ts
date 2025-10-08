@@ -12,8 +12,7 @@ vi.mock('vue-router', () => ({
 const renderComponent = createComponentRenderer(WorkflowHistoryButton, {
 	global: {
 		stubs: {
-			RouterLink: true,
-			'router-link': {
+			RouterLink: {
 				template: '<div><slot /></div>',
 			},
 			N8nTooltip: {

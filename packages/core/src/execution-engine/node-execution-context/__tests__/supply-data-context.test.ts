@@ -16,7 +16,7 @@ import type {
 	NodeConnectionType,
 	IRunData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { ApplicationError, ManualExecutionCancelledError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -217,6 +217,106 @@ describe('SupplyDataContext', () => {
 			const latestRunIndex = supplyDataContext.getNextRunIndex();
 
 			expect(latestRunIndex).toBe(2);
+		});
+	});
+
+	describe('logNodeOutput', () => {
+		it('it should parse JSON', () => {
+			const json = '{"key": "value", "nested": {"foo": "bar"}}';
+			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
+			const numberArg = 42;
+			const stringArg = 'hello world!';
+
+			const supplyDataContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const sendMessageSpy = jest.spyOn(supplyDataContext, 'sendMessageToUI');
+
+			supplyDataContext.logNodeOutput(json, numberArg, stringArg);
+
+			expect(sendMessageSpy.mock.calls[0][0]).toEqual(expectedParsedObject);
+			expect(sendMessageSpy.mock.calls[0][1]).toBe(numberArg);
+			expect(sendMessageSpy.mock.calls[0][2]).toBe(stringArg);
+
+			sendMessageSpy.mockRestore();
+		});
+	});
+
+	describe('addExecutionDataFunctions', () => {
+		it('should preserve canceled status when execution is aborted and output has error', async () => {
+			const errorData = new ManualExecutionCancelledError('Execution was aborted');
+			const abortedSignal = mock<AbortSignal>({ aborted: true });
+			const mockHooks = {
+				runHook: jest.fn().mockResolvedValue(undefined),
+			};
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: mockHooks,
+				currentNodeExecutionIndex: 0,
+			});
+			const testRunExecutionData = mock<IRunExecutionData>({
+				resultData: {
+					runData: {
+						[node.name]: [
+							{
+								executionStatus: 'canceled',
+								startTime: Date.now(),
+								executionTime: 0,
+								executionIndex: 0,
+								error: undefined,
+							},
+						],
+					},
+					error: undefined,
+				},
+				executionData: { metadata: {} },
+			});
+
+			const contextWithAbort = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				'ai_agent',
+				executeData,
+				[closeFn],
+				abortedSignal,
+			);
+
+			await contextWithAbort.addExecutionDataFunctions(
+				'output',
+				errorData,
+				'ai_agent',
+				node.name,
+				0,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.executionStatus).toBe('canceled');
+			expect(taskData.error).toBeUndefined();
+
+			// Verify nodeExecuteAfter hook was called correctly
+			expect(mockHooks.runHook).toHaveBeenCalledWith('nodeExecuteAfter', [
+				node.name,
+				taskData,
+				testRunExecutionData,
+			]);
 		});
 	});
 });

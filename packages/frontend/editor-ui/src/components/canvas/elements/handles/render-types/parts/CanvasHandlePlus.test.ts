@@ -30,7 +30,7 @@ describe('CanvasHandlePlus', () => {
 	});
 
 	it('should apply correct classes based on position prop', () => {
-		const positions = ['top', 'right', 'bottom', 'left'];
+		const positions = ['top', 'right', 'bottom', 'left'] as const;
 
 		positions.forEach((position) => {
 			const { container } = renderComponent({

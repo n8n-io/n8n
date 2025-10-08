@@ -105,7 +105,7 @@ export const test = base.extend<CloudOnlyFixtures>({
 	},
 
 	// Browser context with cloud container URL and interceptors
-	context: async ({ context, baseURL }, use) => {
+	context: async ({ context }, use) => {
 		await setupDefaultInterceptors(context);
 		await use(context);
 	},
@@ -152,7 +152,7 @@ Usage:
 // Import the cloud-only fixture instead of base
 import { test, expect } from '../../fixtures/cloud-only';
 
-test('Performance test @cloud:trial', async ({ n8n, api }) => {
+test('Performance test @cloud:trial', async ({ n8n }) => {
   // This test runs ONLY on a trial plan container (768MB, 200 millicore)
   // No worker containers are created
 });

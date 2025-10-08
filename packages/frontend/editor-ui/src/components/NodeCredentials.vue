@@ -27,6 +27,9 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
+import { isEmpty } from '@/utils/typesUtils';
+import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+
 import {
 	N8nIcon,
 	N8nInput,
@@ -36,9 +39,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { isEmpty } from '@/utils/typesUtils';
-import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
-
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;

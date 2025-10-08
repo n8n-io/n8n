@@ -29,6 +29,7 @@ import {
 	getMessageContent,
 	getTarget,
 	createSendAndWaitMessageBody,
+	processThreadOptions,
 } from './GenericFunctions';
 import {
 	channelRLC,
@@ -835,8 +836,8 @@ export class SlackV2 implements INodeType {
 							}
 						}
 
-						const replyValues = (otherOptions.thread_ts as IDataObject)?.replyValues as IDataObject;
-						Object.assign(body, replyValues);
+						const threadParams = processThreadOptions(otherOptions.thread_ts as IDataObject);
+						Object.assign(body, threadParams);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
 						if (otherOptions.botProfile) {

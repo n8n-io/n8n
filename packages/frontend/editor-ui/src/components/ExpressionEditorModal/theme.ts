@@ -12,6 +12,9 @@ const commonThemeProps = (isReadOnly = false) => ({
 	'.cm-cursor, .cm-dropCursor': {
 		borderLeftColor: 'var(--color-code-caret)',
 	},
+	'&.cm-editor': {
+		overflow: 'hidden',
+	},
 	'&.cm-focused': {
 		borderColor: 'var(--color-secondary)',
 		outline: '0 !important',

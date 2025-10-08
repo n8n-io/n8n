@@ -32,6 +32,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
 	const nodeNameToBeFocused = ref<string | undefined>();
+	const isMapperOpen = ref(false);
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -60,6 +61,10 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 
 	function setNodeNameToBeFocused(nodeName: string) {
 		nodeNameToBeFocused.value = nodeName;
+	}
+
+	function setMapperOpen(value: boolean) {
+		isMapperOpen.value = value;
 	}
 
 	interface FocusNodeOptions {
@@ -137,6 +142,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),
 		nodeNameToBeFocused: computed(() => nodeNameToBeFocused.value),
+		isMapperOpen: computed(() => isMapperOpen.value),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
@@ -144,5 +150,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		toggleZoomMode,
 		focusNode,
 		setNodeNameToBeFocused,
+		setMapperOpen,
 	};
 });

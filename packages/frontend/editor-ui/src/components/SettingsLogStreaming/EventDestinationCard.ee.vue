@@ -10,6 +10,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 
+import { ElSwitch } from 'element-plus';
+import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -94,8 +96,9 @@ async function onClick(event: Event) {
 	emit('edit', props.destination.id);
 }
 
-function onEnabledSwitched(state: boolean) {
-	nodeParameters.value.enabled = state;
+function onEnabledSwitched(state: string | number | boolean) {
+	const boolValue = typeof state === 'boolean' ? state : Boolean(state);
+	nodeParameters.value.enabled = boolValue;
 	void saveDestination();
 }
 
@@ -133,31 +136,31 @@ async function onAction(action: string) {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
+	<N8nCard :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
 		<template #header>
 			<div>
-				<n8n-heading tag="h2" bold :class="$style.cardHeading">
+				<N8nHeading tag="h2" bold :class="$style.cardHeading">
 					{{ destination.label }}
-				</n8n-heading>
+				</N8nHeading>
 				<div :class="$style.cardDescription">
-					<n8n-text color="text-light" size="small">
+					<N8nText color="text-light" size="small">
 						<span>{{ i18n.baseText(typeLabelName) }}</span>
-					</n8n-text>
+					</N8nText>
 				</div>
 			</div>
 		</template>
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
 				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
-					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
+					<N8nText v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
 						{{ i18n.baseText('workflowActivator.active') }}
-					</n8n-text>
-					<n8n-text v-else color="text-base" size="small" bold>
+					</N8nText>
+					<N8nText v-else color="text-base" size="small" bold>
 						{{ i18n.baseText('workflowActivator.inactive') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 
-				<el-switch
+				<ElSwitch
 					class="mr-s"
 					:disabled="readonly"
 					:model-value="nodeParameters.enabled"
@@ -171,12 +174,12 @@ async function onAction(action: string) {
 					data-test-id="workflow-activate-switch"
 					@update:model-value="onEnabledSwitched($event)"
 				>
-				</el-switch>
+				</ElSwitch>
 
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+				<N8nActionToggle :actions="actions" theme="dark" @action="onAction" />
 			</div>
 		</template>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>

@@ -17,7 +17,7 @@ import {
 	defaultNodeDescriptions,
 	mockNodes,
 } from '@/__tests__/mocks';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
+import type { Workflow } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -62,7 +62,7 @@ async function createPiniaStore(
 
 	return {
 		pinia,
-		workflowObject: workflowsStore.workflowObject,
+		workflowObject: workflowsStore.workflowObject as Workflow,
 	};
 }
 
@@ -74,12 +74,7 @@ describe('NodeDetailsViewV2', () => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -92,8 +87,6 @@ describe('NodeDetailsViewV2', () => {
 
 		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 			props: {
-				teleported: false,
-				appendToBody: false,
 				workflowObject,
 			},
 			global: {
@@ -117,8 +110,6 @@ describe('NodeDetailsViewV2', () => {
 
 		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 			props: {
-				teleported: false,
-				appendToBody: false,
 				workflowObject,
 			},
 			global: {
@@ -148,8 +139,6 @@ describe('NodeDetailsViewV2', () => {
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
-					teleported: false,
-					appendToBody: false,
 					workflowObject,
 				},
 				global: {
@@ -188,8 +177,6 @@ describe('NodeDetailsViewV2', () => {
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
-					teleported: false,
-					appendToBody: false,
 					workflowObject,
 				},
 				global: {
@@ -230,8 +217,6 @@ describe('NodeDetailsViewV2', () => {
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
-					teleported: false,
-					appendToBody: false,
 					workflowObject,
 				},
 				global: {

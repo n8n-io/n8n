@@ -27,7 +27,7 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData = JSON.stringify({ country: { name: \"Germany\", code: \"DE\", capital: \"Berlin\", currency: \"EUR\" } })\n\nif(JSON.stringify($node['GraphQL'].json.data) !== testData){\n  throw new Error('Error in GraphQL node');\n}\nreturn items;"
+				"functionCode": "testData = JSON.stringify({ country: { code: \"DE\", capital: \"Berlin\", currency: \"EUR\", name: \"Germany\" } })\n\nif(JSON.stringify($node['GraphQL'].json.data) !== testData){\n  throw new Error('Function node data is not equal to GraphQL output');\n}\nreturn items;"
 			},
 			"name": "Function",
 			"type": "n8n-nodes-base.function",

@@ -11,7 +11,7 @@ import {
 	isInHttpNodePagination,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
 import {
 	METADATA_SECTION,

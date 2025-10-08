@@ -1,9 +1,10 @@
-import type {
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodePropertyOptions,
-	ResourceMapperField,
-	ResourceMapperFields,
+import {
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
+	type INodePropertyOptions,
+	type ResourceMapperField,
+	type ResourceMapperFields,
 } from 'n8n-workflow';
 
 import { getDataTableAggregateProxy, getDataTableProxyLoadOptions } from './utils';
@@ -42,19 +43,23 @@ export async function tableSearch(
 }
 
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
-	const returnData: Array<INodePropertyOptions & { type: string }> = [
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'id - (number)', value: 'id', type: 'number' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'createdAt - (date)', value: 'createdAt', type: 'date' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'updatedAt - (date)', value: 'updatedAt', type: 'date' },
-	];
+	const returnData: Array<INodePropertyOptions & { type: string }> = Object.entries(
+		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	).map(([name, type]) => ({
+		name: `${name} (${type})`,
+		value: name,
+		type,
+	}));
+
 	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return returnData;
+	}
+
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
 		returnData.push({
-			name: `${column.name} - (${column.type})`,
+			name: `${column.name} (${column.type})`,
 			value: column.name,
 			type: column.type,
 		});
@@ -62,21 +67,26 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	return returnData;
 }
 
-const systemColumns = [
-	{ name: 'id', type: 'number' },
-	{ name: 'createdAt', type: 'date' },
-	{ name: 'updatedAt', type: 'date' },
-] as const;
-
 export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
+	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return [];
+	}
 	const keyName = this.getCurrentNodeParameter('&keyName') as string;
 
-	// Base conditions available for all column types
-	const baseConditions: INodePropertyOptions[] = [
-		{ name: 'Equals', value: 'eq' },
-		{ name: 'Not Equals', value: 'neq' },
+	const nullConditions: INodePropertyOptions[] = [
 		{ name: 'Is Empty', value: 'isEmpty' },
 		{ name: 'Is Not Empty', value: 'isNotEmpty' },
+	];
+
+	const equalsConditions: INodePropertyOptions[] = [
+		{ name: 'Equals', value: 'eq' },
+		{ name: 'Not Equals', value: 'neq' },
+	];
+
+	const booleanConditions: INodePropertyOptions[] = [
+		{ name: 'Is True', value: 'isTrue' },
+		{ name: 'Is False', value: 'isFalse' },
 	];
 
 	const comparableConditions: INodePropertyOptions[] = [
@@ -87,21 +97,17 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	];
 
 	const stringConditions: INodePropertyOptions[] = [
-		{
-			name: 'LIKE operator',
-			value: 'like',
-			description:
-				'Case-sensitive pattern matching. Use % as wildcard (e.g., "%Mar%" to match "Anne-Marie").',
-		},
-		{
-			name: 'ILIKE operator',
-			value: 'ilike',
-			description:
-				'Case-insensitive pattern matching. Use % as wildcard (e.g., "%mar%" to match "Anne-Marie").',
-		},
+		{ name: 'Contains (Case-Sensitive)', value: 'like' },
+		{ name: 'Contains (Case-Insensitive)', value: 'ilike' },
 	];
 
-	const allConditions = [...baseConditions, ...comparableConditions, ...stringConditions];
+	const allConditions = [
+		...nullConditions,
+		...equalsConditions,
+		...booleanConditions,
+		...comparableConditions,
+		...stringConditions,
+	];
 
 	// If no column is selected yet, return all conditions
 	if (!keyName) {
@@ -109,32 +115,42 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	}
 
 	// Get column type to determine available conditions
-	const column =
-		systemColumns.find((col) => col.name === keyName) ??
-		(await (await getDataTableProxyLoadOptions(this)).getColumns()).find(
-			(col) => col.name === keyName,
-		);
+	const type =
+		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP[keyName] ??
+		(await proxy.getColumns()).find((col) => col.name === keyName)?.type;
 
-	if (!column) {
-		return baseConditions;
+	if (!type) {
+		return [...equalsConditions, ...nullConditions];
 	}
 
-	const conditions = baseConditions;
+	const conditions: INodePropertyOptions[] = [];
+
+	if (type === 'boolean') {
+		conditions.push.apply(conditions, booleanConditions);
+	}
 
 	// String columns get LIKE operators
-	if (column.type === 'string') {
+	if (type === 'string') {
+		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, stringConditions);
-	}
-
-	if (['number', 'date', 'string'].includes(column.type)) {
 		conditions.push.apply(conditions, comparableConditions);
 	}
+
+	if (['number', 'date'].includes(type)) {
+		conditions.push.apply(conditions, equalsConditions);
+		conditions.push.apply(conditions, comparableConditions);
+	}
+
+	conditions.push.apply(conditions, nullConditions);
 
 	return conditions;
 }
 
 export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return { fields: [] };
+	}
 	const result = await proxy.getColumns();
 
 	const fields: ResourceMapperField[] = [];

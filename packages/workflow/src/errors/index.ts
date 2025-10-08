@@ -4,9 +4,15 @@ export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.
 export { UserError, type UserErrorOptions } from './base/user.error';
 export { ApplicationError } from '@n8n/errors';
 export { ExpressionError } from './expression.error';
-export { ExecutionCancelledError } from './execution-cancelled.error';
+export {
+	ExecutionCancelledError,
+	ManualExecutionCancelledError,
+	SystemShutdownExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+} from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
+export { WorkflowConfigurationError } from './workflow-configuration.error';
 export { NodeSslError } from './node-ssl.error';
 export { WebhookPathTakenError } from './webhook-taken.error';
 export { WorkflowActivationError } from './workflow-activation.error';

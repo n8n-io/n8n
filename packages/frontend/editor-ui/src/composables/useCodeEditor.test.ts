@@ -24,7 +24,6 @@ describe('useCodeEditor', () => {
 					return () => h('div', { ref: root, 'data-test-id': 'editor-root' });
 				},
 			}),
-			{ props: { options } },
 		);
 		expect(renderResult.getByTestId('editor-root')).toBeInTheDocument();
 		await waitFor(() => toValue(codeEditor.editor));

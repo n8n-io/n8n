@@ -58,7 +58,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 		tasklists: {
 			enabled: true,
 			label: true,
-			labelAfter: true,
+			labelAfter: false,
 		},
 		youtube: {},
 	}),

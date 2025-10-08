@@ -5,7 +5,6 @@ import DynamicModalLoader from '@/components/DynamicModalLoader.vue';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
 import type { ModalDefinition } from '@/moduleInitializer/module.types';
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 // Mock the modalRegistry module
 vi.mock('@/moduleInitializer/modalRegistry', () => ({
@@ -54,12 +53,7 @@ describe('DynamicModalLoader', () => {
 	const mockAsyncModalComponent = vi.fn(async () => await Promise.resolve(mockModalComponent));
 
 	beforeEach(() => {
-		createAppModals();
 		vi.clearAllMocks();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
 	});
 
 	it('should render empty div when no modals are registered', () => {

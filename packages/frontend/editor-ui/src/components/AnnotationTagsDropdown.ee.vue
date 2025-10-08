@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import TagsDropdown from '@/components/TagsDropdown.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '@/constants';

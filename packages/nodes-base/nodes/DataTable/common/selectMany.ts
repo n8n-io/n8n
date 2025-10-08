@@ -1,19 +1,22 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, NodeOperationError } from 'n8n-workflow';
 import type {
-	DataStoreRowReturn,
-	IDataStoreProjectService,
+	DataTableFilter,
+	DataTableRowReturn,
+	IDataTableProjectService,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeProperties,
+	DataTableColumnType,
 } from 'n8n-workflow';
 
-import { ALL_CONDITIONS, ANY_CONDITION, type FilterType } from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
-import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
+import { buildGetManyFilter, isFieldArray, isMatchType, getDataTableProxyExecute } from './utils';
 
 export function getSelectFields(
 	displayOptions: IDisplayOptions,
 	requireCondition = false,
+	skipOperator = false,
 ): INodeProperties[] {
 	return [
 		{
@@ -58,7 +61,7 @@ export function getSelectFields(
 							description:
 								'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
-								loadOptionsDependsOn: [DATA_TABLE_ID_FIELD],
+								loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
 								loadOptionsMethod: 'getDataTableColumns',
 							},
 							default: 'id',
@@ -74,6 +77,11 @@ export function getSelectFields(
 								loadOptionsMethod: 'getConditionsForColumn',
 							},
 							default: 'eq',
+							displayOptions: skipOperator
+								? {
+										show: { '@version': [{ _cnd: { lt: 0 } }] },
+									}
+								: undefined,
 						},
 						{
 							displayName: 'Value',
@@ -82,7 +90,7 @@ export function getSelectFields(
 							default: '',
 							displayOptions: {
 								hide: {
-									condition: ['isEmpty', 'isNotEmpty'],
+									condition: ['isEmpty', 'isNotEmpty', 'isTrue', 'isFalse'],
 								},
 							},
 						},
@@ -94,7 +102,10 @@ export function getSelectFields(
 	];
 }
 
-export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
+export async function getSelectFilter(
+	ctx: IExecuteFunctions,
+	index: number,
+): Promise<DataTableFilter> {
 	const fields = ctx.getNodeParameter('filters.conditions', index, []);
 	const matchType = ctx.getNodeParameter('matchType', index, ANY_CONDITION);
 	const node = ctx.getNode();
@@ -106,48 +117,91 @@ export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
 		throw new NodeOperationError(node, 'unexpected fields input');
 	}
 
-	return buildGetManyFilter(fields, matchType);
+	// Validate filter conditions against current table schema
+	let allColumnsWithTypes: Record<string, DataTableColumnType> = DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP;
+
+	if (fields.length > 0) {
+		const dataTableProxy = await getDataTableProxyExecute(ctx, index);
+		const availableColumns = await dataTableProxy.getColumns();
+
+		// Add system columns with their types
+		allColumnsWithTypes = {
+			...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+			...Object.fromEntries(availableColumns.map((col) => [col.name, col.type])),
+		};
+
+		const invalidConditions = fields.filter((field) => !allColumnsWithTypes[field.keyName]);
+
+		if (invalidConditions.length > 0) {
+			const invalidColumnNames = invalidConditions.map((c) => c.keyName).join(', ');
+			throw new NodeOperationError(
+				node,
+				`Filter validation failed: Column(s) "${invalidColumnNames}" do not exist in the selected table. ` +
+					'This often happens when switching between tables with different schemas. ' +
+					'Please update your filter conditions.',
+			);
+		}
+	}
+
+	return buildGetManyFilter(fields, matchType, allColumnsWithTypes, node);
 }
 
 export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
-	dataStoreProxy: IDataStoreProjectService,
+	dataTableProxy: IDataTableProjectService,
 	rejectEmpty = false,
-): Promise<Array<{ json: DataStoreRowReturn }>> {
-	const filter = getSelectFilter(ctx, index);
+	limit?: number,
+): Promise<Array<{ json: DataTableRowReturn }>> {
+	const filter = await getSelectFilter(ctx, index);
 
 	if (rejectEmpty && filter.filters.length === 0) {
 		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
 	}
 
-	let take = 1000;
-	const result: Array<{ json: DataStoreRowReturn }> = [];
-	let totalCount = undefined;
-	do {
-		const response = await dataStoreProxy.getManyRowsAndCount({
-			skip: result.length,
-			take,
+	const PAGE_SIZE = 1000;
+	const result: Array<{ json: DataTableRowReturn }> = [];
+
+	const returnAll = ctx.getNodeParameter('returnAll', index, false);
+	limit = limit ?? (!returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0);
+
+	let expectedTotal: number | undefined;
+	let skip = 0;
+	let take = PAGE_SIZE;
+
+	while (true) {
+		const { data, count } = await dataTableProxy.getManyRowsAndCount({
+			skip,
+			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
 		});
-		const data = response.data.map((json) => ({ json }));
+		const wrapped = data.map((json) => ({ json }));
 
-		// Optimize common path of <1000 results
-		if (response.count === response.data.length) {
-			return data;
+		// Fast path: everything fits in a single page
+		if (skip === 0 && count === data.length) {
+			return wrapped;
 		}
 
-		if (totalCount !== undefined && response.count !== totalCount) {
+		// Ensure the total doesn't change mid-pagination
+		if (expectedTotal !== undefined && count !== expectedTotal) {
 			throw new NodeOperationError(
 				ctx.getNode(),
 				'synchronization error: result count changed during pagination',
 			);
 		}
-		totalCount = response.count;
+		expectedTotal = count;
 
-		result.push.apply(result, data);
-		take = Math.min(take, response.count - result.length);
-	} while (take > 0);
+		result.push.apply(result, wrapped);
+
+		// Stop if we've hit the limit
+		if (limit && result.length >= limit) break;
+
+		// Stop if we've collected everything
+		if (result.length >= count) break;
+
+		skip = result.length;
+		take = Math.min(PAGE_SIZE, count - result.length);
+	}
 
 	return result;
 }

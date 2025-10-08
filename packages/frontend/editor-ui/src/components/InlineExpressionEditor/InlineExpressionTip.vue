@@ -9,6 +9,7 @@ import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/s
 import { watchDebounced } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import { N8nText } from '@n8n/design-system';
 type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
 
 type Props = {
@@ -106,20 +107,20 @@ watchDebounced(
 
 <template>
 	<div :class="[$style.tip, { [$style.drag]: tip === 'drag' }]">
-		<n8n-text size="small" :class="$style.tipText"
+		<N8nText size="small" :class="$style.tipText"
 			>{{ i18n.baseText('parameterInput.tip') }}:
-		</n8n-text>
+		</N8nText>
 
 		<div v-if="tip === 'drag'" :class="$style.content">
-			<n8n-text size="small" :class="$style.text">
+			<N8nText size="small" :class="$style.text">
 				{{ i18n.baseText('parameterInput.dragTipBeforePill') }}
-			</n8n-text>
+			</N8nText>
 			<div :class="[$style.pill, { [$style.highlight]: !ndvStore.isMappingOnboarded }]">
 				{{ i18n.baseText('parameterInput.inputField') }}
 			</div>
-			<n8n-text size="small" :class="$style.text">
+			<N8nText size="small" :class="$style.text">
 				{{ i18n.baseText('parameterInput.dragTipAfterPill') }}
-			</n8n-text>
+			</N8nText>
 		</div>
 
 		<div v-else-if="tip === 'executePrevious'" :class="$style.content">

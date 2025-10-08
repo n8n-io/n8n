@@ -2,6 +2,8 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+
 import { NodeTypeNotFoundError, ValidationError } from '../errors';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
@@ -12,8 +14,6 @@ import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpe
 import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
-
-const DISPLAY_TITLE = 'Adding nodes';
 
 /**
  * Schema for node creation input
@@ -81,16 +81,25 @@ function getCustomNodeTitle(
 	return 'Adding node';
 }
 
+export function getAddNodeToolBase(nodeTypes: INodeTypeDescription[]): BuilderToolBase {
+	return {
+		toolName: 'add_nodes',
+		displayTitle: 'Adding nodes',
+		getCustomDisplayTitle: (input: Record<string, unknown>) => getCustomNodeTitle(input, nodeTypes),
+	};
+}
+
 /**
  * Factory function to create the add node tool
  */
-export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
+export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderTool {
+	const builderToolBase = getAddNodeToolBase(nodeTypes);
 	const dynamicTool = tool(
 		async (input, config) => {
 			const reporter = createProgressReporter(
 				config,
-				'add_nodes',
-				DISPLAY_TITLE,
+				builderToolBase.toolName,
+				builderToolBase.displayTitle,
 				getCustomNodeTitle(input, nodeTypes),
 			);
 
@@ -181,7 +190,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 			}
 		},
 		{
-			name: 'add_nodes',
+			name: builderToolBase.toolName,
 			description: `Add a node to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what the node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.
 
 To add multiple nodes, call this tool multiple times in parallel.
@@ -219,7 +228,6 @@ Think through the connectionParametersReasoning FIRST, then set connectionParame
 
 	return {
 		tool: dynamicTool,
-		displayTitle: DISPLAY_TITLE,
-		getCustomDisplayTitle: (input: Record<string, unknown>) => getCustomNodeTitle(input, nodeTypes),
+		...builderToolBase,
 	};
 }

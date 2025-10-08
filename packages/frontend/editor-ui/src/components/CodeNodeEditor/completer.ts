@@ -17,7 +17,7 @@ import { useJsonFieldCompletions } from './completions/jsonField.completions';
 import { useLuxonCompletions } from './completions/luxon.completions';
 import { usePrevNodeCompletions } from './completions/prevNode.completions';
 import { useRequireCompletions } from './completions/require.completions';
-import { useVariablesCompletions } from './completions/variables.completions';
+import { useVariablesCompletions } from '@/features/environments.ee/completions/variables.completions';
 import { useWorkflowCompletions } from './completions/workflow.completions';
 
 export const useCompleter = (

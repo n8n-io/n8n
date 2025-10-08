@@ -78,7 +78,7 @@ export async function runCliEvaluation(testCaseFilter?: string): Promise<void> {
 
 					// Create a dedicated agent for this test to avoid state conflicts
 					const testAgent = createAgent(parsedNodeTypes, llm, tracer);
-					const result = await runSingleTest(testAgent, llm, testCase);
+					const result = await runSingleTest(testAgent, llm, testCase, parsedNodeTypes);
 
 					testResults[testCase.id] = result.error ? 'fail' : 'pass';
 					completed++;

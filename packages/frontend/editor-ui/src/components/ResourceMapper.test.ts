@@ -5,12 +5,14 @@ import {
 } from './__tests__/utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { MockedStore } from '@/__tests__/utils';
-import { cleanupAppModals, createAppModals, mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockInstance } from 'vitest';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { ResourceMapperTypeOptions } from 'n8n-workflow';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -28,14 +30,12 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	beforeEach(() => {
-		createAppModals();
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProjectId = 'aProjectId';
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		cleanupAppModals();
 	});
 
 	it('renders default configuration properly', async () => {
@@ -63,13 +63,14 @@ describe('ResourceMapper.vue', () => {
 		const { getByTestId, queryByTestId } = renderComponent(
 			{
 				props: {
-					parameter: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								mode: 'add',
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -84,13 +85,14 @@ describe('ResourceMapper.vue', () => {
 		const { getByTestId, queryByTestId } = renderComponent(
 			{
 				props: {
-					parameter: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								mode: 'map',
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -105,14 +107,15 @@ describe('ResourceMapper.vue', () => {
 		const { container, getByTestId } = renderComponent(
 			{
 				props: {
-					parameter: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								mode: 'upsert',
 								multiKeyMatch: true,
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -126,13 +129,14 @@ describe('ResourceMapper.vue', () => {
 		const { getByTestId, queryByTestId } = renderComponent(
 			{
 				props: {
-					parameter: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								supportAutoMap: false,
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -147,15 +151,16 @@ describe('ResourceMapper.vue', () => {
 		const { container, getByTestId } = renderComponent(
 			{
 				props: {
-					parameter: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								supportAutoMap: true,
 								mode: 'upsert',
 								multiKeyMatch: false,
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -177,15 +182,16 @@ describe('ResourceMapper.vue', () => {
 		const { getByTestId, getAllByText, queryByText } = renderComponent(
 			{
 				props: {
-					parameter: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								supportAutoMap: true,
 								mode: 'upsert',
 								multiKeyMatch: true,
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -208,16 +214,17 @@ describe('ResourceMapper.vue', () => {
 		const { getByText } = renderComponent(
 			{
 				props: {
-					parameter: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								fieldWords: {
 									singular: 'foo',
 									plural: 'foos',
 								},
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -240,20 +247,21 @@ describe('ResourceMapper.vue', () => {
 		const { getByTestId } = renderComponent(
 			{
 				props: {
-					node: {
+					node: createTestNode({
 						parameters: {
 							columns: {
 								schema: UPDATED_SCHEMA,
 							},
 						},
-					},
-					parameter: {
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								mode: 'add',
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -274,20 +282,21 @@ describe('ResourceMapper.vue', () => {
 		const { getByTestId } = renderComponent(
 			{
 				props: {
-					node: {
+					node: createTestNode({
 						parameters: {
 							columns: {
 								schema: UPDATED_SCHEMA,
 							},
 						},
-					},
-					parameter: {
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								mode: 'add',
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },
@@ -300,13 +309,13 @@ describe('ResourceMapper.vue', () => {
 	it('should fetch fields if there is no cached schema', async () => {
 		renderComponent({
 			props: {
-				node: {
+				node: createTestNode({
 					parameters: {
 						columns: {
 							schema: null,
 						},
 					},
-				},
+				}),
 			},
 		});
 		await waitAllPromises();
@@ -316,20 +325,21 @@ describe('ResourceMapper.vue', () => {
 	it('should not fetch fields if schema is already fetched', async () => {
 		renderComponent({
 			props: {
-				node: {
+				node: createTestNode({
 					parameters: {
 						columns: {
 							schema: UPDATED_SCHEMA,
 						},
 					},
-				},
-				parameter: {
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
 					typeOptions: {
 						resourceMapper: {
 							mode: 'add',
-						},
+						} as ResourceMapperTypeOptions,
 					},
-				},
+				}),
 			},
 		});
 		await waitAllPromises();
@@ -340,7 +350,7 @@ describe('ResourceMapper.vue', () => {
 		const { getByTestId } = renderComponent(
 			{
 				props: {
-					node: {
+					node: createTestNode({
 						parameters: {
 							columns: {
 								mappingMode: 'autoMapInputData',
@@ -359,16 +369,17 @@ describe('ResourceMapper.vue', () => {
 								],
 							},
 						},
-					},
-					parameter: {
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
 								supportAutoMap: true,
 								mode: 'upsert',
 								multiKeyMatch: false,
-							},
+							} as ResourceMapperTypeOptions,
 						},
-					},
+					}),
 				},
 			},
 			{ merge: true },

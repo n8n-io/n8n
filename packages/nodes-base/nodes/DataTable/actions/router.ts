@@ -1,14 +1,34 @@
-import type { IExecuteFunctions, INodeExecutionData, AllEntities } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	AllEntities,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import * as row from './row/Row.resource';
+import { DATA_TABLE_ID_FIELD } from '../common/fields';
+import { getDataTableProxyExecute } from '../common/utils';
 
 type DataTableNodeType = AllEntities<{
-	row: 'insert' | 'get' | 'deleteRows' | 'update' | 'upsert';
+	row: 'insert' | 'get' | 'rowExists' | 'rowNotExists' | 'deleteRows' | 'update' | 'upsert';
 }>;
 
+const BULK_OPERATIONS = ['insert'] as const;
+
+function hasBulkExecute(operation: string): operation is (typeof BULK_OPERATIONS)[number] {
+	return (BULK_OPERATIONS as readonly string[]).includes(operation);
+}
+
+function hasComplexId(ctx: IExecuteFunctions) {
+	const dataTableIdExpr = ctx.getNodeParameter(`${DATA_TABLE_ID_FIELD}.value`, 0, undefined, {
+		rawExpressions: true,
+	});
+
+	return typeof dataTableIdExpr === 'string' && dataTableIdExpr.includes('{');
+}
+
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const operationResult: INodeExecutionData[] = [];
+	let operationResult: INodeExecutionData[] = [];
 	let responseData: INodeExecutionData[] = [];
 
 	const items = this.getInputData();
@@ -20,32 +40,43 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as DataTableNodeType;
 
-	for (let i = 0; i < items.length; i++) {
+	// If the operation supports
+	if (hasBulkExecute(dataTableNodeData.operation) && !hasComplexId(this)) {
 		try {
-			switch (dataTableNodeData.resource) {
-				case 'row':
-					responseData = await row[dataTableNodeData.operation].execute.call(this, i);
-					break;
-				default:
-					throw new NodeOperationError(
-						this.getNode(),
-						`The resource "${resource}" is not supported!`,
-					);
-			}
+			const proxy = await getDataTableProxyExecute(this);
 
-			const executionData = this.helpers.constructExecutionMetaData(responseData, {
-				itemData: { item: i },
-			});
+			responseData = await row[dataTableNodeData.operation]['executeBulk'].call(this, proxy);
 
-			operationResult.push.apply(operationResult, executionData);
+			operationResult = responseData;
 		} catch (error) {
 			if (this.continueOnFail()) {
-				operationResult.push({
-					json: this.getInputData(i)[0].json,
+				operationResult = this.getInputData().map((json) => ({
+					json,
 					error: error as NodeOperationError,
-				});
+				}));
 			} else {
 				throw error;
+			}
+		}
+	} else {
+		for (let i = 0; i < items.length; i++) {
+			try {
+				responseData = await row[dataTableNodeData.operation].execute.call(this, i);
+				const executionData = this.helpers.constructExecutionMetaData(responseData, {
+					itemData: { item: i },
+				});
+
+				// pushing here risks stack overflows for very high numbers (~100k) of results on filter-based queries (update, get, etc.)
+				operationResult = operationResult.concat(executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					operationResult.push({
+						json: this.getInputData(i)[0].json,
+						error: error as NodeOperationError,
+					});
+				} else {
+					throw error;
+				}
 			}
 		}
 	}

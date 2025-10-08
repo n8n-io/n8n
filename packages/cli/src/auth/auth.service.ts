@@ -1,3 +1,4 @@
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -10,7 +11,6 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
 import config from '@/config';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -36,6 +36,17 @@ interface IssuedJWT extends AuthJwtPayload {
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
+}
+
+interface CreateAuthMiddlewareOptions {
+	/**
+	 * If true, MFA is not enforced
+	 */
+	allowSkipMFA: boolean;
+	/**
+	 * If true, authentication becomes optional in preview mode
+	 */
+	allowSkipPreviewAuth?: boolean;
 }
 
 @Service()
@@ -65,10 +76,14 @@ export class AuthService {
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
+
+			// Skip browser ID check for type files
+			'/types/nodes.json',
+			'/types/credentials.json',
 		];
 	}
 
-	createAuthMiddleware(allowSkipMFA: boolean) {
+	createAuthMiddleware({ allowSkipMFA, allowSkipPreviewAuth }: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			const token = req.cookies[AUTH_COOKIE_NAME];
 			if (token) {
@@ -77,7 +92,6 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
-
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
 						if (user.mfaEnabled) {
@@ -103,7 +117,11 @@ export class AuthService {
 				}
 			}
 
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const shouldSkipAuth = allowSkipPreviewAuth && isPreviewMode;
+
 			if (req.user) next();
+			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
 	}

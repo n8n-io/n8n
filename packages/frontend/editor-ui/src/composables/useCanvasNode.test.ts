@@ -53,7 +53,11 @@ describe('useCanvasNode', () => {
 					[CanvasConnectionMode.Input]: { '0': [] },
 					[CanvasConnectionMode.Output]: {},
 				},
-				issues: { items: ['issue1'], visible: true },
+				issues: {
+					execution: ['execution_error1'],
+					validation: ['validation_error1'],
+					visible: true,
+				},
 				execution: { status: 'running', waiting: 'waiting', running: true },
 				runData: { outputMap: {}, iterations: 1, visible: true },
 				pinnedData: { count: 1, visible: true },
@@ -90,7 +94,7 @@ describe('useCanvasNode', () => {
 		expect(result.runDataOutputMap.value).toEqual({});
 		expect(result.runDataIterations.value).toBe(1);
 		expect(result.hasRunData.value).toBe(true);
-		expect(result.issues.value).toEqual(['issue1']);
+		expect(result.issues.value).toEqual(['execution_error1', 'validation_error1']);
 		expect(result.hasIssues.value).toBe(true);
 		expect(result.executionStatus.value).toBe('running');
 		expect(result.executionWaiting.value).toBe('waiting');

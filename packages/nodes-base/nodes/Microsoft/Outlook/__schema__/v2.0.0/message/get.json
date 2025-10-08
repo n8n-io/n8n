@@ -52,31 +52,6 @@
         "id": {
             "type": "string"
         },
-        "isRead": {
-            "type": "boolean"
-        },
-        "receivedDateTime": {
-            "type": "string"
-        },
-        "sender": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "address": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "subject": {
-            "type": "string"
-        },
         "toRecipients": {
             "type": "array",
             "items": {
@@ -97,5 +72,5 @@
             }
         }
     },
-    "version": 5
+    "version": 7
 }

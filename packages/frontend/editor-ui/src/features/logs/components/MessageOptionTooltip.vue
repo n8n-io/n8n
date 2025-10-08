@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PropType } from 'vue';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 defineProps({
 	placement: {
 		type: String as PropType<'left' | 'right' | 'top' | 'bottom'>,
@@ -11,14 +12,14 @@ defineProps({
 
 <template>
 	<div :class="$style.container">
-		<n8n-tooltip :placement="placement">
+		<N8nTooltip :placement="placement">
 			<template #content>
 				<slot />
 			</template>
 			<span :class="$style.icon">
-				<n8n-icon icon="info" size="xsmall" />
+				<N8nIcon icon="info" size="xsmall" />
 			</span>
-		</n8n-tooltip>
+		</N8nTooltip>
 	</div>
 </template>
 

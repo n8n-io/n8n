@@ -10,7 +10,9 @@ import {
 	validateFieldType,
 } from 'n8n-workflow';
 import type {
+	AssignmentCollectionValue,
 	FieldType,
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -232,12 +234,84 @@ export function resolveRawData(
 		for (const resolvable of resolvables) {
 			const resolvedValue = this.evaluateExpression(`${resolvable}`, i);
 
+			// Use a function replacer to avoid issues with special replacement patterns like $&
 			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
-				returnData = returnData.replace(resolvable, JSON.stringify(resolvedValue));
+				returnData = returnData.replace(resolvable, () => JSON.stringify(resolvedValue));
 			} else {
-				returnData = returnData.replace(resolvable, resolvedValue as string);
+				returnData = returnData.replace(resolvable, () => String(resolvedValue));
 			}
 		}
 	}
 	return returnData;
+}
+
+function isBinaryData(obj: unknown): obj is IBinaryData {
+	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+}
+
+export function prepareReturnItem(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	value: AssignmentCollectionValue,
+	itemIndex: number,
+	item: INodeExecutionData,
+	node: INode,
+	options: SetNodeOptions,
+) {
+	const jsonValues: AssignmentCollectionValue['assignments'] = [];
+	const binaryValues: AssignmentCollectionValue['assignments'] = [];
+
+	for (const assignment of value?.assignments ?? []) {
+		if (assignment.type === 'binary') {
+			binaryValues.push(assignment);
+		} else {
+			jsonValues.push(assignment);
+		}
+	}
+
+	const newData = Object.fromEntries(
+		jsonValues.map((assignment) => {
+			const { name, value } = validateEntry(
+				assignment.name,
+				assignment.type as FieldType,
+				assignment.value,
+				node,
+				itemIndex,
+				options.ignoreConversionErrors,
+				node.typeVersion,
+			);
+
+			return [name, value];
+		}),
+	);
+
+	const returnItem = composeReturnItem.call(
+		context,
+		itemIndex,
+		item,
+		newData,
+		options,
+		node.typeVersion,
+	);
+
+	if (binaryValues.length) {
+		if (!returnItem.binary) {
+			returnItem.binary = {};
+		}
+
+		for (const assignment of binaryValues) {
+			const name = assignment.name;
+			const value = assignment.value as string;
+			const binaryData = context.helpers.assertBinaryData(itemIndex, value);
+			if (!isBinaryData(binaryData)) {
+				throw new NodeOperationError(
+					node,
+					`Could not find binary data specified in field ${name}`,
+					{ itemIndex },
+				);
+			}
+			returnItem.binary[name] = binaryData;
+		}
+	}
+
+	return returnItem;
 }

@@ -30,9 +30,17 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
-import { useAssistantStore } from '@/stores/assistant.store';
-import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
+import {
+	N8nInlineAskAssistantButton,
+	N8nCallout,
+	N8nInfoTip,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 type Props = {
 	mode: string;
 	credentialType: ICredentialType;
@@ -90,6 +98,8 @@ onBeforeMount(async () => {
 	const credTranslation = await credentialsStore.getCredentialTranslation(
 		props.credentialType.name,
 	);
+
+	if (!credTranslation) return;
 
 	addCredentialTranslation(
 		{ [props.credentialType.name]: credTranslation },
@@ -224,11 +234,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 </script>
 
 <template>
-	<n8n-callout v-if="isManaged" theme="warning" icon="triangle-alert">
+	<N8nCallout v-if="isManaged" theme="warning" icon="triangle-alert">
 		{{ i18n.baseText('freeAi.credits.credentials.edit') }}
-	</n8n-callout>
+	</N8nCallout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
+			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
 			<Banner
 				v-show="showValidationWarning"
 				theme="danger"
@@ -292,14 +303,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<template v-if="credentialPermissions.update">
-				<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
+				<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
 					{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
-						<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
+						<N8nLink :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
 							{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
-						</n8n-link>
+						</N8nLink>
 					</span>
-				</n8n-notice>
+				</N8nNotice>
 
 				<AuthTypeSelector
 					v-if="showAuthTypeSelector && isNewCredential"
@@ -312,7 +323,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:class="$style.askAssistantButton"
 					data-test-id="credential-edit-ask-assistant-button"
 				>
-					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+					<N8nInlineAskAssistantButton
+						:asked="assistantAlreadyAsked"
+						@click="onAskAssistantClick"
+					/>
 					<span>for setup instructions</span>
 				</div>
 
@@ -334,13 +348,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</template>
 			<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 				<div>
-					<n8n-info-tip :bold="false">
+					<N8nInfoTip :bold="false">
 						{{
 							i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
 								interpolate: { credentialOwnerName },
 							})
 						}}
-					</n8n-info-tip>
+					</N8nInfoTip>
 				</div>
 			</EnterpriseEdition>
 
@@ -365,18 +379,18 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				@click="$emit('oauth')"
 			/>
 
-			<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
+			<N8nText v-if="isMissingCredentials" color="text-base" size="medium">
 				{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
-			</n8n-text>
+			</N8nText>
 
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.ExternalSecrets]">
 				<template #fallback>
-					<n8n-info-tip class="mt-s">
+					<N8nInfoTip class="mt-s">
 						{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets') }}
-						<n8n-link bold :to="i18n.baseText('settings.externalSecrets.docs')" size="small">
+						<N8nLink bold :to="i18n.baseText('settings.externalSecrets.docs')" size="small">
 							{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
-						</n8n-link>
-					</n8n-info-tip>
+						</N8nLink>
+					</N8nInfoTip>
 				</template>
 			</EnterpriseEdition>
 		</div>

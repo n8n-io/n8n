@@ -34,6 +34,10 @@ export class CredentialApiHelper {
 
 	/**
 	 * Create a new credential
+	 *
+	 * Notes:
+	 * - The `type` field is the credential type ID (e.g., 'notionApi'), which differs from the UI display name (e.g., 'Notion API').
+	 * - You can find available credential type IDs in the codebase under `packages/nodes-base/credentials/*.credentials.ts` and by inspecting node credential references (e.g., Notion nodes use `type: 'notionApi'`).
 	 */
 	async createCredential(credential: CreateCredentialDto): Promise<CredentialResponse> {
 		const response = await this.api.request.post('/rest/credentials', { data: credential });

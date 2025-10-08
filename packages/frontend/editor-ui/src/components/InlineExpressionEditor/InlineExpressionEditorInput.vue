@@ -71,6 +71,7 @@ const {
 	editorRef: root,
 	editorValue,
 	extensions,
+	disableSearchDialog: true,
 	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,

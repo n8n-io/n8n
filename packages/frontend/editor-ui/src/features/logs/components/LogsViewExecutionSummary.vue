@@ -2,12 +2,12 @@
 import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
 import { useI18n } from '@n8n/i18n';
 import { type LlmTokenUsageData } from '@/Interface';
-import { N8nText } from '@n8n/design-system';
 import { useTimestamp } from '@vueuse/core';
 import upperFirst from 'lodash/upperFirst';
 import { type ExecutionStatus } from 'n8n-workflow';
 import { computed } from 'vue';
 
+import { N8nText } from '@n8n/design-system';
 const { status, consumedTokens, startTime, timeTook } = defineProps<{
 	status: ExecutionStatus;
 	consumedTokens: LlmTokenUsageData;

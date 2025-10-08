@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
 	'update:modelValue': [feedback: 'positive' | 'negative'];
 }>();

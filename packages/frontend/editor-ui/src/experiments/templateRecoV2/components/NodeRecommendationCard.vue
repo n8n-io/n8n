@@ -4,6 +4,8 @@ import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { computed, onMounted } from 'vue';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	nodeName: string;

@@ -8,10 +8,10 @@ import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import { N8nButton, N8nInputLabel, N8nText } from '@n8n/design-system';
 import { useNDVStore } from '@/stores/ndv.store';
 import { storeToRefs } from 'pinia';
 
+import { N8nButton, N8nIcon, N8nInputLabel, N8nText } from '@n8n/design-system';
 defineOptions({ name: 'MultipleParameter' });
 
 const props = withDefaults(

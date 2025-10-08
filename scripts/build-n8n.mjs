@@ -30,6 +30,7 @@ const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 const config = {
 	compiledAppDir: path.join(rootDir, 'compiled'),
 	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
+	cliDir: path.join(rootDir, 'packages', 'cli'),
 	rootDir: rootDir,
 };
 
@@ -117,7 +118,6 @@ try {
 	}
 
 	echo(chalk.green('✅ pnpm install and build completed'));
-
 } catch (error) {
 	console.error(chalk.red('\n🛑 BUILD PROCESS FAILED!'));
 	console.error(chalk.red('An error occurred during the build process:'));
@@ -245,6 +245,12 @@ const buildManifest = {
 		total: getElapsedTime('total_build'),
 	},
 };
+
+// Copy third-party licenses if they exist
+const licensesSourcePath = path.join(config.cliDir, 'THIRD_PARTY_LICENSES.md');
+if (await fs.pathExists(licensesSourcePath)) {
+	await fs.copy(licensesSourcePath, path.join(config.compiledAppDir, 'THIRD_PARTY_LICENSES.md'));
+}
 
 await fs.writeJson(path.join(config.compiledAppDir, 'build-manifest.json'), buildManifest, {
 	spaces: 2,

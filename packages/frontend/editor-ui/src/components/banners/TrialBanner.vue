@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nButton, N8nText } from '@n8n/design-system';
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();
@@ -85,9 +86,9 @@ function onUpdatePlanClick() {
 			</div>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
+			<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
 				locale.baseText('generic.upgradeNow')
-			}}</n8n-button>
+			}}</N8nButton>
 		</template>
 	</BaseBanner>
 </template>

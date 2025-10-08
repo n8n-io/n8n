@@ -145,6 +145,7 @@ abstract class ForeignKeyOperation extends TableOperation {
 		prefix: string,
 		queryRunner: QueryRunner,
 		customConstraintName?: string,
+		onDelete?: string,
 	) {
 		super(tableName, prefix, queryRunner);
 
@@ -153,6 +154,7 @@ abstract class ForeignKeyOperation extends TableOperation {
 			columnNames: [columnName],
 			referencedTableName: `${prefix}${referencedTableName}`,
 			referencedColumnNames: [referencedColumnName],
+			onDelete,
 		});
 	}
 }

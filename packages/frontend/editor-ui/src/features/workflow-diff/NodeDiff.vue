@@ -40,6 +40,10 @@ const props = withDefaults(
 		border: none;
 		border-radius: 0;
 
+		:global(.blob-num) {
+			display: none;
+		}
+
 		&:global([theme='dark']) {
 			--fgColor-default: var(--color-text-dark);
 			--bgColor-default: var(--color-background-light);

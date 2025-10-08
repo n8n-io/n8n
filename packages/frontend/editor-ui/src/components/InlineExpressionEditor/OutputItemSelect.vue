@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { computed } from 'vue';
 
+import { N8nIconButton, N8nInputNumber, N8nText, N8nTooltip } from '@n8n/design-system';
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 
@@ -38,9 +39,9 @@ function prevItem() {
 
 <template>
 	<div :class="$style.item">
-		<n8n-text size="small" color="text-base" compact>
+		<N8nText size="small" color="text-base" compact>
 			{{ i18n.baseText('parameterInput.item') }}
-		</n8n-text>
+		</N8nText>
 
 		<div :class="$style.controls">
 			<N8nInputNumber

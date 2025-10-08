@@ -39,6 +39,11 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'dataStore:listProject',
 	'dataStore:readRow',
 	'dataStore:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -100,6 +105,11 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'dataStore:listProject',
 	'dataStore:readRow',
 	'dataStore:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -114,4 +124,6 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataStore:listProject',
 	'dataStore:read',
 	'dataStore:readRow',
+	'projectVariable:list',
+	'projectVariable:read',
 ];

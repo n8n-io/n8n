@@ -1,6 +1,6 @@
-import os
 from dataclasses import dataclass
 
+from src.env import read_int_env, read_bool_env, read_str_env
 from src.constants import (
     DEFAULT_HEALTH_CHECK_SERVER_HOST,
     DEFAULT_HEALTH_CHECK_SERVER_PORT,
@@ -18,17 +18,15 @@ class HealthCheckConfig:
 
     @classmethod
     def from_env(cls):
-        port_str = os.getenv(
-            ENV_HEALTH_CHECK_SERVER_PORT, str(DEFAULT_HEALTH_CHECK_SERVER_PORT)
+        port = read_int_env(
+            ENV_HEALTH_CHECK_SERVER_PORT, DEFAULT_HEALTH_CHECK_SERVER_PORT
         )
-        port = int(port_str)
         if port < 1 or port > 65535:
             raise ValueError(f"Port must be between 1 and 65535, got {port}")
 
         return cls(
-            enabled=os.getenv(ENV_HEALTH_CHECK_SERVER_ENABLED, "false").lower()
-            == "true",
-            host=os.getenv(
+            enabled=read_bool_env(ENV_HEALTH_CHECK_SERVER_ENABLED, default=False),
+            host=read_str_env(
                 ENV_HEALTH_CHECK_SERVER_HOST, DEFAULT_HEALTH_CHECK_SERVER_HOST
             ),
             port=port,

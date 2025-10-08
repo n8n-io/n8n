@@ -26,6 +26,7 @@ export function createTestLogTreeCreationContext(
 				runData,
 			},
 		},
+		isSubExecution: false,
 	};
 }
 

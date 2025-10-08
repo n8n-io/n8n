@@ -7,6 +7,7 @@ import { NodeResizer } from '@vue-flow/node-resizer';
 import type { OnResize } from '@vue-flow/node-resizer';
 import type { XYPosition } from '@vue-flow/core';
 
+import { N8nSticky } from '@n8n/design-system';
 defineOptions({
 	inheritAttrs: false,
 });

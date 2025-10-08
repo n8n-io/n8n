@@ -34,6 +34,7 @@ import {
 } from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
+import { RoleCacheService } from '@/services/role-cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -58,6 +59,10 @@ const mailer = mockInstance(UserManagementMailer);
 
 let projectService: ProjectService;
 let projectRepository: ProjectRepository;
+
+beforeAll(async () => {
+	await Container.get(RoleCacheService).refreshCache();
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity', 'Project', 'ProjectRelation']);

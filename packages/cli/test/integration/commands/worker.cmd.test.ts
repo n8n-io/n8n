@@ -18,7 +18,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
-import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -34,7 +34,7 @@ const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
 const taskBrokerServer = mockInstance(TaskBrokerServer);
-const taskRunnerProcess = mockInstance(TaskRunnerProcess);
+const taskRunnerProcess = mockInstance(JsTaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);

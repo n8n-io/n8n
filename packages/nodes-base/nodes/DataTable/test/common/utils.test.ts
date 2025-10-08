@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { ANY_CONDITION, ALL_CONDITIONS } from '../../common/constants';
+import { ANY_CONDITION, ALL_CONDITIONS, type FieldEntry } from '../../common/constants';
 import { dataObjectToApiInput, buildGetManyFilter } from '../../common/utils';
 
 const mockNode: INode = {
@@ -203,81 +203,192 @@ describe('dataObjectToApiInput', () => {
 	});
 });
 
-describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
-	it('should translate isEmpty to eq with null value', () => {
-		const fieldEntries = [{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' }];
+describe('buildGetManyFilter', () => {
+	describe('isEmpty/isNotEmpty translation', () => {
+		it('should translate isEmpty to eq with null value', () => {
+			const fieldEntries = [
+				{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' },
+			];
 
-		const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { name: 'string' }, mockNode);
 
-		expect(result).toEqual({
-			type: 'and',
-			filters: [
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'name',
+						condition: 'eq',
+						value: null,
+					},
+				],
+			});
+		});
+
+		it('should translate isNotEmpty to neq with null value', () => {
+			const fieldEntries = [
+				{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, { email: 'string' }, mockNode);
+
+			expect(result).toEqual({
+				type: 'or',
+				filters: [
+					{
+						columnName: 'email',
+						condition: 'neq',
+						value: null,
+					},
+				],
+			});
+		});
+
+		it('should handle mixed conditions including isEmpty/isNotEmpty', () => {
+			const fieldEntries = [
+				{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
+				{ keyName: 'email', condition: 'isEmpty' as const, keyValue: 'ignored' },
+				{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
 				{
-					columnName: 'name',
-					condition: 'eq',
-					value: null,
+					name: 'string',
+					email: 'string',
+					phone: 'string',
 				},
-			],
+				mockNode,
+			);
+
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'name',
+						condition: 'eq',
+						value: 'John',
+					},
+					{
+						columnName: 'email',
+						condition: 'eq',
+						value: null,
+					},
+					{
+						columnName: 'phone',
+						condition: 'neq',
+						value: null,
+					},
+				],
+			});
 		});
 	});
 
-	it('should translate isNotEmpty to neq with null value', () => {
-		const fieldEntries = [
-			{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
-		];
+	describe('isTrue/isFalse translation', () => {
+		it('should translate isTrue to eq with true value', () => {
+			const fieldEntries = [
+				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
+			];
 
-		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{ isActive: 'boolean' },
+				mockNode,
+			);
 
-		expect(result).toEqual({
-			type: 'or',
-			filters: [
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'isActive',
+						condition: 'eq',
+						value: true,
+					},
+				],
+			});
+		});
+
+		it('should translate isFalse to eq with false value', () => {
+			const fieldEntries = [
+				{ keyName: 'email', condition: 'isFalse' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ANY_CONDITION,
+				{ email: 'boolean' },
+				mockNode,
+			);
+
+			expect(result).toEqual({
+				type: 'or',
+				filters: [
+					{
+						columnName: 'email',
+						condition: 'eq',
+						value: false,
+					},
+				],
+			});
+		});
+
+		it('should handle mixed conditions including isTrue/isFalse', () => {
+			const fieldEntries = [
+				{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
+				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
+				{ keyName: 'isDeleted', condition: 'isFalse' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
 				{
-					columnName: 'email',
-					condition: 'neq',
-					value: null,
+					name: 'string',
+					isActive: 'boolean',
+					isDeleted: 'boolean',
 				},
-			],
+				mockNode,
+			);
+
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'name',
+						condition: 'eq',
+						value: 'John',
+					},
+					{
+						columnName: 'isActive',
+						condition: 'eq',
+						value: true,
+					},
+					{
+						columnName: 'isDeleted',
+						condition: 'eq',
+						value: false,
+					},
+				],
+			});
 		});
 	});
 
-	it('should handle mixed conditions including isEmpty/isNotEmpty', () => {
-		const fieldEntries = [
-			{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
-			{ keyName: 'email', condition: 'isEmpty' as const, keyValue: 'ignored' },
-			{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
-		];
-
-		const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
-
-		expect(result).toEqual({
-			type: 'and',
-			filters: [
-				{
-					columnName: 'name',
-					condition: 'eq',
-					value: 'John',
-				},
-				{
-					columnName: 'email',
-					condition: 'eq',
-					value: null,
-				},
-				{
-					columnName: 'phone',
-					condition: 'neq',
-					value: null,
-				},
-			],
-		});
-	});
-
-	it('should preserve existing conditions unchanged', () => {
+	it('should handle other conditions', () => {
 		const fieldEntries = [
 			{ keyName: 'age', condition: 'gt' as const, keyValue: 18 },
 			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+		const result = buildGetManyFilter(
+			fieldEntries,
+			ANY_CONDITION,
+			{
+				age: 'number',
+				name: 'string',
+			},
+			mockNode,
+		);
 
 		expect(result).toEqual({
 			type: 'or',
@@ -293,6 +404,61 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 					value: '%john%',
 				},
 			],
+		});
+	});
+
+	describe('date handling in filters', () => {
+		it('should pass Date objects through unchanged', () => {
+			const testDate = new Date('2025-10-06T08:14:42.274Z');
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'createdAt', condition: 'lte', keyValue: testDate },
+			];
+
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{ createdAt: 'date' },
+				mockNode,
+			);
+
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'createdAt',
+						condition: 'lte',
+						value: testDate,
+					},
+				],
+			});
+		});
+
+		it('should convert ISO date strings to Date objects', () => {
+			const dateString = '2025-10-06T08:14:42.274Z';
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'createdAt', condition: 'lte', keyValue: dateString },
+			];
+
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{ createdAt: 'date' },
+				mockNode,
+			);
+
+			expect(result.filters[0].value).toBeInstanceOf(Date);
+			expect((result.filters[0].value as Date).toISOString()).toBe(dateString);
+		});
+
+		it('should throw an Error for invalid date strings', () => {
+			const invalidDateString = 'invalid-date';
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'createdAt', condition: 'lte', keyValue: invalidDateString },
+			];
+
+			expect(() =>
+				buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' }, mockNode),
+			).toThrowError(`Invalid date string '${invalidDateString}' for column 'createdAt'`);
 		});
 	});
 });

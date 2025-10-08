@@ -17,12 +17,12 @@ import OfficialIcon from 'virtual:icons/mdi/verified';
 import { useNodeType } from '@/composables/useNodeType';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
 import { isNodePreviewKey, removePreviewToken, shouldShowCommunityNodeDetails } from '../utils';
 
+import { N8nIcon, N8nNodeCreatorNode, N8nTooltip } from '@n8n/design-system';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	subcategory?: string;
@@ -131,6 +131,9 @@ const tag = computed(() => {
 	if (description.value.toLowerCase().includes('deprecated')) {
 		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
 	}
+	if (props.nodeType.name.includes('dataTable')) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.beta'), type: 'info' };
+	}
 	return undefined;
 });
 
@@ -216,7 +219,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						@click="onCommunityNodeTooltipClick"
 					/>
 				</template>
-				<n8n-icon size="small" :class="$style.icon" icon="box" />
+				<N8nIcon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
 		</template>
 		<template #dragContent>
@@ -230,8 +233,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 					:node-type="nodeType"
 					:size="40"
 					:shrink="false"
-					@click.capture.stop
 					color-default="var(--color-foreground-xdark)"
+					@click.capture.stop
 				/>
 			</div>
 		</template>
