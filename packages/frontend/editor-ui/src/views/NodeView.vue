@@ -1470,6 +1470,7 @@ function removeSourceControlEventBindings() {
 function addCommandBarEventBindings() {
 	canvasEventBus.on('create:sticky', onCreateSticky);
 }
+
 function removeCommandBarEventBindings() {
 	canvasEventBus.off('create:sticky', onCreateSticky);
 }
