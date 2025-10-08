@@ -1058,6 +1058,10 @@ function removeImportEventBindings() {
  */
 const nodeCreatorReplaceTargetId = ref<string | undefined>(undefined);
 
+function onNodeCreatorClose() {
+	nodeCreatorReplaceTargetId.value = undefined;
+}
+
 async function onAddNodesAndConnections(
 	{ nodes, connections }: AddedNodesAndConnections,
 	dragAndDrop = false,
@@ -1111,6 +1115,7 @@ function onOpenSelectiveNodeCreator(
 }
 
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
+	console.log('onToggleNodeCreator', options);
 	nodeCreatorStore.setNodeCreatorState(options);
 
 	if (!options.createNodeActive) {
@@ -2106,6 +2111,7 @@ onBeforeUnmount(() => {
 					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
+					@close="onNodeCreatorClose"
 				/>
 			</Suspense>
 			<Suspense>
