@@ -25,6 +25,7 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 
 const returnRegExp = /\breturn\b/;
 
+
 export function sortByCode(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
