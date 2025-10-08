@@ -96,26 +96,42 @@ export const useAIAssistantHelpers = () => {
 	 * @param propsToRemove properties to remove from the node object
 	 * @returns processed node
 	 */
-	function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
+	function processNodeForAssistant(
+		node: INode,
+		propsToRemove: string[],
+		options?: { allowSendingParameters?: boolean; allowSendingResolvedExpressions?: boolean },
+	): INode {
 		// Make a copy of the node object so we don't modify the original
 		const nodeForLLM = deepCopy(node);
+		if (!options?.allowSendingParameters) {
+			nodeForLLM.parameters = {
+				value: locale.baseText('aiAssistant.propmpt.parameterNotVisible'),
+				description: locale.baseText('aiAssistant.propmpt.sharingParametersNotAllowed'),
+			};
+		}
 		propsToRemove.forEach((key) => {
 			delete nodeForLLM[key as keyof INode];
 		});
-		const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
-			nodeForLLM.parameters,
-		);
-		nodeForLLM.parameters = resolvedParameters;
+		// If sending resolved expressions is allowed, resolve them
+		if (options?.allowSendingResolvedExpressions) {
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+				nodeForLLM.parameters,
+			);
+			nodeForLLM.parameters = resolvedParameters;
+		}
 		return nodeForLLM;
 	}
 
-	function getNodeInfoForAssistant(node: INode): ChatRequest.NodeInfo {
+	function getNodeInfoForAssistant(
+		node: INode,
+		options?: { allowSendingParameters?: boolean },
+	): ChatRequest.NodeInfo {
 		if (!node) {
 			return {};
 		}
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const schemas = getNodesSchemas(referencedNodeNames);
+		const schemas = getNodesSchemas(referencedNodeNames, !options?.allowSendingParameters);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -129,7 +145,15 @@ export const useAIAssistantHelpers = () => {
 		}
 		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
 		const ndvInput = ndvStore.ndvInputData;
-		if (isNodeReferencingInputData(node) && ndvInput?.length) {
+		if (!options?.allowSendingParameters) {
+			nodeInputData = {
+				inputNodeName: locale.baseText('aiAssistant.propmpt.parameterNotVisible'),
+				inputData: {
+					value: locale.baseText('aiAssistant.propmpt.parameterNotVisible'),
+					description: locale.baseText('aiAssistant.propmpt.sharingParametersNotAllowed'),
+				},
+			};
+		} else if (isNodeReferencingInputData(node) && ndvInput?.length) {
 			const inputData = ndvStore.ndvInputData[0].json;
 			const inputNodeName = ndvStore.input.nodeName;
 			nodeInputData = {
@@ -257,7 +281,7 @@ export const useAIAssistantHelpers = () => {
 			nodes.forEach((node) => {
 				if (node.parameters && Object.keys(node.parameters).length > 0) {
 					node.parameters = {
-						value: 'Not available',
+						value: locale.baseText('aiAssistant.propmpt.parameterNotVisible'),
 						description: locale.baseText('aiAssistant.propmpt.sharingParametersNotAllowed'),
 					};
 				}

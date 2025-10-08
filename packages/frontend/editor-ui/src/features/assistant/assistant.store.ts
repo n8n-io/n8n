@@ -373,7 +373,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
+			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'], {
+					// TODO: Get these types in line
+					allowSendingParameters:
+						currentUserPreferences?.value?.allowAssistantToSendParameterValues,
+					allowSendingResolvedExpressions:
+						currentUserPreferences?.value?.allowAssistantToSendExpressions,
+				})
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -395,6 +401,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
 				}
 			: undefined;
+
 		return {
 			currentView: {
 				name: currentView,
