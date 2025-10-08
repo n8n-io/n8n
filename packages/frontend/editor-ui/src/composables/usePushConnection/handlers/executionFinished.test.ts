@@ -188,7 +188,7 @@ describe('executionFinished', () => {
 
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
 		const workflowState = mock<WorkflowState>({
-			executingNodes: mock<ReturnType<typeof useExecutingNode>>({
+			executingNode: mock<ReturnType<typeof useExecutingNode>>({
 				...useExecutingNode(),
 				lastAddedExecutingNode: toRef('test-node'),
 			}),

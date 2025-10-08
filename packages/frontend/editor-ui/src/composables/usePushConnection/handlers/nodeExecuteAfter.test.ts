@@ -22,7 +22,7 @@ describe('nodeExecuteAfter', () => {
 
 		mockOptions = {
 			workflowState: mock<WorkflowState>({
-				executingNodes: mock<ReturnType<typeof useExecutingNode>>({}),
+				executingNode: mock<ReturnType<typeof useExecutingNode>>({}),
 			}),
 		};
 	});
