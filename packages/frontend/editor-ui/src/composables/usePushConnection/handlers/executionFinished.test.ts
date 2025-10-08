@@ -12,8 +12,6 @@ import type { Router } from 'vue-router';
 import type { WorkflowState } from '@/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useExecutingNode } from '@/composables/useExecutingNode';
-import { toRef } from 'vue';
 
 const runWorkflow = vi.fn();
 
@@ -188,10 +186,9 @@ describe('executionFinished', () => {
 
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
 		const workflowState = mock<WorkflowState>({
-			executingNode: mock<ReturnType<typeof useExecutingNode>>({
-				...useExecutingNode(),
-				lastAddedExecutingNode: toRef('test-node'),
-			}),
+			executingNode: {
+				lastAddedExecutingNode: 'test-node',
+			},
 		});
 		await executionFinished(
 			{

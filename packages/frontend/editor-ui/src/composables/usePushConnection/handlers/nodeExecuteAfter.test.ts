@@ -7,7 +7,6 @@ import { mockedStore } from '@/__tests__/utils';
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { WorkflowState } from '@/composables/useWorkflowState';
-import type { useExecutingNode } from '@/composables/useExecutingNode';
 import { mock } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
 
@@ -22,7 +21,9 @@ describe('nodeExecuteAfter', () => {
 
 		mockOptions = {
 			workflowState: mock<WorkflowState>({
-				executingNode: mock<ReturnType<typeof useExecutingNode>>({}),
+				executingNode: {
+					removeExecutingNode: vi.fn(),
+				},
 			}),
 		};
 	});

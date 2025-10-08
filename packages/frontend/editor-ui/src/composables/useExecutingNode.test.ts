@@ -29,7 +29,7 @@ describe('useExecutingNode composable', () => {
 		const { executingNode, removeExecutingNode } = useExecutingNode();
 
 		// Manually set the state for testing.
-		executingNode = ['node1'];
+		executingNode.value = ['node1'];
 		removeExecutingNode('node2'); // Trying to remove a non-existent node.
 		expect(executingNode).toEqual(['node1']);
 	});
