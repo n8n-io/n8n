@@ -624,12 +624,12 @@ const tags = computed(
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
 
 	span {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .cardHeadingArchived {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .cardDescription {
@@ -638,7 +638,7 @@ const tags = computed(
 	align-items: center;
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	gap: var(--spacing-2xs);
 }
 
@@ -659,7 +659,7 @@ const tags = computed(
 }
 
 .cardBadge {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .cardBadge.with-breadcrumbs {
@@ -672,9 +672,9 @@ const tags = computed(
 }
 
 .cardArchived {
-	background-color: var(--color-background-light);
-	border-color: var(--color-foreground-light);
-	color: var(--color-text-base);
+	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground--tint-1);
+	color: var(--color--text);
 }
 
 .description-cell--mcp {
@@ -682,7 +682,7 @@ const tags = computed(
 	align-items: center;
 
 	&:hover {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 

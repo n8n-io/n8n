@@ -381,8 +381,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	align-items: flex-start;
 	gap: var(--spacing-s);
 	padding: var(--spacing-m);
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-base);
+	border: 1px solid var(--color--foreground);
+	background: var(--color--background);
 	border-radius: var(--border-radius-large);
 	text-align: left;
 	cursor: pointer;
@@ -392,7 +392,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		border-color 0.06s ease;
 }
 .card:hover {
-	border-color: var(--color-primary);
+	border-color: var(--color--primary);
 	background: rgba(124, 58, 237, 0.04);
 }
 .cardIcon {
@@ -420,7 +420,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 .thread {
 	padding: var(--spacing-m);
-	background: var(--color-background-light);
+	background: var(--color--background--light-2);
 }
 
 .message {
@@ -435,8 +435,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	width: 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: var(--color-background-xlight);
-	color: var(--color-text-light);
+	background: var(--color--background--light-3);
+	color: var(--color--text--tint-1);
 }
 
 .chatMessage {
@@ -447,11 +447,11 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	border-radius: var(--border-radius-large);
 
 	&.chatMessageFromAssistant {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 	}
 
 	&.chatMessageFromUser {
-		background-color: var(--color-background-medium);
+		background-color: var(--color--background--shade-1);
 	}
 
 	> .chatMessageMarkdown {
@@ -539,14 +539,14 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	flex: 1;
 	font: inherit;
 	padding: 14px 112px 14px 14px;
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-light);
-	color: var(--color-text-dark);
+	border: 1px solid var(--color--foreground);
+	background: var(--color--background--light-2);
+	color: var(--color--text--shade-1);
 	border-radius: 16px;
 	outline: none;
 }
 .input:focus {
-	border-color: var(--color-primary);
+	border-color: var(--color--primary);
 	box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
@@ -568,19 +568,19 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	border-radius: 10px;
 	border: none;
 	background: transparent;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	cursor: pointer;
 }
 .iconBtn:hover {
 	background: rgba(0, 0, 0, 0.04);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 .sendBtn {
 	height: 32px;
 	padding: 0 10px;
 	border-radius: 10px;
 	border: none;
-	background: var(--color-primary);
+	background: var(--color--primary);
 	color: #fff;
 	font-weight: 600;
 	cursor: pointer;
@@ -592,7 +592,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 .disclaimer {
 	margin-top: var(--spacing-xs);
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 	text-align: center;
 }
 

@@ -506,7 +506,7 @@ onBeforeUnmount(() => {
 }
 
 .disableMfaButton {
-	--button-color: var(--color-danger);
+	--button-color: var(--color--danger);
 	> span {
 		font-weight: var(--font-weight-bold);
 	}
@@ -521,7 +521,7 @@ onBeforeUnmount(() => {
 
 .infoText {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .themeSelect {

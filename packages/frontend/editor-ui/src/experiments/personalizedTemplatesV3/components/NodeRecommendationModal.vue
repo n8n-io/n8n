@@ -104,7 +104,7 @@ watchEffect(async () => {
 
 <style lang="scss" module>
 .modal {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .header {
@@ -125,18 +125,18 @@ watchEffect(async () => {
 	justify-content: center;
 	gap: var(--spacing-xs);
 	padding: var(--spacing-l);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .footerCard {
-	border: 1px solid var(--color-foreground-base);
-	background-color: var(--color-background-light);
+	border: 1px solid var(--color--foreground);
+	background-color: var(--color--background--light-2);
 	cursor: pointer;
 	transition: all 0.2s ease;
 
 	&:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
+		border-color: var(--color--primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -153,6 +153,6 @@ watchEffect(async () => {
 }
 
 .footerIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 </style>

@@ -189,7 +189,7 @@ function onInputNodeChange(value: string) {
 }
 
 .title {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight-regular);
 	max-width: var(--max-select-width);
 	overflow: hidden;
@@ -198,13 +198,13 @@ function onInputNodeChange(value: string) {
 }
 
 .disabled .title {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .subtitle {
 	margin-left: auto;
 	padding-left: var(--spacing-2xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight-regular);
 }
 </style>

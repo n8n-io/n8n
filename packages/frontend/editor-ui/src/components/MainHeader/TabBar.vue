@@ -47,7 +47,7 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 	min-height: 30px;
 	display: flex;
 	padding: var(--spacing-5xs);
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 	border-radius: var(--border-radius-base);
 	transition: all 150ms ease-in-out;
 	z-index: 1;
