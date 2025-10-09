@@ -12,6 +12,7 @@ import type {
 	PgpDatabase,
 	PostgresNodeOptions,
 	QueriesRunner,
+	QueryValue,
 	QueryValues,
 	QueryWithValues,
 } from '../../helpers/interfaces';
@@ -278,26 +279,44 @@ export async function execute(
 
 		let values: QueryValues = [schema, table];
 
-		let valuesLength = values.length + 1;
+		// the columns to insert and corresponding values in the same order
+		// columnsToMatchOn first, then others
+		const nonMatchCols = Object.keys(item).filter((c) => !columnsToMatchOn.includes(c));
+		const insertColumns: string[] = [...columnsToMatchOn, ...nonMatchCols]; // e.g. ['id','name',...]
+		const insertValues = insertColumns.map(
+			(c) => (item as Record<string, unknown>)[c] ?? null,
+		) as unknown as QueryValue;
+		// e.g. ['1','Ada',...]
+
+		// 1) columns (for :name) as 1 param
+		values.push(insertColumns);
+		const colsParam = `$${values.length}:name`;
+
+		// 2) values (for :csv) as another param
+		values.push(insertValues);
+		const valsParam = `$${values.length}:csv`;
+
 		const conflictColumns: string[] = [];
 		columnsToMatchOn.forEach((column) => {
-			conflictColumns.push(`$${valuesLength}:name`);
-			valuesLength = valuesLength + 1;
 			values.push(column);
+			const idx = values.length; // index of just pushed col
+			conflictColumns.push(`$${idx}:name`);
 		});
+
 		const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})`;
 
-		const insertQuery = `INSERT INTO $1:name.$2:name($${valuesLength}:name) VALUES($${valuesLength}:csv)${onConflict}`;
-		valuesLength = valuesLength + 1;
-		values.push(item);
+		const insertQuery = `INSERT INTO $1:name.$2:name(${colsParam}) VALUES(${valsParam})${onConflict}`;
 
 		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
 		const updates: string[] = [];
 
 		for (const column of updateColumns) {
-			updates.push(`$${valuesLength}:name = $${valuesLength + 1}`);
-			valuesLength = valuesLength + 2;
-			values.push(column, item[column] as string);
+			values.push(column);
+			const colIdx = values.length; // $colIdx:name
+			const v = (item as Record<string, unknown>)[column] ?? null;
+			values.push(v as QueryValue);
+			const valIdx = values.length; // $valIdx
+			updates.push(`$${colIdx}:name = $${valIdx}`);
 		}
 
 		const updateQuery =
