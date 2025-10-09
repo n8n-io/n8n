@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';

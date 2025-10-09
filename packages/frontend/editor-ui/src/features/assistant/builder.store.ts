@@ -1,29 +1,23 @@
 import type { VIEWS } from '@/constants';
 import {
 	DEFAULT_NEW_WORKFLOW_NAME,
-	ASK_AI_SLIDE_OUT_DURATION_MS,
-	EDITABLE_CANVAS_VIEWS,
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
+	EDITABLE_CANVAS_VIEWS,
 } from '@/constants';
+import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, watch, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from './settings.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUIStore } from './ui.store';
-import { usePostHog } from './posthog.store';
-import {
-	DEFAULT_CHAT_WIDTH,
-	MAX_CHAT_WIDTH,
-	MIN_CHAT_WIDTH,
-} from '@/features/assistant/assistant.store';
-import { useWorkflowsStore } from './workflows.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
 import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
 import { generateMessageId, createBuilderPayload } from '@/helpers/builderHelpers';
@@ -33,19 +27,18 @@ import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { useNodeTypesStore } from './nodeTypes.store';
-import { useCredentialsStore } from './credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/utils/typesUtils';
+import { useChatPanelStateStore } from './chatPanelState.store';
 
 const INFINITE_CREDITS = -1;
-export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
+export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
-	const chatWidth = ref<number>(DEFAULT_CHAT_WIDTH);
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
-	const chatWindowOpen = ref<boolean>(false);
 	const streaming = ref<boolean>(false);
 	const assistantThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
@@ -54,11 +47,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsClaimed = ref<number | undefined>();
 
 	// Store dependencies
+	const chatPanelStateStore = useChatPanelStateStore();
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
-	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
@@ -99,7 +92,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
-	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
+	const isAssistantOpen = computed(
+		() =>
+			canShowAssistant.value &&
+			chatPanelStateStore.isOpen &&
+			chatPanelStateStore.activeMode === 'builder',
+	);
 
 	const isAIBuilderEnabled = computed(() => {
 		// Check license first
@@ -158,62 +156,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value = clearMessages();
 		assistantThinkingMessage.value = undefined;
 		initialGeneration.value = false;
-	}
-
-	/**
-	 * Opens the chat panel and adjusts the canvas viewport to make room.
-	 */
-	async function openChat() {
-		chatMessages.value = [];
-		await fetchBuilderCredits();
-		await loadSessions();
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatWidth.value,
-		};
-		chatWindowOpen.value = true;
-	}
-
-	/**
-	 * Closes the chat panel with a delayed viewport restoration.
-	 * The delay (ASK_AI_SLIDE_OUT_DURATION_MS + 50ms) ensures the slide-out animation
-	 * completes before expanding the canvas, preventing visual jarring.
-	 * Messages remain in memory.
-	 */
-	function closeChat() {
-		chatWindowOpen.value = false;
-		// Looks smoother if we wait for slide animation to finish before updating the grid width
-		// Has to wait for longer than SlideTransition duration
-		setTimeout(() => {
-			if (!window) {
-				return; // for unit testing
-			}
-
-			uiStore.appGridDimensions = {
-				...uiStore.appGridDimensions,
-				width: window.innerWidth,
-			};
-		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
-	}
-
-	/**
-	 * Toggles between open and closed state for the chat panel.
-	 */
-	async function toggleChat() {
-		if (isAssistantOpen.value) {
-			closeChat();
-		} else {
-			await openChat();
-		}
-	}
-
-	/**
-	 * Updates chat panel width with enforced boundaries.
-	 * Width is clamped between MIN_CHAT_WIDTH (330px) and MAX_CHAT_WIDTH (650px)
-	 * to ensure usability on various screen sizes.
-	 */
-	function updateWindowWidth(width: number) {
-		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
 	}
 
 	// Message handling functions
@@ -570,6 +512,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
 	}
 
+	function updateBuilderCredits(quota?: number, claimed?: number) {
+		creditsQuota.value = quota;
+		creditsClaimed.value = claimed;
+	}
+
 	async function fetchBuilderCredits() {
 		const releaseExperimentVariant = posthogStore.getVariant(
 			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
@@ -581,39 +528,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		try {
 			const response = await getBuilderCredits(rootStore.restApiContext);
 			updateBuilderCredits(response.creditsQuota, response.creditsClaimed);
-		} catch (error) {
+		} catch {
 			// Keep default values on error
 		}
 	}
-
-	function updateBuilderCredits(quota?: number, claimed?: number) {
-		creditsQuota.value = quota;
-		creditsClaimed.value = claimed;
-	}
-
-	// Watch for route changes and close chat when leaving enabled views
-	watch(
-		() => route.name,
-		(newRoute) => {
-			// Close the chat window when navigating away from canvas/enabled views
-			if (!ENABLED_VIEWS.includes(newRoute as VIEWS) && chatWindowOpen.value) {
-				chatWindowOpen.value = false;
-			}
-		},
-	);
 
 	// Public API
 	return {
 		// State
 		isAssistantEnabled,
 		canShowAssistantButtonsOnCanvas,
-		chatWidth,
 		chatMessages,
 		streaming,
 		isAssistantOpen,
 		canShowAssistant,
 		assistantThinkingMessage,
-		chatWindowOpen,
 		isAIBuilderEnabled,
 		workflowPrompt,
 		toolMessages,
@@ -627,11 +556,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 
 		// Methods
-		updateWindowWidth,
 		stopStreaming,
-		closeChat,
-		openChat,
-		toggleChat,
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,
