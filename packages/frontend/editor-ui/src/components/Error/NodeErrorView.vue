@@ -780,7 +780,6 @@ async function onAskAssistantClick() {
 			width: 100%;
 			overflow: auto;
 			background: var(--color-background-light);
-
 			code {
 				font-size: var(--font-size-s);
 			}

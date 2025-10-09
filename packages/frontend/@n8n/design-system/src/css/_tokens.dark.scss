@@ -4,17 +4,6 @@
 	// Primary tokens
 	--color-danger: var(--p--color--alt-h-310);
 
-	// Diff colors (dark theme overrides)
-	--diff-new: #38cb7a;
-	--diff-new-light: #43674f;
-	--diff-new-faint: #3a463e;
-	--diff-modified: #d6a625;
-	--diff-modified-light: #6a5c38;
-	--diff-modified-faint: #464236;
-	--diff-del: #fb887a;
-	--diff-del-light: #7a524e;
-	--diff-del-faint: #4d3e3d;
-
 	// Text
 	--color-text-dark: var(--p--color--gray-040);
 	--color-text-base: var(--p--color--gray-200);
@@ -501,6 +490,17 @@
 		var(--node-type-ai_vectorStore-color-s),
 		var(--node-type-background-l)
 	);
+
+	// Diff colors (dark theme overrides)
+	--diff-new: #38cb7a;
+	--diff-new-light: #43674f;
+	--diff-new-faint: #3a463e;
+	--diff-modified: #d6a625;
+	--diff-modified-light: #6a5c38;
+	--diff-modified-faint: #464236;
+	--diff-del: #fb887a;
+	--diff-del-light: #7a524e;
+	--diff-del-faint: #4d3e3d;
 
 	// Various
 	--color-info-tint-1: var(--p--color--gray-420);
