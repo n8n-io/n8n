@@ -15,5 +15,7 @@ properties:
   type:
     type: string
     readOnly: true
-  project:
-    $ref: '../../../projects/spec/schemas/project.yml'
+  projectId:
+    type: string
+    example: VmwOO9HeTEj20kxM
+    nullable: true
