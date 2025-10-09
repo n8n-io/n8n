@@ -1,6 +1,5 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription, isCommunityPackageName } from 'n8n-workflow';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
-import { isCommunityPackageName } from '../utils/nodeTypesUtils';
 import { BUILTIN_NODES_DOCS_URL, NPM_PACKAGE_DOCS_BASE_URL } from '../constants';
 
 export const useNodeDocsUrl = ({
