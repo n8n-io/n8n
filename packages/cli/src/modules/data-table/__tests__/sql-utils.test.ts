@@ -269,7 +269,7 @@ describe('sql-utils', () => {
 				['mysql', '2024-01-15 10:30:00.123'],
 				['mariadb', '2024-01-15 10:30:00.123'],
 				['postgres', '2024-01-15T10:30:00.123Z'],
-			] as const)('should parse and format Date object for %s', (dbType, expected) => {
+			] as const)('should format Date object for %s', (dbType, expected) => {
 				const result = normalizeValueForDatabase(
 					new Date('2024-01-15T10:30:00.123Z'),
 					'date',
@@ -285,16 +285,34 @@ describe('sql-utils', () => {
 				['mysql', '2024-01-15 10:30:00.123'],
 				['mariadb', '2024-01-15 10:30:00.123'],
 				['postgres', '2024-01-15T10:30:00.123Z'],
-			] as const)('should parse and format date string for %s', (dbType, expected) => {
+			] as const)('should format ISO date string for %s', (dbType, expected) => {
 				const result = normalizeValueForDatabase('2024-01-15T10:30:00.123Z', 'date', dbType);
 
 				expect(result).toBe(expected);
 			});
 
-			it('should return invalid date string unchanged', () => {
-				const result = normalizeValueForDatabase('not-a-date', 'date', 'sqlite');
+			it('should throw on invalid date string', () => {
+				expect(() => normalizeValueForDatabase('not-a-date', 'date', 'sqlite')).toThrow(
+					'Invalid date',
+				);
+			});
 
-				expect(result).toBe('not-a-date');
+			it('should throw on invalid date value', () => {
+				expect(() =>
+					normalizeValueForDatabase('2024-99-99T10:30:00.123Z', 'date', 'sqlite'),
+				).toThrow('Invalid date');
+			});
+
+			it('should throw for unsupported value types', () => {
+				expect(() => normalizeValueForDatabase(true, 'date')).toThrow(
+					'Expected Date object or ISO date string',
+				);
+				expect(() => normalizeValueForDatabase(false, 'date')).toThrow(
+					'Expected Date object or ISO date string',
+				);
+				expect(() => normalizeValueForDatabase(123, 'date')).toThrow(
+					'Expected Date object or ISO date string',
+				);
 			});
 		});
 	});

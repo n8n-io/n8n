@@ -249,17 +249,28 @@ export function normalizeRows(
 	});
 }
 
+/**
+ * Format a date value (Date object or ISO string) for database storage.
+ * Converts to database-specific format.
+ */
 function formatDateForDatabase(
-	date: DataTableColumnJsType,
+	value: DataTableColumnJsType,
 	dbType?: DataSourceOptions['type'],
 ): string {
-	if (typeof date === 'string') {
-		date = new Date(date);
-		if (isNaN(date.getTime())) {
-			throw new UnexpectedError(`Invalid date: ${date.toString()}`);
-		}
-	} else if (!(date instanceof Date)) {
-		throw new UnexpectedError(`Invalid date: ${date?.toString() ?? date}`);
+	let date: Date;
+
+	if (value instanceof Date) {
+		date = value;
+	} else if (typeof value === 'string') {
+		date = new Date(value);
+	} else {
+		throw new UnexpectedError(
+			`Expected Date object or ISO date string, got ${typeof value}: ${String(value)}`,
+		);
+	}
+
+	if (isNaN(date.getTime())) {
+		throw new UnexpectedError(`Invalid date: ${String(value)}`);
 	}
 
 	// These dbs use DATETIME format without 'T' and 'Z'
@@ -270,17 +281,18 @@ function formatDateForDatabase(
 	return date.toISOString();
 }
 
+/**
+ * Normalize a value for database operations based on column type.
+ * For date columns, accepts both Date objects and ISO date strings.
+ * Converts them to database-specific format.
+ */
 export function normalizeValueForDatabase(
 	value: DataTableColumnJsType,
 	columnType: string | undefined,
 	dbType?: DataSourceOptions['type'],
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
-		try {
-			return formatDateForDatabase(value, dbType);
-		} catch {
-			return value;
-		}
+		return formatDateForDatabase(value, dbType);
 	}
 
 	return value;
