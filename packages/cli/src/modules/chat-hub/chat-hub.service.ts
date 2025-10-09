@@ -314,6 +314,14 @@ export class ChatHubService {
 				name: 'AI Agent',
 			},
 			this.createModelNode(payload),
+			{
+				parameters: {},
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				typeVersion: 1.3,
+				position: [224, 208],
+				id: uuidv4(),
+				name: 'Memory',
+			},
 		];
 
 		const connections: IConnections = {
@@ -322,6 +330,9 @@ export class ChatHubService {
 			},
 			'Chat Model': {
 				ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+			},
+			Memory: {
+				ai_memory: [[{ node: 'AI Agent', type: 'ai_memory', index: 0 }]],
 			},
 		};
 
