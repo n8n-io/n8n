@@ -36,6 +36,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ActiveExecutions } from '@/active-executions';
 
 @Service()
 export class ChatHubService {
@@ -48,6 +49,7 @@ export class ChatHubService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly activeExecutions: ActiveExecutions,
 	) {}
 
 	async getModels(
@@ -386,35 +388,26 @@ export class ChatHubService {
 			true,
 			res,
 		);
-
 		if (!executionId) {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		// TODO: The execution finishes after a while, how do we store the full AI response on the database?
-		// Is there a better way to listen for the execution to finish?
-		const onClose = async () => {
-			this.logger.debug(`Connection closed by client, execution ID: ${executionId}`);
+		const result = await this.activeExecutions.getPostExecutePromise(executionId);
+		if (!result) {
+			throw new OperationalError('There was a problem executing the chat workflow.');
+		}
 
-			// TODO: we could maybe stop executions here if user disconnected early?
-			// if (execution && ['running', 'waiting'].includes(execution.status)) {
-			// 	await this.executionService.stop(executionId, [workflow.id]);
-			// }
+		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+			workflow.id,
+		]);
+		if (!execution) {
+			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
+		}
 
-			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-				workflow.id,
-			]);
-
-			// Persist the assistant message to the database
-			if (execution?.data?.resultData) {
-				// resultData is only available if the execution finished
-				const message = this.getMessage(execution);
-				this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
-			}
-		};
-
-		res.on('close', onClose);
-		res.on('error', onClose);
+		const message = this.getMessage(execution);
+		if (message) {
+			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
+		}
 	}
 
 	private createModelNode(payload: ChatPayloadWithCredentials): INode {
