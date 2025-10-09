@@ -5,6 +5,7 @@ import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRolesView from './ProjectRolesView.vue';
+import { useSettingsStore } from '@/stores/settings.store';
 
 // Mock vue-router
 const mockPush = vi.fn();
@@ -77,6 +78,7 @@ const mockCustomRoles = [
 		licensed: true,
 		systemRole: false,
 		roleType: 'project' as const,
+		usedByUsers: 0,
 	},
 	{
 		displayName: 'Custom Role 2',
@@ -86,10 +88,12 @@ const mockCustomRoles = [
 		licensed: true,
 		systemRole: false,
 		roleType: 'project' as const,
+		usedByUsers: 0,
 	},
 ];
 
 let rolesStore: MockedStore<typeof useRolesStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
 
 describe('ProjectRolesView', () => {
 	beforeEach(() => {
@@ -101,6 +105,8 @@ describe('ProjectRolesView', () => {
 
 		createTestingPinia();
 		rolesStore = mockedStore(useRolesStore);
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isCustomRolesFeatureEnabled = true;
 	});
 
 	it('should render the page heading and Add Role button', () => {
@@ -252,7 +258,7 @@ describe('ProjectRolesView', () => {
 			expect(rolesStore.roles.project[1]).toStrictEqual(duplicatedRole);
 			expect(mockShowMessage).toHaveBeenCalledWith({
 				type: 'success',
-				message: 'Role "Custom Role 1" duplicated successfully as "Copy of Custom Role 1"',
+				message: "Role 'Custom Role 1' duplicated successfully as 'Copy of Custom Role 1'",
 			});
 		});
 
@@ -331,7 +337,7 @@ describe('ProjectRolesView', () => {
 
 			expect(mockConfirm).toHaveBeenCalledWith(
 				`Are you sure that you want to delete '${mockRole.displayName}' permanently? This action cannot be undone.`,
-				`Delete "${mockRole.displayName}"?`,
+				`Delete '${mockRole.displayName}'?`,
 				{
 					type: 'warning',
 					confirmButtonText: 'Delete',
