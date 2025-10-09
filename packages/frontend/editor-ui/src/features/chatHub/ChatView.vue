@@ -147,14 +147,18 @@ watch(
 );
 
 // TODO: fix duplicate requests
-watch(mergedCredentials, async (credentials) => {
-	const models = await chatStore.fetchChatModels(credentials);
-	const selected = selectedModel.value;
+watch(
+	mergedCredentials,
+	async (credentials) => {
+		const models = await chatStore.fetchChatModels(credentials);
+		const selected = selectedModel.value;
 
-	if (selected === null || !modelsResponseContains(models, selected)) {
-		selectedModel.value = findOneFromModelsResponse(models) ?? null;
-	}
-});
+		if (selected === null || !modelsResponseContains(models, selected)) {
+			selectedModel.value = findOneFromModelsResponse(models) ?? null;
+		}
+	},
+	{ immediate: true },
+);
 
 onMounted(async () => {
 	await Promise.all([
