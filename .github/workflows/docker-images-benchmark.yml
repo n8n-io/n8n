@@ -31,6 +31,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set repository owner to lowercase
+        id: owner_lower
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Build
         uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
         env:
@@ -42,4 +46,4 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/n8n-benchmark:latest
+            ghcr.io/${{ steps.owner_lower.outputs.owner }}/n8n-benchmark:latest
