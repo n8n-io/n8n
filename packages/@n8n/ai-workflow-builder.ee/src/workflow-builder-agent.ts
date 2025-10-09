@@ -36,7 +36,7 @@ import {
 import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
-import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
+import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -257,35 +257,11 @@ export class WorkflowBuilderAgent {
 			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
-			// Get current token usage before compacting
-			const currentTokenUsage = extractLastTokenUsage(messages);
-			const estimatedCurrentTokens = estimateTokenCountFromMessages(messages);
-
-			this.logger?.debug('Starting conversation compacting', {
-				isAutoCompact,
-				messagesCount: messages.length,
-				estimatedTokens: estimatedCurrentTokens,
-				lastTokenUsage: currentTokenUsage
-					? {
-							inputTokens: currentTokenUsage.input_tokens,
-							outputTokens: currentTokenUsage.output_tokens,
-							cacheCreationTokens: currentTokenUsage.cache_creation_input_tokens,
-							cacheReadTokens: currentTokenUsage.cache_read_input_tokens,
-						}
-					: null,
-				hasPreviousSummary: !!previousSummary && previousSummary !== 'EMPTY',
-			});
-
 			const compactedMessages = await conversationCompactChain(
 				this.llmSimpleTask,
 				messages,
 				previousSummary,
 			);
-
-			this.logger?.debug('Conversation compacting completed', {
-				summaryLength: compactedMessages.summaryPlain.length,
-				messagesBeforeCompact: messages.length,
-			});
 
 			// The summarized conversation history will become a part of system prompt
 			// and will be used in the next LLM call.
