@@ -190,10 +190,6 @@ export type CanvasEventBusEvents = {
 	'create:sticky': never;
 };
 
-export type WorkflowStateBusEvents = {
-	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
-};
-
 export interface CanvasNodeInjectionData {
 	id: Ref<string>;
 	data: Ref<CanvasNodeData>;

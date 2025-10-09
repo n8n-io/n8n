@@ -37,7 +37,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { WorkflowStateBusEvents } from '@/types';
+
+export type WorkflowStateBusEvents = {
+	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
+};
 
 export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 

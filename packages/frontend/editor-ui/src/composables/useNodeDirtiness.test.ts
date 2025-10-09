@@ -14,7 +14,6 @@ import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workf
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
-import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('@/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/composables/useWorkflowState');
