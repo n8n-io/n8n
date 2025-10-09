@@ -399,7 +399,7 @@ onUnmounted(() => {
 }
 
 .contextContainer {
-	padding: var(--spacing-xs) var(--spacing-l) 0;
+	padding: var(--spacing-xs) var(--spacing-xs) 0;
 }
 
 .loadingContainer {
