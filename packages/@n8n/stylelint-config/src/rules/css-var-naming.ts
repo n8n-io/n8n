@@ -18,18 +18,32 @@ const PROPERTY_VOCABULARY = new Set([
 	'background',
 	'border-color',
 	'border-width',
+	'border-style',
+	'border',
 	'icon-color',
 	'radius',
 	'shadow',
 	'spacing',
 	'font-size',
 	'font-weight',
+	'font-family',
 	'line-height',
 	'z',
 	'duration',
 	'easing',
 	'outline-color',
 	'outline-width',
+]);
+
+// Allowed single-property variables (shorthand properties)
+const ALLOWED_SINGLE_PROPERTIES = new Set([
+	'--shadow',
+	'--radius',
+	'--border-color',
+	'--border-style',
+	'--border-width',
+	'--border',
+	'--font-family',
 ]);
 
 const STATES = new Set([
@@ -72,6 +86,9 @@ const SEMANTIC_VALUES = new Set([
 
 const SCALE_VALUES = new Set([
 	'none',
+	'5xs',
+	'4xs',
+	'3xs',
 	'2xs',
 	'xs',
 	'sm',
@@ -80,6 +97,8 @@ const SCALE_VALUES = new Set([
 	'xl',
 	'2xl',
 	'3xl',
+	'4xl',
+	'5xl',
 	'pill',
 	'full',
 	'regular',
@@ -97,6 +116,11 @@ interface ValidationResult {
 }
 
 function validateCssVariable(variable: string): ValidationResult {
+	// Allow specific single-property variables
+	if (ALLOWED_SINGLE_PROPERTIES.has(variable)) {
+		return { valid: true };
+	}
+
 	// Basic pattern check
 	if (!BASIC_PATTERN.test(variable)) {
 		return {
