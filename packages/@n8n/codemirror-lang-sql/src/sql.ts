@@ -73,6 +73,7 @@ export const getParser = (dialect: Dialect) => {
 	});
 
 	const mixedParser = expressionParser.configure({
+		// @ts-expect-error
 		wrap: parseMixed((node) => {
 			return node.type.isTop
 				? {

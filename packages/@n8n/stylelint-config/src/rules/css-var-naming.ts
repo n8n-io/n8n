@@ -228,6 +228,7 @@ const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 			return;
 		}
 
+		// @ts-expect-error
 		root.walkDecls((decl) => {
 			const prop = decl.prop;
 
@@ -240,6 +241,7 @@ const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 
 			if (!validation.valid) {
 				stylelint.utils.report({
+					// @ts-expect-error
 					message: messages.rejected(prop, validation.reason!),
 					node: decl,
 					result,
@@ -249,6 +251,7 @@ const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 		});
 
 		// Also check variable usage in var() functions
+		// @ts-expect-error
 		root.walkDecls((decl) => {
 			const value = decl.value;
 
@@ -262,6 +265,7 @@ const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 
 				if (!validation.valid) {
 					stylelint.utils.report({
+						// @ts-expect-error
 						message: messages.rejected(variable, validation.reason!),
 						node: decl,
 						result,

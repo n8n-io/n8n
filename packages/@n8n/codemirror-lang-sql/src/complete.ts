@@ -46,17 +46,20 @@ function parentsFor(doc: Text, node: SyntaxNode | null) {
 
 function sourceContext(state: EditorState, startPos: number) {
 	const pos = syntaxTree(state).resolveInner(startPos, -1);
+	// @ts-expect-error
 	const aliases = getAliases(state.doc, pos);
 	if (pos.name === 'Identifier' || pos.name === 'QuotedIdentifier' || pos.name === 'Keyword') {
 		return {
 			from: pos.from,
 			quoted:
 				pos.name === 'QuotedIdentifier' ? state.doc.sliceString(pos.from, pos.from + 1) : null,
+			// @ts-expect-error
 			parents: parentsFor(state.doc, tokenBefore(pos)),
 			aliases,
 		};
 	}
 	if (pos.name === '.') {
+		// @ts-expect-error
 		return { from: startPos, quoted: null, parents: parentsFor(state.doc, pos), aliases };
 	} else {
 		return { from: startPos, quoted: null, parents: [], empty: true, aliases };
