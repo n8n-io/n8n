@@ -63,11 +63,11 @@ function handleEditClick() {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing-3xs) 0;
-	border-bottom: 1px solid var(--color-foreground-light);
+	border-bottom: 1px solid var(--color--foreground--tint-1);
 	cursor: pointer;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	&:first-child {

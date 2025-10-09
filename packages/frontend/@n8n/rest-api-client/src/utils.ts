@@ -17,7 +17,7 @@ const getBrowserId = () => {
 };
 
 export const NO_NETWORK_ERROR_CODE = 999;
-export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
+export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
 export class MfaRequiredError extends ApplicationError {
 	constructor() {
@@ -218,7 +218,7 @@ export async function streamRequest<T extends object>(
 	onChunk?: (chunk: T) => void,
 	onDone?: () => void,
 	onError?: (e: Error) => void,
-	separator = STREAM_SEPERATOR,
+	separator = STREAM_SEPARATOR,
 	abortSignal?: AbortSignal,
 ): Promise<void> {
 	const headers: Record<string, string> = {

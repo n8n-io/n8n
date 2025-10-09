@@ -729,7 +729,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	--disabled-fill: var(--color-background-base);
+	--disabled-fill: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;
@@ -767,7 +767,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	.parameter-notice {
-		background-color: var(--color-warning-tint-2);
+		background-color: var(--color--warning--tint-2);
 		color: $custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;

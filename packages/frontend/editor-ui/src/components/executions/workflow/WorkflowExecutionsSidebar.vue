@@ -263,7 +263,7 @@ const goToUpgrade = () => {
 <style module lang="scss">
 .container {
 	flex: 310px 0 0;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border-right: var(--border-base);
 	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
 	z-index: 1;
@@ -297,7 +297,7 @@ const goToUpgrade = () => {
 	flex: 1;
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
-	background-color: var(--color-background-xlight) !important;
+	background-color: var(--color--background--light-3) !important;
 
 	// Scrolling fader
 	&::before {
@@ -324,7 +324,7 @@ const goToUpgrade = () => {
 
 	& > div {
 		width: 100%;
-		background-color: var(--color-background-light);
+		background-color: var(--color--background--light-2);
 		margin-top: 0 !important;
 	}
 }

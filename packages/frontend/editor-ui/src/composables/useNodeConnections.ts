@@ -1,10 +1,10 @@
-import type { CanvasNodeData } from '@/types';
-import { CanvasConnectionMode } from '@/types';
+import type { CanvasNodeData } from '@/features/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { Connection } from '@vue-flow/core';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import { parseCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
 
 export function useNodeConnections({
 	inputs,

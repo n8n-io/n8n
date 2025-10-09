@@ -560,7 +560,7 @@ const { width } = useElementSize(defNameRef);
 	margin-left: 1.5em;
 	margin-bottom: 0.5em;
 	span {
-		color: var(--color-text-dark) !important;
+		color: var(--color--text--shade-1) !important;
 	}
 }
 

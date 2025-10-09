@@ -249,6 +249,6 @@ watchEffect(async () => {
 	justify-content: center;
 	gap: var(--spacing-xs);
 	padding: var(--spacing-l);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 </style>
