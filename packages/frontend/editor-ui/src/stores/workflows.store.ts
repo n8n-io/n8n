@@ -17,7 +17,6 @@ import type {
 	IExecutionsListResponse,
 	INodeMetadata,
 	INodeUi,
-	INodeUpdatePropertiesInformation,
 	IStartRunData,
 	IUsedCredential,
 	IWorkflowDb,
@@ -60,8 +59,6 @@ import {
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
-import isEqual from 'lodash/isEqual';
-import pick from 'lodash/pick';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/api/workflows';
