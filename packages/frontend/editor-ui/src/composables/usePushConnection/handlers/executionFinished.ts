@@ -33,6 +33,7 @@ import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } f
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/composables/useWorkflowState';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -52,7 +53,7 @@ export async function executionFinished(
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 
-	workflowsStore.lastAddedExecutingNode = null;
+	options.workflowState.executingNode.lastAddedExecutingNode = null;
 
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
@@ -244,7 +245,6 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
-	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.workflowObject;
 
 	const workflowSettings = workflowsStore.workflowSettings;
@@ -264,7 +264,7 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	}
 
 	// Workflow did start but had been put to wait
-	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowObject.name as string, 'IDLE');
 }
 
 /**
@@ -278,10 +278,11 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const documentTitle = useDocumentTitle();
 	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.workflowObject;
 
-	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
+	documentTitle.setDocumentTitle(workflowObject.name as string, 'ERROR');
 
 	if (
 		runExecutionData.resultData.error?.name === 'ExpressionError' &&
@@ -351,10 +352,9 @@ function handleExecutionFinishedSuccessfully(
 	message: string,
 	workflowState: WorkflowState,
 ) {
-	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
 
-	workflowHelpers.setDocumentTitle(workflowName, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 	workflowState.setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: message,
@@ -372,12 +372,11 @@ export function handleExecutionFinishedWithOther(
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
-	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.workflowObject;
 	const workflowName = workflowObject.name ?? '';
 
-	workflowHelpers.setDocumentTitle(workflowName, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
@@ -426,7 +425,8 @@ export function setRunExecutionData(
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 
-	workflowsStore.executingNode.length = 0;
+	// @TODO(ckolb): Should this call `clearNodeExecutionQueue` instead?
+	workflowState.executingNode.executingNode.length = 0;
 
 	if (workflowExecution === null) {
 		return;

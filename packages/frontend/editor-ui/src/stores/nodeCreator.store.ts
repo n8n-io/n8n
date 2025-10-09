@@ -227,6 +227,17 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
+	function openNodeCreatorForRegularNodes(source: NodeCreatorOpenSource) {
+		ndvStore.unsetActiveNodeName();
+		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+		setShowScrim(true);
+		setNodeCreatorState({
+			source,
+			createNodeActive: true,
+			nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+		});
+	}
+
 	function openNodeCreatorForActions(node: string, eventSource?: NodeCreatorOpenSource) {
 		const actionNode = allNodeCreatorNodes.value.find((i) => i.key === node);
 
@@ -449,6 +460,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
+		openNodeCreatorForRegularNodes,
 		openNodeCreatorForActions,
 		onCreatorOpened,
 		onNodeFilterChanged,
