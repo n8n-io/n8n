@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import CssEditor from '@/components/CssEditor/CssEditor.vue';
+import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
-import JsEditor from '@/components/JsEditor/JsEditor.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
-import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+import SqlEditor from '@/features/editors/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
@@ -32,7 +32,7 @@ import {
 	type INodeProperties,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';

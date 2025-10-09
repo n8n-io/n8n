@@ -61,14 +61,14 @@ describe(useLogsExecutionData, () => {
 		});
 
 		it('should not calculate entries isEnabled is false', async () => {
-			const { entries } = useLogsExecutionData(computed(() => false));
+			const { entries } = useLogsExecutionData({ isEnabled: computed(() => false) });
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(0);
 		});
 
 		it('should calculate entries if isEnabled is true', async () => {
-			const { entries } = useLogsExecutionData(computed(() => true));
+			const { entries } = useLogsExecutionData({ isEnabled: computed(() => true) });
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(1);
@@ -120,7 +120,7 @@ describe(useLogsExecutionData, () => {
 				}),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
+			const { loadSubExecution, entries } = useLogsExecutionData();
 
 			await waitFor(() => expect(entries.value).toHaveLength(2));
 			expect(entries.value[1].children).toHaveLength(0);
@@ -151,7 +151,7 @@ describe(useLogsExecutionData, () => {
 				new Error('test execution fetch fail'),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
+			const { loadSubExecution, entries } = useLogsExecutionData();
 
 			await waitFor(() => expect(entries.value).toHaveLength(2));
 			await loadSubExecution(entries.value[1]);

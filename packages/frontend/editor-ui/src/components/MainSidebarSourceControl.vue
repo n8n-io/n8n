@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -150,7 +150,6 @@ function pullWorkfolder() {
 <style lang="scss" module>
 .sync {
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
-	margin: var(--spacing-2xs) 0 calc(var(--spacing-2xs) * -1);
 	background: var(--color-background-light);
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	font-size: var(--font-size-2xs);

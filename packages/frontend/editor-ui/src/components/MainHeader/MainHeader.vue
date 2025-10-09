@@ -14,7 +14,7 @@ import {
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -23,7 +23,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
-import type { FolderShortInfo } from '@/Interface';
+import type { FolderShortInfo } from '@/features/folders/folders.types';
 
 import { N8nIcon } from '@n8n/design-system';
 const router = useRouter();
@@ -342,7 +342,7 @@ function hideGithubButton() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--p-color-primary-420);
+		color: var(--p--color--primary-420);
 	}
 }
 .github-button-container {

@@ -384,8 +384,8 @@ export function handleExecutionFinishedWithOther(
 		const node = workflowsStore.getNodeByName(workflowExecution.executedNode);
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
-			workflowExecution?.executedNode &&
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
+
 		if (nodeType?.polling && !nodeOutput) {
 			toast.showMessage({
 				title: i18n.baseText('pushConnection.pollingNode.dataNotFound', {

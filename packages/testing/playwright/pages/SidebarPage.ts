@@ -19,6 +19,10 @@ export class SidebarPage {
 		await this.page.getByTestId('universal-add').click();
 	}
 
+	async clickHomeMenuItem() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async addProjectFromUniversalAdd() {
 		await this.universalAdd();
 		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
@@ -41,6 +45,7 @@ export class SidebarPage {
 	}
 
 	async clickProjectMenuItem(projectName: string) {
+		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
 	}
 
