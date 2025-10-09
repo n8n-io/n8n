@@ -15,7 +15,7 @@ import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import dateformat from 'dateformat';
-import { computed, ref } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { showError, showMessage } = useToast();
@@ -24,6 +24,7 @@ const rolesStore = useRolesStore();
 const router = useRouter();
 const message = useMessage();
 const i18n = useI18n();
+const $style = useCssModule();
 
 const headers = ref<Array<TableHeader<Role>>>([
 	{
@@ -31,11 +32,13 @@ const headers = ref<Array<TableHeader<Role>>>([
 		key: 'displayName',
 		width: 400,
 		disableSort: true,
+		resize: false,
 	},
 	{
 		title: i18n.baseText('projectRoles.sourceControl.table.type'),
 		key: 'systemRole',
 		disableSort: true,
+		resize: false,
 	},
 	{
 		title: i18n.baseText('projectRoles.sourceControl.table.assignedTo'),
@@ -44,12 +47,14 @@ const headers = ref<Array<TableHeader<Role>>>([
 		align: 'end',
 		value: (item: Role) => item.usedByUsers ?? 0,
 		width: 75,
+		resize: false,
 	},
 	{
 		title: i18n.baseText('projectRoles.sourceControl.table.lastEdited'),
 		key: 'updatedAt',
 		value: (item: Role) => (item.updatedAt ? dateformat(item.updatedAt, 'd mmm, yyyy') : ''),
 		disableSort: true,
+		resize: false,
 	},
 	{
 		title: '',
@@ -59,6 +64,7 @@ const headers = ref<Array<TableHeader<Role>>>([
 		minWidth: 50,
 		disableSort: true,
 		align: 'center',
+		resize: false,
 	},
 ]);
 
@@ -120,6 +126,18 @@ const actions = {
 	delete: deleteRole,
 } as const;
 
+function rowProps(row: Role) {
+	const className = [$style.tallRow];
+
+	if (!row.systemRole) {
+		className.push($style.clickableRow);
+	}
+
+	return {
+		class: className,
+	};
+}
+
 const rowActions = computed<Array<{ label: string; value: keyof typeof actions }>>(() => [
 	{
 		label: 'Duplicate',
@@ -156,10 +174,11 @@ function handleRowClick(item: Role) {
 			:items-length="rolesStore.processedProjectRoles.length"
 			:items-per-page="rolesStore.processedProjectRoles.length"
 			:page-sizes="[rolesStore.processedProjectRoles.length]"
+			:row-props="rowProps"
 			@click:row="(_event, { item }) => handleRowClick(item)"
 		>
 			<template #[`item.displayName`]="{ item }">
-				<N8nText tag="div" class="mb-5xs">{{ item.displayName }}</N8nText>
+				<N8nText tag="div" class="mb-4xs">{{ item.displayName }}</N8nText>
 				<N8nText tag="div" size="small" color="text-light">{{ item.description }}</N8nText>
 			</template>
 			<template #[`item.systemRole`]="{ item }">
@@ -182,5 +201,13 @@ function handleRowClick(item: Role) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.clickableRow {
+	cursor: pointer;
+}
+
+.tallRow {
+	height: 64px;
 }
 </style>
