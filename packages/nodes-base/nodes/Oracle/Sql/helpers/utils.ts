@@ -701,7 +701,8 @@ function generateBindVariablesList(
 	}
 
 	// replace :bindname
-	const regex = new RegExp(`:${escapedName}\\b`, 'g');
+	const regex = new RegExp(`:${escapedName}(?![A-Za-z0-9_$#])`, 'g');
+
 	generatedSqlString = generatedSqlString.slice(0, -1) + ')'; //replace trailing comma with closing parenthesis.
 	return query.replace(regex, generatedSqlString);
 }
