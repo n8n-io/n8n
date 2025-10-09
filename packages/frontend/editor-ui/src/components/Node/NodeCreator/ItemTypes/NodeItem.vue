@@ -11,7 +11,7 @@ import { computed, ref } from 'vue';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
 import { useNodeType } from '@/composables/useNodeType';
