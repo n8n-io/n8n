@@ -172,6 +172,7 @@ const navigateToChildren = (item: CommandBarItem) => {
 	currentParentId.value = item.id;
 	selectedIndex.value = 0;
 	inputValue.value = '';
+	scrollSelectedIntoView();
 
 	emit('navigateTo', item.id);
 };
