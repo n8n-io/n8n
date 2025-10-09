@@ -294,6 +294,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	ADD_NODE_BUTTON: 'add_node_button',
 	TAB: 'tab',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
+	REPLACE_NODE_ACTION: 'replace_node_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
