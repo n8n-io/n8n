@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { KeyboardShortcut } from '@n8n/design-system/types/keyboardshortcut';
+import { N8nKeyboardShortcut } from '@n8n/design-system';
 import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 
 interface Props {
@@ -7,6 +9,7 @@ interface Props {
 	suffix?: string;
 	suffixIcon?: IconOrEmoji;
 	actionText?: string;
+	shortcut?: KeyboardShortcut;
 
 	// passed from CommandBarItem
 	isSelected?: boolean;
@@ -26,6 +29,14 @@ defineProps<Props>();
 		<span v-if="actionText && (isSelected || isHovered)" :class="$style.action">{{
 			actionText
 		}}</span>
+		<span v-if="shortcut" :class="$style.shortcut">
+			<N8nKeyboardShortcut
+				:keys="shortcut.keys"
+				:meta-key="shortcut.metaKey"
+				:alt-key="shortcut.altKey"
+				:shift-key="shortcut.shiftKey"
+			/>
+		</span>
 	</span>
 </template>
 
@@ -38,7 +49,7 @@ defineProps<Props>();
 }
 
 .title {
-	color: var(--color-text-dark);
+	color: var(--color-text-base);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -59,6 +70,11 @@ defineProps<Props>();
 
 .action {
 	color: var(--color-text-light);
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.shortcut {
 	margin-left: auto;
 	flex-shrink: 0;
 }

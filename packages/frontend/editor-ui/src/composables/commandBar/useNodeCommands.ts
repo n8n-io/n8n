@@ -142,7 +142,15 @@ export function useNodeCommands(options: {
 				? [
 						{
 							id: ITEM_ID.ADD_NODE,
-							title: i18n.baseText('commandBar.nodes.addNode'),
+							title: {
+								component: CommandBarItemTitle as Component,
+								props: {
+									title: i18n.baseText('commandBar.nodes.addNode'),
+									shortcut: {
+										keys: ['tab'],
+									},
+								},
+							},
 							section: i18n.baseText('commandBar.sections.nodes'),
 							placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 							children: [...addNodeCommands.value],
@@ -174,7 +182,16 @@ export function useNodeCommands(options: {
 				? [
 						{
 							id: ITEM_ID.ADD_STICKY,
-							title: i18n.baseText('commandBar.nodes.addStickyNote'),
+							title: {
+								component: CommandBarItemTitle as Component,
+								props: {
+									title: i18n.baseText('commandBar.nodes.addStickyNote'),
+									shortcut: {
+										shiftKey: true,
+										keys: ['s'],
+									},
+								},
+							},
 							section: i18n.baseText('commandBar.sections.nodes'),
 							handler: () => {
 								canvasEventBus.emit('create:sticky');

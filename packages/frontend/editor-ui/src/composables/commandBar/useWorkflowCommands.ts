@@ -29,6 +29,7 @@ import { useWorkflowActivate } from '../useWorkflowActivate';
 import type { CommandGroup, CommandBarItem } from './types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/event-bus';
+import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
@@ -121,7 +122,16 @@ export function useWorkflowCommands(): CommandGroup {
 						? [
 								{
 									id: ITEM_ID.SAVE_WORKFLOW,
-									title: i18n.baseText('commandBar.workflow.save'),
+									title: {
+										component: CommandBarItemTitle as Component,
+										props: {
+											title: i18n.baseText('commandBar.workflow.save'),
+											shortcut: {
+												metaKey: true,
+												keys: ['s'],
+											},
+										},
+									},
 									section: i18n.baseText('commandBar.sections.workflow'),
 									handler: async () => {
 										const saved = await workflowSaving.saveCurrentWorkflow();
@@ -140,7 +150,16 @@ export function useWorkflowCommands(): CommandGroup {
 						: []),
 					{
 						id: ITEM_ID.TEST_WORKFLOW,
-						title: i18n.baseText('commandBar.workflow.test'),
+						title: {
+							component: CommandBarItemTitle as Component,
+							props: {
+								title: i18n.baseText('commandBar.workflow.test'),
+								shortcut: {
+									metaKey: true,
+									keys: ['enter'],
+								},
+							},
+						},
 						section: i18n.baseText('commandBar.sections.workflow'),
 						keywords: [
 							i18n.baseText('commandBar.workflow.keywords.test'),
@@ -161,7 +180,17 @@ export function useWorkflowCommands(): CommandGroup {
 					},
 					{
 						id: ITEM_ID.TIDY_UP_WORKFLOW,
-						title: i18n.baseText('commandBar.workflow.tidyUp'),
+						title: {
+							component: CommandBarItemTitle as Component,
+							props: {
+								title: i18n.baseText('commandBar.workflow.tidyUp'),
+								shortcut: {
+									shiftKey: true,
+									altKey: true,
+									keys: ['t'],
+								},
+							},
+						},
 						section: i18n.baseText('commandBar.sections.workflow'),
 						handler: () => {
 							canvasEventBus.emit('tidyUp', {
@@ -207,7 +236,16 @@ export function useWorkflowCommands(): CommandGroup {
 			: []),
 		{
 			id: ITEM_ID.SELECT_ALL,
-			title: i18n.baseText('commandBar.workflow.selectAll'),
+			title: {
+				component: CommandBarItemTitle as Component,
+				props: {
+					title: i18n.baseText('commandBar.workflow.selectAll'),
+					shortcut: {
+						metaKey: true,
+						keys: ['a'],
+					},
+				},
+			},
 			section: i18n.baseText('commandBar.sections.workflow'),
 			handler: () => {
 				canvasEventBus.emit('nodes:selectAll');
