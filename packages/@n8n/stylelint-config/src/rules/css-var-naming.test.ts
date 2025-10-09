@@ -127,7 +127,47 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(invalidPattern);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must follow pattern'),
+				text: expect.stringContaining('Must have at least 2 groups'),
+			});
+		});
+
+		it('should reject properties without values', async () => {
+			const invalidPattern = `
+				:root {
+					--color: #0d6efd;
+					--spacing: 4px;
+				}
+			`;
+			const result = await lintCSS(invalidPattern);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must have at least 2 groups'),
+			});
+		});
+
+		it('should reject spacing property without value', async () => {
+			const invalidPattern = `
+				:root {
+					--spacing: 4px;
+				}
+			`;
+			const result = await lintCSS(invalidPattern);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must have at least 2 groups'),
+			});
+		});
+
+		it('should reject variable without proeprty', async () => {
+			const invalidPattern = `
+				:root {
+					--button: 4px;
+				}
+			`;
+			const result = await lintCSS(invalidPattern);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 
@@ -140,7 +180,7 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(invalidPattern);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must follow pattern'),
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 
@@ -539,7 +579,7 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(invalidVarReferences);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must follow pattern'),
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 

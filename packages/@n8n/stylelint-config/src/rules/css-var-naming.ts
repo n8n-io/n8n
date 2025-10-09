@@ -35,15 +35,15 @@ const PROPERTY_VOCABULARY = new Set([
 	'outline-width',
 ]);
 
-// Allowed single-property variables (shorthand properties)
-const ALLOWED_SINGLE_PROPERTIES = new Set([
-	'--shadow',
-	'--radius',
-	'--border-color',
-	'--border-style',
-	'--border-width',
-	'--border',
-	'--font-family',
+// Properties that can be used as standalone single-group variables (without a value)
+const STANDALONE_PROPERTIES = new Set([
+	'shadow',
+	'radius',
+	'border-color',
+	'border-style',
+	'border-width',
+	'border',
+	'font-family',
 ]);
 
 const STATES = new Set([
@@ -112,12 +112,23 @@ interface ValidationResult {
 }
 
 function validateCssVariable(variable: string): ValidationResult {
-	// Allow specific single-property variables
-	if (ALLOWED_SINGLE_PROPERTIES.has(variable)) {
-		return { valid: true };
+	// Split into groups first (drop first empty element from leading --)
+	const groups = variable.slice(2).split('--');
+
+	// Check if this is a single-group variable (e.g., --shadow, --radius, --border-color)
+	if (groups.length === 1) {
+		const singleGroup = groups[0];
+		// Allow standalone properties that are in the STANDALONE_PROPERTIES set
+		if (STANDALONE_PROPERTIES.has(singleGroup)) {
+			return { valid: true };
+		}
+		return {
+			valid: false,
+			reason: 'Must have at least 2 groups separated by double dashes (--property--value minimum)',
+		};
 	}
 
-	// Basic pattern check
+	// Basic pattern check for multi-group variables
 	if (!BASIC_PATTERN.test(variable)) {
 		return {
 			valid: false,
@@ -125,9 +136,6 @@ function validateCssVariable(variable: string): ValidationResult {
 				'Must follow pattern: --[group]--[group]--... with lowercase alphanumerics and single dash within groups',
 		};
 	}
-
-	// Split into groups (drop first empty element from leading --)
-	const groups = variable.slice(2).split('--');
 
 	// Check group count (2-8 groups)
 	if (groups.length < 2) {
