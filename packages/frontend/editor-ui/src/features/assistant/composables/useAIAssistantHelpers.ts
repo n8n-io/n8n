@@ -217,10 +217,15 @@ export const useAIAssistantHelpers = () => {
 	/**
 	 * Prepare workflow execution result data for the AI assistant
 	 * by removing data from nodes
+	 * @param data The execution result data to simplify
+	 * @param options Options for simplification
+	 * @param options.compact If true, removes large inputOverride fields (> 2000 bytes)
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
+		options: { compact?: boolean } = {},
 	): ChatRequest.ExecutionResultData {
+		const { compact = false } = options;
 		const simplifiedResultData: ChatRequest.ExecutionResultData = {
 			runData: {},
 		};
@@ -229,22 +234,49 @@ export const useAIAssistantHelpers = () => {
 		if (data.error) {
 			simplifiedResultData.error = data.error;
 		}
+
+		// Early return if runData is not present
+		if (!data.runData) {
+			return simplifiedResultData;
+		}
+
 		// Map runData, excluding the `data` field from ITaskData
 		for (const key of Object.keys(data.runData)) {
 			const taskDataArray = data.runData[key];
 			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
-				const { data: taskDataContent, ...taskDataWithoutData } = taskData;
+				const { data: _taskDataContent, ...taskDataWithoutData } = taskData;
+
+				// If compact mode is enabled, remove large inputOverride fields
+				if (compact && taskDataWithoutData.inputOverride) {
+					try {
+						const inputOverrideStr = JSON.stringify(taskDataWithoutData.inputOverride);
+						const sizeInBytes = new Blob([inputOverrideStr]).size;
+
+						// If too large, remove inputOverride entirely to maintain type safety
+						if (sizeInBytes > 2000) {
+							delete taskDataWithoutData.inputOverride;
+						}
+					} catch (error) {
+						// Handle circular references or non-serializable data
+						// Remove the problematic field entirely
+						delete taskDataWithoutData.inputOverride;
+					}
+				}
+
 				return taskDataWithoutData;
 			});
 		}
+
 		// Handle lastNodeExecuted if it exists
 		if (data.lastNodeExecuted) {
 			simplifiedResultData.lastNodeExecuted = data.lastNodeExecuted;
 		}
+
 		// Handle metadata if it exists
 		if (data.metadata) {
 			simplifiedResultData.metadata = data.metadata;
 		}
+
 		return simplifiedResultData;
 	}
 

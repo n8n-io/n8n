@@ -95,6 +95,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'mcpApiKey:create',
 	'mcpApiKey:rotate',
 	'chatHub:manage',
+	'chatHub:message',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -117,4 +118,5 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'dataTable:list',
 	'mcpApiKey:create',
 	'mcpApiKey:rotate',
+	'chatHub:message',
 ];

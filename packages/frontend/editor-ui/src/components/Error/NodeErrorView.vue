@@ -17,13 +17,14 @@ import type {
 	NodeError,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { isCommunityPackageName } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useUIStore } from '@/stores/ui.store';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 import {
 	N8nInlineAskAssistantButton,
@@ -32,6 +33,7 @@ import {
 	N8nIconButton,
 	N8nTooltip,
 } from '@n8n/design-system';
+
 type Props = {
 	// TODO: .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;
@@ -52,6 +54,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
+const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
 const workflowId = computed(() => workflowsStore.workflowId);
@@ -444,7 +447,7 @@ async function onAskAssistantClick() {
 		});
 		return;
 	}
-	await assistantStore.initErrorHelper(errorHelp);
+	await chatPanelStore.openWithErrorHelper(errorHelp);
 	assistantStore.trackUserOpenedAssistant({
 		source: 'error',
 		task: 'error',
@@ -754,6 +757,7 @@ async function onAskAssistantClick() {
 		margin-bottom: var(--spacing-xs);
 		margin-top: var(--spacing-xs);
 		flex-direction: row-reverse;
+
 		span {
 			margin-right: var(--spacing-5xs);
 			margin-left: var(--spacing-5xs);
@@ -776,6 +780,7 @@ async function onAskAssistantClick() {
 			width: 100%;
 			overflow: auto;
 			background: var(--color-background-light);
+
 			code {
 				font-size: var(--font-size-s);
 			}
@@ -797,6 +802,7 @@ async function onAskAssistantClick() {
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
+
 		&:hover {
 			color: var(--color-primary);
 		}
