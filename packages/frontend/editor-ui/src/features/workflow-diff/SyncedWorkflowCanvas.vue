@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import CanvasBackground from '@/components/canvas/elements/background/CanvasBackground.vue';
+import CanvasBackground from '@/features/canvas/components/elements/background/CanvasBackground.vue';
 import { useInjectViewportSync } from '@/features/workflow-diff/useViewportSync';
-import type { CanvasConnection, CanvasNode } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/features/canvas/canvas.types';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
-import Canvas from '@/components/canvas/Canvas.vue';
+import Canvas from '@/features/canvas/components/Canvas.vue';
 
 const props = defineProps<{
 	id: string;

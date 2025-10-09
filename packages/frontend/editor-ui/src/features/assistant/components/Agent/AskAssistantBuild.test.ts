@@ -89,7 +89,7 @@ import { fireEvent } from '@testing-library/vue';
 import { faker } from '@faker-js/faker';
 
 import AskAssistantBuild from './AskAssistantBuild.vue';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '../../builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';

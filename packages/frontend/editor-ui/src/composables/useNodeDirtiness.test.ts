@@ -8,7 +8,7 @@ import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CanvasNodeDirtiness } from '@/types';
+import { CanvasNodeDirtiness } from '@/features/canvas/canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
