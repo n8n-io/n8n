@@ -1,0 +1,53 @@
+{
+    "type": "object",
+    "properties": {
+        "accepted": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ehlo": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "envelope": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "envelopeTime": {
+            "type": "integer"
+        },
+        "messageId": {
+            "type": "string"
+        },
+        "messageSize": {
+            "type": "integer"
+        },
+        "messageTime": {
+            "type": "integer"
+        },
+        "rejected": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "response": {
+            "type": "string"
+        }
+    },
+    "version": 6
+}

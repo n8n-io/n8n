@@ -1,0 +1,185 @@
+@use 'mixins/mixins';
+@use './common/var';
+
+@mixin genTheme() {
+	border-color: var(--color-callout-info-border);
+	background-color: var(--color-callout-info-background);
+	color: var(--color-callout-info-font);
+	font-weight: var(--font-weight-regular);
+
+	@include mixins.when(hit) {
+		border-color: var.$tag-primary-color;
+	}
+
+	.el-tag__close {
+		color: var.$color-primary-light-1;
+		&:hover {
+			color: var.$color-white;
+			background-color: var.$color-primary-light-1;
+		}
+	}
+
+	&.el-tag--info {
+		border-color: var(--color-callout-info-border);
+		background-color: var(--color-callout-info-background);
+		color: var(--color-callout-info-font);
+		border-width: 1px;
+		border-style: solid;
+
+		@include mixins.when(hit) {
+			border-color: var.$tag-info-color;
+		}
+
+		.svg-inline--fa {
+			color: var(--color-callout-info-icon);
+		}
+
+		.el-tag__close {
+			color: var.$color-info-light-1;
+			&:hover {
+				color: var.$color-white;
+				background-color: var.$color-info-light-1;
+			}
+		}
+	}
+
+	&.el-tag--success {
+		border-color: var(--color-callout-success-border);
+		background-color: var(--color-callout-success-background);
+		color: var(--color-callout-success-font);
+		border-width: 1px;
+		border-style: solid;
+
+		.svg-inline--fa {
+			color: var(--color-callout-success-icon);
+		}
+
+		@include mixins.when(hit) {
+			border-color: var.$tag-success-color;
+		}
+
+		.el-tag__close {
+			color: var.$color-success-light-1;
+			&:hover {
+				color: var.$color-white;
+				background-color: var.$color-success-light-1;
+			}
+		}
+	}
+
+	&.el-tag--warning {
+		border-color: var(--color-callout-warning-border);
+		background-color: var(--color-callout-warning-background);
+		color: var(--color-callout-warning-font);
+		border-width: 1px;
+		border-style: solid;
+
+		@include mixins.when(hit) {
+			border-color: var.$tag-warning-color;
+		}
+
+		.svg-inline--fa {
+			color: var(--color-callout-warning-icon);
+		}
+
+		.el-tag__close {
+			color: var.$color-warning-light-1;
+			&:hover {
+				color: var.$color-white;
+				background-color: var.$color-warning-light-1;
+			}
+		}
+	}
+
+	&.el-tag--danger {
+		border-color: var(--color-callout-danger-border);
+		background-color: var(--color-callout-danger-background);
+		color: var(--color-callout-danger-font);
+		border-width: 1px;
+		border-style: solid;
+
+		@include mixins.when(hit) {
+			border-color: var.$tag-danger-color;
+		}
+
+		.svg-inline--fa {
+			color: var(--color-callout-danger-icon);
+		}
+
+		.el-tag__close {
+			color: var.$color-danger-light-1;
+			&:hover {
+				color: var.$color-white;
+				background-color: var.$color-danger-light-1;
+			}
+		}
+	}
+}
+
+@include mixins.b(tag) {
+	@include genTheme();
+	display: inline-block;
+	padding: var.$tag-padding;
+	font-size: var.$tag-font-size;
+	color: var.$tag-primary-color;
+	border-width: 1px;
+	border-style: solid;
+	border-radius: var.$tag-border-radius;
+	box-sizing: border-box;
+	white-space: nowrap;
+	line-height: 1;
+
+	.el-icon.el-tag__close {
+		border-radius: 50%;
+		text-align: center;
+		position: relative;
+		cursor: pointer;
+		font-size: 12px;
+		height: 16px;
+		width: 16px;
+		line-height: 16px;
+		margin-top: 0;
+		margin-right: 0;
+
+		&::before {
+			display: block;
+		}
+	}
+
+	@include mixins.m(dark) {
+		@include genTheme();
+	}
+
+	@include mixins.m(plain) {
+		@include genTheme();
+	}
+
+	@include mixins.m(medium) {
+		padding: 12px;
+
+		.el-icon.el-tag__close {
+			transform: scale(0.8);
+		}
+	}
+
+	@include mixins.m(small) {
+		height: 24px;
+		padding: 0 8px;
+		line-height: 22px;
+
+		.el-icon.el-tag__close {
+			transform: scale(0.8);
+		}
+	}
+
+	@include mixins.m(mini) {
+		height: 20px;
+		padding: 0 5px;
+		line-height: 16px;
+
+		.el-icon.el-tag__close {
+			margin-left: -3px;
+			transform: scale(0.7);
+		}
+	}
+}

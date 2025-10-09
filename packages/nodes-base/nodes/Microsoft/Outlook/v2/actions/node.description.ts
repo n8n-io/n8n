@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+
 import * as calendar from './calendar';
 import * as contact from './contact';
 import * as draft from './draft';
@@ -8,6 +9,7 @@ import * as folder from './folder';
 import * as folderMessage from './folderMessage';
 import * as message from './message';
 import * as messageAttachment from './messageAttachment';
+import { sendAndWaitWebhooksDescription } from '../../../../../utils/sendAndWait/descriptions';
 
 export const description: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
@@ -20,8 +22,8 @@ export const description: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Outlook',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{
@@ -29,6 +31,7 @@ export const description: INodeTypeDescription = {
 			required: true,
 		},
 	],
+	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
 			displayName: 'Resource',

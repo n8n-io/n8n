@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nInlineTextEdit > should render correctly 1`] = `
+"<div class="inlineRenameRoot" title="Test Value" dir="ltr" data-dismissable-layer="">
+  <div data-placeholder-shown="" style="display: inline-grid; width: 64px; max-width: 200px; z-index: 1;" class="inlineRenameArea" data-test-id="inline-editable-area"><span class="measureSpan">Test Value</span><span tabindex="0" data-placeholder-shown="" style="white-space: pre; user-select: none; grid-area: 1 / 1 / auto / auto; overflow: hidden; text-overflow: ellipsis; width: 64px; max-width: 200px; z-index: 1;" data-test-id="inline-edit-preview" class="inlineRenamePreview">Test Value</span><input placeholder="Enter text..." maxlength="100" aria-label="editable input" style="all: unset; grid-area: 1 / 1 / auto / auto; visibility: hidden; width: 64px; max-width: 200px; z-index: 1;" class="inlineRenameInput" data-test-id="inline-edit-input" value="Test Value"></div>
+  <!--v-if-->
+</div>"
+`;

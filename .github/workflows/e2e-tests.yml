@@ -1,0 +1,78 @@
+name: End-to-End tests
+run-name: E2E Tests ${{ inputs.branch }} - ${{ inputs.user }}
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        default: 'master'
+      spec:
+        description: 'Specify specs.'
+        required: false
+        default: 'e2e/*'
+        type: string
+      user:
+        description: 'User who kicked this off.'
+        required: false
+        default: 'schedule'
+      start-url:
+        description: 'URL to call after workflow is kicked off.'
+        required: false
+        default: ''
+      success-url:
+        description: 'URL to call after workflow is done.'
+        required: false
+        default: ''
+
+jobs:
+  calls-start-url:
+    name: Calls start URL
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.start-url != '' }}
+    steps:
+      - name: Calls start URL
+        env:
+          START_URL: ${{ github.event.inputs.start-url }}
+        run: |
+          [[ "${{ env.START_URL }}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' "${{ env.START_URL }}" || echo ""
+        shell: bash
+
+  run-e2e-tests:
+    name: E2E
+    uses: ./.github/workflows/e2e-reusable.yml
+    with:
+      branch: ${{ github.event.inputs.branch || 'master' }}
+      user: ${{ github.event.inputs.user || 'PR User' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/*' }}
+    secrets: inherit
+
+  run-playwright-tests:
+    name: Playwright
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    secrets: inherit
+
+  calls-success-url-notify:
+    name: Calls success URL and notifies
+    runs-on: ubuntu-latest
+    needs: [run-e2e-tests, run-playwright-tests]
+    if: ${{ github.event.inputs.success-url != '' }}
+    steps:
+      - name: Notify Slack on failure
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        if: failure()
+        with:
+          status: ${{ job.status }}
+          channel: '#alerts-build'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: E2E failure for branch `${{ inputs.branch || 'master' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: Call Success URL - optionally
+        env:
+          SUCCESS_URL: ${{ github.event.inputs.success-url }}
+        run: |
+          [[ "${{ env.SUCCESS_URL }}" != "" ]] && curl -v "${{ env.SUCCESS_URL }}" || echo ""
+        shell: bash

@@ -1,0 +1,181 @@
+name: 'Release: Publish'
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - 'release/*'
+
+jobs:
+  build-arm64:
+    runs-on: blacksmith-4vcpu-ubuntu-2204-arm
+    if: github.event.pull_request.merged == true
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup and Build ARM64
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        env:
+          N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
+
+  publish-to-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+    env:
+      NPM_CONFIG_PROVENANCE: true
+    outputs:
+      release: ${{ steps.set-release.outputs.release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set release version in env
+        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs-github
+        env:
+          N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
+
+      - name: Dry-run publishing
+        run: |
+          pnpm --filter n8n publish --no-git-checks --dry-run
+          pnpm publish -r --filter '!n8n' --no-git-checks --dry-run
+
+      - name: Pre publishing changes
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          node .github/scripts/trim-fe-packageJson.js
+          node .github/scripts/ensure-provenance-fields.mjs
+          cp README.md packages/cli/README.md
+          sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
+
+      - name: Publish n8n to NPM with rc tag
+        env:
+          PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: pnpm --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
+
+      - name: Publish other packages to NPM with latest tag
+        env:
+          PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --no-git-checks
+
+      - name: Cleanup rc tag
+        run: npm dist-tag rm n8n rc
+        continue-on-error: true
+
+      - id: set-release
+        run: echo "release=${{ env.RELEASE }}" >> "$GITHUB_OUTPUT"
+
+  publish-to-docker-hub:
+    name: Publish to DockerHub
+    needs: [publish-to-npm, build-arm64]
+    uses: ./.github/workflows/docker-build-push.yml
+    with:
+      n8n_version: ${{ needs.publish-to-npm.outputs.release }}
+      release_type: stable
+    secrets: inherit
+
+  create-github-release:
+    name: Create a GitHub Release
+    needs: [publish-to-npm, publish-to-docker-hub]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 5
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Create a Release on GitHub
+        uses: ncipollo/release-action@1c89adf39833729d8f85a31ccbc451b078733c80 # v1
+        with:
+          commit: ${{github.event.pull_request.base.ref}}
+          tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
+          prerelease: true
+          makeLatest: false
+          body: ${{github.event.pull_request.body}}
+
+  create-sentry-release:
+    name: Create a Sentry Release
+    needs: [publish-to-npm, publish-to-docker-hub]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 5
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Restore Turbo Cache
+        uses: ./.github/actions/setup-nodejs-github
+
+      - name: Create a frontend release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/frontend/editor-ui/dist
+
+      - name: Create a backend release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
+
+      - name: Create a task runner release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/core/dist packages/workflow/dist/esm packages/@n8n/task-runner/dist
+
+  generate-and-attach-sbom:
+    name: Generate and Attach SBOM to Release
+    needs: [publish-to-npm, create-github-release]
+    uses: ./.github/workflows/sbom-generation-callable.yml
+    with:
+      n8n_version: ${{ needs.publish-to-npm.outputs.release }}
+      release_tag_ref: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
+    secrets: inherit
+
+  trigger-release-note:
+    name: Trigger a release note
+    needs: [publish-to-npm, create-github-release]
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger a release note
+        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{ needs.publish-to-npm.outputs.release }}"}'
+
+  # merge-back-into-master:
+  #   name: Merge back into master
+  #   needs: [publish-to-npm, create-github-release]
+  #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+  # v4.1.1
+  #         fetch-depth: 0
+  #     - run: |
+  #         git checkout --track origin/master
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+  #         git merge --ff n8n@${{ needs.publish-to-npm.outputs.release }}
+  #         git push origin master
+  #         git push origin :${{github.event.pull_request.base.ref}}

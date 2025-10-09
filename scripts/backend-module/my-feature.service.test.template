@@ -1,0 +1,22 @@
+import { testDb, testModules } from '@n8n/backend-test-utils';
+
+import { MyFeatureService } from '../my-feature.service';
+
+beforeAll(async () => {
+	await testModules.loadModules(['my-feature']);
+	await testDb.init();
+});
+
+beforeEach(async () => {
+	await testDb.truncate(['MyFeatureUnit']);
+});
+
+afterAll(async () => {
+	await testDb.terminate();
+});
+
+describe('start', () => {
+	it('should do something', () => {
+		expect(true).toBeTruthy();
+	});
+});

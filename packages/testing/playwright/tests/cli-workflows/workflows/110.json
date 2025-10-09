@@ -1,0 +1,70 @@
+{
+	"createdAt": "2021-03-09T09:32:25.259Z",
+	"updatedAt": "2021-03-09T09:32:25.259Z",
+	"id": "110",
+	"name": "GraphQL",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "9d428026-3835-4357-a2a2-07ec644a11fa"
+		},
+		{
+			"parameters": {
+				"requestMethod": "GET",
+				"endpoint": "https://countries.trevorblades.com/",
+				"query": "query{\n  country(code:\"DE\"){\n    name,code,capital,currency\n  }\n}"
+			},
+			"name": "GraphQL",
+			"type": "n8n-nodes-base.graphql",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"id": "f74bf4cd-1dcf-4103-bd16-ac5e8c9eaa4a"
+		},
+		{
+			"parameters": {
+				"functionCode": "testData = JSON.stringify({ country: { code: \"DE\", capital: \"Berlin\", currency: \"EUR\", name: \"Germany\" } })\n\nif(JSON.stringify($node['GraphQL'].json.data) !== testData){\n  throw new Error('Function node data is not equal to GraphQL output');\n}\nreturn items;"
+			},
+			"name": "Function",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [650, 300],
+			"id": "238509ad-714e-420a-a521-5b2e9d973c38"
+		}
+	],
+	"connections": {
+		"GraphQL": {
+			"main": [
+				[
+					{
+						"node": "Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "GraphQL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

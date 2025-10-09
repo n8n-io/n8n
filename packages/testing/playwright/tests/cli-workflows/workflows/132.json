@@ -1,0 +1,82 @@
+{
+	"createdAt": "2021-03-12T15:55:16.919Z",
+	"updatedAt": "2021-03-12T15:55:16.919Z",
+	"id": "132",
+	"name": "Mandrill:Message:sendTemplate sendHTML",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "d6242130-9d76-4db0-8fc8-5b2cbd24b5fe"
+		},
+		{
+			"parameters": {
+				"template": "testtemplate",
+				"fromEmail": "=random{{Date.now()}}@email.test",
+				"toEmail": "=nodeqa{{Date.now()}}@email.test",
+				"options": {}
+			},
+			"name": "Mandrill",
+			"type": "n8n-nodes-base.mandrill",
+			"typeVersion": 1,
+			"position": [500, 250],
+			"credentials": {
+				"mandrillApi": {
+					"id": "100",
+					"name": "Mandrill API creds"
+				}
+			},
+			"id": "e31f6f3e-eee2-4047-90dc-acc08c80438d"
+		},
+		{
+			"parameters": {
+				"operation": "sendHtml",
+				"fromEmail": "=random{{Date.now()}}@email.test",
+				"toEmail": "=nodeqa{{Date.now()}}@email.test",
+				"options": {
+					"html": "=<h2>This is a the html email from n8n workflow</h2>"
+				}
+			},
+			"name": "Mandrill1",
+			"type": "n8n-nodes-base.mandrill",
+			"typeVersion": 1,
+			"position": [500, 400],
+			"credentials": {
+				"mandrillApi": {
+					"id": "100",
+					"name": "Mandrill API creds"
+				}
+			},
+			"id": "da056d97-7a2b-457d-8236-5ce62f35ab17"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Mandrill",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mandrill1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

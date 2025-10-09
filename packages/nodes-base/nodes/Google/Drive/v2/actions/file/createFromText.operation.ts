@@ -5,11 +5,14 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
-import { googleApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+
 import { DRIVE } from '../../helpers/interfaces';
 import { setFileProperties, setParentFolder, setUpdateCommonParams } from '../../helpers/utils';
-import { updateDisplayOptions } from '@utils/utilities';
+import { googleApiRequest } from '../../transport';
+import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
+
+import FormData from 'form-data';
 
 const properties: INodeProperties[] = [
 	{
@@ -87,14 +90,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		extractValue: true,
 	}) as string;
 
-	const bodyParameters = setFileProperties(
-		{
-			name,
-			parents: [setParentFolder(folderId, driveId)],
-			mimeType,
-		},
-		options,
-	);
+	const metadata = {
+		name,
+		parents: [setParentFolder(folderId, driveId)],
+		mimeType,
+	};
+
+	const bodyParameters = setFileProperties(metadata, options);
 
 	const qs = setUpdateCommonParams(
 		{
@@ -145,19 +147,29 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const content = Buffer.from(this.getNodeParameter('content', i, '') as string, 'utf8');
 		const contentLength = content.byteLength;
 
+		const multiPartBody = new FormData();
+		multiPartBody.append('metadata', JSON.stringify(metadata), {
+			contentType: 'application/json',
+		});
+		multiPartBody.append('data', content, {
+			contentType: mimeType,
+			knownLength: contentLength,
+		});
+
 		const uploadData = await googleApiRequest.call(
 			this,
 			'POST',
 			'/upload/drive/v3/files',
-			content,
+			multiPartBody.getBuffer(),
 			{
-				uploadType: 'media',
+				uploadType: 'multipart',
+				supportsAllDrives: true,
 			},
 			undefined,
 			{
 				headers: {
-					'Content-Type': mimeType,
-					'Content-Length': contentLength,
+					'Content-Type': `multipart/related; boundary=${multiPartBody.getBoundary()}`,
+					'Content-Length': multiPartBody.getLengthSync(),
 				},
 			},
 		);

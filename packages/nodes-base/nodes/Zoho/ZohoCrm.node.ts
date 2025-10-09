@@ -5,43 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-import {
-	addGetAllFilterOptions,
-	adjustAccountPayload,
-	adjustContactPayload,
-	adjustDealPayload,
-	adjustInvoicePayload,
-	adjustInvoicePayloadOnUpdate,
-	adjustLeadPayload,
-	adjustProductDetails,
-	adjustProductPayload,
-	adjustPurchaseOrderPayload,
-	adjustQuotePayload,
-	adjustSalesOrderPayload,
-	adjustVendorPayload,
-	getFields,
-	getPicklistOptions,
-	handleListing,
-	throwOnEmptyUpdate,
-	throwOnMissingProducts,
-	toLoadOptions,
-	zohoApiRequest,
-	zohoApiRequestAllItems,
-} from './GenericFunctions';
-
-import type {
-	CamelCaseResource,
-	GetAllFilterOptions,
-	LoadedAccounts,
-	LoadedContacts,
-	LoadedDeals,
-	LoadedProducts,
-	LoadedVendors,
-	ProductDetails,
-} from './types';
 
 import {
 	accountFields,
@@ -65,6 +30,39 @@ import {
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
+import {
+	addGetAllFilterOptions,
+	adjustAccountPayload,
+	adjustContactPayload,
+	adjustDealPayload,
+	adjustInvoicePayload,
+	adjustInvoicePayloadOnUpdate,
+	adjustLeadPayload,
+	adjustProductDetails,
+	adjustProductPayload,
+	adjustPurchaseOrderPayload,
+	adjustQuotePayload,
+	adjustSalesOrderPayload,
+	adjustVendorPayload,
+	getFields,
+	getPicklistOptions,
+	handleListing,
+	throwOnEmptyUpdate,
+	throwOnMissingProducts,
+	toLoadOptions,
+	zohoApiRequest,
+	zohoApiRequestAllItems,
+} from './GenericFunctions';
+import type {
+	CamelCaseResource,
+	GetAllFilterOptions,
+	LoadedAccounts,
+	LoadedContacts,
+	LoadedDeals,
+	LoadedProducts,
+	LoadedVendors,
+	ProductDetails,
+} from './types';
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -78,8 +76,9 @@ export class ZohoCrm implements INodeType {
 		defaults: {
 			name: 'Zoho CRM',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'zohoOAuth2Api',

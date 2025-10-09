@@ -1,20 +1,22 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { TokenTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { TokenTextSplitter } from './TokenTextSplitter';
 
 export class TextSplitterTokenSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Token Splitter',
 		name: 'textSplitterTokenSplitter',
 		icon: 'fa:grip-lines-vertical',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by tokens',
@@ -34,24 +36,26 @@ export class TextSplitterTokenSplitter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTextSplitter],
+
+		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiDocument]),
 			{
 				displayName: 'Chunk Size',
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
+				description: 'Maximum number of tokens per chunk',
 			},
 			{
 				displayName: 'Chunk Overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,
+				description: 'Number of tokens shared between consecutive chunks to preserve context',
 			},
 		],
 	};
@@ -69,9 +73,6 @@ export class TextSplitterTokenSplitter implements INodeType {
 			disallowedSpecial: 'all',
 			encodingName: 'cl100k_base',
 			keepSeparator: false,
-			// allowedSpecial: 'all',
-			// disallowedSpecial: 'all',
-			// encodingName: 'cl100k_base',
 		});
 
 		return {

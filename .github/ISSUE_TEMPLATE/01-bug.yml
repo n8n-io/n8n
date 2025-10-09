@@ -1,0 +1,105 @@
+name: Bug Report
+description: Create a bug report to help us improve
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > ⚠️ This form is for reporting bugs only.
+        > ❌ Please do not use this form for general support, feature requests, or questions.
+        > 💬 For help and general inquiries, visit our [community support forum](https://community.n8n.io).
+        > ☁️ If you're experiencing issues with cloud instances not starting or license-related problems, contact [n8n support directly](mailto:help@n8n.io).
+        ---
+        Thank you for helping us improve n8n!
+        To ensure we can address your report efficiently, please fill out all sections in English and provide as much detail as possible.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen
+    validations:
+      required: true
+  - type: textarea
+    id: debug-info
+    attributes:
+      label: Debug Info
+      description: This can be found under Help > About n8n > Copy debug information
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: '## Environment'
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: ex. Ubuntu Linux 22.04
+    validations:
+      required: true
+  - type: input
+    id: n8n-version
+    attributes:
+      label: n8n Version
+      placeholder: ex. 1.25.0
+    validations:
+      required: true
+  - type: input
+    id: nodejs-version
+    attributes:
+      label: Node.js Version
+      placeholder: ex. 22.16.0
+    validations:
+      required: true
+  - type: dropdown
+    id: db
+    attributes:
+      label: Database
+      options:
+        - SQLite (default)
+        - PostgreSQL
+        - MySQL
+        - MariaDB
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: execution-mode
+    attributes:
+      label: Execution mode
+      description: '[Info](https://docs.n8n.io/hosting/scaling/execution-modes-processes/)'
+      options:
+        - main (default)
+        - queue
+        - own (deprecated)
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: Hosting
+      options:
+        - n8n cloud
+        - self hosted
+      default: 0
+    validations:
+      required: true

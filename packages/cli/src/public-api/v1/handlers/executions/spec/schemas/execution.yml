@@ -24,6 +24,8 @@ properties:
   stoppedAt:
     type: string
     format: date-time
+    nullable: true
+    description: The time at which the execution stopped. Will only be null for executions that still have the status 'running'.
   workflowId:
     type: number
     example: '1000'
@@ -33,3 +35,6 @@ properties:
     format: date-time
   customData:
     type: object
+  status:
+    type: string
+    enum: ['canceled', 'crashed', 'error', 'new', 'running', 'success', 'unknown', 'waiting']

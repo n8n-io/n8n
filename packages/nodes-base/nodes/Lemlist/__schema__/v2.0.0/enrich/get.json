@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "enrichmentId": {
+            "type": "string"
+        },
+        "enrichmentStatus": {
+            "type": "string"
+        },
+        "input": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 2
+}

@@ -1,0 +1,74 @@
+name: 'Release: Create Pull Request'
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        default: 'master'
+
+      release-type:
+        description: 'A SemVer release type.'
+        required: true
+        type: choice
+        default: 'minor'
+        options:
+          - patch
+          - minor
+          - major
+          - experimental
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.base-branch }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+
+      - run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - name: Bump package versions
+        run: |
+          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release-type }}
+
+      - name: Update Changelog
+        run: node .github/scripts/update-changelog.mjs
+
+      - name: Push the base branch
+        env:
+          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+        run: |
+          git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
+
+      - name: Push the release branch, and Create the PR
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
+        with:
+          base: 'release/${{ env.NEXT_RELEASE }}'
+          branch: 'release-pr/${{ env.NEXT_RELEASE }}'
+          commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          delete-branch: true
+          labels: release,release:${{ github.event.inputs.release-type }}
+          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          body-path: 'CHANGELOG-${{ env.NEXT_RELEASE }}.md'

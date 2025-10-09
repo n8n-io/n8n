@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "event_id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

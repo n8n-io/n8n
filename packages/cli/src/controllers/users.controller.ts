@@ -1,29 +1,49 @@
-import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
+import {
+	RoleChangeRequestDto,
+	SettingsUpdateRequestDto,
+	UsersListFilterDto,
+	usersListSchema,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { PublicUser } from '@n8n/db';
+import {
+	Project,
+	User,
+	AuthIdentity,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+	AuthenticatedRequest,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
+import {
+	GlobalScope,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+	Body,
+	Param,
+	Query,
+} from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import { Project } from '@/databases/entities/project';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { GlobalScope, Delete, Get, RestController, Patch, Licensed, Body } from '@/decorators';
-import { Param } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { PublicUser } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
-import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
-import { ProjectService } from '@/services/project.service';
+import { UserRequest } from '@/requests';
+import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { hasGlobalScope } from '@n8n/permissions';
 
 @RestController('/users')
 export class UsersController {
@@ -40,6 +60,7 @@ export class UsersController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
+		private readonly folderService: FolderService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -52,18 +73,14 @@ export class UsersController {
 
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
-		listQueryOptions: ListQuery.Options,
+		listQueryOptions: UsersListFilterDto,
 	) {
-		const { take, select, filter } = listQueryOptions;
+		const { select } = listQueryOptions;
 
 		// remove fields added to satisfy query
 
-		if (take && select && !select?.id) {
+		if (select !== undefined && !select.includes('id')) {
 			for (const user of publicUsers) delete user.id;
-		}
-
-		if (filter?.isOwner) {
-			for (const user of publicUsers) delete user.role;
 		}
 
 		// remove computed fields (unselectable)
@@ -79,25 +96,45 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	@Get('/', { middlewares: listQueryMiddleware })
+	@Get('/')
 	@GlobalScope('user:list')
-	async listUsers(req: ListQuery.Request) {
-		const { listQueryOptions } = req;
+	async listUsers(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query listQueryOptions: UsersListFilterDto,
+	) {
+		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
 
-		const findManyOptions = await this.userRepository.toFindManyOptions(listQueryOptions);
+		const response = await userQuery.getManyAndCount();
 
-		const users = await this.userRepository.find(findManyOptions);
+		const [users, count] = response;
 
-		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(
-				async (u) =>
-					await this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
-			),
+		const withInviteUrl = hasGlobalScope(req.user, 'user:create');
+
+		const publicUsers = await Promise.all(
+			users.map(async (u) => {
+				const user = await this.userService.toPublic(u, {
+					withInviteUrl,
+					inviterId: req.user.id,
+				});
+				if (listQueryOptions.select && !listQueryOptions.select?.includes('role')) {
+					delete user.role;
+				}
+				return {
+					...user,
+					projectRelations: u.projectRelations?.map((pr) => ({
+						id: pr.projectId,
+						role: pr.role.slug, // normalize role for frontend
+						name: pr.project.name,
+					})),
+				};
+			}),
 		);
 
-		return listQueryOptions
-			? this.removeSupplementaryFields(publicUsers, listQueryOptions)
-			: publicUsers;
+		return usersListSchema.parse({
+			count,
+			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+		});
 	}
 
 	@Get('/:id/password-reset-link')
@@ -105,12 +142,16 @@ export class UsersController {
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
+			relations: ['role'],
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
 		}
 
-		if (req.user.role === 'global:admin' && user.role === 'global:owner') {
+		if (
+			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
+			user.role.slug === GLOBAL_OWNER_ROLE.slug
+		) {
 			throw new ForbiddenError('Admin cannot reset password of global owner');
 		}
 
@@ -154,7 +195,10 @@ export class UsersController {
 
 		const { transferId } = req.query;
 
-		const userToDelete = await this.userRepository.findOneBy({ id: idToDelete });
+		const userToDelete = await this.userRepository.findOne({
+			where: { id: idToDelete },
+			relations: ['role'],
+		});
 
 		if (!userToDelete) {
 			throw new NotFoundError(
@@ -162,7 +206,7 @@ export class UsersController {
 			);
 		}
 
-		if (userToDelete.role === 'global:owner') {
+		if (userToDelete.role.slug === GLOBAL_OWNER_ROLE.slug) {
 			throw new ForbiddenError('Instance owner cannot be deleted.');
 		}
 
@@ -179,9 +223,9 @@ export class UsersController {
 		let transfereeId;
 
 		if (transferId) {
-			const transfereePersonalProject = await this.projectRepository.findOneBy({ id: transferId });
+			const transfereeProject = await this.projectRepository.findOneBy({ id: transferId });
 
-			if (!transfereePersonalProject) {
+			if (!transfereeProject) {
 				throw new NotFoundError(
 					'Request to delete a user failed because the transferee project was not found in DB',
 				);
@@ -189,8 +233,7 @@ export class UsersController {
 
 			const transferee = await this.userRepository.findOneByOrFail({
 				projectRelations: {
-					projectId: transfereePersonalProject.id,
-					role: 'project:personalOwner',
+					projectId: transfereeProject.id,
 				},
 			});
 
@@ -199,19 +242,23 @@ export class UsersController {
 			await this.userService.getManager().transaction(async (trx) => {
 				await this.workflowService.transferAll(
 					personalProjectToDelete.id,
-					transfereePersonalProject.id,
+					transfereeProject.id,
 					trx,
 				);
 				await this.credentialsService.transferAll(
 					personalProjectToDelete.id,
-					transfereePersonalProject.id,
+					transfereeProject.id,
+					trx,
+				);
+
+				await this.folderService.transferAllFoldersToProject(
+					personalProjectToDelete.id,
+					transfereeProject.id,
 					trx,
 				);
 			});
 
-			await this.projectService.clearCredentialCanUseExternalSecretsCache(
-				transfereePersonalProject.id,
-			);
+			await this.projectService.clearCredentialCanUseExternalSecretsCache(transfereeProject.id);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
@@ -228,11 +275,11 @@ export class UsersController {
 		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
 
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await this.workflowService.delete(userToDelete, workflowId);
+			await this.workflowService.delete(userToDelete, workflowId, true);
 		}
 
 		for (const credential of ownedCredentials) {
-			await this.credentialsService.delete(credential);
+			await this.credentialsService.delete(userToDelete, credential.id);
 		}
 
 		await this.userService.getManager().transaction(async (trx) => {
@@ -267,20 +314,29 @@ export class UsersController {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const targetUser = await this.userRepository.findOneBy({ id });
+		const targetUser = await this.userRepository.findOne({
+			where: { id },
+			relations: ['role'],
+		});
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
 		}
 
-		if (req.user.role === 'global:admin' && targetUser.role === 'global:owner') {
+		if (
+			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
+			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
+		) {
 			throw new ForbiddenError(NO_ADMIN_ON_OWNER);
 		}
 
-		if (req.user.role === 'global:owner' && targetUser.role === 'global:owner') {
+		if (
+			req.user.role.slug === GLOBAL_OWNER_ROLE.slug &&
+			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
+		) {
 			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 
-		await this.userService.update(targetUser.id, { role: payload.newRoleName });
+		await this.userService.changeUserRole(req.user, targetUser, payload);
 
 		this.eventService.emit('user-changed-role', {
 			userId: req.user.id,

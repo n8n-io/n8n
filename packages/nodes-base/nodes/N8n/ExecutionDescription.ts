@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { getCursorPaginator } from './GenericFunctions';
 import { workflowIdLocator } from './WorkflowLocator';
 

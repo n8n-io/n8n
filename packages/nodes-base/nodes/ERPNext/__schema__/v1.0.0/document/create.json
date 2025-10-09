@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "creation": {
+            "type": "string"
+        },
+        "disabled": {
+            "type": "integer"
+        },
+        "docstatus": {
+            "type": "integer"
+        },
+        "doctype": {
+            "type": "string"
+        },
+        "idx": {
+            "type": "integer"
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_by": {
+            "type": "string"
+        },
+        "naming_series": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

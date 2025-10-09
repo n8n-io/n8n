@@ -1,9 +1,8 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
-
 import { parseString } from 'xml2js';
 
-import { SPLUNK } from '../../v1/types';
 import type { SplunkError, SplunkFeedResponse } from './interfaces';
+import { SPLUNK } from '../../v1/types';
 
 function compactEntryContent(splunkObject: any): any {
 	if (typeof splunkObject !== 'object') {

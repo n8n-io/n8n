@@ -1,6 +1,7 @@
+import { testDb, mockInstance } from '@n8n/backend-test-utils';
+
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 import {
 	createMember,
 	createMemberWithApiKey,
@@ -8,11 +9,11 @@ import {
 	getUserById,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
-
-import * as testDb from '../shared/test-db';
+import { createRole } from '@test-integration/db/roles';
 
 describe('Users in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
+
 	mockInstance(Telemetry);
 
 	beforeAll(async () => {
@@ -61,13 +62,32 @@ describe('Users in Public API', () => {
 			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
 
+		it('should fail if role does not exist', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:advancedPermissions');
+			const owner = await createOwnerWithApiKey();
+			const payload = [{ email: 'test@test.com', role: 'non-existing-role' }];
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).post('/users').send(payload);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'Role non-existing-role does not exist');
+		});
+
 		it('should create a user', async () => {
 			/**
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
 			const owner = await createOwnerWithApiKey();
-			await createOwnerWithApiKey();
 			const payload = [{ email: 'test@test.com', role: 'global:admin' }];
 
 			/**
@@ -95,7 +115,28 @@ describe('Users in Public API', () => {
 			expect(returnedUser.id).toBe(storedUser.id);
 			expect(returnedUser.email).toBe(storedUser.email);
 			expect(returnedUser.email).toBe(payloadUser.email);
-			expect(storedUser.role).toBe(payloadUser.role);
+			expect(storedUser.role.slug).toBe(payloadUser.role);
+		});
+
+		it('should create a user with an existing custom role', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:advancedPermissions');
+			const owner = await createOwnerWithApiKey();
+			const customRole = 'custom:role';
+			await createRole({ slug: customRole, displayName: 'Custom role', roleType: 'global' });
+			const payload = [{ email: 'test@test.com', role: customRole }];
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).post('/users').send(payload);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(201);
 		});
 	});
 
@@ -275,7 +316,34 @@ describe('Users in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			const storedUser = await getUserById(member.id);
-			expect(storedUser.role).toBe(payload.newRoleName);
+			expect(storedUser.role.slug).toBe(payload.newRoleName);
+		});
+
+		it('should change a user role to an existing custom role', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:advancedPermissions');
+			const owner = await createOwnerWithApiKey();
+			const member = await createMember();
+			const customRole = 'custom:role';
+			await createRole({ slug: customRole, displayName: 'Custom role', roleType: 'global' });
+			const payload = { newRoleName: customRole };
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/role`)
+				.send(payload);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(204);
+			const storedUser = await getUserById(member.id);
+			expect(storedUser.role.slug).toBe(payload.newRoleName);
 		});
 	});
 });

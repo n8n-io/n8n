@@ -14,7 +14,7 @@ export class Switch extends VersionedNodeType {
 			iconColor: 'light-blue',
 			group: ['transform'],
 			description: 'Route items depending on defined expression or rules',
-			defaultVersion: 3.2,
+			defaultVersion: 3.3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -23,6 +23,7 @@ export class Switch extends VersionedNodeType {
 			3: new SwitchV3(baseDescription),
 			3.1: new SwitchV3(baseDescription),
 			3.2: new SwitchV3(baseDescription),
+			3.3: new SwitchV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

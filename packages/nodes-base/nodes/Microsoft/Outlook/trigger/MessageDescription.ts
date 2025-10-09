@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { messageFields } from '../v2/helpers/utils';
 
 export const properties: INodeProperties[] = [

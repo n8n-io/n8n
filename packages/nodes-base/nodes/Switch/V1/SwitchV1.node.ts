@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 export class SwitchV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -20,12 +20,12 @@ export class SwitchV1 implements INodeType {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
 			outputs: [
-				NodeConnectionType.Main,
-				NodeConnectionType.Main,
-				NodeConnectionType.Main,
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.Main,
 			],
 			outputNames: ['0', '1', '2', '3'],
 			properties: [

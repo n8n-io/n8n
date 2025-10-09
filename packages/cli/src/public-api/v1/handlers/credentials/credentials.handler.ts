@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import type { CredentialsEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type express from 'express';
-import { Container } from 'typedi';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 import {
@@ -20,12 +20,13 @@ import {
 	toJsonSchema,
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
-import { projectScope } from '../../shared/middlewares/global.middleware';
+import { apiKeyHasScope, projectScope } from '../../shared/middlewares/global.middleware';
 
 export = {
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
+		apiKeyHasScope('credential:create'),
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
@@ -47,6 +48,7 @@ export = {
 		},
 	],
 	transferCredential: [
+		apiKeyHasScope('credential:move'),
 		projectScope('credential:move', 'credential'),
 		async (req: CredentialRequest.Transfer, res: express.Response) => {
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
@@ -61,6 +63,7 @@ export = {
 		},
 	],
 	deleteCredential: [
+		apiKeyHasScope('credential:delete'),
 		projectScope('credential:delete', 'credential'),
 		async (
 			req: CredentialRequest.Delete,
@@ -69,7 +72,7 @@ export = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (!['global:owner', 'global:admin'].includes(req.user.role)) {
+			if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
 				const shared = await getSharedCredentials(req.user.id, credentialId);
 
 				if (shared?.role === 'credential:owner') {

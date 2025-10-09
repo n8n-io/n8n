@@ -1,0 +1,70 @@
+{
+    "type": "object",
+    "properties": {
+        "hasScreen": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isAvailable": {
+            "type": "boolean"
+        },
+        "isConditional": {
+            "type": "boolean"
+        },
+        "isGlobal": {
+            "type": "boolean"
+        },
+        "isInitial": {
+            "type": "boolean"
+        },
+        "isLooped": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "to": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "string"
+                },
+                "statusCategory": {
+                    "type": "object",
+                    "properties": {
+                        "colorName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

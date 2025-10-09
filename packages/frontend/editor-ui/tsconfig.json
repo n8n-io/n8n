@@ -1,0 +1,36 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"moduleResolution": "bundler",
+		"rootDirs": [
+			".",
+			"../@n8n/rest-api-client/src",
+			"../@n8n/composables/src",
+			"../@n8n/chat/src",
+			"../@n8n/design-system/src"
+		],
+		"outDir": "dist",
+		"types": [
+			"vitest/globals",
+			"unplugin-icons/types/vue",
+			"../@n8n/design-system/src/shims-modules.d.ts"
+		],
+		"paths": {
+			"@/*": ["./src/*"],
+			"@n8n/rest-api-client*": ["../@n8n/rest-api-client/src*"],
+			"@n8n/composables*": ["../@n8n/composables/src*"],
+			"@n8n/constants*": ["../../@n8n/constants/src*"],
+			"@n8n/chat*": ["../@n8n/chat/src*"],
+			"@n8n/design-system*": ["../@n8n/design-system/src*"],
+			"@n8n/i18n*": ["../@n8n/i18n/src*"],
+			"@n8n/stores*": ["../@n8n/stores/src*"],
+			"@n8n/api-types*": ["../../@n8n/api-types/src*"],
+			"@n8n/utils*": ["../../@n8n/utils/src*"]
+		},
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
+	"exclude": ["src/plugins/codemirror/typescript/worker/**/*.d.ts"]
+}

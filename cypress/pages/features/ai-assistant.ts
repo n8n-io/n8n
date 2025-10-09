@@ -1,18 +1,19 @@
-import { overrideFeatureFlag } from '../../composables/featureFlags';
 import { BasePage } from '../base';
 
-const AI_ASSISTANT_FEATURE = {
-	name: 'aiAssistant',
-	experimentName: '021_ai_debug_helper',
-	enabledFor: 'variant',
-	disabledFor: 'control',
-};
-
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class AIAssistant extends BasePage {
 	url = '/workflows/new';
 
 	getters = {
 		askAssistantFloatingButton: () => cy.getByTestId('ask-assistant-floating-button'),
+		askAssistantCanvasActionButton: () => cy.getByTestId('ask-assistant-canvas-action-button'),
 		askAssistantSidebar: () => cy.getByTestId('ask-assistant-sidebar'),
 		askAssistantSidebarResizer: () =>
 			this.getters.askAssistantSidebar().find('[class^=_resizer][data-dir=left]').first(),
@@ -41,12 +42,10 @@ export class AIAssistant extends BasePage {
 
 	actions = {
 		enableAssistant: () => {
-			overrideFeatureFlag(AI_ASSISTANT_FEATURE.experimentName, AI_ASSISTANT_FEATURE.enabledFor);
-			cy.enableFeature(AI_ASSISTANT_FEATURE.name);
+			cy.enableFeature('aiAssistant');
 		},
 		disableAssistant: () => {
-			overrideFeatureFlag(AI_ASSISTANT_FEATURE.experimentName, AI_ASSISTANT_FEATURE.disabledFor);
-			cy.disableFeature(AI_ASSISTANT_FEATURE.name);
+			cy.disableFeature('aiAssistant');
 		},
 		sendMessage: (message: string) => {
 			this.getters.chatInput().type(message).type('{enter}');
@@ -55,7 +54,11 @@ export class AIAssistant extends BasePage {
 			this.getters.closeChatButton().click();
 			this.getters.askAssistantChat().should('not.be.visible');
 		},
-		openChat: () => {
+		openChatFromCanvas: () => {
+			this.getters.askAssistantCanvasActionButton().click();
+			this.getters.askAssistantChat().should('be.visible');
+		},
+		openChatFromNdv: () => {
 			this.getters.askAssistantFloatingButton().click();
 			this.getters.askAssistantChat().should('be.visible');
 		},

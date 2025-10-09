@@ -1,17 +1,21 @@
+import { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import {
+	AuthenticatedRequest,
+	GLOBAL_OWNER_ROLE,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
+import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
-import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { GlobalScope, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { validateEntity } from '@/generic-helpers';
-import { Logger } from '@/logging/logger.service';
 import { PostHogClient } from '@/posthog';
-import { OwnerRequest } from '@/requests';
+import { BannerService } from '@/services/banner.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 
@@ -22,6 +26,7 @@ export class OwnerController {
 		private readonly eventService: EventService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly authService: AuthService,
+		private readonly bannerService: BannerService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog: PostHogClient,
@@ -33,8 +38,8 @@ export class OwnerController {
 	 * and enable `isInstanceOwnerSetUp` setting.
 	 */
 	@Post('/setup', { skipAuth: true })
-	async setupOwner(req: OwnerRequest.Post, res: Response) {
-		const { email, firstName, lastName, password } = req.body;
+	async setupOwner(req: AuthenticatedRequest, res: Response, @Body payload: OwnerSetupRequestDto) {
+		const { email, firstName, lastName, password } = payload;
 
 		if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
@@ -43,31 +48,16 @@ export class OwnerController {
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		if (!email || !validator.isEmail(email)) {
-			this.logger.debug('Request to claim instance ownership failed because of invalid email', {
-				invalidEmail: email,
-			});
-			throw new BadRequestError('Invalid email address');
-		}
-
-		const validPassword = this.passwordUtility.validate(password);
-
-		if (!firstName || !lastName) {
-			this.logger.debug(
-				'Request to claim instance ownership failed because of missing first name or last name in payload',
-				{ payload: req.body },
-			);
-			throw new BadRequestError('First and last names are mandatory');
-		}
-
 		let owner = await this.userRepository.findOneOrFail({
-			where: { role: 'global:owner' },
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
 		});
 		owner.email = email;
 		owner.firstName = firstName;
 		owner.lastName = lastName;
-		owner.password = await this.passwordUtility.hash(validPassword);
+		owner.password = await this.passwordUtility.hash(password);
 
+		// TODO: move XSS validation out into the DTO class
 		await validateEntity(owner);
 
 		owner = await this.userRepository.save(owner, { transaction: false });
@@ -83,7 +73,7 @@ export class OwnerController {
 
 		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully');
 
-		this.authService.issueCookie(res, owner, req.browserId);
+		this.authService.issueCookie(res, owner, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		this.eventService.emit('instance-owner-setup', { userId: owner.id });
 
@@ -92,8 +82,13 @@ export class OwnerController {
 
 	@Post('/dismiss-banner')
 	@GlobalScope('banner:dismiss')
-	async dismissBanner(req: OwnerRequest.DismissBanner) {
-		const bannerName = 'banner' in req.body ? (req.body.banner as string) : '';
-		return await this.settingsRepository.dismissBanner({ bannerName });
+	async dismissBanner(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: DismissBannerRequestDto,
+	) {
+		const bannerName = payload.banner;
+		if (!bannerName) return;
+		await this.bannerService.dismissBanner(bannerName);
 	}
 }

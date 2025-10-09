@@ -1,180 +1,25 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
-import { mailerliteApiRequest } from './GenericFunctions';
+import { MailerLiteTriggerV1 } from './v1/MailerLiteTriggerV1.node';
+import { MailerLiteTriggerV2 } from './v2/MailerLiteTriggerV2.node';
 
-export class MailerLiteTrigger implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'MailerLite Trigger',
-		name: 'mailerLiteTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:mailerLite.png',
-		group: ['trigger'],
-		version: 1,
-		description: 'Starts the workflow when MailerLite events occur',
-		defaults: {
-			name: 'MailerLite Trigger',
-		},
-		inputs: [],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'mailerLiteApi',
-				required: true,
-			},
-		],
-		webhooks: [
-			{
-				name: 'default',
-				httpMethod: 'POST',
-				responseMode: 'onReceived',
-				path: 'webhook',
-			},
-		],
-		properties: [
-			{
-				displayName: 'Event',
-				name: 'event',
-				type: 'options',
-				options: [
-					{
-						name: 'Campaign Sent',
-						value: 'campaign.sent',
-						description: 'Fired when campaign is sent',
-					},
-					{
-						name: 'Subscriber Added Throught Webform',
-						value: 'subscriber.added_through_webform',
-						description: 'Fired when a subscriber is added though a form',
-					},
-					{
-						name: 'Subscriber Added to Group',
-						value: 'subscriber.add_to_group',
-						description: 'Fired when a subscriber is added to a group',
-					},
-					{
-						name: 'Subscriber Autonomation Completed',
-						value: 'subscriber.automation_complete',
-						description: 'Fired when subscriber finishes automation',
-					},
-					{
-						name: 'Subscriber Autonomation Triggered',
-						value: 'subscriber.automation_triggered',
-						description: 'Fired when subscriber starts automation',
-					},
-					{
-						name: 'Subscriber Bounced',
-						value: 'subscriber.bounced',
-						description: 'Fired when an email address bounces',
-					},
-					{
-						name: 'Subscriber Complained',
-						value: 'subscriber.complaint',
-						description: 'Fired when subscriber marks a campaign as a spam',
-					},
-					{
-						name: 'Subscriber Created',
-						value: 'subscriber.create',
-						description: 'Fired when a new subscriber is added to an account',
-					},
-					{
-						name: 'Subscriber Removed From Group',
-						value: 'subscriber.remove_from_group',
-						description: 'Fired when a subscriber is removed from a group',
-					},
-					{
-						name: 'Subscriber Unsubscribe',
-						value: 'subscriber.unsubscribe',
-						description: 'Fired when a subscriber becomes unsubscribed',
-					},
-					{
-						name: 'Subscriber Updated',
-						value: 'subscriber.update',
-						description: "Fired when any of the subscriber's custom fields are updated",
-					},
-				],
-				required: true,
-				default: [],
-				description: 'The events to listen to',
-			},
-		],
-	};
-
-	webhookMethods = {
-		default: {
-			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
-				const webhookData = this.getWorkflowStaticData('node');
-				const event = this.getNodeParameter('event') as string;
-				// Check all the webhooks which exist already if it is identical to the
-				// one that is supposed to get created.
-				const endpoint = '/webhooks';
-				const { webhooks } = await mailerliteApiRequest.call(this, 'GET', endpoint, {});
-				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl && webhook.event === event) {
-						// Set webhook-id to be sure that it can be deleted
-						webhookData.webhookId = webhook.id as string;
-						return true;
-					}
-				}
-				return false;
-			},
-			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
-				const event = this.getNodeParameter('event') as string;
-
-				const endpoint = '/webhooks';
-
-				const body = {
-					url: webhookUrl,
-					event,
-				};
-
-				const responseData = await mailerliteApiRequest.call(this, 'POST', endpoint, body);
-
-				if (responseData.id === undefined) {
-					// Required data is missing so was not successful
-					return false;
-				}
-
-				webhookData.webhookId = responseData.id as string;
-				return true;
-			},
-			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
-
-					try {
-						await mailerliteApiRequest.call(this, 'DELETE', endpoint);
-					} catch (error) {
-						return false;
-					}
-
-					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registered anymore
-					delete webhookData.webhookId;
-				}
-				return true;
-			},
-		},
-	};
-
-	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const body = this.getBodyData();
-
-		const events = body.events as IDataObject[];
-
-		return {
-			workflowData: [this.helpers.returnJsonArray(events)],
+export class MailerLiteTrigger extends VersionedNodeType {
+	constructor() {
+		const baseDescription: INodeTypeBaseDescription = {
+			displayName: 'MailerLite Trigger',
+			name: 'mailerLiteTrigger',
+			icon: 'file:MailerLite.svg',
+			group: ['trigger'],
+			description: 'Starts the workflow when MailerLite events occur',
+			defaultVersion: 2,
 		};
+
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			1: new MailerLiteTriggerV1(baseDescription),
+			2: new MailerLiteTriggerV2(baseDescription),
+		};
+
+		super(nodeVersions, baseDescription);
 	}
 }

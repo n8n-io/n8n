@@ -1,11 +1,12 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import FormData from 'form-data';
 import get from 'lodash/get';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+
 import * as assistant from '../actions/assistant';
 import * as audio from '../actions/audio';
 import * as file from '../actions/file';
 import * as image from '../actions/image';
 import * as text from '../actions/text';
-
 import * as transport from '../transport';
 
 const createExecuteFunctionsMock = (parameters: IDataObject) => {
@@ -210,12 +211,89 @@ describe('OpenAi, Assistant resource', () => {
 					code_interpreter: {
 						file_ids: [],
 					},
-					file_search: {
-						vector_stores: [
-							{
-								file_ids: [],
-							},
-						],
+				},
+				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+			},
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
+		});
+	});
+
+	it('update => should call apiRequest with file_ids as an array for search', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+			tools: [{ type: 'existing_tool' }],
+		});
+		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+
+		await assistant.update.execute.call(
+			createExecuteFunctionsMock({
+				assistantId: 'assistant-id',
+				options: {
+					modelId: 'gpt-model',
+					name: 'name',
+					instructions: 'some instructions',
+					codeInterpreter: true,
+					knowledgeRetrieval: true,
+					file_ids: ['1234'],
+					removeCustomTools: false,
+				},
+			}),
+			0,
+		);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', '/assistants/assistant-id', {
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
+		});
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants/assistant-id', {
+			body: {
+				instructions: 'some instructions',
+				model: 'gpt-model',
+				name: 'name',
+				tool_resources: {
+					code_interpreter: {
+						file_ids: ['1234'],
+					},
+				},
+				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+			},
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
+		});
+	});
+
+	it('update => should call apiRequest with file_ids as strings for search', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+			tools: [{ type: 'existing_tool' }],
+		});
+		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+
+		await assistant.update.execute.call(
+			createExecuteFunctionsMock({
+				assistantId: 'assistant-id',
+				options: {
+					modelId: 'gpt-model',
+					name: 'name',
+					instructions: 'some instructions',
+					codeInterpreter: true,
+					knowledgeRetrieval: true,
+					file_ids: '1234, 5678, 90',
+					removeCustomTools: false,
+				},
+			}),
+			0,
+		);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', '/assistants/assistant-id', {
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
+		});
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants/assistant-id', {
+			body: {
+				instructions: 'some instructions',
+				model: 'gpt-model',
+				name: 'name',
+				tool_resources: {
+					code_interpreter: {
+						file_ids: ['1234', '5678', '90'],
 					},
 				},
 				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
@@ -285,7 +363,12 @@ describe('OpenAi, Audio resource', () => {
 			'POST',
 			'/audio/transcriptions',
 			expect.objectContaining({
-				headers: { 'Content-Type': 'multipart/form-data' },
+				headers: expect.objectContaining({
+					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+				}),
+				option: expect.objectContaining({
+					formData: expect.any(FormData),
+				}),
 			}),
 		);
 	});
@@ -309,7 +392,12 @@ describe('OpenAi, Audio resource', () => {
 			'POST',
 			'/audio/translations',
 			expect.objectContaining({
-				headers: { 'Content-Type': 'multipart/form-data' },
+				headers: expect.objectContaining({
+					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+				}),
+				option: expect.objectContaining({
+					formData: expect.any(FormData),
+				}),
 			}),
 		);
 	});
@@ -376,7 +464,12 @@ describe('OpenAi, File resource', () => {
 			'POST',
 			'/files',
 			expect.objectContaining({
-				headers: { 'Content-Type': 'multipart/form-data' },
+				headers: expect.objectContaining({
+					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+				}),
+				option: expect.objectContaining({
+					formData: expect.any(FormData),
+				}),
 			}),
 		);
 	});

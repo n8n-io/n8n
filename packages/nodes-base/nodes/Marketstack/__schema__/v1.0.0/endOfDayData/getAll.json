@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "dividend": {
+            "type": "integer"
+        },
+        "exchange": {
+            "type": "string"
+        },
+        "symbol": {
+            "type": "string"
+        },
+        "volume": {
+            "type": "integer"
+        }
+    },
+    "version": 2
+}

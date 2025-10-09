@@ -1,23 +1,48 @@
-import { Get, Post, RestController } from '@/decorators';
+import { AuthenticatedRequest, UserRepository } from '@n8n/db';
+import { Get, GlobalScope, Post, RestController } from '@n8n/decorators';
+import { Response } from 'express';
+
+import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
-import { AuthenticatedRequest, MFA } from '@/requests';
+import { MFA } from '@/requests';
 
 @RestController('/mfa')
 export class MFAController {
 	constructor(
 		private mfaService: MfaService,
 		private externalHooks: ExternalHooks,
+		private authService: AuthService,
+		private userRepository: UserRepository,
 	) {}
 
-	@Post('/can-enable')
+	@Post('/enforce-mfa')
+	@GlobalScope('user:enforceMfa')
+	async enforceMFA(req: MFA.Enforce) {
+		if (req.body.enforce && !(req.authInfo?.usedMfa ?? false)) {
+			// The current user tries to enforce MFA, but does not have
+			// MFA set up for them self. We are forbidding this, to
+			// help the user not lock them selfs out.
+			throw new BadRequestError(
+				'You must enable two-factor authentication on your own account before enforcing it for all users',
+			);
+		}
+		await this.mfaService.enforceMFA(req.body.enforce);
+		return;
+	}
+
+	@Post('/can-enable', {
+		allowSkipMFA: true,
+	})
 	async canEnableMFA(req: AuthenticatedRequest) {
 		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
 		return;
 	}
 
-	@Get('/qr')
+	@Get('/qr', {
+		allowSkipMFA: true,
+	})
 	async getQRCode(req: AuthenticatedRequest) {
 		const { email, id, mfaEnabled } = req.user;
 
@@ -57,9 +82,9 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable', { rateLimit: true })
-	async activateMFA(req: MFA.Activate) {
-		const { token = null } = req.body;
+	@Post('/enable', { rateLimit: true, allowSkipMFA: true })
+	async activateMFA(req: MFA.Activate, res: Response) {
+		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
 
 		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
@@ -67,7 +92,7 @@ export class MFAController {
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
 			await this.mfaService.getSecretAndRecoveryCodes(id);
 
-		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
+		if (!mfaCode) throw new BadRequestError('Token is required to enable MFA feature');
 
 		if (mfaEnabled) throw new BadRequestError('MFA already enabled');
 
@@ -75,38 +100,58 @@ export class MFAController {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
 		}
 
-		const verified = this.mfaService.totp.verifySecret({ secret, token, window: 10 });
+		const verified = this.mfaService.totp.verifySecret({ secret, mfaCode, window: 10 });
 
 		if (!verified)
-			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
+			throw new BadRequestError('MFA code expired. Close the modal and enable MFA again', 997);
 
-		await this.mfaService.enableMfa(id);
+		const updatedUser = await this.mfaService.enableMfa(id);
+
+		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
 	}
 
 	@Post('/disable', { rateLimit: true })
-	async disableMFA(req: MFA.Disable) {
+	async disableMFA(req: MFA.Disable, res: Response) {
 		const { id: userId } = req.user;
-		const { token = null } = req.body;
 
-		if (typeof token !== 'string' || !token) {
-			throw new BadRequestError('Token is required to disable MFA feature');
+		const { mfaCode, mfaRecoveryCode } = req.body;
+
+		const mfaCodeDefined = mfaCode && typeof mfaCode === 'string';
+
+		const mfaRecoveryCodeDefined = mfaRecoveryCode && typeof mfaRecoveryCode === 'string';
+
+		if (!mfaCodeDefined === !mfaRecoveryCodeDefined) {
+			throw new BadRequestError(
+				'Either MFA code or recovery code is required to disable MFA feature',
+			);
 		}
 
-		await this.mfaService.disableMfa(userId, token);
+		if (mfaCodeDefined) {
+			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode);
+		} else if (mfaRecoveryCodeDefined) {
+			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
+		}
+
+		const updatedUser = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
+
+		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}
 
-	@Post('/verify', { rateLimit: true })
+	@Post('/verify', { rateLimit: true, allowSkipMFA: true })
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
-		const { token } = req.body;
+		const { mfaCode } = req.body;
 
 		const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(id);
 
-		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
+		if (!mfaCode) throw new BadRequestError('MFA code is required to enable MFA feature');
 
 		if (!secret) throw new BadRequestError('No MFA secret se for this user');
 
-		const verified = this.mfaService.totp.verifySecret({ secret, token });
+		const verified = this.mfaService.totp.verifySecret({ secret, mfaCode });
 
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
 	}

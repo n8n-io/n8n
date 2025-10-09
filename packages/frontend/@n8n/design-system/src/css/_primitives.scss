@@ -1,0 +1,137 @@
+// Primitive Colors
+// The primitives should not be used directly in components and other UI elements.
+// They can be only mapped to tokens.
+// Tokens should be used instead in components and other UI elements
+
+@mixin primitives {
+	--h-gray: 220;
+
+	// Gray
+	--p-gray-820: hsl(var(--h-gray), 1%, 18%);
+	--p-gray-800: hsl(var(--h-gray), 1%, 20%);
+	--p-gray-780: hsl(var(--h-gray), 1%, 22%);
+	--p-gray-740: hsl(var(--h-gray), 2%, 26%);
+	--p-gray-710: hsl(var(--h-gray), 2%, 29%);
+	--p-gray-670: hsl(var(--h-gray), 2%, 33%);
+	--p-gray-540: hsl(var(--h-gray), 4%, 46%);
+	--p-gray-490: hsl(var(--h-gray), 3%, 51%);
+	--p-gray-420: hsl(var(--h-gray), 4%, 58%);
+	--p-gray-320: hsl(var(--h-gray), 10%, 68%);
+	--p-gray-200: hsl(var(--h-gray), 18%, 80%);
+	--p-gray-120: hsl(var(--h-gray), 25%, 88%);
+	--p-gray-070: hsl(var(--h-gray), 32%, 93%);
+	--p-gray-040: hsl(var(--h-gray), 40%, 96%);
+	--p-gray-030: hsl(var(--h-gray), 43%, 97%);
+	--p-gray-025: hsl(var(--h-gray), 50%, 97.5%);
+	--p-gray-010: hsl(var(--h-gray), 50%, 99%);
+	--p-white: hsl(var(--h-gray), 50%, 100%);
+
+	// Gray alpha
+	--p-gray-320-a-010: hsla(var(--h-gray), 10%, 68%, 0.1);
+	--p-gray-70-a-010: hsla(var(--h-gray), 32%, 93%, 0.1);
+
+	// White alpha
+	--p-white-a-075: hsla(var(--h-gray), 50%, 100%, 0.75);
+	--p-white-a-030: hsla(var(--h-gray), 50%, 100%, 0.3);
+	--p-white-a-025: hsla(var(--h-gray), 50%, 100%, 0.25);
+	--p-white-a-020: hsla(var(--h-gray), 50%, 100%, 0.2);
+	--p-white-a-015: hsla(var(--h-gray), 50%, 100%, 0.15);
+	--p-white-a-010: hsla(var(--h-gray), 50%, 100%, 0.1);
+
+	// Primary color
+	--h-primary: 7;
+	--s-primary: 100%;
+	--l-primary: 68%;
+
+	--p-color-primary-420: hsl(7, 85%, 58%);
+	--p-color-primary-320: hsl(7, 100%, 68%); // Base
+	--p-color-primary-220: hsl(7, 100%, 78%);
+	--p-color-primary-120: hsl(7, 100%, 88%);
+	--p-color-primary-070: hsl(7, 100%, 93%);
+	--p-color-primary-050: hsl(7, 100%, 95%);
+	--p-color-primary-030: hsl(7, 100%, 98%);
+
+	--p-color-primary-320-a-010: hsla(7, 100%, 68%, 0.1);
+	--p-color-primary-320-a-035: hsla(7, 100%, 68%, 0.35);
+	--p-color-primary-320-a-050: hsla(7, 100%, 68%, 0.5);
+
+	// Secondary color
+	--p-color-secondary-720: hsl(247, 24%, 28%);
+	--p-color-secondary-570: hsl(247, 49%, 43%);
+	--p-color-secondary-470: hsl(247, 49%, 53%); // Base
+	--p-color-secondary-370: hsl(247, 49%, 63%);
+	--p-color-secondary-270: hsl(247, 49%, 73%);
+	--p-color-secondary-170: hsl(247, 49%, 83%);
+	--p-color-secondary-070: hsl(247, 49%, 93%);
+
+	--p-color-secondary-470-a-010: hsla(247, 49%, 53%, 0.1);
+	--p-color-secondary-470-a-025: hsla(247, 49%, 53%, 0.25);
+
+	// Color Alternate A
+	--p-color-alt-a-800: hsl(150, 45%, 20%);
+	--p-color-alt-a-700: hsl(150, 53%, 30%);
+	--p-color-alt-a-600: hsl(150, 60%, 40%); // Base
+	--p-color-alt-a-300: hsl(150, 60%, 70%);
+	--p-color-alt-a-200: hsl(150, 60%, 80%);
+	--p-color-alt-a-100: hsl(150, 60%, 90%);
+	--p-color-alt-a-050: hsl(150, 60%, 95%);
+
+	--p-color-alt-a-600-a-015: hsla(150, 60%, 40%, 0.15);
+	--p-color-alt-a-600-a-025: hsla(150, 60%, 40%, 0.25);
+
+	// Color Alternate B
+	--p-color-alt-b-780: hsl(36, 42%, 22%);
+	--p-color-alt-b-680: hsl(36, 42%, 32%);
+	--p-color-alt-b-530: hsl(36, 77%, 47%);
+	--p-color-alt-b-430: hsl(36, 77%, 57%); // Base
+	--p-color-alt-b-280: hsl(36, 77%, 72%);
+	--p-color-alt-b-180: hsl(36, 77%, 82%);
+	--p-color-alt-b-130: hsl(36, 77%, 87%);
+	--p-color-alt-b-030: hsl(36, 77%, 97%);
+
+	--p-color-alt-b-430-a-020: hsla(36, 77%, 57%, 0.2);
+
+	// Color Alternate C
+	--p-color-alt-c-730: hsl(355, 43%, 27%);
+	--p-color-alt-c-630: hsl(355, 53%, 37%);
+	--p-color-alt-c-580: hsl(355, 83%, 42%);
+	--p-color-alt-c-480: hsl(355, 83%, 52%); // Base
+	--p-color-alt-c-330: hsl(355, 83%, 67%);
+	--p-color-alt-c-230: hsl(355, 83%, 77%);
+	--p-color-alt-c-180: hsl(355, 83%, 82%);
+	--p-color-alt-c-080: hsl(355, 83%, 92%);
+	--p-color-alt-c-030: hsl(355, 83%, 97%);
+
+	--p-color-alt-c-480-a-020: hsla(355, 83%, 52%, 0.2);
+	--p-color-alt-c-480-a-010: hsla(355, 83%, 52%, 0.1);
+
+	// Color Alternate D
+	--p-color-alt-d-780: hsl(46, 45%, 22%);
+	--p-color-alt-d-680: hsl(46, 45%, 32%);
+	--p-color-alt-d-230: hsl(46, 100%, 77%);
+	--p-color-alt-d-080: hsl(46, 100%, 92%); // Base
+
+	// Color Alternate E
+	--p-color-alt-e-780: hsl(210, 47%, 22%);
+	--p-color-alt-e-680: hsl(210, 57%, 32%);
+	--p-color-alt-e-580: hsl(210, 67%, 42%);
+	--p-color-alt-e-530: hsl(210, 67%, 47%);
+	--p-color-alt-e-430: hsl(210, 67%, 57%); // Base
+	--p-color-alt-e-180: hsl(210, 67%, 82%);
+	--p-color-alt-e-080: hsl(210, 67%, 92%);
+
+	// Color Alternate F
+	--p-color-alt-f-560: hsl(147, 83%, 44%); // Base
+
+	// Color Alternate G
+	--p-color-alt-g-700: hsl(247, 10%, 30%); // Base
+
+	--p-color-alt-g-700-a-075: hsla(247, 10%, 30%, 0.75);
+
+	// Color Alternate H - Used for errors in dark mode
+	--p-color-alt-h-310: hsl(355, 100%, 69%); // Base
+}
+
+:root {
+	@include primitives;
+}

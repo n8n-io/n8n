@@ -1,16 +1,15 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
-import { Service } from 'typedi';
-
-import config from '@/config';
 
 @Service()
 export class JwtService {
-	readonly jwtSecret = config.getEnv('userManagement.jwtSecret');
+	jwtSecret: string = '';
 
-	constructor({ encryptionKey }: InstanceSettings) {
-		this.jwtSecret = config.getEnv('userManagement.jwtSecret');
+	constructor({ encryptionKey }: InstanceSettings, globalConfig: GlobalConfig) {
+		this.jwtSecret = globalConfig.userManagement.jwtSecret;
 		if (!this.jwtSecret) {
 			// If we don't have a JWT secret set, generate one based on encryption key.
 			// For a key off every other letter from encryption key
@@ -20,7 +19,7 @@ export class JwtService {
 				baseKey += encryptionKey[i];
 			}
 			this.jwtSecret = createHash('sha256').update(baseKey).digest('hex');
-			config.set('userManagement.jwtSecret', this.jwtSecret);
+			Container.get(GlobalConfig).userManagement.jwtSecret = this.jwtSecret;
 		}
 	}
 

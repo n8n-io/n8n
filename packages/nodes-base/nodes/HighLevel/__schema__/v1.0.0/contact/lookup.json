@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "properties": {
+        "address1": {
+            "type": "string"
+        },
+        "assignedTo": {
+            "type": "string"
+        },
+        "city": {
+            "type": "string"
+        },
+        "country": {
+            "type": "string"
+        },
+        "customField": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dateAdded": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
+            "type": "string"
+        },
+        "fingerprint": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "firstNameLowerCase": {
+            "type": "string"
+        },
+        "fullNameLowerCase": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "lastNameLowerCase": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "postalCode": {
+            "type": "string"
+        },
+        "source": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

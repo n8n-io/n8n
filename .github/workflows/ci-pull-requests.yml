@@ -1,0 +1,106 @@
+name: Build, unit test and lint branch
+
+on:
+  pull_request:
+    branches:
+      - '**'
+      - '!release/*'
+
+jobs:
+  install-and-build:
+    name: Install & Build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+    outputs:
+      frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
+      non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Check for frontend changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: paths-filter
+        with:
+          filters: |
+            frontend:
+              - packages/frontend/**
+              - packages/@n8n/design-system/**
+              - packages/@n8n/chat/**
+              - packages/@n8n/codemirror-lang/**
+              - .bundlemonrc.json
+              - .github/workflows/ci-pull-requests.yml
+            non-python:
+              - '**'
+              - '!packages/@n8n/task-runner-python/**'
+      - name: Setup and Build
+        if: steps.paths-filter.outputs.non-python == 'true'
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Run format check
+        if: steps.paths-filter.outputs.non-python == 'true'
+        run: pnpm format:check
+
+      - name: Run typecheck
+        if: steps.paths-filter.outputs.non-python == 'true'
+        run: pnpm typecheck
+
+      - name: Upload Frontend Build Artifacts
+        if: steps.paths-filter.outputs.frontend == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: editor-ui-dist
+          path: packages/frontend/editor-ui/dist/
+          retention-days: 1
+
+  bundle-size-check:
+    name: Bundle Size Check
+    needs: install-and-build
+    if: needs.install-and-build.outputs.frontend_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.x'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download Frontend Build Artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: editor-ui-dist
+          path: packages/frontend/editor-ui/dist/
+
+      - name: BundleMon
+        uses: lironer/bundlemon-action@cadbdd58f86faf1900725ef69d455444124b3748 # v1.3.0
+
+  unit-test:
+    name: Unit tests
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    uses: ./.github/workflows/units-tests-reusable.yml
+    needs: install-and-build
+    with:
+      ref: refs/pull/${{ github.event.pull_request.number }}/merge
+      collectCoverage: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: Lint
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    uses: ./.github/workflows/linting-reusable.yml
+    needs: install-and-build
+    with:
+      ref: refs/pull/${{ github.event.pull_request.number }}/merge

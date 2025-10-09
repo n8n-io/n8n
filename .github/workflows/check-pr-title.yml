@@ -1,0 +1,20 @@
+name: Check PR title
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+    branches:
+      - 'master'
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate PR title
+        uses: n8n-io/validate-n8n-pull-request-title@c97ff722ac14ee0bda73766473bba764445db805 # v2.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

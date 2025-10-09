@@ -1,20 +1,20 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { N8nItemListOutputParser } from '../../../utils/output_parsers/N8nItemListOutputParser';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class OutputParserItemList implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Item List Output Parser',
 		name: 'outputParserItemList',
 		icon: 'fa:bars',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Return the results as separate items',
@@ -35,13 +35,13 @@ export class OutputParserItemList implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiOutputParser],
+
+		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',

@@ -2,7 +2,11 @@
 	"node": "n8n-nodes-base.slack",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication"],
+	"categories": ["Communication", "HITL"],
+	"subcategories": {
+		"HITL": ["Human in the Loop"]
+	},
+	"alias": ["human", "form", "wait", "hitl", "approval"],
 	"resources": {
 		"credentialDocumentation": [
 			{

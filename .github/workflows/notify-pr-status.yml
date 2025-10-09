@@ -1,0 +1,27 @@
+name: Notify PR status changed
+
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+  pull_request:
+    types: [closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'dismissed') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == false && github.event.action == 'closed')
+    steps:
+      - uses: fjogeleit/http-request-action@bf78da14118941f7e940279dd58f67e863cbeff6 # v1
+        if: ${{!contains(github.event.pull_request.labels.*.name, 'community')}}
+        name: Notify
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        with:
+          url: ${{ secrets.N8N_NOTIFY_PR_STATUS_CHANGED_URL }}
+          method: 'POST'
+          customHeaders: '{ "x-api-token": "${{ secrets.N8N_NOTIFY_PR_STATUS_CHANGED_TOKEN }}" }'
+          data: '{ "event_name": "${{ github.event_name }}", "pr_url": "${{ env.PR_URL }}",  "event": ${{ toJSON(github.event) }} }'

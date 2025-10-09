@@ -5,10 +5,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { driftApiRequest } from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
 import { contactFields, contactOperations } from './ContactDescription';
 import type { IContact } from './ContactInterface';
+import { driftApiRequest } from './GenericFunctions';
 
 export class Drift implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,8 +24,9 @@ export class Drift implements INodeType {
 		defaults: {
 			name: 'Drift',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'driftApi',

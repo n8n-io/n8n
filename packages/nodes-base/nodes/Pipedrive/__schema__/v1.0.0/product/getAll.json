@@ -1,0 +1,143 @@
+{
+    "type": "object",
+    "properties": {
+        "1e901332a0666ef17792122457262233cfdb3d15": {
+            "type": "null"
+        },
+        "73794f1db542a544402ab6cd42aaf337d2d8e51b": {
+            "type": "null"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "billing_frequency": {
+            "type": "string"
+        },
+        "billing_frequency_cycles": {
+            "type": "null"
+        },
+        "first_char": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pic_hash": {
+                    "type": "null"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "prices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "currency": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "product_variations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "prices": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "comment": {
+                                    "type": "string"
+                                },
+                                "cost": {
+                                    "type": "integer"
+                                },
+                                "currency": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "overhead_cost": {
+                                    "type": "integer"
+                                },
+                                "price": {
+                                    "type": "integer"
+                                },
+                                "price_formatted": {
+                                    "type": "string"
+                                },
+                                "product_id": {
+                                    "type": "integer"
+                                },
+                                "product_variation_id": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "selectable": {
+            "type": "boolean"
+        },
+        "tax": {
+            "type": "integer"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

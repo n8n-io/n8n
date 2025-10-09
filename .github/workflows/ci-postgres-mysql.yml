@@ -1,0 +1,152 @@
+name: Test Postgres and MySQL schemas
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/cli/src/databases/**
+      - packages/cli/src/modules/*/database/**
+      - packages/cli/src/modules/**/*.entity.ts
+      - packages/cli/src/modules/**/*.repository.ts
+      - packages/cli/test/integration/**
+      - packages/cli/test/shared/db/**
+      - packages/@n8n/db/**
+      - packages/cli/**/__tests__/**
+      - .github/workflows/ci-postgres-mysql.yml
+      - .github/docker-compose.yml
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: db-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=3072'
+
+jobs:
+  build:
+    name: Install & Build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+  sqlite-pooled:
+    name: SQLite Pooled
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      DB_TYPE: sqlite
+      DB_SQLITE_POOL_SIZE: 4
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Test SQLite Pooled
+        working-directory: packages/cli
+        run: pnpm test:sqlite
+
+  mariadb:
+    name: MariaDB
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 1
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
+      NODE_OPTIONS: '--max-old-space-size=7168'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Start MariaDB
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: |
+            mariadb
+
+      - name: Test MariaDB
+        working-directory: packages/cli
+        run: pnpm test:mariadb --testTimeout 120000
+
+  mysql:
+    name: MySQL 8.4
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 1
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Start MySQL
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: mysql-8.4
+
+      - name: Test MySQL
+        working-directory: packages/cli
+        # We sleep here due to flakiness with DB tests if we connect to the database too soon
+        run: sleep 2s && pnpm test:mysql --testTimeout 120000
+
+  postgres:
+    name: Postgres
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      DB_POSTGRESDB_PASSWORD: password
+      DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Start Postgres
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: |
+            postgres
+
+      - name: Test Postgres
+        working-directory: packages/cli
+        run: pnpm test:postgres
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    runs-on: ubuntu-latest
+    needs: [sqlite-pooled, mariadb, postgres, mysql]
+    steps:
+      - name: Notify Slack on failure
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        if: failure() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          channel: '#alerts-build'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Postgres, MariaDB or MySQL tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

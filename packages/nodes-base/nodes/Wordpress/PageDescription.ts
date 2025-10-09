@@ -249,23 +249,6 @@ export const pageFields: INodeProperties[] = [
 				description: 'The order of the page in relation to other pages',
 			},
 			{
-				displayName: 'Comment Status',
-				name: 'commentStatus',
-				type: 'options',
-				options: [
-					{
-						name: 'Open',
-						value: 'open',
-					},
-					{
-						name: 'Closed',
-						value: 'closed',
-					},
-				],
-				default: 'open',
-				description: 'Whether or not comments are open on the page',
-			},
-			{
 				displayName: 'Featured Media ID',
 				name: 'featuredMediaId',
 				type: 'number',

@@ -8,6 +8,7 @@ export interface IEmail {
 	replyTo?: string;
 	inReplyTo?: string;
 	reference?: string;
+	references?: string;
 	subject: string;
 	body: string;
 	htmlBody?: string;

@@ -26,6 +26,10 @@ export class WorkflowApiClient {
 		return response.data.data;
 	}
 
+	async archiveWorkflow(workflowId: Workflow['id']): Promise<void> {
+		await this.apiClient.post(`/workflows/${workflowId}/archive`, {});
+	}
+
 	async deleteWorkflow(workflowId: Workflow['id']): Promise<void> {
 		await this.apiClient.delete(`/workflows/${workflowId}`);
 	}

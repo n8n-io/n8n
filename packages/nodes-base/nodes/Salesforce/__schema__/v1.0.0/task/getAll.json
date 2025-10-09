@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "AccountId": {
+            "type": "string"
+        },
+        "ActivityDate__c": {
+            "type": "string"
+        },
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "Id": {
+            "type": "string"
+        },
+        "Type": {
+            "type": "null"
+        }
+    },
+    "version": 4
+}

@@ -1,0 +1,43 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasNodeAddNodes > should render node correctly 1`] = `
+<div
+  class="addNodes"
+  data-test-id="canvas-add-button"
+>
+  
+  <button
+    class="button el-tooltip__trigger el-tooltip__trigger"
+    data-test-id="canvas-plus-button"
+  >
+    <svg
+      aria-hidden="true"
+      class="n8n-icon"
+      data-icon="plus"
+      focusable="false"
+      height="40px"
+      role="img"
+      viewBox="0 0 24 24"
+      width="40px"
+    >
+      <path
+        d="M5 12h14m-7-7v14"
+        fill="none"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+      />
+    </svg>
+  </button>
+  <!--teleport start-->
+  <!--teleport end-->
+  
+  <p
+    class="label"
+  >
+    Add first step… 
+    <!--v-if-->
+  </p>
+</div>
+`;

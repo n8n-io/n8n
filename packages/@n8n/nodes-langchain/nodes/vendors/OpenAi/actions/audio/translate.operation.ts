@@ -1,6 +1,8 @@
+import FormData from 'form-data';
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
-import FormData from 'form-data';
+
+import { getBinaryDataFile } from '../../helpers/binary-data';
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -58,19 +60,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		formData.append('temperature', options.temperature.toString());
 	}
 
-	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-	const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
-	formData.append('file', dataBuffer, {
-		filename: binaryData.fileName,
-		contentType: binaryData.mimeType,
+	const { filename, contentType, fileContent } = await getBinaryDataFile(
+		this,
+		i,
+		binaryPropertyName,
+	);
+	formData.append('file', fileContent, {
+		filename,
+		contentType,
 	});
 
 	const response = await apiRequest.call(this, 'POST', '/audio/translations', {
 		option: { formData },
-		headers: {
-			'Content-Type': 'multipart/form-data',
-		},
+		headers: formData.getHeaders(),
 	});
 
 	return [

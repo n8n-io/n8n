@@ -1,5 +1,5 @@
-import nock from 'nock';
 import * as mailparser from 'mailparser';
+import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -42,8 +42,6 @@ describe('GmailTrigger', () => {
 	}
 
 	beforeAll(() => {
-		nock.disableNetConnect();
-
 		jest.spyOn(mailparser, 'simpleParser').mockResolvedValue({
 			headers: new Map([['headerKey', 'headerValue']]),
 			attachments: [],
@@ -61,10 +59,6 @@ describe('GmailTrigger', () => {
 				html: 'to@example.com',
 			},
 		});
-	});
-
-	afterAll(() => {
-		nock.restore();
 	});
 
 	it('should return incoming emails', async () => {
@@ -217,5 +211,224 @@ describe('GmailTrigger', () => {
 		});
 
 		expect(response).toEqual(null);
+	});
+
+	it('should handle duplicates and different date fields', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [
+				createListMessage({ id: '1' }),
+				createListMessage({ id: '2' }),
+				createListMessage({ id: '3' }),
+				createListMessage({ id: '4' }),
+				createListMessage({ id: '5' }),
+			],
+			resultSizeEstimate: 123,
+		};
+
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: '1727777957863', date: undefined }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', internalDate: undefined, date: '1727777957863' }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/3?.*'))
+			.reply(
+				200,
+				createMessage({
+					id: '3',
+					internalDate: undefined,
+					date: undefined,
+					headers: { date: 'Thu, 5 Dec 2024 08:30:00 -0800' },
+				}),
+			);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/4?.*'))
+			.reply(
+				200,
+				createMessage({
+					id: '4',
+					internalDate: undefined,
+					date: undefined,
+					headers: undefined,
+				}),
+			);
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages/5?.*')).reply(200, {});
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { simple: true } },
+			workflowStaticData: {
+				'Gmail Trigger': {
+					lastTimeChecked: new Date('2024-10-31').getTime() / 1000,
+					possibleDuplicates: ['1'],
+				},
+			},
+		});
+
+		expect(response).toMatchSnapshot();
+	});
+
+	it('should skip DRAFTS when option is set', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'DRAFT', name: 'DRAFT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['DRAFT'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', labelIds: ['INBOX'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { filters: { includeDrafts: false } } },
+		});
+
+		expect(response).toEqual([
+			[
+				{
+					binary: undefined,
+					json: {
+						attachements: undefined,
+						date: '2024-08-31T00:00:00.000Z',
+						from: {
+							html: 'from@example.com',
+							text: 'from@example.com',
+							value: [{ address: 'from@example.com', name: 'From' }],
+						},
+						headerlines: undefined,
+						headers: { headerKey: 'headerValue' },
+						html: '<p>test</p>',
+						id: '2',
+						labelIds: ['INBOX'],
+						sizeEstimate: 4,
+						threadId: 'testThreadId',
+						to: {
+							html: 'to@example.com',
+							text: 'to@example.com',
+							value: [{ address: 'to@example.com', name: 'To' }],
+						},
+					},
+				},
+			],
+		]);
+	});
+
+	it('should skip emails with SENT label', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'SENT', name: 'SENT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['INBOX'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', labelIds: ['SENT'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger);
+
+		expect(response).toEqual([
+			[
+				{
+					binary: undefined,
+					json: {
+						attachements: undefined,
+						date: '2024-08-31T00:00:00.000Z',
+						from: {
+							html: 'from@example.com',
+							text: 'from@example.com',
+							value: [{ address: 'from@example.com', name: 'From' }],
+						},
+						headerlines: undefined,
+						headers: { headerKey: 'headerValue' },
+						html: '<p>test</p>',
+						id: '1',
+						labelIds: ['INBOX'],
+						sizeEstimate: 4,
+						threadId: 'testThreadId',
+						to: {
+							html: 'to@example.com',
+							text: 'to@example.com',
+							value: [{ address: 'to@example.com', name: 'To' }],
+						},
+					},
+				},
+			],
+		]);
+	});
+
+	it('should not skip emails that were sent to own account', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'SENT', name: 'SENT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['INBOX', 'SENT'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', labelIds: ['SENT'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger);
+		expect(response).toEqual([
+			[
+				{
+					binary: undefined,
+					json: {
+						attachements: undefined,
+						date: '2024-08-31T00:00:00.000Z',
+						from: {
+							html: 'from@example.com',
+							text: 'from@example.com',
+							value: [{ address: 'from@example.com', name: 'From' }],
+						},
+						headerlines: undefined,
+						headers: { headerKey: 'headerValue' },
+						html: '<p>test</p>',
+						id: '1',
+						labelIds: ['INBOX', 'SENT'],
+						sizeEstimate: 4,
+						threadId: 'testThreadId',
+						to: {
+							html: 'to@example.com',
+							text: 'to@example.com',
+							value: [{ address: 'to@example.com', name: 'To' }],
+						},
+					},
+				},
+			],
+		]);
 	});
 });

@@ -1,0 +1,44 @@
+name: PR E2E
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
+  cancel-in-progress: true
+
+jobs:
+  eligibility_check:
+    name: Check Eligibility for Test Run
+    if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/check-run-eligibility.yml
+    with:
+      is_pr_approved_by_maintainer: true
+
+  run-e2e-tests:
+    name: E2E
+    uses: ./.github/workflows/e2e-reusable.yml
+    needs: [eligibility_check]
+    if: needs.eligibility_check.outputs.should_run == 'true'
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      user: ${{ github.event.pull_request.user.login || 'PR User' }}
+    secrets: inherit
+
+  run-playwright-tests:
+    name: Playwright
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    needs: [eligibility_check]
+    if: needs.eligibility_check.outputs.should_run == 'true'
+    secrets: inherit
+
+  post-e2e-tests:
+    name: E2E - Checks
+    runs-on: ubuntu-latest
+    needs: [eligibility_check, run-e2e-tests, run-playwright-tests]
+    if: always() && needs.eligibility_check.result != 'skipped'
+    steps:
+      - name: Fail if tests failed
+        if: needs.run-e2e-tests.result == 'failure' || needs.run-playwright-tests.result == 'failure'
+        run: exit 1

@@ -1,19 +1,24 @@
+import { ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type express from 'express';
 import { replaceCircularReferences } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionService } from '@/executions/execution.service';
 
 import type { ExecutionRequest } from '../../../types';
-import { validCursor } from '../../shared/middlewares/global.middleware';
+import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 
 export = {
 	deleteExecution: [
+		apiKeyHasScope('execution:delete'),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
@@ -58,6 +63,7 @@ export = {
 		},
 	],
 	getExecution: [
+		apiKeyHasScope('execution:read'),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -88,6 +94,7 @@ export = {
 		},
 	],
 	getExecutions: [
+		apiKeyHasScope('execution:list'),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -107,19 +114,23 @@ export = {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
-			// get running workflows so we exclude them from the result
+			// get running executions so we exclude them from the result
 			const runningExecutionsIds = Container.get(ActiveExecutions)
 				.getActiveExecutions()
 				.map(({ id }) => id);
 
-			const filters = {
-				status,
-				limit,
-				lastId,
-				includeData,
-				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
-				excludedExecutionsIds: runningExecutionsIds,
-			};
+			const filters: Parameters<typeof ExecutionRepository.prototype.getExecutionsForPublicApi>[0] =
+				{
+					status,
+					limit,
+					lastId,
+					includeData,
+					workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
+
+					// for backward compatibility `running` executions are always excluded
+					// unless the user explicitly filters by `running` status
+					excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
+				};
 
 			const executions =
 				await Container.get(ExecutionRepository).getExecutionsForPublicApi(filters);
@@ -144,6 +155,43 @@ export = {
 					numberOfNextRecords: count,
 				}),
 			});
+		},
+	],
+	retryExecution: [
+		apiKeyHasScope('execution:retry'),
+		async (req: ExecutionRequest.Retry, res: express.Response): Promise<express.Response> => {
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+			// user does not have workflows hence no executions
+			// or the execution they are trying to access belongs to a workflow they do not own
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			try {
+				const retriedExecution = await Container.get(ExecutionService).retry(
+					req,
+					sharedWorkflowsIds,
+				);
+
+				Container.get(EventService).emit('user-retried-execution', {
+					userId: req.user.id,
+					publicApi: true,
+				});
+
+				return res.json(replaceCircularReferences(retriedExecution));
+			} catch (error) {
+				if (
+					error instanceof QueuedExecutionRetryError ||
+					error instanceof AbortedExecutionRetryError
+				) {
+					return res.status(409).json({ message: error.message });
+				} else if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: error.message });
+				} else {
+					throw error;
+				}
+			}
 		},
 	],
 };

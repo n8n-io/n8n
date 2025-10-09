@@ -51,6 +51,7 @@ export async function todoistSyncRequest(
 	this: Context,
 	body: any = {},
 	qs: IDataObject = {},
+	endpoint: string = '/sync',
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
@@ -58,7 +59,7 @@ export async function todoistSyncRequest(
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: 'https://api.todoist.com/sync/v9/sync',
+		uri: `https://api.todoist.com/sync/v9${endpoint}`,
 		json: true,
 	};
 

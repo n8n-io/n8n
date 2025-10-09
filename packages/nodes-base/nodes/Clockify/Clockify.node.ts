@@ -1,3 +1,5 @@
+import moment from 'moment-timezone';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,29 +9,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
-
-import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
-
-import type { IUserDto } from './UserDtos';
-
-import type { IProjectDto } from './ProjectInterfaces';
 
 import { clientFields, clientOperations } from './ClientDescription';
-
+import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 import { projectFields, projectOperations } from './ProjectDescription';
-
+import type { IProjectDto } from './ProjectInterfaces';
 import { tagFields, tagOperations } from './TagDescription';
-
 import { taskFields, taskOperations } from './TaskDescription';
-
 import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
-
 import { userFields, userOperations } from './UserDescription';
-
+import type { IUserDto } from './UserDtos';
+import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
 import { workspaceFields, workspaceOperations } from './WorkspaceDescription';
 
 export class Clockify implements INodeType {
@@ -44,8 +34,9 @@ export class Clockify implements INodeType {
 		defaults: {
 			name: 'Clockify',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',

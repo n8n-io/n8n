@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "drafts_count": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

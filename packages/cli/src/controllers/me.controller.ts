@@ -1,29 +1,35 @@
 import {
+	passwordSchema,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { User, PublicUser } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest } from '@n8n/db';
+import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
+import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
+
 import { AuthService } from '@/auth/auth.service';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Body, Patch, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { PublicUser } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
-import { AuthenticatedRequest, MeRequest } from '@/requests';
+import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isOidcCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
-import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 @RestController('/me')
 export class MeController {
 	constructor(
@@ -46,45 +52,53 @@ export class MeController {
 		res: Response,
 		@Body payload: UserUpdateRequestDto,
 	): Promise<PublicUser> {
-		const { id: userId, email: currentEmail, mfaEnabled } = req.user;
+		const {
+			id: userId,
+			email: currentEmail,
+			firstName: currentFirstName,
+			lastName: currentLastName,
+		} = req.user;
 
-		const { email } = payload;
+		const { currentPassword, ...payloadWithoutPassword } = payload;
+		const { email, firstName, lastName } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
+		const isFirstNameChanged = firstName !== currentFirstName;
+		const isLastNameChanged = lastName !== currentLastName;
 
-		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled() && isEmailBeingChanged) {
+		if (
+			(isLdapCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
+			(isEmailBeingChanged || isFirstNameChanged || isLastNameChanged)
+		) {
 			this.logger.debug(
-				'Request to update user failed because SAML user may not change their email',
+				`Request to update user failed because ${getCurrentAuthenticationMethod()} user may not change their profile information`,
 				{
 					userId,
-					payload,
+					payload: payloadWithoutPassword,
 				},
 			);
-			throw new BadRequestError('SAML user may not change their email');
+			throw new BadRequestError(
+				` ${getCurrentAuthenticationMethod()} user may not change their profile information`,
+			);
 		}
 
-		if (mfaEnabled && isEmailBeingChanged) {
-			if (!payload.mfaCode) {
-				throw new BadRequestError('Two-factor code is required to change email');
-			}
+		await this.validateChangingUserEmail(req.user, payload);
 
-			const isMfaTokenValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaTokenValid) {
-				throw new InvalidMfaCodeError();
-			}
-		}
-
-		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
+		await this.externalHooks.run('user.profile.beforeUpdate', [
+			userId,
+			currentEmail,
+			payloadWithoutPassword,
+		]);
 
 		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
-		await this.userService.update(userId, payload);
+		await this.userService.update(userId, payloadWithoutPassword);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
+			relations: ['role'],
 		});
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.browserId);
+		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		const changeableFields = ['email', 'firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
@@ -98,6 +112,60 @@ export class MeController {
 		await this.externalHooks.run('user.profile.update', [currentEmail, publicUser]);
 
 		return publicUser;
+	}
+
+	private async validateChangingUserEmail(currentUser: User, payload: UserUpdateRequestDto) {
+		if (!payload.email || payload.email === currentUser.email) {
+			// email is not being changed
+			return;
+		}
+		const { currentPassword: providedCurrentPassword, ...payloadWithoutPassword } = payload;
+		const { id: userId, mfaEnabled } = currentUser;
+
+		// If SAML is enabled, we don't allow the user to change their email address
+		if (isSamlLicensedAndEnabled()) {
+			this.logger.debug(
+				'Request to update user failed because SAML user may not change their email',
+				{
+					userId: currentUser.id,
+					payload: payloadWithoutPassword,
+				},
+			);
+			throw new BadRequestError('SAML user may not change their email');
+		}
+
+		if (mfaEnabled) {
+			if (!payload.mfaCode) {
+				throw new BadRequestError('Two-factor code is required to change email');
+			}
+
+			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
+			if (!isMfaCodeValid) {
+				throw new InvalidMfaCodeError();
+			}
+		} else {
+			if (currentUser.password === null) {
+				this.logger.debug('User with no password changed their email', {
+					userId: currentUser.id,
+					payload: payloadWithoutPassword,
+				});
+				return;
+			}
+
+			if (!providedCurrentPassword || typeof providedCurrentPassword !== 'string') {
+				throw new BadRequestError('Current password is required to change email');
+			}
+
+			const isProvidedPasswordCorrect = await this.passwordUtility.compare(
+				providedCurrentPassword,
+				currentUser.password,
+			);
+			if (!isProvidedPasswordCorrect) {
+				throw new BadRequestError(
+					'Unable to update profile. Please check your credentials and try again.',
+				);
+			}
+		}
 	}
 
 	/**
@@ -122,10 +190,6 @@ export class MeController {
 			);
 		}
 
-		if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
-			throw new BadRequestError('Invalid payload.');
-		}
-
 		if (!user.password) {
 			throw new BadRequestError('Requesting user not set up.');
 		}
@@ -135,25 +199,30 @@ export class MeController {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
-		const validPassword = this.passwordUtility.validate(newPassword);
+		const passwordValidation = passwordSchema.safeParse(newPassword);
+		if (!passwordValidation.success) {
+			throw new BadRequestError(
+				passwordValidation.error.errors.map(({ message }) => message).join(' '),
+			);
+		}
 
 		if (user.mfaEnabled) {
 			if (typeof mfaCode !== 'string') {
 				throw new BadRequestError('Two-factor code is required to change password.');
 			}
 
-			const isMfaTokenValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
-			if (!isMfaTokenValid) {
+			const isMfaCodeValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
+			if (!isMfaCodeValid) {
 				throw new InvalidMfaCodeError();
 			}
 		}
 
-		user.password = await this.passwordUtility.hash(validPassword);
+		user.password = await this.passwordUtility.hash(newPassword);
 
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser, req.browserId);
+		this.authService.issueCookie(res, updatedUser, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 

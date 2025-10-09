@@ -1,12 +1,16 @@
+import { VariablesRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import Container from 'typedi';
 
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { VariablesController } from '@/environments/variables/variables.controller.ee';
+import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';
 
-import { globalScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyHasScopeWithGlobalScopeFallback,
+	isLicensed,
+	validCursor,
+} from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type Create = VariablesRequest.Create;
@@ -16,16 +20,25 @@ type GetAll = PaginatedRequest;
 export = {
 	createVariable: [
 		isLicensed('feat:variables'),
-		globalScope('variable:create'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:create' }),
 		async (req: Create, res: Response) => {
 			await Container.get(VariablesController).createVariable(req);
 
 			res.status(201).send();
 		},
 	],
+	updateVariable: [
+		isLicensed('feat:variables'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
+		async (req: VariablesRequest.Update, res: Response) => {
+			await Container.get(VariablesController).updateVariable(req);
+
+			res.status(204).send();
+		},
+	],
 	deleteVariable: [
 		isLicensed('feat:variables'),
-		globalScope('variable:delete'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
 		async (req: Delete, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);
 
@@ -34,7 +47,7 @@ export = {
 	],
 	getVariables: [
 		isLicensed('feat:variables'),
-		globalScope('variable:list'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
 		validCursor,
 		async (req: GetAll, res: Response) => {
 			const { offset = 0, limit = 100 } = req.query;

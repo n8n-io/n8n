@@ -1,0 +1,25 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"target": "es2021",
+		"lib": ["es2021", "es2022.error", "dom"],
+		"removeComments": true,
+		"useUnknownInCatchVariables": true,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"strictNullChecks": true,
+		"preserveConstEnums": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"incremental": true,
+		"declaration": false,
+		"sourceMap": true,
+		"skipLibCheck": true
+	},
+	"files": ["../../../node_modules/jest-expect-message/types/index.d.ts"]
+}

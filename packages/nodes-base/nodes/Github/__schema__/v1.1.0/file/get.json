@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "path": {
+            "type": "string"
+        },
+        "sha": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

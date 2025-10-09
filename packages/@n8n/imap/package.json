@@ -1,6 +1,6 @@
 {
   "name": "@n8n/imap",
-  "version": "0.7.0",
+  "version": "0.15.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -9,9 +9,10 @@
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest"
+    "test": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -20,16 +21,19 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "iconv-lite": "0.6.3",
+    "iconv-lite": "catalog:",
     "imap": "0.8.19",
     "quoted-printable": "1.0.1",
     "utf8": "3.0.0",
     "uuencode": "0.0.4"
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/imap": "^0.8.40",
     "@types/quoted-printable": "^1.0.2",
     "@types/utf8": "^3.0.3",
-    "@types/uuencode": "^0.0.3"
+    "@types/uuencode": "^0.0.3",
+    "vitest-mock-extended": "catalog:"
   }
 }

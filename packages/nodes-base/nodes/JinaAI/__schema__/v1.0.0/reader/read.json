@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "content": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "usage": {
+            "type": "object",
+            "properties": {
+                "tokens": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 3
+}

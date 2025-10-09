@@ -1,0 +1,46 @@
+{
+    "type": "object",
+    "properties": {
+        "date_created": {
+            "type": "string"
+        },
+        "hide_from_guests": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "type_config": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "orderindex": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "sorting": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 4
+}

@@ -1,0 +1,71 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "cdpUrl": {
+                    "type": "string"
+                },
+                "cdpWsUrl": {
+                    "type": "string"
+                },
+                "chromedriverUrl": {
+                    "type": "string"
+                },
+                "configuration": {
+                    "type": "object",
+                    "properties": {
+                        "baseProfileId": {
+                            "type": "string"
+                        },
+                        "timeoutMinutes": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "dateCreated": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastActivity": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "errors": {
+            "type": "null"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "requestId": {
+                    "type": "string"
+                }
+            }
+        },
+        "sessionId": {
+            "type": "string"
+        },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 3
+}

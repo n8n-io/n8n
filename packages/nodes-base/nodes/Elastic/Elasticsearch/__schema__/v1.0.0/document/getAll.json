@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "timestamp": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -1,23 +1,22 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
+import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
-
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 export class RetrieverMultiQuery implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MultiQuery Retriever',
 		name: 'retrieverMultiQuery',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description:
@@ -38,18 +37,18 @@ export class RetrieverMultiQuery implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 				required: true,
 			},
 		],
@@ -57,7 +56,7 @@ export class RetrieverMultiQuery implements INodeType {
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 			},
 		],
 		properties: [
@@ -88,12 +87,12 @@ export class RetrieverMultiQuery implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as { queryCount?: number };
 
 		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			itemIndex,
 		)) as BaseLanguageModel;
 
 		const baseRetriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
+			NodeConnectionTypes.AiRetriever,
 			itemIndex,
 		)) as BaseRetriever;
 

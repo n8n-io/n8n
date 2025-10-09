@@ -1,20 +1,19 @@
+import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import type { ExecutionSummaries } from '@n8n/db';
+import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import Container from 'typedi';
 
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import config from '@/config';
 import { ExecutionService } from '@/executions/execution.service';
-import type { ExecutionSummaries } from '@/executions/execution.types';
-import { createTeamProject } from '@test-integration/db/projects';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
 	let executionRepository: ExecutionRepository;
+	const globalConfig = Container.get(GlobalConfig);
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -22,7 +21,7 @@ describe('ExecutionService', () => {
 		executionRepository = Container.get(ExecutionRepository);
 
 		executionService = new ExecutionService(
-			mock(),
+			globalConfig,
 			mock(),
 			mock(),
 			mock(),
@@ -38,8 +37,13 @@ describe('ExecutionService', () => {
 		);
 	});
 
+	beforeEach(() => {
+		globalConfig.executions.concurrency.productionLimit = -1;
+		config.set('executions.mode', 'regular');
+	});
+
 	afterEach(async () => {
-		await testDb.truncate(['Execution']);
+		await testDb.truncate(['ExecutionEntity']);
 	});
 
 	afterAll(async () => {
@@ -270,21 +274,22 @@ describe('ExecutionService', () => {
 			]);
 		});
 
-		test('should filter executions by `metadata`', async () => {
+		test('should filter executions by `metadata` with an exact match by default', async () => {
 			const workflow = await createWorkflow();
 
-			const metadata = [{ key: 'myKey', value: 'myValue' }];
+			const key = 'myKey';
+			const value = 'myValue';
 
 			await Promise.all([
-				createExecution({ status: 'success', metadata }, workflow),
-				createExecution({ status: 'error' }, workflow),
+				createExecution({ status: 'success', metadata: [{ key, value }] }, workflow),
+				createExecution({ status: 'error', metadata: [{ key, value: `${value}2` }] }, workflow),
 			]);
 
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
-				metadata,
+				metadata: [{ key, value, exactMatch: true }],
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -293,6 +298,36 @@ describe('ExecutionService', () => {
 				count: 1,
 				estimated: false,
 				results: [expect.objectContaining({ status: 'success' })],
+			});
+		});
+
+		test('should filter executions by `metadata` with a partial match', async () => {
+			const workflow = await createWorkflow();
+
+			const key = 'myKey';
+
+			await Promise.all([
+				createExecution({ status: 'success', metadata: [{ key, value: 'myValue' }] }, workflow),
+				createExecution({ status: 'error', metadata: [{ key, value: 'var' }] }, workflow),
+				createExecution({ status: 'success', metadata: [{ key, value: 'evaluation' }] }, workflow),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+				metadata: [{ key, value: 'val', exactMatch: false }],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 2,
+				estimated: false,
+				results: [
+					expect.objectContaining({ status: 'success' }),
+					expect.objectContaining({ status: 'success' }),
+				],
 			});
 		});
 
@@ -326,6 +361,95 @@ describe('ExecutionService', () => {
 				]),
 			});
 		});
+
+		test('should filter executions by `projectId` and expected `status`', async () => {
+			const firstProject = await createTeamProject();
+			const secondProject = await createTeamProject();
+
+			const firstWorkflow = await createWorkflow(undefined, firstProject);
+			const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'error' }, firstWorkflow);
+			await createExecution({ status: 'success' }, secondWorkflow);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [firstWorkflow.id],
+				projectId: firstProject.id,
+				status: ['error'],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 1,
+				estimated: false,
+				results: expect.arrayContaining([
+					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
+				]),
+			});
+		});
+
+		test.each([
+			{
+				name: 'waitTill',
+				filter: { waitTill: true },
+				matchingParams: { waitTill: new Date() },
+				nonMatchingParams: { waitTill: undefined },
+			},
+			{
+				name: 'metadata',
+				filter: { metadata: [{ key: 'testKey', value: 'testValue' }] },
+				matchingParams: { metadata: [{ key: 'testKey', value: 'testValue' }] },
+				nonMatchingParams: { metadata: [{ key: 'otherKey', value: 'otherValue' }] },
+			},
+			{
+				name: 'startedAfter',
+				filter: { startedAfter: '2023-01-01' },
+				matchingParams: { startedAt: new Date('2023-06-01') },
+				nonMatchingParams: { startedAt: new Date('2022-01-01') },
+			},
+			{
+				name: 'startedBefore',
+				filter: { startedBefore: '2023-12-31' },
+				matchingParams: { startedAt: new Date('2023-06-01') },
+				nonMatchingParams: { startedAt: new Date('2024-01-01') },
+			},
+		])(
+			'should filter executions by `projectId` and expected `$name`',
+			async ({ filter, matchingParams, nonMatchingParams }) => {
+				const firstProject = await createTeamProject();
+				const secondProject = await createTeamProject();
+
+				const firstWorkflow = await createWorkflow(undefined, firstProject);
+				const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+				await Promise.all([
+					createExecution(matchingParams, firstWorkflow),
+					createExecution(nonMatchingParams, secondWorkflow),
+				]);
+
+				const query: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					range: { limit: 20 },
+					accessibleWorkflowIds: [firstWorkflow.id],
+					projectId: firstProject.id,
+					...filter,
+				};
+
+				const output = await executionService.findRangeWithCount(query);
+
+				expect(output).toEqual({
+					count: 1,
+					estimated: false,
+					results: expect.arrayContaining([
+						expect.objectContaining({ workflowId: firstWorkflow.id }),
+					]),
+				});
+			},
+		);
 
 		test('should exclude executions by inaccessible `workflowId`', async () => {
 			const accessibleWorkflow = await createWorkflow();
@@ -385,6 +509,67 @@ describe('ExecutionService', () => {
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([expect.objectContaining({ id: firstId })]);
+		});
+	});
+
+	describe('getConcurrentExecutionsCount', () => {
+		test('should return concurrentExecutionsCount when concurrency is enabled', async () => {
+			globalConfig.executions.concurrency.productionLimit = 4;
+
+			const workflow = await createWorkflow();
+			const concurrentExecutionsData = await Promise.all([
+				createExecution({ status: 'running', mode: 'webhook' }, workflow),
+				createExecution({ status: 'running', mode: 'trigger' }, workflow),
+			]);
+
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'crashed' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'running', mode: 'manual' }, workflow),
+			]);
+
+			const output = await executionService.getConcurrentExecutionsCount();
+			expect(output).toEqual(concurrentExecutionsData.length);
+		});
+
+		test('should set concurrentExecutionsCount to -1 when concurrency is disabled', async () => {
+			globalConfig.executions.concurrency.productionLimit = -1;
+
+			const workflow = await createWorkflow();
+
+			await Promise.all([
+				createExecution({ status: 'running', mode: 'webhook' }, workflow),
+				createExecution({ status: 'running', mode: 'trigger' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'crashed' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'running', mode: 'manual' }, workflow),
+			]);
+
+			const output = await executionService.getConcurrentExecutionsCount();
+
+			expect(output).toEqual(-1);
+		});
+
+		test('should set concurrentExecutionsCount to -1 in queue mode', async () => {
+			config.set('executions.mode', 'queue');
+			globalConfig.executions.concurrency.productionLimit = 4;
+
+			const workflow = await createWorkflow();
+
+			await Promise.all([
+				createExecution({ status: 'running', mode: 'webhook' }, workflow),
+				createExecution({ status: 'running', mode: 'trigger' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'crashed' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'running', mode: 'manual' }, workflow),
+			]);
+
+			const output = await executionService.getConcurrentExecutionsCount();
+
+			expect(output).toEqual(-1);
 		});
 	});
 
@@ -520,7 +705,7 @@ describe('ExecutionService', () => {
 		};
 
 		afterEach(async () => {
-			await testDb.truncate(['AnnotationTag', 'ExecutionAnnotation']);
+			await testDb.truncate(['AnnotationTagEntity', 'ExecutionAnnotation']);
 		});
 
 		test('should add and retrieve annotation', async () => {

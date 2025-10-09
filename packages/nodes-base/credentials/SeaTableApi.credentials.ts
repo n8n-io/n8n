@@ -1,6 +1,10 @@
-import type { ICredentialType, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
-
 import moment from 'moment-timezone';
+import type {
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 
 // Get options for timezones
 const timezones: INodePropertyOptions[] = moment.tz
@@ -41,7 +45,7 @@ export class SeaTableApi implements ICredentialType {
 			name: 'domain',
 			type: 'string',
 			default: '',
-			placeholder: 'https://www.mydomain.com',
+			placeholder: 'https://seatable.example.com',
 			displayOptions: {
 				show: {
 					environment: ['selfHosted'],
@@ -52,6 +56,8 @@ export class SeaTableApi implements ICredentialType {
 			displayName: 'API Token (of a Base)',
 			name: 'token',
 			type: 'string',
+			description:
+				'The API-Token of the SeaTable base you would like to use with n8n. n8n can only connect to one base at a time.',
 			typeOptions: { password: true },
 			default: '',
 		},
@@ -64,4 +70,14 @@ export class SeaTableApi implements ICredentialType {
 			options: [...timezones],
 		},
 	];
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.domain || "https://cloud.seatable.io" }}',
+			url: '/api/v2.1/dtable/app-access-token/',
+			headers: {
+				Authorization: '={{"Token " + $credentials.token}}',
+			},
+		},
+	};
 }

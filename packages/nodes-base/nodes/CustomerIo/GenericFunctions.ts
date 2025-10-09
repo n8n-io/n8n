@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -6,8 +7,6 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-
-import get from 'lodash/get';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,

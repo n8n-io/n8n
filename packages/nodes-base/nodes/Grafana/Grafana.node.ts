@@ -7,9 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
-
-import { deriveUid, grafanaApiRequest, throwOnEmptyUpdate } from './GenericFunctions';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
 import {
 	dashboardFields,
@@ -21,7 +19,7 @@ import {
 	userFields,
 	userOperations,
 } from './descriptions';
-
+import { deriveUid, grafanaApiRequest, throwOnEmptyUpdate } from './GenericFunctions';
 import type {
 	DashboardUpdateFields,
 	DashboardUpdatePayload,
@@ -43,8 +41,9 @@ export class Grafana implements INodeType {
 		defaults: {
 			name: 'Grafana',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'grafanaApi',

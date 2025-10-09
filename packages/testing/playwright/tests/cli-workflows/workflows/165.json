@@ -1,0 +1,237 @@
+{
+	"createdAt": "2021-04-09T07:26:51.323Z",
+	"updatedAt": "2021-05-21T09:03:30.653Z",
+	"id": "165",
+	"name": "Emelia:Campaign:create addContact get getAll start pause:ContactList:getAll add",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "e0161f99-f352-4391-a04c-4f5f35a5579d"
+		},
+		{
+			"parameters": {
+				"operation": "addContact",
+				"campaignId": "={{$node[\"Emelia3\"].json[\"_id\"]}}",
+				"contactEmail": "=fake{{Date.now()}}@email.com",
+				"additionalFields": {}
+			},
+			"name": "Emelia",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [590, 150],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "b01f183f-33bb-4f66-a35b-c3510f25566c"
+		},
+		{
+			"parameters": {
+				"campaignId": "={{$node[\"Emelia3\"].json[\"_id\"]}}"
+			},
+			"name": "Emelia1",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [750, 150],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "a7748a81-f4c6-4412-81f3-a30433806180"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1
+			},
+			"name": "Emelia2",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "3915812e-9ccc-4106-9617-f8e4a0e86721"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"campaignName": "=TestCampaign{{Date.now()}}"
+			},
+			"name": "Emelia3",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [450, 150],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "2c3250bc-e6e8-4d96-ba6c-e48b7d4d7029"
+		},
+		{
+			"parameters": {
+				"operation": "start",
+				"campaignId": "6076e11687008a0e9fc32356"
+			},
+			"name": "Emelia4",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "425267c3-ceee-44b8-a225-8b9754df353d"
+		},
+		{
+			"parameters": {
+				"operation": "pause",
+				"campaignId": "6076e11687008a0e9fc32356"
+			},
+			"name": "Emelia5",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "385748b1-d93b-48f9-bcde-3f5dc8bbd72a"
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"name": "Emelia6",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [450, 450],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "6026559f-751f-4cc0-9762-6be2c85011a0"
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "add",
+				"contactListId": "={{$node[\"Emelia6\"].json[\"_id\"]}}",
+				"contactEmail": "=fakeContact{{Date.now()}}@email.com",
+				"additionalFields": {}
+			},
+			"name": "Emelia7",
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [600, 450],
+			"credentials": {
+				"emeliaApi": {
+					"id": "136",
+					"name": "Emelia API creds"
+				}
+			},
+			"id": "9b44146c-54be-48fe-868e-30029a235f7a"
+		}
+	],
+	"connections": {
+		"Emelia": {
+			"main": [
+				[
+					{
+						"node": "Emelia1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Emelia2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Emelia3": {
+			"main": [
+				[
+					{
+						"node": "Emelia",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Emelia4": {
+			"main": [
+				[
+					{
+						"node": "Emelia5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Emelia6": {
+			"main": [
+				[
+					{
+						"node": "Emelia7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Emelia3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Emelia4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Emelia6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

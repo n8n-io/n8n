@@ -4,7 +4,8 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+
 import { apiRequest } from '../../transport';
 import { assistantRLC, modelRLC } from '../descriptions';
 
@@ -116,6 +117,18 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+function getFileIds(file_ids: unknown): string[] {
+	if (Array.isArray(file_ids)) {
+		return file_ids;
+	}
+
+	if (typeof file_ids === 'string') {
+		return file_ids.split(',').map((file_id) => file_id.trim());
+	}
+
+	throw new ApplicationError('Invalid file_ids type');
+}
+
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
 	const options = this.getNodeParameter('options', i, {});
@@ -137,11 +150,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const body: IDataObject = {};
 
 	if (file_ids) {
-		let files = file_ids;
-		if (typeof files === 'string') {
-			files = files.split(',').map((file_id) => file_id.trim());
-		}
-		if ((file_ids as IDataObject[]).length > 20) {
+		const files = getFileIds(file_ids);
+		if (files.length > 20) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'The maximum number of files that can be attached to the assistant is 20',
@@ -152,15 +162,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.tool_resources = {
 			...((body.tool_resources as object) ?? {}),
 			code_interpreter: {
-				file_ids,
+				file_ids: files,
 			},
-			file_search: {
-				vector_stores: [
-					{
-						file_ids,
-					},
-				],
-			},
+			// updating file_ids for file_search directly is not supported by OpenAI API
+			// only updating vector_store_ids for file_search is supported
+			// support for this to be added as part of ADO-2968
+			// https://platform.openai.com/docs/api-reference/assistants/modifyAssistant
 		};
 	}
 

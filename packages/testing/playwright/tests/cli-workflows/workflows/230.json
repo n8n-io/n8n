@@ -1,0 +1,67 @@
+{
+	"createdAt": "2023-11-14T13:58:21.079Z",
+	"updatedAt": "2023-11-14T14:13:25.000Z",
+	"id": "230",
+	"name": "CredentialOnlyNodes",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d4c2fa93-d956-4b90-86ab-e8d7e1f89057",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [1360, 720]
+		},
+		{
+			"parameters": {
+				"curlImport": "",
+				"httpVariantWarning": "",
+				"method": "GET",
+				"url": "https://www.virustotal.com/api/v3/popular_threat_categories",
+				"": "",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "virusTotalApi",
+				"sendQuery": false,
+				"sendHeaders": false,
+				"sendBody": false,
+				"options": {},
+				"infoMessage": ""
+			},
+			"id": "11ba670f-87d9-4d4a-ae47-da3fe5bb7715",
+			"name": "VirusTotal HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [1580, 720],
+			"extendsCredential": "virusTotalApi",
+			"credentials": {
+				"virusTotalApi": {
+					"id": "q80wx3kiggmjWdY9",
+					"name": "VirusTotal account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "VirusTotal HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": "0a529bae-c8b3-416a-95fe-933383d51e59",
+	"triggerCount": 0,
+	"tags": []
+}

@@ -1,21 +1,28 @@
 import type {
-	IExecuteFunctions,
 	IDataObject,
-	ILoadOptionsFunctions,
+	IExecuteFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
+	INodeProperties,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	NodeConnectionType,
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	WAIT_TIME_UNLIMITED,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
+import { draftFields, draftOperations } from './DraftDescription';
+import { labelFields, labelOperations } from './LabelDescription';
+import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
+import { messageFields, messageOperations } from './MessageDescription';
+import { threadFields, threadOperations } from './ThreadDescription';
+import { addThreadHeadersToEmail } from './utils/draft';
+import { configureWaitTillDate } from '../../../../utils/sendAndWait/configureWaitTillDate.util';
+import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
+import {
+	createEmail,
+	getSendAndWaitProperties,
+	sendAndWaitWebhook,
+} from '../../../../utils/sendAndWait/utils';
 import {
 	encodeEmail,
 	googleApiRequest,
@@ -30,19 +37,21 @@ import {
 	unescapeSnippets,
 } from '../GenericFunctions';
 
-import { messageFields, messageOperations } from './MessageDescription';
-
-import { labelFields, labelOperations } from './LabelDescription';
-
-import { draftFields, draftOperations } from './DraftDescription';
-
-import { threadFields, threadOperations } from './ThreadDescription';
-
-import {
-	getSendAndWaitProperties,
-	createEmail,
-	sendAndWaitWebhook,
-} from '../../../../utils/sendAndWait/utils';
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Sort your Gmail inbox using our pre-built',
+	name: 'preBuiltAgentsCalloutGmail',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Email triage agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'email_triage_agent_with_gmail',
+		},
+	},
+	default: '',
+};
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -55,8 +64,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Gmail',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{
@@ -78,18 +87,9 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
-	webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-	],
+	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
+		preBuiltAgentsCallout,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
@@ -178,78 +178,9 @@ export class GmailV2 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that they can
-			// select them easily
-			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-
-				const labels = await googleApiRequestAllItems.call(
-					this,
-					'labels',
-					'GET',
-					'/gmail/v1/users/me/labels',
-				);
-
-				for (const label of labels) {
-					returnData.push({
-						name: label.name,
-						value: label.id,
-					});
-				}
-
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-			},
-
-			async getThreadMessages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-
-				const id = this.getNodeParameter('threadId', 0) as string;
-				const { messages } = await googleApiRequest.call(
-					this,
-					'GET',
-					`/gmail/v1/users/me/threads/${id}`,
-					{},
-					{ format: 'minimal' },
-				);
-
-				for (const message of messages || []) {
-					returnData.push({
-						name: message.snippet,
-						value: message.id,
-					});
-				}
-
-				return returnData;
-			},
-
-			async getGmailAliases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { sendAs } = await googleApiRequest.call(
-					this,
-					'GET',
-					'/gmail/v1/users/me/settings/sendAs',
-				);
-
-				for (const alias of sendAs || []) {
-					const displayName = alias.isDefault
-						? `${alias.sendAsEmail} (Default)`
-						: alias.sendAsEmail;
-					returnData.push({
-						name: displayName,
-						value: alias.sendAsEmail,
-					});
-				}
-
-				return returnData;
-			},
+			getLabels,
+			getThreadMessages,
+			getGmailAliases,
 		},
 	};
 
@@ -270,7 +201,9 @@ export class GmailV2 implements INodeType {
 				raw: await encodeEmail(email),
 			});
 
-			await this.putExecutionToWait(new Date(WAIT_TIME_UNLIMITED));
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
 			return [this.getInputData()];
 		}
 
@@ -645,6 +578,12 @@ export class GmailV2 implements INodeType {
 							...prepareEmailBody.call(this, i),
 							attachments,
 						};
+
+						if (threadId) {
+							// If a threadId is set, we need to add the Message-ID of the last message in the thread
+							// to the email so that Gmail can correctly associate the draft with the thread
+							await addThreadHeadersToEmail.call(this, email, threadId as string);
+						}
 
 						const body = {
 							message: {

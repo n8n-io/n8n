@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { BATCH_MODE, SINGLE } from '../helpers/interfaces';
 
 export const tableRLC: INodeProperties = {
@@ -69,7 +70,7 @@ export const optionsCollection: INodeProperties = {
 					description: 'A single query for all incoming items',
 				},
 				{
-					name: 'Independently',
+					name: 'Independent',
 					value: BATCH_MODE.INDEPENDENTLY,
 					description: 'Execute one query per incoming item of the run',
 				},

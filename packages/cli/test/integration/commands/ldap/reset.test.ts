@@ -1,26 +1,32 @@
+import {
+	createTeamProject,
+	findProject,
+	getPersonalProject,
+	mockInstance,
+	createWorkflow,
+	randomCredentialPayload,
+} from '@n8n/backend-test-utils';
+import {
+	CredentialsRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { Reset } from '@/commands/ldap/reset';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { getLdapSynchronizations, saveLdapSynchronization } from '@/ldap/helpers.ee';
-import { LdapService } from '@/ldap/ldap.service.ee';
+import { getLdapSynchronizations, saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { mockInstance } from '../../../shared/mocking';
 import { saveCredential } from '../../shared/db/credentials';
-import { createTeamProject, findProject, getPersonalProject } from '../../shared/db/projects';
 import { createLdapUser, createMember, getUserById } from '../../shared/db/users';
-import { createWorkflow } from '../../shared/db/workflows';
 import { createLdapConfig } from '../../shared/ldap';
-import { randomCredentialPayload } from '../../shared/random';
 
 mockInstance(Telemetry);
 
@@ -55,7 +61,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, uuid());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
@@ -160,7 +166,7 @@ describe('--userId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, uuid());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uuid());
 
 		await expect(command.run([`--userId=${member.id}`])).rejects.toThrowError(
 			`Can't migrate workflows and credentials to the user with the ID ${member.id}. That user was created via LDAP and will be deleted as well.`,
@@ -171,7 +177,7 @@ describe('--userId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, uuid());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
@@ -236,7 +242,7 @@ describe('--projectId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, uuid());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uuid());
 		const memberProject = await getPersonalProject(member);
 
 		await expect(command.run([`--projectId=${memberProject.id}`])).rejects.toThrowError(
@@ -248,7 +254,7 @@ describe('--projectId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, uuid());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
@@ -304,7 +310,7 @@ describe('--projectId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, uuid());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {

@@ -1,3 +1,5 @@
+import type { Tool } from '@langchain/core/tools';
+import _omit from 'lodash/omit';
 import type {
 	INodeProperties,
 	IExecuteFunctions,
@@ -5,14 +7,15 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
-import type { Tool } from '@langchain/core/tools';
-import _omit from 'lodash/omit';
-import { apiRequest } from '../../transport';
+
+import { getConnectedTools } from '@utils/helpers';
+
+import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
-import { getConnectedTools } from '../../../../../utils/helpers';
-import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
+
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
 	{
@@ -31,11 +34,12 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Text',
+						displayName: 'Prompt',
 						name: 'content',
 						type: 'string',
 						description: 'The content of the message to be send',
 						default: '',
+						placeholder: 'e.g. Hello, how can you help me?',
 						typeOptions: {
 							rows: 2,
 						},
@@ -171,6 +175,38 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
+				displayName: 'Reasoning Effort',
+				name: 'reasoning_effort',
+				default: 'medium',
+				description:
+					'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses.',
+				type: 'options',
+				options: [
+					{
+						name: 'Low',
+						value: 'low',
+						description: 'Favors speed and economical token usage',
+					},
+					{
+						name: 'Medium',
+						value: 'medium',
+						description: 'Balance between speed and reasoning accuracy',
+					},
+					{
+						name: 'High',
+						value: 'high',
+						description:
+							'Favors more complete reasoning at the cost of more tokens generated and slower responses',
+					},
+				],
+				displayOptions: {
+					show: {
+						// reasoning_effort is only available on o1, o1-versioned, or on o3-mini and beyond, and gpt-5 models. Not on o1-mini or other GPT-models.
+						'/modelId': [{ _cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)|(^gpt-5.*)' } }],
+					},
+				},
+			},
+			{
 				displayName: 'Max Tool Calls Iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
@@ -208,7 +244,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const abortSignal = this.getExecutionCancelSignal();
 
 	if (options.maxTokens !== undefined) {
-		options.max_tokens = options.maxTokens;
+		options.max_completion_tokens = options.maxTokens;
 		delete options.maxTokens;
 	}
 

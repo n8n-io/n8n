@@ -4,7 +4,7 @@
     {
       "parameters": {},
       "id": "64b27674-3da6-46ce-9008-e173182efa48",
-      "name": "When clicking ‘Test workflow’",
+      "name": "When clicking ‘Execute workflow’",
       "type": "n8n-nodes-base.manualTrigger",
       "position": [
         16,
@@ -148,7 +148,7 @@
     }
   ],
   "pinData": {
-    "When clicking ‘Test workflow’": [
+    "When clicking ‘Execute workflow’": [
       {
         "json": {
           "name": "First item",
@@ -173,7 +173,7 @@
     ]
   },
   "connections": {
-    "When clicking ‘Test workflow’": {
+    "When clicking ‘Execute workflow’": {
       "main": [
         [
           {

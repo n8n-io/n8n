@@ -4,7 +4,7 @@
     {
       "parameters": {},
       "id": "f26332f3-c61a-4843-94bd-64a73ad161ff",
-      "name": "When clicking ‘Test workflow’",
+      "name": "When clicking ‘Execute workflow’",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
@@ -105,7 +105,7 @@
   ],
   "pinData": {},
   "connections": {
-    "When clicking ‘Test workflow’": {
+    "When clicking ‘Execute workflow’": {
       "main": [
         [
           {

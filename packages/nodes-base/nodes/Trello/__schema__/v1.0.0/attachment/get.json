@@ -1,0 +1,65 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "fileName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "idMember": {
+            "type": "string"
+        },
+        "isMalicious": {
+            "type": "boolean"
+        },
+        "isUpload": {
+            "type": "boolean"
+        },
+        "mimeType": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pos": {
+            "type": "integer"
+        },
+        "previews": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string"
+                    },
+                    "bytes": {
+                        "type": "integer"
+                    },
+                    "height": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "scaled": {
+                        "type": "boolean"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

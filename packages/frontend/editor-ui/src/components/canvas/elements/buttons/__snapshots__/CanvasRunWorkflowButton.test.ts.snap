@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasRunWorkflowButton > should render correctly 1`] = `
+"<div class="component">
+  <n8n-button-stub class="button el-tooltip__trigger el-tooltip__trigger" loading="false" disabled="false" size="large" icon="flask-conical" type="primary" data-test-id="execute-workflow-button"><span class="buttonContent">Execute workflow <!--v-if--></span></n8n-button-stub>
+  <!--teleport start-->
+  <!--teleport end-->
+  <!--v-if-->
+</div>"
+`;

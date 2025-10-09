@@ -1,0 +1,244 @@
+name: Security - Scan Docker Image With Trivy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_ref:
+        description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
+        required: true
+        default: 'ghcr.io/n8n-io/n8n:latest'
+  workflow_call:
+    inputs:
+      image_ref:
+        type: string
+        description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
+        required: true
+    secrets:
+      QBOT_SLACK_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  QBOT_SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+  SLACK_CHANNEL_ID: C042WDXPTEZ #mission-security
+
+jobs:
+  security_scan:
+    name: Security - Scan Docker Image With Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull Docker image with retry
+        run: |
+          for i in {1..4}; do
+            docker pull "${{ inputs.image_ref }}" && break
+            [ "$i" -lt 4 ] && echo "Retry $i failed, waiting..." && sleep 15
+          done
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.32.0
+        id: trivy_scan
+        with:
+          image-ref: ${{ inputs.image_ref }}
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          ignore-unfixed: false
+          exit-code: '0'
+
+      - name: Calculate vulnerability counts
+        id: process_results
+        run: |
+          if [ ! -s trivy-results.json ] || [ "$(jq '.Results | length' trivy-results.json)" -eq 0 ]; then
+            echo "No vulnerabilities found."
+            echo "vulnerabilities_found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Calculate counts by severity
+          CRITICAL_COUNT=$(jq '([.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length)' trivy-results.json)
+          HIGH_COUNT=$(jq '([.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length)' trivy-results.json)
+          MEDIUM_COUNT=$(jq '([.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length)' trivy-results.json)
+          LOW_COUNT=$(jq '([.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW")] | length)' trivy-results.json)
+          TOTAL_VULNS=$((CRITICAL_COUNT + HIGH_COUNT + MEDIUM_COUNT + LOW_COUNT))
+
+          # Get unique CVE count
+          UNIQUE_CVES=$(jq -r '[.Results[]?.Vulnerabilities[]?.VulnerabilityID] | unique | length' trivy-results.json)
+
+          # Get affected packages count
+          AFFECTED_PACKAGES=$(jq -r '[.Results[]?.Vulnerabilities[]? | .PkgName] | unique | length' trivy-results.json)
+
+          {
+            echo "vulnerabilities_found=$( [ "$TOTAL_VULNS" -gt 0 ] && echo 'true' || echo 'false' )"
+            echo "total_count=$TOTAL_VULNS"
+            echo "critical_count=$CRITICAL_COUNT"
+            echo "high_count=$HIGH_COUNT"
+            echo "medium_count=$MEDIUM_COUNT"
+            echo "low_count=$LOW_COUNT"
+            echo "unique_cves=$UNIQUE_CVES"
+            echo "affected_packages=$AFFECTED_PACKAGES"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate GitHub Job Summary
+        if: always()
+        run: |
+          {
+            echo "# 🛡️ Trivy Security Scan Results"
+            echo ""
+            echo "**Image:** \`${{ inputs.image_ref }}\`"
+            echo "**Scan Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ steps.process_results.outputs.vulnerabilities_found }}" == "false" ]; then
+            {
+              echo "✅ **No vulnerabilities found!**"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## 📊 Summary"
+              echo "| Metric | Count |"
+              echo "|--------|-------|"
+              echo "| 🔴 Critical Vulnerabilities | ${{ steps.process_results.outputs.critical_count }} |"
+              echo "| 🟠 High Vulnerabilities | ${{ steps.process_results.outputs.high_count }} |"
+              echo "| 🟡 Medium Vulnerabilities | ${{ steps.process_results.outputs.medium_count }} |"
+              echo "| 🟡 Low Vulnerabilities | ${{ steps.process_results.outputs.low_count }} |"
+              echo "| 📋 Unique CVEs | ${{ steps.process_results.outputs.unique_cves }} |"
+              echo "| 📦 Affected Packages | ${{ steps.process_results.outputs.affected_packages }} |"
+              echo ""
+              echo "## 🚨 Top Vulnerabilities"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            {
+              # Generate detailed vulnerability table
+              jq -r --arg image_ref "${{ inputs.image_ref }}" '
+                # Collect all vulnerabilities
+                [.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[]] |
+                # Group by CVE ID to avoid duplicates
+                group_by(.VulnerabilityID) |
+                map({
+                  cve: .[0].VulnerabilityID,
+                  severity: .[0].Severity,
+                  cvss: (.[0].CVSS.nvd.V3Score // "N/A"),
+                  cvss_sort: (.[0].CVSS.nvd.V3Score // 0),
+                  packages: [.[] | "\(.PkgName)@\(.InstalledVersion)"] | unique | join(", "),
+                  fixed: (.[0].FixedVersion // "No fix available"),
+                  description: (.[0].Description // "No description available") | split("\n")[0] | .[0:150]
+                }) |
+                # Sort by severity (CRITICAL, HIGH, MEDIUM, LOW) and CVSS score
+                sort_by(
+                  if .severity == "CRITICAL" then 0
+                  elif .severity == "HIGH" then 1
+                  elif .severity == "MEDIUM" then 2
+                  elif .severity == "LOW" then 3
+                  else 4 end,
+                  -.cvss_sort
+                ) |
+                # Take top 15
+                .[:15] |
+                # Generate markdown table
+                "| CVE | Severity | CVSS | Package(s) | Fix Version | Description |",
+                "|-----|----------|------|------------|-------------|-------------|",
+                (.[] | "| [\(.cve)](https://nvd.nist.gov/vuln/detail/\(.cve)) | \(.severity) | \(.cvss) | `\(.packages)` | `\(.fixed)` | \(.description) |")
+              ' trivy-results.json
+
+              echo ""
+              echo "---"
+              echo "🔍 **View detailed logs above for full analysis**"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Generate Slack Blocks JSON
+        if: steps.process_results.outputs.vulnerabilities_found == 'true'
+        id: generate_blocks
+        run: |
+          BLOCKS_JSON=$(jq -c --arg image_ref "${{ inputs.image_ref }}" \
+          --arg repo_url "${{ github.server_url }}/${{ github.repository }}" \
+          --arg repo_name "${{ github.repository }}" \
+          --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+          --arg critical_count "${{ steps.process_results.outputs.critical_count }}" \
+          --arg high_count "${{ steps.process_results.outputs.high_count }}" \
+          --arg medium_count "${{ steps.process_results.outputs.medium_count }}" \
+          --arg low_count "${{ steps.process_results.outputs.low_count }}" \
+          --arg unique_cves "${{ steps.process_results.outputs.unique_cves }}" \
+          '
+          # Function to create a vulnerability block with emoji indicators
+          def vuln_block: {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "\(if .Severity == "CRITICAL" then ":red_circle:" elif .Severity == "HIGH" then ":large_orange_circle:" elif .Severity == "MEDIUM" then ":large_yellow_circle:" else ":large_green_circle:" end) *<https://nvd.nist.gov/vuln/detail/\(.VulnerabilityID)|\(.VulnerabilityID)>* (CVSS: `\(.CVSS.nvd.V3Score // "N/A")`)\n*Package:* `\(.PkgName)@\(.InstalledVersion)` → `\(.FixedVersion // "No fix available")`"
+              }
+            };
+
+          # Main structure
+          [
+            {
+              "type": "header",
+              "text": { "type": "plain_text", "text": ":warning: Trivy Scan: Vulnerabilities Detected" }
+            },
+            {
+              "type": "section",
+              "fields": [
+                { "type": "mrkdwn", "text": "*Repository:*\n<\($repo_url)|\($repo_name)>" },
+                { "type": "mrkdwn", "text": "*Image:*\n`\($image_ref)`" },
+                { "type": "mrkdwn", "text": "*Critical:*\n:red_circle: \($critical_count)" },
+                { "type": "mrkdwn", "text": "*High:*\n:large_orange_circle: \($high_count)" },
+                { "type": "mrkdwn", "text": "*Medium:*\n:large_yellow_circle: \($medium_count)" },
+                { "type": "mrkdwn", "text": "*Low:*\n:large_green_circle: \($low_count)" }
+              ]
+            },
+            {
+              "type": "context",
+              "elements": [
+                { "type": "mrkdwn", "text": ":shield: \($unique_cves) unique CVEs affecting packages" }
+              ]
+            },
+            { "type": "divider" }
+          ] +
+          (
+            # Group vulnerabilities by CVE to avoid duplicates in notification
+            [.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[]] |
+            group_by(.VulnerabilityID) |
+            map(.[0]) |
+            sort_by(
+              (if .Severity == "CRITICAL" then 0
+               elif .Severity == "HIGH" then 1
+               elif .Severity == "MEDIUM" then 2
+               elif .Severity == "LOW" then 3
+               else 4 end),
+              -((.CVSS.nvd.V3Score // 0) | tonumber? // 0)
+            ) |
+            .[:8] |
+            map(. | vuln_block)
+          ) +
+          [
+            { "type": "divider" },
+            {
+              "type": "actions",
+              "elements": [
+                {
+                  "type": "button",
+                  "text": { "type": "plain_text", "text": ":github: View Full Report" },
+                  "style": "primary",
+                  "url": $run_url
+                }
+              ]
+            }
+          ]
+          ' trivy-results.json)
+
+          echo "slack_blocks=$BLOCKS_JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Send Slack Notification
+        if: steps.process_results.outputs.vulnerabilities_found == 'true'
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.QBOT_SLACK_TOKEN }}
+          payload: |
+            channel: ${{ env.SLACK_CHANNEL_ID }}
+            text: "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in ${{ inputs.image_ref }}"
+            blocks: ${{ steps.generate_blocks.outputs.slack_blocks }}

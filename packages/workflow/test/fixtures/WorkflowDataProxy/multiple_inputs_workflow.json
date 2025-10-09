@@ -1,0 +1,203 @@
+{
+	"name": "Paired item",
+	"nodes": [
+		{
+			"parameters": {
+				"numberInputs": 3
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.1,
+			"position": [560, 300],
+			"id": "2b68168b-1494-4c4b-b416-b4fb6bb0afd8",
+			"name": "Merge",
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "63830a30-a4cc-4a66-9d01-8f0a058d4d43",
+							"name": "variable_1",
+							"value": "1234",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 100],
+			"id": "a1d151cc-8f44-43c6-962f-baecb879d33c",
+			"name": "Set variable_1"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "63830a30-a4cc-4a66-9d01-8f0a058d4d43",
+							"name": "variable_2",
+							"value": "2345",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 300],
+			"id": "404ff876-b524-4873-8dc0-36664639907a",
+			"name": "Set variable_2"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "63830a30-a4cc-4a66-9d01-8f0a058d4d43",
+							"name": "variable_3",
+							"value": "3456",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 500],
+			"id": "d403e979-7651-4acf-8e08-1d342b7abe7f",
+			"name": "Set variable_3"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "89862e7d-0c44-4d6a-897e-a249c06f6346",
+							"name": "final_variable_2",
+							"value": "={{ $('Set variable_3').item.json.variable_3 }}",
+							"type": "string"
+						},
+						{
+							"id": "060e841c-c236-41ae-9396-e23566825f47",
+							"name": "main",
+							"value": "={{ $('Set main variable').item.json.main_variable }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [840, 300],
+			"id": "16514f79-e309-465c-b571-7d81e268d7f0",
+			"name": "Output"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-240, 300],
+			"id": "3a8a9543-567c-443c-8742-fa0a8d9fb2e7",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "6bb9d060-adee-429f-884d-5009ab1a1811",
+							"name": "main_variable",
+							"value": 2,
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-20, 300],
+			"id": "b6ec9c0f-de04-45d3-a402-3969251a6914",
+			"name": "Set main variable"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set variable_1": {
+			"main": [[]]
+		},
+		"Set variable_2": {
+			"main": [[]]
+		},
+		"Set variable_3": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set main variable",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set main variable": {
+			"main": [
+				[
+					{
+						"node": "Set variable_2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set variable_1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set variable_3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "5678abcc-b267-4b5b-ba1b-5f7bb1b085ec",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "TakJu1jBtMGTFXEA",
+	"tags": []
+}

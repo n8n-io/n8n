@@ -1,0 +1,85 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "418350b8-b402-4d3b-93ba-3794d36c1ad5",
+			"name": "When clicking \"Execute workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [440, 380]
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{},
+						{}
+					]
+				},
+				"options": {}
+			},
+			"id": "b67ad46f-6b0d-4ff4-b2d2-dfbde44e287c",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [660, 380]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "24731c11-e2a4-4854-81a6-277ce72e8a93",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [840, 480]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				null,
+				null,
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

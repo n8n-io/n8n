@@ -61,5 +61,15 @@ export class HighLevelOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'body',
 		},
+		{
+			displayName:
+				'Make sure your credentials include the required OAuth scopes for all actions this node performs.',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				hideOnCloud: true,
+			},
+		},
 	];
 }

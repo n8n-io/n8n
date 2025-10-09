@@ -1,0 +1,33 @@
+name: Reusable linting workflow
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to lint.
+        required: false
+        type: string
+        default: master
+      nodeVersion:
+        description: Version of node to use.
+        required: false
+        type: string
+        default: 22.x
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build and Test
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        with:
+          build-command: pnpm lint
+          node-version: ${{ inputs.nodeVersion }}

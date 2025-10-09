@@ -17,7 +17,7 @@ properties:
     type: string
   type:
     type: string
-    example: n8n-nodes-base.Jira
+    example: n8n-nodes-base.jira
   typeVersion:
     type: number
     example: 1

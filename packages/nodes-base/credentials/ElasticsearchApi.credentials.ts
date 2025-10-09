@@ -37,7 +37,7 @@ export class ElasticsearchApi implements ICredentialType {
 			description: "Referred to as Elasticsearch 'endpoint' in the Elastic deployment dashboard",
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'ignoreSSLIssues',
 			type: 'boolean',
 			default: false,
@@ -56,7 +56,7 @@ export class ElasticsearchApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}',
+			baseURL: '={{$credentials.baseUrl}}'.replace(/\/$/, ''),
 			url: '/_xpack?human=false',
 			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
 		},

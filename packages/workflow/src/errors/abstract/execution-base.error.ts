@@ -1,5 +1,6 @@
-import type { Functionality, IDataObject, JsonObject } from '../../Interfaces';
-import { ApplicationError, type ReportingOptions } from '../application.error';
+import { ApplicationError, type ReportingOptions } from '@n8n/errors';
+
+import type { Functionality, IDataObject, JsonObject } from '../../interfaces';
 
 interface ExecutionBaseErrorOptions extends ReportingOptions {
 	cause?: Error;
@@ -9,7 +10,7 @@ interface ExecutionBaseErrorOptions extends ReportingOptions {
 export abstract class ExecutionBaseError extends ApplicationError {
 	description: string | null | undefined;
 
-	cause?: Error;
+	override cause?: Error;
 
 	errorResponse?: JsonObject;
 

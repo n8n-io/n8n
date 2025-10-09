@@ -1,14 +1,11 @@
+import { Logger } from '@n8n/backend-common';
+import { ExecutionRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	type IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
-import { Service } from 'typedi';
+import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logging/logger.service';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { ActiveExecutions } from '@/active-executions';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -27,8 +24,8 @@ export class WaitTracker {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
@@ -38,31 +35,20 @@ export class WaitTracker {
 		return this.waitingExecutions[executionId] !== undefined;
 	}
 
-	/**
-	 * @important Requires `OrchestrationService` to be initialized.
-	 */
 	init() {
-		const { isLeader } = this.instanceSettings;
-		const { isMultiMainSetupEnabled } = this.orchestrationService;
-
-		if (isLeader) this.startTracking();
-
-		if (isMultiMainSetupEnabled) {
-			this.orchestrationService.multiMainSetup
-				.on('leader-takeover', () => this.startTracking())
-				.on('leader-stepdown', () => this.stopTracking());
-		}
+		if (this.instanceSettings.isLeader) this.startTracking();
 	}
 
+	@OnLeaderTakeover()
 	private startTracking() {
-		this.logger.debug('Started tracking waiting executions');
-
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
 		}, 60000);
 
 		void this.getWaitingExecutions();
+
+		this.logger.debug('Started tracking waiting executions');
 	}
 
 	async getWaitingExecutions() {
@@ -88,7 +74,7 @@ export class WaitTracker {
 				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(() => {
-						this.startExecution(executionId);
+						void this.startExecution(executionId);
 					}, triggerTime),
 				};
 			}
@@ -103,54 +89,60 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 	}
 
-	startExecution(executionId: string) {
+	async startExecution(executionId: string) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
-		(async () => {
-			// Get the data to execute
-			const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-				unflattenData: true,
-			});
-
-			if (!fullExecutionData) {
-				throw new ApplicationError('Execution does not exist.', { extra: { executionId } });
-			}
-			if (fullExecutionData.finished) {
-				throw new ApplicationError('The execution did succeed and can so not be started again.');
-			}
-
-			if (!fullExecutionData.workflowData.id) {
-				throw new ApplicationError('Only saved workflows can be resumed.');
-			}
-			const workflowId = fullExecutionData.workflowData.id;
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-
-			const data: IWorkflowExecutionDataProcess = {
-				executionMode: fullExecutionData.mode,
-				executionData: fullExecutionData.data,
-				workflowData: fullExecutionData.workflowData,
-				projectId: project.id,
-			};
-
-			// Start the execution again
-			await this.workflowRunner.run(data, false, false, executionId);
-		})().catch((error: Error) => {
-			ErrorReporter.error(error);
-			this.logger.error(
-				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
-				{ executionId },
-			);
+		// Get the data to execute
+		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
 		});
+
+		if (!fullExecutionData) {
+			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
+		}
+		if (fullExecutionData.finished) {
+			throw new UnexpectedError('The execution did succeed and can so not be started again.');
+		}
+
+		if (!fullExecutionData.workflowData.id) {
+			throw new UnexpectedError('Only saved workflows can be resumed.');
+		}
+
+		const workflowId = fullExecutionData.workflowData.id;
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: fullExecutionData.mode,
+			executionData: fullExecutionData.data,
+			workflowData: fullExecutionData.workflowData,
+			projectId: project.id,
+			pushRef: fullExecutionData.data.pushRef,
+			startedAt: fullExecutionData.startedAt,
+		};
+
+		// Start the execution again
+		await this.workflowRunner.run(data, false, false, executionId);
+
+		const { parentExecution } = fullExecutionData.data;
+		if (parentExecution) {
+			// on child execution completion, resume parent execution
+			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
+				void this.startExecution(parentExecution.executionId);
+			});
+		}
 	}
 
+	@OnLeaderStepdown()
 	stopTracking() {
-		this.logger.debug('Shutting down wait tracking');
+		if (!this.mainTimer) return;
 
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
+
+		this.logger.debug('Stopped tracking waiting executions');
 	}
 }

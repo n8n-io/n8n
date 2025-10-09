@@ -1,10 +1,15 @@
 {
-	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
 	"compilerOptions": {
+		"lib": ["es2022"],
 		"rootDir": ".",
 		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./*"],
+			"@test/*": ["../test/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
@@ -14,7 +19,12 @@
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"references": [
-		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../workflow/tsconfig.build.esm.json" },
+		{ "path": "../@n8n/decorators/tsconfig.build.json" },
+		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
+		{ "path": "../@n8n/config/tsconfig.build.json" },
+		{ "path": "../@n8n/constants/tsconfig.build.json" },
+		{ "path": "../@n8n/di/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" }
 	]
 }

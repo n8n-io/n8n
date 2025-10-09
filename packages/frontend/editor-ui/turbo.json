@@ -1,0 +1,21 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"popularity-cache-marker": {
+			"cache": false,
+			"outputs": [".build/cache-marker"]
+		},
+		"fetch-popularity": {
+			"dependsOn": ["popularity-cache-marker"],
+			"cache": true,
+			"outputs": [".build/node-popularity.json"],
+			"inputs": ["scripts/fetch-node-popularity.mjs", ".build/cache-marker"],
+			"env": ["N8N_FAIL_ON_POPULARITY_FETCH_ERROR"]
+		},
+		"build": {
+			"dependsOn": ["^build", "fetch-popularity"],
+			"outputs": ["dist/**"],
+			"inputs": ["!.build/**"]
+		}
+	}
+}

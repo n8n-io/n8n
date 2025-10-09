@@ -1,25 +1,25 @@
-import type { PushMessage } from '@n8n/api-types';
+import { createHeartbeatMessage, type PushMessage } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
-import { Container } from 'typedi';
 import type WebSocket from 'ws';
 
-import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logging/logger.service';
 import { WebSocketPush } from '@/push/websocket.push';
-import { mockInstance } from '@test/mocking';
 
 jest.useFakeTimers();
 
 class MockWebSocket extends EventEmitter {
-	public isAlive = true;
+	isAlive = true;
 
-	public ping = jest.fn();
+	ping = jest.fn();
 
-	public send = jest.fn();
+	send = jest.fn();
 
-	public terminate = jest.fn();
+	terminate = jest.fn();
 
-	public close = jest.fn();
+	close = jest.fn();
 }
 
 const createMockWebSocket = () => new MockWebSocket() as unknown as jest.Mocked<WebSocket>;
@@ -73,19 +73,19 @@ describe('WebSocketPush', () => {
 	it('sends data to one connection', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToOne(pushMessage.type, pushMessage.data, pushRef1);
+		webSocketPush.sendToOne(pushMessage, pushRef1);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
 	});
 
 	it('sends data to all connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToAll(pushMessage.type, pushMessage.data);
+		webSocketPush.sendToAll(pushMessage);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
 	it('pings all connections', () => {
@@ -101,13 +101,14 @@ describe('WebSocketPush', () => {
 	it('sends data to all users connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToUsers(pushMessage.type, pushMessage.data, [userId]);
+		webSocketPush.sendToUsers(pushMessage, [userId]);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
-	it('emits message event when connection receives data', () => {
+	it('emits message event when connection receives data', async () => {
+		jest.useRealTimers();
 		const mockOnMessageReceived = jest.fn();
 		webSocketPush.on('message', mockOnMessageReceived);
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
@@ -118,10 +119,30 @@ describe('WebSocketPush', () => {
 
 		mockWebSocket1.emit('message', buffer);
 
+		// Flush the event loop
+		await new Promise(process.nextTick);
+
 		expect(mockOnMessageReceived).toHaveBeenCalledWith({
 			msg: data,
 			pushRef: pushRef1,
 			userId,
 		});
+	});
+
+	it("emits doesn' emit message for client heartbeat", async () => {
+		const mockOnMessageReceived = jest.fn();
+		webSocketPush.on('message', mockOnMessageReceived);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef2, userId, mockWebSocket2);
+
+		const data = createHeartbeatMessage();
+		const buffer = Buffer.from(JSON.stringify(data));
+
+		mockWebSocket1.emit('message', buffer);
+
+		// Flush the event loop
+		await new Promise(process.nextTick);
+
+		expect(mockOnMessageReceived).not.toHaveBeenCalled();
 	});
 });

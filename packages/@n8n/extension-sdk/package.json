@@ -1,0 +1,62 @@
+{
+  "name": "@n8n/extension-sdk",
+  "version": "0.7.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "schema.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./backend": {
+      "types": "./dist/backend/index.d.ts",
+      "import": "./dist/backend/index.js",
+      "require": "./dist/backend/index.cjs"
+    },
+    "./frontend": {
+      "types": "./dist/frontend/index.d.ts",
+      "import": "./dist/frontend/index.js",
+      "require": "./dist/frontend/index.cjs"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint . --quiet",
+    "typecheck:frontend": "vue-tsc --noEmit --project tsconfig.frontend.json",
+    "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
+    "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsup && pnpm create-json-schema",
+    "create-json-schema": "tsx scripts/create-json-schema.ts",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/tsconfig": "catalog:frontend",
+    "rimraf": "catalog:",
+    "vite": "catalog:",
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend",
+    "vue-tsc": "catalog:frontend",
+    "zod-to-json-schema": "catalog:",
+    "tsx": "catalog:"
+  },
+  "license": "https://docs.n8n.io/sustainable-use-license/",
+  "dependencies": {
+    "zod": "catalog:"
+  }
+}

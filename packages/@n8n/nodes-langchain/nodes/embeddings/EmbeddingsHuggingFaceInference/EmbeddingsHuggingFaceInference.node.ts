@@ -1,14 +1,17 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { InferenceProviderOrPolicy } from '@huggingface/inference';
+import { PROVIDERS_OR_POLICIES } from '@huggingface/inference';
+import { HuggingFaceInferenceEmbeddings } from '@langchain/community/embeddings/hf';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { HuggingFaceInferenceEmbeddings } from '@langchain/community/embeddings/hf';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,13 +43,13 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiEmbedding],
+
+		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
 					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',
@@ -76,6 +79,13 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 						description: 'Custom endpoint URL',
 						type: 'string',
 					},
+					{
+						displayName: 'Provider',
+						name: 'provider',
+						type: 'options',
+						options: PROVIDERS_OR_POLICIES.map((value) => ({ value, name: value })),
+						default: 'auto',
+					},
 				],
 			},
 		],
@@ -91,6 +101,10 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 		const credentials = await this.getCredentials('huggingFaceApi');
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 
+		if ('provider' in options && !isValidHFProviderOrPolicy(options.provider)) {
+			throw new NodeOperationError(this.getNode(), 'Unsupported provider');
+		}
+
 		const embeddings = new HuggingFaceInferenceEmbeddings({
 			apiKey: credentials.apiKey as string,
 			model,
@@ -101,4 +115,10 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 			response: logWrapper(embeddings, this),
 		};
 	}
+}
+
+function isValidHFProviderOrPolicy(provider: unknown): provider is InferenceProviderOrPolicy {
+	return (
+		typeof provider === 'string' && (PROVIDERS_OR_POLICIES as readonly string[]).includes(provider)
+	);
 }

@@ -1,0 +1,377 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`WhatsNewModal > should not render update button when no version updates available 1`] = `
+<div
+  class="article"
+  data-test-id="whats-new-item-1"
+>
+  <h2
+    class="n8n-heading size-xlarge bold"
+  >
+    
+    Convert to sub-workflow
+    
+  </h2>
+  <div
+    class="n8n-markdown markdown"
+  >
+    <!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
+    <!-- eslint-disable vue/no-v-html -->
+    <div
+      class="markdown"
+    >
+      <p>
+        Large, monolithic workflows can slow things down. They’re harder to maintain, tougher to debug, and more difficult to scale. With sub-workflows, you can take a more modular approach, breaking up big workflows into smaller, manageable parts that are easier to reuse, test, understand, and explain.
+      </p>
+      
+
+      <p>
+        Until now, creating sub-workflows required copying and pasting nodes manually, setting up a new workflow from scratch, and reconnecting everything by hand. 
+        <strong>
+          Convert to sub-workflow
+        </strong>
+         allows you to simplify this process into a single action, so you can spend more time building and less time restructuring.
+      </p>
+      
+
+      <h3>
+        How it works
+      </h3>
+      
+
+      <ol>
+        
+
+        <li>
+          Highlight the nodes you want to convert to a sub-workflow. These must:
+
+          <ul>
+            
+
+            <li>
+              Be fully connected, meaning no missing steps in between them
+            </li>
+            
+
+            <li>
+              Start from a single starting node
+            </li>
+            
+
+            <li>
+              End with a single node
+            </li>
+            
+
+          </ul>
+          
+
+        </li>
+        
+
+        <li>
+          Right-click to open the context menu and select 
+          <strong>
+            Convert to sub-workflow
+          </strong>
+          
+
+          <ul>
+            
+
+            <li>
+              Or use the shortcut: 
+              <code>
+                Alt + X
+              </code>
+            </li>
+            
+
+          </ul>
+          
+
+        </li>
+        
+
+        <li>
+          n8n will:
+
+          <ul>
+            
+
+            <li>
+              Open a new tab containing the selected nodes
+            </li>
+            
+
+            <li>
+              Preserve all node parameters as-is
+            </li>
+            
+
+            <li>
+              Replace the selected nodes in the original workflow with a 
+              <strong>
+                Call My Sub-workflow
+              </strong>
+               node
+            </li>
+            
+
+          </ul>
+          
+
+        </li>
+        
+
+      </ol>
+      
+
+      <p>
+        <em>
+          Note:
+        </em>
+         You will need to manually adjust the field types in the Start and Return nodes in the new sub-workflow.
+      </p>
+      
+
+      <p>
+        This makes it easier to keep workflows modular, performant, and easier to maintain.
+      </p>
+      
+
+      <p>
+        Learn more about 
+        <a
+          href="https://docs.n8n.io/flow-logic/subworkflows/"
+          target="_blank"
+        >
+          sub-workflows
+        </a>
+        .
+      </p>
+      
+
+      <p>
+        This release contains performance improvements and bug fixes.
+      </p>
+      
+
+      <p>
+        <iframe
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen=""
+          frameborder="0"
+          height="315"
+          referrerpolicy="strict-origin-when-cross-origin"
+          src="https://www.youtube-nocookie.com/embed/ZCuL2e4zC_4"
+          title="YouTube video player"
+          width="100%"
+        />
+      </p>
+      
+
+      <p>
+        Fusce malesuada diam eget tincidunt ultrices. Mauris quis mauris mollis, venenatis risus ut.
+      </p>
+      
+
+      <h2>
+        Second level title
+      </h2>
+      
+
+      <h3>
+        Third level title
+      </h3>
+      
+
+      <p>
+        This 
+        <strong>
+          is bold
+        </strong>
+        , this 
+        <em>
+          in italics
+        </em>
+        .
+        <br />
+        
+
+        <s>
+          Strikethrough is also something we support
+        </s>
+        .
+      </p>
+      
+
+      <p>
+        Here’s a peace of code:
+      </p>
+      
+
+      <pre>
+        <code>
+          const props = defineProps&lt;{
+	modalName: string;
+	data: {
+		articleId: number;
+	};
+}&gt;();
+
+        </code>
+      </pre>
+      
+
+      <p>
+        Inline 
+        <code>
+          code also works
+        </code>
+         withing text.
+      </p>
+      
+
+      <p>
+        This is a list:
+      </p>
+      
+
+      <ul>
+        
+
+        <li>
+          first
+        </li>
+        
+
+        <li>
+          second
+        </li>
+        
+
+        <li>
+          third
+        </li>
+        
+
+      </ul>
+      
+
+      <p>
+        And this list is ordered
+      </p>
+      
+
+      <ol>
+        
+
+        <li>
+          foo
+        </li>
+        
+
+        <li>
+          bar
+        </li>
+        
+
+        <li>
+          qux
+        </li>
+        
+
+      </ol>
+      
+
+      <p>
+        Dividers:
+      </p>
+      
+
+      <p>
+        Three or more…
+      </p>
+      
+
+      <hr />
+      
+
+      <p>
+        Hyphens
+      </p>
+      
+
+      <hr />
+      
+
+      <p>
+        Asterisks
+      </p>
+      
+
+      <hr />
+      
+
+      <p>
+        Underscores
+      </p>
+      
+
+      <hr />
+      
+
+      <details>
+        
+
+        <summary>
+          Fixes (4)
+        </summary>
+        
+
+        <ul>
+          
+
+          <li>
+            <strong>
+              Credential Storage Issue
+            </strong>
+             Resolved an issue where credentials would occasionally become inaccessible after server restarts
+          </li>
+          
+
+          <li>
+            <strong>
+              Webhook Timeout Handling
+            </strong>
+             Fixed timeout issues with long-running webhook requests
+          </li>
+          
+
+          <li>
+            <strong>
+              Node Connection Validation
+            </strong>
+             Improved validation for node connections to prevent invalid workflow configurations
+          </li>
+          
+
+          <li>
+            <strong>
+              Memory Leak in Execution Engine
+            </strong>
+             Fixed memory leak that could occur during long-running workflow executions
+          </li>
+          
+
+        </ul>
+        
+
+      </details>
+      
+
+    </div>
+  </div>
+</div>
+`;

@@ -1,9 +1,5 @@
-import nock from 'nock';
-
 import * as createFromText from '../../../../v2/actions/file/createFromText.operation';
-
 import * as transport from '../../../../v2/transport';
-
 import { createMockExecuteFunction, driveNode } from '../helpers';
 
 jest.mock('../../../../v2/transport', () => {
@@ -17,15 +13,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: file createFromText', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should be called with', async () => {
 		const nodeParameters = {
 			operation: 'createFromText',
@@ -74,9 +61,14 @@ describe('test GoogleDriveV2: file createFromText', () => {
 			'POST',
 			'/upload/drive/v3/files',
 			expect.anything(), // Buffer of content goes here
-			{ uploadType: 'media' },
+			{ uploadType: 'multipart', supportsAllDrives: true },
 			undefined,
-			{ headers: { 'Content-Length': 12, 'Content-Type': 'text/plain' } },
+			{
+				headers: {
+					'Content-Length': 503,
+					'Content-Type': expect.stringMatching(/^multipart\/related; boundary=(\\S)*/),
+				},
+			},
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',

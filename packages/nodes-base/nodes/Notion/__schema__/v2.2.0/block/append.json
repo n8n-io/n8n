@@ -1,0 +1,133 @@
+{
+    "type": "object",
+    "properties": {
+        "has_more": {
+            "type": "boolean"
+        },
+        "object": {
+            "type": "string"
+        },
+        "request_id": {
+            "type": "string"
+        },
+        "results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "object": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "created_time": {
+                        "type": "string"
+                    },
+                    "has_children": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "in_trash": {
+                        "type": "boolean"
+                    },
+                    "last_edited_by": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "object": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "last_edited_time": {
+                        "type": "string"
+                    },
+                    "object": {
+                        "type": "string"
+                    },
+                    "paragraph": {
+                        "type": "object",
+                        "properties": {
+                            "color": {
+                                "type": "string"
+                            },
+                            "text": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "annotations": {
+                                            "type": "object",
+                                            "properties": {
+                                                "bold": {
+                                                    "type": "boolean"
+                                                },
+                                                "code": {
+                                                    "type": "boolean"
+                                                },
+                                                "color": {
+                                                    "type": "string"
+                                                },
+                                                "italic": {
+                                                    "type": "boolean"
+                                                },
+                                                "strikethrough": {
+                                                    "type": "boolean"
+                                                },
+                                                "underline": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        },
+                                        "plain_text": {
+                                            "type": "string"
+                                        },
+                                        "text": {
+                                            "type": "object",
+                                            "properties": {
+                                                "content": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "parent": {
+                        "type": "object",
+                        "properties": {
+                            "page_id": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

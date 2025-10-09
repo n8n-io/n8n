@@ -5,6 +5,7 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
+
 import { lemlistApiRequest, lemlistApiRequestAllItems, getEvents } from '../GenericFunctions';
 
 describe('GenericFunctions', () => {

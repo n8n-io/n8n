@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,10 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-import { getAttachments, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	meetingFields,
@@ -20,6 +18,7 @@ import {
 	messageFields,
 	messageOperations,
 } from './descriptions';
+import { getAttachments, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
 
 export class CiscoWebex implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,14 +33,15 @@ export class CiscoWebex implements INodeType {
 		defaults: {
 			name: 'Webex by Cisco',
 		},
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'ciscoWebexOAuth2Api',
 				required: true,
 			},
 		],
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Resource',

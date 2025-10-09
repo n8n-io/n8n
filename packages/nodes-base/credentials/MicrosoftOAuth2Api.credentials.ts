@@ -18,8 +18,9 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'authorizationCode',
 		},
-		//info about the tenantID
-		//https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
+		// Info about the tenantID
+		// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
+		// Endpoints `/common` can only be used for multitenant apps
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',

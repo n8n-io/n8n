@@ -11,7 +11,7 @@ export const ACTION_RECORDED_PAGE = `
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
 		<link
-			href='http://fonts.googleapis.com/css?family=Open+Sans'
+			href='https://fonts.googleapis.com/css?family=Open+Sans'
 			rel='stylesheet'
 			type='text/css'
 		/>
@@ -79,7 +79,11 @@ export const ACTION_RECORDED_PAGE = `
 
 </html>`;
 
-export function createEmailBody(message: string, buttons: string, instanceId?: string) {
+export function createEmailBodyWithN8nAttribution(
+	message: string,
+	buttons: string,
+	instanceId?: string,
+) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=send-and-wait${utm_campaign}`;
 	return `
@@ -103,7 +107,7 @@ export function createEmailBody(message: string, buttons: string, instanceId?: s
 					<tr>
 						<td
 							style="text-align: center; padding-top: 8px; font-family: Arial, sans-serif; font-size: 14px; color: #7e8186;">
-							<p>${message}</p>
+							<p style="white-space: pre-line;">${message}</p>
 						</td>
 					</tr>
 					<tr>
@@ -131,6 +135,55 @@ export function createEmailBody(message: string, buttons: string, instanceId?: s
 						</td>
 					</tr>
 				</table>
+			</td>
+		</tr>
+	</table>
+</body>
+
+</html>
+	`;
+}
+
+export function createEmailBodyWithoutN8nAttribution(message: string, buttons: string) {
+	return `
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>My form</title>
+</head>
+
+<body
+	style="font-family: Arial, sans-serif; font-size: 12px; background-color: #fbfcfe; margin: 0; padding: 0;">
+	<table width="100%" cellpadding="0" cellspacing="0"
+		style="background-color:#fbfcfe; border: 1px solid #dbdfe7; border-radius: 8px;">
+		<tr>
+			<td align="center" style="padding: 24px 0;">
+				<table width="448" cellpadding="0" cellspacing="0" border="0"
+					style="width: 100%; max-width: 448px; background-color: #ffffff; border: 1px solid #dbdfe7; border-radius: 8px; padding: 24px; box-shadow: 0px 4px 16px rgba(99, 77, 255, 0.06);">
+					<tr>
+						<td
+							style="text-align: center; padding-top: 8px; font-family: Arial, sans-serif; font-size: 14px; color: #7e8186;">
+							<p style="white-space: pre-line;">${message}</p>
+						</td>
+					</tr>
+					<tr>
+						<td align="center" style="padding-top: 12px;">
+								${buttons}
+						</td>
+					</tr>
+				</table>
+
+				<!-- Divider -->
+				<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px;">
+					<tr>
+						<td style="border-top: 0px solid #dbdfe7;"></td>
+					</tr>
+				</table>
+
+
 			</td>
 		</tr>
 	</table>

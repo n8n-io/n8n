@@ -1,12 +1,11 @@
-import { Container } from 'typedi';
+import { testDb } from '@n8n/backend-test-utils';
+import type { Variables } from '@n8n/db';
+import { Container } from '@n8n/di';
 
-import type { Variables } from '@/databases/entities/variables';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { generateNanoId } from '@/databases/utils/generators';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { CacheService } from '@/services/cache/cache.service';
+import { createVariable, getVariableById, getVariableByKey } from '@test-integration/db/variables';
 
 import { createOwner, createUser } from './shared/db/users';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -15,32 +14,6 @@ let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
 const license = testServer.license;
-
-async function createVariable(key: string, value: string) {
-	const result = await Container.get(VariablesRepository).save({
-		id: generateNanoId(),
-		key,
-		value,
-	});
-	await Container.get(VariablesService).updateCache();
-	return result;
-}
-
-async function getVariableByKey(key: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			key,
-		},
-	});
-}
-
-async function getVariableById(id: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			id,
-		},
-	});
-}
 
 beforeAll(async () => {
 	const owner = await createOwner();
@@ -65,19 +38,41 @@ beforeEach(async () => {
 // ----------------------------------------
 describe('GET /variables', () => {
 	beforeEach(async () => {
-		await Promise.all([createVariable('test1', 'value1'), createVariable('test2', 'value2')]);
+		await Promise.all([
+			createVariable('test1', 'value1'),
+			createVariable('test2', 'value2'),
+			createVariable('empty', ''),
+		]);
+	});
+
+	test('should return an empty array if there is nothing in the cache', async () => {
+		const cacheService = Container.get(CacheService);
+		const spy = jest.spyOn(cacheService, 'get').mockResolvedValueOnce(undefined);
+		const response = await authOwnerAgent.get('/variables');
+		expect(spy).toHaveBeenCalledTimes(1);
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(0);
 	});
 
 	test('should return all variables for an owner', async () => {
 		const response = await authOwnerAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2);
+		expect(response.body.data.length).toBe(3);
 	});
 
 	test('should return all variables for a member', async () => {
 		const response = await authMemberAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2);
+		expect(response.body.data.length).toBe(3);
+	});
+
+	describe('state:empty', () => {
+		test('only return empty variables', async () => {
+			const response = await authOwnerAgent.get('/variables').query({ state: 'empty' });
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.length).toBe(1);
+			expect(response.body.data[0]).toMatchObject({ key: 'empty', value: '', type: 'string' });
+		});
 	});
 });
 
@@ -154,7 +149,7 @@ describe('POST /variables', () => {
 		expect(byKey).toBeNull();
 	});
 
-	test("POST /variables should not create a new variable and return it if the instance doesn't have a license", async () => {
+	test("should not create a new variable and return it if the instance doesn't have a license", async () => {
 		license.disable('feat:variables');
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(403);

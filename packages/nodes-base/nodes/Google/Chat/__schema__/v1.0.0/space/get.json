@@ -1,0 +1,142 @@
+{
+    "type": "object",
+    "properties": {
+        "accessSettings": {
+            "type": "object",
+            "properties": {
+                "accessState": {
+                    "type": "string"
+                }
+            }
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "lastActiveTime": {
+            "type": "string"
+        },
+        "membershipCount": {
+            "type": "object",
+            "properties": {
+                "joinedDirectHumanUserCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "permissionSettings": {
+            "type": "object",
+            "properties": {
+                "manageApps": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "manageMembersAndGroups": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "manageWebhooks": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "modifySpaceDetails": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "postMessages": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "replyMessages": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "toggleHistory": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "useAtMentionAll": {
+                    "type": "object",
+                    "properties": {
+                        "managersAllowed": {
+                            "type": "boolean"
+                        },
+                        "membersAllowed": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "spaceHistoryState": {
+            "type": "string"
+        },
+        "spaceThreadingState": {
+            "type": "string"
+        },
+        "spaceType": {
+            "type": "string"
+        },
+        "spaceUri": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

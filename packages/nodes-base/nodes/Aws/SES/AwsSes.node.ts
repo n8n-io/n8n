@@ -1,4 +1,3 @@
-import qs from 'node:querystring';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,7 +7,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import qs from 'node:querystring';
 
 import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
 
@@ -30,8 +30,9 @@ export class AwsSes implements INodeType {
 		defaults: {
 			name: 'AWS SES',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -1080,16 +1081,11 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'sendTemplate') {
 						const toAddresses = this.getNodeParameter('toAddresses', i) as string[];
-
 						const template = this.getNodeParameter('templateName', i) as string;
-
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
-
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-
 						const templateDataUi = this.getNodeParameter('templateDataUi', i) as IDataObject;
-
-						const params = [`Template=${template}`, `Source=${fromEmail}`];
+						const params = [`Template=${template}`, `Source=${encodeURIComponent(fromEmail)}`];
 
 						if (toAddresses.length) {
 							setParameter(params, 'Destination.ToAddresses.member', toAddresses);
@@ -1149,7 +1145,7 @@ export class AwsSes implements INodeType {
 									//@ts-ignore
 									templateData[templateDataValue.key] = templateDataValue.value;
 								}
-								params.push(`TemplateData=${JSON.stringify(templateData)}`);
+								params.push(`TemplateData=${encodeURIComponent(JSON.stringify(templateData))}`);
 							}
 						}
 
@@ -1175,13 +1171,15 @@ export class AwsSes implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
-							`Template.TemplateName=${templateName}`,
-							`Template.SubjectPart=${subjectPart}`,
-							`Template.HtmlPart=<h1>${htmlPart}</h1>`,
+							`Template.TemplateName=${encodeURIComponent(templateName)}`,
+							`Template.SubjectPart=${encodeURIComponent(subjectPart)}`,
+							`Template.HtmlPart=${encodeURIComponent(htmlPart)}`,
 						];
 
 						if (additionalFields.textPart) {
-							params.push(`Template.TextPart=${additionalFields.textPart}`);
+							params.push(
+								`Template.TextPart=${encodeURIComponent(additionalFields.textPart as string)}`,
+							);
 						}
 
 						responseData = await awsApiRequestSOAP.call(
@@ -1255,18 +1253,24 @@ export class AwsSes implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
-						const params = [`Template.TemplateName=${templateName}`];
+						const params = [`Template.TemplateName=${encodeURIComponent(templateName)}`];
 
 						if (updateFields.textPart) {
-							params.push(`Template.TextPart=${updateFields.textPart}`);
+							params.push(
+								`Template.TextPart=${encodeURIComponent(updateFields.textPart as string)}`,
+							);
 						}
 
 						if (updateFields.subjectPart) {
-							params.push(`Template.SubjectPart=${updateFields.subjectPart}`);
+							params.push(
+								`Template.SubjectPart=${encodeURIComponent(updateFields.subjectPart as string)}`,
+							);
 						}
 
 						if (updateFields.subjectPart) {
-							params.push(`Template.HtmlPart=${updateFields.htmlPart}`);
+							params.push(
+								`Template.HtmlPart=${encodeURIComponent(updateFields.htmlPart as string)}`,
+							);
 						}
 
 						responseData = await awsApiRequestSOAP.call(

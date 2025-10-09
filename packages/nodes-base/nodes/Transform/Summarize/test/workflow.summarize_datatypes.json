@@ -1,0 +1,186 @@
+{
+	"name": "Summarize Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-320, -80],
+			"id": "509c50eb-a5c3-4172-a553-82cce7ca0455",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    \"uid\": \"a0e797c2-ffcf-495b-96f3-982f7bc4eae5\",\n    \"email\": \"Alfredo83@gmail.com\",\n    \"firstname\": \"Charlie\",\n    \"lastname\": \"Jacobi\",\n    \"password\": \"34~XLKdGit\",\n    \"Group\": 0\n  },\n  {\n    \"uid\": \"5713682e-4f32-47dc-ae89-ae4a8ac28a46\",\n    \"email\": \"Zachary43@yahoo.com\",\n    \"firstname\": \"Leonard\",\n    \"lastname\": \"Blick\",\n    \"password\": \"4sh5z!R\",\n    \"Group\": 0\n  },\n  {\n    \"uid\": \"1bb2a432-d2fb-48e4-a7b0-39030ef0d784\",\n    \"email\": \"Cory_Wilderman@yahoo.com\",\n    \"firstname\": \"Debra\",\n    \"lastname\": \"Corkery\",\n    \"password\": \"-8X1CKMFh\",\n    \"Group\": 1\n  },\n  {\n    \"uid\": \"4edb11bc-9256-4f26-9be6-f8b04e90ecb2\",\n    \"email\": \"Mindy_Murazik86@gmail.com\",\n    \"firstname\": \"Wendy\",\n    \"lastname\": \"Schiller\",\n    \"password\": \"WF373t,fe\",\n    \"Group\": 2\n  },\n  {\n    \"uid\": \"ec6efd3d-508c-4f1e-acae-c9467b74f5a6\",\n    \"email\": \"Darin_Vandervort@yahoo.com\",\n    \"firstname\": \"Dolores\",\n    \"lastname\": \"Walter\",\n    \"password\": \".45KCBk\",\n    \"Group\": 2\n  },\n  {\n    \"uid\": \"173ee780-4e4f-4164-aa39-41a0402cd2ad\",\n    \"email\": \"Claude.Grady6@gmail.com\",\n    \"firstname\": \"Leonard\",\n    \"lastname\": \"Krajcik\",\n    \"password\": \"6x6-MN8vch\",\n    \"Group\": null\n  },\n  {\n    \"uid\": \"b1f191d8-4f95-49f6-8533-042048b4c162\",\n    \"email\": \"Ismael_Volkman@hotmail.com\",\n    \"firstname\": \"Terri\",\n    \"lastname\": \"Kuphal\",\n    \"password\": \"62+BNNCk\",\n    \"Group\": null\n  },\n  {\n    \"uid\": \"ee8c6d18-1e77-435d-8c9a-5215141d7697\",\n    \"email\": \"Paulette.Hudson@hotmail.com\",\n    \"firstname\": \"Clinton\",\n    \"lastname\": \"Murphy\",\n    \"password\": \"2+R8IRxHL\",\n    \"Group\": null\n  },\n  {\n    \"uid\": \"feeb4357-0e20-4b15-9199-f161c23da1a2\",\n    \"email\": \"Guillermo.Kub33@gmail.com\",\n    \"firstname\": \"Edward\",\n    \"lastname\": \"Schaden\",\n    \"password\": \"Kv23S1_H\",\n    \"Group\": 0\n  },\n  {\n    \"uid\": \"676003ec-8a40-4105-8237-ba1d9eb51fc2\",\n    \"email\": \"Cindy.White@hotmail.com\",\n    \"firstname\": \"Esther\",\n    \"lastname\": \"Monahan\",\n    \"password\": \"5q$RyBhp\",\n    \"Group\": 2\n  }\n]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-100, -80],
+			"id": "691f2744-8689-4b5c-91e7-2bb378691ecf",
+			"name": "sample data"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "email",
+							"includeEmpty": true
+						}
+					]
+				},
+				"fieldsToSplitBy": "Group",
+				"options": {
+					"outputFormat": "separateItems"
+				}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [160, 0],
+			"id": "d1267da5-0cab-453c-9450-1bbd78346bd6",
+			"name": "Summarize v1.1"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "email",
+							"includeEmpty": true
+						}
+					]
+				},
+				"fieldsToSplitBy": "Group",
+				"options": {
+					"continueIfFieldNotFound": false,
+					"outputFormat": "separateItems"
+				}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1,
+			"position": [160, -160],
+			"id": "680b7269-c920-4cce-b9f5-b2189955848d",
+			"name": "Summarize v1"
+		}
+	],
+	"pinData": {
+		"Summarize v1": [
+			{
+				"json": {
+					"Group": "0",
+					"appended_email": [
+						"Alfredo83@gmail.com",
+						"Zachary43@yahoo.com",
+						"Guillermo.Kub33@gmail.com"
+					]
+				}
+			},
+			{
+				"json": {
+					"Group": "1",
+					"appended_email": ["Cory_Wilderman@yahoo.com"]
+				}
+			},
+			{
+				"json": {
+					"Group": "2",
+					"appended_email": [
+						"Mindy_Murazik86@gmail.com",
+						"Darin_Vandervort@yahoo.com",
+						"Cindy.White@hotmail.com"
+					]
+				}
+			},
+			{
+				"json": {
+					"Group": "null",
+					"appended_email": [
+						"Claude.Grady6@gmail.com",
+						"Ismael_Volkman@hotmail.com",
+						"Paulette.Hudson@hotmail.com"
+					]
+				}
+			}
+		],
+		"Summarize v1.1": [
+			{
+				"json": {
+					"Group": 0,
+					"appended_email": [
+						"Alfredo83@gmail.com",
+						"Zachary43@yahoo.com",
+						"Guillermo.Kub33@gmail.com"
+					]
+				}
+			},
+			{
+				"json": {
+					"Group": 1,
+					"appended_email": ["Cory_Wilderman@yahoo.com"]
+				}
+			},
+			{
+				"json": {
+					"Group": 2,
+					"appended_email": [
+						"Mindy_Murazik86@gmail.com",
+						"Darin_Vandervort@yahoo.com",
+						"Cindy.White@hotmail.com"
+					]
+				}
+			},
+			{
+				"json": {
+					"Group": null,
+					"appended_email": [
+						"Claude.Grady6@gmail.com",
+						"Ismael_Volkman@hotmail.com",
+						"Paulette.Hudson@hotmail.com"
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "sample data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"sample data": {
+			"main": [
+				[
+					{
+						"node": "Summarize v1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Summarize v1.1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "7304eae2-3bae-4934-8d1f-1135a0ff8ab8",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "b0d1a7f453aa2195078ce658269afa7743e3dc59edb733395b6c75bde57da7ff"
+	},
+	"id": "8ja9H2443AhLdBsS",
+	"tags": []
+}

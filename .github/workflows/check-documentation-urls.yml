@@ -1,0 +1,37 @@
+name: Check Documentation URLs
+
+on:
+  release:
+    types: [published]
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-docs-urls:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        with:
+          build-command: turbo build --filter=*nodes*
+
+      - run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Test URLs
+        run: node .github/scripts/validate-docs-links.js
+
+      - name: Notify Slack on failure
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        if: failure()
+        with:
+          status: ${{ job.status }}
+          channel: '#alerts-build'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: |
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Documentation URLs check failed >

@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Router } from 'express';
 import express from 'express';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
-import { Container } from 'typedi';
 import validator from 'validator';
 import YAML from 'yamljs';
 
@@ -95,7 +95,7 @@ async function createApiRouter(
 			res: express.Response,
 			_next: express.NextFunction,
 		) => {
-			return res.status(error.status || 400).json({
+			res.status(error.status || 400).json({
 				message: error.message,
 			});
 		},

@@ -1,0 +1,73 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0ffead0b-d690-48b8-b406-bea5e0029c15",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "device",
+				"deviceId": {
+					"__rl": true,
+					"value": "9999ffff-7aa7-4444-8555-f7de48484b4a",
+					"mode": "list",
+					"cachedResultName": "5DD1155DD44"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [0, 1120],
+			"id": "cda57e63-1620-4f75-b11e-48b83565ad80",
+			"name": "Get Device",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Device",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Device": [
+			{
+				"json": {
+					"kind": "admin#directory#chromeosdevice",
+					"etag": "\"example\"",
+					"deviceId": "9999ffff-7aa7-4444-8555-f7de48484b4a",
+					"serialNumber": "5DD1155DD44",
+					"status": "DISABLED",
+					"lastSync": "2025-02-12T07:17:16.950Z",
+					"annotatedUser": "my user",
+					"annotatedLocation": "test",
+					"annotatedAssetId": "1234567788",
+					"notes": "test",
+					"orgUnitPath": "/",
+					"orgUnitId": "00pp8a2z1uu85pp",
+					"extendedSupportEligible": false,
+					"chromeOsType": "chromeOs",
+					"diskSpaceUsage": {
+						"capacityBytes": "549755813888",
+						"usedBytes": "549755813888"
+					}
+				}
+			}
+		]
+	}
+}

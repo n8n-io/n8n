@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "createTime": {
+            "type": "string"
+        },
+        "member": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "role": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

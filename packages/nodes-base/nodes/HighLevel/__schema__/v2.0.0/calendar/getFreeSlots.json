@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "traceId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
+
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [

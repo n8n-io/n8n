@@ -8,11 +8,14 @@
 	"files": {
 		"ignore": [
 			"**/.turbo",
+			"**/components.d.ts",
 			"**/coverage",
 			"**/dist",
 			"**/package.json",
 			"**/pnpm-lock.yaml",
-			"**/CHANGELOG.md"
+			"**/CHANGELOG.md",
+			"**/cl100k_base.json",
+			"**/o200k_base.json"
 		]
 	},
 	"formatter": {

@@ -1,12 +1,13 @@
-import { Service } from 'typedi';
+import type { TagEntity, ITagWithCountDb } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import { TagRepository } from '@/databases/repositories/tag.repository';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { ITagWithCountDb } from '@/interfaces';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
+
+type Action = 'Create' | 'Update';
 
 @Service()
 export class TagService {
@@ -24,7 +25,7 @@ export class TagService {
 	async save(tag: TagEntity, actionKind: 'create' | 'update') {
 		await validateEntity(tag);
 
-		const action = actionKind[0].toUpperCase() + actionKind.slice(1);
+		const action = (actionKind[0].toUpperCase() + actionKind.slice(1)) as Action;
 
 		await this.externalHooks.run(`tag.before${action}`, [tag]);
 
@@ -47,17 +48,17 @@ export class TagService {
 
 	async getAll<T extends { withUsageCount: boolean }>(options?: T): Promise<GetAllResult<T>> {
 		if (options?.withUsageCount) {
-			const allTags = await this.tagRepository.find({
-				select: ['id', 'name', 'createdAt', 'updatedAt'],
-				relations: ['workflowMappings'],
-			});
+			const tags = await this.tagRepository
+				.createQueryBuilder('tag')
+				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
+				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb) =>
+					qb.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
+						isArchived: false,
+					}),
+				)
+				.getMany();
 
-			return allTags.map(({ workflowMappings, ...rest }) => {
-				return {
-					...rest,
-					usageCount: workflowMappings.length,
-				} as ITagWithCountDb;
-			}) as GetAllResult<T>;
+			return tags as GetAllResult<T>;
 		}
 
 		return await (this.tagRepository.find({

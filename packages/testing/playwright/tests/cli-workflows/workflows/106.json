@@ -1,0 +1,373 @@
+{
+	"createdAt": "2021-03-04T14:19:59.064Z",
+	"updatedAt": "2021-03-09T08:07:08.936Z",
+	"id": "106",
+	"name": "Box:Folder:create search get delete:File:upload get download copy search delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "3379cd25-f1fb-4810-84eb-1fe522062d5e"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"name": "=Folder{{Date.now()}}",
+				"options": {}
+			},
+			"name": "Box",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [500, 300],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "61a2d115-f5ad-4d90-b2c4-98b637c72a05"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "search",
+				"query": "folder",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"name": "Box1",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [1850, 300],
+			"alwaysOutputData": true,
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "38f2209f-5ba9-47c1-9e37-47561b96a816"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"folderId": "={{$node[\"Box\"].json[\"id\"]}}"
+			},
+			"name": "Box2",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [2140, 300],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "59b546b6-5bca-4154-b635-1416f756d75b"
+		},
+		{
+			"parameters": {
+				"fileName": "=logo{{Date.now()}}.png",
+				"binaryData": true,
+				"parentId": "={{$node[\"Box\"].json[\"id\"]}}"
+			},
+			"name": "Box3",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [800, 400],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "1b9d07ed-78e2-4436-9034-a3c4930d182f"
+		},
+		{
+			"parameters": {
+				"filePath": "/tmp/n8n-screenshot.png"
+			},
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [650, 400],
+			"id": "a2ddf065-8352-4de3-826b-1577e54a6166"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"fileId": "={{$node[\"Box3\"].json[\"id\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Box4",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [950, 400],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "aabe943e-f257-4db2-896f-1bc5ddf9f0cd"
+		},
+		{
+			"parameters": {
+				"operation": "download",
+				"fileId": "={{$node[\"Box3\"].json[\"id\"]}}"
+			},
+			"name": "Box5",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [1100, 400],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "fb9625be-a0c9-421e-acfb-fa4451e6c0c4"
+		},
+		{
+			"parameters": {
+				"operation": "copy",
+				"fileId": "={{$node[\"Box3\"].json[\"id\"]}}",
+				"parentId": "={{$node[\"Box\"].json[\"id\"]}}",
+				"additionalFields": {
+					"name": "=Copied-logo{{Date.now()}}.png"
+				}
+			},
+			"name": "Box6",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [1250, 400],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "e9e7997b-1eab-4244-9e52-9ea6f00dac63"
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"query": "logo",
+				"limit": 1,
+				"additionalFields": {
+					"file_extensions": "png"
+				}
+			},
+			"name": "Box7",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [1400, 400],
+			"alwaysOutputData": true,
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "6ed0e975-cc74-4c57-813a-39e0c954097d"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"fileId": "={{$node[\"Box3\"].json[\"id\"]}}"
+			},
+			"name": "Box8",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [1550, 400],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "2cf28778-50dc-46ae-8347-6d74cca97d6e"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"fileId": "={{$node[\"Box6\"].json[\"id\"]}}"
+			},
+			"name": "Box10",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [1700, 400],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "2f0e8ab1-2ad9-4613-b813-7f8d1fcbd7a0"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "get",
+				"folderId": "={{$node[\"Box\"].json[\"id\"]}}"
+			},
+			"name": "Box9",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [2000, 300],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "77",
+					"name": "Box OAuth2 creds"
+				}
+			},
+			"id": "fbba5280-62da-4344-a8b3-faec86d38a3a"
+		}
+	],
+	"connections": {
+		"Box": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box1": {
+			"main": [
+				[
+					{
+						"node": "Box9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box3": {
+			"main": [
+				[
+					{
+						"node": "Box4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Box3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box4": {
+			"main": [
+				[
+					{
+						"node": "Box5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box5": {
+			"main": [
+				[
+					{
+						"node": "Box6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box6": {
+			"main": [
+				[
+					{
+						"node": "Box7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box7": {
+			"main": [
+				[
+					{
+						"node": "Box8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box8": {
+			"main": [
+				[
+					{
+						"node": "Box10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box10": {
+			"main": [
+				[
+					{
+						"node": "Box1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Box",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Box9": {
+			"main": [
+				[
+					{
+						"node": "Box2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

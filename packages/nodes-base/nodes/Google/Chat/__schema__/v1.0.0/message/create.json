@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "properties": {
+        "argumentText": {
+            "type": "string"
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "formattedText": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "text": {
+            "type": "string"
+        },
+        "thread": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 5
+}

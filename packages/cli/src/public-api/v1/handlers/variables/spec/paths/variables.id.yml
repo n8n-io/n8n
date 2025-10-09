@@ -14,3 +14,31 @@ delete:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
+
+put:
+  x-eov-operation-id: updateVariable
+  x-eov-operation-handler: v1/handlers/variables/variables.handler
+  tags:
+    - Variables
+  summary: Update a variable
+  description: Update a variable from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/variableId.yml'
+  requestBody:
+    description: Payload for variable to update.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/variable.yml'
+    required: true
+  responses:
+    '204':
+      description: Operation successful.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

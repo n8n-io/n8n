@@ -1,0 +1,50 @@
+{
+    "type": "object",
+    "properties": {
+        "contactCount": {
+            "type": "string"
+        },
+        "createdTimestamp": {
+            "type": "string"
+        },
+        "dealCount": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "accountContacts": {
+                    "type": "string"
+                },
+                "accountCustomFieldData": {
+                    "type": "string"
+                },
+                "contactEmails": {
+                    "type": "string"
+                },
+                "emailActivities": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        },
+        "updatedTimestamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

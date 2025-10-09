@@ -1,0 +1,507 @@
+{
+	"createdAt": "2021-04-29T10:21:23.768Z",
+	"updatedAt": "2021-06-04T14:59:28.116Z",
+	"id": "190",
+	"name": "Discourse:User:create get getAll:Category:create update getAll:Group:create update get getAll:UserGroup:add remove:Post:create update get getAll",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "84717a95-a963-4bf8-9398-1b47ae0ddea8"
+		},
+		{
+			"parameters": {
+				"resource": "category",
+				"name": "=Category{{Date.now()}}",
+				"color": "FF6D5A"
+			},
+			"name": "Discourse",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [500, 250],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "1f50403d-2276-4adb-827d-b7c4259f4966"
+		},
+		{
+			"parameters": {
+				"resource": "category",
+				"operation": "update",
+				"categoryId": "={{$node[\"Discourse\"].json[\"id\"]}}",
+				"name": "=Updated{{$node[\"Discourse\"].json[\"name\"]}}",
+				"updateFields": {}
+			},
+			"name": "Discourse1",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [650, 250],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "1719b47a-1de6-470f-a6f5-a92b8bc4c7d2"
+		},
+		{
+			"parameters": {
+				"resource": "category",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"name": "Discourse2",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [800, 250],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "dcddf8d2-7e35-4075-9302-11c69187ac8a"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"name": "=Group{{Date.now()}}"
+			},
+			"name": "Discourse3",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [500, 410],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "a7c4475b-bf7c-4660-a402-0d8f28237caf"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "update",
+				"groupId": "={{$node[\"Discourse3\"].json[\"id\"]}}",
+				"name": "=Up{{$node[\"Discourse3\"].json[\"name\"]}}"
+			},
+			"name": "Discourse4",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [650, 410],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "c0f711d4-45e0-4f3e-add9-982e643294c9"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "get",
+				"name": "=Up{{$node[\"Discourse3\"].json[\"name\"]}}"
+			},
+			"name": "Discourse5",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [800, 410],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "4c795130-79c3-4f7d-982d-25b7c70b9e0e"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"name": "Discourse6",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [950, 410],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "f25ab7e3-e2fb-45e5-871f-d3770301b03f"
+		},
+		{
+			"parameters": {
+				"title": "=Post {{Date.now()}}",
+				"content": "=Content {{(new Date()).toString()}}",
+				"additionalFields": {}
+			},
+			"name": "Discourse7",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [500, 710],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "854b71d1-dd7c-4d89-b9cf-4a583803907f"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"postId": "={{$node[\"Discourse7\"].json[\"id\"]}}",
+				"content": "=updated{{$node[\"Discourse7\"].json[\"cooked\"]}}",
+				"updateFields": {}
+			},
+			"name": "Discourse8",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [650, 710],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "747331c5-f73a-4ae4-888f-559d83aa03ca"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"postId": "={{$node[\"Discourse7\"].json[\"id\"]}}"
+			},
+			"name": "Discourse9",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [800, 710],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "3f9bb0d0-7a38-452c-a717-080fc9e75404"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1
+			},
+			"name": "Discourse10",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [950, 710],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "29df1627-7bc8-4968-8df3-5cfb7566e626"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"name": "=User{{Math.round(Math.random()*1000)}}",
+				"email": "=fake{{Date.now()}}@test.com",
+				"username": "={{$node[\"Set\"].json[\"username\"]}}",
+				"password": "=A{{Date.now()}}Z",
+				"additionalFields": {
+					"active": true,
+					"approved": true
+				}
+			},
+			"name": "Discourse11",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [500, 100],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"notes": "IGNORED_PROPERTIES=errors,values,is_developer,active,user_id",
+			"id": "731fa606-fcdd-4920-ac0c-ba357877b20f"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"username": "={{$node[\"Set\"].json[\"username\"]}}"
+			},
+			"name": "Discourse12",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [650, 100],
+			"alwaysOutputData": true,
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"continueOnFail": true,
+			"id": "33d82113-445b-4a03-ac01-c921318a1d6c"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"flag": "active",
+				"limit": 1
+			},
+			"name": "Discourse13",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [800, 100],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "38e8bf81-979b-4b0d-bf78-c8347366e008"
+		},
+		{
+			"parameters": {
+				"resource": "userGroup",
+				"usernames": "nodeqa,",
+				"groupId": "={{$node[\"Discourse3\"].json[\"id\"]}}"
+			},
+			"name": "Discourse14",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [650, 560],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "620970bb-377a-4ae5-9ad9-be380be5fbbd"
+		},
+		{
+			"parameters": {
+				"resource": "userGroup",
+				"operation": "remove",
+				"usernames": "nodeqa,",
+				"groupId": "={{$node[\"Discourse3\"].json[\"id\"]}}"
+			},
+			"name": "Discourse15",
+			"type": "n8n-nodes-base.discourse",
+			"typeVersion": 1,
+			"position": [800, 560],
+			"credentials": {
+				"discourseApi": {
+					"id": "153",
+					"name": "Discourse API"
+				}
+			},
+			"id": "54683239-ffe0-4360-a276-36cdd22aa272"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "username",
+							"value": "=Username{{Math.round(Math.random()*1000)}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [360, 100],
+			"id": "9be1116c-5e9e-491d-8ab1-038416cf9560"
+		}
+	],
+	"connections": {
+		"Discourse": {
+			"main": [
+				[
+					{
+						"node": "Discourse1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse1": {
+			"main": [
+				[
+					{
+						"node": "Discourse2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Discourse",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Discourse3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Discourse7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse3": {
+			"main": [
+				[
+					{
+						"node": "Discourse4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Discourse14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse4": {
+			"main": [
+				[
+					{
+						"node": "Discourse5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse5": {
+			"main": [
+				[
+					{
+						"node": "Discourse6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse7": {
+			"main": [
+				[
+					{
+						"node": "Discourse8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse8": {
+			"main": [
+				[
+					{
+						"node": "Discourse9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse9": {
+			"main": [
+				[
+					{
+						"node": "Discourse10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse14": {
+			"main": [
+				[
+					{
+						"node": "Discourse15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse11": {
+			"main": [
+				[
+					{
+						"node": "Discourse12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Discourse12": {
+			"main": [
+				[
+					{
+						"node": "Discourse13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Discourse11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

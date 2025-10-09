@@ -1,10 +1,9 @@
+import { parse as createCSVParser } from 'csv-parse';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-
 import type { Sheet2JSONOpts, WorkBook, ParsingOptions } from 'xlsx';
 import { read as xlsxRead, readFile as xlsxReadFile, utils as xlsxUtils } from 'xlsx';
 
-import { parse as createCSVParser } from 'csv-parse';
 import { binaryProperty, fromFileOptions } from '../description';
 
 export const description: INodeProperties[] = [
@@ -96,6 +95,7 @@ export async function execute(
 					bom: options.enableBOM as boolean,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					columns: options.headerRow !== false,
+					relax_quotes: options.relaxQuotes as boolean,
 					onRecord: (record) => {
 						if (!options.includeEmptyCells) {
 							record = Object.fromEntries(
