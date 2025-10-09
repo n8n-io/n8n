@@ -44,7 +44,10 @@ const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 
 const message = ref('');
-const sessionId = ref(uuidv4());
+const sessionId = computed<string>(() =>
+	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
+);
+const isNewSession = computed(() => sessionId.value !== route.params.id);
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
@@ -104,7 +107,8 @@ const mergedCredentials = computed(() => ({
 	...selectedCredentials.value,
 }));
 
-const hasMessages = computed(() => chatStore.chatMessages.length > 0);
+const chatMessages = computed(() => chatStore.messagesBySession[sessionId.value] ?? []);
+const hasMessages = computed(() => chatMessages.value.length > 0);
 const inputPlaceholder = computed(() => {
 	if (!selectedModel.value) {
 		return 'Select a model';
@@ -133,7 +137,7 @@ function scrollToBottom() {
 }
 
 watch(
-	() => chatStore.chatMessages,
+	chatMessages,
 	async (messages) => {
 		// Check if the last message is user and scroll to bottom of the chat
 		if (scrollOnNewMessage.value && messages.length > 0) {
@@ -163,16 +167,10 @@ watch(
 );
 
 watch(
-	() => route.params.id,
-	async (conversationId) => {
-		if (conversationId && typeof conversationId === 'string') {
-			// Load existing conversation
-			sessionId.value = conversationId;
-			await chatStore.fetchConversationMessages(conversationId);
-		} else {
-			// New conversation
-			sessionId.value = uuidv4();
-			chatStore.clearMessages();
+	[sessionId, isNewSession],
+	([id, isNew]) => {
+		if (!isNew && !chatStore.messagesBySession[id]) {
+			void chatStore.fetchMessages(id);
 		}
 	},
 	{ immediate: true },
@@ -221,7 +219,7 @@ function onSubmit() {
 		return;
 	}
 
-	chatStore.askAI(message.value, sessionId.value, selectedModel.value, {
+	chatStore.askAI(sessionId.value, message.value, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -333,7 +331,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 						>
 							<div ref="messagesRef" :class="$style.thread" role="log" aria-live="polite">
 								<div
-									v-for="m in chatStore.chatMessages"
+									v-for="m in chatMessages"
 									:key="m.id"
 									:class="[
 										$style.message,

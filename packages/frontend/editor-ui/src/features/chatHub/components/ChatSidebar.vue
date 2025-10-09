@@ -10,13 +10,13 @@ const router = useRouter();
 const chatStore = useChatStore();
 
 onMounted(async () => {
-	await chatStore.fetchConversations();
+	await chatStore.fetchSessions();
 });
 
 const sidebarMenuItems = computed<IMenuItem[]>(() => {
-	const menuItems: IMenuItem[] = chatStore.conversations.map((conversation) => ({
-		id: conversation.id,
-		label: conversation.title,
+	const menuItems: IMenuItem[] = chatStore.sessions.map((session) => ({
+		id: session.id,
+		label: session.title,
 		position: 'top',
 	}));
 
@@ -48,19 +48,13 @@ function onReturn() {
 			<N8nText bold>Chat</N8nText>
 		</div>
 		<div :class="$style.items">
-			<div v-if="chatStore.loadingConversations" :class="$style.loading">
-				<N8nText color="text-light">Loading conversations...</N8nText>
-			</div>
 			<N8nMenuItem
 				v-for="item in visibleItems"
 				:key="item.id"
 				:item="item"
 				@click="onConversationClick(item.id)"
 			/>
-			<div
-				v-if="!chatStore.loadingConversations && visibleItems.length === 0"
-				:class="$style.empty"
-			>
+			<div v-if="visibleItems.length === 0" :class="$style.empty">
 				<N8nText color="text-light">No conversations yet</N8nText>
 			</div>
 		</div>
