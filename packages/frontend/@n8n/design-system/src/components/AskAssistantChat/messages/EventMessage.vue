@@ -58,7 +58,7 @@ const eventMessages: Record<EventName, { part1: string; part2: string }> = {
 	margin-top: var(--spacing-l);
 	padding-top: var(--spacing-3xs);
 	border-top: var(--border-base);
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	> button,
 	> span {

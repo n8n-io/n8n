@@ -72,7 +72,7 @@ onMounted(() => {
 .logoText {
 	margin-left: var(--spacing-5xs);
 	path {
-		fill: var(--color-text-dark);
+		fill: var(--color--text--shade-1);
 	}
 }
 

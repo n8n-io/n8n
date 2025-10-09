@@ -100,6 +100,6 @@ function handleSelectMenuItem(selected: string) {
 }
 
 .container button:hover {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 }
 </style>

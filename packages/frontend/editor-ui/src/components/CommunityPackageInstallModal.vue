@@ -189,7 +189,7 @@ const onLearnMoreLinkClick = () => {
 	align-items: center;
 	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
 	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 
 	button {
 		& > span {
@@ -204,7 +204,7 @@ const onLearnMoreLinkClick = () => {
 .formContainer {
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .checkbox {
@@ -214,10 +214,10 @@ const onLearnMoreLinkClick = () => {
 }
 
 .error {
-	color: var(--color-danger);
+	color: var(--color--danger);
 
 	span {
-		border-color: var(--color-danger);
+		border-color: var(--color--danger);
 	}
 }
 </style>
