@@ -6,6 +6,7 @@ import N8nCommandBarItem from './CommandBarItem.vue';
 import type { CommandBarItem } from './types';
 import N8nBadge from '../N8nBadge';
 import N8nLoading from '../N8nLoading/Loading.vue';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 interface CommandBarProps {
 	placeholder?: string;
@@ -47,6 +48,7 @@ const currentPlaceholder = computed(() => {
 
 const commandBarRef = ref<HTMLElement>();
 const itemsListRef = ref<HTMLElement>();
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
 const filteredItems = computed(() => {
 	let items = currentItems.value;
@@ -113,18 +115,12 @@ const getGlobalIndex = (item: CommandBarItem): number => {
 const scrollSelectedIntoView = () => {
 	if (selectedIndex.value < 0) return;
 
-	void nextTick(() => {
+	void nextTick(async () => {
 		if (selectedIndex.value === 0) {
-			itemsListRef.value?.scrollTo({
-				top: 0,
-				behavior: 'smooth',
-			});
+			await scrollAreaRef.value?.scrollToTop({ smooth: true });
 			return;
 		} else if (selectedIndex.value === flattenedItems.value.length - 1) {
-			itemsListRef.value?.scrollTo({
-				top: itemsListRef.value.scrollHeight,
-				behavior: 'smooth',
-			});
+			await scrollAreaRef.value?.scrollToBottom({ smooth: true });
 			return;
 		}
 
@@ -297,34 +293,36 @@ onUnmounted(() => {
 							<N8nLoading variant="custom" :class="$style.loading" />
 						</div>
 					</div>
-					<div
+					<N8nScrollArea
 						v-else-if="flattenedItems.length > 0"
-						ref="itemsListRef"
-						:class="$style.itemsList"
+						ref="scrollAreaRef"
+						max-height="350px"
+						:class="$style.scrollArea"
 						data-test-id="command-bar-items-list"
-						@scroll="handleScroll"
 					>
-						<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
-							<div v-for="item in groupedItems.ungrouped" :key="item.id">
-								<N8nCommandBarItem
-									:item="item"
-									:is-selected="getGlobalIndex(item) === selectedIndex"
-									@select="selectItem"
-								/>
+						<div ref="itemsListRef" :class="$style.itemsList" @scroll="handleScroll">
+							<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
+								<div v-for="item in groupedItems.ungrouped" :key="item.id">
+									<N8nCommandBarItem
+										:item="item"
+										:is-selected="getGlobalIndex(item) === selectedIndex"
+										@select="selectItem"
+									/>
+								</div>
 							</div>
-						</div>
 
-						<template v-for="section in groupedItems.sections" :key="section.title">
-							<div :class="$style.sectionHeader">{{ section.title }}</div>
-							<div v-for="item in section.items" :key="item.id">
-								<N8nCommandBarItem
-									:item="item"
-									:is-selected="getGlobalIndex(item) === selectedIndex"
-									@select="selectItem"
-								/>
-							</div>
-						</template>
-					</div>
+							<template v-for="section in groupedItems.sections" :key="section.title">
+								<div :class="$style.sectionHeader">{{ section.title }}</div>
+								<div v-for="item in section.items" :key="item.id">
+									<N8nCommandBarItem
+										:item="item"
+										:is-selected="getGlobalIndex(item) === selectedIndex"
+										@select="selectItem"
+									/>
+								</div>
+							</template>
+						</div>
+					</N8nScrollArea>
 					<div v-else-if="inputValue && flattenedItems.length === 0" :class="$style.noResults">
 						No results found
 					</div>
@@ -368,10 +366,11 @@ onUnmounted(() => {
 	}
 }
 
-.itemsList {
-	max-height: 350px;
-	overflow-y: auto;
+.scrollArea {
 	padding: 0 var(--spacing-2xs) var(--spacing-2xs);
+}
+
+.itemsList {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-5xs);
