@@ -3,13 +3,13 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-
 import { programmaticEvaluation } from '../programmatic/programmatic';
-import type { EvaluationInput, EvaluationResult, TestCase } from '../types/evaluation';
+import type { EvaluationInput, TestCase } from '../types/evaluation';
 import { isWorkflowStateValues, safeExtractUsage } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
 import { calculateCacheStats } from '../utils/cache-analyzer';
-import { CacheLogger, extractPerMessageCacheStats } from '../utils/cache-logger';
+import type { CacheLogger } from '../utils/cache-logger';
+import { extractPerMessageCacheStats } from '../utils/cache-logger';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 /**

@@ -15,7 +15,7 @@ import path from 'path';
 import pc from 'picocolors';
 
 import { basicTestCases } from './chains/test-case-generator.js';
-import { setupEnvironment } from './core/environment.js';
+import { setupTestEnvironment } from './core/environment.js';
 import { runSingleTest } from './core/test-runner.js';
 import type { TestCase } from './types/evaluation.js';
 import type { TestResult, CacheStatistics } from './types/test-result.js';
@@ -25,6 +25,8 @@ import {
 	calculateCacheEffectiveness,
 } from './utils/cache-analyzer.js';
 import { CacheLogger } from './utils/cache-logger.js';
+import { createAgent } from './utils/evaluation-helpers.js';
+import { MemorySaver } from '@langchain/langgraph';
 
 interface CacheTestConfig {
 	iterations: number;
@@ -40,11 +42,9 @@ async function runCacheQualityTest(config: CacheTestConfig): Promise<void> {
 	console.log(pc.cyan('║      Prompt Caching Quality Test                      ║'));
 	console.log(pc.cyan('╚════════════════════════════════════════════════════════╝\n'));
 
-	const { llm } = await setupEnvironment();
-
+	const { llm, parsedNodeTypes, tracer } = await setupTestEnvironment();
 	const allResults: TestResult[][] = [];
 	const iterationStats: CacheStatistics[] = [];
-
 	console.log(
 		pc.dim(
 			`Running ${config.iterations} iterations with ${config.testCases.length} test cases...\n`,
@@ -54,7 +54,7 @@ async function runCacheQualityTest(config: CacheTestConfig): Promise<void> {
 	// Run multiple iterations
 	for (let iteration = 0; iteration < config.iterations; iteration++) {
 		console.log(pc.cyan(`\n═══ Iteration ${iteration + 1}/${config.iterations} ═══\n`));
-
+		const checkpointer = new MemorySaver();
 		const iterationResults: TestResult[] = [];
 
 		for (const testCase of config.testCases) {
@@ -63,12 +63,13 @@ async function runCacheQualityTest(config: CacheTestConfig): Promise<void> {
 			const cacheLogger = new CacheLogger(iteration + 1, testCase.id, config.outputDir);
 			cacheLogger.logTestHeader(testCase.name, iteration + 1);
 
-			const freshAgent = await setupEnvironment().then((env) => env.agent);
+			const agent = createAgent(parsedNodeTypes, llm, tracer, checkpointer);
 
 			const result = await runSingleTest(
-				freshAgent,
+				agent,
 				llm,
 				testCase,
+				parsedNodeTypes,
 				`test-user-iter-${iteration}`,
 				cacheLogger,
 			);
@@ -351,7 +352,7 @@ async function main(): Promise<void> {
 			];
 
 	const iterations = parseInt(process.env.CACHE_TEST_ITERATIONS ?? '3', 10);
-	const outputDir = path.join(process.cwd(), 'results', 'cache-tests');
+	const outputDir = path.join(process.cwd(), 'evaluations', 'results', 'cache-tests');
 
 	console.log(
 		pc.dim(

@@ -65,9 +65,9 @@ export class CacheLogger {
 
 			// Show cache warming indicator
 			if (stats.cacheReadTokens > 0) {
-				lines.push(`    Status: Cache hit - tokens served from cache`);
+				lines.push('    Status: Cache hit - tokens served from cache');
 			} else if (stats.cacheCreationTokens > 0) {
-				lines.push(`    Status: Cache miss - tokens written to cache`);
+				lines.push('    Status: Cache miss - tokens written to cache');
 			}
 		}
 
