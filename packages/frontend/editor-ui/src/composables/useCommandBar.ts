@@ -192,30 +192,16 @@ export function useCommandBar() {
 			case VIEWS.NEW_WORKFLOW:
 				return workflowStore.workflow.name
 					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowStore.workflow.name
-					: i18n.baseText('commandBar.sections.workflow');
+					: '';
 			case VIEWS.EXECUTION_PREVIEW:
 			case VIEWS.EXECUTION_DEBUG:
 				return workflowStore.workflow.name
 					? i18n.baseText('commandBar.sections.execution') + ' ⋅ ' + workflowStore.workflow.name
-					: i18n.baseText('commandBar.sections.execution');
-			case VIEWS.WORKFLOWS:
-			case VIEWS.PROJECTS_WORKFLOWS:
-				return i18n.baseText('commandBar.sections.workflows');
-			case VIEWS.CREDENTIALS:
-			case VIEWS.PROJECTS_CREDENTIALS:
-				return i18n.baseText('commandBar.sections.credentials');
-			case VIEWS.EXECUTIONS:
-			case VIEWS.PROJECTS_EXECUTIONS:
-				return i18n.baseText('commandBar.sections.executions');
-			case PROJECT_DATA_TABLES:
-			case DATA_TABLE_VIEW:
-				return i18n.baseText('commandBar.sections.dataTables');
+					: '';
 			case VIEWS.EVALUATION:
 			case VIEWS.EVALUATION_EDIT:
 			case VIEWS.EVALUATION_RUNS_DETAIL:
-				return workflowStore.workflow.name
-					? i18n.baseText('commandBar.sections.evaluation') + ' ⋅ ' + workflowStore.workflow.name
-					: i18n.baseText('commandBar.sections.evaluation');
+				return workflowStore.workflow.name ? ' ⋅ ' + workflowStore.workflow.name : '';
 			default:
 				return '';
 		}

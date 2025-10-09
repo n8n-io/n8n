@@ -329,10 +329,11 @@ onUnmounted(() => {
 	top: 20vh;
 	left: 50%;
 	transform: translateX(-50%);
-	background: var(--color-foreground-xlight);
+	background: var(--color-background-xlight);
 	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	box-shadow: var(--box-shadow-dark);
+	border-radius: var(--border-radius-base);
+	box-shadow: var(--shadow-command-bar);
+
 	width: 100%;
 	max-width: 700px;
 	z-index: 1000;
@@ -343,10 +344,12 @@ onUnmounted(() => {
 	border: none;
 	outline: none;
 	background: transparent;
-	font-size: var(--font-size-m);
+	font-size: var(--font-size-s);
 	font-family: var(--font-family);
 	color: var(--color-text-base);
-	padding: var(--spacing-m) var(--spacing-l);
+	height: var(--spacing-2xl);
+	padding: 0 var(--spacing-2xs);
+	padding-left: var(--spacing-s);
 	border-bottom: var(--border-base);
 
 	&::placeholder {
@@ -357,11 +360,14 @@ onUnmounted(() => {
 .itemsList {
 	max-height: 350px;
 	overflow-y: auto;
-	padding-bottom: var(--spacing-s);
+	padding: 0 var(--spacing-2xs) var(--spacing-2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-5xs);
 }
 
 .sectionHeader {
-	padding: var(--spacing-xs) var(--spacing-l);
+	padding: var(--spacing-xs) var(--spacing-2xs);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
 	color: var(--color-text-light);

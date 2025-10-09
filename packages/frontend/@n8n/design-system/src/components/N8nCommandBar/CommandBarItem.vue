@@ -66,38 +66,18 @@ const handleMouseLeave = () => {
 	display: flex;
 	gap: var(--spacing-2xs);
 	align-items: center;
-	height: var(--spacing-2xl);
-	padding: 0 var(--spacing-s);
+	height: 40px;
+	padding: 0 var(--spacing-2xs);
 	cursor: pointer;
-	position: relative;
-	margin-left: var(--border-width-base);
+	border-radius: var(--border-radius-base);
 	transition: background-color 0.1s ease;
 
-	&::before {
-		content: '';
-		position: absolute;
-		left: calc(-1 * var(--border-width-base));
-		top: 0;
-		bottom: 0;
-		width: calc(2 * var(--border-width-base));
-		background-color: transparent;
-		transition: background-color 0.1s ease;
-	}
-
 	&:hover {
-		background-color: var(--color-foreground-base);
-
-		&::before {
-			background-color: var(--color-foreground-dark);
-		}
+		background-color: var(--color-command-bar-item-hover-background);
 	}
 
 	&.selected {
-		background-color: var(--color-foreground-base);
-
-		&::before {
-			background-color: var(--color-primary);
-		}
+		background-color: var(--color-command-bar-item-hover-background);
 	}
 }
 
