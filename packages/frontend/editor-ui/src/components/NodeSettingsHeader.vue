@@ -57,7 +57,7 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .header {
-	--color-tabs-arrow-buttons: var(--color--background--xlight);
+	--color-tabs-arrow-buttons: var(--color-background-xlight);
 
 	display: flex;
 	align-items: center;

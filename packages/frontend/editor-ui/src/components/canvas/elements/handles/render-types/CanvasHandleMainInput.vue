@@ -37,7 +37,7 @@ const handleClasses = 'target';
 	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1)) translate(-100%, 0);
 	transform-origin: center left;
 	font-size: var(--font-size-2xs);
-	color: var(--color--foreground--xdark);
+	color: var(--color-foreground-xdark);
 	background: var(--color-canvas-label-background);
 	z-index: 1;
 	text-align: center;
@@ -46,6 +46,6 @@ const handleClasses = 'target';
 
 .required .label::after {
 	content: '*';
-	color: var(--color--danger);
+	color: var(--color-danger);
 }
 </style>

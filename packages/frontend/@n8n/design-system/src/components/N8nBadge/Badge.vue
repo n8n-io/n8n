@@ -42,52 +42,52 @@ withDefaults(defineProps<BadgeProps>(), {
 .default {
 	composes: badge;
 	border-radius: var(--border-radius-base);
-	color: var(--color--text--light);
-	border-color: var(--color--text--light);
+	color: var(--color-text-light);
+	border-color: var(--color-text-light);
 }
 
 .success {
 	composes: badge;
 	border-radius: var(--border-radius-base);
-	color: var(--color--success);
-	border-color: var(--color--success);
+	color: var(--color-success);
+	border-color: var(--color-success);
 }
 
 .warning {
 	composes: badge;
 	border-radius: var(--border-radius-base);
-	color: var(--color--warning);
-	border-color: var(--color--warning);
+	color: var(--color-warning);
+	border-color: var(--color-warning);
 }
 
 .danger {
 	composes: badge;
 	border-radius: var(--border-radius-base);
-	color: var(--color--danger);
-	border-color: var(--color--danger);
+	color: var(--color-danger);
+	border-color: var(--color-danger);
 }
 
 .primary {
 	composes: badge;
 	padding: var(--spacing-5xs) var(--spacing-3xs);
 	border-radius: var(--border-radius-xlarge);
-	color: var(--color--foreground--xlight);
-	background-color: var(--color--primary);
-	border-color: var(--color--primary);
+	color: var(--color-foreground-xlight);
+	background-color: var(--color-primary);
+	border-color: var(--color-primary);
 }
 
 .secondary {
 	composes: badge;
 	border-radius: var(--border-radius-xlarge);
-	color: var(--color--secondary);
-	background-color: var(--color--secondary--tint-1);
+	color: var(--color-secondary);
+	background-color: var(--color-secondary-tint-1);
 }
 
 .tertiary {
 	composes: badge;
 	border-radius: var(--border-radius-base);
-	color: var(--color--text--light);
-	border-color: var(--color--text--light);
+	color: var(--color-text-light);
+	border-color: var(--color-text-light);
 	padding: 1px var(--spacing-5xs);
 }
 </style>

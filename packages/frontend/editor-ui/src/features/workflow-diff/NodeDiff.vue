@@ -45,21 +45,21 @@ const props = withDefaults(
 		}
 
 		&:global([theme='dark']) {
-			--fgColor-default: var(--color--text--dark);
-			--bgColor-default: var(--color--background--light);
-			--color-fg-subtle: var(--color--text--light); // Muted text
+			--fgColor-default: var(--color-text-dark);
+			--bgColor-default: var(--color-background-light);
+			--color-fg-subtle: var(--color-text-light); // Muted text
 
 			// deletions
 			--color-diff-blob-deletion-num-bg: var(--diff-del-light);
-			--color-diff-blob-deletion-num-text: var(--color--text--xlight);
+			--color-diff-blob-deletion-num-text: var(--color-text-xlight);
 			--color-danger-emphasis: var(--diff-del);
 
 			// insertions
-			--color-diff-blob-addition-num-text: var(--color--text--xlight);
+			--color-diff-blob-addition-num-text: var(--color-text-xlight);
 			--color-diff-blob-addition-num-bg: var(--diff-new-light);
 			--color-success-emphasis: var(--diff-new);
 
-			--color-diff-blob-hunk-num-bg: var(--color--background--medium);
+			--color-diff-blob-hunk-num-bg: var(--color-background-medium);
 			:global(.blob-code-hunk) {
 				background-color: var(--color-diff-blob-hunk-num-bg);
 			}

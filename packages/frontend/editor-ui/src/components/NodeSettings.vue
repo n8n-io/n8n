@@ -813,7 +813,7 @@ function handleSelectAction(params: INodeParameters) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color--background--base);
+	background-color: var(--color-background-base);
 }
 
 .featureRequest {
@@ -828,7 +828,7 @@ function handleSelectAction(params: INodeParameters) {
 
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
-		color: var(--color--text--light);
+		color: var(--color-text-light);
 	}
 }
 </style>
@@ -838,7 +838,7 @@ function handleSelectAction(params: INodeParameters) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color--background--xlight);
+	background-color: var(--color-background-xlight);
 	height: 100%;
 	width: 100%;
 
@@ -894,14 +894,14 @@ function handleSelectAction(params: INodeParameters) {
 			}
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-2xs);
-				background: var(--color--foreground--dark);
-				border: var(--spacing-5xs) solid var(--color--background--xlight);
+				background: var(--color-foreground-dark);
+				border: var(--spacing-5xs) solid var(--color-background-xlight);
 			}
 		}
 	}
 
 	&.dragging {
-		border-color: var(--color--primary);
+		border-color: var(--color-primary);
 		box-shadow: 0 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
@@ -946,7 +946,7 @@ function handleSelectAction(params: INodeParameters) {
 	font-size: var(--font-size-xs);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
-	color: var(--color--text--light);
+	color: var(--color-text-light);
 }
 
 .parameter-value {

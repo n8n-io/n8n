@@ -43,7 +43,7 @@ const classes = computed(() => ({
 
 .required .label::after {
 	content: '*';
-	color: var(--color--danger);
+	color: var(--color-danger);
 }
 
 :global(.vue-flow__handle:not(.connectionindicator)) .plus {

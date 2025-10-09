@@ -76,12 +76,12 @@ function copy() {
 .copyText {
 	span {
 		font-family: Monaco, Consolas;
-		color: var(--color--text--base);
+		color: var(--color-text-base);
 		overflow-wrap: break-word;
 	}
 
 	padding: var(--spacing-xs);
-	background-color: var(--color--background--light);
+	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 	cursor: pointer;
@@ -123,7 +123,7 @@ function copy() {
 	top: 0;
 	right: 0;
 	padding: var(--spacing-xs);
-	background-color: var(--color--background--light);
+	background-color: var(--color-background-light);
 	height: 100%;
 	align-items: center;
 	border-radius: var(--border-radius-base);

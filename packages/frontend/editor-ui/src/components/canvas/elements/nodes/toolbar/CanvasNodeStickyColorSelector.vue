@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
 	height: 20px;
 	border-width: 1px;
 	border-style: solid;
-	border-color: var(--color--foreground--xdark);
+	border-color: var(--color-foreground-xdark);
 	border-radius: 50%;
 	background: var(--color-sticky-background);
 
@@ -156,14 +156,14 @@ onBeforeUnmount(() => {
 .option {
 	display: inline-block;
 	padding: var(--spacing-3xs);
-	color: var(--color--text--light);
+	color: var(--color-text-light);
 
 	svg {
 		width: var(--font-size-s) !important;
 	}
 
 	&:hover {
-		color: var(--color--primary);
+		color: var(--color-primary);
 	}
 }
 </style>

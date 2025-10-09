@@ -77,7 +77,7 @@ defineExpose({
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		color: var(--color--foreground--dark);
+		color: var(--color-foreground-dark);
 	}
 
 	.el-input__inner {

@@ -276,21 +276,21 @@ function getIssues(index: number): string[] {
 .addCondition {
 	// Styling to match collection button (should move to standard button in future)
 	font-weight: var(--font-weight-normal);
-	--button-font-color: var(--color--text--dark);
-	--button-border-color: var(--color--foreground--base);
-	--button-background-color: var(--color--background--base);
+	--button-font-color: var(--color-text-dark);
+	--button-border-color: var(--color-foreground-base);
+	--button-background-color: var(--color-background-base);
 
-	--button-hover-font-color: var(--color--text--dark);
-	--button-hover-border-color: var(--color--foreground--base);
-	--button-hover-background-color: var(--color--background--base);
+	--button-hover-font-color: var(--color-text-dark);
+	--button-hover-border-color: var(--color-foreground-base);
+	--button-hover-background-color: var(--color-background-base);
 
-	--button-active-font-color: var(--color--text--dark);
-	--button-active-border-color: var(--color--foreground--base);
-	--button-active-background-color: var(--color--background--base);
+	--button-active-font-color: var(--color-text-dark);
+	--button-active-border-color: var(--color-foreground-base);
+	--button-active-background-color: var(--color-background-base);
 
-	--button-focus-font-color: var(--color--text--dark);
-	--button-focus-border-color: var(--color--foreground--base);
-	--button-focus-background-color: var(--color--background--base);
+	--button-focus-font-color: var(--color-text-dark);
+	--button-focus-border-color: var(--color-foreground-base);
+	--button-focus-background-color: var(--color-background-base);
 
 	&:hover,
 	&:focus,
@@ -304,11 +304,11 @@ function getIssues(index: number): string[] {
 	padding-right: var(--spacing-xs);
 }
 .ghost {
-	background-color: var(--color--background--base);
+	background-color: var(--color-background-base);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color--background--xlight);
+	background-color: var(--color-background-xlight);
 	opacity: 0.7;
 }
 .dragging > .combinator {

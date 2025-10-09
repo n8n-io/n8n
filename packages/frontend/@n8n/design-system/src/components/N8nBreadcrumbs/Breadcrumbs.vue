@@ -283,7 +283,7 @@ const handleTooltipClose = () => {
 }
 
 .item.dragging:hover {
-	border: var(--border-width-base) var(--border-style-base) var(--color--secondary);
+	border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
 	border-radius: var(--border-radius-base);
 	background-color: var(--color-callout-secondary-background);
 
@@ -300,7 +300,7 @@ const handleTooltipClose = () => {
 }
 
 .item.current span {
-	color: var(--color--text--dark);
+	color: var(--color-text-dark);
 }
 
 // Make disabled ellipsis look like a normal item
@@ -309,7 +309,7 @@ const handleTooltipClose = () => {
 	.tooltip-ellipsis {
 		cursor: pointer;
 		user-select: none;
-		color: var(--color--text--base);
+		color: var(--color-text-base);
 	}
 	&.disabled {
 		.dots,
@@ -318,9 +318,9 @@ const handleTooltipClose = () => {
 		}
 		.dots {
 			cursor: default;
-			color: var(--color--text--base);
+			color: var(--color-text-base);
 			&:hover {
-				color: var(--color--text--base);
+				color: var(--color-text-base);
 			}
 		}
 	}
@@ -328,7 +328,7 @@ const handleTooltipClose = () => {
 
 .hidden-items-menu {
 	display: flex;
-	color: var(--color--text--base);
+	color: var(--color-text-base);
 }
 
 .hidden-items-menu-popper {
@@ -370,7 +370,7 @@ const handleTooltipClose = () => {
 	padding: var(--spacing-xs) var(--spacing-2xs);
 	text-align: center;
 	& > div {
-		color: var(--color--text--lighter);
+		color: var(--color-text-lighter);
 		span {
 			font-size: var(--font-size-2xs);
 		}
@@ -383,13 +383,13 @@ const handleTooltipClose = () => {
 
 .dots {
 	padding: 0 var(--spacing-4xs);
-	color: var(--color--text--light);
+	color: var(--color-text-light);
 	border-radius: var(--border-radius-base);
 
 	&:hover,
 	&:focus {
-		background-color: var(--color--background--base);
-		color: var(--color--primary);
+		background-color: var(--color-background-base);
+		color: var(--color-primary);
 	}
 }
 
@@ -405,18 +405,18 @@ const handleTooltipClose = () => {
 
 	.item,
 	.item * {
-		color: var(--color--text--base);
+		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
 		line-height: var(--font-line-height-xsmall);
 	}
 
 	.item a:hover * {
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 	}
 
 	.separator {
 		font-size: var(--font-size-s);
-		color: var(--color--text--base);
+		color: var(--color-text-base);
 	}
 }
 
@@ -428,7 +428,7 @@ const handleTooltipClose = () => {
 
 	.item,
 	.item * {
-		color: var(--color--text--base);
+		color: var(--color-text-base);
 		font-size: var(--font-size-s);
 		line-height: var(--font-line-height-xsmall);
 	}
@@ -438,21 +438,21 @@ const handleTooltipClose = () => {
 	}
 
 	.item:not(.dragging) a:hover * {
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 	}
 
 	.ellipsis {
 		padding-right: 0;
 		padding-left: 0;
-		color: var(--color--text--light);
+		color: var(--color-text-light);
 		&:hover {
-			color: var(--color--text--base);
+			color: var(--color-text-base);
 		}
 	}
 
 	.separator {
 		font-size: var(--font-size-xl);
-		color: var(--color--foreground--base);
+		color: var(--color-foreground-base);
 	}
 }
 </style>

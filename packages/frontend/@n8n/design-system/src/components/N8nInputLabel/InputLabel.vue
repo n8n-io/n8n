@@ -136,7 +136,7 @@ const addTargetBlank = (html: string) =>
 			opacity: 1;
 
 			&:hover {
-				color: var(--color--text--base);
+				color: var(--color-text-base);
 			}
 		}
 	}
@@ -191,7 +191,7 @@ const addTargetBlank = (html: string) =>
 .infoIcon {
 	display: flex;
 	align-items: center;
-	color: var(--color--text--light);
+	color: var(--color-text-light);
 	margin-left: var(--spacing-4xs);
 	z-index: 1;
 }
@@ -224,7 +224,7 @@ const addTargetBlank = (html: string) =>
 
 		background: linear-gradient(
 			270deg,
-			var(--color--foreground--xlight) 72.19%,
+			var(--color-foreground-xlight) 72.19%,
 			rgba(255, 255, 255, 0) 107.45%
 		);
 	}
@@ -272,9 +272,9 @@ const addTargetBlank = (html: string) =>
 	}
 
 	code {
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 		font-size: var(--font-size-3xs);
-		background: var(--color--background--medium);
+		background: var(--color-background-medium);
 		padding: var(--spacing-5xs);
 		border-radius: var(--border-radius-base);
 	}

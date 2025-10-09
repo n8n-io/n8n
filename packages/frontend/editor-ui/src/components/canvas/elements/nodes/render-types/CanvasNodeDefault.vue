@@ -187,7 +187,7 @@ function onActivate(event: MouseEvent) {
 	--canvas-node-border-width: 2px;
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
-	--node-icon-color: var(--color--foreground--dark);
+	--node-icon-color: var(--color-foreground-dark);
 
 	position: relative;
 	height: var(--canvas-node--height);
@@ -197,7 +197,7 @@ function onActivate(event: MouseEvent) {
 	justify-content: center;
 	background: var(--canvas-node--background, var(--color-node-background));
 	border: var(--canvas-node-border-width) solid
-		var(--canvas-node--border-color, var(--color--foreground--xdark));
+		var(--canvas-node--border-color, var(--color-foreground-xdark));
 	border-radius: var(--border-radius-large);
 
 	&.trigger {
@@ -212,7 +212,7 @@ function onActivate(event: MouseEvent) {
 	&.configuration {
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
-			var(--canvas-node--border-color, var(--color--foreground--dark));
+			var(--canvas-node--border-color, var(--color-foreground-dark));
 		border-radius: calc(var(--canvas-node--height) / 2);
 
 		.statusIcons {
@@ -279,16 +279,16 @@ function onActivate(event: MouseEvent) {
 	&.success {
 		--canvas-node--border-color: var(
 			--color-canvas-node-success-border-color,
-			var(--color--success)
+			var(--color-success)
 		);
 	}
 
 	&.warning {
-		--canvas-node--border-color: var(--color--warning);
+		--canvas-node--border-color: var(--color-warning);
 	}
 
 	&.error {
-		--canvas-node--border-color: var(--color-canvas-node-error-border-color, var(--color--danger));
+		--canvas-node--border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
 	}
 
 	&.pinned {
@@ -301,7 +301,7 @@ function onActivate(event: MouseEvent) {
 	&.disabled {
 		--canvas-node--border-color: var(
 			--color-canvas-node-disabled-border-color,
-			var(--color--foreground--base)
+			var(--color-foreground-base)
 		);
 	}
 
@@ -316,7 +316,7 @@ function onActivate(event: MouseEvent) {
 	&.waiting {
 		--canvas-node--border-color: var(
 			--color-canvas-node-waiting-border-color,
-			var(--color--secondary)
+			var(--color-secondary)
 		);
 	}
 }
@@ -350,7 +350,7 @@ function onActivate(event: MouseEvent) {
 .subtitle {
 	width: 100%;
 	text-align: center;
-	color: var(--color--text--light);
+	color: var(--color-text-light);
 	font-size: var(--font-size-xs);
 	white-space: nowrap;
 	overflow: hidden;

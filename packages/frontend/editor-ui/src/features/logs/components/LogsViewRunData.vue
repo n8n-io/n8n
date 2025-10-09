@@ -143,7 +143,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 
 <style lang="scss" module>
 .component {
-	--color-run-data-background: var(--color--background--light);
+	--color-run-data-background: var(--color-background-light);
 }
 
 .title {

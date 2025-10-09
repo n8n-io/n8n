@@ -1875,9 +1875,9 @@ onUpdated(async () => {
 }
 
 .activeDrop {
-	--input-border-color: var(--color--success);
-	--input-border-right-color: var(--color--success);
-	--input-background-color: var(--color--foreground--xlight);
+	--input-border-color: var(--color-success);
+	--input-border-right-color: var(--color-success);
+	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: solid;
 
 	textarea,
@@ -1888,11 +1888,11 @@ onUpdated(async () => {
 }
 
 .has-issues {
-	--input-border-color: var(--color--danger);
+	--input-border-color: var(--color-danger);
 }
 
 .el-dropdown {
-	color: var(--color--text--light);
+	color: var(--color-text-light);
 }
 
 .list-option {
@@ -1957,17 +1957,17 @@ onUpdated(async () => {
 		transform: rotate(270deg);
 
 		&:hover {
-			color: var(--color--primary);
+			color: var(--color-primary);
 		}
 	}
 }
 
 .focused {
-	border-color: var(--color--secondary);
+	border-color: var(--color-secondary);
 }
 
 .invalid {
-	border-color: var(--color--danger);
+	border-color: var(--color-danger);
 }
 
 .code-edit-dialog {

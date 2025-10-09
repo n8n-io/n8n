@@ -139,7 +139,7 @@ watchOnce(isVisible, (visible) => {
 	border-radius: var(--border-radius-base) !important;
 	overflow: hidden;
 
-	--canvas-node--border-color: var(--color--text--lighter);
+	--canvas-node--border-color: var(--color-text-lighter);
 	--expanded-max-height: min(
 		calc(var(--canvas-node--height) * 2),
 		var(--max-height-on-focus),
@@ -192,11 +192,11 @@ watchOnce(isVisible, (visible) => {
 	gap: var(--spacing-4xs);
 	background-color: white;
 	padding: var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs) var(--spacing-2xs);
-	background-color: var(--color--background--xlight);
+	background-color: var(--color-background-xlight);
 	cursor: pointer;
 
 	.disabled & {
-		background-color: var(--color--foreground--light);
+		background-color: var(--color-foreground-light);
 	}
 
 	& > * {

@@ -18,10 +18,10 @@ withDefaults(
 	width: var(--handle--indicator--width);
 	height: var(--handle--indicator--height);
 	border-radius: 50%;
-	background: var(--color--foreground--xdark);
+	background: var(--color-foreground-xdark);
 
 	&:hover {
-		background: var(--color--primary);
+		background: var(--color-primary);
 	}
 }
 </style>

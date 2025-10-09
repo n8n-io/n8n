@@ -51,13 +51,13 @@ const onDragStart = () => {
 	cursor: ew-resize;
 	border: none;
 	outline: none;
-	background: var(--color--background--xlight);
+	background: var(--color-background-xlight);
 
 	display: flex;
 	align-items: baseline;
 	gap: var(--spacing-3xs);
 	padding: var(--spacing-4xs) var(--spacing-3xs) 0 var(--spacing-3xs);
-	color: var(--color--foreground--dark);
+	color: var(--color-foreground-dark);
 	border: var(--border-base);
 	border-bottom: none;
 	border-top-left-radius: var(--border-radius-base);

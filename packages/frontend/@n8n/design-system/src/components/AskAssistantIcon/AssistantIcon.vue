@@ -23,7 +23,7 @@ const svgFill = computed(() => {
 	if (props.theme === 'blank') {
 		return 'white';
 	} else if (props.theme === 'disabled') {
-		return 'var(--color--text--light)';
+		return 'var(--color-text-light)';
 	}
 	return 'url(#paint0_linear_173_12825)';
 });

@@ -29,7 +29,7 @@ const edgeColor = computed(() => {
 	if (connectionType.value !== NodeConnectionTypes.Main) {
 		return 'var(--node-type-supplemental-color)';
 	} else {
-		return 'var(--color--foreground--xdark)';
+		return 'var(--color-foreground-xdark)';
 	}
 });
 

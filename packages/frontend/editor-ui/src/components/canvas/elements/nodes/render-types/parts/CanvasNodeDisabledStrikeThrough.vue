@@ -24,7 +24,7 @@ const classes = computed(() => {
 
 <style lang="scss" module>
 .disabledStrikeThrough {
-	border: 1px solid var(--color--foreground--dark);
+	border: 1px solid var(--color-foreground-dark);
 	position: absolute;
 	top: calc(var(--canvas-node--height) / 2 - 1px);
 	left: -4px;
@@ -33,10 +33,10 @@ const classes = computed(() => {
 }
 
 .success {
-	border-color: var(--color--success--light);
+	border-color: var(--color-success-light);
 }
 
 .warning {
-	border-color: var(--color--warning--tint-1);
+	border-color: var(--color-warning-tint-1);
 }
 </style>

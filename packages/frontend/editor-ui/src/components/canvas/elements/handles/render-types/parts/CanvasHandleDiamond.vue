@@ -21,7 +21,7 @@ withDefaults(
 	transform: rotate(45deg) scale(0.8);
 
 	&:hover {
-		background: var(--color--primary);
+		background: var(--color-primary);
 	}
 }
 </style>

@@ -104,13 +104,13 @@ function onClick() {
 	height: 100px;
 
 	&:hover .button svg path {
-		fill: var(--color--primary);
+		fill: var(--color-primary);
 	}
 }
 
 .button {
-	background: var(--color--foreground--xlight);
-	border: 2px dashed var(--color--foreground--xdark);
+	background: var(--color-foreground-xlight);
+	border: 2px dashed var(--color-foreground-xdark);
 	border-radius: 8px;
 	padding: 0;
 
@@ -124,7 +124,7 @@ function onClick() {
 	font-weight: var(--font-weight-medium);
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
-	color: var(--color--text--dark);
+	color: var(--color-text-dark);
 	margin-top: var(--spacing-2xs);
 	display: flex;
 	flex-direction: column;

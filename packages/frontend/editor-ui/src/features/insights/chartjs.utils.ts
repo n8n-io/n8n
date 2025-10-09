@@ -19,11 +19,11 @@ export const generateLinearGradient = (ctx: CanvasRenderingContext2D, height: nu
 export const generateLineChartOptions = (
 	overrides: ChartOptions<'line'> = {},
 ): ChartOptions<'line'> => {
-	const colorTextDark = useCssVar('--color--text--dark', document.body);
-	const colorBackgroundLight = useCssVar('--color--background--xlight', document.body);
-	const colorForeGroundBase = useCssVar('--color--foreground--base', document.body);
+	const colorTextDark = useCssVar('--color-text-dark', document.body);
+	const colorBackgroundLight = useCssVar('--color-background-xlight', document.body);
+	const colorForeGroundBase = useCssVar('--color-foreground-base', document.body);
 
-	const colorTextLight = useCssVar('--color--text--light', document.body);
+	const colorTextLight = useCssVar('--color-text-light', document.body);
 
 	return merge(
 		{
@@ -107,10 +107,10 @@ export const generateLineChartOptions = (
 export const generateBarChartOptions = (
 	overrides: ChartOptions<'bar'> = {},
 ): ChartOptions<'bar'> => {
-	const colorTextLight = useCssVar('--color--text--light', document.body);
-	const colorTextDark = useCssVar('--color--text--dark', document.body);
-	const colorBackgroundLight = useCssVar('--color--background--xlight', document.body);
-	const colorForeGroundBase = useCssVar('--color--foreground--base', document.body);
+	const colorTextLight = useCssVar('--color-text-light', document.body);
+	const colorTextDark = useCssVar('--color-text-dark', document.body);
+	const colorBackgroundLight = useCssVar('--color-background-xlight', document.body);
+	const colorForeGroundBase = useCssVar('--color-foreground-base', document.body);
 
 	return merge(
 		{

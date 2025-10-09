@@ -60,15 +60,15 @@ const status = computed(() => props.data.status);
 
 const edgeColor = computed(() => {
 	if (status.value === 'success') {
-		return 'var(--color--success)';
+		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
-		return 'var(--color--secondary)';
+		return 'var(--color-secondary)';
 	} else if (!isMainConnection.value) {
 		return 'var(--node-type-supplemental-color)';
 	} else if (props.selected) {
-		return 'var(--color--background--dark)';
+		return 'var(--color-background-dark)';
 	} else {
-		return 'var(--color--foreground--xdark)';
+		return 'var(--color-foreground-xdark)';
 	}
 });
 
@@ -78,7 +78,7 @@ const edgeStyle = computed(() => ({
 }));
 
 const edgeStroke = computed(() =>
-	delayedHovered.value ? 'var(--color--primary)' : edgeColor.value,
+	delayedHovered.value ? 'var(--color-primary)' : edgeColor.value,
 );
 
 const edgeClasses = computed(() => ({
@@ -199,7 +199,7 @@ function onEdgeLabelMouseLeave() {
 
 .edgeLabel {
 	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
-	color: var(--color--text--base);
+	color: var(--color-text-base);
 	font-size: var(--font-size-xs);
 	background-color: hsla(
 		var(--color-canvas-background-h),

@@ -409,7 +409,7 @@ onBeforeMount(() => {
 		display: inline-block;
 		font-size: var(--font-size-2xs);
 		margin: var(--spacing-s) 0 var(--spacing-3xs);
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 	}
 }
 
@@ -442,7 +442,7 @@ onBeforeMount(() => {
 
 .dates {
 	display: flex;
-	border: 1px solid var(--color--foreground--base);
+	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
 	white-space: nowrap;
 	align-items: center;
@@ -459,7 +459,7 @@ onBeforeMount(() => {
 }
 
 .tooltipIcon {
-	color: var(--color--text--light);
+	color: var(--color-text-light);
 }
 
 .filterButton {
@@ -483,7 +483,7 @@ onBeforeMount(() => {
 	}
 
 	.el-input__prefix {
-		color: var(--color--foreground--dark);
+		color: var(--color-foreground-dark);
 	}
 
 	&:last-of-type {
@@ -516,7 +516,7 @@ onBeforeMount(() => {
 			margin-left: -6px;
 			border-left-width: 6px;
 			border-top-width: 0;
-			border-bottom-color: var(--color--foreground--xlight);
+			border-bottom-color: var(--color-foreground-xlight);
 			border-right-color: transparent;
 		}
 	}

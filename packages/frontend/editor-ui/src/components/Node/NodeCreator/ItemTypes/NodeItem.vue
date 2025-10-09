@@ -185,7 +185,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<NodeIcon
 				:class="$style.nodeIcon"
 				:node-type="nodeType"
-				color-default="var(--color--foreground--xdark)"
+				color-default="var(--color-foreground-xdark)"
 			/>
 		</template>
 
@@ -233,7 +233,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 					:node-type="nodeType"
 					:size="40"
 					:shrink="false"
-					color-default="var(--color--foreground--xdark)"
+					color-default="var(--color-foreground-xdark)"
 					@click.capture.stop
 				/>
 			</div>
@@ -274,9 +274,9 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	position: fixed;
 	z-index: 1;
 	opacity: 0.66;
-	border: 2px solid var(--color--foreground--xdark);
+	border: 2px solid var(--color-foreground-xdark);
 	border-radius: var(--border-radius-large);
-	background-color: var(--color--background--xlight);
+	background-color: var(--color-background-xlight);
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -289,7 +289,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 .icon {
 	display: inline-flex;
-	color: var(--color--text--base);
+	color: var(--color-text-base);
 	width: 12px;
 
 	&.official {

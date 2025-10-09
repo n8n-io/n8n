@@ -677,8 +677,8 @@ function onRenameNode(value: string) {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	border-left: 1px solid var(--color--foreground--base);
-	background: var(--color--background--xlight);
+	border-left: 1px solid var(--color-foreground-base);
+	background: var(--color-background-xlight);
 	overflow-y: hidden;
 	height: 100%;
 	flex-grow: 0;
@@ -743,7 +743,7 @@ function onRenameNode(value: string) {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		border-bottom: 1px solid var(--color--foreground--base);
+		border-bottom: 1px solid var(--color-foreground-base);
 		padding: var(--spacing-2xs);
 
 		.tabHeaderText {

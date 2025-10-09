@@ -12,10 +12,10 @@
 	cursor: pointer !important;
 }
 .primary-color {
-	color: var(--color--primary);
+	color: var(--color-primary);
 }
 .text-light {
-	color: var(--color--text--lighter);
+	color: var(--color-text-lighter);
 	font-weight: var(--font-weight-regular);
 }
 
@@ -42,8 +42,8 @@
 			position: absolute;
 			top: 0;
 			right: -50px;
-			color: var(--color--foreground--xlight);
-			background-color: var(--color--background--dark);
+			color: var(--color-foreground-xlight);
+			background-color: var(--color-background-dark);
 			border-radius: 0 18px 18px 0;
 			z-index: 110;
 			font-size: 1.7em;
@@ -52,7 +52,7 @@
 			height: 50px;
 			width: 50px;
 			.el-dialog__close {
-				color: var(--color--foreground--xlight);
+				color: var(--color-foreground-xlight);
 				font-weight: var(--font-weight-regular);
 			}
 			.el-dialog__close:hover {
@@ -60,32 +60,32 @@
 			}
 		}
 		.el-dialog__body {
-			color: var(--color--text--dark);
+			color: var(--color-text-dark);
 			padding: 0 20px 20px;
 		}
 		.el-dialog__title {
-			color: var(--color--text--dark);
+			color: var(--color-text-dark);
 		}
 	}
 }
 
 .el-message-box {
-	background-color: var(--color--background--light);
+	background-color: var(--color-background-light);
 	border: none;
 	.el-message-box__headerbtn {
 		.el-message-box__close {
-			color: var(--color--text--dark);
+			color: var(--color-text-dark);
 		}
 	}
 	.el-message-box__content,
 	.el-message-box__title {
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 	}
 	.el-message-box-icon {
 		width: var(--spacing-l);
 		height: var(--spacing-l);
 		&--warning {
-			color: var(--color--warning);
+			color: var(--color-warning);
 		}
 	}
 }
@@ -98,18 +98,18 @@
 // Table
 .el-table {
 	thead th {
-		color: var(--color--text--base);
-		background-color: var(--color--background--base);
+		color: var(--color-text-base);
+		background-color: var(--color-background-base);
 	}
 	tr {
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 
 		td {
 			border: none;
 		}
 	}
 	.tr {
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 	}
 }
 
@@ -126,7 +126,7 @@
 }
 
 .el-tabs__content {
-	border: 1px solid var(--color--foreground--base);
+	border: 1px solid var(--color-foreground-base);
 	border-radius: 0 var(--border-radius-base) var(--border-radius-base);
 }
 .el-tabs__header {
@@ -144,14 +144,14 @@
 	font-size: var(--font-size-2xs);
 
 	&:not([aria-selected='true']) {
-		background-color: var(--color--background--base);
-		border-bottom: 1px solid var(--color--foreground--base) !important;
+		background-color: var(--color-background-base);
+		border-bottom: 1px solid var(--color-foreground-base) !important;
 	}
 }
 
 // Loading Indicator
 .el-loading-mask {
-	background-color: var(--color--foreground--xlight);
+	background-color: var(--color-foreground-xlight);
 	opacity: 0.8;
 }
 
@@ -160,15 +160,15 @@
 .el-pagination .btn-prev,
 .el-pagination .btn-next {
 	background: none;
-	color: var(--color--text--dark);
+	color: var(--color-text-dark);
 }
 .el-pagination button:disabled {
 	background: none;
-	color: var(--color--text--lighter);
+	color: var(--color-text-lighter);
 }
 .el-pager li.btn-quicknext,
 .el-pager li.btn-quickprev {
-	color: var(--color--text--dark);
+	color: var(--color-text-dark);
 }
 
 // Notification
@@ -240,7 +240,7 @@
 			margin-left: var(--spacing-4xs);
 
 			&:hover {
-				background-color: var(--color--background--light) !important;
+				background-color: var(--color-background-light) !important;
 			}
 		}
 	}
@@ -255,16 +255,16 @@
 		.el-input__icon {
 			opacity: 1 !important;
 			cursor: not-allowed;
-			color: var(--color--foreground--dark);
+			color: var(--color-foreground-dark);
 		}
 		.el-input__inner,
 		.el-input__inner::placeholder {
 			opacity: 1;
-			color: var(--color--foreground--dark);
+			color: var(--color-foreground-dark);
 		}
 	}
 	.el-select .el-input:not(.is-disabled) .el-input__icon {
-		color: var(--color--text--dark);
+		color: var(--color-text-dark);
 	}
 	.el-input .el-input__inner {
 		text-align: center;
@@ -275,14 +275,14 @@
 		&:focus {
 			padding-left: 35px;
 			border-radius: var(--border-radius-base);
-			color: var(--color--text--dark);
-			background-color: var(--color--background--base);
-			border-color: var(--color--foreground--base);
+			color: var(--color-text-dark);
+			background-color: var(--color-background-base);
+			border-color: var(--color-foreground-base);
 			text-align: center;
 		}
 
 		&::placeholder {
-			color: var(--color--text--dark);
+			color: var(--color-text-dark);
 			opacity: 1; /** Firefox */
 		}
 	}

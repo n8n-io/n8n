@@ -48,7 +48,7 @@ const handleClick = (event: Event) => {
 		</div>
 		<N8nBadge
 			v-if="isOptional"
-			style="background-color: var(--color--background--base); border: none"
+			style="background-color: var(--color-background-base); border: none"
 		>
 			{{ locale.baseText('evaluations.setupWizard.stepHeader.optional') }}
 		</N8nBadge>
