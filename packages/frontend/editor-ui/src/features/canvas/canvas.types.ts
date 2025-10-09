@@ -7,10 +7,9 @@ import type {
 	OnConnectStartParams,
 	ViewportTransform,
 } from '@vue-flow/core';
-import type { IExecutionResponse, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { WorkflowState } from '@/composables/useWorkflowState';
 import type { CanvasLayoutSource } from '@/features/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/utils/nodeIcon';
 
