@@ -5,8 +5,9 @@ import { DataSource, type QueryRunner } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 async function reinitializeDataConnection(): Promise<void> {
-	await Container.get(DbConnection).close();
-	await Container.get(DbConnection).init();
+	const dbConnection = Container.get(DbConnection);
+	await dbConnection.close();
+	await dbConnection.init();
 }
 
 /**
