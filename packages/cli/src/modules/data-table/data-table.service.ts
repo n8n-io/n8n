@@ -155,12 +155,12 @@ export class DataTableService {
 
 		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
-			if (dto.filter) {
-				this.validateAndTransformFilters(dto.filter, columns);
-			}
+			const transformedDto = dto.filter
+				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
+				: dto;
 			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
-				dto,
+				transformedDto,
 				columns,
 				em,
 			);
@@ -194,11 +194,11 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			this.validateRowsWithColumns(rows, columns);
+			const transformedRows = this.validateAndTransformRows(rows, columns);
 
 			return await this.dataTableRowsRepository.insertRows(
 				dataTableId,
-				rows,
+				transformedRows,
 				columns,
 				returnType,
 				trx,
@@ -243,13 +243,13 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			this.validateUpdateParams(dto, columns);
+			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
 
 			if (dryRun) {
 				return await this.dataTableRowsRepository.dryRunUpsertRow(
 					dataTableId,
-					dto.data,
-					dto.filter,
+					data,
+					filter,
 					columns,
 					trx,
 				);
@@ -257,8 +257,8 @@ export class DataTableService {
 
 			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
-				dto.data,
-				dto.filter,
+				data,
+				filter,
 				columns,
 				true,
 				trx,
@@ -271,7 +271,7 @@ export class DataTableService {
 			// No rows were updated, so insert a new one
 			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
-				[dto.data],
+				[data],
 				columns,
 				returnData ? 'all' : 'id',
 				trx,
@@ -286,10 +286,10 @@ export class DataTableService {
 		return result;
 	}
 
-	validateUpdateParams(
+	validateAndTransformUpdateParams(
 		{ filter, data }: Pick<UpdateDataTableRowDto, 'filter' | 'data'>,
 		columns: DataTableColumn[],
-	) {
+	): { data: DataTableRow; filter: DataTableFilter } {
 		if (columns.length === 0) {
 			throw new DataTableValidationError(
 				'No columns found for this data table or data table not found',
@@ -303,8 +303,10 @@ export class DataTableService {
 			throw new DataTableValidationError('Data columns must not be empty');
 		}
 
-		this.validateRowsWithColumns([data], columns, false);
-		this.validateAndTransformFilters(filter, columns);
+		const [transformedData] = this.validateAndTransformRows([data], columns, false);
+		const transformedFilter = this.validateAndTransformFilters(filter, columns);
+
+		return { data: transformedData, filter: transformedFilter };
 	}
 
 	async updateRows<T extends boolean | undefined>(
@@ -340,13 +342,13 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			this.validateUpdateParams(dto, columns);
+			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
 
 			if (dryRun) {
 				return await this.dataTableRowsRepository.dryRunUpdateRows(
 					dataTableId,
-					dto.data,
-					dto.filter,
+					data,
+					filter,
 					columns,
 					trx,
 				);
@@ -354,8 +356,8 @@ export class DataTableService {
 
 			return await this.dataTableRowsRepository.updateRows(
 				dataTableId,
-				dto.data,
-				dto.filter,
+				data,
+				filter,
 				columns,
 				returnData,
 				trx,
@@ -408,12 +410,12 @@ export class DataTableService {
 				);
 			}
 
-			this.validateAndTransformFilters(dto.filter, columns);
+			const transformedFilter = this.validateAndTransformFilters(dto.filter, columns);
 
 			return await this.dataTableRowsRepository.deleteRows(
 				dataTableId,
 				columns,
-				dto.filter,
+				transformedFilter,
 				returnData,
 				dryRun,
 				trx,
@@ -427,11 +429,11 @@ export class DataTableService {
 		return result;
 	}
 
-	private validateRowsWithColumns(
+	private validateAndTransformRows(
 		rows: DataTableRows,
 		columns: Array<{ name: string; type: DataTableColumnType }>,
 		includeSystemColumns = false,
-	): void {
+	): DataTableRows {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
 			? [
@@ -444,26 +446,32 @@ export class DataTableService {
 			: columns;
 		const columnNames = new Set(allColumns.map((x) => x.name));
 		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
-		for (const row of rows) {
+
+		return rows.map((row) => {
+			const transformedRow: DataTableRow = {};
 			const keys = Object.keys(row);
 			for (const key of keys) {
 				if (!columnNames.has(key)) {
 					throw new DataTableValidationError(`unknown column name '${key}'`);
 				}
-				this.validateCell(row, key, columnTypeMap);
+				transformedRow[key] = this.validateAndTransformCell(row[key], key, columnTypeMap);
 			}
-		}
+			return transformedRow;
+		});
 	}
 
-	private validateCell(row: DataTableRow, key: string, columnTypeMap: Map<string, string>) {
-		const cell = row[key];
-		if (cell === null) return;
+	private validateAndTransformCell(
+		cell: DataTableColumnJsType,
+		key: string,
+		columnTypeMap: Map<string, string>,
+	): DataTableColumnJsType {
+		if (cell === null) return null;
 
 		const columnType = columnTypeMap.get(key);
-		if (!columnType) return;
+		if (!columnType) return cell;
 
 		const fieldType = columnTypeToFieldType[columnType];
-		if (!fieldType) return;
+		if (!fieldType) return cell;
 
 		const validationResult = validateFieldType(key, cell, fieldType, {
 			strict: false, // Allow type coercion (e.g., string numbers to numbers)
@@ -480,8 +488,7 @@ export class DataTableService {
 		if (columnType === 'date') {
 			try {
 				const dateInISO = (validationResult.newValue as DateTime).toISO();
-				row[key] = dateInISO;
-				return;
+				return dateInISO;
 			} catch {
 				throw new DataTableValidationError(
 					`value '${String(cell)}' does not match column type 'date'`,
@@ -489,7 +496,7 @@ export class DataTableService {
 			}
 		}
 
-		row[key] = validationResult.newValue as DataTableColumnJsType;
+		return validationResult.newValue as DataTableColumnJsType;
 	}
 
 	private async validateDataTableExists(dataTableId: string, projectId: string) {
@@ -534,8 +541,8 @@ export class DataTableService {
 	private validateAndTransformFilters(
 		filterObject: DataTableFilter,
 		columns: DataTableColumn[],
-	): void {
-		this.validateRowsWithColumns(
+	): DataTableFilter {
+		const transformedRows = this.validateAndTransformRows(
 			filterObject.filters.map((f) => {
 				return {
 					[f.columnName]: f.value,
@@ -545,32 +552,40 @@ export class DataTableService {
 			true,
 		);
 
-		for (const filter of filterObject.filters) {
+		const transformedFilters = filterObject.filters.map((filter, index) => {
+			const transformedValue = transformedRows[index][filter.columnName];
+
 			if (['like', 'ilike'].includes(filter.condition)) {
-				if (filter.value === null || filter.value === undefined) {
+				if (transformedValue === null || transformedValue === undefined) {
 					throw new DataTableValidationError(
 						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
 					);
 				}
-				if (typeof filter.value !== 'string') {
+				if (typeof transformedValue !== 'string') {
 					throw new DataTableValidationError(
 						`${filter.condition.toUpperCase()} filter value must be a string`,
 					);
 				}
 
-				if (!filter.value.includes('%')) {
-					filter.value = `%${filter.value}%`;
-				}
+				const valueWithWildcards = transformedValue.includes('%')
+					? transformedValue
+					: `%${transformedValue}%`;
+
+				return { ...filter, value: valueWithWildcards };
 			}
 
 			if (['gt', 'gte', 'lt', 'lte'].includes(filter.condition)) {
-				if (filter.value === null || filter.value === undefined) {
+				if (transformedValue === null || transformedValue === undefined) {
 					throw new DataTableValidationError(
 						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
 					);
 				}
 			}
-		}
+
+			return { ...filter, value: transformedValue };
+		});
+
+		return { ...filterObject, filters: transformedFilters };
 	}
 
 	private async validateDataTableSize() {
