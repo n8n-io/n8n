@@ -26,7 +26,11 @@ export class ChatHubController {
 
 	@GlobalScope('chatHub:message')
 	@Post('/send')
-	async sendMessage(req: AuthenticatedRequest<{}, {}, ChatHubSendMessageRequest>, res: Response) {
+	async sendMessage(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body payload: ChatHubSendMessageRequest,
+	) {
 		res.header('Content-type', 'application/json-lines; charset=utf-8');
 		res.header('Transfer-Encoding', 'chunked');
 		res.header('Connection', 'keep-alive');
@@ -37,11 +41,11 @@ export class ChatHubController {
 
 		const replyId = crypto.randomUUID();
 
-		this.logger.info(`Chat send request received: ${JSON.stringify(req.body)}`);
+		this.logger.info(`Chat send request received: ${JSON.stringify(payload)}`);
 
 		try {
 			await this.chatService.askN8n(res, req.user, {
-				...req.body,
+				...payload,
 				userId: req.user.id,
 				replyId,
 			});
