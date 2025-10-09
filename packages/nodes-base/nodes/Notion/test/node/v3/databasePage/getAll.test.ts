@@ -86,19 +86,7 @@ describe('Test NotionV3, databasePage => getAll', () => {
 		})
 		.reply(200, API_RESPONSE);
 
-	const harness = new NodeTestHarness({
-		node: {
-			name: 'Notion',
-			type: 'notion',
-			typeVersion: 3,
-		},
-		workflow: require('./getAll.workflow.json'),
-	});
-
-	it('should query database pages using data_source_id in v3', async () => {
-		const result = await harness.executeNode();
-		expect(result).toHaveLength(1);
-		expect(result[0].json).toHaveLength(2);
-		expect(result[0].json).toEqual(API_RESPONSE.results);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['getAll.workflow.json'],
 	});
 });

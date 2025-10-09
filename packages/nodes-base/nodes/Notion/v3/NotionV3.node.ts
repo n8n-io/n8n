@@ -30,6 +30,9 @@ import {
 	simplifyObjects,
 	validateJSON,
 	getDataSourceId,
+	isObject,
+	isObjectWithProperty,
+	isArrayOfObjects,
 } from '../shared/GenericFunctions';
 import { listSearch } from '../shared/methods';
 
@@ -266,7 +269,13 @@ export class NotionV3 implements INodeType {
 							body.query = text;
 						}
 						if (options.sort) {
-							const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
+							let sort: IDataObject = {};
+							if (
+								isObjectWithProperty(options.sort, 'sortValue') &&
+								isObject(options.sort.sortValue)
+							) {
+								sort = options.sort.sortValue;
+							}
 							body.sort = sort;
 						}
 						if (returnAll) {
@@ -322,9 +331,11 @@ export class NotionV3 implements INodeType {
 					`/data_sources/${dataSourceId}`,
 				);
 				let titleKey = '';
-				for (const key of Object.keys(properties as IDataObject)) {
-					if (properties[key].type === 'title') {
-						titleKey = key;
+				if (isObject(properties)) {
+					for (const key of Object.keys(properties)) {
+						if (isObject(properties[key]) && properties[key].type === 'title') {
+							titleKey = key;
+						}
 					}
 				}
 				for (let i = 0; i < itemsLength; i++) {
@@ -476,7 +487,7 @@ export class NotionV3 implements INodeType {
 							}
 						}
 
-						if (!Object.keys(body.filter as IDataObject).length) {
+						if (isObject(body.filter) && !Object.keys(body.filter).length) {
 							delete body.filter;
 						}
 						if (sort) {
@@ -735,11 +746,23 @@ export class NotionV3 implements INodeType {
 							body.query = text;
 						}
 						if (options.filter) {
-							const filter = ((options.filter as IDataObject)?.filters as IDataObject[]) || [];
+							let filter: IDataObject[] = [];
+							if (
+								isObjectWithProperty(options.filter, 'filters') &&
+								isArrayOfObjects(options.filter.filters)
+							) {
+								filter = options.filter.filters;
+							}
 							body.filter = filter;
 						}
 						if (options.sort) {
-							const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
+							let sort: IDataObject = {};
+							if (
+								isObjectWithProperty(options.sort, 'sortValue') &&
+								isObject(options.sort.sortValue)
+							) {
+								sort = options.sort.sortValue;
+							}
 							body.sort = sort;
 						}
 						if (returnAll) {

@@ -61,19 +61,7 @@ describe('Test NotionV3, page => create', () => {
 		})
 		.reply(200, API_RESPONSE);
 
-	const harness = new NodeTestHarness({
-		node: {
-			name: 'Notion',
-			type: 'notion',
-			typeVersion: 3,
-		},
-		workflow: require('./create.workflow.json'),
-	});
-
-	it('should create a page as subpage in v3', async () => {
-		const result = await harness.executeNode();
-		expect(result).toHaveLength(1);
-		expect(result[0].json).toEqual(API_RESPONSE);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['create.workflow.json'],
 	});
 });
-

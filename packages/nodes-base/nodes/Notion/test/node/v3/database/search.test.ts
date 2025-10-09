@@ -58,19 +58,7 @@ describe('Test NotionV3, database => search', () => {
 		})
 		.reply(200, API_RESPONSE);
 
-	const harness = new NodeTestHarness({
-		node: {
-			name: 'Notion',
-			type: 'notion',
-			typeVersion: 3,
-		},
-		workflow: require('./search.workflow.json'),
-	});
-
-	it('should search for data sources instead of databases in v3', async () => {
-		const result = await harness.executeNode();
-		expect(result).toHaveLength(1);
-		expect(result[0].json).toHaveLength(2);
-		expect(result[0].json).toEqual(API_RESPONSE.results);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['search.workflow.json'],
 	});
 });

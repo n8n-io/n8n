@@ -90,11 +90,9 @@ export async function getDataSourceId(
 
 		if (database.data_sources && Array.isArray(database.data_sources)) {
 			if (database.data_sources.length === 0) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Database ${databaseId} has no data sources`,
-					{ itemIndex },
-				);
+				throw new NodeOperationError(this.getNode(), `Database ${databaseId} has no data sources`, {
+					itemIndex,
+				});
 			}
 			// For multi-source databases, default to the first data source
 			return database.data_sources[0].id;
@@ -1245,3 +1243,16 @@ export const prepareNotionError = (node: INode, error: Error, itemIndex: number)
 
 	return new NodeOperationError(node, error, { itemIndex });
 };
+
+// Type guard functions
+export function isObject(value: unknown): value is IDataObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isObjectWithProperty(value: unknown, property: string): value is IDataObject {
+	return isObject(value) && property in value;
+}
+
+export function isArrayOfObjects(value: unknown): value is IDataObject[] {
+	return Array.isArray(value) && value.every((item) => isObject(item));
+}

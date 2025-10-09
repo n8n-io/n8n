@@ -7,6 +7,7 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	getDataSourceId,
+	isObject,
 } from '../../shared/GenericFunctions';
 
 export async function getDatabaseProperties(
@@ -22,22 +23,25 @@ export async function getDatabaseProperties(
 
 	// Then get properties from the data source
 	const { properties } = await notionApiRequest.call(this, 'GET', `/data_sources/${dataSourceId}`);
-	for (const key of Object.keys(properties as IDataObject)) {
-		//remove parameters that cannot be set from the API.
-		if (
-			![
-				'created_time',
-				'last_edited_time',
-				'created_by',
-				'last_edited_by',
-				'formula',
-				'rollup',
-			].includes(properties[key].type as string)
-		) {
-			returnData.push({
-				name: `${key}`,
-				value: `${key}|${properties[key].type}`,
-			});
+	if (isObject(properties)) {
+		for (const key of Object.keys(properties)) {
+			//remove parameters that cannot be set from the API.
+			if (
+				isObject(properties[key]) &&
+				![
+					'created_time',
+					'last_edited_time',
+					'created_by',
+					'last_edited_by',
+					'formula',
+					'rollup',
+				].includes(properties[key].type as string)
+			) {
+				returnData.push({
+					name: `${key}`,
+					value: `${key}|${properties[key].type}`,
+				});
+			}
 		}
 	}
 	returnData.sort((a, b) => {
@@ -64,11 +68,15 @@ export async function getFilterProperties(
 	const dataSourceId = await getDataSourceId.call(this, databaseId, 0);
 
 	const { properties } = await notionApiRequest.call(this, 'GET', `/data_sources/${dataSourceId}`);
-	for (const key of Object.keys(properties as IDataObject)) {
-		returnData.push({
-			name: `${key}`,
-			value: `${key}|${properties[key].type}`,
-		});
+	if (isObject(properties)) {
+		for (const key of Object.keys(properties)) {
+			if (isObject(properties[key])) {
+				returnData.push({
+					name: `${key}`,
+					value: `${key}|${properties[key].type}`,
+				});
+			}
+		}
 	}
 	returnData.sort((a, b) => {
 		if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
@@ -157,22 +165,25 @@ export async function getDatabaseIdFromPage(
 	}
 
 	const { properties } = await notionApiRequest.call(this, 'GET', `/data_sources/${dataSourceId}`);
-	for (const key of Object.keys(properties as IDataObject)) {
-		//remove parameters that cannot be set from the API.
-		if (
-			![
-				'created_time',
-				'last_edited_time',
-				'created_by',
-				'last_edited_by',
-				'formula',
-				'rollup',
-			].includes(properties[key].type as string)
-		) {
-			returnData.push({
-				name: `${key}`,
-				value: `${key}|${properties[key].type}`,
-			});
+	if (isObject(properties)) {
+		for (const key of Object.keys(properties)) {
+			//remove parameters that cannot be set from the API.
+			if (
+				isObject(properties[key]) &&
+				![
+					'created_time',
+					'last_edited_time',
+					'created_by',
+					'last_edited_by',
+					'formula',
+					'rollup',
+				].includes(properties[key].type as string)
+			) {
+				returnData.push({
+					name: `${key}`,
+					value: `${key}|${properties[key].type}`,
+				});
+			}
 		}
 	}
 	returnData.sort((a, b) => {
