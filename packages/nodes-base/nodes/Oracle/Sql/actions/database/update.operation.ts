@@ -112,7 +112,7 @@ export async function execute(
 		});
 		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
 
-		if (!Object.keys(updateColumns).length) {
+		if (!updateColumns.length) {
 			throw new NodeOperationError(
 				this.getNode(),
 				"Add values to update to the input item or set the 'Data Mode' to 'Define Below' to define the values to update.",
@@ -194,7 +194,7 @@ export async function execute(
 				(column) => !columnsToMatchOn.includes(column),
 			);
 
-			if (!Object.keys(updateColumns).length) {
+			if (!updateColumns.length) {
 				throw new NodeOperationError(
 					this.getNode(),
 					"Add values to update to the input item or set the 'Data Mode' to 'Define Below' to define the values to update.",
