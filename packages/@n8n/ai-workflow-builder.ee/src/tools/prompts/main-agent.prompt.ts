@@ -401,25 +401,6 @@ ABSOLUTELY FORBIDDEN IN BUILDING MODE:
 </response_patterns>
 `;
 
-const currentWorkflowJson = `
-<current_workflow_json>
-{workflowJSON}
-</current_workflow_json>
-<trimmed_workflow_json_note>
-Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.
-Use get_node_parameter tool to get full details when needed.
-</trimmed_workflow_json_note>`;
-
-const currentExecutionData = `
-<current_simplified_execution_data>
-{executionData}
-</current_simplified_execution_data>`;
-
-const currentExecutionNodesSchemas = `
-<current_execution_nodes_schemas>
-{executionSchema}
-</current_execution_nodes_schemas>`;
-
 const previousConversationSummary = `
 <previous_summary>
 {previousSummary}

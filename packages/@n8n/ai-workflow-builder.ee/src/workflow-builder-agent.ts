@@ -1,5 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import type { MemorySaver } from '@langchain/langgraph';
@@ -27,6 +28,11 @@ import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
+import {
+	applyCacheControlMarkers,
+	cleanStaleWorkflowContext,
+	findUserToolMessageIndices,
+} from './utils/cache-control/helpers';
 import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
@@ -143,94 +149,15 @@ export class WorkflowBuilderAgent {
 				'</current_execution_nodes_schemas>',
 			].join('\n');
 
-			// Find all user/tool message indices for caching optimization
-			const userToolIndices: number[] = [];
-			for (let i = 0; i < prompt.messages.length; i++) {
-				if (
-					prompt.messages[i] instanceof HumanMessage ||
-					prompt.messages[i] instanceof ToolMessage
-				) {
-					userToolIndices.push(i);
-				}
-			}
-
-			if (userToolIndices.length > 0) {
-				for (let i = 0; i < userToolIndices.length - 1; i++) {
-					const idx = userToolIndices[i];
-					const message = prompt.messages[idx];
-
-					if (typeof message.content === 'string') {
-						message.content = message.content.replace(
-							/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/,
-							'',
-						);
-					}
-
-					if (Array.isArray(message.content)) {
-						for (const block of message.content as any[]) {
-							if (block && typeof block === 'object' && 'cache_control' in block) {
-								delete block.cache_control;
-							}
-						}
-					}
-				}
-
-				const lastIdx = userToolIndices[userToolIndices.length - 1];
-				const lastMessage = prompt.messages[lastIdx];
-				if (typeof lastMessage.content === 'string') {
-					lastMessage.content = lastMessage.content + workflowContext;
-				}
-			}
-
-			if (userToolIndices.length > 1) {
-				const secondToLastIdx = userToolIndices[userToolIndices.length - 2];
-				const secondToLastMessage = prompt.messages[secondToLastIdx];
-
-				if (typeof secondToLastMessage.content === 'string') {
-					secondToLastMessage.content = [
-						{
-							type: 'text',
-							text: secondToLastMessage.content,
-							cache_control: { type: 'ephemeral' },
-						},
-					] as any;
-				} else if (Array.isArray(secondToLastMessage.content)) {
-					const lastBlock = secondToLastMessage.content[
-						secondToLastMessage.content.length - 1
-					] as any;
-					if (lastBlock && typeof lastBlock === 'object' && 'text' in lastBlock) {
-						lastBlock.cache_control = { type: 'ephemeral' };
-					}
-				}
-			}
-
-			if (userToolIndices.length > 0) {
-				const lastUserToolIdx = userToolIndices[userToolIndices.length - 1];
-				const lastMessage = prompt.messages[lastUserToolIdx];
-
-				if (typeof lastMessage.content === 'string') {
-					lastMessage.content = [
-						{
-							type: 'text',
-							text: lastMessage.content,
-							cache_control: { type: 'ephemeral' },
-						},
-					] as any;
-				} else if (Array.isArray(lastMessage.content)) {
-					const lastBlock = lastMessage.content[lastMessage.content.length - 1] as any;
-					if (lastBlock && typeof lastBlock === 'object' && 'text' in lastBlock) {
-						lastBlock.cache_control = { type: 'ephemeral' };
-					}
-				}
-			}
+			// Optimize prompts for Anthropic's caching by:
+			// 1. Finding all user/tool message positions (cache breakpoints)
+			// 2. Removing stale workflow context from old messages
+			// 3. Adding current workflow context and cache markers to recent messages
+			const userToolIndices = findUserToolMessageIndices(prompt.messages);
+			cleanStaleWorkflowContext(prompt.messages, userToolIndices);
+			applyCacheControlMarkers(prompt.messages, userToolIndices, workflowContext);
 
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
-
-			this.logger?.debug('Token estimation before LLM call', {
-				estimatedTokens,
-				maxInputTokens: MAX_INPUT_TOKENS,
-				messagesCount: prompt.messages.length,
-			});
 
 			if (estimatedTokens > MAX_INPUT_TOKENS) {
 				throw new WorkflowStateError(
@@ -239,24 +166,6 @@ export class WorkflowBuilderAgent {
 			}
 
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
-
-			// Log actual token usage from API response
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const actualTokenUsage = response.response_metadata?.usage;
-			if (actualTokenUsage) {
-				this.logger?.debug('Actual token usage from LLM API', {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					inputTokens: actualTokenUsage.input_tokens,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					outputTokens: actualTokenUsage.output_tokens,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					cacheCreationInputTokens: actualTokenUsage.cache_creation_input_tokens,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					cacheReadInputTokens: actualTokenUsage.cache_read_input_tokens,
-				});
-			} else {
-				this.logger?.debug('No token usage metadata in LLM response');
-			}
 
 			return { messages: [response] };
 		};
@@ -267,30 +176,7 @@ export class WorkflowBuilderAgent {
 			// because the conversation may have grown since the last call
 			const estimatedTokens = estimateTokenCountFromMessages(messages);
 
-			// Also log the last API call's token usage for comparison
-			const lastTokenUsage = extractLastTokenUsage(messages);
-
 			const shouldCompact = estimatedTokens > this.autoCompactThresholdTokens;
-
-			this.logger?.debug('Auto-compact threshold check', {
-				estimatedCurrentTokens: estimatedTokens,
-				lastApiCallTokens: lastTokenUsage
-					? {
-							inputTokens: lastTokenUsage.input_tokens,
-							outputTokens: lastTokenUsage.output_tokens,
-							cacheCreationInputTokens: lastTokenUsage.cache_creation_input_tokens ?? 0,
-							cacheReadInputTokens: lastTokenUsage.cache_read_input_tokens ?? 0,
-							total:
-								lastTokenUsage.input_tokens +
-								lastTokenUsage.output_tokens +
-								(lastTokenUsage.cache_creation_input_tokens ?? 0) +
-								(lastTokenUsage.cache_read_input_tokens ?? 0),
-						}
-					: null,
-				threshold: this.autoCompactThresholdTokens,
-				shouldCompact,
-				decision: shouldCompact ? 'COMPACT' : 'CONTINUE',
-			});
 
 			return shouldCompact;
 		};
