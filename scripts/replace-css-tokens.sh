@@ -91,7 +91,7 @@ echo "✓ Foreground color tokens replaced"
 echo ""
 
 # Background color tokens
-echo "[8/9] Replacing background color tokens..."
+echo "[8/10] Replacing background color tokens..."
 echo "$files" | xargs perl -pi -e 's/--color-background-medium/--color--background--shade-1/g'
 echo "$files" | xargs perl -pi -e 's/--color-background-dark/--color--background--shade-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-background-xlight/--color--background--light-3/g'
@@ -101,7 +101,51 @@ echo "$files" | xargs perl -pi -e 's/--color-background-base/--color--background
 echo "✓ Background color tokens replaced"
 echo ""
 
-echo "[9/9] Verifying replacements..."
+# Box shadow tokens
+echo "[9/11] Replacing box shadow tokens..."
+echo "$files" | xargs perl -pi -e 's/--box-shadow-light/--shadow--light/g'
+echo "$files" | xargs perl -pi -e 's/--box-shadow-dark/--shadow--dark/g'
+echo "$files" | xargs perl -pi -e 's/--box-shadow-base/--shadow/g'
+echo "✓ Box shadow tokens replaced"
+echo ""
+
+# Border radius tokens
+echo "[10/12] Replacing border radius tokens..."
+echo "$files" | xargs perl -pi -e 's/--border-radius-xlarge/--radius-xl/g'
+echo "$files" | xargs perl -pi -e 's/--border-radius-large/--radius-lg/g'
+echo "$files" | xargs perl -pi -e 's/--border-radius-small/--radius-sm/g'
+echo "$files" | xargs perl -pi -e 's/--border-radius-base/--radius/g'
+echo "✓ Border radius tokens replaced"
+echo ""
+
+# Border tokens (remove -base suffix)
+echo "[11/13] Replacing border tokens..."
+echo "$files" | xargs perl -pi -e 's/--border-style-base/--border-style/g'
+echo "$files" | xargs perl -pi -e 's/--border-width-base/--border-width/g'
+echo "$files" | xargs perl -pi -e 's/--border-color-base/--border-color/g'
+echo "$files" | xargs perl -pi -e 's/--border-base(?!-)/--border/g'
+echo "✓ Border tokens replaced"
+echo ""
+
+# Font line height tokens
+echo "[12/14] Replacing font line height tokens..."
+echo "$files" | xargs perl -pi -e 's/--font-line-height-xsmall/--font-line-height-xs/g'
+echo "$files" | xargs perl -pi -e 's/--font-line-height-compact/--font-line-height-sm/g'
+echo "$files" | xargs perl -pi -e 's/--font-line-height-regular/--font-line-height-md/g'
+echo "$files" | xargs perl -pi -e 's/--font-line-height-loose/--font-line-height-lg/g'
+echo "$files" | xargs perl -pi -e 's/--font-line-height-xloose/--font-line-height-xl/g'
+echo "✓ Font line height tokens replaced"
+echo ""
+
+# Spacing tokens
+echo "[13/13] Replacing spacing tokens..."
+echo "$files" | xargs perl -pi -e 's/--spacing-s(?!-)/--spacing-sm/g'
+echo "$files" | xargs perl -pi -e 's/--spacing-m(?!-)/--spacing-md/g'
+echo "$files" | xargs perl -pi -e 's/--spacing-l(?!-)/--spacing-lg/g'
+echo "✓ Spacing tokens replaced"
+echo ""
+
+echo "[13/13] Verifying replacements..."
 remaining=$(echo "$files" | xargs grep -l "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | xargs grep "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | grep -v "\-\-color\-\-" | wc -l | xargs)
 echo "Remaining old tokens found: $remaining"
 echo ""
