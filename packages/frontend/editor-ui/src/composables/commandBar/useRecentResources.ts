@@ -190,7 +190,6 @@ export function useRecentResources() {
 	return {
 		commands: recentResourceCommands,
 		trackResourceOpened,
-		registerWorkflowOpen,
 		initialize,
 	};
 }
