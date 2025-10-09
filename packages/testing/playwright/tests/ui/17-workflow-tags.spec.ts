@@ -89,8 +89,10 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.tagsManagerModal.clickDoneButton();
 		await n8n.canvas.clickCreateTagButton();
 
+		await expect(n8n.canvas.getTagItemsInDropdown()).toHaveCount(0);
+
 		for (const tag of tags) {
-			await expect(n8n.canvas.getTagItemInDropdownByName(tag.name)).toBeHidden();
+			await expect(n8n.canvas.getTagItemInDropdownByName(tag.name)).not.toBeAttached();
 		}
 
 		await expect(n8n.canvas.getTagPills()).toHaveCount(0);
