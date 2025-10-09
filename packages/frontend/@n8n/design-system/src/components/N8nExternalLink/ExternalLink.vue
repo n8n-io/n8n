@@ -32,7 +32,7 @@ withDefaults(defineProps<ExternalLinkProps>(), {
 
 <style lang="scss" module>
 .link {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	text-decoration: none;
 	display: inline-flex;
 	align-items: center;
@@ -45,20 +45,20 @@ withDefaults(defineProps<ExternalLinkProps>(), {
 	font-weight: var(--font-weight-regular);
 
 	svg {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 
 	&:hover {
-		color: var(--color-primary);
-		background: var(--color-foreground-light);
+		color: var(--color--primary);
+		background: var(--color--foreground--tint-1);
 
 		svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 
 	&:active {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 </style>

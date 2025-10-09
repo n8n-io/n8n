@@ -246,7 +246,7 @@ const onCheckboxChange = (index: number) => {
 
 <style lang="scss" module>
 .markdown {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	* {
 		font-size: var(--font-size-m);
@@ -283,19 +283,19 @@ const onCheckboxChange = (index: number) => {
 	}
 
 	pre > code {
-		background-color: var(--color-background-base);
-		color: var(--color-text-dark);
+		background-color: var(--color--background);
+		color: var(--color--text--shade-1);
 	}
 
 	li > code,
 	p > code {
 		padding: 0 var(--spacing-4xs);
-		color: var(--color-text-dark);
-		background-color: var(--color-background-base);
+		color: var(--color--text--shade-1);
+		background-color: var(--color--background);
 	}
 
 	.label {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 
 	img {
@@ -311,7 +311,7 @@ const onCheckboxChange = (index: number) => {
 }
 
 input[type='checkbox'] {
-	accent-color: var(--color-primary);
+	accent-color: var(--color--primary);
 }
 
 input[type='checkbox'] + label {

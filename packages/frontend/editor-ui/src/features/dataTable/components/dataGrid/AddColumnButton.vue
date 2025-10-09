@@ -256,7 +256,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-4xs);
-		color: var(--color-text-danger);
+		color: var(--color--text--danger);
 	}
 
 	.error-tooltip {

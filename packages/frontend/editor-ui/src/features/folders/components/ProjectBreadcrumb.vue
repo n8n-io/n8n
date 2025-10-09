@@ -99,17 +99,17 @@ const onProjectMouseUp = () => {
 	border: var(--border-width-base) var(--border-style-base) transparent;
 
 	&.dragging:hover {
-		border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
+		border: var(--border-width-base) var(--border-style-base) var(--color--secondary);
 		border-radius: var(--border-radius-base);
 		background-color: var(--color-callout-secondary-background);
 		* {
 			cursor: grabbing;
-			color: var(--color-text-base);
+			color: var(--color--text);
 		}
 	}
 
 	&:hover :global(.n8n-text) {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 

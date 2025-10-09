@@ -93,8 +93,8 @@ async function onBuildWithAIClick() {
 }
 
 .button {
-	background: var(--color-foreground-xlight);
-	border: 2px dashed var(--color-foreground-xdark);
+	background: var(--color--foreground--tint-2);
+	border: 2px dashed var(--color--foreground--shade-2);
 	border-radius: var(--border-radius-large);
 	padding: 0;
 
@@ -116,7 +116,7 @@ async function onBuildWithAIClick() {
 	font-weight: var(--font-weight-medium);
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	margin-top: var(--spacing-2xs);
 	text-align: center;
 }
@@ -131,7 +131,7 @@ async function onBuildWithAIClick() {
 
 .orText {
 	font-size: var(--font-size-m);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-weight: var(--font-weight-regular);
 	padding: 0 var(--spacing-xs);
 }

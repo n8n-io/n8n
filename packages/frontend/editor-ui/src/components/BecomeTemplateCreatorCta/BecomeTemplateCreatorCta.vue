@@ -50,7 +50,7 @@ const onClick = () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	border: var(--border-base);
 	border-right: 0;
 }
@@ -75,7 +75,7 @@ const onClick = () => {
 	justify-content: center;
 	height: var(--spacing-2xs);
 	border: none;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	background-color: transparent;
 	cursor: pointer;
 }

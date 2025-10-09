@@ -214,7 +214,7 @@ function onFocusNode() {
 	border-radius: var(--border-radius-base);
 
 	:global(.button) {
-		--button-font-color: var(--color-text-light);
+		--button-font-color: var(--color--text--tint-1);
 	}
 }
 

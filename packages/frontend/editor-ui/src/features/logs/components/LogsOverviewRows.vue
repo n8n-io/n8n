@@ -137,7 +137,7 @@ watch(
 
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-4xs);
-				background: var(--color-foreground-dark);
+				background: var(--color--foreground--shade-1);
 			}
 		}
 	}

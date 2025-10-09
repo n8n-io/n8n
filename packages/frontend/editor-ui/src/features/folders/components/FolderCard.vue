@@ -263,7 +263,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	width: var(--spacing-xl);
 	height: var(--spacing-xl);
 	flex-shrink: 0;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	align-content: center;
 	text-align: center;
 }

@@ -25,7 +25,7 @@ defineProps<Props>();
 	font-size: 10px;
 	line-height: 12px;
 	text-transform: uppercase;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	cursor: default;
 }
 </style>

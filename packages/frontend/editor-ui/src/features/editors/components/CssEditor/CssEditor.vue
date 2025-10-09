@@ -139,7 +139,7 @@ defineExpose({
 
 .activeDrop {
 	:global(.cm-editor) {
-		border-color: var(--color-success);
+		border-color: var(--color--success);
 		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;

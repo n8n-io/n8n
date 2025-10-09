@@ -40,7 +40,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 
 <style lang="scss" module>
 .subCategory {
-	--action-arrow-color: var(--color-text-light);
+	--action-arrow-color: var(--color--text--tint-1);
 	margin-left: 15px;
 	margin-right: 12px;
 }

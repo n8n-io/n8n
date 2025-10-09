@@ -278,7 +278,7 @@ watch(
 			top: 0;
 			margin: auto;
 			bottom: 0;
-			border-top: 1px solid var(--color-foreground-base);
+			border-top: 1px solid var(--color--foreground);
 		}
 	}
 }
@@ -297,7 +297,7 @@ watch(
 			top: 0;
 			margin: auto;
 			bottom: 0;
-			border-bottom: 1px solid var(--color-foreground-base);
+			border-bottom: 1px solid var(--color--foreground);
 		}
 	}
 }
