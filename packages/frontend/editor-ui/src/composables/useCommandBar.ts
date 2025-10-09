@@ -13,6 +13,7 @@ import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigat
 import { useProjectNavigationCommands } from './commandBar/useProjectNavigationCommands';
 import { useExecutionCommands } from './commandBar/useExecutionCommands';
 import { useGenericCommands } from './commandBar/useGenericCommands';
+import { useRecentResources } from './commandBar/useRecentResources';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
@@ -76,8 +77,10 @@ export function useCommandBar() {
 		activeNodeId,
 	});
 	const genericCommandGroup = useGenericCommands();
+	const recentResourcesGroup = useRecentResources();
 
 	const canvasViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
@@ -85,6 +88,7 @@ export function useCommandBar() {
 	];
 
 	const executionViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		executionCommandGroup,
 		workflowNavigationGroup,
 		projectNavigationGroup,
@@ -95,6 +99,7 @@ export function useCommandBar() {
 	];
 
 	const workflowsListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		workflowNavigationGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
@@ -104,6 +109,7 @@ export function useCommandBar() {
 	];
 
 	const credentialsListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		credentialNavigationGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
@@ -113,6 +119,7 @@ export function useCommandBar() {
 	];
 
 	const executionsListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		workflowNavigationGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
@@ -121,6 +128,7 @@ export function useCommandBar() {
 	];
 
 	const dataStoresListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		dataTableNavigationGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
@@ -130,6 +138,7 @@ export function useCommandBar() {
 	];
 
 	const evaluationViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		workflowNavigationGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
@@ -139,6 +148,7 @@ export function useCommandBar() {
 	];
 
 	const fallbackViewCommands: CommandGroup[] = [
+		recentResourcesGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
 		credentialNavigationGroup,
@@ -282,6 +292,7 @@ export function useCommandBar() {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 		const initPromises = activeCommandGroups.value.map(async (group) => {
+			console.log('group', group);
 			if (group.initialize) {
 				await group.initialize();
 			}
