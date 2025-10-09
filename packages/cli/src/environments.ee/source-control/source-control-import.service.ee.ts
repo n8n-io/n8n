@@ -1080,15 +1080,25 @@ export class SourceControlImportService {
 	}
 
 	async deleteFoldersNotInWorkfolder(candidates: SourceControlledFile[]) {
-		for (const candidate of candidates) {
-			await this.folderRepository.delete(candidate.id);
+		const candidateIds = candidates.map((c) => c.id);
+		if (candidateIds.length === 0) {
+			return;
 		}
+
+		await this.folderRepository.delete({
+			id: In(candidateIds),
+		});
 	}
 
 	async deleteTeamProjectsNotInWorkfolder(candidates: SourceControlledFile[]) {
-		for (const candidate of candidates) {
-			await this.projectRepository.delete(candidate.id);
+		const candidateIds = candidates.map((c) => c.id);
+		if (candidateIds.length === 0) {
+			return;
 		}
+
+		await this.projectRepository.delete({
+			id: In(candidateIds),
+		});
 	}
 
 	private async findOrCreateOwnerProject(owner: RemoteResourceOwner): Promise<Project | null> {

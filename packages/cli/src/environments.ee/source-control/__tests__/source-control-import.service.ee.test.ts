@@ -11,6 +11,7 @@ import {
 	WorkflowEntity,
 	type WorkflowRepository,
 } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
@@ -368,6 +369,27 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
+	describe('getLocalVersionIdsFromDb', () => {
+		const now = new Date();
+		jest.useFakeTimers({ now });
+
+		it('should replace invalid updatedAt with current timestamp', async () => {
+			const mockWorkflows = [
+				{
+					id: 'workflow1',
+					name: 'Test Workflow',
+					updatedAt: 'invalid-date',
+				},
+			] as unknown as WorkflowEntity[];
+
+			workflowRepository.find.mockResolvedValue(mockWorkflows);
+
+			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
+
+			expect(result[0].updatedAt).toBe(now.toISOString());
+		});
+	});
+
 	describe('getRemoteFoldersAndMappingsFromFile', () => {
 		it('should parse folders and mappings file correctly', async () => {
 			globMock.mockResolvedValue(['/mock/folders.json']);
@@ -476,27 +498,6 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
-	describe('getLocalVersionIdsFromDb', () => {
-		const now = new Date();
-		jest.useFakeTimers({ now });
-
-		it('should replace invalid updatedAt with current timestamp', async () => {
-			const mockWorkflows = [
-				{
-					id: 'workflow1',
-					name: 'Test Workflow',
-					updatedAt: 'invalid-date',
-				},
-			] as unknown as WorkflowEntity[];
-
-			workflowRepository.find.mockResolvedValue(mockWorkflows);
-
-			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
-
-			expect(result[0].updatedAt).toBe(now.toISOString());
-		});
-	});
-
 	describe('getLocalFoldersAndMappingsFromDb', () => {
 		it('should return data from DB', async () => {
 			// Arrange
@@ -517,6 +518,26 @@ describe('SourceControlImportService', () => {
 			expect(result.folders[0]).toHaveProperty('name');
 			expect(result.folders[0]).toHaveProperty('parentFolderId');
 			expect(result.folders[0]).toHaveProperty('homeProjectId');
+		});
+	});
+
+	describe('deleteFoldersNotInWorkfolder', () => {
+		it('should call folderRepository.delete with correct ids', async () => {
+			const candidates = [
+				mock<SourceControlledFile>({ id: 'folder1' }),
+				mock<SourceControlledFile>({ id: 'folder2' }),
+				mock<SourceControlledFile>({ id: 'folder3' }),
+			];
+			await service.deleteFoldersNotInWorkfolder(candidates as any);
+
+			expect(folderRepository.delete).toHaveBeenCalledWith({
+				id: In(['folder1', 'folder2', 'folder3']),
+			});
+		});
+
+		it('should not call folderRepository.delete if candidates is empty', async () => {
+			await service.deleteFoldersNotInWorkfolder([]);
+			expect(folderRepository.delete).not.toHaveBeenCalled();
 		});
 	});
 
@@ -871,6 +892,27 @@ describe('SourceControlImportService', () => {
 						teamName: mockProjectData1.name,
 					},
 				});
+			});
+		});
+
+		describe('deleteTeamProjectsNotInWorkfolder', () => {
+			it('should delete candidate files', async () => {
+				const candidates = [
+					mock<SourceControlledFile>({ id: 'project-1' }),
+					mock<SourceControlledFile>({ id: 'project-2' }),
+				];
+
+				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+
+				expect(projectRepository.delete).toHaveBeenCalledWith({
+					id: In(['project-1', 'project-2']),
+				});
+			});
+
+			it('should handle empty candidates array', async () => {
+				await service.deleteTeamProjectsNotInWorkfolder([]);
+
+				expect(projectRepository.delete).not.toHaveBeenCalled();
 			});
 		});
 	});
