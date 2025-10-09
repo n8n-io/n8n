@@ -85,7 +85,6 @@ const SEMANTIC_VALUES = new Set([
 ]);
 
 const SCALE_VALUES = new Set([
-	'none',
 	'5xs',
 	'4xs',
 	'3xs',
