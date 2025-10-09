@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
@@ -34,9 +34,10 @@ import {
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
 } from '@/constants';
-import { SUGGESTIONS } from '@/features/chatHub/constants';
+import { CHAT_CONVERSATION_VIEW, SUGGESTIONS } from '@/features/chatHub/constants';
 import { findOneFromModelsResponse, modelsResponseContains } from '@/features/chatHub/chat.utils';
 
+const router = useRouter();
 const route = useRoute();
 const chatStore = useChatStore();
 const userStore = useUsersStore();
@@ -208,7 +209,7 @@ function onCreateNewCredential(provider: ChatHubProvider) {
 	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
-function onSubmit() {
+async function onSubmit() {
 	if (!message.value.trim() || chatStore.isResponding || !selectedModel.value) {
 		return;
 	}
@@ -219,7 +220,7 @@ function onSubmit() {
 		return;
 	}
 
-	chatStore.askAI(sessionId.value, message.value, selectedModel.value, {
+	await chatStore.askAI(sessionId.value, message.value, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -227,6 +228,10 @@ function onSubmit() {
 	});
 
 	message.value = '';
+
+	if (isNewSession.value) {
+		await router.push({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId.value } });
+	}
 }
 
 function onSuggestionClick(s: Suggestion) {

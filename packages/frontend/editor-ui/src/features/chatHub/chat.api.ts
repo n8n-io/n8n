@@ -17,14 +17,14 @@ export const fetchChatModelsApi = async (
 	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
-export const sendText = (
+export async function sendText(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
 	onMessageUpdated: (data: StructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
-): void => {
-	void streamRequest<StructuredChunk>(
+) {
+	await streamRequest<StructuredChunk>(
 		ctx,
 		'/chat/send',
 		payload,
@@ -33,7 +33,7 @@ export const sendText = (
 		onError,
 		'\n',
 	);
-};
+}
 
 export const fetchConversationsApi = async (
 	context: IRestApiContext,

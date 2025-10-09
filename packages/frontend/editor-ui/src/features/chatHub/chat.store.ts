@@ -155,16 +155,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		isResponding.value = false;
 	}
 
-	const askAI = (
+	async function askAI(
 		sessionId: string,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
-	) => {
+	) {
 		const messageId = uuidv4();
+
 		addUserMessage(sessionId, message, messageId);
 
-		sendText(
+		await sendText(
 			rootStore.restApiContext,
 			{
 				model,
@@ -177,7 +178,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
-	};
+	}
 
 	return {
 		models,
