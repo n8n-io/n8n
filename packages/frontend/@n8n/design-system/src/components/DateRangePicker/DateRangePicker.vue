@@ -42,7 +42,7 @@ const slots = useSlots();
 	<DateRangePickerRoot v-bind="forwarded">
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
-				<IconButton icon="calendar" type="secondary" />
+				<IconButton icon="calendar" type="secondary" aria-label="Open calendar" />
 			</slot>
 		</DateRangePickerTrigger>
 
