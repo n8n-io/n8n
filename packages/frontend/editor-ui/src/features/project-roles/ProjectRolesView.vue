@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
@@ -30,6 +31,7 @@ const i18n = useI18n();
 const $style = useCssModule();
 const settingsStore = useSettingsStore();
 const { goToUpgrade } = usePageRedirectionHelper();
+const telemetry = useTelemetry();
 
 const headers = ref<Array<TableHeader<Role>>>([
 	{
@@ -129,7 +131,16 @@ async function duplicateRole(item: Role) {
 			roleType: 'project',
 			scopes: item.scopes,
 		});
+
+		// optimistic update
 		rolesStore.roles.project.push(role);
+		void rolesStore.fetchRoles();
+
+		telemetry.track('User duplicated role', {
+			role_id: item.slug,
+			role_name: item.displayName,
+			permissions: item.scopes,
+		});
 
 		showMessage({
 			type: 'success',
@@ -189,17 +200,18 @@ function handleRowClick(item: Role) {
 	if (item.systemRole) return;
 	void router.push({ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: item.slug } });
 }
+
+function addRole() {
+	telemetry.track('User clicked add role');
+	void router.push({ name: VIEWS.PROJECT_NEW_ROLE });
+}
 </script>
 
 <template>
 	<div class="pb-xl">
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">{{ i18n.baseText('settings.projectRoles') }}</N8nHeading>
-			<N8nButton
-				v-if="settingsStore.isCustomRolesFeatureEnabled"
-				type="secondary"
-				@click="router.push({ name: VIEWS.PROJECT_NEW_ROLE })"
-			>
+			<N8nButton v-if="settingsStore.isCustomRolesFeatureEnabled" type="secondary" @click="addRole">
 				{{ i18n.baseText('projectRoles.addRole') }}
 			</N8nButton>
 		</div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useMessage } from '@/composables/useMessage';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
@@ -17,6 +18,7 @@ const router = useRouter();
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
 const message = useMessage();
+const telemetry = useTelemetry();
 
 const props = defineProps<{ roleSlug?: string }>();
 
@@ -132,6 +134,11 @@ async function createProjectRole() {
 		});
 
 		void rolesStore.fetchRoles();
+		telemetry.track('User successfully created new role', {
+			role_id: role.slug,
+			role_name: role.displayName,
+			permissions: role.scopes,
+		});
 
 		void router.replace({ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: role.slug } });
 		showMessage({
@@ -183,6 +190,12 @@ async function updateProjectRole(slug: string) {
 		});
 
 		void rolesStore.fetchRoles();
+		telemetry.track('User updated role', {
+			role_id: role.slug,
+			role_name: role.displayName,
+			permissions_from: initialState.value?.scopes,
+			permissions_to: role.scopes,
+		});
 
 		initialState.value = structuredClone(role);
 
@@ -240,6 +253,12 @@ async function deleteRole() {
 		return;
 	}
 
+	telemetry.track('User clicked delete role', {
+		role_id: initialState.value.slug,
+		role_name: initialState.value.displayName,
+		permissions: initialState.value?.scopes,
+	});
+
 	try {
 		await rolesStore.deleteProjectRole(initialState.value.slug);
 
@@ -251,6 +270,11 @@ async function deleteRole() {
 		}
 
 		showMessage({ title: i18n.baseText('projectRoles.action.delete.success'), type: 'success' });
+		telemetry.track('User successfully deleted role', {
+			role_id: initialState.value.slug,
+			role_name: initialState.value.displayName,
+			permissions: initialState.value?.scopes,
+		});
 		router.back();
 	} catch (error) {
 		showError(error, i18n.baseText('projectRoles.action.delete.error'));
