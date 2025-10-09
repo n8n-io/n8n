@@ -365,19 +365,21 @@ export const PLSQL = SQLDialect.define({
 
 /// [OracleDB](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/index.html) dialect.
 export const OracleDB = SQLDialect.define({
-	operatorChars: '*/+-<>=!', // Only valid Oracle SQL operators
+	operatorChars: '*/+-<>=!', // Only valid SQL operators
 	doubleQuotedStrings: true, // "IDENTIFIER" support
 	charSetCasts: true, // e.g., N'こんにちは'
 	functions:
-		'NVL NVL2 NULLIF COALESCE DECODE GREATEST LEAST TO_CHAR TO_DATE TO_NUMBER TO_TIMESTAMP TO_TIMESTAMP_TZ TO_CLOB TO_NCLOB CAST ROUND TRUNC MOD ABS CEIL FLOOR POWER SQRT EXP LN SIGN LENGTH SUBSTR INSTR LOWER UPPER INITCAP LTRIM RTRIM TRIM RPAD LPAD REPLACE TRANSLATE CONCAT CHR ASCII REGEXP_SUBSTR REGEXP_REPLACE REGEXP_INSTR COUNT SUM AVG MIN MAX STDDEV VARIANCE MEDIAN LISTAGG ROW_NUMBER RANK DENSE_RANK NTILE LEAD LAG FIRST_VALUE LAST_VALUE JSON_VALUE JSON_EXISTS JSON_QUERY JSON_TABLE EXTRACT XMLQUERY XMLTABLE VECTOR_DISTANCE VECTOR_DOT_PRODUCT VECTOR_NORMALIZE',
+		SQLFunctions +
+		' acos asin atan atan2 bitand ceil chr cos cosh cosine_distance count decode exp extract floor greatest inner_product json_array json_arrayagg json_exists json_object json_objectagg json_query json_scalar json_serialize json_table json_transform json_value l1_distance l2_distance least length lower initcap lpad ltrim max median min mod nvl nvl2 nullif power replace round rpad regexp_instr regexp_replace regexp_substr sign sqrt stddev substr to_blob to_char to_clob to_clob to_date to_number to_ncclob to_timestamp to_timestamp_tz to_vector to_vector translate trunc trim upper uuid vector_distance vector_embedding vector_serialize xmlquery xmltable',
 	keywords:
-		'ACCESS ADD ALL ALTER AND ANY AS ASC AUDIT BETWEEN BY CHAR CHECK CLUSTER COLUMN COMMENT COMPRESS CONNECT CREATE CURRENT DATE DECIMAL DEFAULT DELETE DESC DISTINCT DROP BEGIN END IF ELSE ELSIF LOOP FOR WHILE DECLARE EXCEPTION COMMIT ROLLBACK SAVEPOINT PACKAGE TYPE GOTO EXIT CONTINUE NULL THEN WHEN CASE UNION UNIQUE UPDATE USING VALUES VIEW WHENEVER WHERE WITH',
+		SQLKeywords +
+		'access char check cluster dual noaudit nocompress nowait null offline pctfree rename resource rowid rowlabel rownum share size smallint sqlbuf successful synonym sysdate uid validate varchar varchar2',
 	types:
-		'CHAR NCHAR VARCHAR2 NVARCHAR2 CLOB NCLOB BLOB BFILE RAW LONG LONGRAW NUMBER FLOAT BINARY_FLOAT BINARY_DOUBLE INTEGER SMALLINT DECIMAL NUMERIC REAL DOUBLE PRECISION DATE TIMESTAMP TIMESTAMP WITH TIME ZONE TIMESTAMP WITH LOCAL TIME ZONE INTERVAL YEAR TO MONTH INTERVAL DAY TO SECOND BOOLEAN ROWID UROWID XMLTYPE JSON VECTOR',
+		'binary_double binary_float blob bfile boolean char clob date decimal double float integer interval day to second smallint interval year to month json long longraw nchar nclob number nvarchar2 raw rowid timestamp timestamp with local time zone timestamp with time zone urowid vector varchar2 xmltype',
 	builtin:
-		'SYSDATE SYSTIMESTAMP LEVEL ROWNUM ROWID USER CURRENT_DATE CURRENT_TIMESTAMP LOCALTIMESTAMP SESSIONTIMEZONE DBTIMEZONE SQL%ROWCOUNT SQL%FOUND SQL%NOTFOUND SQL%ISOPEN',
-	hashComments: false, // Oracle does not use #
-	slashComments: false, // Oracle does not use //
+		'current_date current_timestamp dbtimezone level localtimestamp rowid rownum sql%found sql%isopen sql%notfound sql%rowcount sessiontimezone sysdate systimestamp user',
+	hashComments: false, // does not use #
+	slashComments: false, // does not use //
 	spaceAfterDashes: true, // -- This is a comment
 	doubleDollarQuotedStrings: false,
 });

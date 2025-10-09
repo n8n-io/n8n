@@ -329,23 +329,40 @@ VALUES (
 		}
 	}
 
-	function normalizeParams(params?: Record<string, any>) {
-		if (!params) {
-			return params;
-		}
-		const normalized = {
-			Dno: params.Dno,
-			Names: [] as any,
-		};
+	/**
+	 * Normalizes bind parameter maps by grouping and simplifying
+	 * parameter names that share a common base but differ by unique suffixes (came from uuid).
+	 *
+	 * const input = {
+	 *   Namese10bdb52_9f57_42c3_bfd4_ed880b94e186: { type: oracledb.STRING, val: "Alice" },
+	 *   Names323b551b_0d6a_4657_8928_435f961554f1: { type: oracledb.STRING, val: "Bob" },
+	 *   Dno: { type: oracledb.NUMBER, val: 10, dir: 3002 },
+	 * };
+	 *
+	 * const output = normalizeParams(input);
+	 * // output:
+	 * // {
+	 * //   Names: ["Alice", "Bob"],
+	 * //   Dno: 10
+	 * // }
+	 */
+	function normalizeParams(params: Record<string, any> | undefined) {
+		if (!params) return params;
+
+		const normalized: Record<string, any> = {};
+		const groupMap: Record<string, any[]> = {};
 
 		for (const [key, val] of Object.entries(params)) {
-			if (key.startsWith('Names')) {
-				normalized.Names.push(val.val); // Only compare actual values
-			}
+			const baseKey = key.replace(/[_\dA-Fa-f-]+$/, ''); // remove unique suffixes (UUID fragments,..)
+			if (!groupMap[baseKey]) groupMap[baseKey] = [];
+			groupMap[baseKey].push(val && typeof val === 'object' && 'val' in val ? val.val : val);
 		}
 
-		// Sort to ignore order
-		normalized.Names.sort();
+		for (const [baseKey, values] of Object.entries(groupMap)) {
+			// If there’s only one scalar value, store it directly
+			normalized[baseKey] = values.length === 1 ? values[0] : [...values].sort();
+		}
+
 		return normalized;
 	}
 
@@ -714,53 +731,93 @@ VALUES (
 			expect(expectedArgs[0].values).toEqual(val);
 		});
 
-		it('should call runQueries with binds passed using bindInfo with parseIn as true', async () => {
-			const expectedQuery = `SELECT * FROM ${deptTable} WHERE deptno = :Dno AND empname IN :Names`;
+		it.each([
+			{
+				title: 'should call runQueries with binds passed using bindInfo with parseIn as true',
+				queryTemplate: (deptTable: string) =>
+					`SELECT * FROM ${deptTable} WHERE deptno = :Dno AND empname IN :Names`,
+				bindValues: [
+					{ name: 'Dno', valueNumber: 10, datatype: 'number', parseInStatement: false },
+					{ name: 'Names', valueString: 'Alice,Bob', datatype: 'string', parseInStatement: true },
+				],
+				expectedVal: {
+					Dno: { type: oracleDBTypes.NUMBER, val: 10, dir: 3002 },
+					Names: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Alice', dir: 3002 },
+					Names2: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Bob', dir: 3002 },
+				},
+				expectedRegex:
+					/^SELECT \* FROM N8N_TEST_DEPT WHERE deptno = :Dno AND empname IN \(:Names[\w_]+(,:Names[\w_]+)*\)$/,
+			},
+			{
+				title:
+					'should call runQueries with binds passed using partial matching bindInfo with parseIn as true',
+				queryTemplate: (deptTable: string) =>
+					`SELECT * FROM ${deptTable} WHERE deptno = :Names1 AND empname IN :Names`,
+				bindValues: [
+					{ name: 'Names1', valueNumber: 10, datatype: 'number', parseInStatement: false },
+					{ name: 'Names', valueString: 'Alice,Bob', datatype: 'string', parseInStatement: true },
+				],
+				expectedVal: {
+					Names1: { type: oracleDBTypes.NUMBER, val: 10, dir: 3002 },
+					Names: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Alice', dir: 3002 },
+					Names2: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Bob', dir: 3002 },
+				},
+				expectedRegex:
+					/^SELECT \* FROM N8N_TEST_DEPT WHERE deptno = :Names1 AND empname IN \(:Names[\w_]+(,:Names[\w_]+)*\)$/,
+			},
+			{
+				title:
+					'should correctly expand IN clause for single scalar bind value (SELECT :param1 ...)',
+				queryTemplate: () => 'SELECT :param1 FROM DUAL WHERE DUMMY IN :param1',
+				bindValues: [
+					{ name: 'param1', valueString: 'X', datatype: 'string', parseInStatement: true },
+				],
+				expectedVal: {
+					param1: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'X', dir: 3002 },
+				},
+				expectedRegex:
+					/^SELECT\s*\(?:param1[\w_]*\)?\s*FROM\s*DUAL\s*WHERE\s*DUMMY\s*IN\s*\(:param1[\w_]*\)$/,
+			},
+
+			{
+				title: 'should correctly handle SELECT * FROM dual where DUMMY in :param1',
+				queryTemplate: () => 'SELECT * FROM DUAL WHERE DUMMY IN :param1',
+				bindValues: [
+					{ name: 'param1', valueString: 'X,Y', datatype: 'string', parseInStatement: true },
+				],
+				expectedVal: {
+					param1: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'X', dir: 3002 },
+					param12: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Y', dir: 3002 },
+				},
+				expectedRegex: /^SELECT \* FROM DUAL WHERE DUMMY IN \(:param1[\w_]+(,:param1[\w_]+)*\)$/,
+			},
+		])('$title', async ({ queryTemplate, bindValues, expectedVal, expectedRegex }) => {
+			const expectedQuery = queryTemplate(deptTable);
 
 			const items = [
 				{
-					json: {
-						DEPTNO: 10,
-						EMPNAME: 'Alice, Bob',
-					},
-					pairedItem: {
-						item: 0,
-						input: undefined,
-					},
+					json: { DEPTNO: 10, EMPNAME: 'Alice, Bob' },
+					pairedItem: { item: 0, input: undefined },
 				},
 			];
+
 			const nodeParameters: IDataObject = {
 				operation: 'execute',
 				query: expectedQuery,
 				isBindInfo: true,
 				resource: 'database',
 				options: {
-					params: {
-						values: [
-							{
-								name: 'Dno',
-								// JSON Expression like value: "={{ $json.DEPTNO }}" needs
-								// to mock getParameterValue, so giving value directly.
-								valueNumber: 10,
-								datatype: 'number',
-								parseInStatement: false,
-							},
-							{
-								name: 'Names',
-								valueString: 'Alice,Bob',
-								datatype: 'string',
-								parseInStatement: true,
-							},
-						],
-					},
+					params: { values: bindValues },
 				},
 			};
+
 			const mockThis = createMockExecuteFunction(nodeParameters);
 			const nodeOptions = nodeParameters.options as IDataObject;
 			const runQueries = getRunQueriesFn(mockThis, pool);
 			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
 
-			if (integratedTests) {
+			if (integratedTests && expectedQuery.includes('N8N_TEST_DEPT')) {
+				// Only check DB data when using the department table.
 				const normalize = (arr: any) =>
 					arr
 						.map((e: { json: any }) => e.json)
@@ -775,34 +832,15 @@ VALUES (
 					]),
 				);
 			}
-			// Assert that runQueries was called with expected query and bind values
+
 			expect(runQueries).toHaveBeenCalledTimes(1);
+
 			const callArgs = runQueries.mock.calls[0] as [QueryWithValues[], unknown, unknown];
 			const [expectedArgs] = callArgs;
-			const val = {
-				Dno: {
-					type: oracleDBTypes.NUMBER,
-					val: 10,
-					dir: 3002,
-				},
-				Names: {
-					type: oracleDBTypes.DB_TYPE_VARCHAR,
-					val: 'Alice',
-					dir: 3002,
-				},
-				Names2: {
-					type: oracleDBTypes.DB_TYPE_VARCHAR,
-					val: 'Bob',
-					dir: 3002,
-				},
-			};
 
 			expect(expectedArgs).toHaveLength(1);
-
-			expect(expectedArgs[0].query).toMatch(
-				/^SELECT \* FROM N8N_TEST_DEPT WHERE deptno = :Dno AND empname IN \(:Names[\w_]+(,:Names[\w_]+)*\)$/,
-			);
-			expect(normalizeParams(expectedArgs[0].values)).toEqual(normalizeParams(val));
+			expect(expectedArgs[0].query).toMatch(expectedRegex);
+			expect(normalizeParams(expectedArgs[0].values)).toEqual(normalizeParams(expectedVal));
 		});
 	});
 
