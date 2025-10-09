@@ -331,7 +331,7 @@ tr.dangerBg {
 	text-overflow: ellipsis;
 	line-height: 1.2;
 	max-width: 100%;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
 	max-width: 450px;

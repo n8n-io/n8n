@@ -147,13 +147,13 @@ watchDebounced(
 	align-items: center;
 	gap: var(--spacing-4xs);
 	line-height: var(--font-line-height-regular);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-2xs);
 
 	code {
 		font-size: var(--font-size-3xs);
-		background: var(--color-background-base);
+		background: var(--color--background);
 		padding: var(--spacing-5xs);
 		border-radius: var(--border-radius-base);
 	}
@@ -164,7 +164,7 @@ watchDebounced(
 }
 
 .tipText {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 	align-self: flex-start;
@@ -181,19 +181,19 @@ watchDebounced(
 .pill {
 	display: inline-flex;
 	align-items: center;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 
 	border: var(--border-base);
-	border-color: var(--color-foreground-light);
-	background-color: var(--color-background-xlight);
+	border-color: var(--color--foreground--tint-1);
+	background-color: var(--color--background--light-3);
 	padding: var(--spacing-5xs) var(--spacing-3xs);
 	margin: 0 var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 }
 
 .highlight {
-	color: var(--color-primary);
-	background-color: var(--color-primary-tint-3);
-	border-color: var(--color-primary-tint-1);
+	color: var(--color--primary);
+	background-color: var(--color--primary--tint-3);
+	border-color: var(--color--primary--tint-1);
 }
 </style>

@@ -40,7 +40,7 @@ const Template: StoryFn = (args) => ({
 		N8nScrollArea,
 	},
 	template: `
-		<div style="width: 300px; height: 200px; border: 1px solid var(--color-foreground-base); border-radius: 4px;">
+		<div style="width: 300px; height: 200px; border: 1px solid var(--color--foreground); border-radius: 4px;">
 			<N8nScrollArea v-bind="args">
 				<div style="padding: 16px;">
 					<h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">Scrollable Content</h3>
@@ -98,7 +98,7 @@ const HorizontalScrollTemplate: StoryFn = (args) => ({
 		N8nScrollArea,
 	},
 	template: `
-		<div style="width: 300px; height: 100px; border: 1px solid var(--color-foreground-base); border-radius: 4px;">
+		<div style="width: 300px; height: 100px; border: 1px solid var(--color--foreground); border-radius: 4px;">
 			<N8nScrollArea v-bind="args">
 				<div style="padding: 16px; white-space: nowrap; width: 600px;">
 					<span style="font-weight: 600;">Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
@@ -147,11 +147,11 @@ const InPopoverTemplate: StoryFn = (args) => ({
 		N8nScrollArea,
 	},
 	template: `
-		<div style="width: 260px; padding: 16px; background-color: var(--color-foreground-xlight); border: var(--border-base); border-radius: var(--border-radius-base); box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;">
+		<div style="width: 260px; padding: 16px; background-color: var(--color--foreground--tint-2); border: var(--border-base); border-radius: var(--border-radius-base); box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;">
 			<N8nScrollArea v-bind="args">
 				<div style="display: flex; flex-direction: column; gap: 12px;">
 					<h3 style="margin: 0; font-size: 14px; font-weight: 600;">Long Menu Items</h3>
-					<div v-for="i in 15" :key="i" style="padding: 8px 12px; background: var(--color-background-base); border-radius: 4px; cursor: pointer;">
+					<div v-for="i in 15" :key="i" style="padding: 8px 12px; background: var(--color--background); border-radius: 4px; cursor: pointer;">
 						Menu item {{ i }}: Some descriptive text that might be quite long
 					</div>
 				</div>

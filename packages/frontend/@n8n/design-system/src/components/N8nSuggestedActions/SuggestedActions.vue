@@ -157,8 +157,8 @@ const handleIgnoreClick = (actionId: string) => {
 }
 
 .activeTrigger {
-	--tag-text-color: var(--color-primary);
-	--tag-border-color: var(--color-primary);
+	--tag-text-color: var(--color--primary);
+	--tag-border-color: var(--color--primary);
 }
 
 .popoverContent {
@@ -189,12 +189,12 @@ const handleIgnoreClick = (actionId: string) => {
 		cursor: pointer;
 
 		.actionHeader {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 
 		&:has(a:hover) {
 			.actionHeader {
-				color: var(--color-text-dark);
+				color: var(--color--text--shade-1);
 			}
 		}
 	}

@@ -119,7 +119,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 		'&.cm-editor.cm-focused': {
 			outline: 'none',
-			borderColor: 'var(--color-secondary)',
+			borderColor: 'var(--color--secondary)',
 		},
 		'.cm-activeLine': {
 			backgroundColor: 'var(--color-code-lineHighlight)',
@@ -176,7 +176,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,
-			color: 'var(--color-primary)',
+			color: 'var(--color--primary)',
 			lineHeight: BASE_STYLING.diagnosticButton.lineHeight,
 			textDecoration: BASE_STYLING.diagnosticButton.textDecoration,
 			marginLeft: BASE_STYLING.diagnosticButton.marginLeft,
@@ -187,19 +187,19 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 		'.cm-diagnosticText': {
 			fontSize: 'var(--font-size-xs)',
-			color: 'var(--color-text-base)',
+			color: 'var(--color--text)',
 		},
 		'.cm-diagnosticDocs': {
 			fontSize: 'var(--font-size-2xs)',
 		},
 		'.cm-foldPlaceholder': {
-			color: 'var(--color-text-base)',
-			backgroundColor: 'var(--color-background-base)',
+			color: 'var(--color--text)',
+			backgroundColor: 'var(--color--background)',
 			border: 'var(--border-base)',
 		},
 		'.cm-lintRange-error': {
 			backgroundImage:
-				"url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='6' height='3'%3e%3cpath d='m0 2.5 l2 -1.5 l1 0 l2 1.5 l1 0' stroke='%23F56565' fill='none' stroke-width='.7'/%3e%3c/svg%3e\") !important", // #F56565 is --color-text-danger
+				"url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='6' height='3'%3e%3cpath d='m0 2.5 l2 -1.5 l1 0 l2 1.5 l1 0' stroke='%23F56565' fill='none' stroke-width='.7'/%3e%3c/svg%3e\") !important", // #F56565 is --color--text--danger
 		},
 		'.cm-selectionMatch': {
 			background: 'var(--color-code-selection-highlight)',
@@ -222,25 +222,25 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			padding: 'var(--spacing-4xs) var(--spacing-2xs)',
 		},
 		'.cm-panels': {
-			background: 'var(--color-background-light)',
-			color: 'var(--color-text-base)',
+			background: 'var(--color--background--light-2)',
+			color: 'var(--color--text)',
 		},
 		'.cm-panels-bottom': {
 			borderTop: 'var(--border-base)',
 		},
 		'.cm-textfield': {
-			color: 'var(--color-text-dark)',
-			background: 'var(--color-foreground-xlight)',
+			color: 'var(--color--text--shade-1)',
+			background: 'var(--color--foreground--tint-2)',
 			borderRadius: 'var(--border-radius-base)',
 			border: 'var(--border-base)',
 			fontSize: '90%',
 		},
 		'.cm-textfield:focus': {
 			outline: 'none',
-			borderColor: 'var(--color-secondary)',
+			borderColor: 'var(--color--secondary)',
 		},
 		'.cm-panel button': {
-			color: 'var(--color-text-base)',
+			color: 'var(--color--text)',
 		},
 		'.cm-panel input[type="checkbox"]': {
 			border: 'var(--border-base)',
@@ -257,8 +257,8 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		'.cm-button': {
 			outline: 'none',
 			border: 'var(--border-base)',
-			color: 'var(--color-text-dark)',
-			backgroundColor: 'var(--color-foreground-xlight)',
+			color: 'var(--color--text--shade-1)',
+			backgroundColor: 'var(--color--foreground--tint-2)',
 			backgroundImage: 'none',
 			borderRadius: 'var(--border-radius-base)',
 			fontSize: '90%',

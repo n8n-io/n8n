@@ -270,7 +270,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	min-height: 0;
 	flex-basis: 0;
 	border-top: var(--border-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 
 	.poppedOut & {
 		border-top: none;

@@ -51,7 +51,7 @@ const i18n = useI18n();
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-2xs);
 }
 </style>

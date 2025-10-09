@@ -32,7 +32,7 @@ function handleClick() {
 	padding-inline-start: var(--spacing-s);
 	padding-inline-end: var(--spacing-2xs);
 	padding-block: var(--spacing-2xs);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -60,7 +60,7 @@ function handleClick() {
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	max-width: 70%;
 	/* Let button heights not affect the header height */
 	margin-block: calc(-1 * var(--spacing-s));

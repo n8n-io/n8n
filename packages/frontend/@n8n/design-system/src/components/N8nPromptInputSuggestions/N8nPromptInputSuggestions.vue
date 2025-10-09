@@ -90,17 +90,17 @@ function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	gap: var(--spacing-2xs);
 	border-radius: 56px;
 	border: var(--border-base);
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	cursor: pointer;
 	transition: all 0.2s ease;
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight-regular);
 
 	&:hover:not(:disabled) {
-		color: var(--color-primary);
-		border-color: var(--color-primary);
-		background: var(--color-background-xlight);
+		color: var(--color--primary);
+		border-color: var(--color--primary);
+		background: var(--color--background--light-3);
 	}
 
 	&:disabled {
