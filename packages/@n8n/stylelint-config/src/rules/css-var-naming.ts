@@ -98,13 +98,10 @@ const SCALE_VALUES = new Set([
 	'3xl',
 	'4xl',
 	'5xl',
-	'pill',
-	'full',
-	'regular',
-	'medium',
-	'semibold',
-	'bold',
 ]);
+
+// Font weight specific values (only valid with font-weight property)
+const FONT_WEIGHT_VALUES = new Set(['regular', 'medium', 'semibold', 'bold']);
 
 // Regex for basic validation
 const BASIC_PATTERN = /^--[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z0-9]+(?:-[a-z0-9]+)*){1,7}$/;
@@ -181,9 +178,23 @@ function validateCssVariable(variable: string): ValidationResult {
 		.findIndex((group) => PROPERTY_VOCABULARY.has(group));
 	const absolutePropertyIndex = startIndex + propertyIndex;
 
+	// Get the property name to validate specific property-value combinations
+	const propertyName = groups[absolutePropertyIndex];
+
 	// The group after property should be a value (semantic or scale)
 	if (absolutePropertyIndex + 1 < groups.length) {
 		const valueGroup = groups[absolutePropertyIndex + 1];
+
+		// Check if this is a font-weight specific value
+		if (FONT_WEIGHT_VALUES.has(valueGroup)) {
+			// Font weight values are only valid with font-weight property
+			if (propertyName !== 'font-weight') {
+				return {
+					valid: false,
+					reason: `Value "${valueGroup}" can only be used with font-weight property (e.g., --font-weight--${valueGroup})`,
+				};
+			}
+		}
 
 		// Check if this is a known modifier (variant, state, mode, media)
 		const isModifier =
@@ -198,6 +209,7 @@ function validateCssVariable(variable: string): ValidationResult {
 			const isValidValue =
 				SEMANTIC_VALUES.has(valueGroup) ||
 				SCALE_VALUES.has(valueGroup) ||
+				FONT_WEIGHT_VALUES.has(valueGroup) ||
 				// Allow color shades like "primary-500", "shade-50", "tint-50"
 				/^[a-z]+-\d+$/.test(valueGroup) ||
 				// Allow descriptive names (4+ chars) - these are likely intentional semantic names

@@ -453,6 +453,33 @@ describe('css-var-naming rule', () => {
 			expect(result.warnings).toHaveLength(0);
 		});
 
+		it('should accept font-weight specific values only with font-weight property', async () => {
+			const fontWeightValues = `
+				:root {
+					--font-weight--regular: 400;
+					--font-weight--medium: 500;
+					--font-weight--semibold: 600;
+					--font-weight--bold: 700;
+					--button--font-weight--bold: 700;
+				}
+			`;
+			const result = await lintCSS(fontWeightValues);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should reject font-weight specific values with non-font-weight properties', async () => {
+			const invalidFontWeight = `
+				:root {
+					--spacing--bold: 20px;
+				}
+			`;
+			const result = await lintCSS(invalidFontWeight);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('can only be used with font-weight property'),
+			});
+		});
+
 		it('should reject very short value names (<4 chars)', async () => {
 			const shortValue = `
 				:root {
