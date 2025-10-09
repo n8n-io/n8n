@@ -210,7 +210,7 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 	overflow: hidden;
 	text-overflow: ellipsis;
 
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-xsmall);
 }
@@ -220,11 +220,11 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 }
 
 .item.current span {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .separator {
 	font-size: var(--font-size-s);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 </style>

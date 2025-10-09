@@ -121,7 +121,7 @@ function onClickAdd() {
 
 .required .label::after {
 	content: '*';
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .outputLabel {
@@ -130,7 +130,7 @@ function onClickAdd() {
 	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1));
 	transform-origin: center left;
 	font-size: var(--font-size-2xs);
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 }
 
 .runDataLabel {
@@ -140,7 +140,7 @@ function onClickAdd() {
 	transform: translate(-50%, -50%) scale(var(--canvas-zoom-compensation-factor, 1))
 		translate(0, -100%);
 	font-size: var(--font-size-xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 </style>
 

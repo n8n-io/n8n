@@ -89,7 +89,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 
 <style lang="scss" module>
 .container {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 }
 
 .header {

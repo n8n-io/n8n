@@ -149,9 +149,9 @@ async function downloadBinaryData(index: number, key: string | number) {
 		line-height: 30px;
 		border-radius: var(--border-radius-base);
 		text-align: center;
-		background-color: var(--color-foreground-xdark);
+		background-color: var(--color--foreground--shade-2);
 		font-weight: var(--font-weight-bold);
-		color: var(--color-text-xlight);
+		color: var(--color--text--tint-3);
 	}
 }
 
@@ -164,7 +164,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 	display: inline-block;
 	width: 300px;
 	overflow: hidden;
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	margin-right: var(--ndv-spacing);
 	margin-bottom: var(--ndv-spacing);
 	border-radius: var(--border-radius-base);
@@ -178,7 +178,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 	font-size: 1.2em;
 	padding-bottom: var(--spacing-2xs);
 	margin-bottom: var(--spacing-2xs);
-	border-bottom: 1px solid var(--color-text-light);
+	border-bottom: 1px solid var(--color--text--tint-1);
 }
 
 .binaryButtonContainer {

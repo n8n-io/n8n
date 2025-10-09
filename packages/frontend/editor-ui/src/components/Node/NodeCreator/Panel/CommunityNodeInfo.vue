@@ -195,7 +195,7 @@ onMounted(async () => {
 }
 .separator {
 	height: var(--border-width-base);
-	background: var(--color-foreground-base);
+	background: var(--color--foreground);
 	margin-bottom: var(--spacing-m);
 }
 .info {
@@ -213,7 +213,7 @@ onMounted(async () => {
 }
 
 .tooltipIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-2xs);
 	width: 12px;
 }
@@ -223,7 +223,7 @@ onMounted(async () => {
 	align-items: center;
 	gap: var(--spacing-s);
 	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color-foreground-base);
+	border: var(--border-width-base) solid var(--color--foreground);
 	border-radius: 0.25em;
 }
 </style>

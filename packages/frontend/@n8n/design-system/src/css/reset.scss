@@ -95,8 +95,8 @@ body {
 	line-height: 1;
 	font-size: var(--font-size-m);
 	font-weight: var(--font-weight-regular);
-	color: var(--color-text-dark);
-	background-color: var(--color-background-light);
+	color: var(--color--text--shade-1);
+	background-color: var(--color--background--light-2);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
@@ -156,10 +156,10 @@ a {
 	vertical-align: baseline;
 	background: transparent;
 	cursor: pointer;
-	color: var(--color-primary);
+	color: var(--color--primary);
 
 	&:active {
-		color: function.saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
+		color: function.saturation(--color--primary-h, --color--primary-s, --color--primary-l, -(30%));
 	}
 }
 
@@ -169,7 +169,7 @@ h3,
 h4,
 h5,
 h6 {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-weight: inherit;
 
 	&:first-child {
@@ -201,14 +201,14 @@ p {
 }
 
 ins {
-	background-color: var(--color-success);
-	color: var(--color-text-dark);
+	background-color: var(--color--success);
+	color: var(--color--text--shade-1);
 	text-decoration: none;
 }
 
 mark {
 	background-color: var(--color-text-highlight-background);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-style: italic;
 	font-weight: var(--font-weight-bold);
 }
@@ -227,7 +227,7 @@ hr {
 	display: block;
 	height: 1px;
 	border: 0;
-	border-top: 1px solid var(--color-foreground-light);
+	border-top: 1px solid var(--color--foreground--tint-1);
 	margin: 0;
 	padding: 0;
 }
