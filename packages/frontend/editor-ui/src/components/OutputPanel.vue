@@ -24,6 +24,7 @@ import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -76,6 +77,7 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -141,7 +143,11 @@ const defaultOutputMode = computed<OutputType>(() => {
 });
 
 const isNodeRunning = computed(() => {
-	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
+	return (
+		workflowRunning.value &&
+		!!node.value &&
+		workflowState.executingNode.isNodeExecuting(node.value.name)
+	);
 });
 
 const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);

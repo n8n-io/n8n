@@ -62,6 +62,7 @@ import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { getNodeIconSource } from '../utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useCanvasMapping({
 	nodes,
@@ -74,6 +75,7 @@ export function useCanvasMapping({
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const { dirtinessByName } = useNodeDirtiness();
@@ -327,7 +329,7 @@ export function useCanvasMapping({
 
 	const nodeExecutionRunningById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
-			acc[node.id] = workflowsStore.isNodeExecuting(node.name);
+			acc[node.id] = workflowState.executingNode.isNodeExecuting(node.name);
 			return acc;
 		}, {}),
 	);
@@ -335,8 +337,8 @@ export function useCanvasMapping({
 	const nodeExecutionWaitingForNextById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			acc[node.id] =
-				node.name === workflowsStore.lastAddedExecutingNode &&
-				workflowsStore.executingNode.length === 0 &&
+				node.name === workflowState.executingNode.lastAddedExecutingNode &&
+				workflowState.executingNode.executingNode.length === 0 &&
 				workflowsStore.isWorkflowRunning;
 
 			return acc;

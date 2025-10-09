@@ -99,7 +99,6 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -175,7 +174,6 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowHelpers = useWorkflowHelpers();
 const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
 
@@ -540,7 +538,7 @@ function updateNodesIssues() {
 
 function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
+	documentTitle.setDocumentTitle(data.name, 'IDLE');
 
 	initializeWorkspace(data);
 
@@ -1447,7 +1445,7 @@ async function onSourceControlPull() {
 		if (workflowId.value && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
+				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 				openWorkflow(workflowData);
 			}
 		}
@@ -1621,7 +1619,7 @@ function checkIfRouteIsAllowed() {
  */
 
 async function initializeDebugMode() {
-	workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+	documentTitle.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
 
 	if (!workflowsStore.isInDebugMode) {
 		await applyExecutionData(route.params.executionId as string);
