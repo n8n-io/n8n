@@ -491,38 +491,109 @@ export class ChatHubService {
 		// Mock data for now - in a real implementation, we'd query by conversationId
 		this.logger.debug(`Fetching messages for conversation ${conversationId}`);
 
-		return [
-			{
-				id: '650e8400-e29b-41d4-a716-446655440001',
-				conversationId,
-				role: 'user',
-				content: 'How do I create my first workflow in n8n?',
-				createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
-			},
-			{
-				id: '650e8400-e29b-41d4-a716-446655440002',
-				conversationId,
-				role: 'assistant',
-				content:
-					"To create your first workflow in n8n:\n\n1. Click the '+' button in the top left\n2. Select 'Create New Workflow'\n3. Add nodes by clicking the '+' on the canvas\n4. Configure each node\n5. Connect nodes by dragging from one to another\n6. Test and activate your workflow\n\nWould you like help with a specific type of workflow?",
-				createdAt: new Date('2025-01-08T10:00:30Z').toISOString(),
-			},
-			{
-				id: '650e8400-e29b-41d4-a716-446655440003',
-				conversationId,
-				role: 'user',
-				content:
-					'Yes, I want to automate sending emails when a new row is added to a Google Sheet.',
-				createdAt: new Date('2025-01-08T10:05:00Z').toISOString(),
-			},
-			{
-				id: '650e8400-e29b-41d4-a716-446655440004',
-				conversationId,
-				role: 'assistant',
-				content:
-					"Perfect! Here's how to set that up:\n\n1. Add a **Google Sheets Trigger** node\n   - Select 'On Row Added'\n   - Connect your Google account\n   - Choose your spreadsheet\n\n2. Add a **Gmail** node\n   - Connect your Gmail account\n   - Set the recipient email\n   - Use expressions to include data from the sheet\n\n3. Activate the workflow\n\nWould you like more details on any of these steps?",
-				createdAt: new Date('2025-01-08T10:05:45Z').toISOString(),
-			},
-		];
+		// Return different mock data based on conversation ID
+		const mockConversations: Record<string, ChatHubMessagesResponse> = {
+			'550e8400-e29b-41d4-a716-446655440001': [
+				{
+					id: '650e8400-e29b-41d4-a716-446655440001',
+					conversationId,
+					role: 'user',
+					content: 'How do I create my first workflow in n8n?',
+					createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440002',
+					conversationId,
+					role: 'assistant',
+					content:
+						"To create your first workflow in n8n:\n\n1. Click the '+' button in the top left\n2. Select 'Create New Workflow'\n3. Add nodes by clicking the '+' on the canvas\n4. Configure each node\n5. Connect nodes by dragging from one to another\n6. Test and activate your workflow\n\nWould you like help with a specific type of workflow?",
+					createdAt: new Date('2025-01-08T10:00:30Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440003',
+					conversationId,
+					role: 'user',
+					content:
+						'Yes, I want to automate sending emails when a new row is added to a Google Sheet.',
+					createdAt: new Date('2025-01-08T10:05:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440004',
+					conversationId,
+					role: 'assistant',
+					content:
+						"Perfect! Here's how to set that up:\n\n1. Add a **Google Sheets Trigger** node\n   - Select 'On Row Added'\n   - Connect your Google account\n   - Choose your spreadsheet\n\n2. Add a **Gmail** node\n   - Connect your Gmail account\n   - Set the recipient email\n   - Use expressions to include data from the sheet\n\n3. Activate the workflow\n\nWould you like more details on any of these steps?",
+					createdAt: new Date('2025-01-08T10:05:45Z').toISOString(),
+				},
+			],
+			'550e8400-e29b-41d4-a716-446655440002': [
+				{
+					id: '650e8400-e29b-41d4-a716-446655440011',
+					conversationId,
+					role: 'user',
+					content: 'What are some creative workflow automation ideas?',
+					createdAt: new Date('2025-01-07T14:30:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440012',
+					conversationId,
+					role: 'assistant',
+					content:
+						'Here are some creative workflow automation ideas:\n\n**Social Media Automation:**\n- Auto-post blog content to multiple platforms\n- Monitor mentions and send notifications\n- Generate reports on engagement metrics\n\n**Business Operations:**\n- Sync data between CRM and accounting software\n- Auto-generate invoices from project completion\n- Send weekly team reports\n\n**Personal Productivity:**\n- Save email attachments to cloud storage\n- Create calendar events from emails\n- Track expenses from receipts\n\nWhich area interests you most?',
+					createdAt: new Date('2025-01-07T14:32:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440013',
+					conversationId,
+					role: 'user',
+					content: 'The social media automation sounds great! How complex is it to set up?',
+					createdAt: new Date('2025-01-07T14:45:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440014',
+					conversationId,
+					role: 'assistant',
+					content:
+						"It's actually quite straightforward! For auto-posting to multiple platforms:\n\n**Difficulty: Beginner-friendly**\n\n1. Use an **RSS** trigger to monitor your blog\n2. Add **Twitter**, **LinkedIn**, and **Facebook** nodes\n3. Format your message with expressions\n4. Add conditions to customize per platform\n\nMost of the work is just connecting your accounts. The actual workflow can be set up in under 30 minutes!\n\nWant me to walk you through the specific nodes you'll need?",
+					createdAt: new Date('2025-01-07T14:47:00Z').toISOString(),
+				},
+			],
+			'550e8400-e29b-41d4-a716-446655440003': [
+				{
+					id: '650e8400-e29b-41d4-a716-446655440021',
+					conversationId,
+					role: 'user',
+					content: "I'm having trouble integrating with the Stripe API. Any tips?",
+					createdAt: new Date('2025-01-06T09:00:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440022',
+					conversationId,
+					role: 'assistant',
+					content:
+						"I'd be happy to help with Stripe integration! What specific issue are you encountering?\n\n**Common Stripe integration patterns in n8n:**\n\n1. **Webhook-based** (Recommended)\n   - Stripe sends events to n8n\n   - Great for payment notifications\n   - Real-time updates\n\n2. **Polling-based**\n   - Check for new data periodically\n   - Good for reports and syncing\n\n3. **Manual trigger**\n   - Run on-demand operations\n   - Create customers, charges, etc.\n\nWhat's your use case?",
+					createdAt: new Date('2025-01-06T09:02:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440023',
+					conversationId,
+					role: 'user',
+					content:
+						'I want to receive notifications when a payment succeeds and create an invoice in my accounting software.',
+					createdAt: new Date('2025-01-06T09:15:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440024',
+					conversationId,
+					role: 'assistant',
+					content:
+						"Perfect use case for webhooks! Here's the setup:\n\n**Step 1: n8n Webhook**\n- Add a Webhook node\n- Set method to POST\n- Copy the webhook URL\n\n**Step 2: Stripe Dashboard**\n- Go to Developers → Webhooks\n- Add endpoint with your n8n URL\n- Select `payment_intent.succeeded` event\n\n**Step 3: Process Payment Data**\n- Add a **Function** node to extract payment details\n- Parse customer, amount, currency\n\n**Step 4: Create Invoice**\n- Add your accounting software node (QuickBooks, Xero, etc.)\n- Map payment data to invoice fields\n\n**Step 5: Send Notification**\n- Add Email/Slack node for confirmation\n\nWant the specific code for the Function node?",
+					createdAt: new Date('2025-01-06T09:18:00Z').toISOString(),
+				},
+			],
+		};
+
+		// Return conversation-specific data, or empty array if not found
+		return mockConversations[conversationId] ?? [];
 	}
 }

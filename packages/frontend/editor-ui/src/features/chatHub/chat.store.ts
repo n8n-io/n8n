@@ -2,13 +2,19 @@ import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchChatModelsApi, sendText, fetchConversationsApi } from './chat.api';
+import {
+	fetchChatModelsApi,
+	sendText,
+	fetchConversationsApi,
+	fetchConversationMessagesApi,
+} from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	ChatHubConversationModel,
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubConversation,
+	ChatHubMessage,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -44,6 +50,25 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		} finally {
 			loadingConversations.value = false;
 		}
+	}
+
+	async function fetchConversationMessages(conversationId: string) {
+		try {
+			const messages = await fetchConversationMessagesApi(rootStore.restApiContext, conversationId);
+			chatMessages.value = messages.map((msg: ChatHubMessage) => ({
+				id: msg.id,
+				role: msg.role,
+				type: 'message' as const,
+				text: msg.content,
+			}));
+		} catch (error) {
+			console.error('Failed to fetch conversation messages:', error);
+			chatMessages.value = [];
+		}
+	}
+
+	function clearMessages() {
+		chatMessages.value = [];
 	}
 
 	function addUserMessage(content: string, id: string) {
@@ -155,5 +180,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversations,
 		loadingConversations,
 		fetchConversations,
+		fetchConversationMessages,
+		clearMessages,
 	};
 });

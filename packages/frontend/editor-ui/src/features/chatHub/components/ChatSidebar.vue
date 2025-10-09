@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { CHAT_VIEW } from '@/features/chatHub/constants';
+import { CHAT_CONVERSATION_VIEW } from '@/features/chatHub/constants';
 import { N8nIcon, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 import { useChatStore } from '@/features/chatHub/chat.store';
 import { VIEWS } from '@/constants';
@@ -29,13 +29,13 @@ const visibleItems = computed(() =>
 
 function onConversationClick(conversationId: string) {
 	void router.push({
-		name: CHAT_VIEW,
+		name: CHAT_CONVERSATION_VIEW,
 		params: { id: conversationId },
 	});
 }
 
 function onReturn() {
-	router.push({ name: VIEWS.HOMEPAGE });
+	void router.push({ name: VIEWS.HOMEPAGE });
 }
 </script>
 

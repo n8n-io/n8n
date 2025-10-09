@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
@@ -36,6 +37,7 @@ import {
 import { SUGGESTIONS } from '@/features/chatHub/constants';
 import { findOneFromModelsResponse, modelsResponseContains } from '@/features/chatHub/chat.utils';
 
+const route = useRoute();
 const chatStore = useChatStore();
 const userStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
@@ -155,6 +157,22 @@ watch(
 
 		if (selected === null || !modelsResponseContains(models, selected)) {
 			selectedModel.value = findOneFromModelsResponse(models) ?? null;
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => route.params.id,
+	async (conversationId) => {
+		if (conversationId && typeof conversationId === 'string') {
+			// Load existing conversation
+			sessionId.value = conversationId;
+			await chatStore.fetchConversationMessages(conversationId);
+		} else {
+			// New conversation
+			sessionId.value = uuidv4();
+			chatStore.clearMessages();
 		}
 	},
 	{ immediate: true },
