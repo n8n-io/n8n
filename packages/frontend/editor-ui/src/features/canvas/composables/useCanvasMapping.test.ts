@@ -33,7 +33,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { MarkerType } from '@vue-flow/core';
 import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
+import {
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
