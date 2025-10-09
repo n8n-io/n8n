@@ -91,7 +91,7 @@ function onMissingNodeLearnMoreLinkClick() {
 }
 
 .warningIcon {
-	color: var(--color-text-lighter);
+	color: var(--color--text--lighter);
 	font-size: var(--font-size-2xl);
 }
 

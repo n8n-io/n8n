@@ -76,7 +76,9 @@ const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 		>
 			<template #[`item.name`]="{ item }">
 				<RouterLink :to="getWorkflowLink(item.id)" target="_blank">
-					<N8nText class="ellipsis" style="color: var(--color-text-base)">{{ item.name }}</N8nText>
+					<N8nText class="ellipsis" style="color: var(--color--text--base)">{{
+						item.name
+					}}</N8nText>
 				</RouterLink>
 			</template>
 			<template #[`item.homeProject.name`]="{ item }">
@@ -115,11 +117,11 @@ const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 }
 
 .active {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .inactive {
-	color: var(--color-text-light);
+	color: var(--color--text--light);
 }
 
 .ellipsis {

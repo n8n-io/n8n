@@ -429,7 +429,7 @@ onMounted(async () => {
 	margin-bottom: var(--spacing-l);
 
 	.timestamp {
-		color: var(--color-text-base);
+		color: var(--color--text--base);
 		font-size: var(--font-size-s);
 	}
 }
@@ -442,17 +442,17 @@ onMounted(async () => {
 	border: none;
 	background: none;
 	cursor: pointer;
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 	transition: color 0.1s ease-in-out;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
 .headerSeparator {
 	font-size: var(--font-size-xl);
-	color: var(--color-text-light);
+	color: var(--color--text--light);
 }
 
 .summary {
@@ -499,17 +499,17 @@ onMounted(async () => {
 }
 
 .scrollableSummary {
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border: var(--border-width-base) var(--border-style-base) var(--color--foreground--base);
 	border-radius: 5px;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--xlight);
 
 	:global(.el-scrollbar__bar) {
 		opacity: 1;
 	}
 	:global(.el-scrollbar__thumb) {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground--base);
 		&:hover {
-			background-color: var(--color-foreground-dark);
+			background-color: var(--color--foreground--dark);
 		}
 	}
 }
@@ -518,7 +518,7 @@ onMounted(async () => {
 	height: 100px;
 	box-sizing: border-box;
 	padding: var(--spacing-s);
-	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-right: var(--border-width-base) var(--border-style-base) var(--color--foreground--base);
 	flex-basis: 169px;
 	flex-shrink: 0;
 	max-width: 170px;
@@ -547,7 +547,7 @@ onMounted(async () => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	white-space: nowrap;
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 }
 
 .summaryCardContentLargeNumber {
@@ -565,13 +565,13 @@ onMounted(async () => {
 	overflow: hidden;
 	white-space: normal;
 	word-break: break-word;
-	color: var(--color-text-danger);
+	color: var(--color--text--danger);
 	font-size: var(--font-size-2xs);
 	line-height: 1.25;
 }
 
 .deletedExecutionRowIndex {
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 	font-weight: var(--font-weight-regular);
 }
 </style>

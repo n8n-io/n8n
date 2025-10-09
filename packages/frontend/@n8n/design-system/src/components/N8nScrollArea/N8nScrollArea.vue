@@ -219,7 +219,7 @@ defineExpose({
 	pointer-events: none;
 
 	&:hover {
-		background: var(--color-foreground-light);
+		background: var(--color--foreground--light);
 	}
 
 	&[data-orientation='vertical'] {
@@ -234,35 +234,35 @@ defineExpose({
 
 .thumb {
 	flex: 1;
-	background: var(--color-foreground-base);
+	background: var(--color--foreground--base);
 	border-radius: 4px;
 	position: relative;
 	pointer-events: auto;
 
 	&:hover {
-		background: var(--color-foreground-dark);
+		background: var(--color--foreground--dark);
 	}
 
 	&:active {
-		background: var(--color-foreground-xdark);
+		background: var(--color--foreground--xdark);
 	}
 }
 
 // Style the scrollbar when type is 'always' to be more subtle
 .scrollAreaRoot[data-type='always'] {
 	.scrollbar {
-		background: var(--color-foreground-xlight);
+		background: var(--color--foreground--xlight);
 
 		&:hover {
-			background: var(--color-foreground-light);
+			background: var(--color--foreground--light);
 		}
 	}
 
 	.thumb {
-		background: var(--color-foreground-light);
+		background: var(--color--foreground--light);
 
 		&:hover {
-			background: var(--color-foreground-base);
+			background: var(--color--foreground--base);
 		}
 	}
 }

@@ -173,7 +173,7 @@ defineExpose({
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
-		color: var(--color-text-dark);
+		color: var(--color--text--dark);
 		background-color: var(--color-menu-background);
 	}
 
@@ -187,14 +187,14 @@ defineExpose({
 	}
 
 	:global(.el-menu--popup) {
-		border: 1px solid var(--color-foreground-base);
+		border: 1px solid var(--color--foreground--base);
 		border-radius: var(--border-radius-base);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item.is-disabled) {
 		opacity: 1;
 		cursor: default;
-		color: var(--color-text-light);
+		color: var(--color--text--light);
 	}
 
 	:global(.el-sub-menu__icon-arrow svg) {
@@ -204,6 +204,6 @@ defineExpose({
 
 .submenu__icon {
 	margin-right: var(--spacing-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 }
 </style>

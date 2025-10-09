@@ -60,18 +60,18 @@ const handleSelect = () => {
 	}
 
 	&:hover {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground--base);
 
 		&::before {
-			background-color: var(--color-foreground-dark);
+			background-color: var(--color--foreground--dark);
 		}
 	}
 
 	&.selected {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground--base);
 
 		&::before {
-			background-color: var(--color-primary);
+			background-color: var(--color--primary);
 		}
 	}
 }
@@ -93,7 +93,7 @@ const handleSelect = () => {
 .title {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
-	color: var(--color-text-dark);
+	color: var(--color--text--dark);
 	line-height: var(--font-line-height-compact);
 	overflow: hidden;
 	text-overflow: ellipsis;

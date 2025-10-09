@@ -197,8 +197,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 <style scoped lang="scss">
 .duplicate-parameter {
 	:deep(.button) {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
+		--button-background-color: var(--color--background--base);
+		--button-border-color: var(--color--foreground--base);
 	}
 
 	:deep(.duplicate-parameter-item) {
