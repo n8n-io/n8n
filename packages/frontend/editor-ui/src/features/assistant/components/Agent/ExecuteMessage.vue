@@ -38,7 +38,6 @@ const { runWorkflow } = useRunWorkflow({ router });
 
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
 const PLACEHOLDER_SUFFIX = '__>';
-const PLACEHOLDER_MESSAGE = (label: string) => 'Fill in "' + label + '"';
 
 interface PlaceholderDetail {
 	path: string[];
@@ -132,11 +131,13 @@ const placeholderIssues = computed(() => {
 		const placeholders = findPlaceholderDetails(node.parameters);
 		if (placeholders.length === 0) continue;
 
-		const existingParameterIssues = (node.issues?.parameters ?? {}) as Record<string, string[]>;
+		const existingParameterIssues = node.issues?.parameters ?? {};
 
 		for (const placeholder of placeholders) {
 			const path = formatPlaceholderPath(placeholder.path);
-			const message = PLACEHOLDER_MESSAGE(placeholder.label);
+			const message = i18n.baseText('aiAssistant.builder.executeMessage.fillParameter', {
+				interpolate: { label: placeholder.label },
+			});
 			const existingMessages = existingParameterIssues[path] ?? [];
 
 			if (existingMessages.includes(message)) continue;
