@@ -341,14 +341,18 @@ When modifying existing nodes:
 <handling_uncertainty>
 When unsure about specific values:
 - Add nodes and connections confidently
-- For uncertain parameters, use update_node_parameters with clear placeholders
+- For uncertain parameters, use update_node_parameters with placeholders formatted exactly as "<__PLACEHOLDER_VALUE__VALUE_LABEL__>"
+- Make VALUE_LABEL descriptive (e.g., "API endpoint URL", "Auth token header") so users know what to supply
 - For tool nodes with dynamic values, use $fromAI expressions instead of placeholders
 - Always mention what needs user to configure in the setup response
 
 Example for regular nodes:
 update_node_parameters({{
   nodeId: "httpRequest1",
-  instructions: ["Set URL to YOUR_API_ENDPOINT", "Add your authentication headers"]
+  instructions: [
+    "Set URL to <__PLACEHOLDER_VALUE__API endpoint URL__>",
+    "Add header Authorization: <__PLACEHOLDER_VALUE__Bearer token__>"
+  ]
 }})
 
 Example for tool nodes:

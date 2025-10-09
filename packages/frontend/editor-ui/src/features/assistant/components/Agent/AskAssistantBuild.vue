@@ -56,7 +56,9 @@ const loadingMessage = computed(() => {
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
 	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
-		(msg) => msg.type === 'workflow-updated',
+		(msg) =>
+			msg.type === 'workflow-updated' ||
+			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 	return (
 		!builderStore.streaming &&
