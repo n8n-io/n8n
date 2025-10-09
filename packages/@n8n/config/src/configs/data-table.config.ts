@@ -12,7 +12,7 @@ export class DataTableConfig {
 	 * Defaults to 80% of maxSize if not explicitly set.
 	 */
 	@Env('N8N_DATA_TABLES_WARNING_THRESHOLD_BYTES')
-	warningThreshold: number = Math.floor(0.8 * this.maxSize);
+	warningThreshold?: number;
 
 	/**
 	 * The duration in milliseconds for which the data table size is cached.
