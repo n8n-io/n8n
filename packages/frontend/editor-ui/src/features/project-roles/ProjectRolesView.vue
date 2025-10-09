@@ -187,7 +187,7 @@ function handleRowClick(item: Role) {
 </script>
 
 <template>
-	<div>
+	<div class="pb-xl">
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">{{ i18n.baseText('settings.projectRoles') }}</N8nHeading>
 			<N8nButton type="secondary" @click="router.push({ name: VIEWS.PROJECT_NEW_ROLE })">
