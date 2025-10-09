@@ -404,14 +404,24 @@ describe('css-var-naming rule', () => {
 		it('should accept scale values', async () => {
 			const scaleValues = `
 				:root {
-					--spacing--2xs: 2px;
-					--spacing--xs: 4px;
-					--spacing--sm: 8px;
-					--spacing--md: 16px;
+					--spacing--5xs: 2px;
+					--spacing--4xs: 4px;
+					--spacing--3xs: 6px;
+					--spacing--2xs: 8px;
+					--spacing--xs: 12px;
+					--spacing--sm: 16px;
+					--spacing--md: 20px;
 					--spacing--lg: 24px;
 					--spacing--xl: 32px;
 					--spacing--2xl: 48px;
 					--spacing--3xl: 64px;
+					--spacing--4xl: 128px;
+					--spacing--5xl: 256px;
+					--font-size--5xs: 8px;
+					--font-size--4xs: 9px;
+					--font-size--3xs: 10px;
+					--font-size--2xs: 12px;
+					--font-size--xs: 13px;
 					--radius--none: 0;
 					--radius--sm: 2px;
 					--radius--md: 4px;
@@ -594,6 +604,38 @@ describe('css-var-naming rule', () => {
 	});
 
 	describe('edge cases', () => {
+		it('should accept single-property shorthand variables', async () => {
+			const singleProperties = `
+				:root {
+					--shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+					--radius: 4px;
+					--border-color: #ddd;
+					--border-style: solid;
+					--border-width: 1px;
+					--border: 1px solid #ddd;
+					--font-family: InterVariable, sans-serif;
+				}
+			`;
+			const result = await lintCSS(singleProperties);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should accept shorthand properties in component patterns', async () => {
+			const componentShorthand = `
+				:root {
+					--n8n--button--border-color: #ddd;
+					--button--border: 1px solid #ddd;
+					--chat--font--font-family: InterVariable, sans-serif;
+					--menu--tab--radius: 4px;
+					--card--shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+					--input--border-style: solid;
+					--input--border-width: 1px;
+				}
+			`;
+			const result = await lintCSS(componentShorthand);
+			expect(result.warnings).toHaveLength(0);
+		});
+
 		it('should accept variables with numbers in groups', async () => {
 			const numbersInGroups = `
 				:root {
