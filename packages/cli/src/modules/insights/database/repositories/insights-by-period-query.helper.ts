@@ -88,15 +88,10 @@ export const getDateRangesCommonTableExpressionQuery = ({
 	const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
 	const endDateStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
 
-	const daysFromStartDateToToday = Math.floor(today.diff(startDateStartOfDay, 'days').days);
 	const daysFromEndDateToToday = Math.floor(today.diff(endDateStartOfDay, 'days').days);
 	const daysDiff = Math.floor(endDateStartOfDay.diff(startDateStartOfDay, 'days').days);
 
 	const isEndDateToday = daysFromEndDateToToday === 0;
-
-	// Calculate the date range (minimum 1 day) for previous period
-	const dateRangeInDays = Math.max(1, daysDiff);
-	const prevStartDaysFromToday = daysFromStartDateToToday + dateRangeInDays;
 
 	let prevStartDateSql: string;
 	let startDateSql: string;
@@ -108,6 +103,11 @@ export const getDateRangesCommonTableExpressionQuery = ({
 		startDateSql = getDatetimeSql({ dbType, daysFromToday: 1, useStartOfDay: false });
 		endDateSql = getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false });
 	} else {
+		// Calculate the date range (minimum 1 day) for previous period
+		const dateRangeInDays = Math.max(1, daysDiff);
+		const daysFromStartDateToToday = Math.floor(today.diff(startDateStartOfDay, 'days').days);
+		const prevStartDaysFromToday = daysFromStartDateToToday + dateRangeInDays;
+
 		prevStartDateSql = getDatetimeSql({
 			dbType,
 			daysFromToday: prevStartDaysFromToday,
