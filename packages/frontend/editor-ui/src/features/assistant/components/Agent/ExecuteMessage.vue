@@ -139,7 +139,12 @@ const placeholderIssues = computed(() => {
 			const message = i18n.baseText('aiAssistant.builder.executeMessage.fillParameter', {
 				interpolate: { label: placeholder.label },
 			});
-			const existingMessages = existingParameterIssues[path] ?? [];
+			const rawMessages = existingParameterIssues[path];
+			const existingMessages = rawMessages
+				? Array.isArray(rawMessages)
+					? rawMessages
+					: [rawMessages]
+				: [];
 
 			if (existingMessages.includes(message)) continue;
 
