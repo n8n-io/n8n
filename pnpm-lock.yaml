@@ -20453,7 +20453,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))':
+  '@n8n/typeorm@0.3.20-13(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -20484,7 +20484,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))':
+  '@n8n/typeorm@0.3.20-13(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
