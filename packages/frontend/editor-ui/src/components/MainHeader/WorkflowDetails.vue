@@ -406,7 +406,7 @@ async function onNameSubmit(name: string) {
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
-		workflowHelpers.setDocumentTitle(newName, 'IDLE');
+		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	renameInput.value?.forceCancel();
@@ -1008,7 +1008,7 @@ $--header-spacing: 20px;
 
 .path-separator {
 	font-size: var(--font-size-xl);
-	color: var(--color-foreground-base);
+	color: var(--color--foreground);
 	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
@@ -1022,7 +1022,7 @@ $--header-spacing: 20px;
 }
 
 .deleteItem {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .disabledShareButton {

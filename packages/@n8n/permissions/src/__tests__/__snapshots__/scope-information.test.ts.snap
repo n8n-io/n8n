@@ -146,6 +146,7 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "mcpApiKey:rotate",
   "mcpApiKey:*",
   "chatHub:manage",
+  "chatHub:message",
   "chatHub:*",
   "*",
 ]

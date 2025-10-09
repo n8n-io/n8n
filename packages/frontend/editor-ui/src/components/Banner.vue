@@ -85,7 +85,7 @@ const onClick = () => {
 
 .dangerIcon {
 	composes: icon;
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .container {
@@ -122,7 +122,7 @@ const onClick = () => {
 .details {
 	composes: message;
 	margin-top: var(--spacing-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 }
 

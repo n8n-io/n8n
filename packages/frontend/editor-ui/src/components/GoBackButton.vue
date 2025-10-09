@@ -27,20 +27,20 @@ const navigateTo = () => {
 	&:hover {
 		.icon,
 		.text {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }
 
 .icon {
 	margin-right: var(--spacing-2xs);
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 	font-size: var(--font-size-m);
 }
 
 .text {
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 </style>

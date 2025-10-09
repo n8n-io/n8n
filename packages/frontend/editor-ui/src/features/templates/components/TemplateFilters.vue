@@ -138,7 +138,7 @@ watch(
 <style lang="scss" module>
 .title {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .categories {
@@ -172,7 +172,7 @@ watch(
 		position: relative;
 		font-size: var(--font-size-xs);
 		line-height: var(--font-line-height-loose);
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		padding-left: var(--spacing-2xs);
 	}
 }

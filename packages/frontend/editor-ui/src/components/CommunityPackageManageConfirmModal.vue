@@ -291,7 +291,7 @@ onMounted(async () => {
 
 .descriptionIcon {
 	align-self: center;
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 }
 
 .descriptionText {

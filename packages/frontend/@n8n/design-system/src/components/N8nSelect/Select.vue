@@ -179,10 +179,10 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	padding: 0 var(--spacing-3xs);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	border-bottom-left-radius: var(--input-border-radius, var(--border-radius-base));
 	border-top-left-radius: var(--input-border-radius, var(--border-radius-base));
-	color: var(--color-text-base);
+	color: var(--color--text);
 	white-space: nowrap;
 }
 </style>

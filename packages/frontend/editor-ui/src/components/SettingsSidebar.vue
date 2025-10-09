@@ -153,7 +153,7 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 .container {
 	min-width: $sidebar-expanded-width;
 	height: 100%;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border-right: var(--border-base);
 	position: relative;
 	overflow: auto;
@@ -166,7 +166,7 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	gap: var(--spacing-3xs);
 	align-items: center;
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
