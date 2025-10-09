@@ -22,9 +22,11 @@ import {
 	DataTableInsertRowsResult,
 	DataTableRowReturnWithState,
 	DataTableRawRowReturn,
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTableUserTableName } from './data-table.types';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
@@ -38,7 +40,6 @@ import {
 	toSqliteGlobFromPercent,
 	toTableName,
 } from './utils/sql-utils';
-import { DataTableUserTableName } from './data-table.types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -78,8 +79,9 @@ function getConditionAndParams(
 
 	// Find the column type to normalize the value consistently
 	const columnInfo = columns?.find((col) => col.name === filter.columnName);
-	const value = columnInfo
-		? normalizeValueForDatabase(filter.value, columnInfo?.type, dbType)
+	const columnType = columnInfo?.type ?? DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP[filter.columnName];
+	const value = columnType
+		? normalizeValueForDatabase(filter.value, columnType, dbType)
 		: filter.value;
 
 	// Handle operators that map directly to SQL operators
