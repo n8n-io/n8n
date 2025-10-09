@@ -23,7 +23,6 @@ import {
 	OperationalError,
 	type IConnections,
 	type INode,
-	type INodeCredentialsDetails,
 	type ITaskData,
 	type IWorkflowBase,
 	type StartNodeData,
@@ -36,11 +35,13 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 @Service()
 export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly credentialsService: CredentialsService,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
@@ -50,10 +51,10 @@ export class ChatHubService {
 	) {}
 
 	async getModels(
-		userId: string,
+		user: User,
 		credentialIds: Record<ChatHubProvider, string | null>,
 	): Promise<ChatModelsResponse> {
-		const additionalData = await getBase({ userId });
+		const additionalData = await getBase({ userId: user.id });
 
 		const responses = await Promise.all(
 			chatHubProviderSchema.options.map<
@@ -65,18 +66,16 @@ export class ChatHubService {
 					return [provider, { models: [] }];
 				}
 
-				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-
-				// Get the decrypted credential data
-				const nodeCredentials: INodeCredentialsDetails = {
-					id: credentialId,
-					name: credentialType,
-				};
+				// Ensure the user has the permission to read the credential
+				await this.credentialsService.getOne(user, credentialId, false);
 
 				const credentials = await this.credentialsHelper.getDecrypted(
 					additionalData,
-					nodeCredentials,
-					credentialType,
+					{
+						id: credentialId,
+						name: PROVIDER_CREDENTIAL_TYPE_MAP[provider],
+					},
+					PROVIDER_CREDENTIAL_TYPE_MAP[provider],
 					'internal',
 					undefined,
 					true,

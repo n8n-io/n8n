@@ -21,7 +21,7 @@ export class ChatHubController {
 		_res: Response,
 		@Body payload: ChatModelsRequestDto,
 	): Promise<ChatModelsResponse> {
-		return await this.chatService.getModels(req.user.id, payload.credentials);
+		return await this.chatService.getModels(req.user, payload.credentials);
 	}
 
 	@GlobalScope('chatHub:message')
