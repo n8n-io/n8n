@@ -52,7 +52,7 @@ export class ChatHubService {
 		credentialIds: Record<ChatHubProvider, string | null>,
 	): Promise<ChatModelsResponse> {
 		const models: ChatHubConversationModel[] = [];
-		const additionalData = await getBase(userId);
+		const additionalData = await getBase({ userId });
 
 		for (const [providerKey, credentialId] of Object.entries(credentialIds)) {
 			if (!credentialId) {
