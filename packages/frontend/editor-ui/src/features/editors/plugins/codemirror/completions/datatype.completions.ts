@@ -29,6 +29,7 @@ import {
 	STRING_RECOMMENDED_OPTIONS,
 	STRING_SECTIONS,
 	TARGET_NODE_PARAMETER_FACET,
+	VARIABLE_SECTIONS,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
@@ -316,11 +317,13 @@ const createCompletionOption = ({
 	doc,
 	isFunction = false,
 	transformLabel = (label) => label,
+	type,
 }: {
 	name: string;
 	doc?: DocMetadata;
 	isFunction?: boolean;
 	transformLabel?: (label: string) => string;
+	type?: 'strikethrough';
 }): Completion => {
 	const label = isFunction ? name + '()' : name;
 	const option: Completion = {
@@ -331,6 +334,7 @@ const createCompletionOption = ({
 			defaultArgs: getDefaultArgs(doc),
 			transformLabel,
 		}),
+		type,
 	};
 	option.info = createInfoBoxRenderer(doc, isFunction);
 
@@ -704,19 +708,43 @@ function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
 
 export const variablesOptions = () => {
 	const environmentsStore = useEnvironmentsStore();
-	const variables = environmentsStore.variables;
+	const variables = environmentsStore.scopedVariables;
 
-	return variables.map((variable) =>
-		createCompletionOption({
-			name: variable.key,
-			doc: {
+	const getDescription = (isGlobal: boolean, isOverridden: boolean, projectName?: string) => {
+		if (isGlobal && isOverridden) {
+			return i18n.baseText('codeNodeEditor.completer.$vars.varName.global.overridden', {
+				interpolate: { projectName: projectName ?? '' },
+			});
+		}
+
+		if (isGlobal) {
+			return i18n.baseText('codeNodeEditor.completer.$vars.varName.global');
+		}
+
+		return i18n.baseText('codeNodeEditor.completer.$vars.varName.project', {
+			interpolate: { projectName: projectName ?? '' },
+		});
+	};
+
+	return applySections({
+		options: variables.map((variable) => {
+			const isOverridden =
+				!variable.project && !!variables.find((v) => v.key === variable.key && v.project);
+
+			return createCompletionOption({
 				name: variable.key,
-				returnType: 'string',
-				description: i18n.baseText('codeNodeEditor.completer.$vars.varName'),
-				docURL: 'https://docs.n8n.io/environments/variables/',
-			},
+				doc: {
+					section: variable.project ? 'project' : 'global',
+					name: variable.key,
+					returnType: 'string',
+					description: getDescription(!variable.project, isOverridden, variable.project?.name),
+					docURL: 'https://docs.n8n.io/code/variables/',
+				},
+				type: isOverridden ? 'strikethrough' : undefined,
+			});
 		}),
-	);
+		sections: VARIABLE_SECTIONS,
+	});
 };
 
 export const responseOptions = () => {

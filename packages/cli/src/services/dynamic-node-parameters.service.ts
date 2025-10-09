@@ -63,11 +63,11 @@ export class DynamicNodeParametersService {
 	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
 		// We want to avoid relying on generic project:read permissions to enable
 		// a future with fine-grained permission control dependent on the respective resource
-		// For now we use the dataStore:listProject scope as this is the existing consumer of
+		// For now we use the dataTable:listProject scope as this is the existing consumer of
 		// the project id
 		if (
 			payload.projectId &&
-			!(await userHasScopes(user, ['dataStore:listProject'], false, {
+			!(await userHasScopes(user, ['dataTable:listProject'], false, {
 				projectId: payload.projectId,
 			}))
 		) {

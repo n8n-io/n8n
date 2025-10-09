@@ -10,8 +10,6 @@ import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { Router } from 'vue-router';
 import type { WorkflowState } from '@/composables/useWorkflowState';
-import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -187,10 +185,11 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
-		workflowsStore.lastAddedExecutingNode = 'test-node';
-
+		const workflowState = mock<WorkflowState>({
+			executingNode: {
+				lastAddedExecutingNode: 'test-node',
+			},
+		});
 		await executionFinished(
 			{
 				type: 'executionFinished',
@@ -202,10 +201,10 @@ describe('executionFinished', () => {
 			},
 			{
 				router: mock<Router>(),
-				workflowState: mock<WorkflowState>(),
+				workflowState,
 			},
 		);
 
-		expect(workflowsStore.lastAddedExecutingNode).toBeNull();
+		expect(workflowState.executingNode.lastAddedExecutingNode).toBeNull();
 	});
 });
