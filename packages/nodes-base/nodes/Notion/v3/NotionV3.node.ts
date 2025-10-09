@@ -278,15 +278,9 @@ export class NotionV3 implements INodeType {
 								body,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequestAllItems.call(
-								this,
-								'results',
-								'POST',
-								'/search',
-								body,
-							);
-							responseData = responseData.splice(0, qs.limit);
+							body.page_size = this.getNodeParameter('limit', i);
+							responseData = await notionApiRequest.call(this, 'POST', '/search', body);
+							responseData = responseData.results;
 						}
 
 						if (simple) {
@@ -617,9 +611,15 @@ export class NotionV3 implements INodeType {
 						if (returnAll) {
 							responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 						} else {
-							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
-							responseData = responseData.splice(0, qs.limit);
+							const limit = this.getNodeParameter('limit', i);
+							responseData = await notionApiRequest.call(
+								this,
+								'GET',
+								'/users',
+								{},
+								{ page_size: limit },
+							);
+							responseData = responseData.results;
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -751,15 +751,9 @@ export class NotionV3 implements INodeType {
 								body,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequestAllItems.call(
-								this,
-								'results',
-								'POST',
-								'/search',
-								body,
-							);
-							responseData = responseData.splice(0, qs.limit);
+							body.page_size = this.getNodeParameter('limit', i);
+							responseData = await notionApiRequest.call(this, 'POST', '/search', body);
+							responseData = responseData.results;
 						}
 
 						if (simple) {
