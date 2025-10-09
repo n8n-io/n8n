@@ -18,7 +18,7 @@ const API_RESPONSE = {
 	icon: null,
 	parent: {
 		type: 'page_id',
-		page_id: '45efd1cb-6fg2-b37f-cce7-f8b88ebeg937',
+		page_id: '45efd1cb-6ff2-b37f-cce7-f8b88ebef937',
 	},
 	archived: false,
 	in_trash: false,
@@ -45,7 +45,7 @@ const API_RESPONSE = {
 describe('Test NotionV3, page => create', () => {
 	nock('https://api.notion.com')
 		.post('/v1/pages', {
-			parent: { page_id: '45efd1cb-6fg2-b37f-cce7-f8b88ebeg937' },
+			parent: { page_id: '45efd1cb-6ff2-b37f-cce7-f8b88ebef937' },
 			properties: {
 				title: {
 					title: [
@@ -76,3 +76,4 @@ describe('Test NotionV3, page => create', () => {
 		expect(result[0].json).toEqual(API_RESPONSE);
 	});
 });
+
