@@ -91,7 +91,8 @@ export function useProjectNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'plus',
+						icon: 'layers',
+						color: 'text-light',
 					},
 				},
 				handler: () => {
@@ -110,7 +111,8 @@ export function useProjectNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'arrow-right',
+						icon: 'layers',
+						color: 'text-light',
 					},
 				},
 			});

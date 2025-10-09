@@ -134,7 +134,8 @@ export function useDataTableNavigationCommands(options: {
 			icon: {
 				component: N8nIcon,
 				props: {
-					icon: 'plus',
+					icon: 'table',
+					color: 'text-light',
 				},
 			},
 			handler: () => {
@@ -156,7 +157,8 @@ export function useDataTableNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'arrow-right',
+						icon: 'table',
+						color: 'text-light',
 					},
 				},
 				children: openDataTableCommands.value,

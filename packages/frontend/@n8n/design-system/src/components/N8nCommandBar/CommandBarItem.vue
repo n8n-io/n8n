@@ -106,7 +106,7 @@ const handleMouseLeave = () => {
 .title {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
-	color: var(--color-text-dark);
+	color: var(--color-text-base);
 	line-height: var(--font-line-height-compact);
 	overflow: hidden;
 	text-overflow: ellipsis;

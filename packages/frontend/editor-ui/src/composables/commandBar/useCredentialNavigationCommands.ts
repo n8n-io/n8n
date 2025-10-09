@@ -127,7 +127,8 @@ export function useCredentialNavigationCommands(options: {
 			icon: {
 				component: N8nIcon,
 				props: {
-					icon: 'plus',
+					icon: 'lock',
+					color: 'text-light',
 				},
 			},
 			handler: () => {
@@ -164,7 +165,8 @@ export function useCredentialNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'arrow-right',
+						icon: 'lock',
+						color: 'text-light',
 					},
 				},
 			},

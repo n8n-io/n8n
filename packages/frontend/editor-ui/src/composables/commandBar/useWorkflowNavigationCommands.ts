@@ -297,6 +297,7 @@ export function useWorkflowNavigationCommands(options: {
 				component: N8nIcon,
 				props: {
 					icon: 'plus',
+					color: 'text-light',
 				},
 			},
 			handler: () => {
@@ -322,6 +323,7 @@ export function useWorkflowNavigationCommands(options: {
 					component: N8nIcon,
 					props: {
 						icon: 'arrow-right',
+						color: 'text-light',
 					},
 				},
 			},
