@@ -120,10 +120,10 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					action: 'Get a row',
 				},
 				{
-					name: 'Get Many',
-					value: 'getAll',
-					description: 'Retrieve many rows',
-					action: 'Get many rows',
+					name: 'Search',
+					value: 'search',
+					description: 'Search for specific records or list all',
+					action: 'Search rows',
 				},
 				{
 					name: 'Update',
