@@ -21,6 +21,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { assert } from '@n8n/utils/assert';
 import {
 	getAuthTypeForNodeCredential,
@@ -29,6 +30,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { isEmpty } from '@/utils/typesUtils';
 import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+import { getResourcePermissions } from '@n8n/permissions';
 
 import {
 	N8nIcon,
@@ -69,6 +71,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const nodeHelpers = useNodeHelpers();
 const toast = useToast();
@@ -489,14 +492,18 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 						</N8nOption>
 						<template #empty> </template>
 						<template #footer>
-							<div
+							<button
+								type="button"
 								data-test-id="node-credentials-select-item-new"
-								:class="['clickable', $style.newCredential]"
+								:class="[$style.newCredential]"
+								:disabled="
+									!getResourcePermissions(projectsStore.currentProject?.scopes).credential.create
+								"
 								@click="onClickCreateCredential(type)"
 							>
 								<N8nIcon size="xsmall" icon="plus" />
-								<N8nText bold>{{ NEW_CREDENTIALS_TEXT }}</N8nText>
-							</div>
+								{{ NEW_CREDENTIALS_TEXT }}
+							</button>
 						</template>
 					</N8nSelect>
 
@@ -587,18 +594,29 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 .newCredential {
 	display: flex;
+	width: 100%;
 	gap: var(--spacing-3xs);
 	align-items: center;
 	font-weight: var(--font-weight-bold);
 	padding: var(--spacing-xs) var(--spacing-m);
 	background-color: var(--color-background-light);
+	color: var(--color-text-dark);
 
+	border: 0;
 	border-top: var(--border-base);
 	box-shadow: var(--box-shadow-light);
 	clip-path: inset(-12px 0 0 0); // Only show box shadow on top
 
-	&:hover {
-		color: var(--color-primary);
+	&:not([disabled]) {
+		cursor: pointer;
+		&:hover {
+			color: var(--color-primary);
+		}
+	}
+
+	&[disabled] {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 }
 </style>
