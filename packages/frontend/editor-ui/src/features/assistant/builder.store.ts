@@ -285,8 +285,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 
 		if (type === 'execution') {
-			const resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
-			const resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+			let resultData = '{}';
+			let resultDataSizeKb = 0;
+
+			try {
+				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+			} catch (error) {
+				// Handle circular structure errors gracefully
+				console.warn('Failed to stringify execution data for telemetry:', error);
+			}
 
 			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
 			trackingPayload.execution_status = executionStatus ?? '';

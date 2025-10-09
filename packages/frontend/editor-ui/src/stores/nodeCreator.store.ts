@@ -26,7 +26,7 @@ import type {
 	NodeConnectionType,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, isCommunityPackageName } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -36,14 +36,13 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
-} from '@/utils/canvasUtils';
+} from '@/features/canvas/canvas.utils';
 import type { Connection } from '@vue-flow/core';
-import { CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { TelemetryNdvType } from '@/types/telemetry';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import get from 'lodash/get';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
