@@ -133,6 +133,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
+	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
@@ -377,5 +379,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isDataTableFeatureEnabled,
+		isChatFeatureEnabled,
 	};
 });

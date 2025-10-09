@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import type {
 	IDeferredPromise,
@@ -111,6 +112,8 @@ export class WorkflowExecutionService {
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
+		streamingEnabled?: boolean,
+		httpResponse?: Response,
 	) {
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
@@ -185,6 +188,8 @@ export class WorkflowExecutionService {
 			dirtyNodeNames,
 			triggerToStartFrom,
 			agentRequest,
+			streamingEnabled,
+			httpResponse,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

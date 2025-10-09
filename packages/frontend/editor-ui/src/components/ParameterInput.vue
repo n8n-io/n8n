@@ -91,9 +91,10 @@ import {
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/stores/projects.store';
+import { getParameterDisplayableOptions } from '@/utils/nodes/nodeTransforms';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
@@ -256,7 +257,7 @@ const parameterOptions = computed(() => {
 		}
 	}
 
-	return safeOptions;
+	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
 });
 
 const modelValueString = computed<string>(() => {

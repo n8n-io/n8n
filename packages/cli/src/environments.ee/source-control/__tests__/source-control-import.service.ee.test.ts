@@ -1,10 +1,12 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import {
 	type FolderRepository,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	Project,
 	type ProjectRepository,
+	type SharedWorkflowRepository,
 	User,
 	WorkflowEntity,
 	type WorkflowRepository,
@@ -38,16 +40,18 @@ describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const projectRepository = mock<ProjectRepository>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const mockLogger = mock<Logger>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const service = new SourceControlImportService(
-		mock(),
+		mockLogger,
 		mock(),
 		mock(),
 		mock(),
 		mock(),
 		projectRepository,
 		mock(),
-		mock(),
+		sharedWorkflowRepository,
 		mock(),
 		mock(),
 		mock(),
@@ -97,6 +101,24 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should log and throw an error if a workflow file cannot be parsed', async () => {
+			globMock.mockResolvedValue([mockWorkflowFile]);
+
+			// Mock invalid JSON that will cause parsing to fail
+			fsReadFile.mockResolvedValue('{ invalid json');
+
+			await expect(service.getRemoteVersionIdsFromFiles(globalAdminContext)).rejects.toThrow(
+				`Failed to parse workflow file ${mockWorkflowFile}`,
+			);
+
+			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });
+			expect(mockLogger.debug).toHaveBeenCalledWith(`Parsing workflow file ${mockWorkflowFile}`);
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				`Failed to parse workflow file ${mockWorkflowFile}`,
+				expect.any(Object),
+			);
+		});
+
 		it('should filter out files without valid workflow data', async () => {
 			globMock.mockResolvedValue(['/mock/invalid.json']);
 
@@ -105,6 +127,130 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 
 			expect(result).toHaveLength(0);
+		});
+	});
+
+	describe('importWorkflowFromWorkFolder', () => {
+		it('should import workflows from work folder', async () => {
+			// Arrange
+			const mockUserId = 'user-id-123';
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), {
+					id: 'personal-project-id-123',
+					name: 'Personal Project',
+					type: 'personal',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+			);
+			const mockWorkflowFile1 = '/mock/workflow1.json';
+			const mockWorkflowFile2 = '/mock/workflow2.json';
+			const mockWorkflowData1 = {
+				id: '1',
+				name: 'Workflow 1',
+				active: false,
+				nodes: [],
+				owner: {
+					type: 'personal',
+					personalEmail: 'user@example.com',
+				},
+				parentFolderId: null,
+			};
+			const mockWorkflowData2 = {
+				id: '2',
+				name: 'Workflow 2',
+				active: false,
+				nodes: [],
+				owner: {
+					type: 'personal',
+					personalEmail: 'user@example.com',
+				},
+				parentFolderId: null,
+			};
+			const candidates = [
+				mock<SourceControlledFile>({ file: mockWorkflowFile1, id: mockWorkflowData1.id }),
+				mock<SourceControlledFile>({ file: mockWorkflowFile2, id: mockWorkflowData2.id }),
+			];
+
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: '1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile
+				.mockResolvedValueOnce(JSON.stringify(mockWorkflowData1))
+				.mockResolvedValueOnce(JSON.stringify(mockWorkflowData2));
+
+			// Act
+			const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			// Assert
+			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile1, { encoding: 'utf8' });
+			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile2, { encoding: 'utf8' });
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: mockWorkflowData1.id,
+					name: mockWorkflowData1.name,
+				}),
+				['id'],
+			);
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: mockWorkflowData2.id,
+					name: mockWorkflowData2.name,
+				}),
+				['id'],
+			);
+
+			expect(result).toEqual([
+				{
+					id: mockWorkflowData1.id,
+					name: mockWorkflowFile1,
+				},
+				{
+					id: mockWorkflowData2.id,
+					name: mockWorkflowFile2,
+				},
+			]);
+		});
+
+		it('should log and throw an error if a workflow file cannot be parsed', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/invalid-workflow.json';
+			const candidates = [
+				mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow-id' }),
+			];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), {
+					id: 'personal-project-id-123',
+					name: 'Personal Project',
+					type: 'personal',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+
+			// Mock invalid JSON that will cause parsing to fail
+			fsReadFile.mockResolvedValue('{ invalid json');
+
+			await expect(service.importWorkflowFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+				`Failed to parse workflow file ${mockWorkflowFile}`,
+			);
+
+			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });
+			expect(mockLogger.debug).toHaveBeenCalledWith(`Parsing workflow file ${mockWorkflowFile}`);
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				`Failed to parse workflow file ${mockWorkflowFile}`,
+				expect.any(Object),
+			);
 		});
 	});
 

@@ -18,7 +18,7 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { CanvasKey } from '@/constants';
-import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useIsInExperimentalNdv } from '@/features/canvas/experimental/composables/useIsInExperimentalNdv';
 import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
 import { N8nButton } from '@n8n/design-system';

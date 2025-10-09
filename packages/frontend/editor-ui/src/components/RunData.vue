@@ -75,7 +75,7 @@ import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
-import { type SearchShortcut } from '@/types';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
 
 import {
 	N8nBlockUi,
