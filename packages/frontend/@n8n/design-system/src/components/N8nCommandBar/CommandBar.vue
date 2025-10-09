@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { FocusScope } from 'reka-ui';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import N8nCommandBarItem from './CommandBarItem.vue';
@@ -273,54 +274,61 @@ onUnmounted(() => {
 <template>
 	<Teleport to="body">
 		<Transition name="command-bar" appear>
-			<div v-if="isOpen" ref="commandBarRef" :class="$style.commandBar" data-test-id="command-bar">
-				<div v-if="context" :class="$style.contextContainer">
-					<N8nBadge size="small">{{ context }}</N8nBadge>
-				</div>
-				<input
-					ref="inputRef"
-					v-model="inputValue"
-					:placeholder="currentPlaceholder"
-					:class="$style.input"
-					type="text"
-				/>
-				<div v-if="isLoading" :class="$style.loadingContainer">
-					<div v-for="i in 8" :key="i" :class="$style.loadingItem">
-						<N8nLoading variant="custom" :class="$style.loading" />
-					</div>
-				</div>
+			<FocusScope :trapped="isOpen">
 				<div
-					v-else-if="flattenedItems.length > 0"
-					ref="itemsListRef"
-					:class="$style.itemsList"
-					data-test-id="command-bar-items-list"
-					@scroll="handleScroll"
+					v-if="isOpen"
+					ref="commandBarRef"
+					:class="$style.commandBar"
+					data-test-id="command-bar"
 				>
-					<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
-						<div v-for="item in groupedItems.ungrouped" :key="item.id">
-							<N8nCommandBarItem
-								:item="item"
-								:is-selected="getGlobalIndex(item) === selectedIndex"
-								@select="selectItem"
-							/>
+					<div v-if="context" :class="$style.contextContainer">
+						<N8nBadge size="small">{{ context }}</N8nBadge>
+					</div>
+					<input
+						ref="inputRef"
+						v-model="inputValue"
+						:placeholder="currentPlaceholder"
+						:class="$style.input"
+						type="text"
+					/>
+					<div v-if="isLoading" :class="$style.loadingContainer">
+						<div v-for="i in 8" :key="i" :class="$style.loadingItem">
+							<N8nLoading variant="custom" :class="$style.loading" />
 						</div>
 					</div>
-
-					<template v-for="section in groupedItems.sections" :key="section.title">
-						<div :class="$style.sectionHeader">{{ section.title }}</div>
-						<div v-for="item in section.items" :key="item.id">
-							<N8nCommandBarItem
-								:item="item"
-								:is-selected="getGlobalIndex(item) === selectedIndex"
-								@select="selectItem"
-							/>
+					<div
+						v-else-if="flattenedItems.length > 0"
+						ref="itemsListRef"
+						:class="$style.itemsList"
+						data-test-id="command-bar-items-list"
+						@scroll="handleScroll"
+					>
+						<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
+							<div v-for="item in groupedItems.ungrouped" :key="item.id">
+								<N8nCommandBarItem
+									:item="item"
+									:is-selected="getGlobalIndex(item) === selectedIndex"
+									@select="selectItem"
+								/>
+							</div>
 						</div>
-					</template>
+
+						<template v-for="section in groupedItems.sections" :key="section.title">
+							<div :class="$style.sectionHeader">{{ section.title }}</div>
+							<div v-for="item in section.items" :key="item.id">
+								<N8nCommandBarItem
+									:item="item"
+									:is-selected="getGlobalIndex(item) === selectedIndex"
+									@select="selectItem"
+								/>
+							</div>
+						</template>
+					</div>
+					<div v-else-if="inputValue && flattenedItems.length === 0" :class="$style.noResults">
+						No results found
+					</div>
 				</div>
-				<div v-else-if="inputValue && flattenedItems.length === 0" :class="$style.noResults">
-					No results found
-				</div>
-			</div>
+			</FocusScope>
 		</Transition>
 	</Teleport>
 </template>
