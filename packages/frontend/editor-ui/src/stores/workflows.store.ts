@@ -46,7 +46,6 @@ import type {
 	INodeExecutionData,
 	INodeIssueData,
 	INodeIssueObjectProperty,
-	INodeParameters,
 	INodeTypes,
 	IPinData,
 	IRunData,
@@ -59,13 +58,11 @@ import type {
 import {
 	deepCopy,
 	NodeConnectionTypes,
-	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
-import findLast from 'lodash/findLast';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 
@@ -73,7 +70,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
-import { isObject } from '@/utils/objectUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
