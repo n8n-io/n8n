@@ -18,6 +18,7 @@ import { useFoldersStore } from '@/features/folders/folders.store';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
@@ -48,6 +49,8 @@ export function useWorkflowNavigationCommands(options: {
 	const workflowKeywords = ref<Map<string, string[]>>(new Map());
 	const workflowMatchedNodeTypes = ref<Map<string, string>>(new Map());
 	const isLoading = ref(false);
+
+	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 	function orderResultByCurrentProjectFirst<T extends IWorkflowDb>(results: T[]) {
 		return results.sort((a, b) => {
@@ -284,8 +287,9 @@ export function useWorkflowNavigationCommands(options: {
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
-		const hasCreatePermission = !sourceControlStore.preferences.branchReadOnly;
-		// TODO: add create permission check
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			getResourcePermissions(homeProject.value?.scopes).workflow.create;
 
 		const newWorkflowCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_WORKFLOW,
