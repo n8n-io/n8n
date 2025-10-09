@@ -8,7 +8,14 @@ import { apiRequest } from '../transport';
 export async function getApiVersions(this: ILoadOptionsFunctions) {
 	const operation = this.getNodeParameter('operation', 0) as string;
 	const resource = this.getNodeParameter('resource', 0) as string;
-	if (resource === 'row' && ['get', 'getAll', 'create', 'update', 'delete'].includes(operation)) {
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	const credentials = await this.getCredentials(authenticationMethod);
+
+	if (
+		resource === 'row' &&
+		['get', 'search', 'create', 'update', 'delete'].includes(operation) &&
+		!credentials.isCloudNocoDb
+	) {
 		return [
 			{
 				name: 'v0.200.0 Onwards',

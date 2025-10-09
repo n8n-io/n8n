@@ -16,7 +16,13 @@ describe('NocoDB Load Options', () => {
 				getNodeParameter: (param: string) => {
 					if (param === 'resource') return 'row';
 					if (param === 'operation') return 'get';
+					if (param === 'authentication') return 'nocodb';
 					return '';
+				},
+				getCredentials: (_authenticationMethod: string) => {
+					return {
+						isCloudNocoDb: false,
+					};
 				},
 			};
 			const result = await getApiVersions.call(mockThis as any);
@@ -30,8 +36,14 @@ describe('NocoDB Load Options', () => {
 			const mockThis = {
 				getNodeParameter: (param: string) => {
 					if (param === 'resource') return 'row';
-					if (param === 'operation') return 'list'; // Not in ['get', 'getAll', 'create', 'update', 'delete']
+					if (param === 'operation') return 'count'; // Not in ['get', 'search', 'create', 'update', 'delete']
+					if (param === 'authentication') return 'nocodb';
 					return '';
+				},
+				getCredentials: (_authenticationMethod: string) => {
+					return {
+						isCloudNocoDb: false,
+					};
 				},
 			};
 			const result = await getApiVersions.call(mockThis as any);
@@ -41,8 +53,32 @@ describe('NocoDB Load Options', () => {
 		it('should return only v0.260.0 for non-row resource', async () => {
 			const mockThis = {
 				getNodeParameter: (param: string) => {
-					if (param === 'resource') return 'table';
+					if (param === 'resource') return 'base';
+					if (param === 'authentication') return 'nocodb';
 					return '';
+				},
+				getCredentials: (_authenticationMethod: string) => {
+					return {
+						isCloudNocoDb: false,
+					};
+				},
+			};
+			const result = await getApiVersions.call(mockThis as any);
+			expect(result).toEqual([{ name: 'v0.260.0 Onwards', value: 4 }]);
+		});
+
+		it('should return only v0.260.0 for cloud auth', async () => {
+			const mockThis = {
+				getNodeParameter: (param: string) => {
+					if (param === 'resource') return 'rows';
+					if (param === 'operation') return 'get';
+					if (param === 'authentication') return 'nocodb';
+					return '';
+				},
+				getCredentials: (_authenticationMethod: string) => {
+					return {
+						isCloudNocoDb: true,
+					};
 				},
 			};
 			const result = await getApiVersions.call(mockThis as any);

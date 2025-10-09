@@ -213,7 +213,7 @@ export async function v0200Execute(this: IExecuteFunctions): Promise<INodeExecut
 			}
 		}
 
-		if (operation === 'getAll') {
+		if (operation === 'search') {
 			const data: any[] = [];
 			const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 			try {
