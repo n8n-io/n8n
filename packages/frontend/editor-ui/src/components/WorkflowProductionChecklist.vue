@@ -16,12 +16,15 @@ import {
 	EVALUATIONS_DOCS_URL,
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
+import { useSettingsStore } from '@/stores/settings.store';
 const props = defineProps<{
 	workflow: IWorkflowDb;
 }>();
@@ -35,6 +38,7 @@ const uiStore = useUIStore();
 const message = useMessage();
 const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
+const settingsStore = useSettingsStore();
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -65,6 +69,12 @@ const isActivationModalOpen = computed(() => {
 
 const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
+});
+
+const hasWebhookNodes = computed(() => {
+	return props.workflow.nodes.some(
+		(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
+	);
 });
 
 const availableActions = computed(() => {
@@ -118,6 +128,20 @@ const availableActions = computed(() => {
 		});
 	}
 
+	if (
+		settingsStore.isModuleActive('mcp') &&
+		hasWebhookNodes.value &&
+		!suggestedActionSettings['mcp-access']?.ignored
+	) {
+		actions.push({
+			id: 'mcp-access',
+			title: i18n.baseText('mcp.productionCheklist.title'),
+			description: i18n.baseText('mcp.productionCheklist.description'),
+			moreInfoLink: MCP_DOCS_PAGE_URL,
+			completed: props.workflow.settings?.availableInMCP ?? false,
+		});
+	}
+
 	return actions;
 });
 
@@ -135,7 +159,11 @@ async function handleActionClick(actionId: string) {
 			name: VIEWS.EVALUATION_EDIT,
 			params: { name: props.workflow.id },
 		});
-	} else if (actionId === 'errorWorkflow' || actionId === 'timeSaved') {
+	} else if (
+		actionId === 'errorWorkflow' ||
+		actionId === 'timeSaved' ||
+		actionId === 'mcp-access'
+	) {
 		// Open workflow settings modal
 		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	}
@@ -143,7 +171,7 @@ async function handleActionClick(actionId: string) {
 }
 
 function isValidAction(action: string): action is ActionType {
-	return ['evaluations', 'errorWorkflow', 'timeSaved'].includes(action);
+	return ['evaluations', 'errorWorkflow', 'timeSaved', 'mcp-access'].includes(action);
 }
 
 async function handleIgnoreClick(actionId: string) {

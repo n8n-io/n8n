@@ -14,10 +14,9 @@ import {
 } from '@n8n/design-system';
 import type { ApiKey } from '@n8n/api-types';
 import ConnectionParameter from './ConnectionParameter.vue';
+import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
 
 const MCP_ENDPOINT = 'mcp-server/http';
-// TODO: Update once docs page is ready
-const DOCS_URL = 'https://docs.n8n.io/';
 
 type Props = {
 	baseUrl: string;
@@ -155,7 +154,7 @@ const apiKeyText = computed(() => {
 		</div>
 		<N8nText size="small" class="mt-m">
 			{{ i18n.baseText('settings.mcp.instructions.docs.part1') }}
-			<a :href="DOCS_URL" target="_blank">
+			<a :href="MCP_DOCS_PAGE_URL" target="_blank">
 				{{ i18n.baseText('settings.mcp.instructions.docs.part2') }}
 			</a>
 		</N8nText>
