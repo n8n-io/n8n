@@ -750,6 +750,45 @@ VALUES (
 			},
 			{
 				title:
+					'should call runQueries with binds passed using bindInfo with parseIn as true with _ in bindname',
+				queryTemplate: (deptTable: string) =>
+					`SELECT * FROM ${deptTable} WHERE deptno = :Dno AND empname IN :Names_`,
+				bindValues: [
+					{ name: 'Dno', valueNumber: 10, datatype: 'number', parseInStatement: false },
+					{ name: 'Names_', valueString: 'Alice,Bob', datatype: 'string', parseInStatement: true },
+				],
+				expectedVal: {
+					Dno: { type: oracleDBTypes.NUMBER, val: 10, dir: 3002 },
+					Names_: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Alice', dir: 3002 },
+					Names_2: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Bob', dir: 3002 },
+				},
+				expectedRegex:
+					/^SELECT \* FROM N8N_TEST_DEPT WHERE deptno = :Dno AND empname IN \(:Names_[\w_]+(,:Names_[\w_]+)*\)$/,
+			},
+			{
+				title:
+					'should call runQueries with binds passed using bindInfo with parseIn as true with $ in bindname',
+				queryTemplate: (deptTable: string) =>
+					`SELECT * FROM ${deptTable} WHERE deptno = :Dno AND empname IN :Names_ex2$`,
+				bindValues: [
+					{ name: 'Dno', valueNumber: 10, datatype: 'number', parseInStatement: false },
+					{
+						name: 'Names_ex2$',
+						valueString: 'Alice,Bob',
+						datatype: 'string',
+						parseInStatement: true,
+					},
+				],
+				expectedVal: {
+					Dno: { type: oracleDBTypes.NUMBER, val: 10, dir: 3002 },
+					Names_ex2$1: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Alice', dir: 3002 },
+					Names_ex2$2: { type: oracleDBTypes.DB_TYPE_VARCHAR, val: 'Bob', dir: 3002 },
+				},
+				expectedRegex:
+					/^SELECT \* FROM N8N_TEST_DEPT WHERE deptno = :Dno AND empname IN \(:Names_ex2\$[\w_]+(,:Names_ex2\$[\w_]+)*\)$/,
+			},
+			{
+				title:
 					'should call runQueries with binds passed using partial matching bindInfo with parseIn as true',
 				queryTemplate: (deptTable: string) =>
 					`SELECT * FROM ${deptTable} WHERE deptno = :Names1 AND empname IN :Names`,
@@ -778,7 +817,6 @@ VALUES (
 				expectedRegex:
 					/^SELECT\s*\(?:param1[\w_]*\)?\s*FROM\s*DUAL\s*WHERE\s*DUMMY\s*IN\s*\(:param1[\w_]*\)$/,
 			},
-
 			{
 				title: 'should correctly handle SELECT * FROM dual where DUMMY in :param1',
 				queryTemplate: () => 'SELECT * FROM DUAL WHERE DUMMY IN :param1',
