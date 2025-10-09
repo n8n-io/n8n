@@ -17,7 +17,6 @@ vi.mock('@/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: saveCurrentWorkflowMock,
 		getWorkflowDataToSave: vi.fn(),
-		setDocumentTitle: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
 	}),
