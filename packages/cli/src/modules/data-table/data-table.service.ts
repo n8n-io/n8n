@@ -161,7 +161,6 @@ export class DataTableService {
 			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
 				transformedDto,
-				columns,
 				em,
 			);
 			return {

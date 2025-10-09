@@ -60,7 +60,6 @@ function getConditionAndParams(
 	index: number,
 	dbType: DataSourceOptions['type'],
 	tableReference?: string,
-	columns?: DataTableColumn[],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
 	const columnRef = tableReference
@@ -341,7 +340,7 @@ export class DataTableRowsRepository {
 
 			const query = em.createQueryBuilder().update(table);
 			// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
-			this.applyFilters(query, filter, undefined, columns);
+			this.applyFilters(query, filter, undefined);
 			query.set(setData);
 
 			if (useReturning && returnData) {
@@ -443,7 +442,7 @@ export class DataTableRowsRepository {
 				// Just delete and return true
 				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
 				if (filter) {
-					this.applyFilters(query, filter, undefined, columns);
+					this.applyFilters(query, filter, undefined);
 				}
 				await query.execute();
 
@@ -456,7 +455,7 @@ export class DataTableRowsRepository {
 				const selectQuery = em.createQueryBuilder().select('*').from(table, 'dataTable');
 
 				if (filter) {
-					this.applyFilters(selectQuery, filter, 'dataTable', columns);
+					this.applyFilters(selectQuery, filter, 'dataTable');
 				}
 
 				const rawRows = await selectQuery.getRawMany<DataTableRawRowReturn>();
@@ -480,7 +479,7 @@ export class DataTableRowsRepository {
 			}
 
 			if (filter) {
-				this.applyFilters(deleteQuery, filter, undefined, columns);
+				this.applyFilters(deleteQuery, filter, undefined);
 			}
 
 			const result = await deleteQuery.execute();
@@ -504,7 +503,7 @@ export class DataTableRowsRepository {
 			const table = toTableName(dataTableId);
 			const selectColumns = idsOnly ? 'id' : '*';
 			const selectQuery = em.createQueryBuilder().select(selectColumns).from(table, 'dataTable');
-			this.applyFilters(selectQuery, filter, 'dataTable', columns);
+			this.applyFilters(selectQuery, filter, 'dataTable');
 			const rawRows: DataTableRowsReturn = await selectQuery.getRawMany();
 
 			if (idsOnly) {
@@ -615,14 +614,13 @@ export class DataTableRowsRepository {
 	async getManyAndCount(
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
-		columns?: DataTableColumn[],
 		trx?: EntityManager,
 	) {
 		return await withTransaction(
 			this.dataSource.manager,
 			trx,
 			async (em) => {
-				const [countQuery, query] = this.getManyQuery(dataTableId, dto, em, columns);
+				const [countQuery, query] = this.getManyQuery(dataTableId, dto, em);
 				const data: DataTableRowsReturn = await query.select('*').getRawMany();
 				const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 					count: number | string | null;
@@ -675,14 +673,13 @@ export class DataTableRowsRepository {
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
 		em: EntityManager,
-		columns?: DataTableColumn[],
 	): [QueryBuilder, QueryBuilder] {
 		const query = em.createQueryBuilder();
 
 		const tableReference = 'dataTable';
 		query.from(toTableName(dataTableId), tableReference);
 		if (dto.filter) {
-			this.applyFilters(query, dto.filter, tableReference, columns);
+			this.applyFilters(query, dto.filter, tableReference);
 		}
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
@@ -695,14 +692,13 @@ export class DataTableRowsRepository {
 		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
 		filter: DataTableFilter,
 		tableReference?: string,
-		columns?: DataTableColumn[],
 	): void {
 		const filters = filter.filters ?? [];
 		const filterType = filter.type ?? 'and';
 
 		const dbType = this.dataSource.options.type;
 		const conditionsAndParams = filters.map((filter, i) =>
-			getConditionAndParams(filter, i, dbType, tableReference, columns),
+			getConditionAndParams(filter, i, dbType, tableReference),
 		);
 
 		if (conditionsAndParams.length === 1) {
