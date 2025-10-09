@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -180,18 +185,18 @@ export class WorkflowDataProxy {
 
 		const resource =
 			nodeType.description.properties
-				.find((nodeProperties) => nodeProperties.name === 'resource')
-				?.options?.find((option) => 'value' in option && option.value === resourceKey)?.name ??
+				.find((nodeProperties: any) => nodeProperties.name === 'resource')
+				?.options?.find((option: any) => 'value' in option && option.value === resourceKey)?.name ??
 			null;
 
 		const operation =
 			nodeType.description.properties
 				.find(
-					(nodeProperty) =>
+					(nodeProperty: any) =>
 						nodeProperty.name === 'operation' &&
-						nodeProperty.displayOptions?.show?.resource?.some((y) => y === resourceKey),
+						nodeProperty.displayOptions?.show?.resource?.some((y: any) => y === resourceKey),
 				)
-				?.options?.find((y) => 'value' in y && y.value === operationKey)?.name ?? null;
+				?.options?.find((y: any) => 'value' in y && y.value === operationKey)?.name ?? null;
 
 		const hasCredentials = !isObjectEmpty(node.credentials ?? {});
 
@@ -204,7 +209,8 @@ export class WorkflowDataProxy {
 			.filter(([_, value]) => value?.toString().toLowerCase().includes('$fromai'))
 			.map(
 				([key]) =>
-					nodeType.description.properties.find((property) => property.name === key)?.displayName,
+					nodeType.description.properties.find((property: any) => property.name === key)
+						?.displayName ?? undefined,
 			);
 
 		return {
