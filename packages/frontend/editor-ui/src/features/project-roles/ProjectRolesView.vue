@@ -15,7 +15,7 @@ import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import dateformat from 'dateformat';
-import { computed, ref, useCssModule } from 'vue';
+import { ref, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { showError, showMessage } = useToast();
@@ -69,13 +69,26 @@ const headers = ref<Array<TableHeader<Role>>>([
 ]);
 
 async function deleteRole(item: Role) {
+	i18n.baseText('projectRoles.action.delete.text', {
+		interpolate: {
+			roleName: item.displayName,
+		},
+	});
 	const deleteConfirmed = await message.confirm(
-		`Are you sure that you want to delete '${item.displayName}' permanently? This action cannot be undone.`,
-		`Delete "${item.displayName}"?`,
+		i18n.baseText('projectRoles.action.delete.text', {
+			interpolate: {
+				roleName: item.displayName,
+			},
+		}),
+		i18n.baseText('projectRoles.action.delete.title', {
+			interpolate: {
+				roleName: item.displayName,
+			},
+		}),
 		{
 			type: 'warning',
-			confirmButtonText: 'Delete',
-			cancelButtonText: 'Cancel',
+			confirmButtonText: i18n.baseText('projectRoles.action.delete'),
+			cancelButtonText: i18n.baseText('projectRoles.action.cancel'),
 		},
 	);
 
@@ -91,16 +104,20 @@ async function deleteRole(item: Role) {
 			rolesStore.roles.project.splice(index, 1);
 		}
 
-		showMessage({ title: 'Role deleted', type: 'success' });
+		showMessage({ title: i18n.baseText('projectRoles.action.delete.success'), type: 'success' });
 	} catch (error) {
-		showError(error, 'Error deleting role');
+		showError(error, i18n.baseText('projectRoles.action.delete.error'));
 		return;
 	}
 }
 
 async function duplicateRole(item: Role) {
 	try {
-		const displayName = `Copy of ${item.displayName}`;
+		const displayName = i18n.baseText('projectRoles.action.duplicate.name', {
+			interpolate: {
+				roleName: item.displayName,
+			},
+		});
 		const role = await rolesStore.createProjectRole({
 			displayName,
 			description: item.description ?? undefined,
@@ -111,12 +128,17 @@ async function duplicateRole(item: Role) {
 
 		showMessage({
 			type: 'success',
-			message: `Role "${item.displayName}" duplicated successfully as "${displayName}"`,
+			message: i18n.baseText('projectRoles.action.duplicate.success', {
+				interpolate: {
+					roleName: item.displayName,
+					roleDuplicateName: displayName,
+				},
+			}),
 		});
 
 		return role;
 	} catch (error) {
-		showError(error, 'Error duplicating role');
+		showError(error, i18n.baseText('projectRoles.action.duplicate.error'));
 		return;
 	}
 }
@@ -138,16 +160,21 @@ function rowProps(row: Role) {
 	};
 }
 
-const rowActions = computed<Array<{ label: string; value: keyof typeof actions }>>(() => [
-	{
-		label: 'Duplicate',
-		value: 'duplicate',
-	},
-	{
-		label: 'Delete',
-		value: 'delete',
-	},
-]);
+function rowActions(
+	item: Role,
+): Array<{ label: string; value: keyof typeof actions; disabled?: boolean }> {
+	return [
+		{
+			label: i18n.baseText('projectRoles.action.duplicate'),
+			value: 'duplicate',
+		},
+		{
+			label: i18n.baseText('projectRoles.action.delete'),
+			value: 'delete',
+			disabled: item.usedByUsers !== 0,
+		},
+	];
+}
 
 function handleAction(action: string, item: Role) {
 	void actions[action as keyof typeof actions](item);
@@ -182,13 +209,15 @@ function handleRowClick(item: Role) {
 				<N8nText tag="div" size="small" color="text-light">{{ item.description }}</N8nText>
 			</template>
 			<template #[`item.systemRole`]="{ item }">
-				<template v-if="item.systemRole"> <N8nIcon icon="lock" /> System</template>
-				<template v-else>Custom</template>
+				<template v-if="item.systemRole">
+					<N8nIcon icon="lock" /> {{ i18n.baseText('projectRoles.literal.system') }}</template
+				>
+				<template v-else>{{ i18n.baseText('projectRoles.literal.custom') }}</template>
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<N8nActionToggle
 					v-if="!item.systemRole"
-					:actions="rowActions"
+					:actions="rowActions(item)"
 					@action="($event) => handleAction($event, item)"
 				/>
 			</template>

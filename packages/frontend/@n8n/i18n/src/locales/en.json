@@ -1900,6 +1900,33 @@
 	"projectRoles.type.credential": "Credentials",
 	"projectRoles.type.sourceControl": "Source control",
 
+	"projectRoles.literal.system": "System",
+	"projectRoles.literal.custom": "Custom",
+
+	"projectRoles.action.cancel": "Cancel",
+	"projectRoles.action.delete": "Delete",
+	"projectRoles.action.delete.button": "Delete role",
+	"projectRoles.action.delete.success": "Role deleted",
+	"projectRoles.action.delete.error": "Error deleting role",
+	"projectRoles.action.delete.title": "Delete '{roleName}'?",
+	"projectRoles.action.delete.text": "Are you sure that you want to delete '{roleName}' permanently? This action cannot be undone.",
+	"projectRoles.action.delete.warning": "Deleting a role is permanent. This can’t be undone.",
+	"projectRoles.action.delete.useWarning": "You can’t delete this role while it’s assigned to {count} users. Unassign it from all users first.",
+
+	"projectRoles.action.duplicate": "Duplicate",
+	"projectRoles.action.duplicate.name": "Copy of {roleName}",
+	"projectRoles.action.duplicate.success": "Role '{roleName}' duplicated successfully as '{roleDuplicateName}'",
+	"projectRoles.action.duplicate.error": "Error duplicating role",
+
+	"projectRoles.action.create.success": "Role created successfully",
+	"projectRoles.action.create.error": "Error creating role",
+
+	"projectRoles.action.update": "Update role",
+	"projectRoles.action.update.success": "Role updated successfully",
+	"projectRoles.action.update.error": "Error updating role",
+	"projectRoles.action.update.title": "Update role for '{count}' users?",
+	"projectRoles.action.update.text": "These changes will instantly affect all {count} users with this role. Are you sure you want to continue?",
+
 	"renameAction.emptyName.message": "Please enter a name, or press 'esc' to go back to the old one",
 	"renameAction.emptyName.title": "Name missing",
 	"renameAction.invalidName.title": "Invalid name",

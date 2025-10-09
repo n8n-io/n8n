@@ -136,14 +136,14 @@ async function createProjectRole() {
 		void router.replace({ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: role.slug } });
 		showMessage({
 			type: 'success',
-			message: 'Role created successfully',
+			message: i18n.baseText('projectRoles.action.create.success'),
 		});
 
 		initialState.value = structuredClone(role);
 
 		return role;
 	} catch (error) {
-		showError(error, 'Error creating role');
+		showError(error, i18n.baseText('projectRoles.action.create.error'));
 		return;
 	}
 }
@@ -152,12 +152,20 @@ async function confirmRoleUpdate(usedByUsers?: number) {
 	if (!usedByUsers) return true;
 
 	const confirmed = await message.confirm(
-		`These changes will instantly affect all ${usedByUsers} users with this role. Are you sure you want to continue?`,
-		`Update role for "${usedByUsers}" users?`,
+		i18n.baseText('projectRoles.action.update.text', {
+			interpolate: {
+				count: usedByUsers,
+			},
+		}),
+		i18n.baseText('projectRoles.action.update.title', {
+			interpolate: {
+				count: usedByUsers,
+			},
+		}),
 		{
 			type: 'warning',
-			confirmButtonText: 'Update role',
-			cancelButtonText: 'Cancel',
+			confirmButtonText: i18n.baseText('projectRoles.action.update'),
+			cancelButtonText: i18n.baseText('projectRoles.action.cancel'),
 		},
 	);
 
@@ -180,12 +188,12 @@ async function updateProjectRole(slug: string) {
 
 		showMessage({
 			type: 'success',
-			message: 'Role updated successfully',
+			message: i18n.baseText('projectRoles.action.update.success'),
 		});
 
 		return role;
 	} catch (error) {
-		showError(error, 'Error updating role');
+		showError(error, i18n.baseText('projectRoles.action.update.error'));
 		return;
 	}
 }
@@ -209,13 +217,22 @@ function setPreset(slug: string) {
 
 async function deleteRole() {
 	if (!initialState?.value) return;
+
 	const deleteConfirmed = await message.confirm(
-		`Are you sure that you want to delete '${initialState.value.displayName}' permanently? This action cannot be undone.`,
-		`Delete "${initialState.value.displayName}"?`,
+		i18n.baseText('projectRoles.action.delete.text', {
+			interpolate: {
+				roleName: initialState.value.displayName,
+			},
+		}),
+		i18n.baseText('projectRoles.action.delete.title', {
+			interpolate: {
+				roleName: initialState.value.displayName,
+			},
+		}),
 		{
 			type: 'warning',
-			confirmButtonText: 'Delete',
-			cancelButtonText: 'Cancel',
+			confirmButtonText: i18n.baseText('projectRoles.action.delete'),
+			cancelButtonText: i18n.baseText('projectRoles.action.cancel'),
 		},
 	);
 
@@ -233,10 +250,10 @@ async function deleteRole() {
 			rolesStore.roles.project.splice(index, 1);
 		}
 
-		showMessage({ title: 'Role deleted', type: 'success' });
+		showMessage({ title: i18n.baseText('projectRoles.action.delete.success'), type: 'success' });
 		router.back();
 	} catch (error) {
-		showError(error, 'Error deleting role');
+		showError(error, i18n.baseText('projectRoles.action.delete.error'));
 		return;
 	}
 }
@@ -343,14 +360,19 @@ const displayNameValidationRules = [
 			<N8nHeading tag="h2" class="mb-2xs">Danger zone</N8nHeading>
 			<N8nText tag="p" class="mb-s">
 				<template v-if="initialState?.usedByUsers">
-					You can’t delete this role while it’s assigned to {{ initialState.usedByUsers }} users.
-					Unassign it from all users first.
+					{{
+						i18n.baseText('projectRoles.action.delete.useWarning', {
+							interpolate: {
+								count: initialState.usedByUsers,
+							},
+						})
+					}}
 				</template>
-				<template v-else> Deleting a role is permanent. This can’t be undone. </template>
+				<template v-else> {{ i18n.baseText('projectRoles.action.delete.warning') }}</template>
 			</N8nText>
-			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole"
-				>Delete role</N8nButton
-			>
+			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole">{{
+				i18n.baseText('projectRoles.action.delete.button')
+			}}</N8nButton>
 		</div>
 	</div>
 </template>
