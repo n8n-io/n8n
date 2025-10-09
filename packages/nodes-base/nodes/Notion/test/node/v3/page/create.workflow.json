@@ -1,0 +1,22 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "create",
+				"pageId": {
+					"__rl": true,
+					"value": "45efd1cb-6fg2-b37f-cce7-f8b88ebeg937",
+					"mode": "id"
+				},
+				"title": "New Subpage",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [450, 220],
+			"name": "Notion"
+		}
+	],
+	"connections": {}
+}

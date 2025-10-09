@@ -45,7 +45,7 @@ export class NotionApi implements ICredentialType {
 		if (!requestOptions.headers['Notion-Version']) {
 			requestOptions.headers = {
 				...requestOptions.headers,
-				'Notion-Version': '2022-02-22',
+				'Notion-Version': '2025-09-03',
 			};
 		}
 

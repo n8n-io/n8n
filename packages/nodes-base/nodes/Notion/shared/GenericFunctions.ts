@@ -43,6 +43,7 @@ const apiVersion: { [key: number]: string } = {
 	2: '2021-08-16',
 	2.1: '2021-08-16',
 	2.2: '2021-08-16',
+	3: '2025-09-03',
 };
 
 export async function notionApiRequest(
@@ -76,6 +77,37 @@ export async function notionApiRequest(
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function getDataSourceId(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	databaseId: string,
+	itemIndex: number,
+): Promise<string> {
+	try {
+		const database = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+
+		if (database.data_sources && Array.isArray(database.data_sources)) {
+			if (database.data_sources.length === 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Database ${databaseId} has no data sources`,
+					{ itemIndex },
+				);
+			}
+			// For multi-source databases, default to the first data source
+			return database.data_sources[0].id;
+		}
+
+		// Fallback for single-source databases (backward compatibility)
+		return databaseId;
+	} catch (error) {
+		// Re-throw NodeOperationError as-is to preserve error context
+		if (error instanceof NodeOperationError) {
+			throw error;
+		}
+		throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
 	}
 }
 
