@@ -218,7 +218,7 @@ export const useAIAssistantHelpers = () => {
 	 * Prepare workflow execution result data for the AI assistant
 	 * by removing data from nodes
 	 * @param data The execution result data to simplify
-	 * @param compact If true, truncates large inputOverride fields to max 2000 characters
+	 * @param compact If true, removes large inputOverride fields (> 2000 bytes)
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
@@ -233,22 +233,31 @@ export const useAIAssistantHelpers = () => {
 			simplifiedResultData.error = data.error;
 		}
 
+		// Early return if runData is not present
+		if (!data.runData) {
+			return simplifiedResultData;
+		}
+
 		// Map runData, excluding the `data` field from ITaskData
-		for (const key of Object.keys(data.runData || {})) {
+		for (const key of Object.keys(data.runData)) {
 			const taskDataArray = data.runData[key];
 			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
 				const { data: _taskDataContent, ...taskDataWithoutData } = taskData;
 
-				// If compact mode is enabled, truncate large inputOverride fields
+				// If compact mode is enabled, remove large inputOverride fields
 				if (compact && taskDataWithoutData.inputOverride) {
-					const inputOverrideStr = JSON.stringify(taskDataWithoutData.inputOverride);
+					try {
+						const inputOverrideStr = JSON.stringify(taskDataWithoutData.inputOverride);
+						const sizeInBytes = new Blob([inputOverrideStr]).size;
 
-					if (inputOverrideStr.length > 2000) {
-						taskDataWithoutData.inputOverride = {
-							_truncated: true,
-							_originalSize: inputOverrideStr.length,
-							_preview: inputOverrideStr.substring(0, 2000),
-						} as unknown as typeof taskDataWithoutData.inputOverride;
+						// If too large, remove inputOverride entirely to maintain type safety
+						if (sizeInBytes > 2000) {
+							delete taskDataWithoutData.inputOverride;
+						}
+					} catch (error) {
+						// Handle circular references or non-serializable data
+						// Remove the problematic field entirely
+						delete taskDataWithoutData.inputOverride;
 					}
 				}
 

@@ -623,9 +623,8 @@ describe('Simplify assistant payloads', () => {
 		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toEqual(smallInputOverride);
 	});
 
-	it('simplifyResultData: Should truncate large inputOverride when compact is true', () => {
+	it('simplifyResultData: Should remove large inputOverride when compact is true', () => {
 		const largeInputOverride = createInputOverride({ someData: 'x'.repeat(3000) });
-		const inputOverrideStr = JSON.stringify(largeInputOverride);
 		const executionData: IRunExecutionData['resultData'] = {
 			runData: {
 				TestNode: [
@@ -647,15 +646,9 @@ describe('Simplify assistant payloads', () => {
 		};
 
 		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
-		const truncated = simplifiedResultData.runData.TestNode[0].inputOverride;
 
-		expect(truncated).toHaveProperty('_truncated', true);
-		expect(truncated).toHaveProperty('_originalSize', inputOverrideStr.length);
-		expect(truncated).toHaveProperty('_preview');
-		// @ts-expect-error - accessing _preview on truncated object
-		expect(truncated._preview).toBe(inputOverrideStr.substring(0, 2000));
-		// @ts-expect-error - accessing _preview on truncated object
-		expect(truncated._preview.length).toBe(2000);
+		// Large inputOverride should be removed entirely to maintain type safety
+		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
 	});
 
 	it('simplifyResultData: Should handle multiple nodes with different inputOverride sizes', () => {
@@ -710,14 +703,11 @@ describe('Simplify assistant payloads', () => {
 
 		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
 
-		// Small input should not be truncated
+		// Small input should not be removed
 		expect(simplifiedResultData.runData.SmallNode[0].inputOverride).toEqual(smallInput);
 
-		// Large input should be truncated
-		const truncated = simplifiedResultData.runData.LargeNode[0].inputOverride;
-		expect(truncated).toHaveProperty('_truncated', true);
-		expect(truncated).toHaveProperty('_originalSize');
-		expect(truncated).toHaveProperty('_preview');
+		// Large input should be removed entirely
+		expect(simplifiedResultData.runData.LargeNode[0].inputOverride).toBeUndefined();
 
 		// Node without inputOverride should not have it added
 		expect(simplifiedResultData.runData.NoInputNode[0]).not.toHaveProperty('inputOverride');
@@ -760,15 +750,9 @@ describe('Simplify assistant payloads', () => {
 
 		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
 
-		// Both entries should be truncated
-		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toHaveProperty(
-			'_truncated',
-			true,
-		);
-		expect(simplifiedResultData.runData.TestNode[1].inputOverride).toHaveProperty(
-			'_truncated',
-			true,
-		);
+		// Both entries should have inputOverride removed
+		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
+		expect(simplifiedResultData.runData.TestNode[1].inputOverride).toBeUndefined();
 	});
 });
 
