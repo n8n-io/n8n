@@ -296,13 +296,15 @@ onUnmounted(() => {
 					data-test-id="command-bar-items-list"
 					@scroll="handleScroll"
 				>
-					<template v-for="item in groupedItems.ungrouped" :key="item.id">
-						<N8nCommandBarItem
-							:item="item"
-							:is-selected="getGlobalIndex(item) === selectedIndex"
-							@select="selectItem"
-						/>
-					</template>
+					<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
+						<div v-for="item in groupedItems.ungrouped" :key="item.id">
+							<N8nCommandBarItem
+								:item="item"
+								:is-selected="getGlobalIndex(item) === selectedIndex"
+								@select="selectItem"
+							/>
+						</div>
+					</div>
 
 					<template v-for="section in groupedItems.sections" :key="section.title">
 						<div :class="$style.sectionHeader">{{ section.title }}</div>
@@ -361,6 +363,13 @@ onUnmounted(() => {
 	max-height: 350px;
 	overflow-y: auto;
 	padding: 0 var(--spacing-2xs) var(--spacing-2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-5xs);
+}
+
+.ungroupedSection {
+	padding-top: var(--spacing-2xs);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-5xs);
