@@ -22,7 +22,7 @@ import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRen
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
-import { useContextMenu } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/features/ui/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { useCanvas } from '@/composables/useCanvas';

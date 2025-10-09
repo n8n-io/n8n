@@ -46,7 +46,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/types';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
