@@ -6,6 +6,7 @@ import type {
 	EngineResponse,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
+	IPairedItemData,
 } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
@@ -660,13 +661,13 @@ describe('processRunExecutionData', () => {
 						// This is how expressions access data via paired items
 						const connectionInputData = (this as any).connectionInputData || [];
 						const firstItem = connectionInputData[0];
-						const pairedItem = (firstItem?.pairedItem || { item: 0 }) as any;
+						const pairedItem: IPairedItemData = firstItem?.pairedItem ?? { item: 0 };
 						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
 						// Call getPairedItem to traverse the ancestry chain using sourceOverwrite
-						const dataNodeItem = (proxy as any).$getPairedItem('DataNode', sourceData, pairedItem);
+						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
 						const fieldValue = dataNodeItem?.json?.field;
-						const nestedValue = (dataNodeItem?.json?.nested as any)?.value;
+						const nestedValue = (dataNodeItem?.json?.nested as IDataObject)?.value;
 
 						return [
 							[
@@ -766,6 +767,7 @@ describe('processRunExecutionData', () => {
 
 			// 3. Verify ToolNode was scheduled with preserveSourceOverwrite metadata
 			expect(runData[toolNode.name]).toHaveLength(1);
+			expect(runData[toolNode.name][0].metadata?.preserveSourceOverwrite).toBeDefined();
 			expect(runData[toolNode.name][0].inputOverride).toBeDefined();
 			expect(runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
 				query: 'test query',
@@ -865,12 +867,12 @@ describe('processRunExecutionData', () => {
 						// Try to access DataNode's email field via expression
 						// This should work on first iteration but fail on second when
 						// sourceOverwrite is incorrectly retained
-						const connectionInputData = (this as any).connectionInputData || [];
+						const connectionInputData = (this as any).connectionInputData ?? [];
 						const firstItem = connectionInputData[0];
-						const pairedItem = (firstItem?.pairedItem || { item: 0 }) as any;
+						const pairedItem = firstItem?.pairedItem ?? { item: 0 };
 						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
-						const dataNodeItem = (proxy as any).$getPairedItem('DataNode', sourceData, pairedItem);
+						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
 						const email = dataNodeItem?.json?.email;
 
 						return [
