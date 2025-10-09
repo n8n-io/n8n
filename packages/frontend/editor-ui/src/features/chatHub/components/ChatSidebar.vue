@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { CHAT_CONVERSATION_VIEW, CHAT_VIEW } from '@/features/chatHub/constants';
 import { N8nIcon, N8nIconButton, N8nMenuItem, N8nText } from '@n8n/design-system';
 import { useChatStore } from '@/features/chatHub/chat.store';
@@ -8,6 +8,10 @@ import { groupConversationsByDate } from '@/features/chatHub/chat.utils';
 import { VIEWS } from '@/constants';
 
 const router = useRouter();
+const route = useRoute();
+const currentSessionId = computed(() =>
+	typeof route.params.id === 'string' ? route.params.id : undefined,
+);
 const chatStore = useChatStore();
 
 onMounted(async () => {
@@ -44,6 +48,7 @@ function onNewChat() {
 				<N8nMenuItem
 					v-for="session in group.sessions"
 					:key="session.id"
+					:active="currentSessionId === session.id"
 					:item="{
 						id: session.id,
 						icon: 'message-circle',
@@ -60,7 +65,7 @@ function onNewChat() {
 .container {
 	width: 200px;
 	height: 100%;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border-right: var(--border-base);
 	position: relative;
 	overflow: auto;
@@ -81,7 +86,7 @@ function onNewChat() {
 	align-items: center;
 	flex: 1;
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
