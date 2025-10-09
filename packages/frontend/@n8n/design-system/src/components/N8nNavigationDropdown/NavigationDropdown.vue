@@ -39,6 +39,12 @@ const emit = defineEmits<{
 	select: [id: Item['id']];
 }>();
 
+defineSlots<{
+	default?: () => unknown;
+	'item-icon'?: (props: { item: BaseItem }) => unknown;
+	[key: `item.append.${string}`]: (props: { item: Item }) => unknown;
+}>();
+
 const close = () => {
 	menuRef.value?.close(ROOT_MENU_INDEX);
 };
@@ -93,7 +99,24 @@ defineExpose({
 						:popper-offset="-10"
 						data-test-id="navigation-submenu"
 					>
-						<template #title>{{ item.title }}</template>
+						<template #title>
+							<div :class="$style.subMenuTitle">
+								<slot name="item-icon" v-bind="{ item }">
+									<!-- Default icon rendering -->
+									<template v-if="item.icon">
+										<N8nIcon
+											v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
+											:class="$style.submenu__icon"
+											:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+										/>
+										<N8nText v-else-if="item.icon.type === 'emoji'" :class="$style.submenu__icon">
+											{{ item.icon.value }}
+										</N8nText>
+									</template>
+								</slot>
+								{{ item.title }}
+							</div>
+						</template>
 						<template v-for="subitem in item.submenu" :key="subitem.id">
 							<hr v-if="subitem.isDivider" />
 							<ConditionalRouterLink v-else :to="(!subitem.disabled && subitem.route) || undefined">
@@ -103,20 +126,22 @@ defineExpose({
 									:disabled="subitem.disabled"
 									@click="emit('itemClick', $event)"
 								>
-									<!-- <N8nIcon v-if="subitem.icon" :icon="subitem.icon" :class="$style.submenu__icon" /> -->
-									<template v-if="subitem.icon">
-										<N8nIcon
-											v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
-											:class="$style.submenu__icon"
-											:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
-										/>
-										<N8nText
-											v-else-if="subitem.icon.type === 'emoji'"
-											:class="$style.submenu__icon"
-										>
-											{{ subitem.icon.value }}
-										</N8nText>
-									</template>
+									<slot name="item-icon" v-bind="{ item: subitem }">
+										<!-- Default icon rendering -->
+										<template v-if="subitem.icon">
+											<N8nIcon
+												v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
+												:class="$style.submenu__icon"
+												:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
+											/>
+											<N8nText
+												v-else-if="subitem.icon.type === 'emoji'"
+												:class="$style.submenu__icon"
+											>
+												{{ subitem.icon.value }}
+											</N8nText>
+										</template>
+									</slot>
 
 									{{ subitem.title }}
 									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
@@ -209,6 +234,12 @@ defineExpose({
 	:global(.el-sub-menu__icon-arrow svg) {
 		margin-top: auto;
 	}
+}
+
+.subMenuTitle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
 }
 
 .submenu__icon {

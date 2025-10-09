@@ -7,8 +7,10 @@ import {
 	type ChatHubProvider,
 	chatHubProviderSchema,
 	type ChatModelsResponse,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/chatHub/constants';
+import CredentialIcon from '@/components/CredentialIcon.vue';
 
 const props = defineProps<{
 	disabled?: boolean;
@@ -25,6 +27,7 @@ const menu = computed(() =>
 	chatHubProviderSchema.options.map((provider) => {
 		const models = props.models?.[provider].models ?? [];
 		const error = props.models?.[provider].error;
+
 		const modelOptions =
 			models.length > 0
 				? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
@@ -43,6 +46,7 @@ const menu = computed(() =>
 				...(modelOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
 				{
 					id: `${provider}::configure`,
+					icon: 'settings',
 					title: 'Configure credentials...',
 					disabled: false,
 				},
@@ -76,7 +80,22 @@ function onSelect(id: string) {
 
 <template>
 	<N8nNavigationDropdown :menu="menu" :disabled="disabled" @select="onSelect">
+		<template #item-icon="{ item }">
+			<CredentialIcon
+				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
+				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubProvider]"
+				:size="16"
+				:class="$style.menuIcon"
+			/>
+		</template>
+
 		<N8nButton :class="$style.dropdownButton" type="secondary">
+			<CredentialIcon
+				v-if="selectedModel"
+				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
+				:size="16"
+				:class="$style.icon"
+			/>
 			<span>{{ selectedLabel }}</span>
 			<N8nIcon icon="chevron-down" size="small" />
 		</N8nButton>
@@ -88,5 +107,14 @@ function onSelect(id: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
+}
+
+.icon {
+	flex-shrink: 0;
+	margin-block: -4px;
+}
+
+.menuIcon {
+	flex-shrink: 0;
 }
 </style>
