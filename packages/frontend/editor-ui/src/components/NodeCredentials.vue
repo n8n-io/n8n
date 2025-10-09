@@ -39,6 +39,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
@@ -69,6 +70,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 
 const nodeHelpers = useNodeHelpers();
 const toast = useToast();
@@ -348,7 +350,7 @@ function onCredentialSelected(
 		);
 		const authOption = getAuthTypeForNodeCredential(nodeType.value, nodeCredentialDescription);
 		if (authOption) {
-			updateNodeAuthType(props.node, authOption.value);
+			updateNodeAuthType(workflowState, props.node, authOption.value);
 			const parameterData = {
 				name: `parameters.${mainNodeAuthField.value.name}`,
 				value: authOption.value,

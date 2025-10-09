@@ -60,6 +60,7 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+import { injectWorkflowState, workflowStateEventBus } from '@/composables/useWorkflowState';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -83,6 +84,7 @@ const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -162,15 +164,15 @@ const canManageLogStreaming = computed(() =>
 
 onMounted(() => {
 	setupNode(Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), destination));
-	workflowsStore.$onAction(({ name, args }) => {
-		if (name === 'updateNodeProperties') {
-			for (const arg of args) {
-				if (arg.name === destination.id) {
-					if ('credentials' in arg.properties) {
-						unchanged.value = false;
-						nodeParameters.value.credentials = arg.properties.credentials as NodeParameterValueType;
-					}
-				}
+	workflowStateEventBus.on('updateNodeProperties', (event) => {
+		// @WORKFLOWSTATE(ckolb): Once we support multiple opened workflows, this will need to differentiate
+		// which workflowState the event was triggered to react to the appropriate workflow only
+		const updateInformation = event[1];
+		if (updateInformation.name === destination.id) {
+			if ('credentials' in updateInformation.properties) {
+				unchanged.value = false;
+				nodeParameters.value.credentials = updateInformation.properties
+					.credentials as NodeParameterValueType;
 			}
 		}
 	});
@@ -259,7 +261,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	nodeParameters.value = deepCopy(nodeParametersCopy);
-	workflowsStore.updateNodeProperties({
+	workflowState.updateNodeProperties({
 		name: node.value.name,
 		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});

@@ -19,7 +19,6 @@ import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IStartRunData,
-	IUpdateInformation,
 	IUsedCredential,
 	IWorkflowDb,
 	IWorkflowsMap,
@@ -44,8 +43,6 @@ import type {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeExecutionData,
-	INodeIssueData,
-	INodeIssueObjectProperty,
 	INodeTypes,
 	IPinData,
 	IRunData,
@@ -1223,57 +1220,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
-	/**
-	 * @returns `true` if the object was changed
-	 */
-	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
-		if (nodeIndex !== -1) {
-			const node = workflow.value.nodes[nodeIndex];
-			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
-			const changed = !isEqual(existingData, nodeData);
-
-			if (changed) {
-				Object.assign(node, nodeData);
-				workflow.value.nodes[nodeIndex] = node;
-				workflowObject.value.setNodes(workflow.value.nodes);
-			}
-
-			return changed;
-		}
-		return false;
-	}
-
-	function setNodeIssue(nodeIssueData: INodeIssueData): void {
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === nodeIssueData.node;
-		});
-		if (nodeIndex === -1) {
-			return;
-		}
-
-		const node = workflow.value.nodes[nodeIndex];
-
-		if (nodeIssueData.value === null) {
-			// Remove the value if one exists
-			if (node.issues?.[nodeIssueData.type] === undefined) {
-				// No values for type exist so nothing has to get removed
-				return;
-			}
-
-			const { [nodeIssueData.type]: removedNodeIssue, ...remainingNodeIssues } = node.issues;
-			updateNodeAtIndex(nodeIndex, {
-				issues: remainingNodeIssues,
-			});
-		} else {
-			updateNodeAtIndex(nodeIndex, {
-				issues: {
-					...node.issues,
-					[nodeIssueData.type]: nodeIssueData.value as INodeIssueObjectProperty,
-				},
-			});
-		}
-	}
-
 	function addNode(nodeData: INodeUi): void {
 		// @TODO(ckolb): Reminder to refactor useActions:setAddedNodeActionParameters
 		// which listens to this function being called, when this is moved to workflowState soon
@@ -1311,26 +1257,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				workflowObject.value.setNodes(workflow.value.nodes);
 				uiStore.stateIsDirty = true;
 				return;
-			}
-		}
-	}
-
-	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex !== -1) {
-			for (const key of Object.keys(updateInformation.properties)) {
-				const typedKey = key as keyof INodeUpdatePropertiesInformation['properties'];
-				const property = updateInformation.properties[typedKey];
-
-				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
-
-				if (changed) {
-					uiStore.stateIsDirty = true;
-				}
 			}
 		}
 	}
@@ -1874,11 +1800,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeConnection,
 		removeAllNodeConnection,
 		renameNodeSelectedAndExecution,
-		updateNodeAtIndex,
-		setNodeIssue,
 		addNode,
 		removeNode,
-		updateNodeProperties,
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,

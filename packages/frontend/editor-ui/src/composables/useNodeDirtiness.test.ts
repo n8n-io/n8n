@@ -14,6 +14,7 @@ import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workf
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
+import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('@/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/composables/useWorkflowState');
@@ -37,14 +38,14 @@ describe(useNodeDirtiness, () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
 		const TestComponent = defineComponent({
 			setup() {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
+				workflowState = useWorkflowState();
+				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
 				canvasOperations = useCanvasOperations();
 				uiStore = useUIStore();
 

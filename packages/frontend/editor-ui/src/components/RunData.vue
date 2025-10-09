@@ -91,6 +91,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );
@@ -231,6 +232,7 @@ const dataContainerRef = ref<HTMLDivElement>();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
@@ -1344,7 +1346,7 @@ function enableNode() {
 			},
 		};
 
-		workflowsStore.updateNodeProperties(updateInformation);
+		workflowState.updateNodeProperties(updateInformation);
 	}
 }
 
