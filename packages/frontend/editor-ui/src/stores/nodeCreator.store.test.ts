@@ -7,9 +7,9 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/constants';
 import type { INodeCreateElement } from '@/Interface';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import { parseCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -53,7 +53,7 @@ vi.mock('@/stores/workflows.store', () => {
 	};
 });
 
-vi.mock('@/utils/canvasUtils', () => {
+vi.mock('@/features/canvas/canvas.utils', () => {
 	return {
 		parseCanvasConnectionHandleString: vi.fn(),
 	};
