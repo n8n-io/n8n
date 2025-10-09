@@ -466,8 +466,23 @@ function moveResource() {
 	});
 }
 
-const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
+const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
 	emit('workflow:active-toggle', value);
+	// If workflow is deactivated, also remove it's MCP access
+	if (!value.active && props.isMcpEnabled) {
+		await handleMCPAccessAfterDeactivation();
+	}
+};
+
+const handleMCPAccessAfterDeactivation = async () => {
+	if (isAvailableInMCP.value) {
+		await toggleMCPAccess(false);
+		toast.showToast({
+			title: locale.baseText('mcp.workflowDeactivated.title'),
+			message: locale.baseText('mcp.workflowDeactivated.message'),
+			type: 'info',
+		});
+	}
 };
 
 const onBreadcrumbItemClick = async (item: PathItem) => {
@@ -592,7 +607,7 @@ const tags = computed(
 					:workflow-id="data.id"
 					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
-					@update:workflow-active="emitWorkflowActiveToggle"
+					@update:workflow-active="onWorkflowActiveToggle"
 				/>
 
 				<N8nActionToggle

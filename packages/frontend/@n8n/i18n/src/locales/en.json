@@ -1151,6 +1151,8 @@
 	"mainSidebar.whatsNew": "What’s New",
 	"mainSidebar.whatsNew.fullChangelog": "Full changelog",
 	"mcp.workflowNotEligable.description": "Only active, webhook-triggered workflows can be accessible through MCP",
+	"mcp.workflowDeactivated.title": "MCP Access Disabled",
+	"mcp.workflowDeactivated.message": "MCP Access has been disabled for this workflow because it has been deactivated.",
 	"menuActions.duplicate": "Duplicate",
 	"menuActions.download": "Download",
 	"menuActions.push": "Push to Git",

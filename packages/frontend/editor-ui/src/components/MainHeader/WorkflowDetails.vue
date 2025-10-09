@@ -86,6 +86,10 @@ const props = defineProps<{
 	isArchived: IWorkflowDb['isArchived'];
 }>();
 
+const emit = defineEmits<{
+	'workflow:deactivated': [];
+}>();
+
 const $style = useCssModule();
 
 const rootStore = useRootStore();
@@ -713,6 +717,12 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		});
 	}
 };
+
+const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
+	if (!value.active) {
+		emit('workflow:deactivated');
+	}
+};
 </script>
 
 <template>
@@ -813,6 +823,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					:workflow-active="active"
 					:workflow-id="id"
 					:workflow-permissions="workflowPermissions"
+					@update:workflow-active="onWorkflowActiveToggle"
 				/>
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
