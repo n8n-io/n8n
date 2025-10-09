@@ -2,12 +2,13 @@ import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchChatModelsApi, sendText } from './chat.api';
+import { fetchChatModelsApi, sendText, fetchConversationsApi } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	ChatHubConversationModel,
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
+	ChatHubConversation,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -17,6 +18,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const isResponding = ref(false);
 	const chatMessages = ref<ChatMessage[]>([]);
+	const conversations = ref<ChatHubConversation[]>([]);
+	const loadingConversations = ref(false);
 
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
@@ -30,6 +33,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		});
 		loadingModels.value = false;
 		return models.value;
+	}
+
+	async function fetchConversations() {
+		loadingConversations.value = true;
+		try {
+			conversations.value = await fetchConversationsApi(rootStore.restApiContext);
+		} catch (error) {
+			console.error('Failed to fetch conversations:', error);
+		} finally {
+			loadingConversations.value = false;
+		}
 	}
 
 	function addUserMessage(content: string, id: string) {
@@ -138,5 +152,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		assistantMessages,
 		usersMessages,
 		addUserMessage,
+		conversations,
+		loadingConversations,
+		fetchConversations,
 	};
 });

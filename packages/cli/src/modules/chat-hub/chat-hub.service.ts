@@ -2,6 +2,8 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubProvider,
 	type ChatModelsResponse,
+	type ChatHubConversationsResponse,
+	type ChatHubMessagesResponse,
 	chatHubProviderSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -451,5 +453,76 @@ export class ChatHubService {
 					typeVersion: 1.2,
 				};
 		}
+	}
+
+	/**
+	 * Get all conversations for a user
+	 * TODO: Replace with actual database queries
+	 */
+	async getConversations(): Promise<ChatHubConversationsResponse> {
+		// Mock data for now
+		return [
+			{
+				id: '550e8400-e29b-41d4-a716-446655440001',
+				title: 'Getting Started with n8n',
+				createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
+				updatedAt: new Date('2025-01-08T10:15:00Z').toISOString(),
+			},
+			{
+				id: '550e8400-e29b-41d4-a716-446655440002',
+				title: 'Workflow Automation Ideas',
+				createdAt: new Date('2025-01-07T14:30:00Z').toISOString(),
+				updatedAt: new Date('2025-01-07T15:00:00Z').toISOString(),
+			},
+			{
+				id: '550e8400-e29b-41d4-a716-446655440003',
+				title: 'API Integration Help',
+				createdAt: new Date('2025-01-06T09:00:00Z').toISOString(),
+				updatedAt: new Date('2025-01-06T09:30:00Z').toISOString(),
+			},
+		];
+	}
+
+	/**
+	 * Get all messages for a specific conversation
+	 * TODO: Replace with actual database queries
+	 */
+	async getConversationMessages(conversationId: string): Promise<ChatHubMessagesResponse> {
+		// Mock data for now - in a real implementation, we'd query by conversationId
+		this.logger.debug(`Fetching messages for conversation ${conversationId}`);
+
+		return [
+			{
+				id: '650e8400-e29b-41d4-a716-446655440001',
+				conversationId,
+				role: 'user',
+				content: 'How do I create my first workflow in n8n?',
+				createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
+			},
+			{
+				id: '650e8400-e29b-41d4-a716-446655440002',
+				conversationId,
+				role: 'assistant',
+				content:
+					"To create your first workflow in n8n:\n\n1. Click the '+' button in the top left\n2. Select 'Create New Workflow'\n3. Add nodes by clicking the '+' on the canvas\n4. Configure each node\n5. Connect nodes by dragging from one to another\n6. Test and activate your workflow\n\nWould you like help with a specific type of workflow?",
+				createdAt: new Date('2025-01-08T10:00:30Z').toISOString(),
+			},
+			{
+				id: '650e8400-e29b-41d4-a716-446655440003',
+				conversationId,
+				role: 'user',
+				content:
+					'Yes, I want to automate sending emails when a new row is added to a Google Sheet.',
+				createdAt: new Date('2025-01-08T10:05:00Z').toISOString(),
+			},
+			{
+				id: '650e8400-e29b-41d4-a716-446655440004',
+				conversationId,
+				role: 'assistant',
+				content:
+					"Perfect! Here's how to set that up:\n\n1. Add a **Google Sheets Trigger** node\n   - Select 'On Row Added'\n   - Connect your Google account\n   - Choose your spreadsheet\n\n2. Add a **Gmail** node\n   - Connect your Gmail account\n   - Set the recipient email\n   - Use expressions to include data from the sheet\n\n3. Activate the workflow\n\nWould you like more details on any of these steps?",
+				createdAt: new Date('2025-01-08T10:05:45Z').toISOString(),
+			},
+		];
 	}
 }

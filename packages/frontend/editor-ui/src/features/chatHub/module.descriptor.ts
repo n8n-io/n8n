@@ -1,7 +1,7 @@
 import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
 import { CHAT_VIEW } from './constants';
 
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const ChatSidebar = async () => await import('@/features/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/chatHub/ChatView.vue');
 
 export const ChatModule: FrontendModuleDescription = {
@@ -16,7 +16,7 @@ export const ChatModule: FrontendModuleDescription = {
 			path: '/ask',
 			components: {
 				default: ChatView,
-				sidebar: MainSidebar,
+				sidebar: ChatSidebar,
 			},
 			meta: {
 				middleware: ['authenticated', 'custom'],
