@@ -38,7 +38,7 @@ export const Warning = Template(
 );
 
 export const Danger = Template(
-	"<color-circles :colors=\"['--color-danger-shade-1', '--color-danger', '--color-danger-tint-1', '--color-danger-tint-2']\" />",
+	"<color-circles :colors=\"['--color-danger-shade-1', '--color-danger', '--color-danger-light', '--color-danger-light-2', '--color-danger-tint-1', '--color-danger-tint-2']\" />",
 );
 
 export const Text = Template(
@@ -50,5 +50,5 @@ export const Foreground = Template(
 );
 
 export const Background = Template(
-	"<color-circles :colors=\"['--color-background-dark', '--color-background-medium', '--color-background-base', '--color-background-light', '--color-background-xlight']\" />",
+	"<color-circles :colors=\"['--color-background-dark', '--color-background-medium', '--color-background-base', '--color-background-light-base', '--color-background-light', '--color-background-xlight']\" />",
 );
