@@ -564,7 +564,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-	console.log('nodeGraph', nodeGraph);
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 
