@@ -19,10 +19,8 @@ import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
-import { IncomingMessage, Agent as HttpAgent } from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { type AgentOptions, Agent as HttpsAgent } from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import { IncomingMessage } from 'http';
+import { type AgentOptions } from 'https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
@@ -63,10 +61,10 @@ import type {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import proxyFromEnv from 'proxy-from-env';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
+import { ProxyFromEnvHttpAgent, ProxyFromEnvHttpsAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
@@ -89,95 +87,48 @@ axios.defaults.proxy = false;
 
 function validateUrl(url?: string): boolean {
 	if (!url) return false;
-
 	try {
 		new URL(url);
 		return true;
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }
 
 function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
 	if (typeof proxyConfig === 'string') {
-		if (!validateUrl(proxyConfig)) {
-			return null;
-		}
-		return proxyConfig;
+		return validateUrl(proxyConfig) ? proxyConfig : null;
 	}
 
-	if (!proxyConfig?.host) {
-		return null;
-	}
+	if (!proxyConfig?.host) return null;
 
 	const { protocol, host, port, auth } = proxyConfig;
-	const safeProtocol = protocol?.endsWith(':') ? protocol.replace(':', '') : (protocol ?? 'http');
+	const safeProtocol = protocol?.endsWith(':') ? protocol.slice(0, -1) : (protocol ?? 'http');
 
 	try {
 		const url = new URL(`${safeProtocol}://${host}`);
-
-		if (port !== undefined) {
-			url.port = String(port);
-		}
-
+		if (port !== undefined) url.port = String(port);
 		if (auth?.username) {
 			url.username = auth.username;
 			url.password = auth.password ?? '';
 		}
-
 		return url.href;
-	} catch (error) {
+	} catch {
 		return null;
 	}
 }
 
-function getTargetUrlFromAxiosConfig(axiosConfig: AxiosRequestConfig): string {
-	const { url, baseURL } = axiosConfig;
-
-	try {
-		return new URL(url ?? '', baseURL).href;
-	} catch {
-		return '';
-	}
-}
-
-type AgentInfo = { protocol: 'http' | 'https'; agent: HttpAgent };
-
-export function getAgentWithProxy({
-	agentOptions,
-	proxyConfig,
-	targetUrl,
-}: {
-	agentOptions?: AgentOptions;
-	proxyConfig?: IHttpRequestOptions['proxy'] | string;
-	targetUrl: string;
-}): AgentInfo {
-	// If no proxy is set in config, use HTTP_PROXY/HTTPS_PROXY/ALL_PROXY from env depending on target URL
-	// Also respect NO_PROXY to disable the proxy for certain hosts
-	const proxyUrl = getUrlFromProxyConfig(proxyConfig) ?? proxyFromEnv.getProxyForUrl(targetUrl);
-	const protocol = targetUrl.startsWith('https://') ? 'https' : 'http';
-
-	if (proxyUrl) {
-		const ProxyAgent = protocol === 'http' ? HttpProxyAgent : HttpsProxyAgent;
-		return { protocol, agent: new ProxyAgent(proxyUrl, agentOptions) };
-	}
-
-	const Agent = protocol === 'http' ? HttpAgent : HttpsAgent;
-	return { protocol, agent: new Agent(agentOptions) };
-}
-
-const applyAgentToAxiosConfig = (
+function setAxiosAgents(
 	config: AxiosRequestConfig,
-	{ agent, protocol }: AgentInfo,
-): AxiosRequestConfig => {
-	if (protocol === 'http') {
-		config.httpAgent = agent;
-	} else {
-		config.httpsAgent = agent;
-	}
+	agentOptions?: AgentOptions,
+	proxyConfig?: IHttpRequestOptions['proxy'] | string,
+): void {
+	if (config.httpAgent || config.httpsAgent) return;
 
-	return config;
-};
+	const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
+	config.httpAgent = new ProxyFromEnvHttpAgent(customProxyUrl, agentOptions);
+	config.httpsAgent = new ProxyFromEnvHttpsAgent(customProxyUrl, agentOptions);
+}
 
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
@@ -185,13 +136,7 @@ axios.interceptors.request.use((config) => {
 		config.headers.setContentType(false, false);
 	}
 
-	if (!config.httpsAgent && !config.httpAgent) {
-		const agent = getAgentWithProxy({
-			targetUrl: getTargetUrlFromAxiosConfig(config),
-		});
-
-		applyAgentToAxiosConfig(config, agent);
-	}
+	setAxiosAgents(config);
 
 	return config;
 });
@@ -230,22 +175,20 @@ const getBeforeRedirectFn =
 	(redirectedRequest: Record<string, any>) => {
 		const redirectAgentOptions = {
 			...agentOptions,
-
 			servername: redirectedRequest.hostname,
 		};
-		const redirectAgent = getAgentWithProxy({
-			agentOptions: redirectAgentOptions,
-			proxyConfig,
-			targetUrl: redirectedRequest.href,
-		});
+		const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
 
-		redirectedRequest.agent = redirectAgent.agent;
-		if (redirectAgent.protocol === 'http') {
-			redirectedRequest.agents.http = redirectAgent.agent;
-		} else {
-			redirectedRequest.agents.https = redirectAgent.agent;
-		}
+		// Create both agents and set them
+		const httpAgent = new ProxyFromEnvHttpAgent(customProxyUrl, redirectAgentOptions);
+		const httpsAgent = new ProxyFromEnvHttpsAgent(customProxyUrl, redirectAgentOptions);
 
+		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
+			? httpsAgent
+			: httpAgent;
+		redirectedRequest.agents = { http: httpAgent, https: httpsAgent };
+
+		// Copy auth headers
 		if (axiosConfig.headers?.Authorization) {
 			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
 		}
@@ -613,13 +556,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		axiosConfig.timeout = requestObject.timeout;
 	}
 
-	const agent = getAgentWithProxy({
-		agentOptions,
-		proxyConfig: requestObject.proxy,
-		targetUrl: getTargetUrlFromAxiosConfig(axiosConfig),
-	});
-
-	applyAgentToAxiosConfig(axiosConfig, agent);
+	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy);
 
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, requestObject.proxy);
 
@@ -799,12 +736,7 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	const agent = getAgentWithProxy({
-		agentOptions,
-		proxyConfig: proxy,
-		targetUrl: getTargetUrlFromAxiosConfig(axiosRequest),
-	});
-	applyAgentToAxiosConfig(axiosRequest, agent);
+	setAxiosAgents(axiosRequest, agentOptions, proxy);
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest, n8nRequest.proxy);
 
