@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { CHAT_CONVERSATION_VIEW } from '@/features/chatHub/constants';
-import { N8nIcon, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
+import { CHAT_CONVERSATION_VIEW, CHAT_VIEW } from '@/features/chatHub/constants';
+import { N8nIcon, N8nIconButton, N8nMenuItem, N8nText } from '@n8n/design-system';
 import { useChatStore } from '@/features/chatHub/chat.store';
+import { groupConversationsByDate } from '@/features/chatHub/chat.utils';
 import { VIEWS } from '@/constants';
 
 const router = useRouter();
@@ -13,49 +14,43 @@ onMounted(async () => {
 	await chatStore.fetchSessions();
 });
 
-const sidebarMenuItems = computed<IMenuItem[]>(() => {
-	const menuItems: IMenuItem[] = chatStore.sessions.map((session) => ({
-		id: session.id,
-		label: session.title,
-		position: 'top',
-	}));
-
-	return menuItems;
-});
-
-const visibleItems = computed(() =>
-	sidebarMenuItems.value.filter((item) => item.available !== false),
-);
-
-function onConversationClick(conversationId: string) {
-	void router.push({
-		name: CHAT_CONVERSATION_VIEW,
-		params: { id: conversationId },
-	});
-}
+const groupedConversations = computed(() => groupConversationsByDate(chatStore.sessions));
 
 function onReturn() {
 	void router.push({ name: VIEWS.HOMEPAGE });
+}
+
+function onNewChat() {
+	void router.push({ name: CHAT_VIEW });
 }
 </script>
 
 <template>
 	<div :class="['side-menu', $style.container]">
-		<div :class="$style.returnButton" data-test-id="chat-back" @click="onReturn">
-			<i>
-				<N8nIcon icon="arrow-left" />
-			</i>
-			<N8nText bold>Chat</N8nText>
+		<div :class="$style.header">
+			<div :class="$style.returnButton" @click="onReturn">
+				<i>
+					<N8nIcon icon="arrow-left" />
+				</i>
+				<N8nText bold>Chat</N8nText>
+			</div>
+			<N8nIconButton title="New chat" icon="plus" type="secondary" @click="onNewChat" />
 		</div>
 		<div :class="$style.items">
-			<N8nMenuItem
-				v-for="item in visibleItems"
-				:key="item.id"
-				:item="item"
-				@click="onConversationClick(item.id)"
-			/>
-			<div v-if="visibleItems.length === 0" :class="$style.empty">
-				<N8nText color="text-light">No conversations yet</N8nText>
+			<div v-for="group in groupedConversations" :key="group.group" :class="$style.group">
+				<N8nText :class="$style.groupHeader" size="xsmall" bold color="text-light">
+					{{ group.group }}
+				</N8nText>
+				<N8nMenuItem
+					v-for="session in group.sessions"
+					:key="session.id"
+					:item="{
+						id: session.id,
+						icon: 'message-circle',
+						label: session.label,
+						route: { to: { name: CHAT_CONVERSATION_VIEW, params: { id: session.id } } },
+					}"
+				/>
 			</div>
 		</div>
 	</div>
@@ -63,7 +58,7 @@ function onReturn() {
 
 <style lang="scss" module>
 .container {
-	min-width: $sidebar-expanded-width;
+	width: 200px;
 	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
@@ -71,12 +66,20 @@ function onReturn() {
 	overflow: auto;
 }
 
-.returnButton {
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 	padding: var(--spacing-xs);
+	gap: var(--spacing-2xs);
+}
+
+.returnButton {
 	cursor: pointer;
 	display: flex;
 	gap: var(--spacing-3xs);
 	align-items: center;
+	flex: 1;
 	&:hover {
 		color: var(--color-primary);
 	}
@@ -85,8 +88,17 @@ function onReturn() {
 .items {
 	display: flex;
 	flex-direction: column;
-
 	padding: 0 var(--spacing-3xs);
+	gap: var(--spacing-xs);
+}
+
+.group {
+	display: flex;
+	flex-direction: column;
+}
+
+.groupHeader {
+	padding: 0 var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs);
 }
 
 .loading,

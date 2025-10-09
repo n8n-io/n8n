@@ -460,25 +460,48 @@ export class ChatHubService {
 	 * TODO: Replace with actual database queries
 	 */
 	async getConversations(): Promise<ChatHubConversationsResponse> {
-		// Mock data for now
+		// Mock data for now with diverse dates to demonstrate grouping
+		const now = new Date();
+		const today = new Date(now);
+		const yesterday = new Date(now);
+		yesterday.setDate(yesterday.getDate() - 1);
+		const threeDaysAgo = new Date(now);
+		threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+		const twoWeeksAgo = new Date(now);
+		twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+		const twoMonthsAgo = new Date(now);
+		twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
 		return [
 			{
-				id: '550e8400-e29b-41d4-a716-446655440001',
+				id: '7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f',
 				title: 'Getting Started with n8n',
-				createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
-				updatedAt: new Date('2025-01-08T10:15:00Z').toISOString(),
+				createdAt: today.toISOString(),
+				updatedAt: today.toISOString(),
 			},
 			{
-				id: '550e8400-e29b-41d4-a716-446655440002',
+				id: '3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c',
 				title: 'Workflow Automation Ideas',
-				createdAt: new Date('2025-01-07T14:30:00Z').toISOString(),
-				updatedAt: new Date('2025-01-07T15:00:00Z').toISOString(),
+				createdAt: yesterday.toISOString(),
+				updatedAt: yesterday.toISOString(),
 			},
 			{
-				id: '550e8400-e29b-41d4-a716-446655440003',
+				id: '9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f',
 				title: 'API Integration Help',
-				createdAt: new Date('2025-01-06T09:00:00Z').toISOString(),
-				updatedAt: new Date('2025-01-06T09:30:00Z').toISOString(),
+				createdAt: threeDaysAgo.toISOString(),
+				updatedAt: threeDaysAgo.toISOString(),
+			},
+			{
+				id: '5c8a1d3e-4b9f-4e2a-8d6c-7f3a9b2e4c8d',
+				title: 'Database Schema Design',
+				createdAt: twoWeeksAgo.toISOString(),
+				updatedAt: twoWeeksAgo.toISOString(),
+			},
+			{
+				id: '2f6d9a4c-8e1b-4d7a-9c3e-6a8f2b5d4e9c',
+				title: 'Docker Deployment Questions',
+				createdAt: twoMonthsAgo.toISOString(),
+				updatedAt: twoMonthsAgo.toISOString(),
 			},
 		];
 	}
@@ -493,7 +516,7 @@ export class ChatHubService {
 
 		// Return different mock data based on conversation ID
 		const mockConversations: Record<string, ChatHubMessagesResponse> = {
-			'550e8400-e29b-41d4-a716-446655440001': [
+			'7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f': [
 				{
 					id: '650e8400-e29b-41d4-a716-446655440001',
 					conversationId,
@@ -526,7 +549,7 @@ export class ChatHubService {
 					createdAt: new Date('2025-01-08T10:05:45Z').toISOString(),
 				},
 			],
-			'550e8400-e29b-41d4-a716-446655440002': [
+			'3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c': [
 				{
 					id: '650e8400-e29b-41d4-a716-446655440011',
 					conversationId,
@@ -558,7 +581,7 @@ export class ChatHubService {
 					createdAt: new Date('2025-01-07T14:47:00Z').toISOString(),
 				},
 			],
-			'550e8400-e29b-41d4-a716-446655440003': [
+			'9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f': [
 				{
 					id: '650e8400-e29b-41d4-a716-446655440021',
 					conversationId,

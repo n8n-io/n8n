@@ -696,8 +696,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 .modelSelector {
 	position: absolute;
-	top: var(--spacing-s);
-	left: var(--spacing-s);
+	top: var(--spacing-xs);
+	left: var(--spacing-xs);
 	z-index: 100;
 }
 </style>
