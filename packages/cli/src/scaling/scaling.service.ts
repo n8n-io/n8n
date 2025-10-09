@@ -80,11 +80,11 @@ export class ScalingService {
 		this.logger.debug('Queue setup completed');
 	}
 
-	async setupWorker(concurrency: number) {
+	setupWorker(concurrency: number) {
 		this.assertWorker();
 		this.assertQueue();
 
-		await this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				this.eventService.emit('job-dequeued', {
 					executionId: job.data.executionId,

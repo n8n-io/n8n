@@ -1,5 +1,5 @@
-import type { ChatRequest } from '@/types/assistant.types';
-import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
+import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -31,10 +31,9 @@ export function createBuilderPayload(
 	}
 
 	if (options.executionData) {
-		workflowContext.executionData = assistantHelpers.simplifyResultData(
-			options.executionData,
-			true,
-		);
+		workflowContext.executionData = assistantHelpers.simplifyResultData(options.executionData, {
+			compact: true,
+		});
 	}
 
 	if (options.nodesForSchema?.length) {
