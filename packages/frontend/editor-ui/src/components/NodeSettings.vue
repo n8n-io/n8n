@@ -11,7 +11,7 @@ import type {
 	NodeConnectionType,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL } from '@/constants';
@@ -53,7 +53,6 @@ import {
 	getNodeSettingsInitialValues,
 	nameIsParameter,
 } from '@/utils/nodeSettingsUtils';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
