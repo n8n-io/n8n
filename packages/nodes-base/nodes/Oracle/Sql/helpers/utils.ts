@@ -27,7 +27,6 @@ import type {
 } from './interfaces';
 
 const n8nTypetoDBType: { [key: string]: oracledb.DbType } = {
-	array: oracledb.DB_TYPE_VECTOR,
 	boolean: oracledb.DB_TYPE_BOOLEAN,
 	date: oracledb.DATE,
 	dateTime: oracledb.DB_TYPE_TIMESTAMP,
@@ -702,7 +701,7 @@ function generateBindVariablesList(
 	}
 
 	// replace :bindname
-	const regex = new RegExp(':' + escapedName, 'g');
+	const regex = new RegExp(`:${escapedName}\\b`, 'g');
 	generatedSqlString = generatedSqlString.slice(0, -1) + ')'; //replace trailing comma with closing parenthesis.
 	return query.replace(regex, generatedSqlString);
 }
