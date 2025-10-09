@@ -66,6 +66,43 @@ describe('Variables in Public API', () => {
 			});
 		});
 
+		it('if licensed, should be able to filter variables by projectId and state', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			await Promise.all([
+				createVariable(),
+				createProjectVariable('projectKey', 'projectValue', project),
+				createProjectVariable('emptyVar', '', project),
+				createVariable('emptyVar', ''),
+			]);
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/variables')
+				.query({ projectId: project.id, state: 'empty' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body).toHaveProperty('data');
+			expect(response.body).toHaveProperty('nextCursor');
+			expect(Array.isArray(response.body.data)).toBe(true);
+			expect(response.body.data.length).toBe(1);
+			expect(response.body.data[0]).toEqual(
+				expect.objectContaining({
+					key: 'emptyVar',
+					value: '',
+					project: expect.objectContaining({ id: project.id }),
+				}),
+			);
+		});
+
 		it('if not licensed, should reject', async () => {
 			/**
 			 * Act

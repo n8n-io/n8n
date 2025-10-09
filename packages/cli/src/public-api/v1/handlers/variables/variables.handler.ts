@@ -57,12 +57,15 @@ export = {
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
 		validCursor,
 		async (req: VariablesRequest.GetAll, res: Response) => {
-			const { offset = 0, limit = 100, projectId } = req.query;
+			const { offset = 0, limit = 100, projectId, state } = req.query;
 
 			const [variables, count] = await Container.get(VariablesRepository).findAndCount({
 				skip: offset,
 				take: limit,
-				where: { project: projectId === 'null' ? IsNull() : { id: projectId } },
+				where: {
+					project: projectId === 'null' ? IsNull() : { id: projectId },
+					value: state === 'empty' ? '' : undefined,
+				},
 				relations: ['project'],
 			});
 

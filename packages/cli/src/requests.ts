@@ -245,6 +245,7 @@ export declare namespace VariablesRequest {
 			offset?: number;
 			lastId?: string;
 			projectId?: string;
+			state?: 'empty';
 		}
 	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;

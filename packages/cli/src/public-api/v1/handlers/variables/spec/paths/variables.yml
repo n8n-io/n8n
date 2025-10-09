@@ -37,6 +37,12 @@ get:
       schema:
         type: string
         example: VmwOO9HeTEj20kxM
+    - name: state
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [empty]
   responses:
     '200':
       description: Operation successful.
