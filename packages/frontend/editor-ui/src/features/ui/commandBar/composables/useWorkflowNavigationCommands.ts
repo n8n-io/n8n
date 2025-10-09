@@ -10,7 +10,7 @@ import { VIEWS } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { CommandGroup, CommandBarItem } from './types';
+import type { CommandGroup, CommandBarItem } from '../commandBar.types';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',

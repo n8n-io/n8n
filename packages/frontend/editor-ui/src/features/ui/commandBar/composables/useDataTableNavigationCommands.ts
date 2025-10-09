@@ -5,7 +5,7 @@ import debounce from 'lodash/debounce';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
-import type { CommandGroup, CommandBarItem } from './types';
+import type { CommandGroup, CommandBarItem } from '../commandBar.types';
 import type { DataTable } from '@/features/dataTable/dataTable.types';
 import { N8nIcon } from '@n8n/design-system';
 
