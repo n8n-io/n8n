@@ -256,6 +256,7 @@ export function createMockEnterpriseSettings(
 				limit: 0,
 			},
 		},
+		customRoles: false,
 		...overrides, // Override with any passed properties
 	};
 }
