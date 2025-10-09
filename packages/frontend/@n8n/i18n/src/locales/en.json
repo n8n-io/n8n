@@ -1558,6 +1558,7 @@
 	"nodeView.addNode": "Add node",
 	"nodeView.openFocusPanel": "Open focus panel",
 	"nodeView.openNodesPanel": "Open nodes panel",
+	"nodeView.openCommandBar": "Command bar",
 	"nodeView.addATriggerNodeFirst": "Add a <a data-action='showNodeCreator'>Trigger Node</a> first",
 	"nodeView.addOrEnableTriggerNode": "<a data-action='showNodeCreator'>Add</a> or enable a Trigger node to execute the workflow",
 	"nodeView.addSticky": "Click to add sticky note",
