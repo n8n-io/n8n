@@ -11,6 +11,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 
 import { N8nTabs } from '@n8n/design-system';
+import { useTelemetry } from '@/composables/useTelemetry';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
@@ -29,6 +30,7 @@ const locale = useI18n();
 const route = useRoute();
 const posthogStore = usePostHog();
 const projectStore = useProjectsStore();
+const telemetry = useTelemetry();
 
 const isProjectVariablesEnabled = computed(() =>
 	posthogStore.isVariantEnabled(
@@ -147,6 +149,11 @@ watch(
 );
 
 function onSelectTab(value: string | number) {
+	if (selectedTab.value === 'variables') {
+		telemetry.track('User clicked project variables tab', {
+			project_id: projectId.value,
+		});
+	}
 	selectedTab.value = value as RouteRecordName;
 }
 </script>
