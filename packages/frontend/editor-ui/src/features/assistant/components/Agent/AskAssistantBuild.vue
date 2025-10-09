@@ -68,10 +68,20 @@ const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
+const shuffle = <T,>(array: T[]): T[] => {
+	const shuffled = array.slice();
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+	}
+	return shuffled;
+};
+
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	// Only show suggestions when no messages in chat yet (blank state)
 	if (builderStore.chatMessages.length === 0) {
-		return WORKFLOW_SUGGESTIONS;
+		// Shuffle the suggestions to show them in random order
+		return shuffle(WORKFLOW_SUGGESTIONS);
 	}
 	return undefined;
 });
