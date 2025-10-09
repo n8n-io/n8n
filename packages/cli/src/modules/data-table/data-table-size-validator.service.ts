@@ -70,13 +70,13 @@ export class DataTableSizeValidator {
 	}
 
 	sizeToState(sizeBytes: number): DataTableSizeStatus {
-		this.globalConfig.dataTable.warningThreshold ??= Math.floor(
-			0.8 * this.globalConfig.dataTable.maxSize,
-		);
+		const warningThreshold =
+			this.globalConfig.dataTable.warningThreshold ??
+			Math.floor(0.8 * this.globalConfig.dataTable.maxSize);
 
 		if (sizeBytes >= this.globalConfig.dataTable.maxSize) {
 			return 'error';
-		} else if (sizeBytes >= this.globalConfig.dataTable.warningThreshold) {
+		} else if (sizeBytes >= warningThreshold) {
 			return 'warn';
 		}
 		return 'ok';
