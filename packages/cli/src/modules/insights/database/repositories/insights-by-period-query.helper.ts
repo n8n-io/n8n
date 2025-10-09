@@ -55,20 +55,25 @@ const getDatetimeSql = ({
 };
 
 /**
- * Generates a CTE query for date range filtering based on the insights-query-spec
+ * Generates a SQL Common Table Expression (CTE) query that provides three date boundaries for insights queries
  *
- * The logic handles three periodicity:
- * - Hour periodicity (1 day): when startDate == endDate
- * - Day periodicity (2-30 days): when range is 2-30 days
- * - Week periodicity (31+ days): when range is 31+ days
+ * Behavior:
+ * - If startDate and endDate are the same and today
+ *   - returns the last 24 hours: prev_start_date (2 days ago), start_date (1 day ago), end_date (now).
+ * - Otherwise:
+ *   - prev_start_date: start of the day before the range
+ *   - start_date: start of the current range
+ *   - end_date: "now" if endDate is today, else start of the day after endDate
  *
- * It also distinguishes between:
- * - "Last X" queries: when endDate is today at 00:00:00 (uses NOW() as end)
- * - Specific range queries: historical date ranges (uses endDate + 1 day)
+ * The SQL CTE can be joined with the insights table for filtering/aggregation.
  *
- * @param dbType - The database type (sqlite, postgresdb, mysqldb, mariadb)
- * @param startDate - The start date of the range
- * @param endDate - The end date of the range
+ * @param dbType - The database type ('sqlite', 'postgresdb', 'mysqldb', 'mariadb')
+ * @param startDate - The start date of the range (inclusive)
+ * @param endDate - The end date of the range (inclusive, or "now" if today)
+ * @returns SQL CTE query with `prev_start_date`, `start_date`, and `end_date` columns
+ * - `prev_start_date`: The start of the previous period (used for comparison)
+ * - `start_date`: The start of the current period (inclusive)
+ * - `end_date`: The end of the current period (exclusive)
  */
 export const getDateRangesCommonTableExpressionQuery = ({
 	dbType,
