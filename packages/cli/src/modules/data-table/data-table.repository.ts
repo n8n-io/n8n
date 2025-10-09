@@ -11,7 +11,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableRowsRepository } from './data-table-rows.repository';
+import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -22,7 +22,7 @@ import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 export class DataTableRepository extends Repository<DataTable> {
 	constructor(
 		dataSource: DataSource,
-		private dataTableRowsRepository: DataTableRowsRepository,
+		private ddlService: DataTableDDLService,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(DataTable, dataSource.manager);
@@ -61,7 +61,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			}
 
 			// create user table (will create empty table with just id column if no columns)
-			await this.dataTableRowsRepository.createTableWithColumns(dataTableId, columnEntities, em);
+			await this.ddlService.createTableWithColumns(dataTableId, columnEntities, em);
 
 			if (!dataTableId) {
 				throw new UnexpectedError('Data table creation failed');
@@ -79,7 +79,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	async deleteDataTable(dataTableId: string, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.delete(DataTable, { id: dataTableId });
-			await this.dataTableRowsRepository.dropTable(dataTableId, em);
+			await this.ddlService.dropTable(dataTableId, em);
 			return true;
 		});
 	}
@@ -147,7 +147,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			let changed = false;
 			for (const match of existingTables) {
 				const result = await em.delete(DataTable, { id: match.id });
-				await this.dataTableRowsRepository.dropTable(match.id, em);
+				await this.ddlService.dropTable(match.id, em);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
 
