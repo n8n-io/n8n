@@ -271,8 +271,8 @@ onUnmounted(() => {
 
 <template>
 	<Teleport to="body">
-		<Transition name="command-bar" appear>
-			<FocusScope :trapped="isOpen">
+		<FocusScope :trapped="isOpen">
+			<Transition name="command-bar" appear>
 				<div
 					v-if="isOpen"
 					ref="commandBarRef"
@@ -328,8 +328,8 @@ onUnmounted(() => {
 						No results found
 					</div>
 				</div>
-			</FocusScope>
-		</Transition>
+			</Transition>
+		</FocusScope>
 	</Teleport>
 </template>
 
@@ -417,14 +417,14 @@ onUnmounted(() => {
 /* Global transition classes for command bar animations */
 .command-bar-enter-active {
 	transition:
-		opacity 0.2s ease-out,
-		transform 0.2s ease-out;
+		opacity 0.1s ease-out,
+		transform 0.1s ease-out;
 }
 
 .command-bar-leave-active {
 	transition:
-		opacity 0.15s ease-in,
-		transform 0.15s ease-in;
+		opacity 0.1s ease-in,
+		transform 0.1s ease-in;
 }
 
 .command-bar-enter-from {
