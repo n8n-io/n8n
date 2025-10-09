@@ -1,12 +1,43 @@
 import { type OpenAIClient } from '@langchain/openai';
 import type { IDataObject } from 'n8n-workflow';
-import type { ResponseInputContent, ResponseInputItem } from 'openai/resources/responses/responses';
+import type {
+	ComputerTool,
+	CustomTool,
+	FileSearchTool,
+	FunctionTool,
+	ResponseInputContent,
+	ResponseInputItem,
+	Tool,
+	WebSearchTool as OpenAIChatWebSearchTool,
+} from 'openai/resources/responses/responses';
 
 export type ChatResponse = OpenAIClient.Responses.Response;
-
 export type ChatContent = ResponseInputContent[];
-
 export type ChatInputItem = OpenAIClient.Responses.ResponseInputItem.Message;
+
+// FIXME: remove these overrides, when langchain-openai is updated with the new types
+export type WebSearchTool = Omit<OpenAIChatWebSearchTool, 'type'> & {
+	type: 'web_search';
+	filters?: {
+		allowed_domains?: string[];
+	};
+};
+export type McpTool = Tool.Mcp & {
+	type: 'mcp';
+	authorization?: string;
+	connector_id?: string;
+};
+
+export type ChatTool =
+	| FunctionTool
+	| FileSearchTool
+	| WebSearchTool
+	| ComputerTool
+	| McpTool
+	| Tool.CodeInterpreter
+	| Tool.ImageGeneration
+	| Tool.LocalShell
+	| CustomTool;
 
 export type ChatResponseRequest = Omit<
 	OpenAIClient.Responses.ResponseCreateParamsNonStreaming,
@@ -18,6 +49,7 @@ export type ChatResponseRequest = Omit<
 	};
 	input: ResponseInputItem[];
 	top_logprobs?: number;
+	tools?: ChatTool[];
 };
 
 export type ChatCompletion = {

@@ -273,6 +273,205 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Built-in Tools',
+		name: 'builtInTools',
+		placeholder: 'Add Built-in Tool',
+		type: 'collection',
+		default: {},
+		options: [
+			{
+				displayName: 'Web Search',
+				name: 'webSearch',
+				type: 'collection',
+				default: { searchContextSize: 'medium' },
+				options: [
+					{
+						displayName: 'Search Context Size',
+						name: 'searchContextSize',
+						type: 'options',
+						default: 'medium',
+						options: [
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+						],
+					},
+					{
+						displayName: 'Web Search Allowed Domains',
+						name: 'allowedDomains',
+						type: 'string',
+						default: '',
+						description:
+							'Comma-separated list of domains to search. Only domains in this list will be searched.',
+						placeholder: 'e.g. google.com, wikipedia.org',
+					},
+					{
+						displayName: 'Country',
+						name: 'country',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. US, GB',
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. New York, London',
+					},
+					{
+						displayName: 'Region',
+						name: 'region',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. New York, London',
+					},
+				],
+			},
+			{
+				displayName: 'MCP Servers',
+				name: 'mcpServers',
+				type: 'fixedCollection',
+				placeholder: 'Add MCP Server',
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+				},
+				default: { mcpServerOptions: [{ serverLabel: '' }] },
+				options: [
+					{
+						displayName: 'MCP Server',
+						name: 'mcpServerOptions',
+						values: [
+							{
+								displayName: 'Server Label',
+								name: 'serverLabel',
+								type: 'string',
+								default: '',
+								description: 'A label to identify this MCP server',
+								placeholder: 'e.g. My Database Server',
+							},
+							{
+								displayName: 'Connection Type',
+								name: 'connectionType',
+								type: 'options',
+								default: 'url',
+								options: [
+									{ name: 'URL', value: 'url' },
+									{ name: 'Connector ID', value: 'connector_id' },
+								],
+								description: 'Choose how to connect to the MCP server',
+							},
+							{
+								displayName: 'Server URL',
+								name: 'serverUrl',
+								type: 'string',
+								default: '',
+								description: 'The URL of the MCP server',
+								placeholder: 'e.g. https://api.example.com/mcp',
+								displayOptions: {
+									show: {
+										connectionType: ['url'],
+									},
+								},
+							},
+							{
+								displayName: 'Connector ID',
+								name: 'connectorId',
+								type: 'string',
+								default: '',
+								description: 'The connector ID for the MCP server',
+								placeholder: 'e.g. connector_gmail',
+								displayOptions: {
+									show: {
+										connectionType: ['connector_id'],
+									},
+								},
+							},
+							{
+								displayName: 'Authorization',
+								name: 'authorization',
+								type: 'string',
+								default: '',
+								description: 'Authorization token or credentials for the MCP server',
+							},
+							{
+								displayName: 'Headers',
+								name: 'headers',
+								type: 'json',
+								default: '{}',
+								description: 'Additional headers to send with requests to the MCP server',
+								placeholder: '{"X-Custom-Header": "value"}',
+							},
+							{
+								displayName: 'Server Description',
+								name: 'serverDescription',
+								type: 'string',
+								default: '',
+								description: 'A description of what this MCP server provides',
+								placeholder: 'e.g. Database access for user management',
+								typeOptions: {
+									rows: 2,
+								},
+							},
+							{
+								displayName: 'Allowed Tools',
+								name: 'allowedTools',
+								type: 'string',
+								default: '',
+								description:
+									'Comma-separated list of tools to allow. If not provided, all tools will be allowed.',
+								placeholder: 'e.g. tool1,tool2',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'File Search',
+				name: 'fileSearch',
+				type: 'collection',
+				default: { vectorStoreIds: '[]' },
+				options: [
+					{
+						displayName: 'Vector Store IDs',
+						name: 'vectorStoreIds',
+						type: 'json',
+						default: '[]',
+						required: true,
+					},
+					{
+						displayName: 'Filters',
+						name: 'filters',
+						type: 'json',
+						default: '{}',
+					},
+					{
+						displayName: 'Max Results',
+						name: 'maxResults',
+						type: 'number',
+						default: 1,
+						typeOptions: { minValue: 1, maxValue: 50 },
+					},
+				],
+			},
+			{
+				displayName: 'Local Shell',
+				name: 'localShell',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to allow the model to execute shell commands in a local environment',
+			},
+			{
+				displayName: 'Code Interpreter',
+				name: 'codeInterpreter',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to allow the model to execute code in a local environment',
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
@@ -410,12 +609,11 @@ const properties: INodeProperties[] = [
 								default: '',
 								description: 'Optional version of the prompt template',
 							},
-							// TODO:don't validate this field
 							{
 								displayName: 'Variables',
 								name: 'variables',
 								type: 'json',
-								default: '',
+								default: '{}',
 								description: 'Variables to be substituted into the prompt template',
 							},
 						],
@@ -644,7 +842,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const messages = this.getNodeParameter('responses.values', i, []) as IDataObject[];
 		const options = this.getNodeParameter('options', i, {});
 		const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
-
+		const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
 		const abortSignal = this.getExecutionCancelSignal();
 
 		const hideTools = this.getNodeParameter('hideTools', i, '') as string;
@@ -661,8 +859,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			tools = externalTools.length ? externalTools?.map(formatToOpenAIResponsesTool) : undefined;
 		}
 
-		const body = createRequest(model, messages, options, tools);
-
+		const body = createRequest({ model, messages, options, tools, builtInTools });
 		let response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
 		})) as ChatResponse;

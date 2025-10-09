@@ -1,13 +1,19 @@
-import { jsonParse, type IDataObject } from 'n8n-workflow';
+import { isObjectEmpty, jsonParse, type IDataObject } from 'n8n-workflow';
 import type { ChatInputItem, ChatContent, ChatResponseRequest } from '../../../helpers/interfaces';
 import type { OpenAIClient } from '@langchain/openai';
 import get from 'lodash/get';
+import isObject from 'lodash/isObject';
 
-function removeEmptyProperties<T>(rest: { [key: string]: any }): T {
+const toArray = (str: string) => str.split(',').map((e) => e.trim());
+
+const removeEmptyProperties = <T>(rest: { [key: string]: any }): T => {
 	return Object.keys(rest)
-		.filter((k) => rest[k] !== '' && rest[k] !== undefined)
+		.filter(
+			(k) =>
+				rest[k] !== '' && rest[k] !== undefined && !(isObject(rest[k]) && isObjectEmpty(rest[k])),
+		)
 		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {}) as unknown as T;
-}
+};
 
 const formatInput = (messages: IDataObject[]) => {
 	return messages.map<ChatInputItem>((message) => {
@@ -42,12 +48,21 @@ const formatInput = (messages: IDataObject[]) => {
 	});
 };
 
-export const createRequest = (
-	model: string,
-	messages: IDataObject[],
-	options: IDataObject,
-	tools?: OpenAIClient.Responses.FunctionTool[],
-): ChatResponseRequest => {
+interface CreateRequestOptions {
+	model: string;
+	messages: IDataObject[];
+	options: IDataObject;
+	builtInTools?: IDataObject;
+	tools?: OpenAIClient.Responses.FunctionTool[];
+}
+
+export const createRequest = ({
+	model,
+	messages,
+	options,
+	builtInTools,
+	tools,
+}: CreateRequestOptions): ChatResponseRequest => {
 	const body: ChatResponseRequest = {
 		model,
 		input: formatInput(messages),
@@ -144,6 +159,106 @@ export const createRequest = (
 		}
 
 		body.text = textConfig;
+	}
+
+	if (builtInTools) {
+		const newTools = body.tools ?? [];
+
+		const webSearchOptions = get(builtInTools, 'webSearch') as IDataObject | undefined;
+		if (webSearchOptions) {
+			let allowedDomains: string[] | undefined;
+			const allowedDomainsRaw = get(webSearchOptions, 'allowedDomains', '') as string;
+			if (allowedDomainsRaw) {
+				allowedDomains = toArray(allowedDomainsRaw);
+			}
+
+			let userLocation: OpenAIClient.Responses.WebSearchTool.UserLocation | undefined;
+			if (webSearchOptions.country || webSearchOptions.city || webSearchOptions.region) {
+				userLocation = {
+					type: 'approximate',
+					country: webSearchOptions.country as string,
+					city: webSearchOptions.city as string,
+					region: webSearchOptions.region as string,
+				};
+			}
+
+			newTools.push(
+				removeEmptyProperties({
+					type: 'web_search',
+					search_context_size: get(webSearchOptions, 'searchContextSize', 'medium') as
+						| 'low'
+						| 'medium'
+						| 'high',
+					user_location: userLocation,
+					...(allowedDomains && { filters: { allowed_domains: allowedDomains } }),
+				}),
+			);
+		}
+
+		const mcpServers = get(builtInTools.mcpServers, 'mcpServerOptions') as
+			| IDataObject[]
+			| undefined;
+		if (Array.isArray(mcpServers) && mcpServers.length) {
+			for (const mcpServer of mcpServers) {
+				let allowedTools: string[] | undefined;
+				const allowedToolsRaw = get(mcpServer, 'allowedTools', '') as string;
+				if (allowedToolsRaw) {
+					allowedTools = toArray(allowedToolsRaw);
+				}
+
+				const headersRaw = get(mcpServer, 'headers', '') as string;
+
+				newTools.push(
+					removeEmptyProperties({
+						type: 'mcp',
+						server_label: mcpServer.serverLabel as string,
+						server_url: mcpServer.serverUrl as string,
+						connector_id: mcpServer.connectorId as string,
+						authorization: mcpServer.authorization as string,
+						allowed_tools: allowedTools,
+						headers: headersRaw
+							? jsonParse(headersRaw, { errorMessage: 'Failed to parse headers' })
+							: undefined,
+						require_approval: 'never',
+						server_description: mcpServer.serverDescription as string,
+					}),
+				);
+			}
+		}
+
+		if (builtInTools.codeInterpreter) {
+			newTools.push({
+				type: 'code_interpreter',
+				container: {
+					type: 'auto',
+				},
+			});
+		}
+
+		if (builtInTools.localShell) {
+			newTools.push({
+				type: 'local_shell',
+			});
+		}
+
+		if (builtInTools.fileSearch) {
+			const vectorStoreIds = get(builtInTools.fileSearch, 'vectorStoreIds', '[]') as string;
+			const filters = get(builtInTools.fileSearch, 'filters', '{}') as string;
+			newTools.push(
+				removeEmptyProperties({
+					type: 'file_search',
+					vector_store_ids: jsonParse(vectorStoreIds, {
+						errorMessage: 'Failed to parse vector store IDs',
+					}),
+					filters: filters
+						? jsonParse(filters, { errorMessage: 'Failed to parse filters' })
+						: undefined,
+					max_num_results: get(builtInTools.fileSearch, 'maxResults') as number,
+				}),
+			);
+		}
+
+		body.tools = newTools;
 	}
 
 	return removeEmptyProperties(body);
