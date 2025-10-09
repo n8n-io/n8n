@@ -1154,7 +1154,7 @@
 	"mcp.workflowDeactivated.title": "MCP Access Disabled",
 	"mcp.productionCheklist.title": "Enable MCP access",
 	"mcp.productionCheklist.description": "Allow MCP clients to access this workflow",
-	"mcp.workflowDeactivated.message": "MCP Access has been disabled for this workflow because it has been deactivated.",
+	"mcp.workflowDeactivated.message": "MCP Access has been disabled for this workflow because it is deactivated.",
 	"menuActions.duplicate": "Duplicate",
 	"menuActions.download": "Download",
 	"menuActions.push": "Push to Git",

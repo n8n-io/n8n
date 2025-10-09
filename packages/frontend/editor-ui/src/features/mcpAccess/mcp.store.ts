@@ -67,20 +67,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 		const { id, settings, versionId } = response;
 
-		// Update the workflow in the store
+		// Update local  version of the workflow
 		if (id === workflowsStore.workflowId) {
 			workflowsStore.setWorkflowVersionId(versionId);
 			if (settings) {
 				workflowsStore.private.setWorkflowSettings(settings);
 			}
 		}
-
-		if (workflowsStore.getWorkflowById(id)) {
-			const workflowPatch: Partial<IWorkflowDb> = { id, versionId };
-			if (settings) {
-				workflowPatch.settings = settings;
-			}
-			workflowsStore.addWorkflow(workflowPatch as IWorkflowDb);
+		if (workflowsStore.workflowsById[id]) {
+			workflowsStore.workflowsById[id] = {
+				...workflowsStore.workflowsById[id],
+				settings,
+				versionId,
+			};
 		}
 
 		return response;
