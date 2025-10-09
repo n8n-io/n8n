@@ -19,8 +19,8 @@
     "format:check": "biome ci .  && prettier --check . --ignore-path ../../../../.prettierignore",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
-    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
-    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
+    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter \"$(pwd)/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js\"",
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter $(pwd)/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",

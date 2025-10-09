@@ -235,7 +235,7 @@ defineExpose({
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color-text-base);
 	--ag-cell-text-color: var(--color-text-dark);
-	--ag-accent-color: var(--p-color-secondary-470);
+	--ag-accent-color: var(--p--color--secondary-470);
 	--ag-row-hover-color: var(--color-background-light-base);
 	--ag-background-color: var(--color-background-xlight);
 	--ag-border-color: var(--border-color-base);
@@ -252,7 +252,7 @@ defineExpose({
 	--ag-cell-horizontal-padding: var(--spacing-2xs);
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
-	--ag-range-selection-border-color: var(--p-color-secondary-470);
+	--ag-range-selection-border-color: var(--p--color--secondary-470);
 	--ag-input-padding-start: var(--spacing-2xs);
 	--ag-input-background-color: var(--color-text-xlight);
 	--ag-focus-shadow: none;
@@ -396,7 +396,7 @@ defineExpose({
 	}
 
 	:global(.ag-row-last) {
-		border-bottom: none;
+		border-bottom-color: var(--ag-border-color);
 	}
 
 	:global(.ag-filter-body-wrapper) {

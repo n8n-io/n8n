@@ -136,7 +136,7 @@ export const usePostHog = defineStore('posthog', () => {
 		const distinctId = `${instanceId}#${userId}`;
 
 		const options: Parameters<typeof window.posthog.init>[1] = {
-			api_host: config.apiHost,
+			api_host: settingsStore.settings.posthog.proxy,
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
 			debug: config.debug,
@@ -179,6 +179,12 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
+	const capture = (event: string, properties: IDataObject) => {
+		if (typeof window.posthog?.capture === 'function') {
+			window.posthog.capture(event, properties);
+		}
+	};
+
 	return {
 		init,
 		isFeatureEnabled,
@@ -187,6 +193,7 @@ export const usePostHog = defineStore('posthog', () => {
 		reset,
 		identify,
 		setMetadata,
+		capture,
 		overrides,
 	};
 });

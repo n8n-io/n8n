@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 /**
- * AddResource component for creating workflows, credentials, folders, and data stores.
+ * AddResource component for creating workflows, credentials, folders, and data tables.
  * Represents the "add resource" functionality in the project header.
  *
  * @example
@@ -9,7 +9,7 @@ import type { Locator, Page } from '@playwright/test';
  * await n8n.workflows.addResource.workflow();
  * await n8n.workflows.addResource.credential();
  * await n8n.workflows.addResource.folder();
- * await n8n.workflows.addResource.dataStore();
+ * await n8n.workflows.addResource.dataTable();
  */
 export class AddResource {
 	constructor(private page: Page) {}
@@ -30,8 +30,8 @@ export class AddResource {
 		return this.page.getByTestId('action-folder');
 	}
 
-	getDataStoreAction(): Locator {
-		return this.page.getByTestId('action-dataStore');
+	getDataTableAction(): Locator {
+		return this.page.getByTestId('action-dataTable');
 	}
 
 	getAction(actionType: string): Locator {
@@ -52,8 +52,8 @@ export class AddResource {
 		await this.getFolderAction().click();
 	}
 
-	async dataStore(): Promise<void> {
+	async dataTable(): Promise<void> {
 		await this.getDropdownButton().click();
-		await this.getDataStoreAction().click();
+		await this.getDataTableAction().click();
 	}
 }

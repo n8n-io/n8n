@@ -122,7 +122,7 @@ export class ProjectService {
 			targetProject = await this.getProjectWithScope(user, migrateToProject, [
 				'credential:create',
 				'workflow:create',
-				'dataStore:create',
+				'dataTable:create',
 			]);
 
 			if (!targetProject) {
