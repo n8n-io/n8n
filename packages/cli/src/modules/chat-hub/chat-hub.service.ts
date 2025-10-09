@@ -37,8 +37,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
-type Model = ChatModelsResponse[ChatHubProvider]['models'][number];
-
 @Service()
 export class ChatHubService {
 	constructor(
@@ -55,23 +53,20 @@ export class ChatHubService {
 		userId: string,
 		credentialIds: Record<ChatHubProvider, string | null>,
 	): Promise<ChatModelsResponse> {
-		const response: ChatModelsResponse = {
-			openai: { models: [] },
-			anthropic: { models: [] },
-			google: { models: [] },
-		};
 		const additionalData = await getBase({ userId });
 
-		for (const provider of chatHubProviderSchema.options) {
-			const credentialId = credentialIds[provider];
+		const responses = await Promise.all(
+			chatHubProviderSchema.options.map<
+				Promise<[ChatHubProvider, ChatModelsResponse[ChatHubProvider]]>
+			>(async (provider) => {
+				const credentialId = credentialIds[provider];
 
-			if (!credentialId) {
-				continue;
-			}
+				if (!credentialId) {
+					return [provider, { models: [] }];
+				}
 
-			const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
 
-			try {
 				// Get the decrypted credential data
 				const nodeCredentials: INodeCredentialsDetails = {
 					id: credentialId,
@@ -89,22 +84,33 @@ export class ChatHubService {
 
 				// Extract API key from credentials based on provider
 				const apiKey = this.extractApiKey(provider, credentials);
+
 				if (!apiKey) {
-					response[provider] = { models: [] };
-					continue;
+					return [provider, { models: [] }];
 				}
 
-				response[provider] = await this.fetchModelsForProvider(provider, apiKey);
-			} catch (error) {
-				this.logger.debug(`Failed to get models for ${provider}`, { error });
-				response[provider] = {
-					models: [],
-					error: error instanceof Error ? error.message : String(error),
-				};
-			}
-		}
+				try {
+					return [provider, await this.fetchModelsForProvider(provider, apiKey)];
+				} catch {
+					return [
+						provider,
+						{ models: [], error: 'Could not retrieve models. Verify credentials.' },
+					];
+				}
+			}),
+		);
 
-		return response;
+		return responses.reduce<ChatModelsResponse>(
+			(acc, [provider, res]) => {
+				acc[provider] = res;
+				return acc;
+			},
+			{
+				openai: { models: [] },
+				anthropic: { models: [] },
+				google: { models: [] },
+			},
+		);
 	}
 
 	private async fetchModelsForProvider(
@@ -113,15 +119,15 @@ export class ChatHubService {
 	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		switch (provider) {
 			case 'openai':
-				return { models: await this.fetchOpenAiModels(apiKey) };
+				return await this.fetchOpenAiModels(apiKey);
 			case 'anthropic':
-				return { models: await this.fetchAnthropicModels(apiKey) };
+				return await this.fetchAnthropicModels(apiKey);
 			case 'google':
-				return { models: await this.fetchGoogleModels(apiKey) };
+				return await this.fetchGoogleModels(apiKey);
 		}
 	}
 
-	private async fetchOpenAiModels(apiKey: string): Promise<Model[]> {
+	private async fetchOpenAiModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
 		const response = await fetch('https://api.openai.com/v1/models', {
 			method: 'GET',
 			headers: {
@@ -134,24 +140,20 @@ export class ChatHubService {
 		}
 
 		const data = await response.json();
-		const models: Model[] = [];
 
-		// Filter for chat models only (GPT models)
-		const chatModels = data.data.filter(
-			(model: { id: string }) =>
-				model.id.includes('gpt') && !model.id.includes('instruct') && !model.id.includes('audio'),
-		);
-
-		for (const model of chatModels) {
-			models.push({
-				name: model.id,
-			});
-		}
-
-		return models;
+		return {
+			models: data.data
+				.filter(
+					(model: { id: string }) =>
+						model.id.includes('gpt') &&
+						!model.id.includes('instruct') &&
+						!model.id.includes('audio'),
+				)
+				.map((model: { id: string }) => ({ name: model.id })),
+		};
 	}
 
-	private async fetchAnthropicModels(apiKey: string): Promise<Model[]> {
+	private async fetchAnthropicModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
 		const response = await fetch('https://api.anthropic.com/v1/models', {
 			method: 'GET',
 			headers: {
@@ -167,25 +169,19 @@ export class ChatHubService {
 		const data = (await response.json()) as {
 			data: Array<{ id: string; display_name: string; type: string; created_at: string }>;
 		};
-		const models: Model[] = [];
 
-		// Sort models by created_at date, most recent first
-		const sortedModels = (data.data || []).sort((a, b) => {
-			const dateA = new Date(a.created_at);
-			const dateB = new Date(b.created_at);
-			return dateB.getTime() - dateA.getTime();
-		});
-
-		for (const model of sortedModels) {
-			models.push({
-				name: model.id,
-			});
-		}
-
-		return models;
+		return {
+			models: (data.data || [])
+				.sort((a, b) => {
+					const dateA = new Date(a.created_at);
+					const dateB = new Date(b.created_at);
+					return dateB.getTime() - dateA.getTime();
+				})
+				.map((model) => ({ name: model.id })),
+		};
 	}
 
-	private async fetchGoogleModels(apiKey: string): Promise<Model[]> {
+	private async fetchGoogleModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
 		const response = await fetch(
 			`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
 			{
@@ -198,24 +194,21 @@ export class ChatHubService {
 		}
 
 		const data = await response.json();
-		const models: Model[] = [];
 
-		// Filter for Gemini chat models
-		const chatModels = data.models?.filter(
-			(model: { name: string; supportedGenerationMethods?: string[] }) =>
-				model.name.includes('gemini') &&
-				model.supportedGenerationMethods?.includes('generateContent'),
-		);
+		return {
+			models: data.models
+				?.filter(
+					(model: { name: string; supportedGenerationMethods?: string[] }) =>
+						model.name.includes('gemini') &&
+						model.supportedGenerationMethods?.includes('generateContent'),
+				)
+				.map((model: { name: string }) => {
+					// Extract model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
+					const modelId = model.name.split('/').pop();
 
-		for (const model of chatModels || []) {
-			// Extract model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
-			const modelId = model.name.split('/').pop();
-			models.push({
-				name: modelId,
-			});
-		}
-
-		return models;
+					return { name: modelId };
+				}),
+		};
 	}
 
 	private extractApiKey(provider: ChatHubProvider, credentials: unknown): string | undefined {
