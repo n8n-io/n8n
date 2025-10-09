@@ -16,6 +16,7 @@ import { useToast } from '@/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/stores/builder.store';
+import type { WorkflowValidationIssue } from '@/Interface';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
@@ -122,7 +123,7 @@ const baseWorkflowIssues = computed(() =>
 );
 
 const placeholderIssues = computed(() => {
-	const issues: Array<{ node: string; type: string; value: string; parameterPath?: string }> = [];
+	const issues: WorkflowValidationIssue[] = [];
 	const seen = new Set<string>();
 
 	for (const node of workflowsStore.workflow.nodes) {

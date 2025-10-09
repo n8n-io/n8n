@@ -27,6 +27,7 @@ import type {
 	IExecutionFlattedResponse,
 	WorkflowListResource,
 	IExecutionsStopData,
+	WorkflowValidationIssue,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -277,11 +278,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * Get detailed validation issues for all connected, enabled nodes
 	 */
 	const workflowValidationIssues = computed(() => {
-		const issues: Array<{
-			node: string;
-			type: string;
-			value: string | string[];
-		}> = [];
+		const issues: WorkflowValidationIssue[] = [];
 
 		const isStringOrStringArray = (value: unknown): value is string | string[] =>
 			typeof value === 'string' || Array.isArray(value);
