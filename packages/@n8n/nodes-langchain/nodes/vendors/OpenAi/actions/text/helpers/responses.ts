@@ -1,6 +1,7 @@
 import { jsonParse, type IDataObject } from 'n8n-workflow';
 import type { ChatInputItem, ChatContent, ChatResponseRequest } from '../../../helpers/interfaces';
 import type { OpenAIClient } from '@langchain/openai';
+import get from 'lodash/get';
 
 function removeEmptyProperties<T>(rest: { [key: string]: any }): T {
 	return Object.keys(rest)
@@ -20,9 +21,9 @@ const formatInput = (messages: IDataObject[]) => {
 				{
 					type: 'input_image',
 					detail: (message.imageDetail as any) || 'auto',
-					...(message.imageType === 'url'
-						? { image_url: message.imageUrl as string }
-						: { file_id: message.fileId as string }),
+					...(message.imageType === 'url' && { image_url: message.imageUrl as string }),
+					...(message.imageType === 'base64' && { image_url: message.imageData as string }),
+					...(message.fileId && { file_id: message.fileId as string }),
 				},
 			];
 		}
@@ -50,20 +51,24 @@ export const createRequest = (
 	const body: ChatResponseRequest = {
 		model,
 		input: formatInput(messages),
-		parallel_tool_calls: !!options.parallelToolCalls,
-		store: !!options.store,
+		parallel_tool_calls: get(options, 'parallelToolCalls', true) as boolean,
+		store: get(options, 'store', true) as boolean,
 		instructions: options.instructions as string,
-		max_output_tokens: options.maxOutputTokens as number,
+		max_output_tokens: options.maxTokens as number,
 		previous_response_id: options.previousResponseId as string,
 		prompt_cache_key: options.promptCacheKey as string,
 		safety_identifier: options.safetyIdentifier as string,
 		service_tier: options.serviceTier as ChatResponseRequest['service_tier'],
 		temperature: options.temperature as number,
 		top_p: options.topP as number,
-		truncation: options.truncation as ChatResponseRequest['truncation'],
 		top_logprobs: options.topLogprobs as number,
 		tools,
+		max_tool_calls: options.maxToolCalls as number,
 	};
+
+	if (options.truncation !== undefined) {
+		body.truncation = !!options.truncation ? 'auto' : 'disabled';
+	}
 
 	if (options.conversationId) {
 		body.conversation = {
@@ -81,8 +86,8 @@ export const createRequest = (
 		});
 	}
 
-	if (options.prompt) {
-		const prompt = options.prompt as IDataObject;
+	if (options.promptConfig) {
+		const prompt = get(options, 'promptConfig.promptOptions') as IDataObject;
 		body.prompt = removeEmptyProperties({
 			id: prompt.promptId,
 			version: prompt.version,
@@ -95,7 +100,7 @@ export const createRequest = (
 	}
 
 	if (options.reasoning) {
-		const reasoning = options.reasoning as IDataObject;
+		const reasoning = get(options, 'reasoning.reasoningOptions') as IDataObject;
 		body.reasoning = removeEmptyProperties({
 			effort: reasoning.effort,
 			summary: reasoning.summary && reasoning.summary !== 'none' ? reasoning.summary : undefined,
@@ -103,19 +108,21 @@ export const createRequest = (
 	}
 
 	if (options.textFormat) {
-		const textFormat = options.textFormat as IDataObject;
-		let text: IDataObject = {
-			verbosity: textFormat.verbosity,
+		const textOptions = get(options, 'textFormat.textOptions') as IDataObject;
+		const textConfig: OpenAIClient.Responses.ResponseTextConfig = {
+			verbosity: textOptions.verbosity as OpenAIClient.Responses.ResponseTextConfig['verbosity'],
 		};
-		if (textFormat.type === 'json_schema') {
-			text = {
-				type: textFormat.type,
-				name: textFormat.name,
-				schema: textFormat.schema,
+		if (textOptions.type === 'json_schema') {
+			textConfig.format = {
+				type: textOptions.type,
+				name: textOptions.name as string,
+				schema: jsonParse(textOptions.schema as string, {
+					errorMessage: 'Failed to parse schema',
+				}),
 			};
-		} else if (textFormat.type === 'json_object') {
-			text = {
-				type: textFormat.type,
+		} else if (textOptions.type === 'json_object') {
+			textConfig.format = {
+				type: textOptions.type,
 			};
 			body.input = [
 				{
@@ -126,12 +133,17 @@ export const createRequest = (
 				},
 				...body.input,
 			];
-		} else if (textFormat.type === 'text') {
-			text = {
-				type: textFormat.type,
+		} else if (textOptions.type === 'text') {
+			textConfig.format = {
+				type: textOptions.type,
 			};
 		}
-		body.text = removeEmptyProperties(text);
+
+		if (textConfig.format) {
+			textConfig.format = removeEmptyProperties(textConfig.format);
+		}
+
+		body.text = textConfig;
 	}
 
 	return removeEmptyProperties(body);

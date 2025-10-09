@@ -1,4 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
+import { getConnectedTools } from '@utils/helpers';
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,10 +8,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
-
-import { getConnectedTools } from '@utils/helpers';
-
-import get from 'lodash/get';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 import type { ChatResponse } from '../../helpers/interfaces';
 import { formatToOpenAIResponsesTool } from '../../helpers/utils';
@@ -26,6 +24,7 @@ const imageProperties: INodeProperties[] = [
 		options: [
 			{ name: 'Image URL', value: 'url' },
 			{ name: 'File ID', value: 'fileId' },
+			{ name: 'Base64', value: 'base64' },
 		],
 		displayOptions: {
 			show: {
@@ -39,11 +38,25 @@ const imageProperties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. https://example.com/image.jpeg',
-		description: 'URL of the image to be sent. Accepts base64 encoded images as well.',
+		description: 'URL of the image to be sent',
 		displayOptions: {
 			show: {
 				type: ['image'],
 				imageType: ['url'],
+			},
+		},
+	},
+	{
+		displayName: 'Image Data',
+		name: 'imageData',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAA...',
+		description: 'Base64 encoded image to be sent',
+		displayOptions: {
+			show: {
+				type: ['image'],
+				imageType: ['base64'],
 			},
 		},
 	},
@@ -147,6 +160,8 @@ const fileProperties: INodeProperties[] = [
 		name: 'fileData',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. data:application/pdf;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAA...',
+		description: 'Base64 encoded file to be sent',
 		displayOptions: {
 			show: {
 				type: ['file'],
@@ -162,36 +177,6 @@ const fileProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				type: ['file'],
-			},
-		},
-	},
-];
-
-const audioProperties: INodeProperties[] = [
-	{
-		displayName: 'Data',
-		name: 'data',
-		type: 'string',
-		default: '',
-		description: 'Base64-encoded audio data',
-		displayOptions: {
-			show: {
-				type: ['audio'],
-			},
-		},
-	},
-	{
-		displayName: 'Format',
-		name: 'format',
-		type: 'options',
-		default: 'mp3',
-		options: [
-			{ name: 'MP3', value: 'mp3' },
-			{ name: 'WAV', value: 'wav' },
-		],
-		displayOptions: {
-			show: {
-				type: ['audio'],
 			},
 		},
 	},
@@ -223,7 +208,6 @@ const properties: INodeProperties[] = [
 							{ name: 'Text', value: 'text' },
 							{ name: 'Image', value: 'image' },
 							{ name: 'File', value: 'file' },
-							{ name: 'Audio', value: 'audio' },
 						],
 					},
 					{
@@ -255,7 +239,6 @@ const properties: INodeProperties[] = [
 					...textProperties,
 					...imageProperties,
 					...fileProperties,
-					...audioProperties,
 				],
 			},
 		],
@@ -369,11 +352,14 @@ const properties: INodeProperties[] = [
 				default: 15,
 				description:
 					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit.',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.5 } }],
-					},
-				},
+			},
+			{
+				displayName: 'Max Built-in Tool Calls',
+				name: 'maxToolCalls',
+				type: 'number',
+				default: 15,
+				description:
+					'The maximum number of total calls to built-in tools that can be processed in a response. This maximum number applies across all built-in tool calls, not per individual tool. Any further attempts to call a tool by the model will be ignored.',
 			},
 			{
 				displayName: 'Metadata',
@@ -509,11 +495,11 @@ const properties: INodeProperties[] = [
 				displayName: 'Store',
 				name: 'store',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description: 'Whether to store the generated model response for later retrieval via API',
 			},
 			{
-				displayName: 'Text',
+				displayName: 'Output Format',
 				name: 'textFormat',
 				type: 'fixedCollection',
 				default: { textOptions: [{ type: 'text' }] },
@@ -529,7 +515,7 @@ const properties: INodeProperties[] = [
 								default: 'text',
 								options: [
 									{ name: 'Text', value: 'text' },
-									{ name: 'JSON Schema', value: 'json_schema' },
+									{ name: 'JSON Schema(recommended)', value: 'json_schema' },
 									{ name: 'JSON Object', value: 'json_object' },
 								],
 							},
@@ -565,7 +551,7 @@ const properties: INodeProperties[] = [
 								description: 'The schema of the response format',
 								displayOptions: {
 									show: {
-										type: ['json'],
+										type: ['json_schema'],
 									},
 								},
 							},
@@ -618,7 +604,7 @@ const properties: INodeProperties[] = [
 					'What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. We generally recommend altering this or top_p but not both',
 				typeOptions: {
 					minValue: 0,
-					maxValue: 1,
+					maxValue: 2,
 					numberPrecision: 1,
 				},
 			},
@@ -663,8 +649,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		const hideTools = this.getNodeParameter('hideTools', i, '') as string;
 
-		options.maxToolCalls = options.maxToolCalls ?? 15;
-
 		let tools;
 		let externalTools: Tool[] = [];
 
@@ -700,6 +684,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				if (item.type !== 'function_call' || answeredToolCalls.has(item.call_id)) {
 					continue;
 				}
+				body.input.push(item);
 				const functionName = item.name;
 				const functionArgs = item.arguments;
 				const callId = item.call_id;
@@ -723,13 +708,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					output: functionResponse,
 				});
 
-				response = (await apiRequest.call(this, 'POST', '/responses', {
-					body,
-				})) as ChatResponse;
-
 				answeredToolCalls.add(callId);
-				toolCalls = response.output.filter((item) => item.type === 'function_call');
 			}
+
+			response = (await apiRequest.call(this, 'POST', '/responses', {
+				body,
+			})) as ChatResponse;
+			toolCalls = response.output.filter((item) => item.type === 'function_call');
+
 			currentIteration++;
 		}
 
