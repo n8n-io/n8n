@@ -109,7 +109,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template #header-end="itemCountProps">
-			<RunDataItemCount v-bind="itemCountProps" />
+			<RunDataItemCount
+				v-bind="itemCountProps"
+				:search="displayMode === 'schema' ? '' : itemCountProps.search"
+			/>
 		</template>
 
 		<template #no-output-data>

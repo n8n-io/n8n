@@ -573,7 +573,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 				<div :class="$style.bottomMenu">
 					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka
@@ -615,57 +614,59 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						</template>
 					</div>
 				</div>
-
-				<div v-if="showUserArea">
-					<div ref="user" :class="$style.userArea">
-						<N8nPopoverReka side="right" align="end" :side-offset="16">
-							<template #content>
-								<div :class="$style.popover">
-									<N8nMenuItem
-										v-for="action in userMenuItems"
-										:key="action.id"
-										:item="action"
-										:data-test-id="`user-menu-item-${action.id}`"
-										@click="() => onUserActionToggle(action.id)"
-									/>
-								</div>
-							</template>
-							<template #trigger>
-								<div :class="$style.userAreaInner">
-									<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
-										<!-- This dropdown is only enabled when sidebar is collapsed -->
-										<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-											<N8nAvatar
-												:first-name="usersStore.currentUser?.firstName"
-												:last-name="usersStore.currentUser?.lastName"
-												size="small"
-											/>
-										</div>
-									</div>
-									<div
-										:class="{
-											['ml-2xs']: true,
-											[$style.userName]: true,
-											[$style.expanded]: fullyExpanded,
-										}"
-									>
-										<N8nText size="small" color="text-dark">{{
-											usersStore.currentUser?.fullName
-										}}</N8nText>
-									</div>
-									<div
-										data-test-id="user-menu"
-										:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
-									>
-										<N8nIconButton icon="ellipsis" text square type="tertiary" />
-									</div>
-								</div>
-							</template>
-						</N8nPopoverReka>
-					</div>
-				</div>
 			</div>
 		</N8nScrollArea>
+
+		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		<div v-if="showUserArea">
+			<div ref="user" :class="$style.userArea">
+				<N8nPopoverReka side="right" align="end" :side-offset="16">
+					<template #content>
+						<div :class="$style.popover">
+							<N8nMenuItem
+								v-for="action in userMenuItems"
+								:key="action.id"
+								:item="action"
+								:data-test-id="`user-menu-item-${action.id}`"
+								@click="() => onUserActionToggle(action.id)"
+							/>
+						</div>
+					</template>
+					<template #trigger>
+						<div :class="$style.userAreaInner">
+							<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
+								<!-- This dropdown is only enabled when sidebar is collapsed -->
+								<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
+									<N8nAvatar
+										:first-name="usersStore.currentUser?.firstName"
+										:last-name="usersStore.currentUser?.lastName"
+										size="small"
+									/>
+								</div>
+							</div>
+							<div
+								:class="{
+									['ml-2xs']: true,
+									[$style.userName]: true,
+									[$style.expanded]: fullyExpanded,
+								}"
+							>
+								<N8nText size="small" color="text-dark">{{
+									usersStore.currentUser?.fullName
+								}}</N8nText>
+							</div>
+							<div
+								data-test-id="user-menu"
+								:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
+							>
+								<N8nIconButton icon="ellipsis" text square type="tertiary" />
+							</div>
+						</div>
+					</template>
+				</N8nPopoverReka>
+			</div>
+		</div>
+
 		<TemplateTooltip />
 	</div>
 </template>

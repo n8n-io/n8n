@@ -594,7 +594,7 @@ function onTidyUp(event: CanvasLayoutEvent, options?: { trackEvents?: boolean })
 }
 
 function onExtractWorkflow(nodeIds: string[]) {
-	void extractWorkflow(nodeIds);
+	extractWorkflow(nodeIds);
 }
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
