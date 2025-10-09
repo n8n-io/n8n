@@ -279,7 +279,6 @@ export function useCanvasOperations() {
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
 		const node = workflowsStore.getNodeById(nodeId);
-		console.log(node);
 		if (!node) return;
 
 		if (trackHistory && trackBulk) {
