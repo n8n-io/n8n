@@ -29,7 +29,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatPayloadWithCredentials } from './chat-hub.types';
+import type { ChatPayloadWithCredentials, ChatMessage } from './chat-hub.types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -40,6 +40,8 @@ import { ActiveExecutions } from '@/active-executions';
 
 @Service()
 export class ChatHubService {
+	private sesssions: Map<string, ChatMessage[]>;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
@@ -50,7 +52,9 @@ export class ChatHubService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeExecutions: ActiveExecutions,
-	) {}
+	) {
+		this.sesssions = new Map<string, ChatMessage[]>();
+	}
 
 	async getModels(
 		user: User,
@@ -288,6 +292,24 @@ export class ChatHubService {
 	}
 
 	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
+		let session = this.sesssions.get(payload.sessionId);
+		if (!session) {
+			session = [];
+			this.sesssions.set(payload.sessionId, session);
+		}
+
+		const chatHistory = session.map((msg) => ({
+			type: msg.type,
+			message: msg.message,
+		}));
+
+		session.push({
+			id: payload.messageId,
+			message: payload.message,
+			type: 'user',
+			createdAt: new Date(),
+		});
+
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
 			{
@@ -305,36 +327,62 @@ export class ChatHubService {
 			},
 			{
 				parameters: {
+					promptType: 'define',
+					text: "={{ $('When chat message received').item.json.chatInput }}",
 					options: {
 						enableStreaming: true,
 					},
 				},
 				type: AGENT_LANGCHAIN_NODE_TYPE,
 				typeVersion: 3,
-				position: [200, 0],
+				position: [600, 0],
 				id: uuidv4(),
 				name: 'AI Agent',
 			},
 			this.createModelNode(payload),
 			{
-				parameters: {},
+				parameters: {
+					sessionIdType: 'customKey',
+					sessionKey: "={{ $('When chat message received').item.json.chatInput }}",
+				},
 				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 				typeVersion: 1.3,
-				position: [224, 208],
+				position: [500, 200],
 				id: uuidv4(),
 				name: 'Memory',
+			},
+			{
+				parameters: {
+					mode: 'insert',
+					messages: {
+						messageValues: chatHistory,
+					},
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryManager',
+				typeVersion: 1.1,
+				position: [200, 0],
+				id: uuidv4(),
+				name: 'Restore Chat Memory',
 			},
 		];
 
 		const connections: IConnections = {
 			'When chat message received': {
+				main: [[{ node: 'Restore Chat Memory', type: 'main', index: 0 }]],
+			},
+			'Restore Chat Memory': {
 				main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
 			},
 			'Chat Model': {
 				ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
 			},
 			Memory: {
-				ai_memory: [[{ node: 'AI Agent', type: 'ai_memory', index: 0 }]],
+				ai_memory: [
+					[
+						{ node: 'AI Agent', type: 'ai_memory', index: 0 },
+						{ node: 'Restore Chat Memory', type: 'ai_memory', index: 0 },
+					],
+				],
 			},
 		};
 
@@ -347,7 +395,7 @@ export class ChatHubService {
 		};
 		/* eslint-enable @typescript-eslint/naming-convention */
 
-		const startNodes: StartNodeData[] = [{ name: 'AI Agent', sourceData: null }];
+		const startNodes: StartNodeData[] = [{ name: 'Restore Chat Memory', sourceData: null }];
 		const triggerToStartFrom: {
 			name: string;
 			data?: ITaskData;
@@ -363,7 +411,7 @@ export class ChatHubService {
 						[
 							{
 								json: {
-									sessionId: payload.sessionId,
+									sessionId: `${payload.sessionId}-${payload.messageId}`,
 									action: 'sendMessage',
 									chatInput: payload.message,
 								},
@@ -407,12 +455,18 @@ export class ChatHubService {
 		const message = this.getMessage(execution);
 		if (message) {
 			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
+			session.push({
+				id: payload.replyId,
+				message,
+				type: 'ai',
+				createdAt: new Date(),
+			});
 		}
 	}
 
 	private createModelNode(payload: ChatPayloadWithCredentials): INode {
 		const common = {
-			position: [80, 200] as [number, number],
+			position: [600, 200] as [number, number],
 			id: uuidv4(),
 			name: 'Chat Model',
 			credentials: payload.credentials,
