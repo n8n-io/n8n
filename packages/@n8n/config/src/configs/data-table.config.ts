@@ -11,7 +11,7 @@ export class DataTableConfig {
 	 * When the usage of a data table reaches or exceeds this value, a warning is issued.
 	 */
 	@Env('N8N_DATA_TABLES_WARNING_THRESHOLD_BYTES')
-	warningThreshold: number = 45 * 1024 * 1024;
+	warningThreshold: number = 0.8 * this.maxSize;
 
 	/**
 	 * The duration in milliseconds for which the data table size is cached.
