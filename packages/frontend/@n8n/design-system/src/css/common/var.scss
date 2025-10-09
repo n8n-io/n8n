@@ -892,18 +892,8 @@ $loading-fullscreen-spinner-size: 50px;
 
 /* Scrollbar
 --------------------------*/
-$scrollbar-background-color: hsla(
-	var(#{--color-text-light-h}),
-	var(#{--color-text-light-s}),
-	var(#{--color-text-light-l}),
-	0.3
-);
-$scrollbar-hover-background-color: hsla(
-	var(#{--color-text-light-h}),
-	var(#{--color-text-light-s}),
-	var(#{--color-text-light-l}),
-	0.5
-);
+$scrollbar-background-color: var(--color-text-lighter);
+$scrollbar-hover-background-color: var(--color-text-light);
 
 /* Carousel
 --------------------------*/

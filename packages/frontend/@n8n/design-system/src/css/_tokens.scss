@@ -42,17 +42,6 @@
 	--color-danger-tint-1: var(--p--color--alt-c-080);
 	--color-danger-tint-2: var(--p--color--alt-c-030);
 
-	// Diff colors
-	--diff-new: #0eab54;
-	--diff-new-light: #b4efc4;
-	--diff-new-faint: #ddfbe7;
-	--diff-modified: #bf941f;
-	--diff-modified-light: #f3dca1;
-	--diff-modified-faint: #fbf1d4;
-	--diff-del: #f51f32;
-	--diff-del-light: #fad3d0;
-	--diff-del-faint: #ffedec;
-
 	// Text
 	--color-text-dark: var(--p--color--gray-740);
 	--color-text-base: var(--p--color--gray-540);
@@ -587,6 +576,17 @@
 		var(--node-type-ai_vectorStore-color-s),
 		var(--node-type-background-l)
 	);
+
+	// Diff colors
+	--diff-new: #0eab54;
+	--diff-new-light: #b4efc4;
+	--diff-new-faint: #ddfbe7;
+	--diff-modified: #bf941f;
+	--diff-modified-light: #f3dca1;
+	--diff-modified-faint: #fbf1d4;
+	--diff-del: #f51f32;
+	--diff-del-light: #fad3d0;
+	--diff-del-faint: #ffedec;
 
 	// Various
 	--color-avatar-accent-1: var(--p--color--gray-120);
