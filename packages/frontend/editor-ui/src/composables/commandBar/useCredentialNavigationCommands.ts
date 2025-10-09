@@ -12,6 +12,7 @@ import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
@@ -39,6 +40,8 @@ export function useCredentialNavigationCommands(options: {
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
 	});
+
+	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 	function orderResultByCurrentProjectFirst<T extends ICredentialsResponse>(results: T[]) {
 		const currentProjectId =
@@ -116,7 +119,9 @@ export function useCredentialNavigationCommands(options: {
 	});
 
 	const credentialNavigationCommands = computed<CommandBarItem[]>(() => {
-		const hasCreatePermission = !sourceControlStore.preferences.branchReadOnly;
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			getResourcePermissions(homeProject.value?.scopes).credential.create;
 
 		const newCredentialCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_CREDENTIAL,
