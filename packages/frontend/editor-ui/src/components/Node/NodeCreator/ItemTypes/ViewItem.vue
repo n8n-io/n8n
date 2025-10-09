@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ViewItemProps } from '@/Interface';
 
+import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
 export interface Props {
 	view: ViewItemProps;
 }
@@ -31,7 +32,7 @@ defineProps<Props>();
 
 <style lang="scss" module>
 .view {
-	--action-arrow-color: var(--color-text-light);
+	--action-arrow-color: var(--color--text--tint-1);
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-xs);
 }

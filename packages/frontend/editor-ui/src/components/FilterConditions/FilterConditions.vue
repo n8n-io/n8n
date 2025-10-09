@@ -25,6 +25,7 @@ import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
 
+import { N8nButton, N8nInputLabel } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	value: FilterValue;
@@ -275,21 +276,21 @@ function getIssues(index: number): string[] {
 .addCondition {
 	// Styling to match collection button (should move to standard button in future)
 	font-weight: var(--font-weight-normal);
-	--button-font-color: var(--color-text-dark);
-	--button-border-color: var(--color-foreground-base);
-	--button-background-color: var(--color-background-base);
+	--button-font-color: var(--color--text--shade-1);
+	--button-border-color: var(--color--foreground);
+	--button-background-color: var(--color--background);
 
-	--button-hover-font-color: var(--color-text-dark);
-	--button-hover-border-color: var(--color-foreground-base);
-	--button-hover-background-color: var(--color-background-base);
+	--button-hover-font-color: var(--color--text--shade-1);
+	--button-hover-border-color: var(--color--foreground);
+	--button-hover-background-color: var(--color--background);
 
-	--button-active-font-color: var(--color-text-dark);
-	--button-active-border-color: var(--color-foreground-base);
-	--button-active-background-color: var(--color-background-base);
+	--button-active-font-color: var(--color--text--shade-1);
+	--button-active-border-color: var(--color--foreground);
+	--button-active-background-color: var(--color--background);
 
-	--button-focus-font-color: var(--color-text-dark);
-	--button-focus-border-color: var(--color-foreground-base);
-	--button-focus-background-color: var(--color-background-base);
+	--button-focus-font-color: var(--color--text--shade-1);
+	--button-focus-border-color: var(--color--foreground);
+	--button-focus-background-color: var(--color--background);
 
 	&:hover,
 	&:focus,
@@ -303,11 +304,11 @@ function getIssues(index: number): string[] {
 	padding-right: var(--spacing-xs);
 }
 .ghost {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	opacity: 0.7;
 }
 .dragging > .combinator {

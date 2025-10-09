@@ -20,7 +20,7 @@ import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';

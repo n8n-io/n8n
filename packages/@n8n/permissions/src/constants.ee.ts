@@ -21,15 +21,19 @@ export const RESOURCES = {
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: ['resetPassword', 'changeRole', 'enforceMfa', ...DEFAULT_OPERATIONS] as const,
 	variable: [...DEFAULT_OPERATIONS] as const,
+	projectVariable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
 	workflow: ['share', 'execute', 'move', 'activate', 'deactivate', ...DEFAULT_OPERATIONS] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
-	dataStore: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
+	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
+	mcp: ['manage'] as const,
+	mcpApiKey: ['create', 'rotate'] as const,
+	chatHub: ['manage', 'message'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

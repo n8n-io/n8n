@@ -13,6 +13,7 @@ export type LogEntry = {
 	workflow: Workflow;
 	executionId: string;
 	execution: IRunExecutionData;
+	isSubExecution: boolean;
 };
 
 export interface LogTreeCreationContext {
@@ -23,6 +24,7 @@ export interface LogTreeCreationContext {
 	data: IRunExecutionData;
 	workflows: Record<string, Workflow>;
 	subWorkflowData: Record<string, IRunExecutionData>;
+	isSubExecution: boolean;
 }
 
 export interface LatestNodeInfo {
@@ -40,3 +42,8 @@ export type LogsPanelState = (typeof LOGS_PANEL_STATE)[keyof typeof LOGS_PANEL_S
 
 export type LogDetailsPanelState =
 	(typeof LOG_DETAILS_PANEL_STATE)[keyof typeof LOG_DETAILS_PANEL_STATE];
+
+export interface LogTreeFilter {
+	rootNodeId: string;
+	rootNodeRunIndex: number;
+}

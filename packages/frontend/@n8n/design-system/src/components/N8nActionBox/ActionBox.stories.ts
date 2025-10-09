@@ -15,7 +15,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

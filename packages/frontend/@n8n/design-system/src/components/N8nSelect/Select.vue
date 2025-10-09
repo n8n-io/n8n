@@ -3,8 +3,7 @@ import { ElSelect } from 'element-plus';
 import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
-import type { SelectSize } from '@n8n/design-system/types';
-
+import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
@@ -180,10 +179,10 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	padding: 0 var(--spacing-3xs);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	border-bottom-left-radius: var(--input-border-radius, var(--border-radius-base));
 	border-top-left-radius: var(--input-border-radius, var(--border-radius-base));
-	color: var(--color-text-base);
+	color: var(--color--text);
 	white-space: nowrap;
 }
 </style>

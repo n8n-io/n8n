@@ -239,6 +239,11 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
+		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (nodeType?.description?.communityNodePackageVersion) {
+			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
+		}
+
 		if (runData?.[node.name]) {
 			const runs = runData[node.name] ?? [];
 			nodeItem.runs = runs.length;
@@ -559,7 +564,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 

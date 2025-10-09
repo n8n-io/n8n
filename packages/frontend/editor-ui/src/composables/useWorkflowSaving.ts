@@ -13,7 +13,7 @@ import {
 } from '@/constants';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -25,8 +25,9 @@ import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -34,6 +35,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
@@ -228,13 +230,13 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 			if (name) {
-				workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
 			if (tags) {
 				const createdTags = (workflowData.tags || []) as ITag[];
 				const tagIds = createdTags.map((tag: ITag): string => tag.id);
-				workflowsStore.setWorkflowTagIds(tagIds);
+				workflowState.setWorkflowTagIds(tagIds);
 			}
 
 			uiStore.stateIsDirty = false;
@@ -385,11 +387,11 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				}
 			}
 
-			workflowsStore.setActive(workflowData.active || false);
-			workflowsStore.setWorkflowId(workflowData.id);
+			workflowState.setActive(workflowData.active || false);
+			workflowState.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
-			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-			workflowsStore.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
+			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			uiStore.stateIsDirty = false;
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
@@ -402,7 +404,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 			const createdTags = (workflowData.tags || []) as ITag[];
 			const tagIds = createdTags.map((tag: ITag) => tag.id);
-			workflowsStore.setWorkflowTagIds(tagIds);
+			workflowState.setWorkflowTagIds(tagIds);
 
 			const templateId = router.currentRoute.value.query.templateId;
 			if (templateId) {

@@ -24,6 +24,7 @@ import {
 } from './utils';
 import { useDebounce } from '@/composables/useDebounce';
 
+import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	path: string;
 	condition: FilterConditionValue;
@@ -255,7 +256,7 @@ const onBlur = (): void => {
 	gap: var(--spacing-4xs);
 
 	&.hasIssues {
-		--input-border-color: var(--color-danger);
+		--input-border-color: var(--color--danger);
 	}
 
 	&:hover {

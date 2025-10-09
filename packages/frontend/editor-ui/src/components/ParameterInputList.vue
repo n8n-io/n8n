@@ -39,6 +39,12 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
+import { storeToRefs } from 'pinia';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
 import {
 	N8nCallout,
 	N8nIcon,
@@ -47,13 +53,8 @@ import {
 	N8nLink,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
-import { storeToRefs } from 'pinia';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
 );
@@ -728,7 +729,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	--disabled-fill: var(--color-background-base);
+	--disabled-fill: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;
@@ -766,7 +767,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	.parameter-notice {
-		background-color: var(--color-warning-tint-2);
+		background-color: var(--color--warning--tint-2);
 		color: $custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;

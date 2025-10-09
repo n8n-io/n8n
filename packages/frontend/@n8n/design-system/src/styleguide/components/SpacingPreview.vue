@@ -54,7 +54,7 @@ $box-size: 64px;
 .spacing-example {
 	background: white;
 	position: relative;
-	background: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.25);
+	background: hsla(var(--color--primary-h), var(--color--primary-s), var(--color--primary-l), 0.25);
 }
 
 .spacing-box {
@@ -62,7 +62,7 @@ $box-size: 64px;
 	height: $box-size;
 	display: block;
 	position: relative;
-	background: var(--color-primary);
+	background: var(--color--primary);
 }
 
 .label {

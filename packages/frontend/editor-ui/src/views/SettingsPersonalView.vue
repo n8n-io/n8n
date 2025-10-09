@@ -21,10 +21,23 @@ import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import type { ConfirmPasswordModalEvents } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
 import { confirmPasswordEventBus } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
 
+import {
+	N8nAvatar,
+	N8nButton,
+	N8nFormInputs,
+	N8nHeading,
+	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 type UserBasicDetailsForm = {
 	firstName: string;
 	lastName: string;
@@ -493,7 +506,7 @@ onBeforeUnmount(() => {
 }
 
 .disableMfaButton {
-	--button-color: var(--color-danger);
+	--button-color: var(--color--danger);
 	> span {
 		font-weight: var(--font-weight-bold);
 	}
@@ -508,7 +521,7 @@ onBeforeUnmount(() => {
 
 .infoText {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .themeSelect {

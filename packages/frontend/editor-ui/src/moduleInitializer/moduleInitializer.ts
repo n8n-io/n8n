@@ -1,18 +1,24 @@
 import { type Router } from 'vue-router';
 import { VIEWS } from '@/constants';
-import { DataStoreModule } from '@/features/dataStore/module.descriptor';
+import { DataTableModule } from '@/features/dataTable/module.descriptor';
 import { registerResource } from '@/moduleInitializer/resourceRegistry';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { InsightsModule } from '../features/insights/module.descriptor';
 import { MCPModule } from '../features/mcpAccess/module.descriptor';
+import { ChatModule } from '@/features/chatHub/module.descriptor';
 import type { FrontendModuleDescription } from '@/moduleInitializer/module.types';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
  */
-const modules: FrontendModuleDescription[] = [InsightsModule, DataStoreModule, MCPModule];
+const modules: FrontendModuleDescription[] = [
+	InsightsModule,
+	DataTableModule,
+	MCPModule,
+	ChatModule,
+];
 
 /**
  * Initialize modules resources (used in ResourcesListLayout), done in init.ts

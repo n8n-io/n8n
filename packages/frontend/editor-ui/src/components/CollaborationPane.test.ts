@@ -27,7 +27,7 @@ const initialState = {
 	},
 };
 
-const defaultRenderOptions: RenderOptions = {
+const defaultRenderOptions: RenderOptions<typeof CollaborationPane> = {
 	pinia: createTestingPinia({ initialState }),
 };
 

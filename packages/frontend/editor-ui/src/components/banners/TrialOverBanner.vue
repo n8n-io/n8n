@@ -3,6 +3,7 @@ import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { i18n as locale } from '@n8n/i18n';
 
+import { N8nButton } from '@n8n/design-system';
 function onUpdatePlanClick() {
 	void usePageRedirectionHelper().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }

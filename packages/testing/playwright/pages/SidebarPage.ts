@@ -19,6 +19,10 @@ export class SidebarPage {
 		await this.page.getByTestId('universal-add').click();
 	}
 
+	async clickHomeMenuItem() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async addProjectFromUniversalAdd() {
 		await this.universalAdd();
 		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
@@ -41,6 +45,7 @@ export class SidebarPage {
 	}
 
 	async clickProjectMenuItem(projectName: string) {
+		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
 	}
 
@@ -49,19 +54,36 @@ export class SidebarPage {
 	}
 
 	getUserMenu(): Locator {
-		return this.page.getByTestId('user-menu');
+		return this.page.getByTestId('main-sidebar-user-menu');
 	}
 
 	getLogoutMenuItem(): Locator {
 		return this.page.getByTestId('user-menu-item-logout');
 	}
 
+	getAboutModal(): Locator {
+		return this.page.getByTestId('about-modal');
+	}
+
+	async clickAboutMenuItem(): Promise<void> {
+		await this.page.getByTestId('help').click();
+		await this.page.getByTestId('about').click();
+	}
+
+	async closeAboutModal(): Promise<void> {
+		await this.page.getByTestId('close-about-modal-button').click();
+	}
+
 	getAdminPanel(): Locator {
-		return this.page.getByRole('menuitem', { name: 'Admin Panel' });
+		return this.page.getByTestId('cloud-admin');
 	}
 
 	getTrialBanner(): Locator {
 		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	getTemplatesLink(): Locator {
+		return this.page.getByTestId('templates').locator('a');
 	}
 
 	async openUserMenu(): Promise<void> {

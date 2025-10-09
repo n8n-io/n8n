@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import HighlightedEdge from '@/features/workflow-diff/HighlightedEdge.vue';
-import type { CanvasEdgeProps } from '@/components/canvas/elements/edges/CanvasEdge.vue';
+import type { CanvasEdgeProps } from '@/features/canvas/components/elements/edges/CanvasEdge.vue';
 import { Position } from '@vue-flow/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 // Mock the Edge component
-vi.mock('@/components/canvas/elements/edges/CanvasEdge.vue', () => ({
+vi.mock('@/features/canvas/components/elements/edges/CanvasEdge.vue', () => ({
 	default: {
 		name: 'CanvasEdge',
 		template:

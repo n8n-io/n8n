@@ -12,6 +12,7 @@ export class WorkflowSelect extends BaseSelect {
 			'versionId',
 			'ownedBy', // non-entity field
 			'parentFolder',
+			'nodes',
 		]);
 	}
 

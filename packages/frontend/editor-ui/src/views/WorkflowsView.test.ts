@@ -5,10 +5,10 @@ import { useProjectPages } from '@/composables/useProjectPages';
 import { VIEWS } from '@/constants';
 import type { WorkflowListResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -23,7 +23,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 vi.mock('@/api/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
-vi.mock('@/api/sourceControl');
+vi.mock('@/features/sourceControl.ee/sourceControl.api');
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
@@ -70,7 +70,7 @@ const router = createRouter({
 	],
 });
 
-vi.mock('@/api/usage', () => ({
+vi.mock('@n8n/rest-api-client/api/usage', () => ({
 	getLicense: vi.fn(),
 }));
 
@@ -498,13 +498,6 @@ describe('Folders', () => {
 		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 		const { getByTestId } = renderComponent({
 			pinia,
-			global: {
-				stubs: {
-					RouterLink: {
-						template: '<div data-test-id="folder-card"><slot /></div>',
-					},
-				},
-			},
 		});
 		await waitAllPromises();
 		expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();

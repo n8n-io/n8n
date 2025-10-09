@@ -17,6 +17,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { ElCheckbox } from 'element-plus';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -134,8 +136,9 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
-function onAutoRefreshChange(enabled: boolean) {
-	emit('update:autoRefresh', enabled);
+function onAutoRefreshChange(enabled: string | number | boolean) {
+	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
+	emit('update:autoRefresh', boolValue);
 }
 
 function checkListSize(): void {
@@ -260,7 +263,7 @@ const goToUpgrade = () => {
 <style module lang="scss">
 .container {
 	flex: 310px 0 0;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border-right: var(--border-base);
 	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
 	z-index: 1;
@@ -294,7 +297,7 @@ const goToUpgrade = () => {
 	flex: 1;
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
-	background-color: var(--color-background-xlight) !important;
+	background-color: var(--color--background--light-3) !important;
 
 	// Scrolling fader
 	&::before {
@@ -321,7 +324,7 @@ const goToUpgrade = () => {
 
 	& > div {
 		width: 100%;
-		background-color: var(--color-background-light);
+		background-color: var(--color--background--light-2);
 		margin-top: 0 !important;
 	}
 }

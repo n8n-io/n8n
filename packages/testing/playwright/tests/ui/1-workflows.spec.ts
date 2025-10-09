@@ -11,12 +11,6 @@ const NOTIFICATIONS = {
 
 test.describe('Workflows', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.api.enableFeature('sharing');
-		await n8n.api.enableFeature('folders');
-		await n8n.api.enableFeature('advancedPermissions');
-		await n8n.api.enableFeature('projectRole:admin');
-		await n8n.api.enableFeature('projectRole:editor');
-		await n8n.api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 	});
 
@@ -35,7 +29,7 @@ test.describe('Workflows', () => {
 		const uniqueIdForCreate = nanoid(8);
 		const workflowName = `Test Workflow ${uniqueIdForCreate}`;
 		await n8n.canvas.setWorkflowName(workflowName);
-		await n8n.canvas.clickSaveWorkflowButton();
+		await n8n.canvas.saveWorkflow();
 
 		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});

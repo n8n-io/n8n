@@ -2,24 +2,26 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
+import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
-import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
-import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
+import InlineExpressionEditorInput from '@/features/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
+import InlineExpressionEditorOutput from '@/features/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/features/editors/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { CanvasKey } from '@/constants';
-import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useIsInExperimentalNdv } from '@/features/canvas/experimental/composables/useIsInExperimentalNdv';
 import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
+import { N8nButton } from '@n8n/design-system';
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
@@ -299,16 +301,16 @@ defineExpose({ focus, select });
 }
 
 .focused > .prepend-section {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-left-radius: 0;
 }
 
 .focused :global(.cm-editor) {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 }
 
 .focused > .expression-editor-modal-opener {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-right-radius: 0;
 	background-color: var(--color-code-background);
 }
@@ -324,9 +326,9 @@ defineExpose({ focus, select });
 }
 
 .activeDrop {
-	--input-border-color: var(--color-success);
-	--input-border-right-color: var(--color-success);
-	--input-background-color: var(--color-foreground-xlight);
+	--input-border-color: var(--color--success);
+	--input-border-right-color: var(--color--success);
+	--input-background-color: var(--color--foreground--tint-2);
 	--input-border-style: solid;
 
 	:global(.cm-editor) {

@@ -125,13 +125,15 @@ test.describe('Folders - Basic Operations', () => {
 	});
 
 	test('should create workflow in a folder', async ({ n8n }) => {
-		const projectId = await n8n.start.fromNewProject();
+		const { name: projectName, id: projectId } = await n8n.api.projects.createProject();
 		const folder = await n8n.api.projects.createFolder(projectId);
-		const folderName = folder.name;
-		await n8n.workflows.cards.openFolder(folderName);
+		await n8n.navigate.toFolder(folder.id, projectId);
 		await n8n.workflows.addResource.workflow();
-
-		await expect(n8n.breadcrumbs.getBreadcrumb(folderName)).toBeVisible();
+		await n8n.canvas.saveWorkflow();
+		const successMessage = `Workflow successfully created in "${projectName}", within "${folder.name}"`;
+		await expect(n8n.notifications.getNotificationByTitleOrContent(successMessage)).toBeVisible();
+		await n8n.navigate.toFolder(folder.id, projectId);
+		await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 	});
 
 	test('should not create folders with invalid names in the UI', async ({ n8n }) => {
@@ -139,7 +141,7 @@ test.describe('Folders - Basic Operations', () => {
 		const invalidNames = ['folder[test]', 'folder/test'];
 		const errorMessage = 'Folder name cannot contain the following characters';
 		const emptyErrorMessage = 'Folder name cannot be empty';
-		const tooLongErrorMessage = 'Folder name cannot be longer than 100 characters';
+		const tooLongErrorMessage = 'Folder name cannot be longer than 128 characters';
 		const dotsErrorMessage = 'Folder name cannot contain only dots';
 		await n8n.workflows.addResource.folder();
 
@@ -151,21 +153,11 @@ test.describe('Folders - Basic Operations', () => {
 		await n8n.modal.fillInput('');
 		await expect(n8n.modal.container.getByText(emptyErrorMessage)).toBeVisible();
 
-		await n8n.modal.fillInput('a'.repeat(101));
+		await n8n.modal.fillInput('a'.repeat(129));
 		await expect(n8n.modal.container.getByText(tooLongErrorMessage)).toBeVisible();
 
 		await n8n.modal.fillInput('...');
 		await expect(n8n.modal.container.getByText(dotsErrorMessage)).toBeVisible();
-	});
-
-	test('should expose API validation gaps that UI blocks', async ({ api }) => {
-		const { id: projectId } = await api.projects.createProject();
-		const invalidNames = ['folder[test]', 'folder/test'];
-		for (const invalidName of invalidNames) {
-			const folderResponse = await api.projects.createFolder(projectId, invalidName);
-			// Currently passes - will fail when API validation is fixed
-			expect(folderResponse, `Should reject "${invalidName}"`).not.toBeNull();
-		}
 	});
 
 	test('should navigate to a folder using card actions', async ({ n8n }) => {

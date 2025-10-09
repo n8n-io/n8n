@@ -154,6 +154,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller');
+			await import('@/controllers/posthog.controller');
 		}
 
 		// ----------------------------------------

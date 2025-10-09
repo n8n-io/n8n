@@ -15,6 +15,20 @@ import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/composables/useResourcesListI18n';
 
+import { ElPagination } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nDatatable,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nLink,
+	N8nLoading,
+	N8nOption,
+	N8nRecycleScroller,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 type UIConfig = {
 	searchEnabled: boolean;
 	showFiltersDropdown: boolean;
@@ -89,6 +103,8 @@ const currentPage = ref(1);
 const rowsPerPage = ref<number>(props.customPageSize);
 const resettingFilters = ref(false);
 const search = ref<HTMLElement | null>(null);
+const listWrapperRef = ref<HTMLElement | null>(null);
+const listItemsRef = ref<HTMLElement | null>(null);
 
 // Preferred sorting and page size
 // These refs store the values that are set by the user and preserved in local storage
@@ -551,9 +567,17 @@ const loadPaginationPreferences = async () => {
 	emit('update:pagination-and-sort', emitPayload);
 };
 
+const getScrollContainer = () => {
+	if (props.type === 'list-paginated') {
+		return listItemsRef.value ?? null;
+	}
+	return listWrapperRef.value ?? null;
+};
+
 defineExpose({
 	currentPage,
 	setCurrentPage,
+	getScrollContainer,
 });
 </script>
 
@@ -697,7 +721,7 @@ defineExpose({
 						:class="$style.paginatedListWrapper"
 						data-test-id="paginated-list"
 					>
-						<div :class="$style.listItems">
+						<div ref="listItemsRef" :class="$style.listItems">
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">
 									{{ item }}

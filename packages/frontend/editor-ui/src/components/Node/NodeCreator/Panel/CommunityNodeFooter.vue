@@ -4,10 +4,10 @@ import { captureException } from '@sentry/vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { N8nLink, N8nText } from '@n8n/design-system';
 import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 import { i18n } from '@n8n/i18n';
 
+import { N8nLink, N8nText } from '@n8n/design-system';
 export interface Props {
 	packageName: string;
 	showManage: boolean;
@@ -73,7 +73,7 @@ onMounted(async () => {
 						{{ i18n.baseText('communityNodeFooter.manage') }}
 					</N8nText>
 				</N8nLink>
-				<N8nText size="small" style="color: var(--color-foreground-base)" bold>|</N8nText>
+				<N8nText size="small" style="color: var(--color--foreground)" bold>|</N8nText>
 			</template>
 			<N8nLink theme="text" @click="openIssuesPage">
 				<N8nText size="small" color="primary" bold>
@@ -94,7 +94,7 @@ onMounted(async () => {
 }
 .separator {
 	height: var(--border-width-base);
-	background: var(--color-foreground-base);
+	background: var(--color--foreground);
 	margin-right: var(--spacing-s);
 	margin-left: var(--spacing-s);
 }

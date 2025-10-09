@@ -173,7 +173,7 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 
 .badge {
 	position: absolute;
-	background: var(--color-background-node-icon-badge, var(--color-background-base));
+	background: var(--color-background-node-icon-badge, var(--color--background));
 	border-radius: 50%;
 }
 

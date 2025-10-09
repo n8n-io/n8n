@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
-import { N8nLoading } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
+import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
@@ -354,12 +354,12 @@ defineExpose({ isWithinDropdown });
 
 	& ::-webkit-scrollbar-thumb {
 		border-radius: 12px;
-		background: var(--color-foreground-dark);
+		background: var(--color--foreground--shade-1);
 		border: 3px solid white;
 	}
 
 	& ::-webkit-scrollbar-thumb:hover {
-		background: var(--color-foreground-xdark);
+		background: var(--color--foreground--shade-2);
 	}
 }
 
@@ -384,7 +384,7 @@ defineExpose({ isWithinDropdown });
 }
 
 .selected {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .resourceItem {
@@ -395,7 +395,7 @@ defineExpose({ isWithinDropdown });
 	cursor: pointer;
 
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 	}
 }
 
@@ -413,7 +413,7 @@ defineExpose({ isWithinDropdown });
 }
 
 .hovering {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 }
 
 .searchRequired {
@@ -421,7 +421,7 @@ defineExpose({ isWithinDropdown });
 	margin-top: 40px;
 	padding-left: var(--spacing-xs);
 	font-size: var(--font-size-xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	display: flex;
 	align-items: center;
 }
@@ -430,11 +430,11 @@ defineExpose({ isWithinDropdown });
 	display: flex;
 	align-items: center;
 	font-size: var(--font-size-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	margin-left: var(--spacing-2xs);
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -452,7 +452,7 @@ defineExpose({ isWithinDropdown });
 }
 
 .searchIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .addResourceText {
@@ -460,7 +460,7 @@ defineExpose({ isWithinDropdown });
 }
 
 .addResourceIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 
 	margin-left: var(--spacing-2xs);
 }

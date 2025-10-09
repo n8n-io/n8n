@@ -111,7 +111,7 @@ function handleOpenAutoFocus(e: Event) {
 <style lang="scss" module>
 .popoverContent {
 	border-radius: var(--border-radius-base);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	border: var(--border-base);
 	box-shadow:
 		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,

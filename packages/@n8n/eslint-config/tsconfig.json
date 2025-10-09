@@ -10,5 +10,6 @@
 		"moduleResolution": "nodenext",
 		"declaration": true
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"files": []
 }

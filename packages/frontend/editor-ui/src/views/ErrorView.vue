@@ -3,6 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
+import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 const router = useRouter();
 
 const props = defineProps<{
@@ -52,7 +53,7 @@ function onButtonClick() {
 	min-height: 96px;
 	min-width: 108px;
 	margin-bottom: var(--spacing-2xl);
-	color: var(--color-foreground-base);
+	color: var(--color--foreground);
 }
 
 .message {

@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconSize, CalloutTheme } from '@n8n/design-system/types';
-
+import type { IconSize, CalloutTheme } from '../../types';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';

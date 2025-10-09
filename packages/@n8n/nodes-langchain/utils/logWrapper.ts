@@ -11,6 +11,7 @@ import type { StructuredTool, Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
+import { OpenAIEmbeddings, AzureOpenAIEmbeddings } from '@langchain/openai';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -110,6 +111,8 @@ export function logWrapper<
 		| BaseRetriever
 		| BaseDocumentCompressor
 		| Embeddings
+		| OpenAIEmbeddings
+		| AzureOpenAIEmbeddings
 		| Document[]
 		| Document
 		| BaseDocumentLoader
@@ -260,7 +263,11 @@ export function logWrapper<
 			}
 
 			// ========== Embeddings ==========
-			if (originalInstance instanceof Embeddings) {
+			if (
+				originalInstance instanceof Embeddings ||
+				originalInstance instanceof OpenAIEmbeddings ||
+				originalInstance instanceof AzureOpenAIEmbeddings
+			) {
 				// Docs -> Embeddings
 				if (prop === 'embedDocuments' && 'embedDocuments' in target) {
 					return async (documents: string[]): Promise<number[][]> => {

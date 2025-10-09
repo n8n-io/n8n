@@ -17,11 +17,11 @@ const props = withDefaults(defineProps<AvatarProps>(), {
 	lastName: '',
 	size: 'medium',
 	colors: () => [
-		'--color-primary',
-		'--color-secondary',
+		'--color--primary',
+		'--color--secondary',
 		'--color-avatar-accent-1',
 		'--color-avatar-accent-2',
-		'--color-primary-tint-1',
+		'--color--primary--tint-1',
 	],
 });
 
@@ -73,7 +73,7 @@ const getSize = (size: string): number => sizes[size];
 .empty {
 	display: block;
 	border-radius: 50%;
-	background-color: var(--color-foreground-dark);
+	background-color: var(--color--foreground--shade-1);
 	opacity: 0.3;
 }
 

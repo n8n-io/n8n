@@ -16,6 +16,8 @@
     "test:workflows": "playwright test --project=cli-workflows",
     "test:workflows:schema": "SCHEMA=true playwright test --project=cli-workflows",
     "test:workflows:update": "playwright test --project=cli-workflows --update-snapshots",
+    "coverage:report": "node scripts/generate-coverage-report.js",
+    "coverage:clean": "rm -rf coverage .nyc_output",
     "install-browsers:local": "playwright install chromium --with-deps",
     "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps",
     "browsers:uninstall": "playwright uninstall --all",
@@ -31,6 +33,7 @@
     "@types/lodash": "catalog:",
     "eslint-plugin-playwright": "2.2.2",
     "generate-schema": "2.6.0",
+    "mockserver-client": "^5.15.0",
     "n8n": "workspace:*",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
@@ -38,9 +41,9 @@
     "@n8n/db": "workspace:*",
     "flatted": "catalog:",
     "nanoid": "catalog:",
+    "nyc": "^17.1.0",
     "otplib": "^12.0.1",
     "tsx": "catalog:",
-    "mockserver-client": "^5.15.0",
     "zod": "catalog:"
   }
 }

@@ -11,6 +11,7 @@ import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
+import NDVHeader from '@/components/NDVHeader.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -46,6 +47,8 @@ import PanelDragButtonV2 from './PanelDragButtonV2.vue';
 import TriggerPanel from './TriggerPanel.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -870,6 +873,7 @@ onBeforeUnmount(() => {
 	padding: 0;
 	margin: 0;
 	display: flex;
+	outline: none;
 }
 
 .container {
@@ -879,7 +883,7 @@ onBeforeUnmount(() => {
 	background: var(--border-color-base);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	min-width: 0;
 }
 
@@ -930,7 +934,7 @@ onBeforeUnmount(() => {
 }
 
 .draggable {
-	--draggable-height: 22px;
+	--draggable-height: 18px;
 	position: absolute;
 	top: calc(-1 * var(--draggable-height));
 	left: 50%;

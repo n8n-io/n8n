@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
+import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	videoId: string;

@@ -170,7 +170,7 @@ onUnmounted(() => {
 	border: none;
 	padding: 0;
 	cursor: pointer;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -179,7 +179,7 @@ onUnmounted(() => {
 	flex-shrink: 0;
 
 	&:hover {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 </style>

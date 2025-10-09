@@ -1,4 +1,4 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -7,8 +7,10 @@ import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import AssignmentCollection from './AssignmentCollection.vue';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { createTestNodeProperties } from '@/__tests__/mocks';
+import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
 
-const DEFAULT_SETUP = {
+const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
@@ -27,8 +29,8 @@ const DEFAULT_SETUP = {
 			credentials: {},
 			disabled: false,
 		},
-		parameter: { name: 'fields', displayName: 'Fields To Set' },
-		value: {},
+		parameter: createTestNodeProperties({ name: 'fields', displayName: 'Fields To Set' }),
+		value: {} as AssignmentCollectionValue,
 	},
 };
 
@@ -107,9 +109,9 @@ describe('AssignmentCollection.vue', () => {
 			props: {
 				value: {
 					assignments: [
-						{ name: 'key1', value: 'value1', type: 'string' },
-						{ name: 'key2', value: 'value2', type: 'string' },
-						{ name: 'key3', value: 'value3', type: 'string' },
+						{ name: 'key1', value: 'value1', type: 'string' } as AssignmentValue,
+						{ name: 'key2', value: 'value2', type: 'string' } as AssignmentValue,
+						{ name: 'key3', value: 'value3', type: 'string' } as AssignmentValue,
 					],
 				},
 			},

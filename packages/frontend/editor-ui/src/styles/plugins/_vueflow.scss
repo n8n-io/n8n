@@ -48,14 +48,14 @@
 	margin-bottom: calc(48px + 2 * var(--spacing-xs));
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
-	background: var(--color-background-light);
+	background: var(--color--background--light-2);
 
 	.minimap-node-default {
-		fill: var(--color-foreground-dark);
+		fill: var(--color--foreground--shade-1);
 	}
 
 	.minimap-node-n8n-nodes-base-stickyNote {
-		fill: var(--color-foreground-dark);
+		fill: var(--color--foreground--shade-1);
 		opacity: 0.2;
 	}
 

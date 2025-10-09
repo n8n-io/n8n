@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { N8nResizeObserver } from '@n8n/design-system';
+
 type Props = {
 	middleWidth?: string;
 };

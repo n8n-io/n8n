@@ -1,8 +1,97 @@
 {
     "type": "object",
     "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "deactivate": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "reactivate": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "resetPassword": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "self": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "suspend": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "created": {
             "type": "string"
+        },
+        "credentials": {
+            "type": "object",
+            "properties": {
+                "provider": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
         "id": {
             "type": "string"
@@ -29,7 +118,15 @@
         },
         "status": {
             "type": "string"
+        },
+        "type": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "version": 1
+    "version": 2
 }

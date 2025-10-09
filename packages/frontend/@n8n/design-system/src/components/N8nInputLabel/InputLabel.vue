@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import type { TextColor } from '@n8n/design-system/types/text';
-
+import type { TextColor } from '../../types/text';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
@@ -137,7 +136,7 @@ const addTargetBlank = (html: string) =>
 			opacity: 1;
 
 			&:hover {
-				color: var(--color-text-base);
+				color: var(--color--text);
 			}
 		}
 	}
@@ -192,7 +191,7 @@ const addTargetBlank = (html: string) =>
 .infoIcon {
 	display: flex;
 	align-items: center;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	margin-left: var(--spacing-4xs);
 	z-index: 1;
 }
@@ -225,7 +224,7 @@ const addTargetBlank = (html: string) =>
 
 		background: linear-gradient(
 			270deg,
-			var(--color-foreground-xlight) 72.19%,
+			var(--color--foreground--tint-2) 72.19%,
 			rgba(255, 255, 255, 0) 107.45%
 		);
 	}
@@ -273,9 +272,9 @@ const addTargetBlank = (html: string) =>
 	}
 
 	code {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		font-size: var(--font-size-3xs);
-		background: var(--color-background-medium);
+		background: var(--color--background--shade-1);
 		padding: var(--spacing-5xs);
 		border-radius: var(--border-radius-base);
 	}

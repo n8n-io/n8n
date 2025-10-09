@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -17,6 +18,18 @@ import type { Placement } from '@floating-ui/core';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
+import { ElDatePicker } from 'element-plus';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nInput,
+	N8nOption,
+	N8nPopover,
+	N8nSelect,
+	N8nTooltip,
+} from '@n8n/design-system';
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	popoverPlacement?: Placement;
@@ -396,7 +409,7 @@ onBeforeMount(() => {
 		display: inline-block;
 		font-size: var(--font-size-2xs);
 		margin: var(--spacing-s) 0 var(--spacing-3xs);
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 
@@ -429,7 +442,7 @@ onBeforeMount(() => {
 
 .dates {
 	display: flex;
-	border: 1px solid var(--color-foreground-base);
+	border: 1px solid var(--color--foreground);
 	border-radius: var(--border-radius-base);
 	white-space: nowrap;
 	align-items: center;
@@ -446,7 +459,7 @@ onBeforeMount(() => {
 }
 
 .tooltipIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .filterButton {
@@ -470,7 +483,7 @@ onBeforeMount(() => {
 	}
 
 	.el-input__prefix {
-		color: var(--color-foreground-dark);
+		color: var(--color--foreground--shade-1);
 	}
 
 	&:last-of-type {
@@ -503,7 +516,7 @@ onBeforeMount(() => {
 			margin-left: -6px;
 			border-left-width: 6px;
 			border-top-width: 0;
-			border-bottom-color: var(--color-foreground-xlight);
+			border-bottom-color: var(--color--foreground--tint-2);
 			border-right-color: transparent;
 		}
 	}

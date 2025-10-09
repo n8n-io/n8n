@@ -1,8 +1,8 @@
 import { builderCreditsUpdated } from './builderCreditsUpdated';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
 
-vi.mock('@/stores/builder.store', () => ({
+vi.mock('@/features/assistant/builder.store', () => ({
 	useBuilderStore: vi.fn(),
 }));
 

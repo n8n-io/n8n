@@ -6,6 +6,8 @@ import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplates
 import { useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/constants';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	template: ITemplatesWorkflowResponse;
@@ -57,11 +59,11 @@ const cleanDescription = computed(() => {
 
 	return (
 		props.template.description
-			.replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
-			.replace(/\*(.*?)\*/g, '$1') // Remove italic *text*
-			.replace(/`(.*?)`/g, '$1') // Remove inline code `text`
+			.replace(/\*\*(.*?)\*\*/g, '<script setup lang="ts">') // Remove bold **text**
+			.replace(/\*(.*?)\*/g, '<script setup lang="ts">') // Remove italic *text*
+			.replace(/`(.*?)`/g, '<script setup lang="ts">') // Remove inline code `text`
 			.replace(/!\[(.*?)\]\(.*?\)/g, '') // Remove images
-			.replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links [text](url) -> text
+			.replace(/\[(.*?)\]\(.*?\)/g, '<script setup lang="ts">') // Remove links [text](url) -> text
 			.replace(/#{1,6}\s/g, '') // Remove headers # ## ### etc
 			.replace(/^\s*[-*+]\s/gm, '') // Remove list bullets
 			.replace(/^\s*\d+\.\s/gm, '') // Remove numbered list
@@ -120,8 +122,8 @@ const handleUseTemplate = async () => {
 }
 
 .remainingNodes {
-	color: var(--color-text-base);
-	border-color: var(--color-background-light);
+	color: var(--color--text);
+	border-color: var(--color--background--light-2);
 }
 
 .description {
@@ -131,7 +133,7 @@ const handleUseTemplate = async () => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: var(--font-line-height-regular);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .suggestion {
@@ -139,12 +141,12 @@ const handleUseTemplate = async () => {
 	flex-direction: column;
 	justify-content: space-between;
 	min-width: 200px;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	cursor: pointer;
 	transition: all 0.2s ease;
 
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 		transform: translateY(-2px);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	}

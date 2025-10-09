@@ -48,12 +48,12 @@ const keys = computed(() => {
 	height: 18px;
 	min-width: 18px;
 	padding: 0 var(--spacing-4xs);
-	border: solid 1px var(--color-foreground-base);
-	background: var(--color-background-base);
+	border: solid 1px var(--color--foreground);
+	background: var(--color--background);
 }
 
 .key {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-3xs);
 }
 </style>

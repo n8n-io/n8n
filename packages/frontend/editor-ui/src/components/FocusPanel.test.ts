@@ -11,7 +11,7 @@ import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { reactive } from 'vue';
-import { useExperimentalNdvStore } from './canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import FocusPanel from './FocusPanel.vue';
 
 vi.mock('vue-router', () => ({

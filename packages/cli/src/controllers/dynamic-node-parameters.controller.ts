@@ -33,7 +33,11 @@ export class DynamicNodeParametersController {
 			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
 		additionalData.dataTableProjectId = projectId;
 
 		if (methodName) {
@@ -79,7 +83,11 @@ export class DynamicNodeParametersController {
 			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
 		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceLocatorResults(
@@ -105,7 +113,11 @@ export class DynamicNodeParametersController {
 		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion, projectId } =
 			payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
 		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceMappingFields(
@@ -124,9 +136,15 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
-		const { path, methodName, currentNodeParameters, nodeTypeAndVersion } = payload;
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const { path, methodName, currentNodeParameters, nodeTypeAndVersion, projectId } = payload;
+
+		const additionalData = await getBase({
+			userId: req.user.id,
+			currentNodeParameters,
+			projectId,
+		});
 
 		return await this.service.getLocalResourceMappingFields(
 			methodName,
@@ -142,6 +160,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ActionResultRequestDto,
 	): Promise<NodeParameterValueType> {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			currentNodeParameters,
 			nodeTypeAndVersion,
@@ -149,9 +169,14 @@ export class DynamicNodeParametersController {
 			credentials,
 			handler,
 			payload: actionPayload,
+			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
 
 		return await this.service.getActionResult(
 			handler,

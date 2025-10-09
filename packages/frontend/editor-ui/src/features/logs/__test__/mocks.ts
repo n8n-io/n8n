@@ -20,6 +20,7 @@ export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
 		workflow: createTestWorkflowObject(),
 		executionId,
 		execution: createTestWorkflowExecutionResponse({ id: executionId }).data!,
+		isSubExecution: false,
 		...data,
 	};
 }

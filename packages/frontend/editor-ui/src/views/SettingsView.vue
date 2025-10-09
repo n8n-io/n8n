@@ -57,7 +57,7 @@ onMounted(() => {
 	padding-top: 70.5px;
 	height: 100%;
 	overflow: auto;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .content {

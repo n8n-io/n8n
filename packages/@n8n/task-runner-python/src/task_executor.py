@@ -3,6 +3,7 @@ import multiprocessing
 import traceback
 import textwrap
 import json
+import io
 import os
 import sys
 import logging
@@ -47,7 +48,6 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
-        can_log: bool,
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -67,7 +67,6 @@ class TaskExecutor:
                 stdlib_allow,
                 external_allow,
                 builtins_deny,
-                can_log,
             ),
         )
 
@@ -169,7 +168,6 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
-        can_log: bool,
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -178,6 +176,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
@@ -186,9 +185,7 @@ class TaskExecutor:
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                 "_items": items,
-                "print": TaskExecutor._create_custom_print(print_args)
-                if can_log
-                else print,
+                "print": TaskExecutor._create_custom_print(print_args),
             }
 
             exec(compiled_code, globals)
@@ -196,8 +193,8 @@ class TaskExecutor:
             result = globals[EXECUTOR_USER_OUTPUT_KEY]
             TaskExecutor._put_result(queue, result, print_args)
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+        except BaseException as e:
+            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _per_item(
@@ -207,7 +204,6 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
-        can_log: bool,
     ):
         """Execute a Python code task in per-item mode."""
 
@@ -216,6 +212,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
@@ -226,9 +223,7 @@ class TaskExecutor:
                 globals = {
                     "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_args)
-                    if can_log
-                    else print,
+                    "print": TaskExecutor._create_custom_print(print_args),
                 }
 
                 exec(compiled_code, globals)
@@ -243,8 +238,8 @@ class TaskExecutor:
 
             TaskExecutor._put_result(queue, result, print_args)
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+        except BaseException as e:
+            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
@@ -273,11 +268,25 @@ class TaskExecutor:
         shm.close()
 
     @staticmethod
-    def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
+    def _put_error(
+        queue: multiprocessing.Queue,
+        e: BaseException,
+        stderr: str = "",
+        print_args: PrintArgs = [],
+    ):
+        error_dict = {
+            "message": f"Process exited with code {e.code}"
+            if isinstance(e, SystemExit)
+            else str(e),
+            "stack": traceback.format_exc(),
+            "stderr": stderr,
+        }
+
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
+
         queue.put(
             {
-                "error": {"message": str(e), "stack": traceback.format_exc()},
+                "error": error_dict,
                 "print_args": print_args_to_send,
             }
         )
@@ -388,8 +397,12 @@ class TaskExecutor:
         else:
             safe_modules.update(external_allow)
 
+        # keep modules marked as safe and submodules of those
         modules_to_remove = [
-            name for name in sys.modules.keys() if name not in safe_modules
+            name
+            for name in sys.modules.keys()
+            if name not in safe_modules
+            and not any(name.startswith(safe + ".") for safe in safe_modules)
         ]
 
         for module_name in modules_to_remove:

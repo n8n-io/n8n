@@ -1,3 +1,4 @@
+import type { WorkflowTitleStatus } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { Ref } from 'vue';
 
@@ -21,5 +22,15 @@ export function useDocumentTitle(windowRef?: Ref<Window | undefined>) {
 		set('');
 	};
 
-	return { set, reset };
+	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
+		let icon = '⚠️';
+		if (status === 'EXECUTING') {
+			icon = '🔄';
+		} else if (status === 'IDLE') {
+			icon = '▶️';
+		}
+		set(`${icon} ${workflowName}`);
+	};
+
+	return { set, reset, setDocumentTitle };
 }

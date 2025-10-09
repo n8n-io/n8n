@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
 import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
+import type { FromAIOverride } from '@/utils/fromAIOverrideUtils';
 
 vi.mock('vue-router', () => {
 	return {
@@ -33,7 +34,7 @@ const renderComponent = createComponentRenderer(ParameterOverrideSelectableList,
 
 describe('ParameterOverrideSelectableList', () => {
 	it('should render the component', () => {
-		const model = ref({
+		const model = ref<FromAIOverride>({
 			type: 'fromAI',
 			extraProps: {
 				description: {
@@ -57,7 +58,6 @@ describe('ParameterOverrideSelectableList', () => {
 					default: '',
 					required: false,
 					description: '',
-					readOnly: false,
 				},
 				path: 'parameters.workflowInputs.value["test"]',
 				modelValue: model.value,
@@ -70,7 +70,7 @@ describe('ParameterOverrideSelectableList', () => {
 	});
 
 	it('should update extra prop value when input changes', async () => {
-		const model = ref({
+		const model = ref<FromAIOverride>({
 			type: 'fromAI',
 			extraProps: {
 				description: {
@@ -94,7 +94,6 @@ describe('ParameterOverrideSelectableList', () => {
 					default: '',
 					required: false,
 					description: '',
-					readOnly: false,
 				},
 				path: 'parameters.workflowInputs.value["test"]',
 				modelValue: model.value,
@@ -116,7 +115,7 @@ describe('ParameterOverrideSelectableList', () => {
 	});
 
 	it('should reset extra prop back to default when removed', async () => {
-		const model = ref({
+		const model = ref<FromAIOverride>({
 			type: 'fromAI',
 			extraProps: {
 				description: {
@@ -140,7 +139,6 @@ describe('ParameterOverrideSelectableList', () => {
 					default: '',
 					required: false,
 					description: '',
-					readOnly: false,
 				},
 				path: 'parameters.workflowInputs.value["test"]',
 				modelValue: model.value,

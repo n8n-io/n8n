@@ -11,6 +11,7 @@ import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistor
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 const i18n = useI18n();
 
 const props = defineProps<{
@@ -168,7 +169,7 @@ const onAction = ({
 			}
 
 			.label {
-				color: var(--color-text-light);
+				color: var(--color--text--tint-1);
 				padding-right: var(--spacing-4xs);
 			}
 

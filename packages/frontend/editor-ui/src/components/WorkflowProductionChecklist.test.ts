@@ -2,16 +2,16 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
 import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
-import type { SourceControlPreferences } from '@/types/sourceControl.types';
+import type { SourceControlPreferences } from '@/features/sourceControl.ee/sourceControl.types';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
@@ -22,6 +22,7 @@ import {
 	EVALUATIONS_DOCS_URL,
 } from '@/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('vue-router', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -211,7 +212,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'ai-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
 					},
 				},
 				pinia,
@@ -259,7 +260,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'regular-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'regular-node', typeVersion: 1 })],
 					},
 				},
 				pinia,
@@ -352,7 +353,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'ai-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
 					},
 				},
 				pinia,
@@ -674,7 +675,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'ai-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
 					},
 				},
 				pinia,

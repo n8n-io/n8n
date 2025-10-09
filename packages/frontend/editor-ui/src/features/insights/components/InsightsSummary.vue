@@ -11,9 +11,10 @@ import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { RouterLink, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { getTimeRangeLabels } from '../insights.utils';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
 	timeRange: InsightsDateRange['key'];
@@ -154,7 +155,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		height: 101px;
 		align-items: stretch;
 		justify-content: space-evenly;
-		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+		border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 		border-radius: 6px;
 		list-style: none;
 		overflow-x: auto;
@@ -164,7 +165,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			justify-content: stretch;
 			align-items: stretch;
 			flex: 1 0;
-			border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+			border-left: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 
 			&:first-child {
 				border-left: 0;
@@ -181,19 +182,19 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			border-bottom: 3px solid transparent;
 
 			&:hover {
-				background-color: var(--color-background-xlight);
+				background-color: var(--color--background--light-3);
 				transition: background-color 0.3s;
 			}
 
 			&.activeTab {
-				background-color: var(--color-background-xlight);
-				border-color: var(--color-primary);
+				background-color: var(--color--background--light-3);
+				border-color: var(--color--primary);
 				transition: background-color 0.3s ease-in-out;
 			}
 
 			strong {
 				justify-self: flex-start;
-				color: var(--color-text-dark);
+				color: var(--color--text--shade-1);
 				font-size: var(--font-size-s);
 				font-weight: 400;
 				white-space: nowrap;
@@ -203,7 +204,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			.days {
 				padding: 0;
 				margin: 0 0 var(--spacing-xs);
-				color: var(--color-text-light);
+				color: var(--color--text--tint-1);
 				font-size: var(--font-size-2xs);
 				font-weight: var(--font-weight-normal);
 			}
@@ -214,9 +215,9 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 
 				&.empty {
 					em {
-						color: var(--color-text-lighter);
+						color: var(--color--text--tint-2);
 						body[data-theme='dark'] & {
-							color: var(--color-text-light);
+							color: var(--color--text--tint-1);
 						}
 					}
 					small {
@@ -227,7 +228,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						.icon {
 							top: 5px;
 							transform: translateY(0);
-							color: var(--color-text-light);
+							color: var(--color--text--tint-1);
 						}
 					}
 				}
@@ -237,7 +238,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				display: flex;
 				align-items: baseline;
 				justify-content: flex-start;
-				color: var(--color-text-dark);
+				color: var(--color--text--shade-1);
 				font-size: 24px;
 				line-height: 100%;
 				font-weight: 600;
@@ -265,22 +266,22 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 
 	.noData {
 		em {
-			color: var(--color-text-light);
+			color: var(--color--text--tint-1);
 			font-size: var(--font-size-m);
 		}
 	}
 }
 
 .positive {
-	color: var(--color-success);
+	color: var(--color--success);
 }
 
 .negative {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .neutral {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 
 	.icon {
 		font-size: 17px;

@@ -17,10 +17,13 @@ import type {
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
+
+import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 type Props = {
 	nodeViewScale: number;
@@ -40,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
+	close: [];
 }>();
 
 const uiStore = useUIStore();
@@ -47,6 +51,8 @@ const focusPanelStore = useFocusPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -75,6 +81,7 @@ function closeNodeCreator(hasAddedNodes = false) {
 	if (props.createNodeActive) {
 		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
 	}
+	emit('close');
 }
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
@@ -94,15 +101,19 @@ function toggleFocusPanel() {
 	);
 }
 
-function onAskAssistantButtonClick() {
-	if (!assistantStore.chatWindowOpen)
+async function onAskAssistantButtonClick() {
+	if (builderStore.isAIBuilderEnabled) {
+		await chatPanelStore.toggle({ mode: 'builder' });
+	} else {
+		await chatPanelStore.toggle({ mode: 'assistant' });
+	}
+	if (chatPanelStore.isOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
 		});
-
-	assistantStore.toggleChatOpen();
+	}
 }
 </script>
 
@@ -161,7 +172,7 @@ function onAskAssistantButtonClick() {
 			>
 				<template #default>
 					<div>
-						<AssistantIcon size="large" />
+						<N8nAssistantIcon size="large" />
 					</div>
 				</template>
 			</N8nButton>

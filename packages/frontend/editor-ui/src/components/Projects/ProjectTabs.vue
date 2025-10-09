@@ -8,6 +8,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
 import { processDynamicTabs, type DynamicTabOptions } from '@/utils/modules/tabUtils';
 
+import { N8nTabs } from '@n8n/design-system';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;

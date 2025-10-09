@@ -1166,7 +1166,9 @@ describe(createLogTree, () => {
 		expect(logs[0].children).toHaveLength(1);
 		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
 	});
+});
 
+describe(processFiles, () => {
 	it('should process files correctly', async () => {
 		const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
 		const result = await processFiles([mockFile]);

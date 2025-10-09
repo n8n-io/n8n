@@ -11,7 +11,7 @@ minimumReleaseAgeExclude:
   - eslint-plugin-storybook
 
 catalog:
-  '@n8n/typeorm': 0.3.20-12
+  '@n8n/typeorm': 0.3.20-13
   '@n8n_io/ai-assistant-sdk': 1.17.0
   '@langchain/core': 0.3.68
   '@langchain/openai': 0.6.7
@@ -71,7 +71,6 @@ catalogs:
     '@vitejs/plugin-vue': ^5.2.4
     pinia: ^2.2.4
     unplugin-icons: ^0.19.0
-    unplugin-vue-components: ^0.27.2
     vue: ^3.5.13
     vue-i18n: ^11.1.2
     vue-router: ^4.5.0

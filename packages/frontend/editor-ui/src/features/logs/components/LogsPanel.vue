@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { nextTick, computed, useTemplateRef, ref } from 'vue';
-import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/features/logs/composables/useChatState';
 import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
 import ChatMessagesPanel from '@/features/logs/components/ChatMessagesPanel.vue';
@@ -18,6 +17,7 @@ import { type KeyMap } from '@/composables/useKeybindings';
 import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const container = useTemplateRef('container');
@@ -60,7 +60,7 @@ const {
 } = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData(isOpen);
+	useLogsExecutionData({ isEnabled: isOpen });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
@@ -270,7 +270,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	min-height: 0;
 	flex-basis: 0;
 	border-top: var(--border-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 
 	.poppedOut & {
 		border-top: none;

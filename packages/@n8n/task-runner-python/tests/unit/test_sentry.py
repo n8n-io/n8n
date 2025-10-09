@@ -85,6 +85,35 @@ class TestTaskRunnerSentry:
 
         assert result is None
 
+    def test_filter_out_syntax_error_subclasses(self, sentry_config):
+        sentry = TaskRunnerSentry(sentry_config)
+        event = {"exception": {"values": []}}
+        hint = {"exc_info": (IndentationError, None, None)}
+
+        result = sentry._filter_out_ignored_errors(event, hint)
+
+        assert result is None
+
+    def test_filter_out_errors_by_type_name(self, sentry_config):
+        sentry = TaskRunnerSentry(sentry_config)
+
+        for ignored_type in IGNORED_ERROR_TYPES:
+            event = {
+                "exception": {
+                    "values": [
+                        {
+                            "type": ignored_type.__name__,
+                            "stacktrace": {"frames": [{"filename": "some_file.py"}]},
+                        }
+                    ]
+                }
+            }
+            hint = {}  # No exc_info, so it falls back to type name matching
+
+            result = sentry._filter_out_ignored_errors(event, hint)
+
+            assert result is None
+
     def test_filter_out_user_code_errors_from_executors(self, sentry_config):
         sentry = TaskRunnerSentry(sentry_config)
 

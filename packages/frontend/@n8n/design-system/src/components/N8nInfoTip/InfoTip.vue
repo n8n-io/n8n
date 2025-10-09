@@ -2,9 +2,8 @@
 import type { Placement } from 'element-plus';
 import { computed } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types';
-import type { IconColor } from '@n8n/design-system/types/icon';
-
+import type { IconSize } from '../../types';
+import type { IconColor } from '../../types/icon';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';

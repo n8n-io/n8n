@@ -1,9 +1,19 @@
 import { defineComponent, h, nextTick, ref, toValue } from 'vue';
 import { useResolvedExpression } from './useResolvedExpression';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import * as workflowHelpers from './useWorkflowHelpers';
 import { renderComponent } from '../__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
+
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
 
 async function renderTestComponent(...options: Parameters<typeof useResolvedExpression>) {
 	let resolvedExpression!: ReturnType<typeof useResolvedExpression>;
@@ -15,7 +25,6 @@ async function renderTestComponent(...options: Parameters<typeof useResolvedExpr
 				return () => h('div');
 			},
 		}),
-		{ props: { options } },
 	);
 
 	return { renderResult, ...resolvedExpression };
@@ -31,16 +40,22 @@ const mockResolveExpression = () => {
 	return mock;
 };
 
+let workflowState: WorkflowState;
+
 describe('useResolvedExpression', () => {
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.useFakeTimers();
+
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 		vi.clearAllTimers();
 		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	it('should resolve a simple expression', async () => {
@@ -97,5 +112,27 @@ describe('useResolvedExpression', () => {
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(1);
 		vi.advanceTimersByTime(200);
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(2);
+	});
+
+	it('should re-resolve when workflow name changes', async () => {
+		const workflowsStore = useWorkflowsStore();
+		const resolveExpressionSpy = mockResolveExpression();
+		resolveExpressionSpy.mockImplementation(() => workflowsStore.workflow.name);
+
+		workflowState.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
+
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: '={{ $workflow.name }}',
+		});
+
+		// Initial resolve
+		vi.advanceTimersByTime(200);
+		expect(toValue(resolvedExpressionString)).toBe('Old Name');
+
+		// Update name and expect re-resolution
+		workflowState.setWorkflowName({ newName: 'New Name', setStateDirty: false });
+		await nextTick();
+		vi.advanceTimersByTime(200);
+		expect(toValue(resolvedExpressionString)).toBe('New Name');
 	});
 });

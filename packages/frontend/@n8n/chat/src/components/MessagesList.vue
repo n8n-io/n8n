@@ -82,7 +82,7 @@ watch(
 
 .empty {
 	text-align: center;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	display: flex;
 	flex-direction: column;
 	align-items: center;

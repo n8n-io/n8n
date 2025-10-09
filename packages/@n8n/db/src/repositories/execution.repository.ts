@@ -30,7 +30,7 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
+import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -796,7 +796,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ExecutionCancelledError(execution.id);
+		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data ??= { resultData: { runData: {} } };
 		execution.data.resultData.error = {

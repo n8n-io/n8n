@@ -579,3 +579,12 @@ export function createEmail(context: IExecuteFunctions) {
 
 	return email;
 }
+
+const sendAndWaitWaitingTooltip = (parameters: { operation: string }) => {
+	if (parameters?.operation === 'sendAndWait') {
+		return "Execution will continue after the user's response";
+	}
+	return '';
+};
+
+export const SEND_AND_WAIT_WAITING_TOOLTIP = `={{ (${sendAndWaitWaitingTooltip})($parameter) }}`;

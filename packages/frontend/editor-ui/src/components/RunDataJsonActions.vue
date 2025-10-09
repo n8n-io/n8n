@@ -15,9 +15,8 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nIconButton } from '@n8n/design-system';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-
+import { N8nIconButton } from '@n8n/design-system';
 type JsonPathData = {
 	path: string;
 	startPath: string;
@@ -68,7 +67,7 @@ const normalisedJsonPath = computed((): string => {
 });
 
 function getJsonValue(): string {
-	let selectedValue = jp.query(props.jsonData, `$${normalisedJsonPath.value}`)[0];
+	let selectedValue;
 	if (noSelection.value) {
 		const inExecutionsFrame =
 			window !== window.parent && window.parent.location.pathname.includes('/executions');
@@ -80,6 +79,11 @@ function getJsonValue(): string {
 				nodeHelpers.getNodeInputData(props.node, props.runIndex, props.outputIndex),
 			);
 		}
+	} else {
+		const jsonPath = normalisedJsonPath.value.startsWith('$')
+			? normalisedJsonPath.value
+			: `$${normalisedJsonPath.value}`;
+		selectedValue = jp.query(props.jsonData, jsonPath)[0];
 	}
 
 	let value = '';

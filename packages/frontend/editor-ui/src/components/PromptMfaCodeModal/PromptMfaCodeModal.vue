@@ -8,6 +8,7 @@ import { type IFormInput } from '@/Interface';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { validate as validateUuid } from 'uuid';
 
+import { N8nButton, N8nFormInputs } from '@n8n/design-system';
 const i18n = useI18n();
 
 const formBus = createFormEventBus();

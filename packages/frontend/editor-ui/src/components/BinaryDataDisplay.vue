@@ -6,6 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton } from '@n8n/design-system';
 const props = defineProps<{
 	displayData: IBinaryData;
 	windowVisible: boolean;

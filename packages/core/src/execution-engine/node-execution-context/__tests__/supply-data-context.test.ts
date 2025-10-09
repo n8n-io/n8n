@@ -16,7 +16,7 @@ import type {
 	NodeConnectionType,
 	IRunData,
 } from 'n8n-workflow';
-import { ApplicationError, ExecutionCancelledError, NodeConnectionTypes } from 'n8n-workflow';
+import { ApplicationError, ManualExecutionCancelledError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -256,7 +256,7 @@ describe('SupplyDataContext', () => {
 
 	describe('addExecutionDataFunctions', () => {
 		it('should preserve canceled status when execution is aborted and output has error', async () => {
-			const errorData = new ExecutionCancelledError('Execution was aborted');
+			const errorData = new ManualExecutionCancelledError('Execution was aborted');
 			const abortedSignal = mock<AbortSignal>({ aborted: true });
 			const mockHooks = {
 				runHook: jest.fn().mockResolvedValue(undefined),

@@ -13,7 +13,21 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';
 
+import { ElSwitch } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nActionToggle,
+	N8nDataTableServer,
+	N8nHeading,
+	N8nIcon,
+	N8nLink,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
@@ -21,10 +35,11 @@ const documentTitle = useDocumentTitle();
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
-const isOwner = computed(() => usersStore.isInstanceOwner);
 const rootStore = useRootStore();
 
 const workflowsLoading = ref(false);
+const mcpStatusLoading = ref(false);
+const mcpKeyLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
@@ -83,6 +98,13 @@ const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
 	},
 ]);
 
+const apiKey = computed(() => mcpStore.currentUserMCPKey);
+
+const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdmin = computed(() => usersStore.isAdmin);
+
+const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+
 const getProjectIcon = (workflow: WorkflowListItem): IconOrEmoji => {
 	if (workflow.homeProject?.type === 'personal') {
 		return { type: 'icon', value: 'user' };
@@ -108,17 +130,27 @@ const fetchAvailableWorkflows = async () => {
 		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
 		availableWorkflows.value = workflows;
 	} catch (error) {
-		toast.showError(error, 'Error fetching workflows');
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 	} finally {
 		workflowsLoading.value = false;
 	}
 };
 
-const onUpdateMCPEnabled = async (value: boolean) => {
-	const updated = await mcpStore.setMcpAccessEnabled(value);
-	if (updated) {
-		await fetchAvailableWorkflows();
-	} else {
+const onUpdateMCPEnabled = async (value: string | number | boolean) => {
+	try {
+		mcpStatusLoading.value = true;
+		const boolValue = typeof value === 'boolean' ? value : Boolean(value);
+		const updated = await mcpStore.setMcpAccessEnabled(boolValue);
+		if (updated) {
+			await fetchAvailableWorkflows();
+			await fetchApiKey();
+		} else {
+			workflowsLoading.value = false;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
+	} finally {
+		mcpStatusLoading.value = false;
 		workflowsLoading.value = false;
 	}
 };
@@ -138,9 +170,39 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 	}
 };
 
+const fetchApiKey = async () => {
+	try {
+		mcpKeyLoading.value = true;
+		await mcpStore.getOrCreateApiKey();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.apiKey'));
+	} finally {
+		setTimeout(() => {
+			mcpKeyLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
+const rotateKey = async () => {
+	try {
+		mcpKeyLoading.value = true;
+		await mcpStore.generateNewApiKey();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
+	} finally {
+		setTimeout(() => {
+			mcpKeyLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
-	if (mcpStore.mcpAccessEnabled) await fetchAvailableWorkflows();
+	if (!mcpStore.mcpAccessEnabled) {
+		return;
+	}
+	await fetchAvailableWorkflows();
+	await fetchApiKey();
 });
 </script>
 <template>
@@ -158,14 +220,15 @@ onMounted(async () => {
 			<div :class="$style.mainTooggle" data-test-id="mcp-toggle-container">
 				<N8nTooltip
 					:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-					:disabled="isOwner"
+					:disabled="canToggleMCP"
 					placement="top"
 				>
 					<ElSwitch
-						:model-value="mcpStore.mcpAccessEnabled"
 						size="large"
 						data-test-id="mcp-access-toggle"
-						:disabled="!isOwner"
+						:model-value="mcpStore.mcpAccessEnabled"
+						:disabled="!canToggleMCP"
+						:loading="mcpStatusLoading"
 						@update:model-value="onUpdateMCPEnabled"
 					/>
 				</N8nTooltip>
@@ -180,7 +243,13 @@ onMounted(async () => {
 				<N8nHeading size="medium" :bold="true">
 					{{ i18n.baseText('settings.mcp.connection.info.heading') }}
 				</N8nHeading>
-				<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
+				<MCPConnectionInstructions
+					v-if="apiKey"
+					:loading-api-key="mcpKeyLoading"
+					:base-url="rootStore.urlBaseEditor"
+					:api-key="apiKey"
+					@rotate-key="rotateKey"
+				/>
 			</div>
 			<div :class="$style['workflow-list-container']" data-test-id="mcp-workflow-list">
 				<div v-if="workflowsLoading">
@@ -372,7 +441,7 @@ onMounted(async () => {
 }
 
 .table-link {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	:global(.n8n-text) {
 		display: flex;

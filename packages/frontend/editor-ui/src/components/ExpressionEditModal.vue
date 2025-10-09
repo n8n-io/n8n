@@ -13,19 +13,19 @@ import type { Segment } from '@/types/expressions';
 import type { INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
-import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
+import ExpressionOutput from '@/features/editors/components/InlineExpressionEditor/ExpressionOutput.vue';
 import VirtualSchema from '@/components/VirtualSchema.vue';
-import OutputItemSelect from './InlineExpressionEditor/OutputItemSelect.vue';
+import OutputItemSelect from '@/features/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import DraggableTarget from './DraggableTarget.vue';
-import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/features/editors/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
-import { N8nInput, N8nText } from '@n8n/design-system';
-import { N8nResizeWrapper, type ResizeData } from '@n8n/design-system';
 import { useThrottleFn } from '@vueuse/core';
 
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nInput, N8nResizeWrapper, N8nText, type ResizeData } from '@n8n/design-system';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -307,7 +307,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 .output {
 	[aria-readonly] {
-		background: var(--color-background-light);
+		background: var(--color--background--light-2);
 	}
 }
 
@@ -335,7 +335,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 	&:hover,
 	&:active {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 

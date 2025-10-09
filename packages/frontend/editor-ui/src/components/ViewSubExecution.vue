@@ -5,6 +5,7 @@ import type { IRunDataDisplayMode } from '@/Interface';
 import type { ITaskMetadata } from 'n8n-workflow';
 import { computed } from 'vue';
 
+import { N8nIcon } from '@n8n/design-system';
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 const i18n = useI18n();
 

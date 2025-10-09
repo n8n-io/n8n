@@ -26,11 +26,11 @@ const VALID_NAMES = [
 
 test.describe('Personal Settings', () => {
 	test('should allow to change first and last name', async ({ n8n }) => {
-		await n8n.settings.goToPersonalSettings();
+		await n8n.settingsPersonal.goToPersonalSettings();
 
 		for (const name of VALID_NAMES) {
-			await n8n.settings.fillPersonalData(name[0], name[1]);
-			await n8n.settings.saveSettings();
+			await n8n.settingsPersonal.fillPersonalData(name[0], name[1]);
+			await n8n.settingsPersonal.saveSettings();
 
 			await expect(
 				n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
@@ -40,11 +40,11 @@ test.describe('Personal Settings', () => {
 	});
 
 	test('should not allow malicious values for personal data', async ({ n8n }) => {
-		await n8n.settings.goToPersonalSettings();
+		await n8n.settingsPersonal.goToPersonalSettings();
 
 		for (const name of INVALID_NAMES) {
-			await n8n.settings.fillPersonalData(name, name);
-			await n8n.settings.saveSettings();
+			await n8n.settingsPersonal.fillPersonalData(name, name);
+			await n8n.settingsPersonal.saveSettings();
 
 			await expect(
 				n8n.notifications.getNotificationByTitleOrContent('Problem updating your details'),

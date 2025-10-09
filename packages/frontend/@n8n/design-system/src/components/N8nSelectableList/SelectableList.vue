@@ -141,7 +141,7 @@ function itemComparator(a: Item, b: Item) {
 }
 
 .slotRemoveIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	height: 10px;
 	width: 10px;
 	margin-top: 3px;

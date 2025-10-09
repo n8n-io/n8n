@@ -1,6 +1,6 @@
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUsersStore } from '@/stores/users.store';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { isCommunityPackageName } from 'n8n-workflow';
 import {
 	type ExtendedPublicInstalledPackage,
 	fetchInstalledPackageInfo,

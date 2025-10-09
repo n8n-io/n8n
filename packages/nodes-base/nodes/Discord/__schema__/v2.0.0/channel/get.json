@@ -42,12 +42,9 @@
         "rate_limit_per_user": {
             "type": "integer"
         },
-        "theme_color": {
-            "type": "null"
-        },
         "type": {
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

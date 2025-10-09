@@ -2,8 +2,7 @@
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { computed } from 'vue';
 
-import type { IUser, UserStackGroups } from '@n8n/design-system/types';
-
+import type { IUser, UserStackGroups } from '../../types';
 import N8nAvatar from '../N8nAvatar';
 import N8nUserInfo from '../N8nUserInfo';
 
@@ -124,8 +123,8 @@ const menuHeight = computed(() => {
 	align-items: center;
 	width: 28px;
 	height: 28px;
-	color: var(--color-text-base);
-	background-color: var(--color-background-xlight);
+	color: var(--color--text);
+	background-color: var(--color--background--light-3);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-3xs);
 	z-index: 999;
@@ -143,7 +142,7 @@ const menuHeight = computed(() => {
 
 .groupName {
 	font-size: var(--font-size-3xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	font-weight: var(--font-weight-bold);
 	margin-bottom: var(--spacing-4xs);
@@ -183,6 +182,6 @@ ul.user-stack-list {
 	border-radius: var(--border-radius-base);
 	padding: var(--spacing-5xs) 0;
 	box-shadow: 0 2px 8px 0 #441c171a;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 </style>

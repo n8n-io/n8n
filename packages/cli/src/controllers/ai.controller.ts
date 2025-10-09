@@ -1,3 +1,4 @@
+import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import type { CreateCredentialDto } from '@n8n/api-types';
 import {
 	AiChatRequestDto,
@@ -15,7 +16,6 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
-import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
@@ -75,7 +75,7 @@ export class AiController {
 				// Handle the stream
 				for await (const chunk of aiResponse) {
 					res.flush();
-					res.write(JSON.stringify(chunk) + '⧉⇋⇋➽⌑⧉§§\n');
+					res.write(JSON.stringify(chunk) + STREAM_SEPARATOR);
 				}
 			} catch (streamError) {
 				// If an error occurs during streaming, send it as part of the stream
@@ -92,7 +92,7 @@ export class AiController {
 						},
 					],
 				};
-				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+				res.write(JSON.stringify(errorChunk) + STREAM_SEPARATOR);
 			} finally {
 				// Clean up event listener
 				res.off('close', handleClose);

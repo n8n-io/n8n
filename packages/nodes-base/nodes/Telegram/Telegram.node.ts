@@ -25,7 +25,11 @@ import {
 import { appendAttributionOption } from '../../utils/descriptions';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../utils/sendAndWait/utils';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../utils/sendAndWait/utils';
 
 const preBuiltAgentsCallout: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -64,6 +68,7 @@ export class Telegram implements INodeType {
 				required: true,
 			},
 		],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		properties: [
 			preBuiltAgentsCallout,

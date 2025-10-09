@@ -2,6 +2,7 @@ export const SOURCE_CONTROL_PREFERENCES_DB_KEY = 'features.sourceControl';
 export const SOURCE_CONTROL_GIT_FOLDER = 'git';
 export const SOURCE_CONTROL_GIT_KEY_COMMENT = 'n8n deploy key';
 export const SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER = 'workflows';
+export const SOURCE_CONTROL_PROJECT_EXPORT_FOLDER = 'projects';
 export const SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER = 'credential_stubs';
 export const SOURCE_CONTROL_VARIABLES_EXPORT_FILE = 'variable_stubs.json';
 export const SOURCE_CONTROL_TAGS_EXPORT_FILE = 'tags.json';

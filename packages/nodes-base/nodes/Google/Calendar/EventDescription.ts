@@ -765,7 +765,7 @@ export const eventFields: INodeProperties[] = [
 				placeholder: 'e.g. items(ID,status,summary)',
 				default: '',
 				description:
-					"Specify fields to return, by default a predefined by Google set of commonly used fields would be returned. To return all fields, use '*', <a href='https://developers.google.com/calendar/api/guides/performance#partial' target='_blank'>more info</a>.",
+					"Specify fields to return, by default a predefined by Google set of commonly used fields would be returned. To return all fields, use '*', <a href='https://developers.google.com/calendar/api/guides/performance#partial' target='_blank'>More info</a>.",
 			},
 			{
 				displayName: 'iCalUID',

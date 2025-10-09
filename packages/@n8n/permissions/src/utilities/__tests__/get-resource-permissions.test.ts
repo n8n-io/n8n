@@ -28,13 +28,17 @@ describe('permissions', () => {
 			tag: {},
 			user: {},
 			variable: {},
+			projectVariable: {},
 			workersView: {},
 			workflow: {},
 			workflowTags: {},
 			folder: {},
 			insights: {},
-			dataStore: {},
+			dataTable: {},
+			mcp: {},
+			mcpApiKey: {},
 			role: {},
+			chatHub: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -57,6 +61,8 @@ describe('permissions', () => {
 			'user:list',
 			'variable:list',
 			'variable:read',
+			'projectVariable:list',
+			'projectVariable:read',
 			'workflow:create',
 			'workflow:delete',
 			'workflow:execute',
@@ -100,6 +106,8 @@ describe('permissions', () => {
 			},
 			saml: {},
 			oidc: {},
+			mcp: {},
+			mcpApiKey: {},
 			securityAudit: {},
 			sourceControl: {},
 			tag: {
@@ -112,6 +120,10 @@ describe('permissions', () => {
 				list: true,
 			},
 			variable: {
+				list: true,
+				read: true,
+			},
+			projectVariable: {
 				list: true,
 				read: true,
 			},
@@ -132,10 +144,11 @@ describe('permissions', () => {
 			insights: {
 				list: true,
 			},
-			dataStore: {},
+			dataTable: {},
 			execution: {},
 			workflowTags: {},
 			role: {},
+			chatHub: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

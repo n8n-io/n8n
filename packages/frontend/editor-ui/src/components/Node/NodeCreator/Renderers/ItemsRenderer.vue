@@ -15,6 +15,7 @@ import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import OpenTemplateItem from '../ItemTypes/OpenTemplateItem.vue';
 
+import { N8nLoading } from '@n8n/design-system';
 export interface Props {
 	elements?: INodeCreateElement[];
 	activeIndex?: number;
@@ -277,7 +278,7 @@ watch(
 			top: 0;
 			margin: auto;
 			bottom: 0;
-			border-top: 1px solid var(--color-foreground-base);
+			border-top: 1px solid var(--color--foreground);
 		}
 	}
 }
@@ -296,7 +297,7 @@ watch(
 			top: 0;
 			margin: auto;
 			bottom: 0;
-			border-bottom: 1px solid var(--color-foreground-base);
+			border-bottom: 1px solid var(--color--foreground);
 		}
 	}
 }

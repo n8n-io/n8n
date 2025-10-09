@@ -18,6 +18,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import router from '@/router';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------
 // #region Reactive properties
 // ---------------------------------------------------------------------------
@@ -346,7 +347,7 @@ onMounted(async () => {
 }
 
 .form:first-child span {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-weight: var(--font-weight-regular);
 	font-size: var(--font-size-s);
 }
@@ -355,7 +356,7 @@ onMounted(async () => {
 	height: 30px;
 }
 .secret {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	font-weight: var(--font-weight-bold);
 }
 
@@ -364,11 +365,11 @@ onMounted(async () => {
 }
 
 .error input {
-	border-color: var(--color-danger);
+	border-color: var(--color--danger);
 }
 
 .error > div > span {
-	color: var(--color-danger);
+	color: var(--color--danger);
 	font-size: var(--font-size-2xs);
 }
 

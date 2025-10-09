@@ -20,9 +20,23 @@ import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { SLACK_TRIGGER_NODE_TYPE } from '../constants';
+import {
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
+
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowState: WorkflowState;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -30,6 +44,10 @@ describe('useWorkflowHelpers', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 		workflowsStore = mockedStore(useWorkflowsStore);
+
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
 		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
 		uiStore = useUIStore();
@@ -212,17 +230,17 @@ describe('useWorkflowHelpers', () => {
 				tags: [],
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsStore, 'addWorkflow');
-			const setActiveSpy = vi.spyOn(workflowsStore, 'setActive');
-			const setWorkflowIdSpy = vi.spyOn(workflowsStore, 'setWorkflowId');
-			const setWorkflowNameSpy = vi.spyOn(workflowsStore, 'setWorkflowName');
-			const setWorkflowSettingsSpy = vi.spyOn(workflowsStore, 'setWorkflowSettings');
+			const setActiveSpy = vi.spyOn(workflowState, 'setActive');
+			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
+			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
+			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
 			const setWorkflowPinDataSpy = vi.spyOn(workflowsStore, 'setWorkflowPinData');
 			const setWorkflowVersionIdSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionId');
 			const setWorkflowMetadataSpy = vi.spyOn(workflowsStore, 'setWorkflowMetadata');
 			const setWorkflowScopesSpy = vi.spyOn(workflowsStore, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowsStore, 'setWorkflowTagIds');
+			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			initState(workflowData);
@@ -283,7 +301,7 @@ describe('useWorkflowHelpers', () => {
 				meta: {},
 				scopes: [],
 			});
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowsStore, 'setWorkflowTagIds');
+			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			initState(workflowData);

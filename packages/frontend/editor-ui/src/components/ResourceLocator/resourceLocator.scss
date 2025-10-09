@@ -108,13 +108,13 @@ $--mode-selector-width: 92px;
 }
 
 .droppable {
-	--input-border-color: var(--color-secondary-tint-1);
+	--input-border-color: var(--color--secondary--tint-1);
 	--input-border-style: dashed;
 }
 
 .activeDrop {
-	--input-border-color: var(--color-success);
-	--input-background-color: var(--color-success-tint-2);
+	--input-border-color: var(--color--success);
+	--input-background-color: var(--color--success--tint-4);
 	--input-border-style: solid;
 
 	textarea,

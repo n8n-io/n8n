@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nIcon, N8nText } from '@n8n/design-system';
+
 interface Props {
 	node: INodeUi | null;
 }

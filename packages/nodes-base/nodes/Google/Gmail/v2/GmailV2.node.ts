@@ -21,6 +21,7 @@ import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	createEmail,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../../../utils/sendAndWait/utils';
 import {
@@ -32,10 +33,10 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
-	replyToEmail,
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
+import { replyToEmail } from '../utils/replyToEmail';
 
 const preBuiltAgentsCallout: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -87,6 +88,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		preBuiltAgentsCallout,

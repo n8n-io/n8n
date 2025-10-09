@@ -24,7 +24,7 @@
 		height: var.$radio-bordered-height;
 
 		&.is-checked {
-			border-color: var(--color-primary);
+			border-color: var(--color--primary);
 		}
 
 		&.is-disabled {
@@ -119,7 +119,7 @@
 				}
 			}
 			& + span.el-radio__label {
-				color: var(--color-text-lighter);
+				color: var(--color--text--tint-2);
 				cursor: not-allowed;
 			}
 		}

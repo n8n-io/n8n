@@ -7,6 +7,7 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 const versionsStore = useVersionsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -110,7 +111,7 @@ const i18n = useI18n();
 	}
 
 	.link:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		text-decoration: none;
 	}
 }

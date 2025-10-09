@@ -105,6 +105,7 @@ async function main() {
 		console.error(error.message);
 		console.error('');
 		await printContainerStatus(dockerComposeClient);
+		throw error;
 	} finally {
 		await dumpLogs(dockerComposeClient);
 		await dockerComposeClient.$('down');

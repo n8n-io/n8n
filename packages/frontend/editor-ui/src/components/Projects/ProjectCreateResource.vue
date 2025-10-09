@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import type { ButtonType, UserAction } from '@n8n/design-system';
-import { N8nIconButton, N8nActionToggle } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
+import { N8nActionToggle, N8nIconButton } from '@n8n/design-system';
 defineProps<{
 	actions: Array<UserAction<IUser>>;
 	disabled?: boolean;

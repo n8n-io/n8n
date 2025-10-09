@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ApiKey } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 
+import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
 const API_KEY_ITEM_ACTIONS = {
 	EDIT: 'edit',
 	DELETE: 'delete',

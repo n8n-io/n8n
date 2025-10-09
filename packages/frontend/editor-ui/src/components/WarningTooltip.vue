@@ -1,3 +1,7 @@
+<script setup lang="ts">
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+</script>
+
 <template>
 	<span>
 		<N8nTooltip content=" " placement="top">

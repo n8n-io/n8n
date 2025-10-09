@@ -5,6 +5,7 @@ import { ASSIGNMENT_TYPES } from './constants';
 import { computed } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 interface Props {
 	modelValue: string;
 	isReadOnly?: boolean;
@@ -59,7 +60,7 @@ const onTypeChange = (type: string): void => {
 
 <style lang="scss" module>
 .icon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .option {

@@ -110,9 +110,20 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return output;
 	}
 
-	getParentNodes(nodeName: string, options?: { includeNodeParameters?: boolean }) {
+	getParentNodes(
+		nodeName: string,
+		options?: {
+			includeNodeParameters?: boolean;
+			connectionType?: NodeConnectionType;
+			depth?: number;
+		},
+	) {
 		const output: NodeTypeAndVersion[] = [];
-		const nodeNames = this.workflow.getParentNodes(nodeName);
+		const nodeNames = this.workflow.getParentNodes(
+			nodeName,
+			options?.connectionType,
+			options?.depth,
+		);
 
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];

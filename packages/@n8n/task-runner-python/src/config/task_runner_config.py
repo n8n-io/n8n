@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Set
 
 from src.env import read_int_env, read_str_env
+from src.errors import ConfigurationError
 from src.constants import (
     BUILTINS_DENY_DEFAULT,
     DEFAULT_MAX_CONCURRENCY,
@@ -34,7 +35,7 @@ def parse_allowlist(allowlist_str: str, list_name: str) -> Set[str]:
     }
 
     if "*" in modules and len(modules) > 1:
-        raise ValueError(
+        raise ConfigurationError(
             f"Wildcard '*' in {list_name} must be used alone, not with other modules. "
             f"Got: {', '.join(sorted(modules))}"
         )
@@ -63,17 +64,21 @@ class TaskRunnerConfig:
     def from_env(cls):
         grant_token = read_str_env(ENV_GRANT_TOKEN, "")
         if not grant_token:
-            raise ValueError("Environment variable N8N_RUNNERS_GRANT_TOKEN is required")
+            raise ConfigurationError(
+                "Environment variable N8N_RUNNERS_GRANT_TOKEN is required"
+            )
 
         task_timeout = read_int_env(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT)
         if task_timeout <= 0:
-            raise ValueError(f"Task timeout must be positive, got {task_timeout}")
+            raise ConfigurationError(
+                f"Task timeout must be positive, got {task_timeout}"
+            )
 
         auto_shutdown_timeout = read_int_env(
             ENV_AUTO_SHUTDOWN_TIMEOUT, DEFAULT_AUTO_SHUTDOWN_TIMEOUT
         )
         if auto_shutdown_timeout < 0:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Auto shutdown timeout must be non-negative, got {auto_shutdown_timeout}"
             )
 
@@ -81,7 +86,7 @@ class TaskRunnerConfig:
             ENV_GRACEFUL_SHUTDOWN_TIMEOUT, DEFAULT_SHUTDOWN_TIMEOUT
         )
         if graceful_shutdown_timeout <= 0:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Graceful shutdown timeout must be positive, got {graceful_shutdown_timeout}"
             )
 

@@ -25,7 +25,7 @@ describe('ColorCircles', () => {
 
 		const wrapper = render(ColorCircles, {
 			props: {
-				colors: ['--color-primary-shade-1', '--color-primary'],
+				colors: ['--color--primary--shade-1', '--color--primary'],
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();

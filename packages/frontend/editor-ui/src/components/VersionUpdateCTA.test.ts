@@ -73,13 +73,7 @@ describe('VersionUpdateCTA', () => {
 	});
 
 	it('should render', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				data: {
-					articleId: 1,
-				},
-			},
-		});
+		const { getByTestId } = renderComponent();
 
 		await waitFor(() => expect(getByTestId('version-update-cta-button')).toBeInTheDocument());
 	});
@@ -87,13 +81,7 @@ describe('VersionUpdateCTA', () => {
 	it('should take user to update page when Update is clicked', async () => {
 		versionsStore.hasVersionUpdates = true;
 
-		const { getByTestId } = renderComponent({
-			props: {
-				data: {
-					articleId: 1,
-				},
-			},
-		});
+		const { getByTestId } = renderComponent();
 
 		await waitFor(() => expect(getByTestId('version-update-cta-button')).toBeInTheDocument());
 
@@ -108,13 +96,7 @@ describe('VersionUpdateCTA', () => {
 	it('should open the next versions drawer when clicking on the next versions link', async () => {
 		versionsStore.hasVersionUpdates = true;
 
-		const { getByTestId } = renderComponent({
-			props: {
-				data: {
-					articleId: 1,
-				},
-			},
-		});
+		const { getByTestId } = renderComponent();
 
 		await waitFor(() =>
 			expect(getByTestId('version-update-next-versions-link')).toBeInTheDocument(),

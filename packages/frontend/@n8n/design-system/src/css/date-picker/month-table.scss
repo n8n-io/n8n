@@ -17,7 +17,7 @@
 		}
 		&.today {
 			.cell {
-				color: var(--color-primary);
+				color: var(--color--primary);
 				font-weight: var(--font-weight-bold);
 			}
 			&.start-date .cell,
@@ -29,10 +29,10 @@
 		&.disabled .cell {
 			background-color: var.$background-color-base;
 			cursor: not-allowed;
-			color: var(--color-text-lighter);
+			color: var(--color--text--tint-2);
 
 			&:hover {
-				color: var(--color-text-lighter);
+				color: var(--color--text--tint-2);
 			}
 		}
 

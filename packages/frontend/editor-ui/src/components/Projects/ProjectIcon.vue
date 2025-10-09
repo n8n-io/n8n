@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
+import { N8nIcon, N8nText } from '@n8n/design-system';
 type Props = {
 	icon: IconOrEmoji;
 	size?: 'mini' | 'small' | 'medium' | 'large';
@@ -41,7 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+	border: var(--border-width-base) var(--border-style-base) var(--color--foreground--tint-1);
 	border-radius: var(--border-radius-base);
 
 	&.round {

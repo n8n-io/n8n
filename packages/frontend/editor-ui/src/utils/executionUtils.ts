@@ -1,8 +1,4 @@
-import {
-	MANUAL_TRIGGER_NODE_TYPE,
-	SEND_AND_WAIT_OPERATION,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-} from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type {
 	ITaskData,
 	ExecutionStatus,
@@ -13,6 +9,8 @@ import type {
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
+	Workflow,
+	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
@@ -25,9 +23,7 @@ import { isEmpty } from '@/utils/typesUtils';
 import {
 	CORE_NODES_CATEGORY,
 	ERROR_TRIGGER_NODE_TYPE,
-	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	GITHUB_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TRIGGER_NODE_TYPE,
@@ -38,6 +34,7 @@ import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import { parse } from 'flatted';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -176,50 +173,32 @@ export async function displayForm({
 	}
 }
 
-export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
+export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: Workflow) => {
 	if (!node) return '';
 	try {
-		const resume = node?.parameters?.resume;
+		const waitingNodeTooltip = useNodeTypesStore().getNodeType(node.type)?.waitingNodeTooltip;
+		if (waitingNodeTooltip) {
+			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+			const additionalData: IWorkflowDataProxyAdditionalKeys = {
+				$execution: {
+					id: activeExecutionId,
+					mode: 'test',
+					resumeUrl: `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
+					resumeFormUrl: `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+				},
+			};
+			if (workflow) {
+				const tooltip = workflow.expression.getSimpleParameterValue(
+					node,
+					waitingNodeTooltip,
+					'internal',
+					additionalData,
+				);
 
-		if (node?.type === GITHUB_NODE_TYPE && node.parameters?.operation === 'dispatchAndWait') {
-			const resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
-			const message = i18n.baseText('ndv.output.githubNodeWaitingForWebhook');
-			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
-		}
-		if (resume) {
-			if (!['webhook', 'form'].includes(resume as string)) {
-				return i18n.baseText('ndv.output.waitNodeWaiting.description.timer');
+				return String(tooltip);
+			} else if (waitingNodeTooltip) {
+				return waitingNodeTooltip;
 			}
-
-			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
-			const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-
-			let message = '';
-			let resumeUrl = '';
-
-			if (resume === 'form') {
-				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
-			}
-
-			if (resume === 'webhook') {
-				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
-			}
-
-			if (message && resumeUrl) {
-				return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
-			}
-		}
-
-		if (node?.type === FORM_NODE_TYPE) {
-			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
-			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
-			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
-		}
-
-		if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
-			return i18n.baseText('ndv.output.sendAndWaitWaitingApproval');
 		}
 	} catch (error) {
 		// do not throw error if could not compose tooltip

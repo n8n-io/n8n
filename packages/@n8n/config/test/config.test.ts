@@ -341,7 +341,7 @@ describe('GlobalConfig', () => {
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
 				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://ph.n8n.io',
+				apiHost: 'https://us.i.posthog.com',
 			},
 		},
 		aiAssistant: {

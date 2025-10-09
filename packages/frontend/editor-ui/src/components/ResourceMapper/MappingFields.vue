@@ -27,9 +27,9 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-
 interface Props {
 	parameter: INodeProperties;
 	path: string;
@@ -462,15 +462,15 @@ defineExpose({
 		}
 		input,
 		input:focus {
-			--input-border-color: var(--color-danger);
-			border-color: var(--color-danger);
+			--input-border-color: var(--color--danger);
+			border-color: var(--color--danger);
 		}
 	}
 }
 
 .parameterTooltipIcon {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-light) !important;
+	color: var(--color--text--tint-1) !important;
 	width: 26px; // match trash button size
 	text-align: center;
 }

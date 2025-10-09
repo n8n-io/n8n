@@ -23,12 +23,23 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { WorkflowResource } from '@/Interface';
+import type { UserAction, WorkflowResource } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
 import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nBreadcrumbs,
+	N8nCard,
+	N8nIcon,
+	N8nTags,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -91,6 +102,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
+const mcpStore = useMCPStore();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
@@ -140,7 +152,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 });
 
 const actions = computed(() => {
-	const items = [
+	const items: Array<UserAction<IUser>> = [
 		{
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
@@ -158,8 +170,10 @@ const actions = computed(() => {
 		});
 	}
 
+	// TODO: add test to verify that moving a readonly card is not possible
 	if (
-		((workflowPermissions.value.update && !props.readOnly) ||
+		!props.readOnly &&
+		(workflowPermissions.value.update ||
 			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
 		showFolders.value &&
 		route.name !== VIEWS.SHARED_WORKFLOWS
@@ -198,11 +212,13 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+				disabled: !props.data.active,
 			});
 		} else {
 			items.push({
 				label: locale.baseText('workflows.item.enableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
+				disabled: !props.data.active,
 			});
 		}
 	}
@@ -319,7 +335,7 @@ async function onAction(action: string) {
 
 async function toggleMCPAccess(enabled: boolean) {
 	try {
-		await workflowsStore.updateWorkflowSetting(props.data.id, 'availableInMCP', enabled);
+		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
 		mcpToggleStatus.value = enabled;
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
@@ -608,12 +624,12 @@ const tags = computed(
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
 
 	span {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .cardHeadingArchived {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .cardDescription {
@@ -622,7 +638,7 @@ const tags = computed(
 	align-items: center;
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	gap: var(--spacing-2xs);
 }
 
@@ -643,7 +659,7 @@ const tags = computed(
 }
 
 .cardBadge {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .cardBadge.with-breadcrumbs {
@@ -656,9 +672,9 @@ const tags = computed(
 }
 
 .cardArchived {
-	background-color: var(--color-background-light);
-	border-color: var(--color-foreground-light);
-	color: var(--color-text-base);
+	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground--tint-1);
+	color: var(--color--text);
 }
 
 .description-cell--mcp {
@@ -666,7 +682,7 @@ const tags = computed(
 	align-items: center;
 
 	&:hover {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 

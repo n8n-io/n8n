@@ -4,23 +4,23 @@ import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialCard from '@/components/CredentialCard.vue';
-import type { ICredentialsResponse } from '@/Interface';
+import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 
 const renderComponent = createComponentRenderer(CredentialCard);
 
-const createCredential = (overrides = {}): ICredentialsResponse => ({
-	id: '',
-	createdAt: '',
-	updatedAt: '',
-	type: '',
-	name: '',
-	sharedWithProjects: [],
-	isManaged: false,
-	homeProject: {} as ProjectSharingData,
-	...overrides,
-});
+const createCredential = (overrides = {}): CredentialsResource =>
+	({
+		id: '',
+		createdAt: '',
+		updatedAt: '',
+		type: '',
+		name: '',
+		sharedWithProjects: [],
+		homeProject: {} as ProjectSharingData,
+		...overrides,
+	}) as Partial<CredentialsResource> as CredentialsResource;
 
 describe('CredentialCard', () => {
 	let projectsStore: ReturnType<typeof useProjectsStore>;

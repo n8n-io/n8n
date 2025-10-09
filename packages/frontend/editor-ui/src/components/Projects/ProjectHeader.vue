@@ -3,7 +3,6 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
-import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -11,7 +10,7 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { VIEWS } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
@@ -20,9 +19,10 @@ import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
-import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import { PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
 import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
 
+import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -113,7 +113,7 @@ const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
-	DATA_STORE: 'dataStore',
+	DATA_TABLE: 'dataTable',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -150,11 +150,11 @@ const menu = computed(() => {
 	if (settingsStore.isDataTableFeatureEnabled) {
 		// TODO: this should probably be moved to the module descriptor as a setting
 		items.push({
-			value: ACTION_TYPES.DATA_STORE,
-			label: i18n.baseText('dataStore.add.button.label'),
+			value: ACTION_TYPES.DATA_TABLE,
+			label: i18n.baseText('dataTable.add.button.label'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
-				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
+				!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
 		});
 	}
 
@@ -224,9 +224,9 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
 	},
-	[ACTION_TYPES.DATA_STORE]: (projectId: string) => {
+	[ACTION_TYPES.DATA_TABLE]: (projectId: string) => {
 		void router.push({
-			name: PROJECT_DATA_STORES,
+			name: PROJECT_DATA_TABLES,
 			params: { projectId, new: 'new' },
 		});
 	},
@@ -408,7 +408,7 @@ const onSelect = (action: string) => {
 	position: absolute;
 	top: 0;
 	left: calc(-1 * var(--spacing-3xs));
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	padding: 0 var(--spacing-3xs) var(--spacing-3xs);
 	z-index: 10;
 	white-space: normal;

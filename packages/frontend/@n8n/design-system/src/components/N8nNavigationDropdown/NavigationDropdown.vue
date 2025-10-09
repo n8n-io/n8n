@@ -14,18 +14,19 @@ type BaseItem = {
 	disabled?: boolean;
 	icon?: IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 	route?: RouteLocationRaw;
+	isDivider?: false;
 };
 
-type Item = BaseItem & {
-	submenu?: BaseItem[];
-};
+type Divider = { isDivider: true; id: string };
+
+type Item = BaseItem & { submenu?: Array<BaseItem | Divider> };
 
 defineOptions({
 	name: 'N8nNavigationDropdown',
 });
 
 defineProps<{
-	menu: Item[];
+	menu: Array<Item | Divider>;
 	disabled?: boolean;
 	teleport?: boolean;
 }>();
@@ -84,7 +85,8 @@ defineExpose({
 			</template>
 
 			<template v-for="item in menu" :key="item.id">
-				<template v-if="item.submenu">
+				<hr v-if="item.isDivider" />
+				<template v-else-if="item.submenu">
 					<ElSubMenu
 						:popper-class="$style.nestedSubmenu"
 						:index="item.id"
@@ -93,7 +95,8 @@ defineExpose({
 					>
 						<template #title>{{ item.title }}</template>
 						<template v-for="subitem in item.submenu" :key="subitem.id">
-							<ConditionalRouterLink :to="(!subitem.disabled && subitem.route) || undefined">
+							<hr v-if="subitem.isDivider" />
+							<ConditionalRouterLink v-else :to="(!subitem.disabled && subitem.route) || undefined">
 								<ElMenuItem
 									data-test-id="navigation-submenu-item"
 									:index="subitem.id"
@@ -159,6 +162,12 @@ defineExpose({
 			}
 		}
 	}
+
+	& hr {
+		border-top: none;
+		border-bottom: var(--border-base);
+		margin-block: var(--spacing-4xs);
+	}
 }
 
 .nestedSubmenu {
@@ -173,7 +182,7 @@ defineExpose({
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		background-color: var(--color-menu-background);
 	}
 
@@ -187,14 +196,14 @@ defineExpose({
 	}
 
 	:global(.el-menu--popup) {
-		border: 1px solid var(--color-foreground-base);
+		border: 1px solid var(--color--foreground);
 		border-radius: var(--border-radius-base);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item.is-disabled) {
 		opacity: 1;
 		cursor: default;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 
 	:global(.el-sub-menu__icon-arrow svg) {
@@ -204,6 +213,6 @@ defineExpose({
 
 .submenu__icon {
 	margin-right: var(--spacing-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 </style>

@@ -2,11 +2,12 @@
 import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import { ElDropdown } from 'element-plus';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute } from 'vue-router';
 
+import { ElDropdown } from 'element-plus';
+import { N8nBadge, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	execution: ExecutionSummary & {
 		customData?: Record<string, string>;
@@ -121,7 +122,7 @@ function onDropdownVisibleChange(visible: boolean) {
 }
 
 .highlightDataButtonOpen {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	background-color: var(--color-button-secondary-hover-background);
 	border-color: var(--color-button-secondary-hover-active-focus-border);
 }
@@ -139,7 +140,7 @@ function onDropdownVisibleChange(visible: boolean) {
 	flex-direction: column;
 	overflow: auto;
 
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 }

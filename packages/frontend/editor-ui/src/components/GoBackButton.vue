@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon } from '@n8n/design-system';
 const router = useRouter();
 const i18n = useI18n();
 
@@ -26,20 +27,20 @@ const navigateTo = () => {
 	&:hover {
 		.icon,
 		.text {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }
 
 .icon {
 	margin-right: var(--spacing-2xs);
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 	font-size: var(--font-size-m);
 }
 
 .text {
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 </style>

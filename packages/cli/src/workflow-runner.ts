@@ -17,7 +17,12 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
+import {
+	ExecutionCancelledError,
+	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	Workflow,
+} from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -243,11 +248,12 @@ export class WorkflowRunner {
 			pinData,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			data.userId,
-			undefined,
-			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId: data.userId,
+			workflowId: workflow.id,
+			executionTimeoutTimestamp:
+				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+		});
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
@@ -316,10 +322,16 @@ export class WorkflowRunner {
 					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
 				}
 				if (timeout === 0) {
-					this.activeExecutions.stopExecution(executionId);
+					this.activeExecutions.stopExecution(
+						executionId,
+						new TimeoutExecutionCancelledError(executionId),
+					);
 				} else {
 					executionTimeout = setTimeout(() => {
-						void this.activeExecutions.stopExecution(executionId);
+						void this.activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
 					}, timeout);
 				}
 			}
@@ -407,7 +419,7 @@ export class WorkflowRunner {
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-					const error = new ExecutionCancelledError(executionId);
+					const error = new ManualExecutionCancelledError(executionId);
 					await this.processError(
 						error,
 						new Date(),

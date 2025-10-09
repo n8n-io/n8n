@@ -5,8 +5,13 @@ import {
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
-import type { INodeCredentialDescription, FromAIArgument } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	FromAIArgument,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import { NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 /**
  * Returns the credentials that are displayable for the given node.
@@ -99,4 +104,41 @@ export function needsAgentInput(node: Pick<INodeUi, 'parameters' | 'type'>) {
 		nodeTypesNeedModal.includes(node.type) ||
 		(node.type.includes('vectorStore') && node.parameters?.mode === 'retrieve-as-tool')
 	);
+}
+
+/**
+ * Filters out options that should not be displayed
+ */
+export function getParameterDisplayableOptions(
+	options: INodePropertyOptions[],
+	node: INodeUi | null,
+): INodePropertyOptions[] {
+	if (!node) return options;
+
+	const nodeType = node?.type ? useNodeTypesStore().getNodeType(node.type, node.typeVersion) : null;
+
+	if (!nodeType || !Array.isArray(nodeType.properties)) return options;
+
+	const nodeParameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			nodeType,
+		) ?? node.parameters;
+
+	return options.filter((option) => {
+		if (!option.displayOptions && !option.disabledOptions) return true;
+
+		return NodeHelpers.displayParameter(
+			nodeParameters,
+			option,
+			node,
+			nodeType,
+			undefined,
+			'displayOptions',
+		);
+	});
 }

@@ -338,7 +338,7 @@ describe('Evaluation Trigger Node', () => {
 				mockExecuteFunctions = mockDeep<IExecuteFunctions>({
 					getNode: jest.fn().mockReturnValue({ typeVersion: 4.7 }),
 					helpers: {
-						getDataStoreProxy: jest.fn().mockResolvedValue(mockDataTable),
+						getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable),
 					},
 				});
 			});

@@ -66,11 +66,11 @@
 
 	@include mixins.when(exceed) {
 		.el-textarea__inner {
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 		}
 
 		.el-input__count {
-			color: var(--color-danger);
+			color: var(--color--danger);
 		}
 	}
 }
@@ -148,7 +148,7 @@
 		right: var(--spacing-2xs);
 		top: 0;
 		text-align: center;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		transition: all 0.3s;
 		pointer-events: none;
 		display: flex;
@@ -217,12 +217,12 @@
 
 	@include mixins.when(exceed) {
 		.el-input__inner {
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 		}
 
 		.el-input__suffix {
 			.el-input__count {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 		}
 	}

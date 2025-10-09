@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useUIStore } from '@/stores/ui.store';
-import { N8nButton, N8nCallout } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
 
+import { N8nButton, N8nCallout } from '@n8n/design-system';
 interface Props {
 	packageName?: string;
+	source?: string;
 }
 
 const props = defineProps<Props>();
@@ -13,7 +14,7 @@ const { openCommunityPackageUpdateConfirmModal } = useUIStore();
 
 const onUpdate = () => {
 	if (!props.packageName) return;
-	openCommunityPackageUpdateConfirmModal(props.packageName);
+	openCommunityPackageUpdateConfirmModal(props.packageName, props.source);
 };
 </script>
 

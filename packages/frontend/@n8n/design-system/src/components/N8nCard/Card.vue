@@ -48,7 +48,7 @@ const classes = computed(() => ({
 .card {
 	border-radius: var(--border-radius-large);
 	border: var(--border-base);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	padding: var(--card--padding, var(--spacing-s));
 	display: flex;
 	flex-direction: row;
@@ -96,8 +96,8 @@ const classes = computed(() => ({
 
 	&:hover,
 	&:focus {
-		color: var(--color-primary);
-		border-color: var(--color-primary);
+		color: var(--color--primary);
+		border-color: var(--color--primary);
 	}
 }
 

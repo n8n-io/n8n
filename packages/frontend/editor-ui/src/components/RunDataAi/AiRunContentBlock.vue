@@ -6,8 +6,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, NodeError } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataParsedAiContent.vue';
 import { parseAiContent } from '@/utils/aiUtils';
-import { N8nRadioButtons } from '@n8n/design-system';
-
+import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 const props = defineProps<{
 	runData: IAiDataContent;
 	error?: NodeError;
@@ -87,7 +87,7 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 <style lang="scss" module>
 .block {
 	padding: var(--spacing-s) 0 var(--spacing-2xs) var(--spacing-2xs);
-	border: 1px solid var(--color-foreground-light);
+	border: 1px solid var(--color--foreground--tint-1);
 	margin-top: var(--spacing-s);
 	border-radius: var(--border-radius-base);
 }
@@ -128,7 +128,7 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 
 .blockTitle {
 	font-size: var(--font-size-s);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	margin: 0;
 	padding-bottom: var(--spacing-4xs);
 }
@@ -137,7 +137,7 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 	border: none;
 	background: none;
 	padding: 0;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	margin-top: calc(-1 * var(--spacing-3xs));
 }
 

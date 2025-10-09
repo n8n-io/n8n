@@ -4,6 +4,7 @@ import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 
+import { N8nIconButton, N8nLink, N8nTooltip } from '@n8n/design-system';
 const locale = useI18n();
 
 const props = defineProps<{

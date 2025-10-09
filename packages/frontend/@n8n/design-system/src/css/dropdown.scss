@@ -6,7 +6,7 @@
 
 @include mixins.b(dropdown) {
 	position: relative;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-size: var.$font-size-base;
 	display: inline-flex;
 	line-height: 1;
@@ -99,7 +99,7 @@
 		margin: 0;
 		font-size: var.$font-size-base;
 		font-weight: var(--font-weight-regular);
-		color: var(--color-text-base);
+		color: var(--color--text);
 		cursor: pointer;
 		outline: none;
 		white-space: nowrap;
@@ -130,7 +130,7 @@
 
 		@include mixins.when(disabled) {
 			cursor: default;
-			color: var(--color-text-lighter);
+			color: var(--color--text--tint-2);
 			pointer-events: none;
 		}
 	}

@@ -8,3 +8,4 @@ class TaskRuntimeError(Exception):
         message = error_dict["message"]
         super().__init__(message)
         self.stack_trace = error_dict.get("stack", "")
+        self.description = error_dict.get("stderr", "")

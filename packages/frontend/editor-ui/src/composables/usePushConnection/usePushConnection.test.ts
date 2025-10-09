@@ -7,6 +7,7 @@ import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
 import { useRouter } from 'vue-router';
 import type { OnPushMessageHandler } from '@/stores/pushConnection.store';
+import { createPinia, setActivePinia } from 'pinia';
 
 const removeEventListener = vi.fn();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -45,6 +46,7 @@ vi.mock('vue-router', async () => {
 		useRouter: vi.fn().mockReturnValue({
 			push: vi.fn(),
 		}),
+		useRoute: vi.fn(),
 	};
 });
 
@@ -53,6 +55,8 @@ describe('usePushConnection composable', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+
+		setActivePinia(createPinia());
 
 		const router = useRouter();
 		pushConnection = usePushConnection({ router });
@@ -87,7 +91,7 @@ describe('usePushConnection composable', () => {
 
 		// Verify that the correct handler was called.
 		expect(testWebhookReceived).toHaveBeenCalledTimes(1);
-		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent);
+		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent, expect.any(Object));
 	});
 
 	it('should call removeEventListener when terminate is called', () => {

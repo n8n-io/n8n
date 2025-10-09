@@ -68,7 +68,7 @@ const onClick = (
 	line-height: 1;
 	vertical-align: middle;
 	font-size: 0;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 	padding: var(--spacing-5xs);
 	border-radius: var(--border-radius-base);
 }

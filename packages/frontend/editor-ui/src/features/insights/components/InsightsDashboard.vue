@@ -14,6 +14,7 @@ import { INSIGHT_TYPES, TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../i
 import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
+import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
 );
@@ -252,11 +253,11 @@ onBeforeMount(async () => {
 
 .insightsContent {
 	padding: var(--spacing-l) 0;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 	border-top: 0;
 	border-bottom-left-radius: 6px;
 	border-bottom-right-radius: 6px;
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 }
 
 .insightsContentWrapper {
@@ -309,7 +310,7 @@ onBeforeMount(async () => {
 		left: 0;
 		width: 100%;
 		height: 100%;
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 		opacity: 0.75;
 		z-index: 1;
 	}

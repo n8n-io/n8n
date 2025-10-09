@@ -95,15 +95,15 @@ const alertBoxClassNames = computed(() => {
 
 	&.success {
 		&.light {
-			color: var(--color-success);
+			color: var(--color--success);
 
 			&.background {
 				background-color: var.$color-success-lighter;
-				border-color: var(--color-success);
+				border-color: var(--color--success);
 			}
 
 			.el-alert__description {
-				color: var(--color-success);
+				color: var(--color--success);
 			}
 		}
 
@@ -111,11 +111,11 @@ const alertBoxClassNames = computed(() => {
 			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-success);
+				color: var(--color--success);
 			}
 
 			&.background {
-				background-color: var(--color-success);
+				background-color: var(--color--success);
 				border-color: var.$color-white;
 			}
 		}
@@ -151,15 +151,15 @@ const alertBoxClassNames = computed(() => {
 
 	&.warning {
 		&.light {
-			color: var(--color-warning);
+			color: var(--color--warning);
 
 			&.background {
 				background-color: var.$alert-warning-color;
-				border-color: var(--color-warning);
+				border-color: var(--color--warning);
 			}
 
 			.el-alert__description {
-				color: var(--color-warning);
+				color: var(--color--warning);
 			}
 		}
 
@@ -167,11 +167,11 @@ const alertBoxClassNames = computed(() => {
 			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-warning);
+				color: var(--color--warning);
 			}
 
 			&.background {
-				background-color: var(--color-warning);
+				background-color: var(--color--warning);
 				border-color: var.$color-white;
 			}
 		}
@@ -179,15 +179,15 @@ const alertBoxClassNames = computed(() => {
 
 	&.error {
 		&.light {
-			color: var(--color-danger);
+			color: var(--color--danger);
 
 			&.background {
 				background-color: var.$alert-danger-color;
-				border-color: var(--color-danger);
+				border-color: var(--color--danger);
 			}
 
 			.el-alert__description {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 		}
 
@@ -195,11 +195,11 @@ const alertBoxClassNames = computed(() => {
 			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 
 			&.background {
-				background-color: var(--color-danger);
+				background-color: var(--color--danger);
 				border-color: var.$color-white;
 			}
 		}

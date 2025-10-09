@@ -23,6 +23,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { IUser } from 'n8n-workflow';
 
+import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };
@@ -386,7 +387,7 @@ watchEffect(async () => {
 	grid-template-areas: 'header corner' 'content list';
 	grid-template-columns: auto 330px;
 	grid-template-rows: 65px auto;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .header {
@@ -394,7 +395,7 @@ watchEffect(async () => {
 	display: flex;
 	align-items: center;
 	padding: 0 var(--spacing-l);
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 }
 
 .corner {
@@ -403,9 +404,9 @@ watchEffect(async () => {
 	align-items: center;
 	justify-content: space-between;
 	padding: 0 var(--spacing-3xs) 0 var(--spacing-s);
-	background-color: var(--color-background-lighter);
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	background-color: var(--color--background--light-2er);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border-left: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 }
 
 .contentComponentWrapper {
@@ -425,7 +426,7 @@ watchEffect(async () => {
 		bottom: 0;
 		left: 0;
 		width: var(--border-width-base);
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 }
 </style>

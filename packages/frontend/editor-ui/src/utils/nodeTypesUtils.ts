@@ -31,7 +31,6 @@ import {
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
-const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\["(.+?)"\]/s;
 
 export function getAppNameFromCredType(name: string) {
@@ -65,14 +64,6 @@ export function filterTemplateNodes(nodes: ITemplatesNode[]) {
 
 	const results = notCoreNodes.length > 0 ? notCoreNodes : nodes;
 	return results.filter((elem) => !TEMPLATES_NODES_FILTER.includes(elem.name));
-}
-
-export function isCommunityPackageName(packageName: string): boolean {
-	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
-	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
-	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
-
-	return !!nameMatch;
 }
 
 export function hasExpressionMapping(value: unknown) {

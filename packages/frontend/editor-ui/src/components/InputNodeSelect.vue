@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 type Props = {
 	nodes: IConnectedNode[];
 	workflow: Workflow;
@@ -188,7 +189,7 @@ function onInputNodeChange(value: string) {
 }
 
 .title {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight-regular);
 	max-width: var(--max-select-width);
 	overflow: hidden;
@@ -197,13 +198,13 @@ function onInputNodeChange(value: string) {
 }
 
 .disabled .title {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .subtitle {
 	margin-left: auto;
 	padding-left: var(--spacing-2xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight-regular);
 }
 </style>

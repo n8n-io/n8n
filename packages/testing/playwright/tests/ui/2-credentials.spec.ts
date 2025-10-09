@@ -26,14 +26,14 @@ test.describe('Credentials', () => {
 		const credentialA = `A Credential ${nanoid()}`;
 		const credentialZ = `Z Credential ${nanoid()}`;
 
-		await n8n.api.credentialApi.createCredential({
+		await n8n.api.credentials.createCredential({
 			name: credentialA,
 			type: 'notionApi',
 			data: { apiKey: '1234567890' },
 			projectId,
 		});
 
-		await n8n.api.credentialApi.createCredential({
+		await n8n.api.credentials.createCredential({
 			name: credentialZ,
 			type: 'trelloApi',
 			data: { apiKey: 'test_api_key', apiToken: 'test_api_token' },
@@ -94,14 +94,14 @@ test.describe('Credentials', () => {
 		const serviceAccountCredentialName2 = `OAuth2 Credential ${nanoid()}`;
 		const serviceAccountCredentialName = `Service Account Credential ${nanoid()}`;
 
-		await n8n.api.credentialApi.createCredential({
+		await n8n.api.credentials.createCredential({
 			name: serviceAccountCredentialName2,
 			type: 'googleApi',
 			data: { email: 'test@service.com', privateKey: 'test_key' },
 			projectId,
 		});
 
-		await n8n.api.credentialApi.createCredential({
+		await n8n.api.credentials.createCredential({
 			name: serviceAccountCredentialName,
 			type: 'googleApi',
 			data: { email: 'test@service.com', privateKey: 'test_key' },
@@ -234,7 +234,7 @@ test.describe('Credentials', () => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		const credentialName = `My awesome Notion account ${nanoid()}`;
 
-		await n8n.api.credentialApi.createCredential({
+		await n8n.api.credentials.createCredential({
 			name: credentialName,
 			type: 'notionApi',
 			data: { apiKey: '1234567890' },
@@ -245,16 +245,16 @@ test.describe('Credentials', () => {
 		await n8n.canvas.addNode('Notion', { action: 'Append a block' });
 		await expect(n8n.ndv.getCredentialSelect()).toHaveValue(credentialName);
 
-		const credentials = await n8n.api.credentialApi.getCredentials();
+		const credentials = await n8n.api.credentials.getCredentials();
 		const credential = credentials.find((c) => c.name === credentialName);
-		await n8n.api.credentialApi.deleteCredential(credential!.id);
+		await n8n.api.credentials.deleteCredential(credential!.id);
 	});
 
 	test('should set a default credential when editing a node', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		const credentialName = `My awesome Notion account ${nanoid()}`;
 
-		await n8n.api.credentialApi.createCredential({
+		await n8n.api.credentials.createCredential({
 			name: credentialName,
 			type: 'notionApi',
 			data: { apiKey: '1234567890' },
@@ -268,9 +268,9 @@ test.describe('Credentials', () => {
 		await n8n.ndv.selectOptionInParameterDropdown('nodeCredentialType', 'Notion API');
 		await expect(n8n.ndv.getCredentialSelect()).toHaveValue(credentialName);
 
-		const credentials = await n8n.api.credentialApi.getCredentials();
+		const credentials = await n8n.api.credentials.getCredentials();
 		const credential = credentials.find((c) => c.name === credentialName);
-		await n8n.api.credentialApi.deleteCredential(credential!.id);
+		await n8n.api.credentials.deleteCredential(credential!.id);
 	});
 
 	test('should setup generic authentication for HTTP node', async ({ n8n }) => {

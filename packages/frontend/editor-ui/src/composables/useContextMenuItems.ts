@@ -1,7 +1,7 @@
 import type { ActionDropdownItem, INodeUi } from '@/Interface';
 import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
@@ -19,6 +19,7 @@ export type ContextMenuAction =
 	| 'duplicate'
 	| 'execute'
 	| 'rename'
+	| 'replace'
 	| 'toggle_pin'
 	| 'delete'
 	| 'select_all'
@@ -230,6 +231,12 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },
+								disabled: isReadOnly.value,
+							},
+							{
+								id: 'replace',
+								label: i18n.baseText('contextMenu.replace'),
+								shortcut: { keys: ['R'] },
 								disabled: isReadOnly.value,
 							},
 						];

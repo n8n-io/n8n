@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { splitName } from '@/utils/projects.utils';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import { N8nAvatar } from '@n8n/design-system';
 type Props = {
 	project: ProjectListItem | ProjectSharingData;
 };
@@ -61,14 +62,14 @@ const projectIcon = computed(() => {
 
 	p {
 		font-size: var(--font-size-s);
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		font-weight: var(--font-weight-medium);
 		line-height: var(--font-line-height-loose);
 	}
 
 	small {
 		font-size: var(--font-size-xs);
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		line-height: var(--font-line-height-loose);
 	}
 }

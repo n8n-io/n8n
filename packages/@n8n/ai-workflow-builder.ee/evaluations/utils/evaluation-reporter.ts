@@ -122,10 +122,15 @@ export function displayTestResults(
 		if (result) {
 			const status = result.error ? 'fail' : 'pass';
 			const badge = formatStatusBadge(status);
-			const score = result.error ? 'N/A' : formatColoredScore(result.evaluationResult.overallScore);
+			const llmScore = result.error
+				? 'N/A'
+				: formatColoredScore(result.evaluationResult.overallScore);
+			const progScore = result.error
+				? 'N/A'
+				: formatColoredScore(result.programmaticEvaluationResult.overallScore);
 			console.log(`  ${badge} ${formatTestName(testCase.name, testCase.id)}`);
 			console.log(
-				`     Score: ${score} | Nodes: ${result.generatedWorkflow?.nodes?.length} | Time: ${result.generationTime}ms`,
+				`     LLM Score: ${llmScore} | Prog Score: ${progScore} | Nodes: ${result.generatedWorkflow?.nodes?.length} | Time: ${result.generationTime}ms`,
 			);
 			if (result.error) {
 				console.log(`     ${pc.red('Error:')} ${pc.dim(result.error)}`);
@@ -147,9 +152,19 @@ export function displaySummaryTable(
 		averageScore: number;
 		categoryAverages: Record<string, number>;
 		violationCounts: { critical: number; major: number; minor: number };
+		programmaticAverages?: Record<string, number>;
+		programmaticViolationCounts?: { critical: number; major: number; minor: number };
 	},
 ): void {
-	const { totalTests, successfulTests, averageScore, categoryAverages, violationCounts } = metrics;
+	const {
+		totalTests,
+		successfulTests,
+		averageScore,
+		categoryAverages,
+		violationCounts,
+		programmaticAverages,
+		programmaticViolationCounts,
+	} = metrics;
 	const failedTests = totalTests - successfulTests;
 
 	const summaryTable = new Table({
@@ -161,20 +176,49 @@ export function displaySummaryTable(
 		['Total Tests', totalTests.toString()],
 		['Successful', pc.green(successfulTests.toString())],
 		['Failed', failedTests > 0 ? pc.red(failedTests.toString()) : '0'],
-		['Average Score', formatColoredScore(averageScore)],
 		[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
-		['Functionality', formatColoredScore(categoryAverages.functionality)],
-		['Connections', formatColoredScore(categoryAverages.connections)],
-		['Expressions', formatColoredScore(categoryAverages.expressions)],
-		['Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
-		[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
+		[pc.magenta('LLM Evaluation'), ''],
+		['  Overall Score', formatColoredScore(averageScore)],
+		['  Functionality', formatColoredScore(categoryAverages.functionality)],
+		['  Connections', formatColoredScore(categoryAverages.connections)],
+		['  Expressions', formatColoredScore(categoryAverages.expressions)],
+		['  Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
+		['  Violations', ''],
 		[
-			'Critical Issues',
+			'    Critical',
 			violationCounts.critical > 0 ? pc.red(violationCounts.critical.toString()) : '0',
 		],
-		['Major Issues', violationCounts.major > 0 ? pc.yellow(violationCounts.major.toString()) : '0'],
-		['Minor Issues', pc.dim(violationCounts.minor.toString())],
+		['    Major', violationCounts.major > 0 ? pc.yellow(violationCounts.major.toString()) : '0'],
+		['    Minor', pc.dim(violationCounts.minor.toString())],
 	);
+
+	// Add programmatic evaluation section if available
+	if (programmaticAverages && programmaticViolationCounts) {
+		summaryTable.push(
+			[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
+			[pc.cyan('Programmatic'), ''],
+			['  Overall Score', formatColoredScore(programmaticAverages.overall)],
+			['  Connections', formatColoredScore(programmaticAverages.connections)],
+			['  Trigger', formatColoredScore(programmaticAverages.trigger)],
+			['  Agent Prompt', formatColoredScore(programmaticAverages.agentPrompt)],
+			['  Tools', formatColoredScore(programmaticAverages.tools)],
+			['  FromAI', formatColoredScore(programmaticAverages.fromAi)],
+			['  Violations', ''],
+			[
+				'    Critical',
+				programmaticViolationCounts.critical > 0
+					? pc.red(programmaticViolationCounts.critical.toString())
+					: '0',
+			],
+			[
+				'    Major',
+				programmaticViolationCounts.major > 0
+					? pc.yellow(programmaticViolationCounts.major.toString())
+					: '0',
+			],
+			['    Minor', pc.dim(programmaticViolationCounts.minor.toString())],
+		);
+	}
 
 	console.log();
 	console.log(formatHeader('Summary', 70));
@@ -190,29 +234,65 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	const allViolations: Array<{
 		violation: Violation & { category: string };
 		testName: string;
+		source: 'llm' | 'programmatic';
 	}> = [];
 
 	results.forEach((result) => {
 		if (!result.error) {
-			const testViolations = [
+			// LLM evaluation violations
+			const llmViolations = [
 				...result.evaluationResult.functionality.violations.map((v) => ({
 					violation: { ...v, category: 'Functionality' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
 				...result.evaluationResult.connections.violations.map((v) => ({
-					violation: { ...v, category: 'Connections' },
+					violation: { ...v, category: 'Connections (LLM)' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
 				...result.evaluationResult.expressions.violations.map((v) => ({
 					violation: { ...v, category: 'Expressions' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
 				...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
 					violation: { ...v, category: 'Node Config' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
 			];
-			allViolations.push.apply(allViolations, testViolations);
+
+			// Programmatic evaluation violations
+			const progViolations = [
+				...result.programmaticEvaluationResult.connections.violations.map((v) => ({
+					violation: { ...v, category: 'Connections' },
+					testName: result.testCase.name,
+					source: 'programmatic' as const,
+				})),
+				...result.programmaticEvaluationResult.trigger.violations.map((v) => ({
+					violation: { ...v, category: 'Trigger' },
+					testName: result.testCase.name,
+					source: 'programmatic' as const,
+				})),
+				...result.programmaticEvaluationResult.agentPrompt.violations.map((v) => ({
+					violation: { ...v, category: 'Agent Prompt' },
+					testName: result.testCase.name,
+					source: 'programmatic' as const,
+				})),
+				...result.programmaticEvaluationResult.tools.violations.map((v) => ({
+					violation: { ...v, category: 'Tools' },
+					testName: result.testCase.name,
+					source: 'programmatic' as const,
+				})),
+				...result.programmaticEvaluationResult.fromAi.violations.map((v) => ({
+					violation: { ...v, category: 'FromAI' },
+					testName: result.testCase.name,
+					source: 'programmatic' as const,
+				})),
+			];
+
+			allViolations.push(...llmViolations, ...progViolations);
 		}
 	});
 
@@ -230,9 +310,10 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	if (criticalViolations.length > 0) {
 		console.log();
 		console.log(pc.red('Critical Violations:'));
-		criticalViolations.forEach(({ violation, testName }) => {
+		criticalViolations.forEach(({ violation, testName, source }) => {
+			const sourceLabel = source === 'programmatic' ? pc.cyan('[PROG]') : pc.magenta('[LLM]');
 			console.log(
-				`  ${formatViolationType('critical')} [${violation.category}] ${violation.description}`,
+				`  ${formatViolationType('critical')} ${sourceLabel} [${violation.category}] ${violation.description}`,
 			);
 			console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
 		});
@@ -242,9 +323,10 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	if (majorViolations.length > 0) {
 		console.log();
 		console.log(pc.yellow('Major Violations:'));
-		majorViolations.forEach(({ violation, testName }) => {
+		majorViolations.forEach(({ violation, testName, source }) => {
+			const sourceLabel = source === 'programmatic' ? pc.cyan('[PROG]') : pc.magenta('[LLM]');
 			console.log(
-				`  ${formatViolationType('major')} [${violation.category}] ${violation.description}`,
+				`  ${formatViolationType('major')} ${sourceLabel} [${violation.category}] ${violation.description}`,
 			);
 			console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
 		});
@@ -254,9 +336,10 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	if (minorViolations.length > 0) {
 		console.log();
 		console.log(pc.gray('Minor Violations:'));
-		minorViolations.forEach(({ violation, testName }) => {
+		minorViolations.forEach(({ violation, testName, source }) => {
+			const sourceLabel = source === 'programmatic' ? pc.cyan('[PROG]') : pc.magenta('[LLM]');
 			console.log(
-				`  ${formatViolationType('minor')} [${violation.category}] ${violation.description}`,
+				`  ${formatViolationType('minor')} ${sourceLabel} [${violation.category}] ${violation.description}`,
 			);
 			console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
 		});

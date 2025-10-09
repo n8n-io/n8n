@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsDateRange } from '@n8n/api-types';
-import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { ref } from 'vue';
 import { UNLICENSED_TIME_RANGE } from '../insights.constants';
 import { getTimeRangeLabels } from '../insights.utils';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 const model = defineModel<InsightsDateRange['key'] | typeof UNLICENSED_TIME_RANGE>({
 	required: true,
 });

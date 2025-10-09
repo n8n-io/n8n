@@ -16,12 +16,12 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionRetryMessage } from '@/utils/executionUtils';
-import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
-import { ElSkeletonItem } from 'element-plus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
 
+import { ElCheckbox, ElSkeletonItem } from 'element-plus';
+import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		executions: ExecutionSummaryWithScopes[];
@@ -310,8 +310,9 @@ async function deleteExecution(execution: ExecutionSummary) {
 	}
 }
 
-async function onAutoRefreshToggle(value: boolean) {
-	if (value) {
+async function onAutoRefreshToggle(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
+	if (boolValue) {
 		await executionsStore.startAutoRefreshInterval();
 	} else {
 		executionsStore.stopAutoRefreshInterval();

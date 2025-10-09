@@ -2,7 +2,7 @@ import type { Server, Request } from 'miragejs';
 import { Response } from 'miragejs';
 import { jsonParse } from 'n8n-workflow';
 import type { AppSchema } from '@/__tests__/server/types';
-import type { SourceControlPreferences } from '@/types/sourceControl.types';
+import type { SourceControlPreferences } from '@/features/sourceControl.ee/sourceControl.types';
 
 export function routesForSourceControl(server: Server) {
 	const sourceControlApiRoot = '/rest/source-control';

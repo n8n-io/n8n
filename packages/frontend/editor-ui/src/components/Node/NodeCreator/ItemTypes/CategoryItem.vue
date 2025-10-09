@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
+import { N8nIcon } from '@n8n/design-system';
 export interface Props {
 	expanded?: boolean;
 	active?: boolean;
@@ -39,7 +40,7 @@ const categoryName = computed(() => {
 
 <style lang="scss" module>
 .triggerIcon {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	margin-left: var(--spacing-3xs);
 }
 .category {
@@ -70,6 +71,6 @@ const categoryName = computed(() => {
 
 .name {
 	flex-grow: 1;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 </style>

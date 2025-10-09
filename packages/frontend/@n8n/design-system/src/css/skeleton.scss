@@ -6,7 +6,7 @@
 	width: 100%;
 	height: 16px;
 	border-radius: var(--border-radius-large);
-	background: var(--color-background-base);
+	background: var(--color--background);
 	display: inline-block;
 }
 
@@ -40,7 +40,7 @@
 	-ms-flex-pack: center;
 	justify-content: center;
 	border-radius: 8px !important;
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 }
 
 .el-skeleton__image svg {
@@ -51,7 +51,7 @@
 
 .el-skeleton__first-line,
 .el-skeleton__paragraph {
-	background: var(--color-background-base);
+	background: var(--color--background);
 }
 
 .el-skeleton.is-animated .el-skeleton__item {
@@ -59,15 +59,15 @@
 		linear,
 		left top,
 		right top,
-		color-stop(25%, var(--color-background-base)),
-		color-stop(37%, var(--color-background-medium)),
-		color-stop(63%, var(--color-background-base))
+		color-stop(25%, var(--color--background)),
+		color-stop(37%, var(--color--background--shade-1)),
+		color-stop(63%, var(--color--background))
 	);
 	background: linear-gradient(
 		90deg,
-		var(--color-background-base) 25%,
-		var(--color-background-medium) 37%,
-		var(--color-background-base) 63%
+		var(--color--background) 25%,
+		var(--color--background--shade-1) 37%,
+		var(--color--background) 63%
 	);
 	background-size: 400% 100%;
 	-webkit-animation: el-skeleton-loading 1.4s ease infinite;

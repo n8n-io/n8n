@@ -41,6 +41,8 @@ import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];

@@ -8,6 +8,7 @@ import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import type { WorkflowSettings } from 'n8n-workflow';
@@ -18,13 +19,16 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
+import { ElCol, ElRow, ElSwitch } from 'element-plus';
+import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
 const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
@@ -36,6 +40,7 @@ const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 
 const isLoading = ref(true);
@@ -92,6 +97,16 @@ const workflowOwnerName = computed(() => {
 	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const isEligibleForMCPAccess = computed(() => {
+	if (!workflow.value?.active) {
+		return false;
+	}
+	// If it's active, check if workflow has at least one enabled webhook trigger:
+	return workflow.value?.nodes.some(
+		(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
+	);
+});
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -363,7 +378,7 @@ const saveSettings = async () => {
 
 	const oldSettings = deepCopy(workflowsStore.workflowSettings);
 
-	workflowsStore.setWorkflowSettings(localWorkflowSettings);
+	workflowState.setWorkflowSettings(localWorkflowSettings);
 
 	isLoading.value = false;
 
@@ -842,7 +857,11 @@ onBeforeUnmount(() => {
 							{{ i18n.baseText('workflowSettings.availableInMCP') }}
 							<N8nTooltip placement="top">
 								<template #content>
-									{{ i18n.baseText('workflowSettings.availableInMCP.tooltip') }}
+									{{
+										isEligibleForMCPAccess
+											? i18n.baseText('workflowSettings.availableInMCP.tooltip')
+											: i18n.baseText('mcp.workflowNotEligable.description')
+									}}
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -850,13 +869,18 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<ElSwitch
-								ref="inputField"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:model-value="workflowSettings.availableInMCP ?? false"
-								data-test-id="workflow-settings-available-in-mcp"
-								@update:model-value="toggleAvailableInMCP"
-							></ElSwitch>
+							<N8nTooltip placement="top" :disabled="isEligibleForMCPAccess">
+								<template #content>
+									{{ i18n.baseText('mcp.workflowNotEligable.description') }}
+								</template>
+								<ElSwitch
+									ref="inputField"
+									:disabled="readOnlyEnv || !workflowPermissions.update || !isEligibleForMCPAccess"
+									:model-value="workflowSettings.availableInMCP ?? false"
+									data-test-id="workflow-settings-available-in-mcp"
+									@update:model-value="toggleAvailableInMCP"
+								></ElSwitch>
+							</N8nTooltip>
 						</div>
 					</ElCol>
 				</ElRow>

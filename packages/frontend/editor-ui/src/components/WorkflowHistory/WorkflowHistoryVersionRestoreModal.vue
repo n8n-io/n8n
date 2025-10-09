@@ -5,6 +5,7 @@ import { useUIStore } from '@/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: {

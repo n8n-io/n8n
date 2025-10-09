@@ -1,0 +1,74 @@
+/**
+	Deprecated tokens as we migrate towards new --[group]--[group]--... css variables
+	Keeping temporarily until naming is enforced across the app
+	To minimize bugs related to ongoing work
+**/
+@mixin deprecatedTheme {
+	--color-primary-h: var(--p--color--primary-h);
+	--color-primary-s: var(--p--color--primary-s);
+	--color-primary-l: var(--p--color--primary-l);
+
+	// Primary tokens
+
+	// Primary
+	--color-primary-shade-1: var(--p--color--primary-420);
+	--color-primary: var(--p--color--primary-320);
+	--color-primary-tint-1: var(--p--color--primary-120);
+	--color-primary-tint-2: var(--p--color--primary-070);
+	--color-primary-tint-3: var(--p--color--primary-030);
+
+	// Secondary
+	--color-secondary-shade-1: var(--p--color--secondary-570);
+	--color-secondary: var(--p--color--secondary-470);
+	--color-secondary-tint-1: var(--p--color--secondary-170);
+	--color-secondary-tint-3: var(--p--color--secondary-070);
+
+	// Success
+	--color-success-shade-1: var(--p--color--alt-a-700);
+	--color-success: var(--p--color--alt-a-600);
+	--color-success-light: var(--p--color--alt-a-300);
+	--color-success-light-2: var(--p--color--alt-a-200);
+	--color-success-tint-1: var(--p--color--alt-a-100);
+	--color-success-tint-2: var(--p--color--alt-a-050);
+
+	// Warning
+	--color-warning-shade-1: var(--p--color--alt-b-530);
+	--color-warning: var(--p--color--alt-b-430);
+	--color-warning-tint-1: var(--p--color--alt-b-180);
+	--color-warning-tint-2: var(--p--color--alt-b-030);
+
+	// Danger
+	--color-danger-shade-1: var(--p--color--alt-c-580);
+	--color-danger: var(--p--color--alt-c-480);
+	--color-danger-light: var(--p--color--alt-c-330);
+	--color-danger-light-2: var(--p--color--alt-c-230);
+	--color-danger-tint-1: var(--p--color--alt-c-080);
+	--color-danger-tint-2: var(--p--color--alt-c-030);
+
+	// Text
+	--color-text-dark: var(--p--color--gray-740);
+	--color-text-base: var(--p--color--gray-540);
+	--color-text-light: var(--p--color--gray-420);
+	--color-text-lighter: var(--p--color--gray-120);
+	--color-text-xlight: var(--p--color--white);
+	--color-text-danger: var(--p--color--alt-c-480);
+
+	// Foreground
+	--color-foreground-xdark: var(--p--color--gray-490);
+	--color-foreground-dark: var(--p--color--gray-200);
+	--color-foreground-base: var(--p--color--gray-120);
+	--color-foreground-light: var(--p--color--gray-070);
+	--color-foreground-xlight: var(--p--color--white);
+
+	// Background
+	--color-background-dark: var(--p--color--gray-820);
+	--color-background-medium: var(--p--color--gray-120);
+	--color-background-base: var(--p--color--gray-040);
+	--color-background-light-base: var(--p--color--gray-025);
+	--color-background-light: var(--p--color--gray-010);
+	--color-background-xlight: var(--p--color--white);
+}
+
+:root {
+	@include deprecatedTheme;
+}

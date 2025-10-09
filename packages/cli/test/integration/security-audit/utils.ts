@@ -72,7 +72,7 @@ export const MOCK_09990_N8N_VERSION = {
 	createdAt: '2022-11-11T11:11:11.111Z',
 	description:
 		'Includes <strong>new nodes</strong>, <strong>node enhancements</strong>, <strong>core functionality</strong> and <strong>bug fixes</strong>',
-	documentationUrl: 'https://docs.n8n.io/reference/release-notes/#n8n09990',
+	documentationUrl: 'https://docs.n8n.io/release-notes/0-x/#n8n0990',
 	hasBreakingChange: false,
 	hasSecurityFix: false,
 	hasSecurityIssue: false,
@@ -85,7 +85,7 @@ export const MOCK_01110_N8N_VERSION = {
 	createdAt: '2022-01-01T00:00:00.000Z',
 	description:
 		'Includes <strong>new nodes</strong>, <strong>node enhancements</strong>, <strong>core functionality</strong> and <strong>bug fixes</strong>',
-	documentationUrl: 'https://docs.n8n.io/reference/release-notes/#n8n01110',
+	documentationUrl: 'https://docs.n8n.io/release-notes/0-x/#n8n01100',
 	hasBreakingChange: false,
 	hasSecurityFix: false,
 	hasSecurityIssue: false,

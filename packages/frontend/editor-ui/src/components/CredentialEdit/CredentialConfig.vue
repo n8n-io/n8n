@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, watch } from 'vue';
 
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
+import { isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
@@ -30,9 +31,18 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
-import { useAssistantStore } from '@/stores/assistant.store';
-import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+
+import {
+	N8nInlineAskAssistantButton,
+	N8nCallout,
+	N8nInfoTip,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 
 type Props = {
 	mode: string;
@@ -75,6 +85,7 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -216,7 +227,7 @@ async function onAskAssistantClick() {
 		});
 		return;
 	}
-	await assistantStore.initCredHelp(props.credentialType);
+	await chatPanelStore.openWithCredHelp(props.credentialType);
 }
 
 watch(showOAuthSuccessBanner, (newValue, oldValue) => {
@@ -316,7 +327,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:class="$style.askAssistantButton"
 					data-test-id="credential-edit-ask-assistant-button"
 				>
-					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+					<N8nInlineAskAssistantButton
+						:asked="assistantAlreadyAsked"
+						@click="onAskAssistantClick"
+					/>
 					<span>for setup instructions</span>
 				</div>
 
@@ -404,6 +418,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 .askAssistantButton {
 	display: flex;
 	align-items: center;
+
 	> span {
 		margin-left: var(--spacing-3xs);
 		font-size: var(--font-size-s);

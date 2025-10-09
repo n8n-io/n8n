@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor, within } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -353,8 +353,8 @@ describe('InsightsTableWorkflows', () => {
 			).not.toBeInTheDocument();
 		});
 
-		it('should display paywall when dashboard is not enabled', async () => {
-			renderComponent({
+		it('should render paywall cover when dashboard is not enabled', async () => {
+			const { container } = renderComponent({
 				props: {
 					data: mockInsightsData,
 					loading: false,
@@ -362,14 +362,23 @@ describe('InsightsTableWorkflows', () => {
 				},
 			});
 
-			await waitFor(() => {
-				expect(
-					screen.getByRole('heading', {
-						level: 4,
-						name: 'Upgrade to access more detailed insights',
-					}),
-				).toBeInTheDocument();
-			});
+			// Verify sample data is used instead of real data
+			expect(screen.getByTestId('workflow-row-sample-workflow-1')).toBeInTheDocument();
+			expect(screen.queryByTestId('workflow-row-workflow-1')).not.toBeInTheDocument();
+
+			// Wait for the blurryCover div that contains the paywall to be present
+			await screen.findByTestId('insights-table');
+			const blurryCover = container.querySelector('[class*="blurryCover"]');
+			expect(blurryCover).toBeInTheDocument();
+
+			// Wait for the async paywall component to load and render
+			// The paywall text should appear once the component loads
+			const paywallText = await screen.findByText(
+				'Upgrade to access more detailed insights',
+				{},
+				{ timeout: 3000 },
+			);
+			expect(paywallText).toBeInTheDocument();
 		});
 
 		it('should use sample data when dashboard is not enabled', () => {

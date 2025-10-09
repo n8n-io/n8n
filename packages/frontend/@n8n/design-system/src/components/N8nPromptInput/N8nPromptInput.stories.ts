@@ -34,7 +34,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 
@@ -346,12 +346,12 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 	},
 	template: `
 		<div style="max-width: 600px; margin: 20px;">
-			<div style="margin-bottom: 20px; padding: 20px; background: var(--color-background-base); border-radius: var(--border-radius-base);">
-				<h3 style="color: var(--color-text-dark); margin-bottom: 10px;">Credits Tracking Demo</h3>
-				<p style="color: var(--color-text-base); margin-bottom: 10px;">
+			<div style="margin-bottom: 20px; padding: 20px; background: var(--color--background); border-radius: var(--border-radius-base);">
+				<h3 style="color: var(--color--text--shade-1); margin-bottom: 10px;">Credits Tracking Demo</h3>
+				<p style="color: var(--color--text); margin-bottom: 10px;">
 					Each message consumes 1 credit. Credits renew at the beginning of next month.
 				</p>
-				<p style="color: var(--color-text-light); font-size: var(--font-size-s);">
+				<p style="color: var(--color--text--tint-1); font-size: var(--font-size-s);">
 					Credits remaining: {{ creditsRemaining }} / {{ creditsQuota }}
 				</p>
 			</div>

@@ -81,13 +81,24 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 	// Give some time for the VM to be ready
 	await sleep(1000);
 
+	const failures = [];
+
 	for (const n8nSetup of config.n8nSetupsToUse) {
-		await runBenchmarkForN8nSetup({
-			config,
-			sshClient,
-			scriptsDir,
-			n8nSetup,
-		});
+		try {
+			await runBenchmarkForN8nSetup({
+				config,
+				sshClient,
+				scriptsDir,
+				n8nSetup,
+			});
+		} catch (error) {
+			console.error(`Benchmark failed for ${n8nSetup}:`, error.message);
+			failures.push(n8nSetup);
+		}
+	}
+
+	if (failures.length > 0) {
+		throw new Error(`Benchmarks failed for setups: ${failures.join(', ')}`);
 	}
 }
 

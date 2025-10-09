@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
 
-import { directionsCursorMaps, type Direction, type ResizeData } from '@n8n/design-system/types';
+import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;

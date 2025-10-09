@@ -40,7 +40,7 @@
 		}
 
 		@include mixins.when(active) {
-			background-color: var(--color-primary);
+			background-color: var(--color--primary);
 			color: var.$color-white;
 		}
 	}
@@ -56,13 +56,13 @@
 		button {
 			background: transparent;
 			border: none;
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 			cursor: pointer;
 			font-size: var.$font-size-small;
 			padding: 0 3px;
 
 			&:hover {
-				color: var(--color-primary);
+				color: var(--color--primary);
 			}
 
 			&:focus {

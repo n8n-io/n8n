@@ -525,7 +525,7 @@ const table = useVueTable({
 	th {
 		position: relative;
 		text-align: left;
-		color: var(--color-text-base);
+		color: var(--color--text);
 		font-weight: 600;
 		font-size: 12px;
 		padding: 0 8px;
@@ -543,13 +543,13 @@ const table = useVueTable({
 	}
 
 	thead {
-		background-color: var(--color-background-light-base);
-		border-bottom: 1px solid var(--color-foreground-base);
+		background-color: var(--color--background--light-1);
+		border-bottom: 1px solid var(--color--foreground);
 	}
 
 	tbody > tr {
 		&:hover {
-			background-color: var(--color-background-light);
+			background-color: var(--color--background--light-2);
 		}
 
 		&:last-child > td {
@@ -558,12 +558,12 @@ const table = useVueTable({
 	}
 
 	tbody tr {
-		background-color: var(--color-background-xlight);
-		border-bottom: 1px solid var(--color-foreground-base);
+		background-color: var(--color--background--light-3);
+		border-bottom: 1px solid var(--color--foreground);
 	}
 
 	td {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		padding: 0 8px;
 		height: 48px;
 
@@ -586,7 +586,7 @@ const table = useVueTable({
 
 .n8n-data-table-server-wrapper {
 	border-radius: 8px;
-	border: 1px solid var(--color-foreground-base);
+	border: 1px solid var(--color--foreground);
 	overflow: hidden;
 }
 
@@ -614,7 +614,7 @@ th.loading-row {
 .progress-bar-value {
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-primary);
+	background-color: var(--color--primary);
 	animation: indeterminateAnimation 1s infinite linear;
 	transform-origin: 0% 50%;
 	position: absolute;
@@ -648,9 +648,9 @@ th.loading-row {
 		display: flex;
 
 		&__label {
-			color: var(--color-text-base);
-			background-color: var(--color-background-light);
-			border: 1px solid var(--color-foreground-base);
+			color: var(--color--text);
+			background-color: var(--color--background--light-2);
+			border: 1px solid var(--color--foreground);
 			border-right: 0;
 			font-size: 12px;
 			display: flex;
@@ -673,7 +673,7 @@ th.loading-row {
 	top: 0;
 	height: 100%;
 	width: 3px;
-	background: var(--color-primary);
+	background: var(--color--primary);
 	cursor: col-resize;
 	user-select: none;
 	touch-action: none;

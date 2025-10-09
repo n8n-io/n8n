@@ -6,10 +6,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 
 const renderComponent = createComponentRenderer(ChatEmbedModal, {
-	props: {
-		teleported: false,
-		appendToBody: false,
-	},
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {

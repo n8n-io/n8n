@@ -19,7 +19,7 @@
 		background-color: transparent;
 	}
 	50% {
-		background-color: var(--color-foreground-xdark);
+		background-color: var(--color--foreground--shade-2);
 	}
 }
 </style>

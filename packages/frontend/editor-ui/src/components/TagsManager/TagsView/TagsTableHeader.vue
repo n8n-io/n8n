@@ -3,6 +3,8 @@ import { ref } from 'vue';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 
+import { ElCol, ElRow } from 'element-plus';
+import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 withDefaults(
 	defineProps<{
 		disabled: boolean;

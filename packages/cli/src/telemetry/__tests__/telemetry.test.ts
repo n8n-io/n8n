@@ -262,6 +262,83 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_success?.first).toEqual(execTime1);
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
 		});
+
+		test('should count crashed executions correctly', async () => {
+			const payload = {
+				workflow_id: '1',
+				is_manual: true,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.node-type',
+			};
+
+			// Manual crashed execution
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeJestSystemTime('2022-01-01 12:30:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			// Production crashed execution
+			payload.is_manual = false;
+			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeJestSystemTime('2022-01-01 13:30:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			// Should fire "Workflow execution errored" events for manual crashed executions with n8n-nodes-base
+			expect(spyTrack).toHaveBeenCalledTimes(2);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_crashed?.count).toBe(2);
+			expect(execBuffer['1'].manual_crashed?.first).toEqual(execTime1);
+			expect(execBuffer['1'].prod_crashed?.count).toBe(2);
+			expect(execBuffer['1'].prod_crashed?.first).toEqual(execTime2);
+
+			// Other execution types should be undefined
+			expect(execBuffer['1'].manual_success).toBeUndefined();
+			expect(execBuffer['1'].manual_error).toBeUndefined();
+			expect(execBuffer['1'].prod_success).toBeUndefined();
+			expect(execBuffer['1'].prod_error).toBeUndefined();
+		});
+
+		test('should handle crashed executions with different workflow IDs', async () => {
+			const payload1 = {
+				workflow_id: '1',
+				is_manual: true,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.node-type',
+			};
+
+			const payload2 = {
+				workflow_id: '2',
+				is_manual: false,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.another-node',
+			};
+
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload1);
+
+			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload2);
+
+			// Should fire one "Workflow execution errored" event for manual crashed execution with n8n-nodes-base
+			expect(spyTrack).toHaveBeenCalledTimes(1);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_crashed?.count).toBe(1);
+			expect(execBuffer['1'].manual_crashed?.first).toEqual(execTime1);
+			expect(execBuffer['2'].prod_crashed?.count).toBe(1);
+			expect(execBuffer['2'].prod_crashed?.first).toEqual(execTime2);
+
+			// Cross-check other types are undefined
+			expect(execBuffer['1'].prod_crashed).toBeUndefined();
+			expect(execBuffer['2'].manual_crashed).toBeUndefined();
+		});
 	});
 
 	describe('Rudderstack', () => {

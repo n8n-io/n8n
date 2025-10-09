@@ -107,8 +107,8 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.sendMessageButton().should('not.be.disabled');
 		aiAssistant.getters.chatInput().then((element) => {
 			const { height } = element[0].getBoundingClientRect();
-			// Shift + Enter should add a new line
-			aiAssistant.getters.chatInput().type('Hello{shift+enter}there');
+			// Enter should add a new line
+			aiAssistant.getters.chatInput().type('Hello{enter}there');
 			aiAssistant.getters.chatInput().then((newElement) => {
 				const newHeight = newElement[0].getBoundingClientRect().height;
 				// Chat input should grow as user adds new lines
@@ -328,7 +328,7 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.placeholderMessage().should('not.exist');
 	});
 
-	it('should send message via enter even with global NodeCreator panel opened', () => {
+	it('should send message via shift + enter even with global NodeCreator panel opened', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
@@ -337,7 +337,7 @@ describe('AI Assistant::enabled', () => {
 		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		aiAssistant.actions.openChatFromCanvas();
 		nodeCreatorFeature.actions.openNodeCreator();
-		aiAssistant.getters.chatInput().type('Hello{Enter}');
+		aiAssistant.getters.chatInput().type('Hello{shift+enter}');
 
 		aiAssistant.getters.placeholderMessage().should('not.exist');
 	});

@@ -1,5 +1,5 @@
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useLogsStore } from '@/stores/logs.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';

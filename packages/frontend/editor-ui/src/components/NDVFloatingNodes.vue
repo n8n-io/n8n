@@ -8,6 +8,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 
+import { N8nTooltip } from '@n8n/design-system';
 interface Props {
 	rootNode: INodeUi;
 }

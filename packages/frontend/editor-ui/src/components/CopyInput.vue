@@ -3,6 +3,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 
+import { N8nInputLabel } from '@n8n/design-system';
 type Props = {
 	label?: string;
 	hint?: string;
@@ -75,12 +76,12 @@ function copy() {
 .copyText {
 	span {
 		font-family: Monaco, Consolas;
-		color: var(--color-text-base);
+		color: var(--color--text);
 		overflow-wrap: break-word;
 	}
 
 	padding: var(--spacing-xs);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 	cursor: pointer;
@@ -122,7 +123,7 @@ function copy() {
 	top: 0;
 	right: 0;
 	padding: var(--spacing-xs);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	height: 100%;
 	align-items: center;
 	border-radius: var(--border-radius-base);

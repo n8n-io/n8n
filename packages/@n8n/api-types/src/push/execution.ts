@@ -32,8 +32,6 @@ export type ExecutionFinished = {
 		executionId: string;
 		workflowId: string;
 		status: ExecutionStatus;
-		/** @deprecated: Please construct execution data in the frontend from the data pushed in previous messages, instead of depending on this additional payload serialization */
-		rawData?: string;
 	};
 };
 

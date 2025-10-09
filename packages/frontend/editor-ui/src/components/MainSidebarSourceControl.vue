@@ -3,10 +3,11 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRoute, useRouter } from 'vue-router';
 
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 defineProps<{
 	isCollapsed: boolean;
 }>();
@@ -149,14 +150,13 @@ function pullWorkfolder() {
 <style lang="scss" module>
 .sync {
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
-	margin: var(--spacing-2xs) 0 calc(var(--spacing-2xs) * -1);
-	background: var(--color-background-light);
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	background: var(--color--background--light-2);
+	border-top: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 	font-size: var(--font-size-2xs);
 
 	&.isConnected {
 		padding-left: var(--spacing-m);
-		border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);
+		border-left: var(--spacing-3xs) var(--border-style-base) var(--color--foreground);
 
 		&.collapsed {
 			padding-left: var(--spacing-xs);

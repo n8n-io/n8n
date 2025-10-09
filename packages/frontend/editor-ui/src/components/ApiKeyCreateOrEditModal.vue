@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import ApiKeyScopes from '@/components/ApiKeyScopes.vue';
+import CopyInput from '@/components/CopyInput.vue';
 import Modal from '@/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
@@ -10,13 +12,21 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { useToast } from '@/composables/useToast';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nText } from '@n8n/design-system';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
-import ApiKeyScopes from '@/components/ApiKeyScopes.vue';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 
+import { ElDatePicker } from 'element-plus';
+import {
+	N8nButton,
+	N8nCard,
+	N8nInput,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 const EXPIRATION_OPTIONS = {
 	'7_DAYS': 7,
 	'30_DAYS': 30,

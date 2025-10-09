@@ -55,7 +55,7 @@ defineSlots<{ default?: {} }>();
 
 .hoverable:hover {
 	.button:not(.active) {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -71,7 +71,7 @@ defineSlots<{ default?: {} }>();
 	align-items: center;
 	border-radius: var(--border-radius-base);
 	font-weight: var(--font-weight-medium);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	transition: background-color 0.2s ease;
 	cursor: pointer;
 	user-select: none;
@@ -121,7 +121,7 @@ defineSlots<{ default?: {} }>();
 }
 
 .active {
-	background-color: var(--color-foreground-xlight);
-	color: var(--color-text-dark);
+	background-color: var(--color--foreground--tint-2);
+	color: var(--color--text--shade-1);
 }
 </style>

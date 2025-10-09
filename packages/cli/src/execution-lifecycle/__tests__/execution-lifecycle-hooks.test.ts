@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
-import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataService,
@@ -437,7 +436,6 @@ describe('Execution Lifecycle Hooks', () => {
 						type: 'executionFinished',
 						data: {
 							executionId,
-							rawData: stringify(successfulRun.data),
 							status: 'success',
 							workflowId: 'test-workflow-id',
 						},

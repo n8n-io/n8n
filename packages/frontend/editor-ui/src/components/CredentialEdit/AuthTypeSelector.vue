@@ -18,6 +18,8 @@ import type {
 } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 
+import { ElRadio } from 'element-plus';
+import { N8nInputLabel } from '@n8n/design-system';
 export interface Props {
 	credentialType: ICredentialType;
 }
@@ -107,8 +109,9 @@ function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
 	return shouldDisplay;
 }
 
-function onAuthTypeChange(newType: string): void {
-	emit('authTypeChanged', newType);
+function onAuthTypeChange(newType: string | number | boolean): void {
+	const stringValue = typeof newType === 'string' ? newType : String(newType);
+	emit('authTypeChanged', stringValue);
 }
 
 function valueChanged(data: IUpdateInformation): void {

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import { ElTag } from 'element-plus';
+import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 interface Props {
 	theme: 'success' | 'danger';
 	message: string;
@@ -83,7 +85,7 @@ const onClick = () => {
 
 .dangerIcon {
 	composes: icon;
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .container {
@@ -120,7 +122,7 @@ const onClick = () => {
 .details {
 	composes: message;
 	margin-top: var(--spacing-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 }
 

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import * as dataStoreApi from '@/features/dataStore/dataStore.api';
+import * as dataTableApi from '@/features/dataTable/dataTable.api';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
@@ -18,7 +18,7 @@ import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -116,6 +116,19 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const getProject = async (id: string) => {
 		currentProject.value = await fetchProject(id);
 	};
+
+	async function fetchAndSetProject(projectId: string) {
+		if (projectId && currentProject.value?.id !== projectId) {
+			const project = await fetchProject(projectId);
+			setCurrentProject(project);
+		}
+	}
+
+	async function refreshCurrentProject() {
+		if (currentProjectId.value && currentProject.value?.id !== currentProjectId.value) {
+			await fetchAndSetProject(currentProjectId.value);
+		}
+	}
 
 	const createProject = async (project: CreateProjectDto): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.restApiContext, project);
@@ -242,7 +255,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		const [credentials, workflows, dataTables] = await Promise.all([
 			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
 			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
-			dataStoreApi.fetchDataStoresApi(rootStore.restApiContext, projectId),
+			dataTableApi.fetchDataTablesApi(rootStore.restApiContext, projectId),
 		]);
 
 		return {
@@ -305,8 +318,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getMyProjects,
 		getPersonalProject,
 		getAvailableProjects,
-		fetchProject,
 		getProject,
+		fetchProject,
+		fetchAndSetProject,
+		refreshCurrentProject,
 		createProject,
 		updateProject,
 		addMember,

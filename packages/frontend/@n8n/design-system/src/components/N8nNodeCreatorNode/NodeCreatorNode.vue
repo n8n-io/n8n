@@ -82,7 +82,7 @@ const { t } = useI18n();
 	}
 }
 .creatorNode:hover .panelIcon {
-	color: var(--action-arrow-color-hover, var(--color-text-light));
+	color: var(--action-arrow-color-hover, var(--color--text--tint-1));
 }
 :root .tag {
 	margin-left: var(--spacing-2xs);
@@ -101,14 +101,14 @@ const { t } = useI18n();
 	justify-content: flex-end;
 	align-items: center;
 	margin-left: var(--spacing-2xs);
-	color: var(--action-arrow-color, var(--color-text-lighter));
+	color: var(--action-arrow-color, var(--color--text--tint-2));
 	cursor: pointer;
 	background: transparent;
 	border: none;
 }
 .tooltipIcon {
 	margin-left: var(--spacing-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 }
 .details {
@@ -130,20 +130,20 @@ const { t } = useI18n();
 	font-size: var(--font-size-2xs);
 	line-height: 1rem;
 	font-weight: var(--font-weight-regular);
-	color: var(--node-creator-description-colos, var(--color-text-base));
+	color: var(--node-creator-description-colos, var(--color--text));
 }
 
 .aiIcon {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 
 .triggerIcon {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 </style>
 
 <style lang="scss" scoped>
 .el-tooltip svg {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 }
 </style>

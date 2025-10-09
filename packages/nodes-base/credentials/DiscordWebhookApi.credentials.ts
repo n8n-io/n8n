@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class DiscordWebhookApi implements ICredentialType {
 	name = 'discordWebhookApi';
@@ -20,4 +20,10 @@ export class DiscordWebhookApi implements ICredentialType {
 			},
 		},
 	];
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{ $credentials.webhookUri }}',
+		},
+	};
 }

@@ -35,6 +35,7 @@ import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
+import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
@@ -387,7 +388,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 	font-weight: var(--font-weight-regular);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-2xs) var(--spacing-s) 0;
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	i {
 		font-weight: var(--font-weight-bold);
@@ -406,7 +407,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 .apiHint {
 	padding: 0 var(--spacing-s) var(--spacing-xl);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	line-height: var(--font-line-height-regular);
 	z-index: 1;
 }

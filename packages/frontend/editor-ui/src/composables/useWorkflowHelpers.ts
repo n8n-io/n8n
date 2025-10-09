@@ -39,7 +39,6 @@ import type {
 	INodeUi,
 	IWorkflowDb,
 	TargetItem,
-	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -49,7 +48,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import get from 'lodash/get';
 
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -57,13 +56,13 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -533,6 +532,7 @@ export function useWorkflowHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
@@ -540,17 +540,6 @@ export function useWorkflowHelpers() {
 	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
-	const documentTitle = useDocumentTitle();
-
-	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
-		let icon = '⚠️';
-		if (status === 'EXECUTING') {
-			icon = '🔄';
-		} else if (status === 'IDLE') {
-			icon = '▶️';
-		}
-		documentTitle.set(`${icon} ${workflowName}`);
-	};
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -876,7 +865,7 @@ export function useWorkflowHelpers() {
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 		if (isCurrentWorkflow) {
-			workflowsStore.setActive(!!workflow.active);
+			workflowState.setActive(!!workflow.active);
 			uiStore.stateIsDirty = false;
 		}
 
@@ -966,14 +955,14 @@ export function useWorkflowHelpers() {
 
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
-		workflowsStore.setActive(workflowData.active || false);
+		workflowState.setActive(workflowData.active || false);
 		workflowsStore.setIsArchived(workflowData.isArchived);
-		workflowsStore.setWorkflowId(workflowData.id);
-		workflowsStore.setWorkflowName({
+		workflowState.setWorkflowId(workflowData.id);
+		workflowState.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		workflowsStore.setWorkflowSettings(workflowData.settings ?? {});
+		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
@@ -992,7 +981,7 @@ export function useWorkflowHelpers() {
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
-		workflowsStore.setWorkflowTagIds(tagIds || []);
+		workflowState.setWorkflowTagIds(tagIds || []);
 		tagsStore.upsertTags(tags);
 	}
 
@@ -1061,7 +1050,6 @@ export function useWorkflowHelpers() {
 	}
 
 	return {
-		setDocumentTitle,
 		resolveParameter,
 		resolveRequiredParameters,
 		getConnectedNodes,

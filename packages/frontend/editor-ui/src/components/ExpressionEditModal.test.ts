@@ -5,6 +5,7 @@ import { waitFor, within } from '@testing-library/vue';
 import { setActivePinia, type Pinia } from 'pinia';
 import { defaultSettings } from '../__tests__/defaults';
 import { useSettingsStore } from '../stores/settings.store';
+import { createTestNodeProperties } from '@/__tests__/mocks';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -41,7 +42,7 @@ describe('ExpressionEditModal', () => {
 		const { getByTestId } = renderModal({
 			pinia,
 			props: {
-				parameter: { name: 'foo', type: 'string' },
+				parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
 				path: '',
 				modelValue: 'test',
 				dialogVisible: true,
@@ -63,7 +64,7 @@ describe('ExpressionEditModal', () => {
 		const { getByTestId } = renderModal({
 			pinia,
 			props: {
-				parameter: { name: 'foo', type: 'string' },
+				parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
 				path: '',
 				modelValue: 'test',
 				dialogVisible: true,

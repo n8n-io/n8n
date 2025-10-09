@@ -421,7 +421,7 @@ function adjustTextAreaHeight() {
 	width: var(--chat--textarea--height);
 	background: var(--chat--input--send--button--background, white);
 	cursor: pointer;
-	color: var(--chat--input--send--button--color, var(--chat--color-secondary));
+	color: var(--chat--input--send--button--color, var(--chat--color--secondary));
 	border: 0;
 	font-size: 24px;
 	display: inline-flex;

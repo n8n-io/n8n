@@ -10,6 +10,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useStyles } from '@/composables/useStyles';
 
+import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	isActive?: boolean;
 }>();

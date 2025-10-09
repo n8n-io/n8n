@@ -109,13 +109,13 @@ const onClick = (event: MouseEvent) => {
 }
 
 .danger {
-	--border-color: var(--color-danger-tint-1);
-	--background-color: var(--color-danger-tint-2);
+	--border-color: var(--color--danger--tint-3);
+	--background-color: var(--color--danger--tint-4);
 }
 
 .success {
-	--border-color: var(--color-success-tint-1);
-	--background-color: var(--color-success-tint-2);
+	--border-color: var(--color--success--tint-3);
+	--background-color: var(--color--success--tint-4);
 }
 
 .info {

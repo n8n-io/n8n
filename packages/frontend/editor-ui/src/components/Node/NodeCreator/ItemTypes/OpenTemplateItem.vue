@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { OpenTemplateItemProps } from '@/Interface';
 
+import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
+import NodeIcon from '@/components/NodeIcon.vue';
 export interface Props {
 	openTemplate: OpenTemplateItemProps;
 }
@@ -41,7 +43,7 @@ defineProps<Props>();
 
 <style lang="scss" module>
 .creatorOpenTemplate {
-	--action-arrow-color: var(--color-text-light);
+	--action-arrow-color: var(--color--text--tint-1);
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-xs);
 	padding-bottom: var(--spacing-xs);

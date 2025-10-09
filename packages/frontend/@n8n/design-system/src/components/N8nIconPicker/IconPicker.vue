@@ -166,10 +166,10 @@ const togglePopup = () => {
 	display: flex;
 	flex-direction: column;
 	margin-top: var(--spacing-4xs);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
-	border-color: var(--color-foreground-dark);
+	border-color: var(--color--foreground--shade-1);
 
 	.tabs {
 		padding: var(--spacing-2xs);
@@ -190,15 +190,15 @@ const togglePopup = () => {
 		border-radius: var(--border-radius-small);
 
 		&:hover {
-			background-color: var(--color-background-medium);
+			background-color: var(--color--background--shade-1);
 		}
 	}
 
 	.icon {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 
 		&:hover {
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 		}
 	}
 

@@ -1,11 +1,11 @@
 import _pick from 'lodash-es/pick';
 import _isEqual from 'lodash-es/isEqual';
-import type { CanvasConnection, CanvasNode } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/features/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { toValue, computed, ref, watchEffect, shallowRef } from 'vue';
-import { useCanvasMapping } from '@/composables/useCanvasMapping';
+import { useCanvasMapping } from '@/features/canvas/composables/useCanvasMapping';
 import type { Workflow, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 

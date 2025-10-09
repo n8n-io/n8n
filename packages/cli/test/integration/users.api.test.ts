@@ -630,7 +630,6 @@ describe('GET /users', () => {
 				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
 
 				expect(nonPendingUser).toBeDefined();
-				expect(nonPendingUser!.isPending).toBe(false);
 				expect(nonPendingUser!.inviteAcceptUrl).toBeUndefined();
 			});
 		});
@@ -768,6 +767,63 @@ describe('GET /users', () => {
 
 				await userRepository.delete({ id: user1.id });
 				await userRepository.delete({ id: user2.id });
+			});
+		});
+
+		describe('field restrictions based on user:create scope', () => {
+			test('should return limited fields for members without user:create scope', async () => {
+				const response = await memberAgent.get('/users').expect(200);
+
+				const users = response.body.data.items;
+
+				expect(users).toBeInstanceOf(Array);
+
+				// Fields that should be restricted for members without user:create scope
+				const restrictionsFields = [
+					'mfaEnabled',
+					'settings',
+					'personalizationAnswers',
+					'inviteAcceptUrl',
+					'lastActiveAt',
+					'isOwner',
+					'signInType',
+					'projectRelations',
+				];
+
+				// Verify that sensitive/admin fields are NOT present for members
+				users.forEach((user: any) => {
+					// Basic fields should be present
+					expect(user).toHaveProperty('id');
+
+					if (user.id !== member1.id) {
+						// Admin-only fields should NOT be present
+						restrictionsFields.forEach((field) => {
+							expect(user).not.toHaveProperty(field);
+						});
+					} else {
+						// Admin-only fields should be present for own user
+						expect(user).toHaveProperty('mfaEnabled');
+						expect(user).toHaveProperty('settings');
+						expect(user).toHaveProperty('personalizationAnswers');
+						expect(user).toHaveProperty('lastActiveAt');
+						expect(user).toHaveProperty('isOwner');
+						expect(user).toHaveProperty('signInType');
+					}
+				});
+			});
+
+			test('should return full fields for owners/admins with user:create scope', async () => {
+				const response = await ownerAgent.get('/users').expect(200);
+
+				const users = response.body.data.items;
+
+				expect(users).toBeInstanceOf(Array);
+
+				// Verify that admin fields ARE present for owners
+				const userWithMfa = users.find((u: any) => u.email === 'member1@n8n.io');
+				expect(userWithMfa).toHaveProperty('mfaEnabled', true);
+				expect(userWithMfa).toHaveProperty('isOwner');
+				expect(userWithMfa).toHaveProperty('signInType');
 			});
 		});
 	});
