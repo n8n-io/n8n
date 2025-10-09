@@ -9,8 +9,8 @@ import type {
 	CanvasNodeInjectionData,
 	ConnectStartEvent,
 	ExecutionOutputMapData,
-} from '@/types';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+} from '@/features/canvas/canvas.types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/features/canvas/canvas.types';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';

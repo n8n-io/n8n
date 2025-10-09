@@ -8,8 +8,8 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
-import type { CanvasConnection, CanvasNode } from '@/types';
-import { CanvasConnectionMode } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/features/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -50,9 +50,9 @@ import {
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import { createCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
 import { nextTick, reactive, ref } from 'vue';
-import type { CanvasLayoutEvent } from './useCanvasLayout';
+import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
