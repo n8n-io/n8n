@@ -3,11 +3,22 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WorkflowStateKey,
 } from '@/constants';
-import type { IExecutionResponse, IExecutionsStopData, INewWorkflowData } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+	INewWorkflowData,
+	INodeUi,
+	IUpdateInformation,
+} from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
-import type { IDataObject, IWorkflowSettings } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	type IDataObject,
+	type INodeParameters,
+	type IWorkflowSettings,
+} from 'n8n-workflow';
 import { inject } from 'vue';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,12 +28,20 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import { clearPopupWindowState } from '@/utils/executionUtils';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/stores/workflowState.store';
+import { isObject } from '@/utils/objectUtils';
+import findLast from 'lodash/findLast';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const workflowStateStore = useWorkflowStateStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
+	const nodeTypesStore = useNodeTypesStore();
+
+	////
+	// Workflow editing state
+	////
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
@@ -148,7 +167,10 @@ export function useWorkflowState() {
 		return workflowData;
 	}
 
-	//// Execution
+	////
+	// Execution
+	////
+
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
@@ -198,7 +220,63 @@ export function useWorkflowState() {
 		ws.executionWaitingForWebhook = false;
 	}
 
+	////
+	// Node modification
+	////
+
+	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
+		// Find the node that should be updated
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
+			return node.name === updateInformation.name;
+		});
+
+		if (nodeIndex === -1) {
+			throw new Error(
+				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
+			);
+		}
+
+		const { name, parameters } = ws.workflow.nodes[nodeIndex];
+
+		const newParameters =
+			!!append && isObject(updateInformation.value)
+				? { ...parameters, ...updateInformation.value }
+				: updateInformation.value;
+
+		const changed = ws.updateNodeAtIndex(nodeIndex, {
+			parameters: newParameters as INodeParameters,
+		});
+
+		if (changed) {
+			uiStore.stateIsDirty = true;
+			ws.nodeMetadata[name].parametersLastUpdatedAt = Date.now();
+		}
+	}
+
+	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
+		const latestNode = findLast(
+			ws.workflow.nodes,
+			(node) => node.type === updateInformation.key,
+		) as INodeUi;
+		const nodeType = nodeTypesStore.getNodeType(latestNode.type);
+		if (!nodeType) return;
+
+		const nodeParams = NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			updateInformation.value as INodeParameters,
+			true,
+			false,
+			latestNode,
+			nodeType,
+		);
+
+		if (latestNode) {
+			setNodeParameters({ value: nodeParams, name: latestNode.name }, true);
+		}
+	}
+
 	return {
+		// Workflow editing state
 		resetState,
 		removeAllConnections,
 		removeAllNodes,
@@ -211,7 +289,13 @@ export function useWorkflowState() {
 		setWorkflowTagIds,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
+
+		// Execution
 		markExecutionAsStopped,
+
+		// Node modification
+		setNodeParameters,
+		setLastNodeParameters,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,

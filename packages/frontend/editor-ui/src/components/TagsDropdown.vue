@@ -286,8 +286,8 @@ onClickOutside(
 
 	.el-tag {
 		padding: var(--spacing-5xs) var(--spacing-4xs);
-		color: var(--color-text-base);
-		background-color: var(--color-background-base);
+		color: var(--color--text);
+		background-color: var(--color--background);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-2xs);
 		border: 0;
@@ -352,7 +352,7 @@ onClickOutside(
 
 	li {
 		height: $--item-height;
-		background-color: var(--color-foreground-xlight);
+		background-color: var(--color--foreground--tint-2);
 		padding: $--item-padding;
 		margin: 0;
 		line-height: $--item-line-height;
@@ -397,7 +397,7 @@ onClickOutside(
 			position: absolute;
 			bottom: 0;
 			min-width: $--dropdown-width;
-			border-top: 1px solid var(--color-foreground-base);
+			border-top: 1px solid var(--color--foreground);
 		}
 	}
 }

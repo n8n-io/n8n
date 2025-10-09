@@ -178,7 +178,7 @@ const onInstall = async () => {
 
 .installedIcon {
 	margin-right: var(--spacing-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 }
 
@@ -186,7 +186,7 @@ const onInstall = async () => {
 	display: inline-flex;
 	flex-shrink: 0;
 	margin-left: var(--spacing-4xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	width: 14px;
 }
 

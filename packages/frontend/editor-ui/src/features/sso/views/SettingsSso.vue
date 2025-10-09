@@ -592,7 +592,7 @@ async function onOidcSettingsSave() {
 	span {
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -620,7 +620,7 @@ async function onOidcSettingsSave() {
 		display: block;
 		padding: var(--spacing-2xs) 0 0;
 		font-size: var(--font-size-2xs);
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 
@@ -629,7 +629,7 @@ async function onOidcSettingsSave() {
 }
 
 .footer {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 }
 </style>

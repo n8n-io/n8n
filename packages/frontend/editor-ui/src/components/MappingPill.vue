@@ -21,11 +21,11 @@ withDefaults(defineProps<Props>(), {
 	display: inline-flex;
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
-	border: 1px solid var(--color-foreground-light);
+	border: 1px solid var(--color--foreground--tint-1);
 	border-radius: 4px;
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	white-space: nowrap;
 	align-items: center;
 
@@ -39,8 +39,8 @@ withDefaults(defineProps<Props>(), {
 .droppablePill {
 	&,
 	span span {
-		color: var(--color-success);
-		border-color: var(--color-success-light);
+		color: var(--color--success);
+		border-color: var(--color--success--tint-1);
 		background-color: white;
 	}
 }
@@ -51,9 +51,9 @@ withDefaults(defineProps<Props>(), {
 
 	&,
 	span span {
-		color: var(--color-primary);
-		border-color: var(--color-primary-tint-1);
-		background-color: var(--color-primary-tint-3);
+		color: var(--color--primary);
+		border-color: var(--color--primary--tint-1);
+		background-color: var(--color--primary--tint-3);
 	}
 }
 </style>

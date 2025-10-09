@@ -7,7 +7,7 @@ const commonThemeProps = (isReadOnly = false) => ({
 	},
 	'.cm-content': {
 		fontFamily: 'var(--font-family-monospace)',
-		color: 'var(--input-font-color, var(--color-text-dark))',
+		color: 'var(--input-font-color, var(--color--text--shade-1))',
 		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 	},
 	'.cm-line': {

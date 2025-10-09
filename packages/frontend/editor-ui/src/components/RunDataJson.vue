@@ -240,8 +240,8 @@ const getListItemName = (path: string) => {
 	.dragged {
 		&,
 		&:hover {
-			background-color: var(--color-primary-tint-2);
-			color: var(--color-primary);
+			background-color: var(--color--primary--tint-2);
+			color: var(--color--primary);
 		}
 	}
 
@@ -271,7 +271,7 @@ const getListItemName = (path: string) => {
 .vjs-key,
 .vjs-value {
 	> span {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		line-height: 1.7;
 		border-radius: var(--border-radius-base);
 	}

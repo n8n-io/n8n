@@ -75,7 +75,7 @@ const onDragStart = () => {
 	pointer-events: all;
 }
 .dragButton {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	width: 64px;
 	height: 21px;
 	border-top-left-radius: var(--border-radius-base);
@@ -102,7 +102,7 @@ const onDragStart = () => {
 
 .arrow {
 	position: absolute;
-	color: var(--color-background-xlight);
+	color: var(--color--background--light-3);
 	font-size: var(--font-size-3xs);
 	visibility: hidden;
 	top: 0;
@@ -132,7 +132,7 @@ const onDragStart = () => {
 			height: 2px;
 			width: 2px;
 			border-radius: 50%;
-			background-color: var(--color-foreground-xdark);
+			background-color: var(--color--foreground--shade-2);
 			margin-right: 4px;
 
 			&:last-child {
