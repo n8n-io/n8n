@@ -131,7 +131,7 @@ async function createProjectRole() {
 			roleType: 'project',
 		});
 
-		rolesStore.roles.project.push(role);
+		void rolesStore.fetchRoles();
 
 		void router.replace({ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: role.slug } });
 		showMessage({
@@ -174,10 +174,7 @@ async function updateProjectRole(slug: string) {
 			description: form.value.description ?? undefined,
 		});
 
-		const index = rolesStore.roles.project.findIndex((r) => r.slug === slug);
-		if (index !== -1) {
-			rolesStore.roles.project.splice(index, 1, role);
-		}
+		void rolesStore.fetchRoles();
 
 		initialState.value = structuredClone(role);
 
