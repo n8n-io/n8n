@@ -1115,7 +1115,6 @@ function onOpenSelectiveNodeCreator(
 }
 
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
-	console.log('onToggleNodeCreator', options);
 	nodeCreatorStore.setNodeCreatorState(options);
 
 	if (!options.createNodeActive) {
