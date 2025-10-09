@@ -62,7 +62,7 @@ import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
-import { injectWorkflowState } from './useWorkflowState';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export function useCanvasMapping({
 	nodes,
