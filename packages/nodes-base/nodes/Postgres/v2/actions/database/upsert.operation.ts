@@ -12,7 +12,6 @@ import type {
 	PgpDatabase,
 	PostgresNodeOptions,
 	QueriesRunner,
-	QueryValue,
 	QueryValues,
 	QueryWithValues,
 } from '../../helpers/interfaces';
@@ -283,17 +282,18 @@ export async function execute(
 		// columnsToMatchOn first, then others
 		const nonMatchCols = Object.keys(item).filter((c) => !columnsToMatchOn.includes(c));
 		const insertColumns: string[] = [...columnsToMatchOn, ...nonMatchCols]; // e.g. ['id','name',...]
-		const insertValues = insertColumns.map(
-			(c) => (item as Record<string, unknown>)[c] ?? null,
-		) as unknown as QueryValue;
-		// e.g. ['1','Ada',...]
+
+		const insertMap: IDataObject = {};
+		for (const c of insertColumns) {
+			insertMap[c] = item[c] as string;
+		}
 
 		// 1) columns (for :name) as 1 param
 		values.push(insertColumns);
 		const colsParam = `$${values.length}:name`;
 
 		// 2) values (for :csv) as another param
-		values.push(insertValues);
+		values.push(insertMap);
 		const valsParam = `$${values.length}:csv`;
 
 		const conflictColumns: string[] = [];
@@ -313,8 +313,8 @@ export async function execute(
 		for (const column of updateColumns) {
 			values.push(column);
 			const colIdx = values.length; // $colIdx:name
-			const v = (item as Record<string, unknown>)[column] ?? null;
-			values.push(v as QueryValue);
+			const v = item[column] as string;
+			values.push(v);
 			const valIdx = values.length; // $valIdx
 			updates.push(`$${colIdx}:name = $${valIdx}`);
 		}
