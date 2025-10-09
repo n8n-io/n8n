@@ -32,7 +32,7 @@ echo ""
 # Secondary color tokens
 echo "[2/9] Replacing secondary color tokens..."
 echo "$files" | xargs perl -pi -e 's/--color-secondary-shade-1/--color--secondary--shade-1/g'
-echo "$files" | xargs perl -pi -e 's/--color-secondary-tint-3/--color--secondary--tint-3/g'
+echo "$files" | xargs perl -pi -e 's/--color-secondary-tint-3/--color--secondary--tint-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-secondary-tint-1/--color--secondary--tint-1/g'
 echo "$files" | xargs perl -pi -e 's/--color-secondary(?!-)/--color--secondary/g'
 echo "✓ Secondary color tokens replaced"
@@ -40,11 +40,11 @@ echo ""
 
 # Success color tokens
 echo "[3/9] Replacing success color tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-success-light-2/--color--success--light-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-success-shade-1/--color--success--shade-1/g'
-echo "$files" | xargs perl -pi -e 's/--color-success-light/--color--success--light/g'
-echo "$files" | xargs perl -pi -e 's/--color-success-tint-2/--color--success--tint-2/g'
-echo "$files" | xargs perl -pi -e 's/--color-success-tint-1/--color--success--tint-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-success-light-2/--color--success--tint-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-success-light/--color--success--tint-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-success-tint-2/--color--success--tint-4/g'
+echo "$files" | xargs perl -pi -e 's/--color-success-tint-1/--color--success--tint-3/g'
 echo "$files" | xargs perl -pi -e 's/--color-success(?!-)/--color--success/g'
 echo "✓ Success color tokens replaced"
 echo ""
@@ -60,44 +60,44 @@ echo ""
 
 # Danger color tokens
 echo "[5/9] Replacing danger color tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-danger-light-2/--color--danger--light-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-danger-shade-1/--color--danger--shade-1/g'
-echo "$files" | xargs perl -pi -e 's/--color-danger-light/--color--danger--light/g'
-echo "$files" | xargs perl -pi -e 's/--color-danger-tint-2/--color--danger--tint-2/g'
-echo "$files" | xargs perl -pi -e 's/--color-danger-tint-1/--color--danger--tint-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-danger-light-2/--color--danger--tint-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-danger-light/--color--danger--tint-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-danger-tint-2/--color--danger--tint-4/g'
+echo "$files" | xargs perl -pi -e 's/--color-danger-tint-1/--color--danger--tint-3/g'
 echo "$files" | xargs perl -pi -e 's/--color-danger(?!-)/--color--danger/g'
 echo "✓ Danger color tokens replaced"
 echo ""
 
 # Text color tokens
 echo "[6/9] Replacing text color tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-text-lighter/--color--text--lighter/g'
-echo "$files" | xargs perl -pi -e 's/--color-text-xlight/--color--text--xlight/g'
+echo "$files" | xargs perl -pi -e 's/--color-text-lighter/--color--text--tint-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-text-xlight/--color--text--tint-3/g'
 echo "$files" | xargs perl -pi -e 's/--color-text-danger/--color--text--danger/g'
-echo "$files" | xargs perl -pi -e 's/--color-text-light/--color--text--light/g'
-echo "$files" | xargs perl -pi -e 's/--color-text-base/--color--text--base/g'
-echo "$files" | xargs perl -pi -e 's/--color-text-dark/--color--text--dark/g'
+echo "$files" | xargs perl -pi -e 's/--color-text-light/--color--text--tint-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-text-base/--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--color-text-dark/--color--text--shade-1/g'
 echo "✓ Text color tokens replaced"
 echo ""
 
 # Foreground color tokens
 echo "[7/9] Replacing foreground color tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-foreground-xlight/--color--foreground--xlight/g'
-echo "$files" | xargs perl -pi -e 's/--color-foreground-xdark/--color--foreground--xdark/g'
-echo "$files" | xargs perl -pi -e 's/--color-foreground-light/--color--foreground--light/g'
-echo "$files" | xargs perl -pi -e 's/--color-foreground-base/--color--foreground--base/g'
-echo "$files" | xargs perl -pi -e 's/--color-foreground-dark/--color--foreground--dark/g'
+echo "$files" | xargs perl -pi -e 's/--color-foreground-light/--color--foreground--tint-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-foreground-xlight/--color--foreground--tint-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-foreground-dark/--color--foreground--shade-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-foreground-xdark/--color--foreground--shade-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-foreground-base/--color--foreground/g'
 echo "✓ Foreground color tokens replaced"
 echo ""
 
 # Background color tokens
 echo "[8/9] Replacing background color tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-background-light-base/--color--background--light-base/g'
-echo "$files" | xargs perl -pi -e 's/--color-background-xlight/--color--background--xlight/g'
-echo "$files" | xargs perl -pi -e 's/--color-background-medium/--color--background--medium/g'
-echo "$files" | xargs perl -pi -e 's/--color-background-light/--color--background--light/g'
-echo "$files" | xargs perl -pi -e 's/--color-background-base/--color--background--base/g'
-echo "$files" | xargs perl -pi -e 's/--color-background-dark/--color--background--dark/g'
+echo "$files" | xargs perl -pi -e 's/--color-background-medium/--color--background--shade-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-background-dark/--color--background--shade-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-background-xlight/--color--background--light-3/g'
+echo "$files" | xargs perl -pi -e 's/--color-background-light-base/--color--background--light-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-background-light/--color--background--light-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-background-base/--color--background/g'
 echo "✓ Background color tokens replaced"
 echo ""
 
