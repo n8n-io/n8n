@@ -18,10 +18,17 @@ export namespace ChatRequest {
 		schema: Schema;
 	}
 
+	export interface ExpressionValue {
+		expression: string;
+		resolvedValue: string;
+		nodeType: string;
+	}
+
 	export interface WorkflowContext {
 		executionSchema?: NodeExecutionSchema[];
 		currentWorkflow?: Partial<IWorkflowDb>;
 		executionData?: IRunExecutionData['resultData'];
+		expressionValues?: Record<string, ExpressionValue[]>;
 	}
 
 	export interface ExecutionResultData {

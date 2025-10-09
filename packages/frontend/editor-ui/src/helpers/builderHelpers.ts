@@ -1,6 +1,6 @@
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
-import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
+import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
 export function generateMessageId(): string {
@@ -17,11 +17,7 @@ export function createBuilderPayload(
 	} = {},
 ): ChatRequest.UserChatMessage {
 	const assistantHelpers = useAIAssistantHelpers();
-	const workflowContext: {
-		currentWorkflow?: Partial<IWorkflowDb>;
-		executionData?: IRunExecutionData['resultData'];
-		executionSchema?: NodeExecutionSchema[];
-	} = {};
+	const workflowContext: ChatRequest.WorkflowContext = {};
 
 	if (options.workflow) {
 		workflowContext.currentWorkflow = {
@@ -34,6 +30,13 @@ export function createBuilderPayload(
 		workflowContext.executionData = assistantHelpers.simplifyResultData(options.executionData, {
 			compact: true,
 		});
+
+		if (options.workflow) {
+			// Extract and include expression values with their resolved values
+			workflowContext.expressionValues = assistantHelpers.extractExpressionsFromWorkflow(
+				options.workflow,
+			);
+		}
 	}
 
 	if (options.nodesForSchema?.length) {

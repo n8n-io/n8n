@@ -38,6 +38,18 @@ export class AiBuilderChatRequestDto extends Z.class({
 					return val;
 				})
 				.optional(),
+
+			expressionValues: z
+				.record(
+					z.array(
+						z.object({
+							expression: z.string(),
+							resolvedValue: z.string(),
+							nodeType: z.string(),
+						}),
+					),
+				)
+				.optional(),
 		}),
 		useDeprecatedCredentials: z.boolean().default(false),
 	}),

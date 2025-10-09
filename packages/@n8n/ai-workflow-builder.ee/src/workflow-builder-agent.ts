@@ -47,12 +47,19 @@ export interface WorkflowBuilderAgentConfig {
 	onGenerationSuccess?: () => Promise<void>;
 }
 
+export interface ExpressionValue {
+	expression: string;
+	resolvedValue: string;
+	nodeType: string;
+}
+
 export interface ChatPayload {
 	message: string;
 	workflowContext?: {
 		executionSchema?: NodeExecutionSchema[];
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
+		expressionValues?: Record<string, ExpressionValue[]>;
 	};
 	/**
 	 * Calls AI Assistant Service using deprecated credentials and endpoints
@@ -119,6 +126,7 @@ export class WorkflowBuilderAgent {
 				workflowJSON: trimWorkflowJSON(state.workflowJSON),
 				executionData: state.workflowContext?.executionData ?? {},
 				executionSchema: state.workflowContext?.executionSchema ?? [],
+				resolvedExpressions: state.workflowContext?.expressionValues,
 				instanceUrl: this.instanceUrl,
 			});
 
