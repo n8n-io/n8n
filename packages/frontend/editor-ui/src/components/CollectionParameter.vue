@@ -225,22 +225,22 @@ function valueChanged(parameterData: IUpdateInformation) {
 		margin-top: var(--spacing-xs);
 
 		.button {
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 			font-weight: var(--font-weight-normal);
-			--button-border-color: var(--color-foreground-base);
-			--button-background-color: var(--color-background-base);
+			--button-border-color: var(--color--foreground);
+			--button-background-color: var(--color--background);
 
 			--button-hover-font-color: var(--color-button-secondary-font);
-			--button-hover-border-color: var(--color-foreground-base);
-			--button-hover-background-color: var(--color-background-base);
+			--button-hover-border-color: var(--color--foreground);
+			--button-hover-background-color: var(--color--background);
 
 			--button-active-font-color: var(--color-button-secondary-font);
-			--button-active-border-color: var(--color-foreground-base);
-			--button-active-background-color: var(--color-background-base);
+			--button-active-border-color: var(--color--foreground);
+			--button-active-background-color: var(--color--background);
 
 			--button-focus-font-color: var(--color-button-secondary-font);
-			--button-focus-border-color: var(--color-foreground-base);
-			--button-focus-background-color: var(--color-background-base);
+			--button-focus-border-color: var(--color--foreground);
+			--button-focus-background-color: var(--color--background);
 
 			&:active,
 			&.active,

@@ -101,7 +101,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .codeSnippet {
 	position: relative;
 	border: var(--border-base);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--border-radius-base);
 	font-family: var(--font-family-monospace);
 	font-size: var(--font-size-3xs);

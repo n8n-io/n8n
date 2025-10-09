@@ -43,8 +43,8 @@ const emit = defineEmits<{
 	width: 22px;
 	text-align: center;
 	border: none;
-	color: var(--color-foreground-xdark);
-	background-color: var(--color-foreground-base);
+	color: var(--color--foreground--shade-2);
+	background-color: var(--color--foreground);
 }
 
 .noCornersRight {
@@ -62,11 +62,11 @@ const emit = defineEmits<{
 .overrideCloseButton {
 	padding: 0 var(--spacing-2xs);
 	border: 0;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	margin-left: auto;
 	--button-hover-background-color: transparent;
 	--button-active-background-color: transparent;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 
 .contentOverrideContainer {
@@ -76,6 +76,6 @@ const emit = defineEmits<{
 	width: 100%;
 	gap: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 </style>

@@ -529,7 +529,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 	flex-shrink: 0;
 
 	border-radius: 4px;
-	border: 1px solid var(--Colors-Foreground---color-foreground-base, #d9dee8);
+	border: 1px solid var(--Colors-Foreground---color--foreground, #d9dee8);
 }
 
 .settingsContainerInfo {

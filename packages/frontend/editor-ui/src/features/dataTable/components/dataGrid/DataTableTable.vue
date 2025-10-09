@@ -233,28 +233,28 @@ defineExpose({
 <style module lang="scss">
 .wrapper {
 	// AG Grid style overrides
-	--ag-foreground-color: var(--color-text-base);
-	--ag-cell-text-color: var(--color-text-dark);
+	--ag-foreground-color: var(--color--text);
+	--ag-cell-text-color: var(--color--text--shade-1);
 	--ag-accent-color: var(--p--color--secondary-470);
-	--ag-row-hover-color: var(--color-background-light-base);
-	--ag-background-color: var(--color-background-xlight);
+	--ag-row-hover-color: var(--color--background--light-1);
+	--ag-background-color: var(--color--background--light-3);
 	--ag-border-color: var(--border-color-base);
 	--ag-border-radius: var(--border-radius-base);
 	--ag-wrapper-border-radius: 0;
 	--ag-font-family: var(--font-family);
 	--ag-font-size: var(--font-size-xs);
-	--ag-font-color: var(--color-text-base);
+	--ag-font-color: var(--color--text);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
-	--ag-header-background-color: var(--color-background-light-base);
+	--ag-header-background-color: var(--color--background--light-1);
 	--ag-header-font-size: var(--font-size-xs);
 	--ag-header-font-weight: var(--font-weight-medium);
-	--ag-header-foreground-color: var(--color-text-dark);
+	--ag-header-foreground-color: var(--color--text--shade-1);
 	--ag-cell-horizontal-padding: var(--spacing-2xs);
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--p--color--secondary-470);
 	--ag-input-padding-start: var(--spacing-2xs);
-	--ag-input-background-color: var(--color-text-xlight);
+	--ag-input-background-color: var(--color--text--tint-3);
 	--ag-focus-shadow: none;
 
 	:global(.ag-cell) {
@@ -289,12 +289,12 @@ defineExpose({
 	}
 
 	:global(.id-column) {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 
 	:global(.system-column),
 	:global(.system-cell) {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 
 	:global(.ag-header-cell[col-id='id']) {
@@ -413,7 +413,7 @@ defineExpose({
 			padding: 0;
 
 			&:hover {
-				color: var(--color-primary);
+				color: var(--color--primary);
 				background: transparent;
 			}
 		}
