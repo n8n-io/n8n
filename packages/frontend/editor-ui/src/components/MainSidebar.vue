@@ -688,9 +688,9 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-right: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 	width: $sidebar-expanded-width;
-	background-color: var(--menu-background, var(--color-background-xlight));
+	background-color: var(--menu-background, var(--color--background--light-3));
 
 	.logo {
 		display: flex;
@@ -730,15 +730,15 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: var(--color-text-base);
-	background-color: var(--color-foreground-xlight);
+	color: var(--color--text);
+	background-color: var(--color--foreground--tint-2);
 	width: 20px;
 	height: 20px;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 	border-radius: 50%;
 
 	&:hover {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 
@@ -766,7 +766,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	padding: var(--spacing-xs);
 	align-items: center;
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-top: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 
 	.userName {
 		display: none;
@@ -809,7 +809,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 .readOnlyEnvironmentIcon {
 	display: inline-block;
 	color: white;
-	background-color: var(--color-warning);
+	background-color: var(--color--warning);
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--border-radius-small);

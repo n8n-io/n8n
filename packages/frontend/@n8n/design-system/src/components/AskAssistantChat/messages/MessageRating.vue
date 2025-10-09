@@ -179,7 +179,7 @@ function onCancelFeedback() {
 }
 
 .success {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 	margin: 0;
 }
@@ -193,9 +193,9 @@ function onCancelFeedback() {
 	}
 
 	.ratingButton {
-		--button-hover-background-color: var(--color-foreground-light);
-		--button-hover-font-color: var(--color-text-base);
-		--button-font-color: var(--color-text-base);
+		--button-hover-background-color: var(--color--foreground--tint-1);
+		--button-hover-font-color: var(--color--text);
+		--button-font-color: var(--color--text);
 	}
 
 	.feedbackContainer {

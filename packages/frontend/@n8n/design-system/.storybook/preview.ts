@@ -30,23 +30,23 @@ export const parameters = {
 		},
 	},
 	backgrounds: {
-		default: '--color-background-xlight',
+		default: '--color--background--light-3',
 		values: [
 			{
-				name: '--color-background-dark',
-				value: 'var(--color-background-dark)',
+				name: '--color--background--shade-2',
+				value: 'var(--color--background--shade-2)',
 			},
 			{
-				name: '--color-background-base',
-				value: 'var(--color-background-base)',
+				name: '--color--background',
+				value: 'var(--color--background)',
 			},
 			{
-				name: '--color-background-light',
-				value: 'var(--color-background-light)',
+				name: '--color--background--light-2',
+				value: 'var(--color--background--light-2)',
 			},
 			{
-				name: '--color-background-xlight',
-				value: 'var(--color-background-xlight)',
+				name: '--color--background--light-3',
+				value: 'var(--color--background--light-3)',
 			},
 		],
 	},

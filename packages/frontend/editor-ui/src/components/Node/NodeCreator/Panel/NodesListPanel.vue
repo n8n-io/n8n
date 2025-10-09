@@ -303,10 +303,10 @@ function onBackButton() {
 	flex-shrink: 0;
 }
 .nodesListPanel {
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	height: 100%;
 	background-color: $node-creator-background-color;
-	--color-background-node-icon-badge: var(--color-background-xlight);
+	--color-background-node-icon-badge: var(--color--background--light-3);
 	width: var(--node-creator-width);
 	display: flex;
 	flex-direction: column;
@@ -322,11 +322,11 @@ function onBackButton() {
 }
 .footer {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	margin: 0 var(--spacing-xs) 0;
 	padding: var(--spacing-4xs) 0;
 	line-height: var(--font-line-height-regular);
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: 1px solid var(--color--foreground);
 	z-index: 1;
 	margin-top: -1px;
 }
@@ -362,7 +362,7 @@ function onBackButton() {
 	font-size: var(--font-size-s);
 	line-height: 19px;
 
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-weight: var(--font-weight-regular);
 }
 .offsetSubtitle {

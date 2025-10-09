@@ -289,16 +289,16 @@ async function copySessionId() {
 	--chat--input--font-size: var(--font-size-s);
 	--chat--input--placeholder--font-size: var(--font-size-xs);
 	--chat--message--bot--background: transparent;
-	--chat--message--user--background: var(--color-text-lighter);
-	--chat--message--bot--color: var(--color-text-dark);
-	--chat--message--user--color: var(--color-text-dark);
+	--chat--message--user--background: var(--color--text--tint-2);
+	--chat--message--bot--color: var(--color--text--shade-1);
+	--chat--message--user--color: var(--color--text--shade-1);
 	--chat--message--bot--border: none;
 	--chat--message--user--border: none;
 	--chat--message--user--border: none;
 	--chat--input--padding: var(--spacing-xs);
-	--chat--color-typing: var(--color-text-light);
+	--chat--color-typing: var(--color--text--tint-1);
 	--chat--textarea--max-height: calc(var(--logs-panel-height) * 0.3);
-	--chat--message--pre--background: var(--color-foreground-light);
+	--chat--message--pre--background: var(--color--foreground--tint-1);
 	--chat--textarea--height: calc(
 		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *
 			var(--chat--input--line-height)
@@ -307,7 +307,7 @@ async function copySessionId() {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .chatHeader {
@@ -315,9 +315,9 @@ async function copySessionId() {
 	font-weight: var(--font-weight-regular);
 	line-height: 18px;
 	text-align: left;
-	border-bottom: 1px solid var(--color-foreground-base);
+	border-bottom: 1px solid var(--color--foreground);
 	padding: var(--chat--spacing);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -331,7 +331,7 @@ async function copySessionId() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	max-width: 70%;
 }
 
@@ -353,7 +353,7 @@ async function copySessionId() {
 
 .newHeaderButton {
 	border: none;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .chatBody {
@@ -383,14 +383,14 @@ async function copySessionId() {
 
 	--chat--input--border-radius: 0.5rem;
 	--chat--input--send--button--background: transparent;
-	--chat--input--send--button--color: var(--color-primary);
+	--chat--input--send--button--color: var(--color--primary);
 	--chat--input--file--button--background: transparent;
-	--chat--input--file--button--color: var(--color-primary);
-	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
+	--chat--input--file--button--color: var(--color--primary);
+	--chat--input--border-active: var(--input-focus-border-color, var(--color--secondary));
 	--chat--files-spacing: var(--spacing-2xs);
 	--chat--input--background: transparent;
 	--chat--input--file--button--color: var(--color-button-secondary-font);
-	--chat--input--file--button--color-hover: var(--color-primary);
+	--chat--input--file--button--color-hover: var(--color--primary);
 
 	padding: var(--spacing-5xs);
 	margin: 0 var(--chat--spacing) var(--chat--spacing);
@@ -404,10 +404,10 @@ async function copySessionId() {
 		var(--input-border-width, var(--border-width-base));
 
 	[data-theme='dark'] & {
-		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+		--chat--input--text-color: var(--input-font-color, var(--color--text--shade-1));
 	}
 	@media (prefers-color-scheme: dark) {
-		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+		--chat--input--text-color: var(--input-font-color, var(--color--text--shade-1));
 	}
 
 	&:focus-within {

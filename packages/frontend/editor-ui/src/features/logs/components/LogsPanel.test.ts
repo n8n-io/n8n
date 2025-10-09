@@ -746,7 +746,7 @@ describe('LogsPanel', () => {
 
 			it('should enable file uploads when allowed by chat trigger node', async () => {
 				workflowsStore.setNodes(aiChatWorkflow.nodes);
-				workflowsStore.setNodeParameters({
+				workflowState.setNodeParameters({
 					name: chatTriggerNode.name,
 					value: { options: { allowFileUploads: true } },
 				});

@@ -564,7 +564,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 .warning {
 	margin-left: var(--spacing-4xs);
-	color: var(--color-danger-light);
+	color: var(--color--danger--tint-1);
 	font-size: var(--font-size-s);
 }
 
@@ -572,7 +572,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	margin-left: var(--spacing-3xs);
 	font-size: var(--font-size-s);
 }
@@ -584,7 +584,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 .hasIssues {
 	composes: input;
-	--input-border-color: var(--color-danger);
+	--input-border-color: var(--color--danger);
 }
 
 .credentialOption {
@@ -599,7 +599,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	align-items: center;
 	font-weight: var(--font-weight-bold);
 	padding: var(--spacing-xs) var(--spacing-m);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	color: var(--color-text-dark);
 
 	border: 0;

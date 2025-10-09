@@ -18,8 +18,8 @@ import type {
 } from '@/Interface';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
-import type { CanvasConnectionMode } from '@/types';
-import { canvasConnectionModes } from '@/types';
+import type { CanvasConnectionMode } from '@/features/canvas/canvas.types';
+import { canvasConnectionModes } from '@/features/canvas/canvas.types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import type { WorkflowListResource } from '@/Interface';

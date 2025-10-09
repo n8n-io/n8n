@@ -16,13 +16,13 @@ const commonThemeProps = (isReadOnly = false) => ({
 		overflow: 'hidden',
 	},
 	'&.cm-focused': {
-		borderColor: 'var(--color-secondary)',
+		borderColor: 'var(--color--secondary)',
 		outline: '0 !important',
 	},
 	'.cm-content': {
 		fontFamily: 'var(--font-family-monospace)',
 		padding: 'var(--spacing-xs)',
-		color: 'var(--input-font-color, var(--color-text-dark))',
+		color: 'var(--input-font-color, var(--color--text--shade-1))',
 		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 	},
 	'.cm-line': {

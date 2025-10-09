@@ -62,13 +62,13 @@ const containerCssVars = computed(() => ({
 	z-index: var(--z-index-canvas-add-button);
 
 	&:hover .button svg path {
-		fill: var(--color-primary);
+		fill: var(--color--primary);
 	}
 }
 
 .button {
-	background: var(--color-foreground-xlight);
-	border: 2px dashed var(--color-foreground-xdark);
+	background: var(--color--foreground--tint-2);
+	border: 2px dashed var(--color--foreground--shade-2);
 	border-radius: 8px;
 	padding: 0;
 
@@ -80,7 +80,7 @@ const containerCssVars = computed(() => ({
 		width: 26px !important;
 		height: 40px;
 		path {
-			fill: var(--color-foreground-xdark);
+			fill: var(--color--foreground--shade-2);
 		}
 	}
 }
@@ -90,7 +90,7 @@ const containerCssVars = computed(() => ({
 	font-weight: var(--font-weight-medium);
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	margin-top: var(--spacing-2xs);
 }
 </style>

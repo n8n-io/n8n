@@ -205,15 +205,15 @@ const projectLocation = computed(() => {
 
 .badge {
 	padding: var(--spacing-4xs) var(--spacing-2xs);
-	background-color: var(--color-background-xlight);
-	border-color: var(--color-foreground-base);
+	background-color: var(--color--background--light-3);
+	border-color: var(--color--foreground);
 
 	z-index: 1;
 	position: relative;
 	height: 23px;
 	:global(.n8n-text),
 	a {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 
@@ -227,7 +227,7 @@ const projectLocation = computed(() => {
 .count-badge {
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-4xs) var(--spacing-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	border-left: var(--border-base);
 	line-height: var(--font-line-height-regular);
 }

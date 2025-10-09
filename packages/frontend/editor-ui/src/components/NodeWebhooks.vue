@@ -237,7 +237,7 @@ watch(
 .webhooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
-	border-bottom: 1px solid var(--color-text-lighter);
+	border-bottom: 1px solid var(--color--text--tint-2);
 
 	.headline {
 		color: $color-primary;
@@ -254,7 +254,7 @@ watch(
 }
 
 .http-method {
-	background-color: var(--color-foreground-xdark);
+	background-color: var(--color--foreground--shade-2);
 	width: 40px;
 	height: 16px;
 	line-height: 16px;
@@ -263,7 +263,7 @@ watch(
 	border-radius: 2px;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-foreground-xlight);
+	color: var(--color--foreground--tint-2);
 }
 
 .minimize-icon {
@@ -320,7 +320,7 @@ watch(
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	text-align: left;
 	direction: ltr;
 	word-break: break-all;
@@ -330,7 +330,7 @@ watch(
 	line-height: 1.5;
 	position: relative;
 	margin-top: var(--spacing-xs);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	border-radius: 3px;
 }
 </style>

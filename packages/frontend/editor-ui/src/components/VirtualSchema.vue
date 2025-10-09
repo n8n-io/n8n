@@ -584,13 +584,13 @@ const onDragEnd = (el: HTMLElement) => {
 .icon {
 	display: inline-flex;
 	margin-left: var(--spacing-xl);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	margin-bottom: var(--ndv-spacing);
 }
 
 .notice {
 	padding-bottom: var(--spacing-xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
 	margin-left: calc(var(--spacing-l) * var(--schema-level));
