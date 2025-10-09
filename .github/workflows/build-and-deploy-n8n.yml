@@ -1,0 +1,139 @@
+name: Build and Deploy Custom n8n
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CONTAINER_REGISTRY: dxb.ocir.io
+  REGISTRY_NAMESPACE: axpebais8u12
+  DOCKER_IMAGE: n8n
+  NODE_OPTIONS: '--max-old-space-size=7168'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.16.1'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build n8n application
+        run: |
+          echo "Building n8n application..."
+          pnpm build:n8n
+          echo "Build completed successfully"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.CONTAINER_REGISTRY }}
+          username: ${{ secrets.NEW_DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.NEW_DOCKER_REGISTRY_PASSWORD }}
+
+      - name: Get Git Tag or Branch
+        id: tag
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            # Extract tag name (remove refs/tags/ prefix)
+            TAG=${GITHUB_REF#refs/tags/}
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "Using tag: $TAG"
+          else
+            # Use branch name with commit SHA for uniqueness
+            BRANCH=${GITHUB_REF#refs/heads/}
+            SHORT_SHA=${GITHUB_SHA:0:7}
+            TAG="${BRANCH}-${SHORT_SHA}"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "Using branch tag: $TAG"
+          fi
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/images/n8n/Dockerfile
+          push: true
+          tags: |
+            ${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:latest
+          build-args: |
+            NODE_VERSION=22
+            N8N_VERSION=${{ steps.tag.outputs.tag }}
+            N8N_RELEASE_TYPE=stable
+          cache-from: type=registry,ref=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:build-cache,oci-mediatypes=true
+          cache-to: type=registry,ref=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:build-cache,mode=max,oci-mediatypes=true,image-manifest=true
+          platforms: linux/amd64
+
+#      - name: Checkout Kubernetes Repository
+#        uses: actions/checkout@v4
+#        with:
+#          ref: iohealth-main
+#          token: ${{ secrets.GIT_TOKEN }}
+#          repository: my-workforce/Kubernetes
+#          path: k8s-repo
+#
+#      - name: Setup Kustomize
+#        uses: imranismail/setup-kustomize@v1
+#        with:
+#          kustomize-version: '5.6.0'
+#
+#      - name: Update Test Environment Image
+#        run: |
+#          cd k8s-repo/n8n-test
+#          kustomize edit set image n8n-custom=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}
+#          cat kustomization.yaml
+#
+#      - name: Update Production Environment Image (only for tags)
+#        if: startsWith(github.ref, 'refs/tags/')
+#        run: |
+#          cd k8s-repo/n8n-prod
+#          kustomize edit set image n8n-custom=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}
+#          cat kustomization.yaml
+#
+#      - name: Commit Changes
+#        run: |
+#          cd k8s-repo
+#          git config --local user.email "ajadaa@i3hub.com"
+#          git config --local user.name "Ajadaa"
+#          git add .
+#          git commit -m "Update n8n custom image to ${{ steps.tag.outputs.tag }}" || echo "No changes to commit"
+#
+#      - name: Push Changes
+#        uses: ad-m/github-push-action@master
+#        with:
+#          repository: my-workforce/Kubernetes
+#          github_token: ${{ secrets.GIT_TOKEN }}
+#          branch: iohealth-main
+#          directory: k8s-repo
+#
+#      - name: Build Summary
+#        run: |
+#          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+#          echo "- **Image**: ${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+#          echo "- **Registry**: ${{ env.CONTAINER_REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+#          echo "- **Build Type**: $(if [[ $GITHUB_REF == refs/tags/* ]]; then echo "Release"; else echo "Development"; fi)" >> $GITHUB_STEP_SUMMARY
+#          echo "- **Updated Environments**: $(if [[ $GITHUB_REF == refs/tags/* ]]; then echo "Test + Production"; else echo "Test only"; fi)" >> $GITHUB_STEP_SUMMARY
