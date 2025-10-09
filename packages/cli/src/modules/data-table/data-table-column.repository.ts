@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableRowsRepository } from './data-table-rows.repository';
+import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
@@ -19,7 +19,7 @@ import { DataTableValidationError } from './errors/data-table-validation.error';
 export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	constructor(
 		dataSource: DataSource,
-		private dataTableRowsRepository: DataTableRowsRepository,
+		private ddlService: DataTableDDLService,
 	) {
 		super(DataTableColumn, dataSource.manager);
 	}
@@ -81,12 +81,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTableColumn, column);
 
-			await this.dataTableRowsRepository.addColumn(
-				dataTableId,
-				column,
-				em.connection.options.type,
-				em,
-			);
+			await this.ddlService.addColumn(dataTableId, column, em.connection.options.type, em);
 
 			return column;
 		});
@@ -96,7 +91,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		await withTransaction(this.manager, trx, async (em) => {
 			await em.remove(DataTableColumn, column);
 
-			await this.dataTableRowsRepository.dropColumnFromTable(
+			await this.ddlService.dropColumnFromTable(
 				dataTableId,
 				column.name,
 				em.connection.options.type,
