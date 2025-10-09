@@ -201,7 +201,7 @@ onBeforeMount(async () => {
 }
 
 .upgradeLink {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	cursor: pointer;
 }
 
@@ -224,7 +224,7 @@ onBeforeMount(async () => {
 .plusBtn {
 	margin: 0;
 	padding: 0;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	display: none;
 }
 

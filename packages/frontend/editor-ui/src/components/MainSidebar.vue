@@ -28,6 +28,7 @@ import {
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
+import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -198,6 +199,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
+		id: 'chat',
+		icon: 'bot',
+		label: 'Chat',
+		position: 'bottom',
+		route: { to: { name: CHAT_VIEW } },
+		available:
+			settingsStore.isChatFeatureEnabled &&
+			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		id: 'help',
@@ -573,7 +584,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 				<div :class="$style.bottomMenu">
 					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka
@@ -615,57 +625,59 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						</template>
 					</div>
 				</div>
-
-				<div v-if="showUserArea">
-					<div ref="user" :class="$style.userArea">
-						<N8nPopoverReka side="right" align="end" :side-offset="16">
-							<template #content>
-								<div :class="$style.popover">
-									<N8nMenuItem
-										v-for="action in userMenuItems"
-										:key="action.id"
-										:item="action"
-										:data-test-id="`user-menu-item-${action.id}`"
-										@click="() => onUserActionToggle(action.id)"
-									/>
-								</div>
-							</template>
-							<template #trigger>
-								<div :class="$style.userAreaInner">
-									<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
-										<!-- This dropdown is only enabled when sidebar is collapsed -->
-										<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-											<N8nAvatar
-												:first-name="usersStore.currentUser?.firstName"
-												:last-name="usersStore.currentUser?.lastName"
-												size="small"
-											/>
-										</div>
-									</div>
-									<div
-										:class="{
-											['ml-2xs']: true,
-											[$style.userName]: true,
-											[$style.expanded]: fullyExpanded,
-										}"
-									>
-										<N8nText size="small" color="text-dark">{{
-											usersStore.currentUser?.fullName
-										}}</N8nText>
-									</div>
-									<div
-										data-test-id="user-menu"
-										:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
-									>
-										<N8nIconButton icon="ellipsis" text square type="tertiary" />
-									</div>
-								</div>
-							</template>
-						</N8nPopoverReka>
-					</div>
-				</div>
 			</div>
 		</N8nScrollArea>
+
+		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		<div v-if="showUserArea">
+			<div ref="user" :class="$style.userArea">
+				<N8nPopoverReka side="right" align="end" :side-offset="16">
+					<template #content>
+						<div :class="$style.popover">
+							<N8nMenuItem
+								v-for="action in userMenuItems"
+								:key="action.id"
+								:item="action"
+								:data-test-id="`user-menu-item-${action.id}`"
+								@click="() => onUserActionToggle(action.id)"
+							/>
+						</div>
+					</template>
+					<template #trigger>
+						<div :class="$style.userAreaInner">
+							<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
+								<!-- This dropdown is only enabled when sidebar is collapsed -->
+								<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
+									<N8nAvatar
+										:first-name="usersStore.currentUser?.firstName"
+										:last-name="usersStore.currentUser?.lastName"
+										size="small"
+									/>
+								</div>
+							</div>
+							<div
+								:class="{
+									['ml-2xs']: true,
+									[$style.userName]: true,
+									[$style.expanded]: fullyExpanded,
+								}"
+							>
+								<N8nText size="small" color="text-dark">{{
+									usersStore.currentUser?.fullName
+								}}</N8nText>
+							</div>
+							<div
+								data-test-id="user-menu"
+								:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
+							>
+								<N8nIconButton icon="ellipsis" text square type="tertiary" />
+							</div>
+						</div>
+					</template>
+				</N8nPopoverReka>
+			</div>
+		</div>
+
 		<TemplateTooltip />
 	</div>
 </template>
@@ -676,9 +688,9 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-right: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 	width: $sidebar-expanded-width;
-	background-color: var(--menu-background, var(--color-background-xlight));
+	background-color: var(--menu-background, var(--color--background--light-3));
 
 	.logo {
 		display: flex;
@@ -718,15 +730,15 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: var(--color-text-base);
-	background-color: var(--color-foreground-xlight);
+	color: var(--color--text);
+	background-color: var(--color--foreground--tint-2);
 	width: 20px;
 	height: 20px;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 	border-radius: 50%;
 
 	&:hover {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 
@@ -754,7 +766,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	padding: var(--spacing-xs);
 	align-items: center;
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-top: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 
 	.userName {
 		display: none;
@@ -797,7 +809,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 .readOnlyEnvironmentIcon {
 	display: inline-block;
 	color: white;
-	background-color: var(--color-warning);
+	background-color: var(--color--warning);
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--border-radius-small);

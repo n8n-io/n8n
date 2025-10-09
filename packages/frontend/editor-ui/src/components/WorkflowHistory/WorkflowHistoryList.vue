@@ -173,7 +173,7 @@ const onItemMounted = ({
 	justify-content: center;
 	align-items: center;
 	text-align: center;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
 }

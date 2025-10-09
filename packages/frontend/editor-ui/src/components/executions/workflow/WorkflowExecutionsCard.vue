@@ -192,7 +192,7 @@ function onRetryMenuItemSelect(action: string): void {
 
 .WorkflowExecutionsCard {
 	--execution-list-item-background: var(--execution-card-background);
-	--execution-list-item-highlight-background: var(--color-warning-tint-1);
+	--execution-list-item-highlight-background: var(--color--warning--tint-1);
 
 	display: flex;
 	flex-direction: column;
@@ -202,7 +202,7 @@ function onRetryMenuItemSelect(action: string): void {
 		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
 
 		.executionStatus {
-			color: var(--color-text-dark) !important;
+			color: var(--color--text--shade-1) !important;
 		}
 	}
 
@@ -225,7 +225,7 @@ function onRetryMenuItemSelect(action: string): void {
 		}
 		.statusLabel,
 		.spinner {
-			color: var(--color-warning);
+			color: var(--color--warning);
 		}
 	}
 
@@ -252,7 +252,7 @@ function onRetryMenuItemSelect(action: string): void {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
-			color: var(--color-secondary);
+			color: var(--color--secondary);
 		}
 	}
 
@@ -262,7 +262,7 @@ function onRetryMenuItemSelect(action: string): void {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-error);
 		}
 		.statusLabel {
-			color: var(--color-danger);
+			color: var(--color--danger);
 		}
 	}
 
@@ -282,10 +282,10 @@ function onRetryMenuItemSelect(action: string): void {
 
 		.ratingIcon {
 			.up {
-				color: var(--color-success);
+				color: var(--color--success);
 			}
 			.down {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 		}
 	}
@@ -297,7 +297,7 @@ function onRetryMenuItemSelect(action: string): void {
 	width: 100%;
 	align-items: center;
 	justify-content: space-between;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-xs);
 	padding: var(--spacing-xs);
 	padding-right: var(--spacing-s);
@@ -309,7 +309,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:active {
 		.icon,
 		.statusLabel {
-			color: var(--color-text-base);
+			color: var(--color--text);
 		}
 	}
 }
@@ -324,7 +324,7 @@ function onRetryMenuItemSelect(action: string): void {
 
 	&.retry {
 		svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 
@@ -341,7 +341,7 @@ function onRetryMenuItemSelect(action: string): void {
 .showGap {
 	margin-bottom: var(--spacing-2xs);
 	.executionLink {
-		border-bottom: 1px solid var(--color-foreground-dark);
+		border-bottom: 1px solid var(--color--foreground--shade-1);
 	}
 }
 </style>

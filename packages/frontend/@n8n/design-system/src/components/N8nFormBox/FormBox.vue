@@ -92,7 +92,7 @@ const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 }
 
 .container {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	padding: var(--spacing-l);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);

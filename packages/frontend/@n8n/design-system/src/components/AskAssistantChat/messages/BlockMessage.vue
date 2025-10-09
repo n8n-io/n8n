@@ -48,7 +48,7 @@ const { renderMarkdown } = useMarkdown();
 <style lang="scss" module>
 .block {
 	font-size: var(--font-size-2xs);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 	word-break: break-word;

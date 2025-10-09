@@ -15,8 +15,8 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
-import { useBuilderStore } from '@/stores/builder.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -38,7 +38,7 @@ import { hasPermission } from './utils/rbac/permissions';
 const route = useRoute();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -71,8 +71,7 @@ const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
-const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
-const builderSidebarWidth = computed(() => builderStore.chatWidth);
+const chatPanelWidth = computed(() => chatPanelStore.width);
 
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
@@ -107,8 +106,8 @@ const updateGridWidth = async () => {
 		uiStore.appGridDimensions = { width, height };
 	}
 };
-// As assistant sidebar width changes, recalculate the total width regularly
-watch([assistantSidebarWidth, builderSidebarWidth], async () => {
+// As chat panel width changes, recalculate the total width regularly
+watch(chatPanelWidth, async () => {
 	await updateGridWidth();
 });
 
@@ -211,6 +210,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
 }
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -230,6 +230,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 		display: block;
 	}
 }
+
 .contentWrapper {
 	display: flex;
 	grid-area: content;

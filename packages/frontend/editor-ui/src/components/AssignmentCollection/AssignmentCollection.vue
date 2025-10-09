@@ -16,9 +16,9 @@ import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
-import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
 interface Props {
@@ -251,7 +251,7 @@ function optionSelected(action: string) {
 	}
 
 	&:hover .add {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 
@@ -261,7 +261,7 @@ function optionSelected(action: string) {
 	flex-wrap: wrap;
 	justify-content: center;
 	font-size: var(--font-size-xs);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	gap: 1ch;
 	min-height: 24px;
 
@@ -275,12 +275,12 @@ function optionSelected(action: string) {
 }
 
 .or {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-2xs);
 }
 
 .add {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	font-weight: var(--font-weight-bold);
 }
 
@@ -291,7 +291,7 @@ function optionSelected(action: string) {
 
 .active {
 	.activeField {
-		color: var(--color-success);
+		color: var(--color--success);
 	}
 }
 
@@ -323,11 +323,11 @@ function optionSelected(action: string) {
 	padding-bottom: var(--spacing-xs);
 }
 .ghost {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	opacity: 0.7;
 }
 </style>

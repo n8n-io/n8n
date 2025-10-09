@@ -1,5 +1,5 @@
 import { DataTableFilter, ListDataTableContentQueryDto } from '@n8n/api-types';
-import { CreateTable, DslColumn, withTransaction } from '@n8n/db';
+import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	DataSource,
@@ -24,20 +24,17 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTableUserTableName } from './data-table.types';
 import {
-	addColumnQuery,
-	deleteColumnQuery,
 	escapeLikeSpecials,
 	extractInsertedIds,
 	extractReturningData,
 	normalizeRows,
 	normalizeValue,
 	quoteIdentifier,
-	toDslColumns,
 	toSqliteGlobFromPercent,
 	toTableName,
 } from './utils/sql-utils';
-import { DataTableUserTableName } from './data-table.types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -556,56 +553,6 @@ export class DataTableRowsRepository {
 			{ ...before, dryRunState: 'before' },
 			{ ...after, dryRunState: 'after' },
 		];
-	}
-
-	async createTableWithColumns(
-		dataTableId: string,
-		columns: DataTableColumn[],
-		trx?: EntityManager,
-	) {
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			if (!em.queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
-			}
-
-			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-			const createTable = new CreateTable(toTableName(dataTableId), '', em.queryRunner).withColumns(
-				...dslColumns,
-			).withTimestamps;
-
-			await createTable.execute(em.queryRunner);
-		});
-	}
-
-	async dropTable(dataTableId: string, trx?: EntityManager) {
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			if (!em.queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
-			}
-			await em.queryRunner.dropTable(toTableName(dataTableId), true);
-		});
-	}
-
-	async addColumn(
-		dataTableId: string,
-		column: DataTableColumn,
-		dbType: DataSourceOptions['type'],
-		trx?: EntityManager,
-	) {
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			await em.query(addColumnQuery(toTableName(dataTableId), column, dbType));
-		});
-	}
-
-	async dropColumnFromTable(
-		dataTableId: string,
-		columnName: string,
-		dbType: DataSourceOptions['type'],
-		trx?: EntityManager,
-	) {
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			await em.query(deleteColumnQuery(toTableName(dataTableId), columnName, dbType));
-		});
 	}
 
 	async getManyAndCount(

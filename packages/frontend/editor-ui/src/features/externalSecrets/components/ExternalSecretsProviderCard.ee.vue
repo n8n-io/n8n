@@ -203,7 +203,7 @@ async function onActionDropdownClick(id: string) {
 }
 
 .warningTriangle {
-	color: var(--color-warning);
+	color: var(--color--warning);
 	margin-right: var(--spacing-2xs);
 }
 </style>

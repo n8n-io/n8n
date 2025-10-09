@@ -1,13 +1,13 @@
-import { ResponseError, STREAM_SEPERATOR, streamRequest } from './utils';
+import { ResponseError, STREAM_SEPARATOR, streamRequest } from './utils';
 
 describe('streamRequest', () => {
 	it('should stream data from the API endpoint', async () => {
 		const encoder = new TextEncoder();
 		const mockResponse = new ReadableStream({
 			start(controller) {
-				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 1 })}${STREAM_SEPERATOR}`));
-				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 2 })}${STREAM_SEPERATOR}`));
-				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 3 })}${STREAM_SEPERATOR}`));
+				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 1 })}${STREAM_SEPARATOR}`));
+				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 2 })}${STREAM_SEPARATOR}`));
+				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 3 })}${STREAM_SEPARATOR}`));
 				controller.close();
 			},
 		});
@@ -107,11 +107,11 @@ describe('streamRequest', () => {
 		const mockResponse = new ReadableStream({
 			start(controller) {
 				controller.enqueue(
-					encoder.encode(`${JSON.stringify({ chunk: 1 })}${STREAM_SEPERATOR}{"chunk": `),
+					encoder.encode(`${JSON.stringify({ chunk: 1 })}${STREAM_SEPARATOR}{"chunk": `),
 				);
-				controller.enqueue(encoder.encode(`2}${STREAM_SEPERATOR}{"ch`));
+				controller.enqueue(encoder.encode(`2}${STREAM_SEPARATOR}{"ch`));
 				controller.enqueue(encoder.encode('unk":'));
-				controller.enqueue(encoder.encode(`3}${STREAM_SEPERATOR}`));
+				controller.enqueue(encoder.encode(`3}${STREAM_SEPARATOR}`));
 				controller.close();
 			},
 		});

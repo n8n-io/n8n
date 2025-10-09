@@ -28,6 +28,16 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   },
   {
     "disabled": true,
+    "id": "replace",
+    "label": "Replace",
+    "shortcut": {
+      "keys": [
+        "R",
+      ],
+    },
+  },
+  {
+    "disabled": true,
     "id": "toggle_activation",
     "label": "Deactivate",
     "shortcut": {
@@ -243,6 +253,16 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   },
   {
     "disabled": false,
+    "id": "replace",
+    "label": "Replace",
+    "shortcut": {
+      "keys": [
+        "R",
+      ],
+    },
+  },
+  {
+    "disabled": false,
     "id": "toggle_activation",
     "label": "Deactivate",
     "shortcut": {
@@ -360,6 +380,16 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "shortcut": {
       "keys": [
         "Space",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "replace",
+    "label": "Replace",
+    "shortcut": {
+      "keys": [
+        "R",
       ],
     },
   },
@@ -579,6 +609,16 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "disabled": false,
+    "id": "replace",
+    "label": "Replace",
+    "shortcut": {
+      "keys": [
+        "R",
+      ],
+    },
+  },
+  {
     "disabled": true,
     "id": "open_sub_workflow",
     "label": "Go to Sub-workflow",
@@ -709,6 +749,16 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     "shortcut": {
       "keys": [
         "Space",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "replace",
+    "label": "Replace",
+    "shortcut": {
+      "keys": [
+        "R",
       ],
     },
   },
@@ -848,6 +898,16 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
   },
   {
     "disabled": false,
+    "id": "replace",
+    "label": "Replace",
+    "shortcut": {
+      "keys": [
+        "R",
+      ],
+    },
+  },
+  {
+    "disabled": false,
     "id": "open_sub_workflow",
     "label": "Go to Sub-workflow",
     "shortcut": {
@@ -977,6 +1037,16 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     "shortcut": {
       "keys": [
         "Space",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "replace",
+    "label": "Replace",
+    "shortcut": {
+      "keys": [
+        "R",
       ],
     },
   },
