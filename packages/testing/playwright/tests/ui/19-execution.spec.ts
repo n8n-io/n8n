@@ -254,10 +254,11 @@ test.describe('Execution', () => {
 		);
 
 		expect(payload).toHaveProperty('runData');
+		expect(payload.runData).toBeInstanceOf(Object);
 		expect(payload.runData).toEqual({
-			[NODE_NAMES.START_ON_SCHEDULE]: expect.anything(),
-			[NODE_NAMES.EDIT_FIELDS]: expect.anything(),
-			[NODE_NAMES.PROCESS_THE_DATA]: expect.anything(),
+			[NODE_NAMES.START_ON_SCHEDULE]: expect.any(Array),
+			[NODE_NAMES.EDIT_FIELDS]: expect.any(Array),
+			[NODE_NAMES.PROCESS_THE_DATA]: expect.any(Array),
 		});
 	});
 
@@ -269,7 +270,9 @@ test.describe('Execution', () => {
 
 		expect(firstPayload).not.toHaveProperty('runData');
 		expect(firstPayload).toHaveProperty('workflowData');
+		expect(firstPayload.workflowData).toBeInstanceOf(Object);
 		expect(firstPayload.workflowData).toHaveProperty('pinData');
+		expect(firstPayload.workflowData.pinData).toBeInstanceOf(Object);
 		expect(firstPayload.workflowData.pinData).toEqual({
 			[NODE_NAMES.WEBHOOK]: expect.anything(),
 		});
@@ -281,12 +284,15 @@ test.describe('Execution', () => {
 		);
 
 		expect(secondPayload).toHaveProperty('runData');
+		expect(secondPayload.runData).toBeInstanceOf(Object);
 		expect(secondPayload).toHaveProperty('workflowData');
+		expect(secondPayload.workflowData).toBeInstanceOf(Object);
 		expect(secondPayload.workflowData).toHaveProperty('pinData');
+		expect(secondPayload.workflowData.pinData).toBeInstanceOf(Object);
 
 		expect(secondPayload.runData).toEqual({
-			[NODE_NAMES.IF]: expect.anything(),
-			[NODE_NAMES.WEBHOOK]: expect.anything(),
+			[NODE_NAMES.IF]: expect.any(Array),
+			[NODE_NAMES.WEBHOOK]: expect.any(Array),
 		});
 
 		expect(secondPayload.workflowData.pinData).toEqual({
