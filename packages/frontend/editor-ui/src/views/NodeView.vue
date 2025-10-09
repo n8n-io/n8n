@@ -353,10 +353,6 @@ async function initializeData() {
 		loadPromises.push(nodeTypesStore.getNodeTypes());
 	}
 
-	if (!communityNodesStore.packagesFetched) {
-		loadPromises.push(communityNodesStore.fetchInstalledPackages());
-	}
-
 	try {
 		await Promise.all(loadPromises);
 		//We don't need to await this as community node previews are not critical and needed only in nodes search panel

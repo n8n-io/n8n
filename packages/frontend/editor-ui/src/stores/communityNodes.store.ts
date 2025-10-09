@@ -11,7 +11,6 @@ const LOADER_DELAY = 300;
 export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => {
 	const availablePackageCount = ref(-1);
 	const installedPackages = ref<CommunityPackageMap>({});
-	const packagesFetched = ref(false);
 
 	// Stores
 
@@ -41,7 +40,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 			},
 			{},
 		);
-		packagesFetched.value = true;
 	};
 
 	const fetchInstalledPackages = async (): Promise<void> => {
@@ -117,6 +115,5 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		uninstallPackage,
 		updatePackage,
 		setInstalledPackages,
-		packagesFetched,
 	};
 });
