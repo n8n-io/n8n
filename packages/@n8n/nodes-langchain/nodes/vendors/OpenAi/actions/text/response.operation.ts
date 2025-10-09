@@ -1,20 +1,201 @@
 import type { Tool } from '@langchain/core/tools';
-import _omit from 'lodash/omit';
 import type {
-	INodeProperties,
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	IDataObject,
+	INodeProperties,
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
+import get from 'lodash/get';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
-import type { ChatCompletion } from '../../helpers/interfaces';
-import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import type { ChatResponse } from '../../helpers/interfaces';
+import { formatToOpenAIResponsesTool } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
+import { createRequest } from './helpers/responses';
+
+const imageProperties: INodeProperties[] = [
+	{
+		displayName: 'Image Type',
+		name: 'imageType',
+		type: 'options',
+		default: 'url',
+		options: [
+			{ name: 'Image URL', value: 'url' },
+			{ name: 'File ID', value: 'fileId' },
+		],
+		displayOptions: {
+			show: {
+				type: ['image'],
+			},
+		},
+	},
+	{
+		displayName: 'Image URL',
+		name: 'imageUrl',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. https://example.com/image.jpeg',
+		description: 'URL of the image to be sent. Accepts base64 encoded images as well.',
+		displayOptions: {
+			show: {
+				type: ['image'],
+				imageType: ['url'],
+			},
+		},
+	},
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		default: '',
+		description: 'ID of the file to be sent',
+		displayOptions: {
+			show: {
+				type: ['image'],
+				imageType: ['fileId'],
+			},
+		},
+	},
+	{
+		displayName: 'Detail',
+		name: 'imageDetail',
+		type: 'options',
+		default: 'auto',
+		description: 'The detail level of the image to be sent to the model',
+		options: [
+			{ name: 'Auto', value: 'auto' },
+			{ name: 'Low', value: 'low' },
+			{ name: 'High', value: 'high' },
+		],
+		displayOptions: {
+			show: {
+				type: ['image'],
+			},
+		},
+	},
+];
+
+const textProperties: INodeProperties[] = [
+	{
+		displayName: 'Prompt',
+		name: 'content',
+		type: 'string',
+		description: 'The content of the message to be send',
+		default: '',
+		placeholder: 'e.g. Hello, how can you help me?',
+		typeOptions: {
+			rows: 2,
+		},
+		displayOptions: {
+			show: {
+				type: ['text'],
+			},
+		},
+	},
+];
+
+const fileProperties: INodeProperties[] = [
+	{
+		displayName: 'FileType',
+		name: 'fileType',
+		type: 'options',
+		default: 'url',
+		options: [
+			{ name: 'File URL', value: 'url' },
+			{ name: 'File ID', value: 'fileId' },
+			{ name: 'Base64', value: 'base64' },
+		],
+		displayOptions: {
+			show: {
+				type: ['file'],
+			},
+		},
+	},
+	{
+		displayName: 'File URL',
+		name: 'fileUrl',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. https://example.com/file.pdf',
+		description: 'URL of the file to be sent. Accepts base64 encoded files as well.',
+		displayOptions: {
+			show: {
+				type: ['file'],
+				fileType: ['url'],
+			},
+		},
+	},
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		default: '',
+		description: 'ID of the file to be sent',
+		displayOptions: {
+			show: {
+				type: ['file'],
+				fileType: ['fileId'],
+			},
+		},
+	},
+	{
+		displayName: 'File Data',
+		name: 'fileData',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				type: ['file'],
+				fileType: ['base64'],
+			},
+		},
+	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				type: ['file'],
+			},
+		},
+	},
+];
+
+const audioProperties: INodeProperties[] = [
+	{
+		displayName: 'Data',
+		name: 'data',
+		type: 'string',
+		default: '',
+		description: 'Base64-encoded audio data',
+		displayOptions: {
+			show: {
+				type: ['audio'],
+			},
+		},
+	},
+	{
+		displayName: 'Format',
+		name: 'format',
+		type: 'options',
+		default: 'mp3',
+		options: [
+			{ name: 'MP3', value: 'mp3' },
+			{ name: 'WAV', value: 'wav' },
+		],
+		displayOptions: {
+			show: {
+				type: ['audio'],
+			},
+		},
+	},
+];
 
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
@@ -27,22 +208,23 @@ const properties: INodeProperties[] = [
 			multipleValues: true,
 		},
 		placeholder: 'Add Message',
-		default: { text: [{ content: '' }] },
+		default: { values: [{ type: 'text' }] },
 		options: [
 			{
-				displayName: 'Text',
-				name: 'text',
+				displayName: 'Values',
+				name: 'values',
 				values: [
 					{
-						displayName: 'Prompt',
-						name: 'content',
-						type: 'string',
-						description: 'The content of the message to be send',
-						default: '',
-						placeholder: 'e.g. Hello, how can you help me?',
-						typeOptions: {
-							rows: 2,
-						},
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						default: 'text',
+						options: [
+							{ name: 'Text', value: 'text' },
+							{ name: 'Image', value: 'image' },
+							{ name: 'File', value: 'file' },
+							{ name: 'Audio', value: 'audio' },
+						],
 					},
 					{
 						displayName: 'Role',
@@ -70,141 +252,10 @@ const properties: INodeProperties[] = [
 						],
 						default: 'user',
 					},
-				],
-			},
-			{
-				displayName: 'Image',
-				name: 'imageInput',
-				values: [
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'options',
-						default: 'url',
-						options: [
-							{ name: 'Image URL', value: 'url' },
-							{ name: 'File ID', value: 'fileId' },
-						],
-					},
-					{
-						displayName: 'Image URL',
-						name: 'imageUrl',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. https://example.com/image.jpeg',
-						description: 'URL of the image to be sent. Accepts base64 encoded images as well.',
-						displayOptions: {
-							show: {
-								type: ['url'],
-							},
-						},
-					},
-					{
-						displayName: 'File ID',
-						name: 'fileId',
-						type: 'string',
-						default: '',
-						description: 'ID of the file to be sent',
-						displayOptions: {
-							show: {
-								type: ['fileId'],
-							},
-						},
-					},
-					{
-						displayName: 'Detail',
-						name: 'imageDetail',
-						type: 'options',
-						default: 'auto',
-						description: 'The detail level of the image to be sent to the model',
-						options: [
-							{ name: 'Auto', value: 'auto' },
-							{ name: 'Low', value: 'low' },
-							{ name: 'High', value: 'high' },
-						],
-					},
-				],
-			},
-			{
-				displayName: 'File',
-				name: 'fileInput',
-				values: [
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'options',
-						default: 'url',
-						options: [
-							{ name: 'File URL', value: 'url' },
-							{ name: 'File ID', value: 'fileId' },
-							{ name: 'Base64', value: 'base64' },
-						],
-					},
-					{
-						displayName: 'File URL',
-						name: 'fileUrl',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. https://example.com/file.pdf',
-						description: 'URL of the file to be sent. Accepts base64 encoded files as well.',
-						displayOptions: {
-							show: {
-								type: ['url'],
-							},
-						},
-					},
-					{
-						displayName: 'File ID',
-						name: 'fileId',
-						type: 'string',
-						default: '',
-						description: 'ID of the file to be sent',
-						displayOptions: {
-							show: {
-								type: ['fileId'],
-							},
-						},
-					},
-					{
-						displayName: 'File Data',
-						name: 'fileData',
-						type: 'string',
-						default: '',
-						displayOptions: {
-							show: {
-								type: ['base64'],
-							},
-						},
-					},
-					{
-						displayName: 'File Name',
-						name: 'fileName',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-			{
-				displayName: 'Audio',
-				name: 'audio',
-				values: [
-					{
-						displayName: 'Data',
-						name: 'data',
-						type: 'string',
-						default: '',
-						description: 'Base64-encoded audio data',
-					},
-					{
-						displayName: 'Format',
-						name: 'format',
-						type: 'options',
-						default: 'mp3',
-						options: [
-							{ name: 'MP3', value: 'mp3' },
-							{ name: 'WAV', value: 'wav' },
-						],
-					},
+					...textProperties,
+					...imageProperties,
+					...fileProperties,
+					...audioProperties,
 				],
 			},
 		],
@@ -245,19 +296,6 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		default: {},
 		options: [
-			{
-				displayName: 'Max Tool Calls Iterations',
-				name: 'maxToolsIterations',
-				type: 'number',
-				default: 15,
-				description:
-					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit.',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.5 } }],
-					},
-				},
-			},
 			{
 				displayName: 'Conversation ID',
 				name: 'conversationId',
@@ -325,12 +363,17 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tool Calls',
-				name: 'maxToolCalls',
+				displayName: 'Max Tool Calls Iterations',
+				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,
 				description:
-					'The maximum number of total calls to built-in tools that can be processed in a response. This maximum number applies across all built-in tool calls, not per individual tool. Any further attempts to call a tool by the model will be ignored.',
+					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Metadata',
@@ -381,6 +424,7 @@ const properties: INodeProperties[] = [
 								default: '',
 								description: 'Optional version of the prompt template',
 							},
+							// TODO:don't validate this field
 							{
 								displayName: 'Variables',
 								name: 'variables',
@@ -485,7 +529,8 @@ const properties: INodeProperties[] = [
 								default: 'text',
 								options: [
 									{ name: 'Text', value: 'text' },
-									{ name: 'JSON', value: 'json' },
+									{ name: 'JSON Schema', value: 'json_schema' },
+									{ name: 'JSON Object', value: 'json_object' },
 								],
 							},
 							{
@@ -508,7 +553,7 @@ const properties: INodeProperties[] = [
 									'The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.',
 								displayOptions: {
 									show: {
-										type: ['json'],
+										type: ['json_schema'],
 									},
 								},
 							},
@@ -532,7 +577,7 @@ const properties: INodeProperties[] = [
 								description: 'The description of the response format',
 								displayOptions: {
 									show: {
-										type: ['json'],
+										type: ['json_schema'],
 									},
 								},
 							},
@@ -544,7 +589,7 @@ const properties: INodeProperties[] = [
 								description: 'Whether to enforce the response format strictly',
 								displayOptions: {
 									show: {
-										type: ['json'],
+										type: ['json_schema'],
 									},
 								},
 							},
@@ -608,132 +653,121 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
-	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
-	const options = this.getNodeParameter('options', i, {});
-	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
-	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
+	try {
+		const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
+		const messages = this.getNodeParameter('responses.values', i, []) as IDataObject[];
+		const options = this.getNodeParameter('options', i, {});
+		const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 
-	const abortSignal = this.getExecutionCancelSignal();
+		const abortSignal = this.getExecutionCancelSignal();
 
-	if (options.maxTokens !== undefined) {
-		options.max_completion_tokens = options.maxTokens;
-		delete options.maxTokens;
-	}
+		const hideTools = this.getNodeParameter('hideTools', i, '') as string;
 
-	if (options.topP !== undefined) {
-		options.top_p = options.topP;
-		delete options.topP;
-	}
+		options.maxToolCalls = options.maxToolCalls ?? 15;
 
-	let response_format;
-	if (jsonOutput) {
-		response_format = { type: 'json_object' };
-		messages = [
-			{
-				role: 'system',
-				content: 'You are a helpful assistant designed to output JSON.',
-			},
-			...messages,
-		];
-	}
+		let tools;
+		let externalTools: Tool[] = [];
 
-	const hideTools = this.getNodeParameter('hideTools', i, '') as string;
-
-	let tools;
-	let externalTools: Tool[] = [];
-
-	if (hideTools !== 'hide') {
-		const enforceUniqueNames = true;
-		externalTools = await getConnectedTools(this, enforceUniqueNames, false);
-	}
-
-	if (externalTools.length) {
-		tools = externalTools.length ? externalTools?.map(formatToOpenAIAssistantTool) : undefined;
-	}
-
-	const body: IDataObject = {
-		model,
-		messages,
-		tools,
-		response_format,
-		..._omit(options, ['maxToolsIterations']),
-	};
-
-	let response = (await apiRequest.call(this, 'POST', '/chat/completions', {
-		body,
-	})) as ChatCompletion;
-
-	if (!response) return [];
-
-	let currentIteration = 1;
-	let toolCalls = response?.choices[0]?.message?.tool_calls;
-
-	while (toolCalls?.length) {
-		// Break the loop if the max iterations is reached or the execution is canceled
-		if (
-			abortSignal?.aborted ||
-			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
-		) {
-			break;
-		}
-		messages.push(response.choices[0].message);
-
-		for (const toolCall of toolCalls) {
-			const functionName = toolCall.function.name;
-			const functionArgs = toolCall.function.arguments;
-
-			let functionResponse;
-			for (const tool of externalTools ?? []) {
-				if (tool.name === functionName) {
-					const parsedArgs: { input: string } = jsonParse(functionArgs);
-					const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
-					functionResponse = await tool.invoke(functionInput);
-				}
-			}
-
-			if (typeof functionResponse === 'object') {
-				functionResponse = JSON.stringify(functionResponse);
-			}
-
-			messages.push({
-				tool_call_id: toolCall.id,
-				role: 'tool',
-				content: functionResponse,
-			});
+		if (hideTools !== 'hide') {
+			const enforceUniqueNames = true;
+			externalTools = await getConnectedTools(this, enforceUniqueNames, false);
 		}
 
-		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+		if (externalTools.length) {
+			tools = externalTools.length ? externalTools?.map(formatToOpenAIResponsesTool) : undefined;
+		}
+
+		const body = createRequest(model, messages, options, tools);
+
+		let response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
-		})) as ChatCompletion;
+		})) as ChatResponse;
 
-		toolCalls = response.choices[0].message.tool_calls;
-		currentIteration += 1;
-	}
+		if (!response) return [];
 
-	if (response_format) {
-		response.choices = response.choices.map((choice) => {
-			try {
-				choice.message.content = JSON.parse(choice.message.content);
-			} catch (error) {}
-			return choice;
-		});
-	}
+		let toolCalls = response.output.filter((item) => item.type === 'function_call');
+		const answeredToolCalls = new Set<string>();
+		let currentIteration = 1;
+		while (toolCalls.length) {
+			if (
+				abortSignal?.aborted ||
+				(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
+			) {
+				break;
+			}
 
-	const simplify = this.getNodeParameter('simplify', i) as boolean;
+			for (const item of toolCalls) {
+				if (item.type !== 'function_call' || answeredToolCalls.has(item.call_id)) {
+					continue;
+				}
+				const functionName = item.name;
+				const functionArgs = item.arguments;
+				const callId = item.call_id;
 
-	const returnData: INodeExecutionData[] = [];
+				let functionResponse;
+				for (const tool of externalTools ?? []) {
+					if (tool.name === functionName) {
+						const parsedArgs: { input: string } = jsonParse(functionArgs);
+						const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
+						functionResponse = await tool.invoke(functionInput);
+					}
 
-	if (simplify) {
-		for (const entry of response.choices) {
-			returnData.push({
-				json: entry,
-				pairedItem: { item: i },
-			});
+					if (typeof functionResponse === 'object') {
+						functionResponse = JSON.stringify(functionResponse);
+					}
+				}
+
+				body.input.push({
+					type: 'function_call_output',
+					call_id: callId,
+					output: functionResponse,
+				});
+
+				response = (await apiRequest.call(this, 'POST', '/responses', {
+					body,
+				})) as ChatResponse;
+
+				answeredToolCalls.add(callId);
+				toolCalls = response.output.filter((item) => item.type === 'function_call');
+			}
+			currentIteration++;
 		}
-	} else {
-		returnData.push({ json: response, pairedItem: { item: i } });
-	}
 
-	return returnData;
+		const formatType = get(body, 'text.format.type');
+		if (formatType === 'json_object' || formatType === 'json_schema') {
+			try {
+				response.output = response.output.map((item) => {
+					if (item.type === 'message') {
+						item.content = item.content.map((content) => {
+							if (content.type === 'output_text') {
+								content.text = JSON.parse(content.text);
+							}
+							return content;
+						});
+					}
+					return item;
+				});
+			} catch (error) {}
+		}
+
+		const simplify = this.getNodeParameter('simplify', i) as boolean;
+
+		const returnData: INodeExecutionData[] = [];
+
+		if (simplify) {
+			for (const entry of response.output) {
+				returnData.push({
+					json: entry as unknown as IDataObject,
+					pairedItem: { item: i },
+				});
+			}
+		} else {
+			returnData.push({ json: response as unknown as IDataObject, pairedItem: { item: i } });
+		}
+
+		return returnData;
+	} catch (error) {
+		console.error(error);
+		throw error;
+	}
 }

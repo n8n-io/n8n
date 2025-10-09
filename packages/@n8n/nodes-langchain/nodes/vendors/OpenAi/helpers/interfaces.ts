@@ -1,4 +1,101 @@
+import { type OpenAIClient } from '@langchain/openai';
 import type { IDataObject } from 'n8n-workflow';
+import type {
+	ResponseInputAudio,
+	ResponseInputFile,
+	ResponseInputImage,
+	ResponseInputItem,
+	ResponseInputText,
+} from 'openai/resources/responses/responses';
+
+export type OutputItem = {
+	id: string;
+	type: string;
+	status: 'completed' | 'failed' | 'in_progress' | 'incomplete';
+	role: string;
+} & (
+	| {
+			type: 'message';
+			content:
+				| { type: 'output_text'; text: string; annotations?: unknown[]; logprobs?: unknown[] }
+				| { type: 'refusal'; refusal: string };
+	  }
+	| {
+			type: 'function_call';
+			name: string;
+			arguments: string;
+			call_id: string;
+	  }
+);
+export type ChatResponse = OpenAIClient.Responses.Response;
+
+// 	id: string;
+// 	object: string;
+// 	created_at: number;
+// 	status: 'completed' | 'failed' | 'in_progress' | 'incomplete';
+// 	error?: string | null;
+// 	incomplete_details?: {
+// 		reason: string;
+// 	} | null;
+// 	instructions?: string | null;
+// 	max_output_tokens?: number | null;
+// 	model: string;
+// 	output: OutputItem[];
+// 	parallel_tool_calls: boolean;
+// 	previous_response_id?: string | null;
+// 	reasoning?: {
+// 		effort?: string | null;
+// 		summary?: string | null;
+// 	};
+// 	store: boolean;
+// 	temperature: number;
+// 	text?: {
+// 		format?: {
+// 			type: string;
+// 		};
+// 	};
+// 	tool_choice?: string;
+// 	tools: unknown[];
+// 	top_p: number;
+// 	truncation: string;
+// 	usage: {
+// 		input_tokens: number;
+// 		input_tokens_details: {
+// 			cached_tokens: number;
+// 		};
+// 		output_tokens: number;
+// 		output_tokens_details: {
+// 			reasoning_tokens: number;
+// 		};
+// 		total_tokens: number;
+// 	};
+// 	user?: string | null;
+// 	metadata: Record<string, unknown>;
+// };
+
+// FIXME: currently package types do not include the ResponseInputAudio type, remove this once the package types are updated
+export type ResponseInputContent =
+	| ResponseInputText
+	| ResponseInputImage
+	| ResponseInputFile
+	| ResponseInputAudio;
+export type ChatContent = ResponseInputContent[];
+
+export type ChatInputItem = Omit<OpenAIClient.Responses.ResponseInputItem.Message, 'content'> & {
+	content: ChatContent;
+};
+
+export type ChatResponseRequest = Omit<
+	OpenAIClient.Responses.ResponseCreateParamsNonStreaming,
+	'input'
+> & {
+	max_tool_calls?: number;
+	conversation?: {
+		id: string;
+	};
+	input: Array<ChatInputItem | ResponseInputItem.FunctionCallOutput>;
+	top_logprobs?: number;
+};
 
 export type ChatCompletion = {
 	id: string;
