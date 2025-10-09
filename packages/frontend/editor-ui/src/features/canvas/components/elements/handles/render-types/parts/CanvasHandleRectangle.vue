@@ -17,10 +17,10 @@ withDefaults(
 .rectangle {
 	width: var(--handle--indicator--width);
 	height: var(--handle--indicator--height);
-	background: var(--color-foreground-xdark);
+	background: var(--color--foreground--shade-2);
 
 	&:hover {
-		background: var(--color-primary);
+		background: var(--color--primary);
 	}
 }
 </style>

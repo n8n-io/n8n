@@ -238,7 +238,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 	gap: var(--spacing-4xs);
 
 	&.hasIssues {
-		--input-border-color: var(--color-danger);
+		--input-border-color: var(--color--danger);
 	}
 
 	&.hasHint {

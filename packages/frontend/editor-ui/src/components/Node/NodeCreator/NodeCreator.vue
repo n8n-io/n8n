@@ -203,7 +203,7 @@ onClickOutside(
 }
 .nodeCreator {
 	--node-creator-width: #{$node-creator-width};
-	--node-icon-color: var(--color-text-base);
+	--node-icon-color: var(--color--text);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;

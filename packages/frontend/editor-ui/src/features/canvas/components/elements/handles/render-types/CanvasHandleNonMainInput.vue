@@ -84,7 +84,7 @@ function onClickAdd() {
 
 .required .label::after {
 	content: '*';
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 </style>
 
