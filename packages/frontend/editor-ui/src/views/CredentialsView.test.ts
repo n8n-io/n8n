@@ -8,7 +8,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY, VIEWS } from '@/constants';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';

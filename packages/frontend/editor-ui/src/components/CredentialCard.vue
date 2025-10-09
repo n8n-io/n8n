@@ -8,10 +8,10 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { useProjectsStore } from '@/stores/projects.store';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/features/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
 
 import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';

@@ -7,8 +7,8 @@ import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '../folders.store';
 import { useRoute } from 'vue-router';
-import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import type { ChangeLocationSearchResult } from '../folders.types';
 
 import { ElRadio } from 'element-plus';

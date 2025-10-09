@@ -2,11 +2,11 @@
 import { ref, computed, onBeforeMount } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useUsersStore } from '@/stores/users.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useI18n } from '@n8n/i18n';
 
 import { ElRadio } from 'element-plus';

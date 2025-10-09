@@ -10,7 +10,7 @@ import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workfl
 import { workflowVersionDataFactory } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 import type { IWorkflowDb } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
 const actions: Array<UserAction<IUser>> = actionTypes.map((value) => ({

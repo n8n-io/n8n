@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';

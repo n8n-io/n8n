@@ -101,7 +101,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';

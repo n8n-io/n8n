@@ -4,10 +4,10 @@ import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import type { RouteLocationRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { WorkflowResource } from '@/Interface';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';
-import { ResourceType } from '@/utils/projects.utils';
-import { useProjectsStore } from '@/stores/projects.store';
+import { ResourceType } from '@/features/projects/projects.utils';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 import { N8nDataTableServer, N8nText } from '@n8n/design-system';
 type WorkflowData = WorkflowResource[];

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData } from '@/types/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, defineAsyncComponent, onBeforeMount, onMounted, ref, watch } from 'vue';

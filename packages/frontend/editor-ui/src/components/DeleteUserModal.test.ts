@@ -6,7 +6,7 @@ import { getDropdownItems } from '@/__tests__/utils';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import { DELETE_USER_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import userEvent from '@testing-library/user-event';
 import { useUsersStore } from '@/stores/users.store';
 import { ROLE, type UsersList, type User } from '@n8n/api-types';

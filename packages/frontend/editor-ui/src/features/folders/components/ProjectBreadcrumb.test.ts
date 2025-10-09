@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
 import ProjectBreadcrumb from './ProjectBreadcrumb.vue';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { createTestProject } from '@/__tests__/data/projects';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({

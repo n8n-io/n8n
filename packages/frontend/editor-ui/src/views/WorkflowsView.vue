@@ -5,7 +5,7 @@ import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.v
 import FolderCard from '@/features/folders/components/FolderCard.vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/folders/folders.constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
@@ -14,7 +14,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { DragTarget, DropTarget, FolderListItem } from '@/features/folders/folders.types';
 import { useFolders } from '@/features/folders/composables/useFolders';
 import { useMessage } from '@/composables/useMessage';
-import { useProjectPages } from '@/composables/useProjectPages';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
@@ -49,7 +49,7 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import { useFoldersStore } from '@/features/folders/folders.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -58,7 +58,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import {
+	type Project,
+	type ProjectSharingData,
+	ProjectTypes,
+} from '@/features/projects/projects.types';
 import { getEasyAiWorkflowJson } from '@/features/templates/utils/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,

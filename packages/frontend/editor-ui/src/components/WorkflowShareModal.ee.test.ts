@@ -13,7 +13,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
