@@ -82,6 +82,7 @@ const emit = defineEmits<{
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
+	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
 	'delete:nodes': [ids: string[]];
@@ -351,6 +352,7 @@ const keyMap = computed(() => {
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
+		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 	};
 	return fullKeymap;
 });
@@ -750,6 +752,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return onSetNodeActivated(nodeIds[0]);
 		case 'rename':
 			return emit('update:node:name', nodeIds[0]);
+		case 'replace':
+			return emit('replace:node', nodeIds[0]);
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':

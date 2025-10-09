@@ -10,6 +10,7 @@ import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descript
 import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../utils/sendAndWait/utils';
 
@@ -31,6 +32,7 @@ export class WhatsApp implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{

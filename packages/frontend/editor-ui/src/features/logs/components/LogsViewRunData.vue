@@ -109,7 +109,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template #header-end="itemCountProps">
-			<RunDataItemCount v-bind="itemCountProps" />
+			<RunDataItemCount
+				v-bind="itemCountProps"
+				:search="displayMode === 'schema' ? '' : itemCountProps.search"
+			/>
 		</template>
 
 		<template #no-output-data>
@@ -118,7 +121,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 
 		<template #node-waiting>
 			<NDVEmptyState :title="locale.baseText('ndv.output.waitNodeWaiting.title')" wide>
-				<span v-n8n-html="waitingNodeTooltip(logEntry.node)" />
+				<span v-n8n-html="waitingNodeTooltip(logEntry.node, logEntry.workflow)" />
 			</NDVEmptyState>
 		</template>
 
