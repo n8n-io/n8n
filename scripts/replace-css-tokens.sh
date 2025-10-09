@@ -4,7 +4,7 @@
 # Run from anywhere - uses absolute paths
 
 # Absolute path to frontend directory
-FRONTEND_DIR="/Users/mutasem/repos/n8n-worktree/AI-1121-css-vars/packages/frontend"
+FRONTEND_DIR="./packages/frontend"
 
 # Find all files in frontend folder except _tokens.scss (which is already updated)
 echo "Finding files to process..."
