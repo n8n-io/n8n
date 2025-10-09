@@ -19,6 +19,7 @@ export type ContextMenuAction =
 	| 'duplicate'
 	| 'execute'
 	| 'rename'
+	| 'replace'
 	| 'toggle_pin'
 	| 'delete'
 	| 'select_all'
@@ -230,6 +231,12 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },
+								disabled: isReadOnly.value,
+							},
+							{
+								id: 'replace',
+								label: i18n.baseText('contextMenu.replace'),
+								shortcut: { keys: ['R'] },
 								disabled: isReadOnly.value,
 							},
 						];

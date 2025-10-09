@@ -58,6 +58,7 @@ import {
 	N8nResizeWrapper,
 	N8nText,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -79,6 +80,7 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
@@ -227,7 +229,9 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 	};
 });
 
-const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
+const isNodeExecuting = computed(() =>
+	workflowState.executingNode.isNodeExecuting(node.value?.name ?? ''),
+);
 
 const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
 

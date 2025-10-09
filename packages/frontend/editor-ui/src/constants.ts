@@ -294,6 +294,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	ADD_NODE_BUTTON: 'add_node_button',
 	TAB: 'tab',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
+	REPLACE_NODE_ACTION: 'replace_node_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
@@ -506,6 +507,7 @@ export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
 export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
 	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
 export const LOCAL_STORAGE_RUN_DATA_WORKER = 'N8N_RUN_DATA_WORKER';
+export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = 'N8N_CHAT_HUB_SELECTED_MODEL';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
