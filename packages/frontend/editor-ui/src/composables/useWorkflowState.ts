@@ -275,6 +275,38 @@ export function useWorkflowState() {
 		}
 	}
 
+	function setNodeValue(updateInformation: IUpdateInformation): void {
+		// Find the node that should be updated
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
+			return node.name === updateInformation.name;
+		});
+
+		if (nodeIndex === -1 || !updateInformation.key) {
+			throw new Error(
+				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
+			);
+		}
+
+		const changed = ws.updateNodeAtIndex(nodeIndex, {
+			[updateInformation.key]: updateInformation.value,
+		});
+
+		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
+
+		const excludeKeys = ['position', 'notes', 'notesInFlow'];
+
+		if (changed && !excludeKeys.includes(updateInformation.key)) {
+			ws.nodeMetadata[ws.workflow.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+		}
+	}
+
+	function setNodePositionById(id: string, position: INodeUi['position']): void {
+		const node = ws.workflow.nodes.find((n) => n.id === id);
+		if (!node) return;
+
+		setNodeValue({ name: node.name, key: 'position', value: position });
+	}
+
 	return {
 		// Workflow editing state
 		resetState,
@@ -296,6 +328,8 @@ export function useWorkflowState() {
 		// Node modification
 		setNodeParameters,
 		setLastNodeParameters,
+		setNodeValue,
+		setNodePositionById,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,

@@ -517,13 +517,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
 
-	function setNodePositionById(id: string, position: INodeUi['position']): void {
-		const node = workflow.value.nodes.find((n) => n.id === id);
-		if (!node) return;
-
-		setNodeValue({ name: node.name, key: 'position', value: position });
-	}
-
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
 		const filteredCredentials = Object.keys(node.credentials ?? {}).reduce<INodeCredentials>(
 			(credentials, curr) => {
@@ -1342,31 +1335,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function setNodeValue(updateInformation: IUpdateInformation): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex === -1 || !updateInformation.key) {
-			throw new Error(
-				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
-			);
-		}
-
-		const changed = updateNodeAtIndex(nodeIndex, {
-			[updateInformation.key]: updateInformation.value,
-		});
-
-		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
-
-		const excludeKeys = ['position', 'notes', 'notesInFlow'];
-
-		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
-		}
-	}
-
 	async function trackNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): Promise<void> {
 		const nodeName = pushData.nodeName;
 
@@ -1911,7 +1879,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addNode,
 		removeNode,
 		updateNodeProperties,
-		setNodeValue,
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,
@@ -1932,7 +1899,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
-		setNodePositionById,
 		removeNodeById,
 		removeNodeConnectionsById,
 		removeNodeExecutionDataById,
