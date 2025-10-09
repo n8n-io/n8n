@@ -60,7 +60,7 @@ export class ChatHubService {
 			anthropic: { models: [] },
 			google: { models: [] },
 		};
-		const additionalData = await getBase(userId);
+		const additionalData = await getBase({ userId });
 
 		for (const provider of chatHubProviderSchema.options) {
 			const credentialId = credentialIds[provider];
