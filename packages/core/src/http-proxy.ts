@@ -1,124 +1,139 @@
-import type { AgentConnectOpts } from 'agent-base';
 import http from 'http';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import https from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import type net from 'net';
+import { LoggerProxy } from 'n8n-workflow';
 import proxyFromEnv from 'proxy-from-env';
 
-interface RequestOptions {
-	secureEndpoint: true;
-	protocol: string;
-	hostname: string;
-	host: string;
-	port: number;
-}
+let isGlobalProxyInstalled = false;
 
-function buildTargetUrl(options: RequestOptions, defaultProtocol: 'http:' | 'https:'): string {
-	const protocol = options.protocol ?? defaultProtocol;
-	const hostname = options.hostname ?? options.host ?? 'localhost';
+const buildTargetUrl = (hostname: string, port: number, protocol: 'http' | 'https'): string => {
+	const defaultPort = protocol === 'https' ? 443 : 80;
+	const portSuffix = port === defaultPort ? '' : `:${port}`;
+	return `${protocol}://${hostname}${portSuffix}`;
+};
 
-	const url = new URL(`${protocol}//${hostname}`);
-	if (options.port) {
-		url.port = String(options.port);
-	}
+class DynamicProxyAgent<TAgent extends http.Agent | https.Agent> {
+	private proxyAgents = new Map<string, HttpProxyAgent<string> | HttpsProxyAgent<string>>();
 
-	return url.href;
-}
-
-/**
- * An HTTP agent that uses a proxy if one is configured for the target URL
- * according to environment variables (HTTP_PROXY, HTTPS_PROXY, NO_PROXY, ALL_PROXY).
- *
- * NOTE: As of 09/2025 Node.js is activily developing native proxy support for http(s): https://nodejs.org/api/http.html#built-in-proxy-support
- * We could switch to that once it is stable and available.
- */
-export class ProxyFromEnvHttpAgent extends http.Agent {
 	constructor(
-		private readonly customProxyUrl: string | null = null,
-		options?: http.AgentOptions,
-	) {
-		super(options);
-	}
+		private baseAgent: new () => TAgent,
+		private protocol: 'http' | 'https',
+		private ProxyAgentClass: typeof HttpProxyAgent | typeof HttpsProxyAgent,
+	) {}
 
-	addRequest(req: http.ClientRequest, options: RequestOptions): void {
-		const targetUrl = buildTargetUrl(options, 'http:');
-		const proxyUrl = this.customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
-
-		if (proxyUrl) {
-			const proxyAgent = new HttpProxyAgent<string>(proxyUrl);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			proxyAgent.addRequest(req as any, options);
-		} else {
-			// Use the default agent behavior
-			// @ts-expect-error addRequest exists, but is not in @types/node
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			super.addRequest(req, options);
-		}
-	}
-
-	async connect(req: http.ClientRequest, opts: RequestOptions): Promise<net.Socket> {
-		const targetUrl = buildTargetUrl(opts, 'http:');
-		const proxyUrl = this.customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	addRequest(req: http.ClientRequest, options: any) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const hostname: string = options.host || options.hostname;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const port: number = options.port || (this.protocol === 'https' ? 443 : 80);
+		const targetUrl = buildTargetUrl(String(hostname), Number(port), this.protocol);
+		const proxyUrl = proxyFromEnv.getProxyForUrl(targetUrl);
 
 		if (proxyUrl) {
-			const proxyAgent = new HttpProxyAgent<string>(proxyUrl);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			return await proxyAgent.connect(req as any, opts);
-		} else {
-			// @ts-expect-error connect exists, but is not in @types/node
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			return await super.connect(req, opts);
+			let proxyAgent = this.proxyAgents.get(proxyUrl);
+			if (!proxyAgent) {
+				proxyAgent = new this.ProxyAgentClass(proxyUrl);
+				this.proxyAgents.set(proxyUrl, proxyAgent);
+			}
+			// @ts-expect-error addRequest exists on proxy agents
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+			return proxyAgent.addRequest(req, options);
 		}
+
+		// @ts-expect-error addRequest exists on base agent
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+		return new this.baseAgent().addRequest(req, options);
 	}
 }
 
-/**
- * An HTTPS agent that uses a proxy if one is configured for the target URL
- * according to environment variables (HTTP_PROXY, HTTPS_PROXY, NO_PROXY, ALL_PROXY).
- */
-export class ProxyFromEnvHttpsAgent extends https.Agent {
-	constructor(
-		private readonly customProxyUrl: string | null = null,
-		options?: https.AgentOptions,
-	) {
-		super(options);
-	}
+class DynamicProxyHttpAgent extends http.Agent {
+	private dynamicAgent = new DynamicProxyAgent(http.Agent, 'http', HttpProxyAgent);
 
-	addRequest(req: http.ClientRequest, options: RequestOptions): void {
-		const targetUrl = buildTargetUrl(options, 'https:');
-		const proxyUrl = this.customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
-
-		if (proxyUrl) {
-			// HttpsProxyAgent extends agent-base and doesn't have addRequest
-			// Use default agent behavior and let connect handle the proxy
-			// @ts-expect-error addRequest exists, but is not in @types/node
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			super.addRequest(req, options);
-		} else {
-			// Use the default agent behavior
-			// @ts-expect-error addRequest exists, but is not in @types/node
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			super.addRequest(req, options);
-		}
-	}
-
-	async connect(req: http.ClientRequest, opts: RequestOptions): Promise<net.Socket> {
-		const targetUrl = buildTargetUrl(opts, 'https:');
-		const proxyUrl = this.customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
-
-		if (proxyUrl) {
-			const proxyAgent = new HttpsProxyAgent<string>(proxyUrl);
-			return await proxyAgent.connect(req, opts);
-		} else {
-			// @ts-expect-error connect exists, but is not in @types/node
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			return await super.connect(req, opts);
-		}
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	addRequest(req: http.ClientRequest, options: any) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return this.dynamicAgent.addRequest(req, options);
 	}
 }
+
+class DynamicProxyHttpsAgent extends https.Agent {
+	private dynamicAgent = new DynamicProxyAgent(https.Agent, 'https', HttpsProxyAgent);
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	addRequest(req: http.ClientRequest, options: any) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return this.dynamicAgent.addRequest(req, options);
+	}
+}
+
+export function ProxyFromEnvHttpAgent(
+	customProxyUrl: string | null = null,
+	options?: http.AgentOptions,
+	targetUrl?: string,
+): http.Agent {
+	if (customProxyUrl) {
+		return new HttpProxyAgent(customProxyUrl, options);
+	}
+
+	const testUrl = targetUrl || 'http://example.com';
+	const proxyUrl = proxyFromEnv.getProxyForUrl(testUrl);
+
+	if (proxyUrl) {
+		return new HttpProxyAgent(proxyUrl, options);
+	}
+
+	return new http.Agent(options);
+}
+
+export function ProxyFromEnvHttpsAgent(
+	customProxyUrl: string | null = null,
+	options?: https.AgentOptions,
+	targetUrl?: string,
+): https.Agent {
+	if (customProxyUrl) {
+		return new HttpsProxyAgent(customProxyUrl, options);
+	}
+
+	const testUrl = targetUrl || 'https://example.com';
+	const proxyUrl = proxyFromEnv.getProxyForUrl(testUrl);
+
+	if (proxyUrl) {
+		return new HttpsProxyAgent(proxyUrl, options);
+	}
+
+	return new https.Agent(options);
+}
+
+const hasProxyEnvVars = (): boolean =>
+	!!(process.env.HTTP_PROXY || process.env.HTTPS_PROXY || process.env.ALL_PROXY);
 
 export function installGlobalProxyAgent(): void {
-	http.globalAgent = new ProxyFromEnvHttpAgent();
-	https.globalAgent = new ProxyFromEnvHttpsAgent();
+	if (hasProxyEnvVars() && !isGlobalProxyInstalled) {
+		LoggerProxy.debug('Installing dynamic proxy agents from environment variables', {
+			HTTP_PROXY: process.env.HTTP_PROXY,
+			HTTPS_PROXY: process.env.HTTPS_PROXY,
+			NO_PROXY: process.env.NO_PROXY,
+			ALL_PROXY: process.env.ALL_PROXY,
+		});
+
+		http.globalAgent = new DynamicProxyHttpAgent();
+		https.globalAgent = new DynamicProxyHttpsAgent();
+
+		isGlobalProxyInstalled = true;
+		LoggerProxy.debug('Global dynamic proxy agents installed');
+	}
+}
+
+export function uninstallGlobalProxyAgent(): void {
+	if (!isGlobalProxyInstalled) {
+		return;
+	}
+
+	http.globalAgent = new http.Agent();
+	https.globalAgent = new https.Agent();
+
+	isGlobalProxyInstalled = false;
+	LoggerProxy.debug('Global proxy agents uninstalled');
 }

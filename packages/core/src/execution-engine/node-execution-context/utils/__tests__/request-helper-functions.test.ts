@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { Agent as HttpsAgent } from 'https';
+import type { Agent as HttpsAgent } from 'https';
 import { mock } from 'jest-mock-extended';
 import type {
 	IHttpRequestMethods,
