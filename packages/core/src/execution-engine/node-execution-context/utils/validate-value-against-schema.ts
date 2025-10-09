@@ -159,7 +159,7 @@ export const validateValueAgainstSchema = (
 	const parameterPath = parameterName.split('.');
 
 	const propertyDescription = nodeType.description.properties.find(
-		(prop) =>
+		(prop: any) =>
 			parameterPath[0] === prop.name &&
 			NodeHelpers.displayParameter(node.parameters, prop, node, nodeType.description),
 	);

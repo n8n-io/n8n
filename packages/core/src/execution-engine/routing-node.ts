@@ -1083,7 +1083,7 @@ export class RoutingNode {
 				credentialDescription = nodeType.description.credentials[0];
 			} else {
 				const authenticationMethod = context.getNodeParameter('authentication', 0) as string;
-				credentialDescription = nodeType.description.credentials.find((x) =>
+				credentialDescription = nodeType.description.credentials.find((x: any) =>
 					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
 				);
 				if (!credentialDescription) {

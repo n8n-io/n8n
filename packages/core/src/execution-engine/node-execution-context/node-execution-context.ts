@@ -278,7 +278,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			}
 
 			nodeCredentialDescription = nodeType.description.credentials.find(
-				(credentialTypeDescription) => credentialTypeDescription.name === type,
+				(credentialTypeDescription: any) => credentialTypeDescription.name === type,
 			);
 			if (nodeCredentialDescription === undefined) {
 				throw new NodeOperationError(

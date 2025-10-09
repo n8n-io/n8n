@@ -375,7 +375,7 @@ export abstract class DirectoryLoader {
 			properties.unshift(...commonPollingParameters);
 		}
 		if (nodeType.webhook && supportsCORS) {
-			const optionsProperty = properties.find(({ name }) => name === 'options');
+			const optionsProperty = properties.find(({ name }: any) => name === 'options');
 			if (optionsProperty)
 				optionsProperty.options = [
 					...commonCORSParameters,
@@ -441,7 +441,7 @@ export abstract class DirectoryLoader {
 		// that that existed was quite high. With this name the chance is actually
 		// very low that it already exists but lets leave it in anyway to be sure.
 		const existingRequestOptionsIndex = parameters.findIndex(
-			(parameter) => parameter.name === 'requestOptions',
+			(parameter: any) => parameter.name === 'requestOptions',
 		);
 		if (existingRequestOptionsIndex !== -1) {
 			parameters[existingRequestOptionsIndex] = {
@@ -455,7 +455,7 @@ export abstract class DirectoryLoader {
 			const options = parameters[existingRequestOptionsIndex]?.options;
 
 			if (options) {
-				options.sort((a, b) => {
+				options.sort((a: any, b: any) => {
 					if ('displayName' in a && 'displayName' in b) {
 						if (a.displayName < b.displayName) {
 							return -1;
