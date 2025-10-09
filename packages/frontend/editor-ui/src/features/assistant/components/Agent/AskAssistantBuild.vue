@@ -7,13 +7,13 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import type { RatingFeedback } from '@n8n/design-system/types/assistant';
+import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
-import type { WorkflowSuggestion } from '@n8n/design-system/types/assistant';
+import { shuffle } from 'lodash';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 
@@ -67,15 +67,6 @@ const showExecuteMessage = computed(() => {
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
-
-const shuffle = <T,>(array: T[]): T[] => {
-	const shuffled = array.slice();
-	for (let i = shuffled.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-	}
-	return shuffled;
-};
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	// Only show suggestions when no messages in chat yet (blank state)
