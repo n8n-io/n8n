@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import upperFirst from 'lodash/upperFirst';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
@@ -12,6 +12,8 @@ import { getSubtreeTotalConsumedTokens, hasSubExecution } from '@/features/logs/
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
+import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;
@@ -180,13 +182,13 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
-			v-if="!isCompact || !props.latestInfo?.deleted"
+			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
 			type="secondary"
 			size="small"
 			icon="square-pen"
 			icon-size="medium"
 			:style="{
-				visibility: props.canOpenNdv ? '' : 'hidden',
+				visibility: props.data.isSubExecution ? 'hidden' : '',
 			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
@@ -256,11 +258,11 @@ watch(
 	z-index: -1;
 
 	.selected & {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 
 	.container:hover:not(.selected) & {
-		background-color: var(--color-background-light-base);
+		background-color: var(--color--background--light-1);
 	}
 
 	.selected:not(:hover).error & {
@@ -372,7 +374,7 @@ watch(
 	flex-shrink: 0;
 	border: none;
 	background: transparent;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	align-items: center;
 	justify-content: center;
 
@@ -390,7 +392,7 @@ watch(
 }
 
 .statusIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	flex-grow: 0;
 	flex-shrink: 0;
 	width: 26px;

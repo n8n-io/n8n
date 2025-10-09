@@ -1,5 +1,5 @@
 import { EditorView } from '@codemirror/view';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { highlighter } from '@/features/editors/plugins/codemirror/resolvableHighlighter';
 
 const commonThemeProps = (isReadOnly = false) => ({
 	'&': {
@@ -12,14 +12,17 @@ const commonThemeProps = (isReadOnly = false) => ({
 	'.cm-cursor, .cm-dropCursor': {
 		borderLeftColor: 'var(--color-code-caret)',
 	},
+	'&.cm-editor': {
+		overflow: 'hidden',
+	},
 	'&.cm-focused': {
-		borderColor: 'var(--color-secondary)',
+		borderColor: 'var(--color--secondary)',
 		outline: '0 !important',
 	},
 	'.cm-content': {
 		fontFamily: 'var(--font-family-monospace)',
 		padding: 'var(--spacing-xs)',
-		color: 'var(--input-font-color, var(--color-text-dark))',
+		color: 'var(--input-font-color, var(--color--text--shade-1))',
 		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 	},
 	'.cm-line': {

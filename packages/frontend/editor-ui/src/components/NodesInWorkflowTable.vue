@@ -9,6 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/utils/projects.utils';
 import { useProjectsStore } from '@/stores/projects.store';
 
+import { N8nDataTableServer, N8nText } from '@n8n/design-system';
 type WorkflowData = WorkflowResource[];
 
 type WorkflowDataItem = WorkflowData[number];
@@ -74,9 +75,9 @@ const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 			:page-sizes="[sortedItems.length + 1]"
 		>
 			<template #[`item.name`]="{ item }">
-				<router-link :to="getWorkflowLink(item.id)" target="_blank">
-					<N8nText class="ellipsis" style="color: var(--color-text-base)">{{ item.name }}</N8nText>
-				</router-link>
+				<RouterLink :to="getWorkflowLink(item.id)" target="_blank">
+					<N8nText class="ellipsis" style="color: var(--color--text)">{{ item.name }}</N8nText>
+				</RouterLink>
 			</template>
 			<template #[`item.homeProject.name`]="{ item }">
 				<div>
@@ -114,11 +115,11 @@ const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 }
 
 .active {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .inactive {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .ellipsis {

@@ -11,6 +11,7 @@ import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
+import NDVHeader from '@/components/NDVHeader.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -44,7 +45,10 @@ import InputPanel from './InputPanel.vue';
 import OutputPanel from './OutputPanel.vue';
 import PanelDragButtonV2 from './PanelDragButtonV2.vue';
 import TriggerPanel from './TriggerPanel.vue';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -77,6 +81,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
 const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
@@ -270,7 +275,7 @@ const maxInputRun = computed(() => {
 		node = activeNode.value;
 	}
 
-	if (!node || !runData || !runData.hasOwnProperty(node.name)) {
+	if (!node || !runData?.hasOwnProperty(node.name)) {
 		return 0;
 	}
 
@@ -370,7 +375,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onWorkflowActivate = () => {
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	setTimeout(() => {
 		void workflowActivate.activateCurrentWorkflow('ndv');
 	}, 1000);
@@ -491,7 +496,7 @@ const close = async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	ndvStore.resetNDVPushRef();
 };
 
@@ -625,6 +630,7 @@ watch(
 						data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
 						input_displayed_row_height_avg: avgInputRowHeight.value,
 						output_displayed_row_height_avg: avgOutputRowHeight.value,
+						source: telemetryContext.ndv_source?.value ?? 'other',
 					});
 				}
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip
@@ -747,7 +753,7 @@ onBeforeUnmount(() => {
 							:push-ref="pushRef"
 							:read-only="readOnly || hasForeignCredential"
 							:is-production-execution-preview="isProductionExecutionPreview"
-							:is-pane-active="isInputPaneActive"
+							:search-shortcut="isInputPaneActive ? '/' : undefined"
 							:display-mode="inputPanelDisplayMode"
 							:class="$style.input"
 							:is-mapping-onboarded="ndvStore.isMappingOnboarded"
@@ -867,6 +873,7 @@ onBeforeUnmount(() => {
 	padding: 0;
 	margin: 0;
 	display: flex;
+	outline: none;
 }
 
 .container {
@@ -876,7 +883,7 @@ onBeforeUnmount(() => {
 	background: var(--border-color-base);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	min-width: 0;
 }
 
@@ -927,7 +934,7 @@ onBeforeUnmount(() => {
 }
 
 .draggable {
-	--draggable-height: 22px;
+	--draggable-height: 18px;
 	position: absolute;
 	top: calc(-1 * var(--draggable-height));
 	left: 50%;

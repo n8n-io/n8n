@@ -2,6 +2,7 @@
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
+import { N8nIcon } from '@n8n/design-system';
 export interface Props {
 	placeholder?: string;
 	modelValue?: string;
@@ -53,7 +54,7 @@ defineExpose({
 <template>
 	<div :class="$style.searchContainer" data-test-id="search-bar">
 		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
-			<n8n-icon icon="search" size="small" />
+			<N8nIcon icon="search" size="small" />
 		</div>
 		<div :class="$style.text">
 			<input
@@ -68,7 +69,7 @@ defineExpose({
 			/>
 		</div>
 		<div v-if="modelValue.length > 0" :class="[$style.suffix, $style.clickable]" @click="clear">
-			<n8n-icon size="small" icon="circle-x" />
+			<N8nIcon size="small" icon="circle-x" />
 		</div>
 	</div>
 </template>
@@ -88,7 +89,7 @@ defineExpose({
 	border-radius: 4px;
 
 	&:focus-within {
-		border-color: var(--color-secondary);
+		border-color: var(--color--secondary);
 	}
 }
 
@@ -111,8 +112,8 @@ defineExpose({
 		outline: none;
 		font-size: var(--font-size-s);
 		appearance: none;
-		background-color: var(--color-background-xlight);
-		color: var(--color-text-dark);
+		background-color: var(--color--background--light-3);
+		color: var(--color--text--shade-1);
 
 		&::placeholder,
 		&::-webkit-input-placeholder {

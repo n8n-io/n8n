@@ -9,10 +9,14 @@ import type {
 	StreamOutput,
 } from '../types/streaming';
 
-export interface BuilderTool {
-	tool: DynamicStructuredTool;
+export interface BuilderToolBase {
+	toolName: string;
 	displayTitle: string;
 	getCustomDisplayTitle?: (values: Record<string, unknown>) => string;
+}
+
+export interface BuilderTool extends BuilderToolBase {
+	tool: DynamicStructuredTool;
 }
 
 /**
@@ -59,6 +63,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 		if ((agentChunk?.compact_messages?.messages ?? []).length > 0) {
 			const lastMessage =
 				agentChunk.compact_messages!.messages![agentChunk.compact_messages!.messages!.length - 1];
+
 			const messageChunk: AgentMessageChunk = {
 				role: 'assistant',
 				type: 'message',
@@ -83,13 +88,17 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 					content = lastMessage.content;
 				}
 
-				const messageChunk: AgentMessageChunk = {
-					role: 'assistant',
-					type: 'message',
-					text: content,
-				};
+				if (content) {
+					const messageChunk: AgentMessageChunk = {
+						role: 'assistant',
+						type: 'message',
+						text: content,
+					};
 
-				return { messages: [messageChunk] };
+					return { messages: [messageChunk] };
+				}
+
+				return null;
 			}
 		}
 
@@ -190,7 +199,7 @@ function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>>
  */
 function createToolCallMessage(
 	toolCall: ToolCall,
-	builderTool?: BuilderTool,
+	builderTool?: BuilderToolBase,
 ): Record<string, unknown> {
 	return {
 		id: toolCall.id,
@@ -215,10 +224,10 @@ function createToolCallMessage(
  */
 function processToolCalls(
 	toolCalls: ToolCall[],
-	builderTools?: BuilderTool[],
+	builderTools?: BuilderToolBase[],
 ): Array<Record<string, unknown>> {
 	return toolCalls.map((toolCall) => {
-		const builderTool = builderTools?.find((bt) => bt.tool.name === toolCall.name);
+		const builderTool = builderTools?.find((bt) => bt.toolName === toolCall.name);
 		return createToolCallMessage(toolCall, builderTool);
 	});
 }
@@ -249,7 +258,7 @@ function processToolMessage(
 
 export function formatMessages(
 	messages: Array<AIMessage | HumanMessage | ToolMessage>,
-	builderTools?: BuilderTool[],
+	builderTools?: BuilderToolBase[],
 ): Array<Record<string, unknown>> {
 	const formattedMessages: Array<Record<string, unknown>> = [];
 

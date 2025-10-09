@@ -1,6 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { slackApiRequest, slackApiRequestAllItems } from '../../V2/GenericFunctions';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
+	processThreadOptions,
+} from '../../V2/GenericFunctions';
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
@@ -214,6 +218,156 @@ describe('Slack V2 > GenericFunctions', () => {
 			);
 
 			expect(result).toEqual([{ text: 'test' }]);
+		});
+	});
+
+	describe('processThreadOptions', () => {
+		it('should return empty object when threadOptions is undefined', () => {
+			const result = processThreadOptions(undefined);
+			expect(result).toEqual({});
+		});
+
+		it('should return empty object when threadOptions is null', () => {
+			const result = processThreadOptions(null as any);
+			expect(result).toEqual({});
+		});
+
+		it('should return empty object when threadOptions has no replyValues', () => {
+			const threadOptions = { someOtherProperty: 'value' };
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({});
+		});
+
+		it('should return empty object when replyValues is empty', () => {
+			const threadOptions = { replyValues: {} };
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({});
+		});
+
+		it('should extract thread_ts when provided', () => {
+			const threadOptions = {
+				replyValues: {
+					thread_ts: 1709203825.689579,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				thread_ts: 1709203825.689579,
+			});
+		});
+
+		it('should extract reply_broadcast when provided', () => {
+			const threadOptions = {
+				replyValues: {
+					reply_broadcast: true,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				reply_broadcast: true,
+			});
+		});
+
+		it('should extract both thread_ts and reply_broadcast when both provided', () => {
+			const threadOptions = {
+				replyValues: {
+					thread_ts: 1709203825.689579,
+					reply_broadcast: true,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				thread_ts: 1709203825.689579,
+				reply_broadcast: true,
+			});
+		});
+
+		it('should handle reply_broadcast as false', () => {
+			const threadOptions = {
+				replyValues: {
+					thread_ts: 1709203825.689579,
+					reply_broadcast: false,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				thread_ts: 1709203825.689579,
+				reply_broadcast: false,
+			});
+		});
+
+		it('should handle thread_ts as string', () => {
+			const threadOptions = {
+				replyValues: {
+					thread_ts: '1709203825.689579',
+					reply_broadcast: true,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				thread_ts: '1709203825.689579',
+				reply_broadcast: true,
+			});
+		});
+
+		it('should ignore other properties in replyValues', () => {
+			const threadOptions = {
+				replyValues: {
+					thread_ts: 1709203825.689579,
+					reply_broadcast: true,
+					someOtherProperty: 'ignored',
+					anotherProperty: 123,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				thread_ts: 1709203825.689579,
+				reply_broadcast: true,
+			});
+		});
+
+		it('should handle thread_ts as 0 (falsy but valid)', () => {
+			const threadOptions = {
+				replyValues: {
+					thread_ts: 0,
+					reply_broadcast: true,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				reply_broadcast: true,
+			});
+		});
+
+		it('should handle reply_broadcast as undefined (not included in result)', () => {
+			const threadOptions = {
+				replyValues: {
+					thread_ts: 1709203825.689579,
+					reply_broadcast: undefined,
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				thread_ts: 1709203825.689579,
+			});
+		});
+
+		it('should handle complex nested structure matching n8n parameter format', () => {
+			// This matches the actual structure from n8n workflow parameters
+			const threadOptions = {
+				replyValues: {
+					thread_ts: 1709203825.689579,
+					reply_broadcast: true,
+				},
+				someOtherNestedProperty: {
+					value: 'ignored',
+				},
+			};
+			const result = processThreadOptions(threadOptions);
+			expect(result).toEqual({
+				thread_ts: 1709203825.689579,
+				reply_broadcast: true,
+			});
 		});
 	});
 });

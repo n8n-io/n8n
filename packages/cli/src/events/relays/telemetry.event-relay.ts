@@ -6,12 +6,16 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
+
+import { Telemetry } from '../../telemetry';
+import { EventRelay } from './event-relay';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -21,9 +25,6 @@ import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shar
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
-
-import { EventRelay } from './event-relay';
-import { Telemetry } from '../../telemetry';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
@@ -166,12 +167,14 @@ export class TelemetryEventRelay extends EventRelay {
 		readOnlyInstance,
 		repoType,
 		connected,
+		connectionType,
 	}: RelayEventMap['source-control-settings-updated']) {
 		this.telemetry.track('User updated source control settings', {
 			branch_name: branchName,
 			read_only_instance: readOnlyInstance,
 			repo_type: repoType,
 			connected,
+			connection_type: connectionType,
 		});
 	}
 
@@ -604,7 +607,7 @@ export class TelemetryEventRelay extends EventRelay {
 					projectId: workflowOwner.id,
 				});
 
-				if (projectRole && projectRole !== 'project:personalOwner') {
+				if (projectRole && projectRole?.slug !== PROJECT_OWNER_ROLE_SLUG) {
 					userRole = 'member';
 				}
 			}
@@ -663,6 +666,7 @@ export class TelemetryEventRelay extends EventRelay {
 		if (runData !== undefined) {
 			telemetryProperties.execution_mode = runData.mode;
 			telemetryProperties.is_manual = runData.mode === 'manual';
+			telemetryProperties.crashed = executionStatus === 'crashed';
 
 			let nodeGraphResult: INodesGraphResult | null = null;
 

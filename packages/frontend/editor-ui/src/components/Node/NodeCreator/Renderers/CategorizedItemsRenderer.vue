@@ -24,6 +24,7 @@ export interface Props {
 
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
@@ -112,12 +113,12 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			@click="toggleExpanded"
 		>
 			<span v-if="mouseOverTooltip" :class="$style.mouseOverTooltip">
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="circle-help" size="small" />
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nIcon icon="circle-help" size="small" />
 					<template #content>
 						<div v-n8n-html="mouseOverTooltip" />
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</span>
 		</CategoryItem>
 
@@ -150,9 +151,9 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 .mouseOverTooltip {
 	opacity: 0;
 	margin-left: var(--spacing-3xs);
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	.categorizedItemsRenderer:hover & {

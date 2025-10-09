@@ -1,8 +1,12 @@
-import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
 import type { ICredentialsResponse } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AskAiRequest, ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
+import type {
+	AskAiRequest,
+	ChatRequest,
+	ReplaceCodeRequest,
+} from '@/features/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
 import type { IDataObject } from 'n8n-workflow';
@@ -14,11 +18,18 @@ export function chatWithBuilder(
 	onDone: () => void,
 	onError: (e: Error) => void,
 	abortSignal?: AbortSignal,
+	useDeprecatedCredentials = false,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
 		'/ai/build',
-		payload,
+		{
+			...payload,
+			payload: {
+				...payload.payload,
+				useDeprecatedCredentials,
+			},
+		},
 		onMessageUpdated,
 		onDone,
 		onError,
@@ -98,4 +109,11 @@ export async function getAiSessions(
 	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', {
 		workflowId,
 	} as IDataObject);
+}
+
+export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
+	creditsQuota: number;
+	creditsClaimed: number;
+}> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
 }

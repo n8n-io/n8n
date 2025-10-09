@@ -1,64 +1,67 @@
 <script setup lang="ts">
-import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type {
-	INodeParameters,
-	NodeConnectionType,
-	NodeParameterValue,
-	INodeCredentialDescription,
-	PublicInstalledPackage,
-} from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+import type {
+	INodeCredentialDescription,
+	INodeParameters,
+	NodeConnectionType,
+	NodeParameterValue,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL } from '@/constants';
 
-import ParameterInputList from '@/components/ParameterInputList.vue';
+import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
-import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import get from 'lodash/get';
 
-import NodeExecuteButton from './NodeExecuteButton.vue';
-import {
-	collectSettings,
-	createCommonNodeSettings,
-	nameIsParameter,
-	getNodeSettingsInitialValues,
-	collectParametersByTab,
-} from '@/utils/nodeSettingsUtils';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useHistoryStore } from '@/stores/history.store';
-import { RenameNodeCommand } from '@/models/history';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { useUsersStore } from '@/stores/users.store';
-import type { EventBus } from '@n8n/utils/event-bus';
+import ExperimentalEmbeddedNdvHeader from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import NodeActionsList from '@/components/NodeActionsList.vue';
+import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@n8n/i18n';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
-import { ProjectTypes } from '@/types/projects.types';
-import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { useResizeObserver } from '@vueuse/core';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
-import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
-import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
+import NodeStorageLimitCallout from '@/features/dataTable/components/NodeStorageLimitCallout.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
+import { RenameNodeCommand } from '@/models/history';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import NodeActionsList from '@/components/NodeActionsList.vue';
-import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+import { ProjectTypes } from '@/types/projects.types';
+import {
+	collectParametersByTab,
+	collectSettings,
+	createCommonNodeSettings,
+	getNodeSettingsInitialValues,
+	nameIsParameter,
+} from '@/utils/nodeSettingsUtils';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { useResizeObserver } from '@vueuse/core';
+import CommunityNodeFooter from '@/components/Node/NodeCreator/Panel/CommunityNodeFooter.vue';
+import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
+import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 const props = withDefaults(
 	defineProps<{
 		eventBus?: EventBus;
@@ -113,6 +116,7 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 
@@ -142,8 +146,6 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
-const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
-
 const currentWorkflow = computed(
 	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
@@ -161,6 +163,9 @@ const nodeType = computed(() =>
 );
 
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
+
+const nodeTypeName = computed(() => node.value?.type);
+const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -377,7 +382,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				value: nodeParameters,
 			};
 
-			workflowsStore.setNodeParameters(updateInformation);
+			workflowState.setNodeParameters(updateInformation);
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
@@ -540,10 +545,6 @@ onMounted(async () => {
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
-
-	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
-		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(packageName.value);
-	}
 });
 
 onBeforeUnmount(() => {
@@ -681,6 +682,7 @@ function handleSelectAction(params: INodeParameters) {
 				"
 			/>
 			<FreeAiCreditsCallout />
+			<NodeStorageLimitCallout />
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -746,8 +748,11 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isCommunityNode && installedPackage?.updateAvailable"
+					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 					data-test-id="update-available"
+					:package-name="packageName"
+					style="margin-top: var(--spacing-s)"
+					source="node settings"
 				/>
 				<ParameterInputList
 					:parameters="parametersByTab.settings"
@@ -809,7 +814,7 @@ function handleSelectAction(params: INodeParameters) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 }
 
 .featureRequest {
@@ -822,9 +827,9 @@ function handleSelectAction(params: INodeParameters) {
 		gap: var(--spacing-4xs);
 		margin-top: var(--spacing-xl);
 
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 </style>
@@ -834,7 +839,7 @@ function handleSelectAction(params: INodeParameters) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	height: 100%;
 	width: 100%;
 
@@ -890,14 +895,14 @@ function handleSelectAction(params: INodeParameters) {
 			}
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-2xs);
-				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid var(--color-background-xlight);
+				background: var(--color--foreground--shade-1);
+				border: var(--spacing-5xs) solid var(--color--background--light-3);
 			}
 		}
 	}
 
 	&.dragging {
-		border-color: var(--color-primary);
+		border-color: var(--color--primary);
 		box-shadow: 0 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
@@ -942,7 +947,7 @@ function handleSelectAction(params: INodeParameters) {
 	font-size: var(--font-size-xs);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .parameter-value {

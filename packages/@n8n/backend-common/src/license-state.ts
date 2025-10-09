@@ -1,5 +1,5 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -42,6 +42,10 @@ export class LicenseState {
 	// --------------------
 	//      booleans
 	// --------------------
+
+	isCustomRolesLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
+	}
 
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');

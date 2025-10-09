@@ -10,6 +10,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
+import { N8nActionToggle, N8nBadge, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	item: WorkflowHistory;
 	index: number;
@@ -103,21 +104,18 @@ onMounted(() => {
 		<slot :formatted-created-at="formattedCreatedAt">
 			<p @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
-				<n8n-tooltip
-					placement="right-end"
-					:disabled="authors.size < 2 && !isAuthorElementTruncated"
-				>
+				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
 					<template #content>{{ props.item.authors }}</template>
 					<span ref="authorElement">{{ authors.label }}</span>
-				</n8n-tooltip>
+				</N8nTooltip>
 				<data :value="item.versionId">{{ idLabel }}</data>
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<n8n-badge v-if="props.index === 0">
+			<N8nBadge v-if="props.index === 0">
 				{{ i18n.baseText('workflowHistory.item.latest') }}
-			</n8n-badge>
-			<n8n-action-toggle
+			</N8nBadge>
+			<N8nActionToggle
 				theme="dark"
 				:class="$style.actions"
 				:actions="props.actions"
@@ -127,7 +125,7 @@ onMounted(() => {
 				@visible-change="onVisibleChange"
 			>
 				<slot name="action-toggle-button" />
-			</n8n-action-toggle>
+			</N8nActionToggle>
 		</div>
 	</li>
 </template>
@@ -138,8 +136,8 @@ onMounted(() => {
 	align-items: center;
 	justify-content: space-between;
 	border-left: 2px var(--border-style-base) transparent;
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	color: var(--color-text-base);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 
 	p {
@@ -150,7 +148,7 @@ onMounted(() => {
 
 		time {
 			padding: 0 0 var(--spacing-5xs);
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 			font-size: var(--font-size-s);
 			font-weight: var(--font-weight-bold);
 		}
@@ -174,8 +172,8 @@ onMounted(() => {
 	}
 
 	&.active {
-		background-color: var(--color-background-base);
-		border-left-color: var(--color-primary);
+		background-color: var(--color--background);
+		border-left-color: var(--color--primary);
 
 		p {
 			cursor: default;
@@ -184,7 +182,7 @@ onMounted(() => {
 
 	&:hover,
 	&.actionsVisible {
-		border-left-color: var(--color-foreground-xdark);
+		border-left-color: var(--color--foreground--shade-2);
 	}
 }
 

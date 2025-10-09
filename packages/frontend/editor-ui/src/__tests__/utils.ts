@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
-import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import type { Mock } from 'vitest';
 import type { Store, StoreDefinition } from 'pinia';
 import type { ComputedRef } from 'vue';
@@ -93,23 +92,6 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 	const selectedItem = Array.from(items).find((item) => item.classList.contains('selected'));
 	expect(selectedItem).toBeInTheDocument();
 	return selectedItem?.querySelector('p')?.textContent?.trim();
-};
-
-/**
- * Create a container for teleported modals
- *
- * More info: https://test-utils.vuejs.org/guide/advanced/teleport#Mounting-the-Component
- * @returns {HTMLElement} appModals
- */
-export const createAppModals = () => {
-	const appModals = document.createElement('div');
-	appModals.id = APP_MODALS_ELEMENT_ID;
-	document.body.appendChild(appModals);
-	return appModals;
-};
-
-export const cleanupAppModals = () => {
-	document.body.innerHTML = '';
 };
 
 /**

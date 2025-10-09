@@ -120,11 +120,11 @@ export async function testTriggerNode(
 
 	if (options.mode === 'manual') {
 		expect(response?.manualTriggerFunction).toBeInstanceOf(Function);
-		await response?.manualTriggerFunction?.();
 	}
 
 	return {
 		close: jest.fn(response?.closeFunction),
+		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
 	};
 }

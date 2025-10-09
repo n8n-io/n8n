@@ -7,6 +7,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
@@ -62,7 +63,7 @@ function getWorkflowRoute(): { name: string; params: {} } {
 	width: 100%;
 	height: 100%;
 	flex: 1;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -70,7 +71,7 @@ function getWorkflowRoute(): { name: string; params: {} } {
 
 .messageContainer {
 	margin-top: var(--spacing-4xl);
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	div {
 		display: flex;
@@ -82,6 +83,6 @@ function getWorkflowRoute(): { name: string; params: {} } {
 
 .icon {
 	font-size: 24px;
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 }
 </style>

@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ImportCurlModal from './ImportCurlModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { nextTick } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -43,11 +43,6 @@ const testNode = {
 describe('ImportCurlModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		createAppModals();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
 	});
 
 	it('should show empty input when no curl command exists for active node', async () => {

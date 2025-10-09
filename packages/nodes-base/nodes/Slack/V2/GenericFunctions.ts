@@ -260,6 +260,22 @@ export function getTarget(
 	return target;
 }
 
+export function processThreadOptions(threadOptions: IDataObject | undefined): IDataObject {
+	const result: IDataObject = {};
+
+	if (threadOptions?.replyValues) {
+		const replyValues = threadOptions.replyValues as IDataObject;
+		if (replyValues.thread_ts) {
+			result.thread_ts = replyValues.thread_ts;
+		}
+		if (replyValues.reply_broadcast !== undefined) {
+			result.reply_broadcast = replyValues.reply_broadcast;
+		}
+	}
+
+	return result;
+}
+
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const select = context.getNodeParameter('select', 0) as 'user' | 'channel';
 	const target = getTarget(context, 0, select);

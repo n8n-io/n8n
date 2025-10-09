@@ -2,6 +2,7 @@
 import Draggable from '@/components/Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
+import { N8nIcon } from '@n8n/design-system';
 defineProps<{
 	canMoveRight: boolean;
 	canMoveLeft: boolean;
@@ -40,13 +41,13 @@ const onDragStart = () => {
 					v-if="canMoveLeft"
 					:class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }"
 				>
-					<n8n-icon icon="arrow-left" />
+					<N8nIcon icon="arrow-left" />
 				</span>
 				<span
 					v-if="canMoveRight"
 					:class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }"
 				>
-					<n8n-icon icon="arrow-right" />
+					<N8nIcon icon="arrow-right" />
 				</span>
 				<div :class="$style.grid">
 					<div>
@@ -74,7 +75,7 @@ const onDragStart = () => {
 	pointer-events: all;
 }
 .dragButton {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	width: 64px;
 	height: 21px;
 	border-top-left-radius: var(--border-radius-base);
@@ -101,7 +102,7 @@ const onDragStart = () => {
 
 .arrow {
 	position: absolute;
-	color: var(--color-background-xlight);
+	color: var(--color--background--light-3);
 	font-size: var(--font-size-3xs);
 	visibility: hidden;
 	top: 0;
@@ -131,7 +132,7 @@ const onDragStart = () => {
 			height: 2px;
 			width: 2px;
 			border-radius: 50%;
-			background-color: var(--color-foreground-xdark);
+			background-color: var(--color--foreground--shade-2);
 			margin-right: 4px;
 
 			&:last-child {

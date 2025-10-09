@@ -1,11 +1,13 @@
-import { Column, Entity, JoinTable, ManyToMany, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryColumn } from '@n8n/typeorm';
 
+import { WithTimestamps } from './abstract-entity';
+import type { ProjectRelation } from './project-relation';
 import { Scope } from './scope';
 
 @Entity({
 	name: 'role',
 })
-export class Role {
+export class Role extends WithTimestamps {
 	@PrimaryColumn({
 		type: String,
 		name: 'slug',
@@ -44,6 +46,9 @@ export class Role {
 	 * Type of the role, e.g., global, project, or workflow.
 	 */
 	roleType: 'global' | 'project' | 'workflow' | 'credential';
+
+	@OneToMany('ProjectRelation', 'role')
+	projectRelations: ProjectRelation[];
 
 	@ManyToMany(() => Scope, {
 		eager: true,

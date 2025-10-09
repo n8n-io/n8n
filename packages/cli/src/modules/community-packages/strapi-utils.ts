@@ -24,6 +24,8 @@ interface Pagination {
 	total: number;
 }
 
+const REQUEST_TIMEOUT_MS = 3000;
+
 export async function paginatedRequest<T>(url: string): Promise<T[]> {
 	let returnData: T[] = [];
 	let responseData: T[] | undefined = [];
@@ -41,6 +43,7 @@ export async function paginatedRequest<T>(url: string): Promise<T[]> {
 			response = await axios.get<ResponseData<T>>(url, {
 				headers: { 'Content-Type': 'application/json' },
 				params,
+				timeout: REQUEST_TIMEOUT_MS,
 			});
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {

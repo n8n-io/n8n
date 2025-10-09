@@ -87,6 +87,15 @@ export namespace ChatUI {
 		}>;
 	}
 
+	export interface CustomMessage {
+		id?: string;
+		role: 'assistant' | 'user';
+		type: 'custom';
+		message?: string;
+		customType: string;
+		data: unknown;
+	}
+
 	type MessagesWithReplies = (
 		| TextMessage
 		| CodeDiffMessage
@@ -106,6 +115,7 @@ export namespace ChatUI {
 		| AgentSuggestionMessage
 		| WorkflowUpdatedMessage
 		| ToolMessage
+		| CustomMessage
 	) & {
 		id?: string;
 		read?: boolean;
@@ -186,9 +196,22 @@ export function isToolMessage(
 	return msg.type === 'tool';
 }
 
+export function isCustomMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.CustomMessage & { id?: string; read?: boolean } {
+	return msg.type === 'custom';
+}
+
 // Helper to ensure message has required id and read properties
 export function hasRequiredProps<T extends ChatUI.AssistantMessage>(
 	msg: T,
 ): msg is T & { id: string; read: boolean } {
 	return typeof msg.id === 'string' && typeof msg.read === 'boolean';
+}
+
+// Workflow suggestion interface for the N8nPromptInputSuggestions component
+export interface WorkflowSuggestion {
+	id: string;
+	summary: string;
+	prompt: string;
 }

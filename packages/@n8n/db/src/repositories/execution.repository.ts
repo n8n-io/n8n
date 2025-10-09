@@ -17,38 +17,38 @@ import {
 	LessThanOrEqual,
 	MoreThanOrEqual,
 	Not,
-	Raw,
 	Repository,
+	And,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
-import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
+import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
+	AnnotationTagEntity,
+	AnnotationTagMapping,
+	ExecutionAnnotation,
+	ExecutionData,
 	ExecutionEntity,
 	ExecutionMetadata,
-	ExecutionData,
-	ExecutionAnnotation,
-	AnnotationTagMapping,
-	WorkflowEntity,
 	SharedWorkflow,
-	AnnotationTagEntity,
+	WorkflowEntity,
 } from '../entities';
 import type {
 	CreateExecutionPayload,
-	IExecutionFlattedDb,
-	IExecutionBase,
-	IExecutionResponse,
 	ExecutionSummaries,
+	IExecutionBase,
+	IExecutionFlattedDb,
+	IExecutionResponse,
 } from '../entities/types-db';
 import { separate } from '../utils/separate';
 
@@ -123,6 +123,10 @@ const lessThanOrEqual = (date: string): unknown => {
 const moreThanOrEqual = (date: string): unknown => {
 	return MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
 };
+
+// This is the max number of elements in an IN-clause.
+// It's a conservative value, as some databases indicate limits around 1000.
+const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
@@ -382,15 +386,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async markAsCrashed(executionIds: string | string[]) {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
 
-		await this.update(
-			{ id: In(executionIds) },
-			{
-				status: 'crashed',
-				stoppedAt: new Date(),
-			},
-		);
-
-		this.logger.info('Marked executions as `crashed`', { executionIds });
+		let processed: number = 0;
+		while (processed < executionIds.length) {
+			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
+			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
+			await this.update(
+				{ id: In(batch) },
+				{
+					status: 'crashed',
+					stoppedAt: new Date(),
+				},
+			);
+			this.logger.info('Marked executions as `crashed`', { executionIds });
+			processed += batch.length;
+		}
 	}
 
 	/**
@@ -631,27 +640,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async getExecutionsCountForPublicApi(data: {
+	async getExecutionsCountForPublicApi(params: {
 		limit: number;
 		lastId?: string;
 		workflowIds?: string[];
 		status?: ExecutionStatus;
-		excludedWorkflowIds?: string[];
+		excludedExecutionsIds?: string[];
 	}): Promise<number> {
-		const executions = await this.count({
-			where: {
-				...(data.lastId && { id: LessThan(data.lastId) }),
-				...(data.status && { ...this.getStatusCondition(data.status) }),
-				...(data.workflowIds && { workflowId: In(data.workflowIds) }),
-				...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
-			},
-			take: data.limit,
+		const executionsCount = await this.count({
+			where: this.getFindExecutionsForPublicApiCondition(params),
+			take: params.limit,
 		});
 
-		return executions;
+		return executionsCount;
 	}
 
-	private getStatusCondition(status: ExecutionStatus) {
+	private getStatusCondition(status?: ExecutionStatus) {
 		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
 		if (status === 'success') {
@@ -660,9 +664,45 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			condition.status = 'waiting';
 		} else if (status === 'error') {
 			condition.status = In(['error', 'crashed']);
+		} else if (status === 'canceled') {
+			condition.status = 'canceled';
+		} else if (status === 'running') {
+			condition.status = 'running';
 		}
 
 		return condition;
+	}
+
+	private getIdCondition(params: { lastId?: string; excludedExecutionsIds?: string[] }) {
+		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'id'> = {};
+
+		if (params.lastId && params.excludedExecutionsIds?.length) {
+			condition.id = And(LessThan(params.lastId), Not(In(params.excludedExecutionsIds)));
+		} else if (params.lastId) {
+			condition.id = LessThan(params.lastId);
+		} else if (params.excludedExecutionsIds?.length) {
+			condition.id = Not(In(params.excludedExecutionsIds));
+		}
+
+		return condition;
+	}
+
+	private getFindExecutionsForPublicApiCondition(params: {
+		lastId?: string;
+		workflowIds?: string[];
+		status?: ExecutionStatus;
+		excludedExecutionsIds?: string[];
+	}) {
+		const where: FindOptionsWhere<IExecutionFlattedDb> = {
+			...this.getIdCondition({
+				lastId: params.lastId,
+				excludedExecutionsIds: params.excludedExecutionsIds,
+			}),
+			...this.getStatusCondition(params.status),
+			...(params.workflowIds && { workflowId: In(params.workflowIds) }),
+		};
+
+		return where;
 	}
 
 	async getExecutionsForPublicApi(params: {
@@ -673,26 +713,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		status?: ExecutionStatus;
 		excludedExecutionsIds?: string[];
 	}): Promise<IExecutionBase[]> {
-		let where: FindOptionsWhere<IExecutionFlattedDb> = {};
-
-		if (params.lastId && params.excludedExecutionsIds?.length) {
-			where.id = Raw((id) => `${id} < :lastId AND ${id} NOT IN (:...excludedExecutionsIds)`, {
-				lastId: params.lastId,
-				excludedExecutionsIds: params.excludedExecutionsIds,
-			});
-		} else if (params.lastId) {
-			where.id = LessThan(params.lastId);
-		} else if (params.excludedExecutionsIds?.length) {
-			where.id = Not(In(params.excludedExecutionsIds));
-		}
-
-		if (params.status) {
-			where = { ...where, ...this.getStatusCondition(params.status) };
-		}
-
-		if (params.workflowIds) {
-			where = { ...where, workflowId: In(params.workflowIds) };
-		}
+		const where = this.getFindExecutionsForPublicApiCondition(params);
 
 		return await this.findMultipleExecutions(
 			{
@@ -706,6 +727,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					'workflowId',
 					'waitTill',
 					'finished',
+					'status',
 				],
 				where,
 				order: { id: 'DESC' },
@@ -774,7 +796,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ExecutionCancelledError(execution.id);
+		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data ??= { resultData: { runData: {} } };
 		execution.data.resultData.error = {
@@ -1123,5 +1145,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 
 		return executions.map(({ id }) => id);
+	}
+
+	/**
+	 * The number of executions that are running and count towards the concurrent executions limit.
+	 * Concurrency control only applies to executions started from a webhook or trigger node.
+	 */
+	async getConcurrentExecutionsCount() {
+		const concurrentExecutionsCount = await this.count({
+			where: { status: 'running', mode: In(['webhook', 'trigger']) },
+		});
+
+		return concurrentExecutionsCount;
 	}
 }

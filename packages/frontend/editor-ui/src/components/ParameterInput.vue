@@ -13,7 +13,6 @@ import type {
 	CodeExecutionMode,
 	EditorType,
 	IDataObject,
-	ILoadOptions,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
@@ -21,20 +20,27 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, isResourceLocatorValue, NodeHelpers } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	isResourceLocatorValue,
+	NodeHelpers,
+	resolveRelativePath,
+} from 'n8n-workflow';
 
-import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import type { CodeNodeLanguageOption } from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
-import JsEditor from '@/components/JsEditor/JsEditor.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
+import InlineExpressionTip from '@/features/editors/components/InlineExpressionEditor/InlineExpressionTip.vue';
+import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
-import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+import SqlEditor from '@/features/editors/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
+import WorkflowSelectorParameterInput from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,
@@ -70,18 +76,28 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { onClickOutside, useElementSize } from '@vueuse/core';
+import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
+import {
+	hasFocusOnInput,
+	isBlurrableEl,
+	isEmpty,
+	isFocusableEl,
+	isSelectableEl,
+} from '@/utils/typesUtils';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
-import CssEditor from './CssEditor/CssEditor.vue';
+import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { getParameterDisplayableOptions } from '@/utils/nodes/nodeTransforms';
 
+import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
+import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -145,6 +161,8 @@ const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
+const experimentalNdvStore = useExperimentalNdvStore();
+const projectsStore = useProjectsStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -152,7 +170,6 @@ const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, un
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
-const mapperRef = ref<InstanceType<typeof ExperimentalEmbeddedNdvMapper>>();
 
 const nodeName = ref('');
 const codeEditDialogVisible = ref(false);
@@ -209,8 +226,8 @@ const shortPath = computed<string>(() => {
 	return short.join('.');
 });
 
-function getTypeOption<T>(optionName: string): T {
-	return getParameterTypeOption<T>(props.parameter, optionName);
+function getTypeOption<T extends keyof NonNullable<INodeProperties['typeOptions']>>(optionName: T) {
+	return getParameterTypeOption(props.parameter, optionName);
 }
 
 const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
@@ -231,7 +248,16 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	return safeOptions;
+	// temporary until native Python runner is GA
+	if (props.parameter.name === 'language') {
+		if (settingsStore.isNativePythonRunnerEnabled) {
+			return safeOptions.filter((o) => o.value !== 'python');
+		} else {
+			return safeOptions.filter((o) => o.value !== 'pythonNative');
+		}
+	}
+
+	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
 });
 
 const modelValueString = computed<string>(() => {
@@ -250,13 +276,13 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 		: props.modelValue;
 });
 
-const editorRows = computed(() => getTypeOption<number>('rows'));
+const editorRows = computed(() => getTypeOption('rows'));
 
-const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
-	return getTypeOption<EditorType>('editor');
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
+	return getTypeOption('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
-	return getTypeOption<boolean>('editorIsReadOnly') ?? false;
+	return getTypeOption('editorIsReadOnly') ?? false;
 });
 
 const editorLanguage = computed<CodeNodeLanguageOption>(() => {
@@ -264,7 +290,7 @@ const editorLanguage = computed<CodeNodeLanguageOption>(() => {
 
 	if (node.value?.parameters?.language === 'pythonNative') return 'pythonNative';
 
-	return getTypeOption<CodeNodeLanguageOption>('editorLanguage') ?? 'javaScript';
+	return getTypeOption('editorLanguage') ?? 'javaScript';
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
@@ -364,7 +390,7 @@ const expressionDisplayValue = computed(() => {
 });
 
 const dependentParametersValues = computed<string | null>(() => {
-	const loadOptionsDependsOn = getTypeOption<string[] | undefined>('loadOptionsDependsOn');
+	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;
@@ -376,7 +402,9 @@ const dependentParametersValues = computed<string | null>(() => {
 		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
-		for (const parameterPath of loadOptionsDependsOn) {
+		for (let parameterPath of loadOptionsDependsOn) {
+			parameterPath = resolveRelativePath(props.path, parameterPath);
+
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
 
@@ -602,10 +630,13 @@ const showDragnDropTip = computed(
 
 const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
-const shouldShowMapper = computed(
+const isMapperAvailable = computed(
 	() =>
-		isFocused.value &&
-		(isModelValueExpression.value || props.forceShowExpression || props.modelValue === ''),
+		!props.parameter.isNodeSetting &&
+		(isModelValueExpression.value ||
+			props.forceShowExpression ||
+			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime') ||
+			editorType.value !== undefined),
 );
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
@@ -669,8 +700,8 @@ async function loadRemoteParameterOptions() {
 			props.parameter,
 			currentNodeParameters,
 		) as INodeParameters;
-		const loadOptionsMethod = getTypeOption<string | undefined>('loadOptionsMethod');
-		const loadOptions = getTypeOption<ILoadOptions | undefined>('loadOptions');
+		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
+		const loadOptions = getTypeOption('loadOptions');
 
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {
@@ -682,6 +713,7 @@ async function loadRemoteParameterOptions() {
 			loadOptions,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
+			projectId: projectsStore.currentProjectId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -913,6 +945,7 @@ function valueChanged(untypedValue: unknown) {
 			is_custom: value === CUSTOM_API_CALL_KEY,
 			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
+			value: value as string,
 		});
 	}
 	// Track workflow input data mode change
@@ -932,16 +965,7 @@ function expressionUpdated(value: string) {
 	valueChanged(val);
 }
 
-function onBlur(event?: FocusEvent | KeyboardEvent) {
-	if (
-		event?.target instanceof HTMLElement &&
-		mapperRef.value?.contentRef &&
-		(event.target === mapperRef.value.contentRef ||
-			mapperRef.value.contentRef.contains(event.target))
-	) {
-		return;
-	}
-
+function onBlur() {
 	emit('blur');
 	isFocused.value = false;
 }
@@ -989,6 +1013,8 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
+const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
+
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
 
@@ -1027,10 +1053,19 @@ async function optionSelected(command: string) {
 
 		case 'focus':
 			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
-			telemetry.track('User opened focus panel', {
-				source: 'parameterButton',
-				parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
-			});
+
+			if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+				telemetry.track('User added focused param', {
+					source: 'parameterButton',
+					parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+				});
+			} else {
+				telemetry.track('User opened focus panel', {
+					source: 'parameterButton',
+					parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+				});
+			}
+
 			return;
 	}
 
@@ -1113,7 +1148,8 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
-	valueChangedDebounced.cancel();
+	valueChangedDebounced.flush();
+	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
@@ -1191,8 +1227,6 @@ onUpdated(async () => {
 		}
 	}
 });
-
-onClickOutside(wrapper, onBlur);
 </script>
 
 <template>
@@ -1216,13 +1250,11 @@ onClickOutside(wrapper, onBlur);
 		/>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="node && expressionLocalResolveCtx?.inputNode"
-			ref="mapperRef"
-			:workflow="expressionLocalResolveCtx?.workflow"
+			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
+			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
-			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
-			:visible="shouldShowMapper"
-			:virtual-ref="wrapper"
+			:input-node-name="expressionLocalResolveCtx.inputNode.name"
+			:reference="wrapper"
 		/>
 
 		<div
@@ -1234,6 +1266,7 @@ onClickOutside(wrapper, onBlur);
 				},
 			]"
 			:style="parameterInputWrapperStyle"
+			:data-parameter-path="path"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
@@ -1251,7 +1284,7 @@ onClickOutside(wrapper, onBlur);
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1271,7 +1304,7 @@ onClickOutside(wrapper, onBlur);
 				:path="path"
 				:parameter-issues="getIssues"
 				:is-read-only="isReadOnly"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1300,7 +1333,7 @@ onClickOutside(wrapper, onBlur);
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<el-dialog
+				<ElDialog
 					width="calc(100% - var(--spacing-3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
@@ -1370,7 +1403,7 @@ onClickOutside(wrapper, onBlur);
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
-				</el-dialog>
+				</ElDialog>
 
 				<TextEdit
 					:dialog-visible="textEditDialogVisible"
@@ -1536,7 +1569,6 @@ onClickOutside(wrapper, onBlur);
 						:rows="editorRows"
 					/>
 				</div>
-
 				<N8nInput
 					v-else
 					ref="inputField"
@@ -1553,7 +1585,7 @@ onClickOutside(wrapper, onBlur);
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
+					@update:model-value="onUpdateTextInputDebounced($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -1582,7 +1614,7 @@ onClickOutside(wrapper, onBlur);
 			</div>
 
 			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-				<el-color-picker
+				<ElColorPicker
 					size="small"
 					class="color-picker"
 					:model-value="displayValue"
@@ -1599,20 +1631,26 @@ onClickOutside(wrapper, onBlur);
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					@update:model-value="valueChanged"
+					@update:model-value="valueChangedDebounced"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
 				/>
 			</div>
 
-			<el-date-picker
+			<ElDatePicker
 				v-else-if="parameter.type === 'dateTime'"
 				ref="inputField"
 				v-model="tempValue"
 				type="datetime"
 				value-format="YYYY-MM-DDTHH:mm:ss"
-				:size="inputSize"
+				:size="
+					inputSize === 'mini'
+						? 'small'
+						: inputSize === 'xlarge' || inputSize === 'medium'
+							? 'large'
+							: inputSize
+				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				:placeholder="
@@ -1748,7 +1786,7 @@ onClickOutside(wrapper, onBlur);
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
-			<el-switch
+			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
 				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
@@ -1837,9 +1875,9 @@ onClickOutside(wrapper, onBlur);
 }
 
 .activeDrop {
-	--input-border-color: var(--color-success);
-	--input-border-right-color: var(--color-success);
-	--input-background-color: var(--color-foreground-xlight);
+	--input-border-color: var(--color--success);
+	--input-border-right-color: var(--color--success);
+	--input-background-color: var(--color--foreground--tint-2);
 	--input-border-style: solid;
 
 	textarea,
@@ -1850,11 +1888,11 @@ onClickOutside(wrapper, onBlur);
 }
 
 .has-issues {
-	--input-border-color: var(--color-danger);
+	--input-border-color: var(--color--danger);
 }
 
 .el-dropdown {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .list-option {
@@ -1919,17 +1957,17 @@ onClickOutside(wrapper, onBlur);
 		transform: rotate(270deg);
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }
 
 .focused {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 }
 
 .invalid {
-	border-color: var(--color-danger);
+	border-color: var(--color--danger);
 }
 
 .code-edit-dialog {

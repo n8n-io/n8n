@@ -1,17 +1,23 @@
-import type { Page, BrowserContext } from '@playwright/test';
+import type { BrowserContext } from '@playwright/test';
 
 import { setContextSettings } from '../config/intercepts';
-import { n8nPage } from '../pages/n8nPage';
-import { ApiHelpers } from '../services/api-helper';
+import type { n8nPage } from '../pages/n8nPage';
 import { TestError, type TestRequirements } from '../Types';
 
 export async function setupTestRequirements(
-	page: Page,
+	n8n: n8nPage,
 	context: BrowserContext,
 	requirements: TestRequirements,
 ): Promise<void> {
-	const n8n = new n8nPage(page);
-	const api = new ApiHelpers(context.request);
+	// 0. Setup browser storage before creating a new page
+	if (requirements.storage) {
+		await context.addInitScript((storage) => {
+			// Set localStorage items
+			for (const [key, value] of Object.entries(storage)) {
+				window.localStorage.setItem(key, value);
+			}
+		}, requirements.storage);
+	}
 
 	// 1. Setup frontend settings override
 	if (requirements.config?.settings) {
@@ -23,17 +29,17 @@ export async function setupTestRequirements(
 	if (requirements.config?.features) {
 		for (const [feature, enabled] of Object.entries(requirements.config.features)) {
 			if (enabled) {
-				await api.enableFeature(feature);
+				await n8n.api.enableFeature(feature);
 			} else {
-				await api.disableFeature(feature);
+				await n8n.api.disableFeature(feature);
 			}
 		}
 	}
 
 	// 3. Setup API intercepts
 	if (requirements.intercepts) {
-		for (const [name, config] of Object.entries(requirements.intercepts)) {
-			await page.route(config.url, async (route) => {
+		for (const config of Object.values(requirements.intercepts)) {
+			await n8n.page.route(config.url, async (route) => {
 				await route.fulfill({
 					status: config.status ?? 200,
 					contentType: config.contentType ?? 'application/json',
@@ -46,25 +52,20 @@ export async function setupTestRequirements(
 
 	// 4. Setup workflows
 	if (requirements.workflow) {
-		for (const [name, workflowData] of Object.entries(requirements.workflow)) {
+		const entries =
+			typeof requirements.workflow === 'string'
+				? [[requirements.workflow, requirements.workflow]]
+				: Object.entries(requirements.workflow);
+
+		for (const [name, workflowData] of entries) {
 			try {
 				// Import workflow using the n8n page object
 				await n8n.goHome();
-				await n8n.workflows.clickAddWorkflowButton();
+				await n8n.workflows.addResource.workflow();
 				await n8n.canvas.importWorkflow(name, workflowData);
 			} catch (error) {
 				throw new TestError(`Failed to create workflow ${name}: ${String(error)}`);
 			}
 		}
-	}
-
-	// 5. Setup browser storage
-	if (requirements.storage) {
-		await context.addInitScript((storage) => {
-			// Set localStorage items
-			for (const [key, value] of Object.entries(storage)) {
-				window.localStorage.setItem(key, value);
-			}
-		}, requirements.storage);
 	}
 }

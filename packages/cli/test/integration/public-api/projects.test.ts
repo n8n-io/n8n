@@ -483,8 +483,8 @@ describe('Projects in Public API', () => {
 					relations: [
 						{
 							userId: member.id,
-							// role does not exist
-							role: 'project:boss',
+							// field does not exist
+							invalidField: 'invalidValue',
 						},
 					],
 				};
@@ -499,8 +499,31 @@ describe('Projects in Public API', () => {
 				// ASSERT
 				expect(response.body).toHaveProperty(
 					'message',
-					"Invalid enum value. Expected 'project:admin' | 'project:editor' | 'project:viewer', received 'project:boss'",
+					"request/body/relations/0 must have required property 'role'",
 				);
+			});
+
+			it('should reject if the relations have a role that do not exist', async () => {
+				const owner = await createOwnerWithApiKey();
+				const member = await createMember();
+				const project = await createTeamProject('shared-project', owner);
+
+				const payload = {
+					relations: [
+						{
+							userId: member.id,
+							role: 'project:invalid-role',
+						},
+					],
+				};
+
+				await testServer
+					.publicApiAgentFor(owner)
+					.post(`/projects/${project.id}/users`)
+					.send(payload)
+					.expect(400);
+
+				// TODO: add message check once we properly validate role from database
 			});
 
 			it('should reject with 404 if no project found', async () => {
@@ -564,23 +587,20 @@ describe('Projects in Public API', () => {
 
 				expect(projectAfter.length).toEqual(3);
 				const adminRelation = projectAfter.find(
-					(relation) => relation.userId === owner.id && relation.role === 'project:admin',
+					(relation) => relation.userId === owner.id && relation.role.slug === 'project:admin',
 				);
-				expect(adminRelation).toEqual(
-					expect.objectContaining({ userId: owner.id, role: 'project:admin' }),
-				);
+				expect(adminRelation!.userId).toBe(owner.id);
+				expect(adminRelation!.role.slug).toBe('project:admin');
 				const viewerRelation = projectAfter.find(
-					(relation) => relation.userId === member.id && relation.role === 'project:viewer',
+					(relation) => relation.userId === member.id && relation.role.slug === 'project:viewer',
 				);
-				expect(viewerRelation).toEqual(
-					expect.objectContaining({ userId: member.id, role: 'project:viewer' }),
-				);
+				expect(viewerRelation!.userId).toBe(member.id);
+				expect(viewerRelation!.role.slug).toBe('project:viewer');
 				const editorRelation = projectAfter.find(
-					(relation) => relation.userId === member2.id && relation.role === 'project:editor',
+					(relation) => relation.userId === member2.id && relation.role.slug === 'project:editor',
 				);
-				expect(editorRelation).toEqual(
-					expect.objectContaining({ userId: member2.id, role: 'project:editor' }),
-				);
+				expect(editorRelation!.userId).toBe(member2.id);
+				expect(editorRelation!.role.slug).toBe('project:editor');
 			});
 
 			it('should reject with 400 if license does not include user role', async () => {
@@ -655,25 +675,28 @@ describe('Projects in Public API', () => {
 			beforeEach(() => {
 				testServer.license.setQuota('quota:maxTeamProjects', -1);
 				testServer.license.enable('feat:projectRole:admin');
+				// Enable role licenses required for role change operations
+				testServer.license.enable('feat:projectRole:viewer');
+				testServer.license.enable('feat:projectRole:editor');
 			});
 
-			it("should reject with 400 if the payload can't be validated", async () => {
+			it('should reject with 400 if the role do not exist', async () => {
 				// ARRANGE
 				const owner = await createOwnerWithApiKey();
+				const member = await createMember();
+				const project = await createTeamProject('shared-project', owner);
+				await linkUserToProject(member, project, 'project:viewer');
 
 				// ACT
-				const response = await testServer
+				await testServer
 					.publicApiAgentFor(owner)
-					.patch('/projects/1234/users/1235')
+					.patch(`/projects/${project.id}/users/${member.id}`)
 					// role does not exist
 					.send({ role: 'project:boss' })
 					.expect(400);
 
 				// ASSERT
-				expect(response.body).toHaveProperty(
-					'message',
-					"Invalid enum value. Expected 'project:admin' | 'project:editor' | 'project:viewer', received 'project:boss'",
-				);
+				// TODO: add message check once we properly validate that the role exists
 			});
 
 			it("should change a user's role in a project", async () => {
@@ -797,8 +820,12 @@ describe('Projects in Public API', () => {
 
 				expect(response.status).toBe(204);
 				expect(projectBefore.length).toEqual(2);
-				expect(projectBefore.find((p) => p.role === 'project:admin')?.userId).toEqual(owner.id);
-				expect(projectBefore.find((p) => p.role === 'project:viewer')?.userId).toEqual(member.id);
+				expect(projectBefore.find((p) => p.role.slug === 'project:admin')?.userId).toEqual(
+					owner.id,
+				);
+				expect(projectBefore.find((p) => p.role.slug === 'project:viewer')?.userId).toEqual(
+					member.id,
+				);
 
 				expect(projectAfter.length).toEqual(1);
 				expect(projectAfter[0].userId).toEqual(owner.id);

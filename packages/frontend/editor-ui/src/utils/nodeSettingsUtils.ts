@@ -342,11 +342,11 @@ export function updateParameterByPath(
 	return parameterPath;
 }
 
-export function getParameterTypeOption<T = string | number | boolean | undefined>(
+export function getParameterTypeOption<T extends keyof NonNullable<INodeProperties['typeOptions']>>(
 	parameter: INodeProperties,
-	optionName: string,
-): T {
-	return parameter.typeOptions?.[optionName] as T;
+	optionName: T,
+): NonNullable<INodeProperties['typeOptions']>[T] | undefined {
+	return parameter.typeOptions?.[optionName];
 }
 
 export function isResourceLocatorParameterType(type: NodePropertyTypes) {

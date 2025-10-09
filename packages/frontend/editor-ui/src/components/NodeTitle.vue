@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
-import { N8nInlineTextEdit } from '@n8n/design-system';
 import { useElementSize } from '@vueuse/core';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
+import { N8nInlineTextEdit } from '@n8n/design-system';
 type Props = {
 	modelValue: string;
 	nodeType?: INodeTypeDescription | null;
@@ -53,7 +53,7 @@ const { width } = useElementSize(wrapperRef);
 	display: flex;
 	font-size: var(--font-size-m);
 	margin-right: var(--spacing-s);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	width: 100%;
 }
 

@@ -18,6 +18,7 @@ import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	rootNode: INodeUi;
 }
@@ -301,7 +302,7 @@ defineExpose({
 								}"
 								@click="onPlusClick(getConnectionContext(connection, index))"
 							>
-								<n8n-tooltip
+								<N8nTooltip
 									placement="top"
 									:teleported="true"
 									:offset="10"
@@ -320,13 +321,13 @@ defineExpose({
 											/>
 										</template>
 									</template>
-									<n8n-icon-button
+									<N8nIconButton
 										size="medium"
 										icon="plus"
 										type="tertiary"
 										:data-test-id="`add-subnode-${getConnectionKey(connection, index)}`"
 									/>
-								</n8n-tooltip>
+								</N8nTooltip>
 							</div>
 							<div
 								v-if="connectedNodes[getConnectionKey(connection, index)].length > 0"
@@ -344,7 +345,7 @@ defineExpose({
 									:data-node-name="node.node.name"
 									:style="`--node-index: ${nodeIndex}`"
 								>
-									<n8n-tooltip
+									<N8nTooltip
 										:key="node.node.name"
 										placement="top"
 										:teleported="true"
@@ -374,7 +375,7 @@ defineExpose({
 												circle
 											/>
 										</div>
-									</n8n-tooltip>
+									</N8nTooltip>
 								</div>
 							</div>
 						</div>
@@ -436,7 +437,7 @@ defineExpose({
 	text-wrap: nowrap;
 
 	&.hasIssues {
-		color: var(--color-danger);
+		color: var(--color--danger);
 	}
 }
 .connectedNodesWrapper {
@@ -454,8 +455,8 @@ defineExpose({
 	&.hasIssues {
 		animation: horizontal-shake 500ms;
 		button {
-			--button-font-color: var(--color-danger);
-			--button-border-color: var(--color-danger);
+			--button-font-color: var(--color--danger);
+			--button-border-color: var(--color--danger);
 		}
 	}
 
@@ -523,7 +524,7 @@ defineExpose({
 	&.hasIssues {
 		.connectedNode {
 			border-width: calc(var(--border-width-base) * 2);
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 		}
 	}
 

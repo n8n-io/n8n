@@ -39,7 +39,10 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -75,6 +78,7 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
 const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
@@ -371,7 +375,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onWorkflowActivate = () => {
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	setTimeout(() => {
 		void workflowActivate.activateCurrentWorkflow('ndv');
 	}, 1000);
@@ -517,7 +521,7 @@ const close = async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	ndvStore.resetNDVPushRef();
 };
 
@@ -649,6 +653,7 @@ watch(
 						data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
 						input_displayed_row_height_avg: avgInputRowHeight.value,
 						output_displayed_row_height_avg: avgOutputRowHeight.value,
+						source: telemetryContext.ndv_source?.value ?? 'other',
 					});
 				}
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip
@@ -693,7 +698,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<el-dialog
+	<ElDialog
 		id="ndv"
 		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
@@ -705,7 +710,7 @@ onBeforeUnmount(() => {
 		data-test-id="ndv"
 		:z-index="APP_Z_INDEXES.NDV"
 	>
-		<n8n-tooltip
+		<N8nTooltip
 			placement="bottom-start"
 			:visible="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
@@ -716,12 +721,12 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
-				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
-				<n8n-text color="text-xlight" size="medium" :bold="true">
+				<N8nIcon icon="arrow-left" color="text-xlight" size="medium" />
+				<N8nText color="text-xlight" size="medium" :bold="true">
 					{{ i18n.baseText('ndv.backToCanvas') }}
-				</n8n-text>
+				</N8nText>
 			</div>
-		</n8n-tooltip>
+		</N8nTooltip>
 
 		<div
 			v-if="activeNode"
@@ -765,7 +770,7 @@ onBeforeUnmount(() => {
 						:push-ref="pushRef"
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
-						:is-pane-active="isInputPaneActive"
+						:search-shortcut="isInputPaneActive ? '/' : undefined"
 						:display-mode="inputPanelDisplayMode"
 						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 						:focused-mappable-input="ndvStore.focusedMappableInput"
@@ -829,13 +834,13 @@ onBeforeUnmount(() => {
 						target="_blank"
 						@click="onFeatureRequestClick"
 					>
-						<n8n-icon icon="lightbulb" />
+						<N8nIcon icon="lightbulb" />
 						{{ i18n.baseText('ndv.featureRequest') }}
 					</a>
 				</template>
 			</NDVDraggablePanels>
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style lang="scss">
@@ -888,6 +893,9 @@ $main-panel-width: 360px;
 	position: fixed;
 	top: var(--spacing-xs);
 	left: var(--spacing-l);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
 
 	span {
 		color: var(--color-ndv-back-font);
@@ -895,10 +903,6 @@ $main-panel-width: 360px;
 
 	&:hover {
 		cursor: pointer;
-	}
-
-	> * {
-		margin-right: var(--spacing-3xs);
 	}
 }
 

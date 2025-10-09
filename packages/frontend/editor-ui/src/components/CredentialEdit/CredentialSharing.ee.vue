@@ -17,6 +17,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 
+import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;
@@ -82,13 +83,17 @@ const credentialRoleTranslations = computed<Record<string, string>>(() => {
 });
 
 const credentialRoles = computed<AllRolesMap['credential']>(() => {
-	return rolesStore.processedCredentialRoles.map(({ role, scopes, licensed, description }) => ({
-		role,
-		name: credentialRoleTranslations.value[role],
-		scopes,
-		licensed,
-		description,
-	}));
+	return rolesStore.processedCredentialRoles.map(
+		({ slug, scopes, licensed, description, systemRole, roleType }) => ({
+			slug,
+			displayName: credentialRoleTranslations.value[slug],
+			scopes,
+			licensed,
+			description,
+			systemRole,
+			roleType,
+		}),
+	);
 });
 
 const sharingSelectPlaceholder = computed(() =>

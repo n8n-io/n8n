@@ -26,9 +26,10 @@ import {
 	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 	SampleTemplates,
-} from '@/utils/templates/workflowSamples';
+} from '@/features/templates/utils/workflowSamples';
 import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 export function useCalloutHelpers() {
 	const route = useRoute();
@@ -45,6 +46,7 @@ export function useCalloutHelpers() {
 	const viewStacks = useViewStacks();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
+	const projectsStore = useProjectsStore();
 
 	const isRagStarterCalloutVisible = computed(() => {
 		const template = getRagStarterWorkflowJson();
@@ -135,7 +137,7 @@ export function useCalloutHelpers() {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 		const items: INodeCreateElement[] = getPreBuiltAgentNodeCreatorItems();
 
-		ndvStore.setActiveNodeName(null);
+		ndvStore.unsetActiveNodeName();
 		nodeCreatorStore.setNodeCreatorState({
 			source: NODE_CREATOR_OPEN_SOURCES.TEMPLATES_CALLOUT,
 			createNodeActive: true,
@@ -200,7 +202,11 @@ export function useCalloutHelpers() {
 		const { href } = router.resolve({
 			name: VIEWS.TEMPLATE_IMPORT,
 			params: { id: template.meta.templateId },
-			query: { fromJson: 'true', parentFolderId: route.params.folderId },
+			query: {
+				fromJson: 'true',
+				parentFolderId: route.params.folderId,
+				projectId: projectsStore.currentProjectId,
+			},
 		});
 
 		window.open(href, '_blank');

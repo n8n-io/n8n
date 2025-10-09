@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
@@ -14,8 +15,7 @@ import { getNodeIconSource } from '@/utils/nodeIcon';
 
 import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
 
-import { N8nText } from '@n8n/design-system';
-
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const {
 	activeViewStack,
 	pushViewStack,
@@ -178,7 +178,7 @@ const onInstall = async () => {
 
 .installedIcon {
 	margin-right: var(--spacing-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 }
 
@@ -186,7 +186,7 @@ const onInstall = async () => {
 	display: inline-flex;
 	flex-shrink: 0;
 	margin-left: var(--spacing-4xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	width: 14px;
 }
 

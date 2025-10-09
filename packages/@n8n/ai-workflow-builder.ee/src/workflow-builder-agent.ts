@@ -3,7 +3,8 @@ import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { StateGraph, MemorySaver, END, GraphRecursionError } from '@langchain/langgraph';
+import type { MemorySaver } from '@langchain/langgraph';
+import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
@@ -13,21 +14,24 @@ import {
 	type NodeExecutionSchema,
 } from 'n8n-workflow';
 
+import {
+	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
+	MAX_AI_BUILDER_PROMPT_LENGTH,
+	MAX_INPUT_TOKENS,
+} from '@/constants';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
+
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
-import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from './constants';
-import { LLMServiceError, ValidationError } from './errors';
-import { createAddNodeTool } from './tools/add-node.tool';
-import { createConnectNodesTool } from './tools/connect-nodes.tool';
-import { createNodeDetailsTool } from './tools/node-details.tool';
-import { createNodeSearchTool } from './tools/node-search.tool';
+import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
+import { SessionManagerService } from './session-manager.service';
+import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
-import { createRemoveNodeTool } from './tools/remove-node.tool';
-import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import type { SimpleWorkflow } from './types/workflow';
+import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, formatMessages, type BuilderTool } from './utils/stream-processor';
-import { extractLastTokenUsage } from './utils/token-usage';
+import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
+import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -36,10 +40,11 @@ export interface WorkflowBuilderAgentConfig {
 	llmSimpleTask: BaseChatModel;
 	llmComplexTask: BaseChatModel;
 	logger?: Logger;
-	checkpointer?: MemorySaver;
+	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
+	onGenerationSuccess?: () => Promise<void>;
 }
 
 export interface ChatPayload {
@@ -49,6 +54,12 @@ export interface ChatPayload {
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
 	};
+	/**
+	 * Calls AI Assistant Service using deprecated credentials and endpoints
+	 * These credentials/endpoints will soon be removed
+	 * As new implementation is rolled out and builder experiment is released
+	 */
+	useDeprecatedCredentials?: boolean;
 }
 
 export class WorkflowBuilderAgent {
@@ -60,33 +71,28 @@ export class WorkflowBuilderAgent {
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
+	private onGenerationSuccess?: () => Promise<void>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.llmSimpleTask = config.llmSimpleTask;
 		this.llmComplexTask = config.llmComplexTask;
 		this.logger = config.logger;
-		this.checkpointer = config.checkpointer ?? new MemorySaver();
+		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
 		this.autoCompactThresholdTokens =
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
+		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
 	private getBuilderTools(): BuilderTool[] {
-		return [
-			createNodeSearchTool(this.parsedNodeTypes),
-			createNodeDetailsTool(this.parsedNodeTypes),
-			createAddNodeTool(this.parsedNodeTypes),
-			createConnectNodesTool(this.parsedNodeTypes, this.logger),
-			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(
-				this.parsedNodeTypes,
-				this.llmComplexTask,
-				this.logger,
-				this.instanceUrl,
-			),
-		];
+		return getBuilderTools({
+			parsedNodeTypes: this.parsedNodeTypes,
+			instanceUrl: this.instanceUrl,
+			llmComplexTask: this.llmComplexTask,
+			logger: this.logger,
+		});
 	}
 
 	private createWorkflow() {
@@ -110,10 +116,20 @@ export class WorkflowBuilderAgent {
 
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
+				workflowJSON: trimWorkflowJSON(state.workflowJSON),
 				executionData: state.workflowContext?.executionData ?? {},
 				executionSchema: state.workflowContext?.executionSchema ?? [],
 				instanceUrl: this.instanceUrl,
 			});
+
+			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
+
+			if (estimatedTokens > MAX_INPUT_TOKENS) {
+				throw new WorkflowStateError(
+					'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.',
+				);
+			}
+
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
@@ -168,6 +184,13 @@ export class WorkflowBuilderAgent {
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
+			}
+
+			// Call success callback when agent finishes without tool calls (successful generation)
+			if (this.onGenerationSuccess) {
+				void Promise.resolve(this.onGenerationSuccess()).catch((error) => {
+					this.logger?.warn('Failed to execute onGenerationSuccess callback', { error });
+				});
 			}
 			return END;
 		};
@@ -267,6 +290,24 @@ export class WorkflowBuilderAgent {
 			return {};
 		};
 
+		/**
+		 * Cleans up dangling tool calls from the state
+		 * that might have been left due to unexpected interruptions during tool execution.
+		 */
+		const cleanupDanglingToolCalls = (state: typeof WorkflowState.State) => {
+			const messagesToRemove = cleanupDanglingToolCallMessages(state.messages);
+
+			if (messagesToRemove.length > 0) {
+				this.logger?.warn('Cleaning up dangling tool call messages', {
+					messagesToRemove: messagesToRemove.map((m) => m.id),
+				});
+			}
+
+			return {
+				messages: messagesToRemove,
+			};
+		};
+
 		const workflow = new StateGraph(WorkflowState)
 			.addNode('agent', callModel)
 			.addNode('tools', customToolExecutor)
@@ -275,7 +316,9 @@ export class WorkflowBuilderAgent {
 			.addNode('compact_messages', compactSession)
 			.addNode('auto_compact_messages', compactSession)
 			.addNode('create_workflow_name', createWorkflowName)
-			.addConditionalEdges('__start__', shouldModifyState)
+			.addNode('cleanup_dangling_tool_calls', cleanupDanglingToolCalls)
+			.addEdge('__start__', 'cleanup_dangling_tool_calls')
+			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyState)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')
@@ -293,12 +336,6 @@ export class WorkflowBuilderAgent {
 		return await agent.getState({
 			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
 		});
-	}
-
-	static generateThreadId(workflowId?: string, userId?: string) {
-		return workflowId
-			? `workflow-${workflowId}-user-${userId ?? new Date().getTime()}`
-			: crypto.randomUUID();
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
@@ -345,7 +382,7 @@ export class WorkflowBuilderAgent {
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
-		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
@@ -422,7 +459,7 @@ export class WorkflowBuilderAgent {
 
 			// Handle abort errors gracefully
 			const abortedAiMessage = new AIMessage({
-				content: '[Task aborted]',
+				content: 'Task aborted',
 				id: crypto.randomUUID(),
 			});
 			// TODO: Should we clear tool calls that are in progress?
@@ -463,44 +500,5 @@ export class WorkflowBuilderAgent {
 		}
 
 		return undefined;
-	}
-
-	async getSessions(workflowId: string | undefined, userId?: string) {
-		// For now, we'll return the current session if we have a workflowId
-		// MemorySaver doesn't expose a way to list all threads, so we'll need to
-		// track this differently if we want to list all sessions
-		const sessions = [];
-
-		if (workflowId) {
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			const threadConfig: RunnableConfig = {
-				configurable: {
-					thread_id: threadId,
-				},
-			};
-
-			try {
-				// Try to get the checkpoint for this thread
-				const checkpoint = await this.checkpointer.getTuple(threadConfig);
-
-				if (checkpoint?.checkpoint) {
-					const messages =
-						(checkpoint.checkpoint.channel_values?.messages as Array<
-							AIMessage | HumanMessage | ToolMessage
-						>) ?? [];
-
-					sessions.push({
-						sessionId: threadId,
-						messages: formatMessages(messages, this.getBuilderTools()),
-						lastUpdated: checkpoint.checkpoint.ts,
-					});
-				}
-			} catch (error) {
-				// Thread doesn't exist yet
-				this.logger?.debug('No session found for workflow:', { workflowId, error });
-			}
-		}
-
-		return { sessions };
 	}
 }

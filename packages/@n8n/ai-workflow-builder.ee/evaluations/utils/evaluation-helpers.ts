@@ -7,10 +7,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { join } from 'path';
 import pc from 'picocolors';
 
-import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
-import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
-import type { Violation } from '../types/evaluation.js';
-import type { TestResult } from '../types/test-result.js';
+import { anthropicClaudeSonnet45 } from '../../src/llm-config';
+import type { ChatPayload } from '../../src/workflow-builder-agent';
+import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
+import type { Violation } from '../types/evaluation';
+import type { TestResult } from '../types/test-result';
 
 /**
  * Sets up the LLM with proper configuration
@@ -22,7 +23,7 @@ export async function setupLLM(): Promise<BaseChatModel> {
 	if (!apiKey) {
 		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required');
 	}
-	return await anthropicClaudeSonnet4({ apiKey });
+	return await anthropicClaudeSonnet45({ apiKey });
 }
 
 /**
@@ -267,4 +268,19 @@ export function saveEvaluationResults(
 	writeFileSync(resultsPath, JSON.stringify(results, null, 2));
 
 	return { reportPath, resultsPath };
+}
+
+export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
+	for await (const _ of gen) {
+		/* consume all */
+	}
+}
+
+export function getChatPayload(message: string, id: string): ChatPayload {
+	return {
+		message,
+		workflowContext: {
+			currentWorkflow: { id, nodes: [], connections: {} },
+		},
+	};
 }

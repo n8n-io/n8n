@@ -14,6 +14,7 @@ import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nInfoAccordion, N8nLink, N8nTooltip } from '@n8n/design-system';
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
 	saveSuccessfulExecutions: boolean;
@@ -240,7 +241,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		padding-inline: var(--spacing-s);
 		width: 100%;
 		user-select: none;
-		color: var(--color-text-base) !important;
+		color: var(--color--text) !important;
 	}
 
 	// Accordion description

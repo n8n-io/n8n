@@ -15,6 +15,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/components/RunDataJsonActions.vue'),
@@ -44,6 +45,7 @@ const ndvStore = useNDVStore();
 
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 
 const selectedJsonPath = ref(nonExistingJsonPath);
 const draggingPath = ref<null | string>(null);
@@ -103,6 +105,7 @@ const onDragEnd = (el: HTMLElement) => {
 		src_view: 'json',
 		src_element: el,
 		success: false,
+		view_shown: telemetryContext.view_shown,
 		...mappingTelemetry,
 	};
 
@@ -237,8 +240,8 @@ const getListItemName = (path: string) => {
 	.dragged {
 		&,
 		&:hover {
-			background-color: var(--color-primary-tint-2);
-			color: var(--color-primary);
+			background-color: var(--color--primary--tint-2);
+			color: var(--color--primary);
 		}
 	}
 
@@ -268,7 +271,7 @@ const getListItemName = (path: string) => {
 .vjs-key,
 .vjs-value {
 	> span {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		line-height: 1.7;
 		border-radius: var(--border-radius-base);
 	}

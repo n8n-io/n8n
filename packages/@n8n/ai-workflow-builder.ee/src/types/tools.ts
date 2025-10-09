@@ -125,3 +125,22 @@ export interface NodeSearchOutput {
 	totalResults: number;
 	message: string;
 }
+
+/**
+ * Output type for get node parameter tool
+ */
+export interface GetNodeParameterOutput {
+	message: string; // This is only to report success or error, without actual value (we don't need to send it to the frontend)
+}
+
+/**
+ * Output type for remove connection tool
+ */
+export interface RemoveConnectionOutput {
+	sourceNode: string;
+	targetNode: string;
+	connectionType: string;
+	sourceOutputIndex: number;
+	targetInputIndex: number;
+	message: string;
+}

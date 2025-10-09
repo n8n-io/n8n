@@ -63,6 +63,15 @@ export class GmailTrigger implements INodeType {
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		hints: [
+			{
+				type: 'info',
+				message:
+					'Multiple items will be returned if multiple messages are received within the polling interval. Make sure your workflow can handle multiple items.',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -326,8 +335,11 @@ export class GmailTrigger implements INodeType {
 						continue;
 					}
 				}
-
-				if (node.typeVersion > 1.2 && fullMessage.labelIds?.includes('SENT')) {
+				if (
+					node.typeVersion > 1.2 &&
+					fullMessage.labelIds?.includes('SENT') &&
+					!fullMessage.labelIds?.includes('INBOX')
+				) {
 					continue;
 				}
 

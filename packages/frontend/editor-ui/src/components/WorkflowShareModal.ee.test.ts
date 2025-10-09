@@ -89,13 +89,23 @@ describe('WorkflowShareModal.ee.vue', () => {
 		projectsStore.personalProjects = [createProjectListItem()];
 		rolesStore.processedWorkflowRoles = [
 			{
-				name: 'Editor',
-				role: 'workflow:editor',
+				displayName: 'Editor',
+				slug: 'workflow:editor',
 				scopes: [],
 				licensed: false,
 				description: 'Editor',
+				systemRole: true,
+				roleType: 'workflow',
 			},
-			{ name: 'Owner', role: 'workflow:owner', scopes: [], licensed: false, description: 'Owner' },
+			{
+				displayName: 'Owner',
+				slug: 'workflow:owner',
+				scopes: [],
+				licensed: false,
+				description: 'Owner',
+				systemRole: true,
+				roleType: 'workflow',
+			},
 		];
 
 		workflowSaving = useWorkflowSaving({ router: useRouter() });

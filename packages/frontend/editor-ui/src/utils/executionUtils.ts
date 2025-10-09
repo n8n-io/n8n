@@ -1,8 +1,4 @@
-import {
-	MANUAL_TRIGGER_NODE_TYPE,
-	SEND_AND_WAIT_OPERATION,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-} from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type {
 	ITaskData,
 	ExecutionStatus,
@@ -12,6 +8,9 @@ import type {
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
+	INodeExecutionData,
+	Workflow,
+	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
@@ -24,9 +23,7 @@ import { isEmpty } from '@/utils/typesUtils';
 import {
 	CORE_NODES_CATEGORY,
 	ERROR_TRIGGER_NODE_TYPE,
-	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	GITHUB_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TRIGGER_NODE_TYPE,
@@ -37,6 +34,7 @@ import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import { parse } from 'flatted';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -107,7 +105,7 @@ export const executionFilterToQueryFilter = (
 	return queryFilter;
 };
 
-let formPopupWindow: boolean = false;
+let formPopupWindow = false;
 
 export const openFormPopupWindow = (url: string) => {
 	if (!formPopupWindow) {
@@ -146,9 +144,10 @@ export async function displayForm({
 	for (const node of nodes) {
 		if (triggerNode !== undefined && triggerNode !== node.name) continue;
 
-		const hasNodeRun = runData?.hasOwnProperty(node.name);
+		const hasNodeRunAndIsNotFormTrigger =
+			runData?.hasOwnProperty(node.name) && node.type !== FORM_TRIGGER_NODE_TYPE;
 
-		if (hasNodeRun || pinData[node.name]) continue;
+		if (hasNodeRunAndIsNotFormTrigger || pinData[node.name]) continue;
 
 		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
 
@@ -174,50 +173,32 @@ export async function displayForm({
 	}
 }
 
-export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
+export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: Workflow) => {
 	if (!node) return '';
 	try {
-		const resume = node?.parameters?.resume;
+		const waitingNodeTooltip = useNodeTypesStore().getNodeType(node.type)?.waitingNodeTooltip;
+		if (waitingNodeTooltip) {
+			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+			const additionalData: IWorkflowDataProxyAdditionalKeys = {
+				$execution: {
+					id: activeExecutionId,
+					mode: 'test',
+					resumeUrl: `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
+					resumeFormUrl: `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+				},
+			};
+			if (workflow) {
+				const tooltip = workflow.expression.getSimpleParameterValue(
+					node,
+					waitingNodeTooltip,
+					'internal',
+					additionalData,
+				);
 
-		if (node?.type === GITHUB_NODE_TYPE && node.parameters?.operation === 'dispatchAndWait') {
-			const resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
-			const message = i18n.baseText('ndv.output.githubNodeWaitingForWebhook');
-			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
-		}
-		if (resume) {
-			if (!['webhook', 'form'].includes(resume as string)) {
-				return i18n.baseText('ndv.output.waitNodeWaiting.description.timer');
+				return String(tooltip);
+			} else if (waitingNodeTooltip) {
+				return waitingNodeTooltip;
 			}
-
-			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
-			const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-
-			let message = '';
-			let resumeUrl = '';
-
-			if (resume === 'form') {
-				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
-			}
-
-			if (resume === 'webhook') {
-				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
-			}
-
-			if (message && resumeUrl) {
-				return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
-			}
-		}
-
-		if (node?.type === FORM_NODE_TYPE) {
-			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
-			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
-			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
-		}
-
-		if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
-			return i18n.baseText('ndv.output.sendAndWaitWaitingApproval');
 		}
 	} catch (error) {
 		// do not throw error if could not compose tooltip
@@ -227,25 +208,41 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 };
 
 /**
+ * Check whether node execution data contains a trimmed item.
+ */
+export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
+	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
+}
+
+/**
  * Check whether task data contains a trimmed item.
  *
  * In manual executions in scaling mode, the payload in push messages may be
  * arbitrarily large. To protect Redis as it relays run data from workers to
- * main process, we set a limit on payload size. If the payload is oversize,
+ * the main process, we set a limit on payload size. If the payload is oversize,
  * we replace it with a placeholder, which is later overridden on execution
  * finish, when the client receives the full data.
  */
-export function hasTrimmedItem(taskData: ITaskData[]) {
-	return taskData[0]?.data?.main?.[0]?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
+export function isTrimmedTaskData(taskData: ITaskData) {
+	return taskData.data?.main?.some((main) => isTrimmedNodeExecutionData(main));
+}
+
+/**
+ * Check whether task data contains a trimmed item.
+ *
+ * See {@link isTrimmedTaskData} for more details.
+ */
+export function hasTrimmedTaskData(taskData: ITaskData[]) {
+	return taskData.some(isTrimmedTaskData);
 }
 
 /**
  * Check whether run data contains any trimmed items.
  *
- * See {@link hasTrimmedItem} for more details.
+ * See {@link hasTrimmedTaskData} for more details.
  */
-export function hasTrimmedData(runData: IRunData) {
-	return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
+export function hasTrimmedRunData(runData: IRunData) {
+	return Object.keys(runData).some((nodeName) => hasTrimmedTaskData(runData[nodeName]));
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):

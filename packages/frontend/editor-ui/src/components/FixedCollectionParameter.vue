@@ -1,21 +1,18 @@
 <script lang="ts" setup>
 import type { IUpdateInformation } from '@/Interface';
 
-import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nIconButton,
-	N8nSelect,
-	N8nOption,
-	N8nInputLabel,
-	N8nText,
-	N8nButton,
-} from '@n8n/design-system';
 import ParameterInputList from './ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -23,6 +20,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 const locale = useI18n();
 
 export type Props = {
@@ -229,6 +234,10 @@ const trackWorkflowInputFieldAdded = () => {
 		node_id: ndvStore.activeNode?.id,
 	});
 };
+
+function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
+	return mutableValues.value[property.name]?.indexOf(item) ?? -1;
+}
 </script>
 
 <template>
@@ -257,8 +266,8 @@ const trackWorkflowInputFieldAdded = () => {
 			/>
 			<div v-if="multipleValues">
 				<Draggable
-					:item-key="property.name"
 					v-model="mutableValues[property.name]"
+					:item-key="(item: INodeParameters) => getItemKey(item, property)"
 					handle=".drag-handle"
 					drag-class="dragging"
 					ghost-class="ghost"
@@ -378,21 +387,21 @@ const trackWorkflowInputFieldAdded = () => {
 	.controls {
 		:deep(.button) {
 			font-weight: var(--font-weight-normal);
-			--button-font-color: var(--color-text-dark);
-			--button-border-color: var(--color-foreground-base);
-			--button-background-color: var(--color-background-base);
+			--button-font-color: var(--color--text--shade-1);
+			--button-border-color: var(--color--foreground);
+			--button-background-color: var(--color--background);
 
-			--button-hover-font-color: var(--color-text-dark);
-			--button-hover-border-color: var(--color-foreground-base);
-			--button-hover-background-color: var(--color-background-base);
+			--button-hover-font-color: var(--color--text--shade-1);
+			--button-hover-border-color: var(--color--foreground);
+			--button-hover-background-color: var(--color--background);
 
-			--button-active-font-color: var(--color-text-dark);
-			--button-active-border-color: var(--color-foreground-base);
-			--button-active-background-color: var(--color-background-base);
+			--button-active-font-color: var(--color--text--shade-1);
+			--button-active-border-color: var(--color--foreground);
+			--button-active-background-color: var(--color--background);
 
-			--button-focus-font-color: var(--color-text-dark);
-			--button-focus-border-color: var(--color-foreground-base);
-			--button-focus-background-color: var(--color-background-base);
+			--button-focus-font-color: var(--color--text--shade-1);
+			--button-focus-border-color: var(--color--foreground);
+			--button-focus-background-color: var(--color--background);
 
 			&:active,
 			&.active,
@@ -452,11 +461,11 @@ const trackWorkflowInputFieldAdded = () => {
 	padding-right: var(--spacing-xs);
 }
 .ghost {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	.parameter-item-wrapper {
 		border: none;
 	}

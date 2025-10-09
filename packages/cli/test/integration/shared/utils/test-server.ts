@@ -310,8 +310,16 @@ export const setupTestServer = ({
 						await import('@/modules/data-table/data-table.module');
 						break;
 
+					case 'mcp':
+						await import('@/modules/mcp/mcp.module');
+						break;
+
 					case 'module-settings':
 						await import('@/controllers/module-settings.controller');
+						break;
+
+					case 'third-party-licenses':
+						await import('@/controllers/third-party-licenses.controller');
 						break;
 				}
 			}

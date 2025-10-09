@@ -4,11 +4,12 @@ import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { captureException } from '@sentry/vue';
-import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
-import type { PublicInstalledPackage } from 'n8n-workflow';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
 
 const { activeViewStack } = useViewStacks();
 
@@ -22,9 +23,10 @@ const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
-const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
+const packageName = computed(() => communityNodeDetails?.packageName);
+const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
+	useInstalledCommunityPackage(packageName);
 
-const communityNodesStore = useCommunityNodesStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
@@ -44,11 +46,9 @@ async function fetchPackageInfo(packageName: string) {
 	const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(
 		activeViewStack.communityNodeDetails?.key || '',
 	);
-
-	if (communityNodeDetails?.installed) {
-		installedPackage.value = await communityNodesStore.getInstalledPackage(
-			communityNodeDetails.packageName,
-		);
+	let packageInfo = installedPackage.value;
+	if (communityNodeDetails?.installed && !packageInfo) {
+		packageInfo = await initInstalledPackage();
 	}
 
 	if (communityNodeAttributes) {
@@ -56,11 +56,11 @@ async function fetchPackageInfo(packageName: string) {
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
 		official.value = communityNodeAttributes.isOfficialNode;
 
-		if (!installedPackage.value) {
+		if (!packageInfo) {
 			verified.value = true;
 		} else {
 			const verifiedVersions = communityNodeAttributes.nodeVersions?.map((v) => v.npmVersion) ?? [];
-			verified.value = verifiedVersions.includes(installedPackage.value.installedVersion);
+			verified.value = verifiedVersions.includes(packageInfo.installedVersion);
 		}
 
 		return;
@@ -116,8 +116,10 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="isOwner && installedPackage?.updateAvailable"
+			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 			data-test-id="update-available"
+			:package-name="communityNodeDetails?.packageName"
+			source="node creator panel"
 		/>
 		<div v-else :class="$style.separator"></div>
 		<div :class="$style.info">
@@ -193,7 +195,7 @@ onMounted(async () => {
 }
 .separator {
 	height: var(--border-width-base);
-	background: var(--color-foreground-base);
+	background: var(--color--foreground);
 	margin-bottom: var(--spacing-m);
 }
 .info {
@@ -211,7 +213,7 @@ onMounted(async () => {
 }
 
 .tooltipIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-2xs);
 	width: 12px;
 }
@@ -221,7 +223,7 @@ onMounted(async () => {
 	align-items: center;
 	gap: var(--spacing-s);
 	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color-foreground-base);
+	border: var(--border-width-base) solid var(--color--foreground);
 	border-radius: 0.25em;
 }
 </style>

@@ -89,6 +89,7 @@ export const formFields: INodeProperties = {
 					type: 'options',
 					default: 'text',
 					description: 'The type of field to add to the form',
+					// Update ALLOWED_FIELD_TYPES in packages/workflow/src/type-validation.ts when adding new field types
 					options: [
 						{
 							name: 'Checkboxes',

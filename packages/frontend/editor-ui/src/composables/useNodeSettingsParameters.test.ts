@@ -38,6 +38,7 @@ describe('useNodeSettingsParameters', () => {
 			};
 			ndvStore.activeNodeName = 'Node1';
 			ndvStore.setActiveNodeName = vi.fn();
+			ndvStore.unsetActiveNodeName = vi.fn();
 			ndvStore.resetNDVPushRef = vi.fn();
 			focusPanelStore.openWithFocusedNodeParameter = vi.fn();
 			focusPanelStore.focusPanelActive = false;
@@ -73,7 +74,7 @@ describe('useNodeSettingsParameters', () => {
 				parameter,
 			});
 
-			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
+			expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(ndvStore.resetNDVPushRef).toHaveBeenCalled();
 		});
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
-
 const {
 	dataCount,
 	unfilteredDataCount,
@@ -18,7 +17,7 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<N8nText v-if="search" :class="$style.itemsText">
+	<N8nText v-if="search" :class="$style.itemsText" data-test-id="run-data-item-count">
 		{{
 			i18n.baseText('ndv.search.items', {
 				adjustToNumber: unfilteredDataCount,
@@ -26,7 +25,7 @@ const i18n = useI18n();
 			})
 		}}
 	</N8nText>
-	<N8nText v-else :class="$style.itemsText">
+	<N8nText v-else :class="$style.itemsText" data-test-id="run-data-item-count">
 		<span>
 			{{
 				i18n.baseText('ndv.output.items', {
@@ -52,7 +51,7 @@ const i18n = useI18n();
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-2xs);
 }
 </style>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Draggable from './Draggable.vue';
 import type { XYPosition } from '@/Interface';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 defineProps<{
 	canMoveRight: boolean;
@@ -52,13 +51,13 @@ const onDragStart = () => {
 	cursor: ew-resize;
 	border: none;
 	outline: none;
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 
 	display: flex;
 	align-items: baseline;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs);
-	color: var(--color-foreground-dark);
+	gap: var(--spacing-3xs);
+	padding: var(--spacing-4xs) var(--spacing-3xs) 0 var(--spacing-3xs);
+	color: var(--color--foreground--shade-1);
 	border: var(--border-base);
 	border-bottom: none;
 	border-top-left-radius: var(--border-radius-base);

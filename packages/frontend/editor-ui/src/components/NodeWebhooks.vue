@@ -15,6 +15,8 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
+import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;
@@ -188,20 +190,20 @@ watch(
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
 		>
-			<n8n-icon icon="chevron-right" class="minimize-button minimize-icon" />
+			<N8nIcon icon="chevron-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
-		<el-collapse-transition>
+		<ElCollapseTransition>
 			<div v-if="!isMinimized" class="node-webhooks">
 				<div v-if="!isProductionOnly" class="url-selection">
-					<el-row>
-						<el-col :span="24">
-							<n8n-radio-buttons v-model="showUrlFor" :options="urlOptions" />
-						</el-col>
-					</el-row>
+					<ElRow>
+						<ElCol :span="24">
+							<N8nRadioButtons v-model="showUrlFor" :options="urlOptions" />
+						</ElCol>
+					</ElRow>
 				</div>
 
-				<n8n-tooltip
+				<N8nTooltip
 					v-for="(webhook, index) in visibleWebhookUrls"
 					:key="index"
 					class="item"
@@ -225,9 +227,9 @@ watch(
 							</div>
 						</div>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
-		</el-collapse-transition>
+		</ElCollapseTransition>
 	</div>
 </template>
 
@@ -235,7 +237,7 @@ watch(
 .webhooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
-	border-bottom: 1px solid var(--color-text-lighter);
+	border-bottom: 1px solid var(--color--text--tint-2);
 
 	.headline {
 		color: $color-primary;
@@ -252,7 +254,7 @@ watch(
 }
 
 .http-method {
-	background-color: var(--color-foreground-xdark);
+	background-color: var(--color--foreground--shade-2);
 	width: 40px;
 	height: 16px;
 	line-height: 16px;
@@ -261,7 +263,7 @@ watch(
 	border-radius: 2px;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-foreground-xlight);
+	color: var(--color--foreground--tint-2);
 }
 
 .minimize-icon {
@@ -318,7 +320,7 @@ watch(
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	text-align: left;
 	direction: ltr;
 	word-break: break-all;
@@ -328,7 +330,7 @@ watch(
 	line-height: 1.5;
 	position: relative;
 	margin-top: var(--spacing-xs);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	border-radius: 3px;
 }
 </style>

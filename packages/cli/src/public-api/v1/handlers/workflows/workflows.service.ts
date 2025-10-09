@@ -9,7 +9,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@n8n/permissions';
 import type { WorkflowId } from 'n8n-workflow';
 
 import { License } from '@/license';
@@ -32,7 +32,7 @@ export async function getSharedWorkflowIds(
 	} else {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
 			workflowRoles: ['workflow:owner'],
-			projectRoles: ['project:personalOwner'],
+			projectRoles: [PROJECT_OWNER_ROLE_SLUG],
 			projectId,
 		});
 	}

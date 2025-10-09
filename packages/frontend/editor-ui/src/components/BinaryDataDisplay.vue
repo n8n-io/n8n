@@ -6,6 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton } from '@n8n/design-system';
 const props = defineProps<{
 	displayData: IBinaryData;
 	windowVisible: boolean;
@@ -74,7 +75,7 @@ function closeWindow() {
 
 <template>
 	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
-		<n8n-button
+		<N8nButton
 			size="small"
 			class="binary-data-window-back"
 			:title="i18n.baseText('binaryDataDisplay.backToOverviewPage')"

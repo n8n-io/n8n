@@ -37,6 +37,7 @@ ${colors.yellow}Usage:${colors.reset}
 ${colors.yellow}Options:${colors.reset}
   --postgres        Use PostgreSQL instead of SQLite
   --queue           Enable queue mode (requires PostgreSQL)
+  --task-runner     Enable external task runner container
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -64,6 +65,9 @@ ${colors.yellow}Examples:${colors.reset}
 
   ${colors.bright}# Queue mode (automatically uses PostgreSQL)${colors.reset}
   npm run stack --queue
+
+  ${colors.bright}# With external task runner${colors.reset}
+  npm run stack --postgres --task-runner
 
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
@@ -96,6 +100,7 @@ async function main() {
 			help: { type: 'boolean', short: 'h' },
 			postgres: { type: 'boolean' },
 			queue: { type: 'boolean' },
+			'task-runner': { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -114,6 +119,7 @@ async function main() {
 	// Build configuration
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
+		taskRunner: values['task-runner'] ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -223,6 +229,16 @@ function displayConfig(config: N8NConfig) {
 		}
 	} else {
 		log.info('Queue mode: disabled');
+	}
+
+	// Display task runner status
+	if (config.taskRunner) {
+		log.info('Task runner: enabled (external container)');
+		if (!usePostgres) {
+			log.warn('Task runner recommended with PostgreSQL for better performance');
+		}
+	} else {
+		log.info('Task runner: disabled');
 	}
 
 	if (config.resourceQuota) {

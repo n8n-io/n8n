@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -27,6 +28,7 @@ export const useExecutionDebugging = () => {
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 
@@ -98,8 +100,8 @@ export const useExecutionDebugging = () => {
 		}
 
 		// Set execution data
-		workflowsStore.resetAllNodesIssues();
-		workflowsStore.setWorkflowExecutionData(execution);
+		workflowState.resetAllNodesIssues();
+		workflowState.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(
@@ -109,13 +111,18 @@ export const useExecutionDebugging = () => {
 		let pinnings = 0;
 
 		pinnableNodes.forEach((node: INodeUi) => {
-			const nodeData = runData[node.name]?.[0]?.data?.main?.[0];
-			if (nodeData) {
-				pinnings++;
-				workflowsStore.pinData({
-					node,
-					data: nodeData,
-				});
+			const taskData = runData[node.name]?.[0];
+			if (taskData?.data?.main) {
+				// Get the first main output that has data, preserving all execution data including binary
+				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
+				if (nodeData) {
+					pinnings++;
+					workflowsStore.pinData({
+						node,
+						data: nodeData,
+						isRestoration: true,
+					});
+				}
 			}
 		});
 

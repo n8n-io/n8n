@@ -239,6 +239,11 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
+		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (nodeType?.description?.communityNodePackageVersion) {
+			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
+		}
+
 		if (runData?.[node.name]) {
 			const runs = runData[node.name] ?? [];
 			nodeItem.runs = runs.length;
@@ -430,7 +435,13 @@ export function generateNodesGraph(
 		} else if (node.type === CODE_NODE_TYPE) {
 			const { language } = node.parameters;
 			nodeItem.language =
-				language === undefined ? 'javascript' : language === 'python' ? 'python' : 'unknown';
+				language === undefined
+					? 'javascript'
+					: language === 'python'
+						? 'python'
+						: language === 'pythonNative'
+							? 'pythonNative'
+							: 'unknown';
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -553,7 +564,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 

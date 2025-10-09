@@ -12,11 +12,14 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useExecutionsStore } from '@/stores/executions.store';
+
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
+import { N8nButton, N8nIconButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -388,16 +391,16 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .running,
 .spinner {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 .waiting {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 .success {
-	color: var(--color-success);
+	color: var(--color--success);
 }
 .error {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .newInfo,
@@ -438,7 +441,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 }
 
 .highlightDataButtonOpen {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	background-color: var(--color-button-secondary-hover-background);
 	border-color: var(--color-button-secondary-hover-active-focus-border);
 }

@@ -154,7 +154,7 @@ async function setupStore() {
 		}),
 	]);
 	workflowsStore.workflow = workflow as IWorkflowDb;
-	ndvStore.activeNodeName = 'Test Node Name';
+	ndvStore.setActiveNodeName('Test Node Name', 'other');
 
 	return pinia;
 }

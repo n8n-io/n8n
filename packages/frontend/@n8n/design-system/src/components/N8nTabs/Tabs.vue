@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
+import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
 
 interface TabsProps {
@@ -90,6 +91,7 @@ const scrollRight = () => scroll(50);
 				v-for="option in options"
 				:id="option.value.toString()"
 				:key="option.value"
+				:data-test-id="`tab-${option.value.toString()}`"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
@@ -123,6 +125,7 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
+						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
 						v-else
@@ -132,7 +135,6 @@ const scrollRight = () => scroll(50);
 							[$style.noText]: !option.label,
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
-						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
 						<N8nIcon
@@ -151,6 +153,7 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
+						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>
 			</div>
@@ -172,7 +175,7 @@ const scrollRight = () => scroll(50);
 }
 
 .tabs {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-weight: var(--font-weight-medium);
 	display: flex;
 	align-items: center;
@@ -205,9 +208,9 @@ const scrollRight = () => scroll(50);
 
 	cursor: pointer;
 	white-space: nowrap;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	span + span {
@@ -230,9 +233,9 @@ const scrollRight = () => scroll(50);
 }
 
 .activeTab {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	padding-bottom: var(--spacing-2xs);
-	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
+	border-bottom: var(--color--primary) var(--active-tab-border-width) solid;
 
 	.modern & {
 		padding-bottom: var(--spacing-xs);
@@ -245,10 +248,10 @@ const scrollRight = () => scroll(50);
 
 .link {
 	cursor: pointer;
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -267,16 +270,16 @@ const scrollRight = () => scroll(50);
 }
 
 .dangerTab {
-	color: var(--color-danger);
+	color: var(--color--danger);
 
 	&:hover {
-		color: var(--color-danger);
+		color: var(--color--danger);
 	}
 }
 
 .button {
 	position: absolute;
-	background-color: var(--color-tabs-arrow-buttons, var(--color-background-base));
+	background-color: var(--color-tabs-arrow-buttons, var(--color--background));
 	z-index: 1;
 	height: 24px;
 	width: 10px;
@@ -302,7 +305,7 @@ const scrollRight = () => scroll(50);
 		display: block;
 		height: 0.3em;
 		width: 0.3em;
-		background-color: var(--color-primary);
+		background-color: var(--color--primary);
 		border-radius: 50%;
 	}
 }
