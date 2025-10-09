@@ -143,7 +143,6 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useParentFolder } from '@/features/folders/composables/useParentFolder';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
@@ -207,7 +206,6 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
-const communityNodesStore = useCommunityNodesStore();
 
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
