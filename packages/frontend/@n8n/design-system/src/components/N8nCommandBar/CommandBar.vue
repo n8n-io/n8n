@@ -237,6 +237,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 			break;
 		case 'Enter':
 			event.preventDefault();
+			event.stopPropagation();
 			if (selectedIndex.value >= 0 && flattenedItems.value[selectedIndex.value]) {
 				void selectItem(flattenedItems.value[selectedIndex.value]);
 			}

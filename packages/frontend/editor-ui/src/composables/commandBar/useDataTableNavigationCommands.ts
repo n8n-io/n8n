@@ -10,6 +10,7 @@ import type { DataTable } from '@/features/dataTable/dataTable.types';
 import { N8nIcon } from '@n8n/design-system';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	OPEN_DATA_TABLE: 'open-data-table',
@@ -39,6 +40,8 @@ export function useDataTableNavigationCommands(options: {
 			? route.params.projectId
 			: personalProjectId.value;
 	});
+
+	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
@@ -124,7 +127,9 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
-		const hasCreatePermission = !sourceControlStore.preferences.branchReadOnly;
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			getResourcePermissions(homeProject.value?.scopes).dataStore.create;
 
 		const newDataTableCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_DATA_TABLE,

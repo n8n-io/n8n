@@ -151,6 +151,7 @@ export function useNodeCommands(options: {
 									},
 								},
 							},
+							keywords: [i18n.baseText('commandBar.nodes.addNode')],
 							section: i18n.baseText('commandBar.sections.nodes'),
 							placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 							children: [...addNodeCommands.value],
