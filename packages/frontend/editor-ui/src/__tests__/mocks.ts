@@ -100,9 +100,8 @@ export const mockNodeTypeDescription = ({
 export const mockLoadedNodeType = (name: string) =>
 	mock<LoadedClass<INodeType>>({
 		type: mock<INodeType>({
-			// @ts-expect-error
-			description: mockNodeTypeDescription({ name }),
-		}),
+			description: mockNodeTypeDescription({ name }) as any,
+		}) as any,
 	});
 
 export const mockNodes = [

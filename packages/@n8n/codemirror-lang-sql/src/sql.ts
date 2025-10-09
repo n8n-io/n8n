@@ -73,15 +73,14 @@ export const getParser = (dialect: Dialect) => {
 	});
 
 	const mixedParser = expressionParser.configure({
-		// @ts-expect-error
-		wrap: parseMixed((node) => {
+		wrap: parseMixed((node: any) => {
 			return node.type.isTop
-				? {
+				? ({
 						parser: sqlLanguage.parser,
-						overlay: (node) => node.type.name === 'Plaintext',
-					}
+						overlay: (node: any) => node.type.name === 'Plaintext',
+					} as any)
 				: null;
-		}),
+		}) as any,
 	});
 
 	const mixedLanguage = LRLanguage.define({

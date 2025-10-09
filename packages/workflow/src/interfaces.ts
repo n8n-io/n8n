@@ -1716,7 +1716,7 @@ export type NodeOutput =
 	| null;
 
 export interface INodeType {
-	description: INodeTypeDescription;
+	description: INodeTypeDescription | any;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(this: IExecuteFunctions, response?: EngineResponse): Promise<NodeOutput>;
 	/**
