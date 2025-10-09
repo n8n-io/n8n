@@ -4,6 +4,7 @@ import {
 	randomCredentialPayload,
 	createWorkflow,
 	mockInstance,
+	testDb,
 } from '@n8n/backend-test-utils';
 import type { Project, User, Role } from '@n8n/db';
 
@@ -126,6 +127,7 @@ describe('Cross-Project Access Control Tests', () => {
 	});
 
 	afterAll(async () => {
+		await testDb.truncate(['User']);
 		await cleanupRolesAndScopes();
 	});
 

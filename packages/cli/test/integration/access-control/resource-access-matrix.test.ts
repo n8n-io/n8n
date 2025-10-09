@@ -135,6 +135,7 @@ describe('Resource Access Control Matrix Tests', () => {
 	});
 
 	afterAll(async () => {
+		await testDb.truncate(['User']);
 		await cleanupRolesAndScopes();
 	});
 
