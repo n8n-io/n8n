@@ -2984,7 +2984,6 @@
 	"dataTable.filters.greaterThanOrEqual": "Greater than or equal",
 	"dataTable.filters.lessThan": "Less than",
 	"dataTable.filters.lessThanOrEqual": "Less than or equal",
-	"dataTable.addColumn.alreadyExistsDescription": "Column name already exists, choose a different name",
 	"dataTable.addColumn.systemColumnDescription": "This is a system column, choose a different name",
 	"dataTable.addColumn.testingColumnDescription": "This column is used for testing, choose a different name",
 	"settings.ldap": "LDAP",
