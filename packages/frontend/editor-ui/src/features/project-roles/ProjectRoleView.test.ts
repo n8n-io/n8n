@@ -306,11 +306,11 @@ describe('ProjectRoleView', () => {
 			const { getByText, getByTestId } = renderComponent();
 
 			// Check scope type headers
-			expect(getByText('project')).toBeInTheDocument();
-			expect(getByText('folder')).toBeInTheDocument();
-			expect(getByText('workflow')).toBeInTheDocument();
-			expect(getByText('credential')).toBeInTheDocument();
-			expect(getByText('sourceControl')).toBeInTheDocument();
+			expect(getByText('Project')).toBeInTheDocument();
+			expect(getByText('Folders')).toBeInTheDocument();
+			expect(getByText('Workflows')).toBeInTheDocument();
+			expect(getByText('Credentials')).toBeInTheDocument();
+			expect(getByText('Source control')).toBeInTheDocument();
 
 			// Check some specific scope checkboxes
 			expect(getByTestId('scope-checkbox-project:read')).toBeInTheDocument();
