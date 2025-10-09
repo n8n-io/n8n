@@ -169,10 +169,7 @@ export class SourceControlImportService {
 			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 		const remoteWorkflowsRead = await Promise.all(
-			remoteWorkflowFiles.map(async (file) => {
-				this.logger.debug(`Parsing workflow file ${file}`);
-				return jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
-			}),
+			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
 		);
 
 		const remoteWorkflowFilesParsed = remoteWorkflowsRead
@@ -633,9 +630,7 @@ export class SourceControlImportService {
 		for (const candidate of candidates) {
 			this.logger.debug(`Parsing workflow file ${candidate.file}`);
 
-			const importedWorkflow = jsonParse<IWorkflowToImport>(
-				await fsReadFile(candidate.file, { encoding: 'utf8' }),
-			);
+			const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
 			if (!importedWorkflow?.id) {
 				continue;
@@ -700,6 +695,19 @@ export class SourceControlImportService {
 			id: string;
 			name: string;
 		}>;
+	}
+
+	private async parseWorkflowFromFile(file: string): Promise<IWorkflowToImport> {
+		this.logger.debug(`Parsing workflow file ${file}`);
+		try {
+			const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+			return jsonParse<IWorkflowToImport>(fileContent);
+		} catch (error) {
+			this.logger.error(`Failed to parse workflow file ${file}`, { error });
+			throw new UnexpectedError(
+				`Failed to parse workflow file ${file}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	private async activateImportedWorkflow({
