@@ -218,12 +218,14 @@ export const useAIAssistantHelpers = () => {
 	 * Prepare workflow execution result data for the AI assistant
 	 * by removing data from nodes
 	 * @param data The execution result data to simplify
-	 * @param compact If true, removes large inputOverride fields (> 2000 bytes)
+	 * @param options Options for simplification
+	 * @param options.compact If true, removes large inputOverride fields (> 2000 bytes)
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
-		compact = false,
+		options: { compact?: boolean } = {},
 	): ChatRequest.ExecutionResultData {
+		const { compact = false } = options;
 		const simplifiedResultData: ChatRequest.ExecutionResultData = {
 			runData: {},
 		};

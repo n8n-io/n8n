@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
 	deepCopy,
-	IDataObject,
-	ITaskDataConnections,
+	type IDataObject,
+	type ITaskDataConnections,
 	type INode,
 	type IRunExecutionData,
 	type NodeConnectionType,
@@ -593,7 +593,7 @@ describe('Simplify assistant payloads', () => {
 			pinData: {},
 		};
 
-		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, false);
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData);
 		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toEqual(largeInputOverride);
 	});
 
@@ -619,7 +619,9 @@ describe('Simplify assistant payloads', () => {
 			pinData: {},
 		};
 
-		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			compact: true,
+		});
 		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toEqual(smallInputOverride);
 	});
 
@@ -645,7 +647,9 @@ describe('Simplify assistant payloads', () => {
 			pinData: {},
 		};
 
-		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			compact: true,
+		});
 
 		// Large inputOverride should be removed entirely to maintain type safety
 		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
@@ -701,7 +705,9 @@ describe('Simplify assistant payloads', () => {
 			pinData: {},
 		};
 
-		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			compact: true,
+		});
 
 		// Small input should not be removed
 		expect(simplifiedResultData.runData.SmallNode[0].inputOverride).toEqual(smallInput);
@@ -748,7 +754,9 @@ describe('Simplify assistant payloads', () => {
 			pinData: {},
 		};
 
-		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, true);
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			compact: true,
+		});
 
 		// Both entries should have inputOverride removed
 		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
