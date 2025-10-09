@@ -32,6 +32,7 @@ export function useDataTableNavigationCommands(options: {
 
 	const dataTableResults = ref<DataTable[]>([]);
 	const isLoading = ref(false);
+	const hasDataFetched = ref(false);
 
 	const currentProjectId = computed(() => {
 		return typeof route.params.projectId === 'string'
@@ -55,11 +56,11 @@ export function useDataTableNavigationCommands(options: {
 		try {
 			const trimmed = (query || '').trim();
 
-			await dataTableStore.fetchDataTables(
-				'',
-				1,
-				100, // TODO: pagination/lazy loading
-			);
+			// Only fetch data from API on the first call
+			if (!hasDataFetched.value) {
+				await dataTableStore.fetchDataTables('', 1, 1000);
+				hasDataFetched.value = true;
+			}
 
 			const trimmedLower = trimmed.toLowerCase();
 			const filtered = dataTableStore.dataTables.filter((dataTable) =>
@@ -186,6 +187,7 @@ export function useDataTableNavigationCommands(options: {
 			void fetchDataTablesImpl('');
 		} else if (to === null) {
 			dataTableResults.value = [];
+			hasDataFetched.value = false;
 		}
 	}
 
