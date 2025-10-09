@@ -231,6 +231,6 @@ defineExpose({
 }
 
 .hovering {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 </style>

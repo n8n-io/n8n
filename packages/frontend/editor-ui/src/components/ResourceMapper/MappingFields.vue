@@ -462,15 +462,15 @@ defineExpose({
 		}
 		input,
 		input:focus {
-			--input-border-color: var(--color-danger);
-			border-color: var(--color-danger);
+			--input-border-color: var(--color--danger);
+			border-color: var(--color--danger);
 		}
 	}
 }
 
 .parameterTooltipIcon {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-light) !important;
+	color: var(--color--text--tint-1) !important;
 	width: 26px; // match trash button size
 	text-align: center;
 }

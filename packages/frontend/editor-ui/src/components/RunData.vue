@@ -75,7 +75,7 @@ import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
-import { type SearchShortcut } from '@/types';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
 
 import {
 	N8nBlockUi,
@@ -1956,7 +1956,7 @@ defineExpose({ enterEditMode });
 
 <style lang="scss" module>
 .infoIcon {
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 }
 
 .center {
@@ -2157,7 +2157,7 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv-spacing);
 
 	* {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
@@ -2263,12 +2263,12 @@ defineExpose({ enterEditMode });
 
 .executingMessage {
 	.compact & {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .resetCollapseButton {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 }
 
 @container (max-width: 240px) {

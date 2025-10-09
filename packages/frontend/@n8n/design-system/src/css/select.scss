@@ -143,21 +143,21 @@
 	.el-tag {
 		box-sizing: border-box;
 		margin: 2px 0 2px 6px;
-		border-color: var(--color-foreground-base);
-		background-color: var(--color-foreground-base);
-		color: var(--color-text-dark);
+		border-color: var(--color--foreground);
+		background-color: var(--color--foreground);
+		color: var(--color--text--shade-1);
 		border-radius: 20px;
 		font-weight: var(--font-weight-regular);
 
 		&__close.el-icon-close {
-			background-color: var(--color-text-light);
+			background-color: var(--color--text--tint-1);
 			right: -7px;
 			top: 0;
 			color: var.$color-white;
 			margin-right: 6px;
 
 			&:hover {
-				background-color: var(--color-text-base);
+				background-color: var(--color--text);
 			}
 
 			&::before {

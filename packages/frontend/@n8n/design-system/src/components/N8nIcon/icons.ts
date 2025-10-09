@@ -145,6 +145,7 @@ import IconLucideMaximize2 from '~icons/lucide/maximize-2';
 import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
+import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
@@ -153,6 +154,7 @@ import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelLeft from '~icons/lucide/panel-left';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
+import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
@@ -573,6 +575,7 @@ export const updatedIconSet = {
 	menu: IconLucideMenu,
 	'message-circle': IconLucideMessageCircle,
 	'messages-square': IconLucideMessagesSquare,
+	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
@@ -580,6 +583,7 @@ export const updatedIconSet = {
 	palette: IconLucidePalette,
 	'panel-left': IconLucidePanelLeft,
 	'panel-right': IconLucidePanelRight,
+	paperclip: IconLucidePaperclip,
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,

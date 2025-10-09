@@ -89,7 +89,7 @@ defineExpose({
 	border-radius: 4px;
 
 	&:focus-within {
-		border-color: var(--color-secondary);
+		border-color: var(--color--secondary);
 	}
 }
 
@@ -112,8 +112,8 @@ defineExpose({
 		outline: none;
 		font-size: var(--font-size-s);
 		appearance: none;
-		background-color: var(--color-background-xlight);
-		color: var(--color-text-dark);
+		background-color: var(--color--background--light-3);
+		color: var(--color--text--shade-1);
 
 		&::placeholder,
 		&::-webkit-input-placeholder {

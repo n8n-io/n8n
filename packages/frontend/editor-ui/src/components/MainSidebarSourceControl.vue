@@ -150,13 +150,13 @@ function pullWorkfolder() {
 <style lang="scss" module>
 .sync {
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
-	background: var(--color-background-light);
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	background: var(--color--background--light-2);
+	border-top: var(--border-width-base) var(--border-style-base) var(--color--foreground);
 	font-size: var(--font-size-2xs);
 
 	&.isConnected {
 		padding-left: var(--spacing-m);
-		border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);
+		border-left: var(--spacing-3xs) var(--border-style-base) var(--color--foreground);
 
 		&.collapsed {
 			padding-left: var(--spacing-xs);

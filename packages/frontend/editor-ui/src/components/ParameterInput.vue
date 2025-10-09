@@ -91,8 +91,8 @@ import {
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { getParameterDisplayableOptions } from '@/utils/nodes/nodeTransforms';
 
@@ -1875,9 +1875,9 @@ onUpdated(async () => {
 }
 
 .activeDrop {
-	--input-border-color: var(--color-success);
-	--input-border-right-color: var(--color-success);
-	--input-background-color: var(--color-foreground-xlight);
+	--input-border-color: var(--color--success);
+	--input-border-right-color: var(--color--success);
+	--input-background-color: var(--color--foreground--tint-2);
 	--input-border-style: solid;
 
 	textarea,
@@ -1888,11 +1888,11 @@ onUpdated(async () => {
 }
 
 .has-issues {
-	--input-border-color: var(--color-danger);
+	--input-border-color: var(--color--danger);
 }
 
 .el-dropdown {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .list-option {
@@ -1957,17 +1957,17 @@ onUpdated(async () => {
 		transform: rotate(270deg);
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }
 
 .focused {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 }
 
 .invalid {
-	border-color: var(--color-danger);
+	border-color: var(--color--danger);
 }
 
 .code-edit-dialog {

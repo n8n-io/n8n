@@ -76,9 +76,9 @@ watchEffect(() => {
 
 <style lang="scss" module>
 .metricsChartContainer {
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-foreground-base);
+	border: 1px solid var(--color--foreground);
 
 	.chartHeader {
 		padding: var(--spacing-xs) var(--spacing-s) 0;
@@ -87,7 +87,7 @@ watchEffect(() => {
 	.chartTitle {
 		font-size: var(--font-size-l);
 		font-weight: var(--font-weight-bold);
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 
 	.metricSelect {

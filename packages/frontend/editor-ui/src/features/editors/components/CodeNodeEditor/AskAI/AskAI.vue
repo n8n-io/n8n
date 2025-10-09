@@ -371,22 +371,22 @@ onMounted(() => {
 		background: transparent;
 	}
 	&::-webkit-scrollbar-thumb {
-		background: var(--color-foreground-base);
+		background: var(--color--foreground);
 		border-radius: 2px;
 	}
 	&::-webkit-scrollbar-thumb:hover {
-		background: var(--color-foreground-dark);
+		background: var(--color--foreground--shade-1);
 	}
 }
 .intro {
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: var(--spacing-2xs) var(--spacing-xs) 0;
 }
 .loader {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
@@ -407,7 +407,7 @@ onMounted(() => {
 	justify-content: space-between;
 	align-items: center;
 	padding: var(--spacing-2xs) var(--spacing-xs);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	border-top: 1px solid var(--border-color-base);
 
 	* {
@@ -416,7 +416,7 @@ onMounted(() => {
 	}
 }
 .counter {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 .controls {
 	padding: var(--spacing-2xs) var(--spacing-xs);

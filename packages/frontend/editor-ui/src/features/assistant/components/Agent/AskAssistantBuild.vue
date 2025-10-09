@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -318,7 +318,7 @@ defineExpose({
 }
 
 .topText {
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .newWorkflowButtonWrapper {
@@ -326,13 +326,13 @@ defineExpose({
 	flex-direction: column;
 	flex-flow: wrap;
 	gap: var(--spacing-2xs);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	padding: var(--spacing-xs);
 	border: 0;
 }
 
 .newWorkflowText {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 }
 </style>

@@ -42,7 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+	border: var(--border-width-base) var(--border-style-base) var(--color--foreground--tint-1);
 	border-radius: var(--border-radius-base);
 
 	&.round {

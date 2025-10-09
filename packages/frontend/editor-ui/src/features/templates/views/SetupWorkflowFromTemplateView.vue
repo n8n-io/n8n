@@ -181,7 +181,7 @@ onMounted(async () => {
 
 .appCredential:not(:last-of-type) {
 	padding-bottom: var(--spacing-2xl);
-	border-bottom: 1px solid var(--color-foreground-light);
+	border-bottom: 1px solid var(--color--foreground--tint-1);
 }
 
 .actions {

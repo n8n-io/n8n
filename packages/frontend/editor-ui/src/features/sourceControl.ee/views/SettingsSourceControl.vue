@@ -552,7 +552,7 @@ watch(connectionType, () => {
 
 	hr {
 		margin: 0 0 var(--spacing-xl);
-		border: 1px solid var(--color-foreground-light);
+		border: 1px solid var(--color--foreground--tint-1);
 	}
 
 	label {
@@ -565,7 +565,7 @@ watch(connectionType, () => {
 		display: inline-block;
 		padding: var(--spacing-2xs) 0 0;
 		font-size: var(--font-size-2xs);
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 

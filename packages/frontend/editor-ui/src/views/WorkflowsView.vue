@@ -2367,7 +2367,7 @@ const onNameSubmit = async (name: string) => {
 
 	&:hover {
 		svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }
@@ -2426,14 +2426,14 @@ const onNameSubmit = async (name: string) => {
 
 .drop-active {
 	:global(.card) {
-		border-color: var(--color-secondary);
+		border-color: var(--color--secondary);
 		background-color: var(--color-callout-secondary-background);
 	}
 }
 
 .path-separator {
 	font-size: var(--font-size-xl);
-	color: var(--color-foreground-base);
+	color: var(--color--foreground);
 	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 

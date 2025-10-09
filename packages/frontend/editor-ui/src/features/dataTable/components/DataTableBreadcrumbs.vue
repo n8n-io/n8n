@@ -149,7 +149,7 @@ watch(
 
 .separator {
 	font-size: var(--font-size-xl);
-	color: var(--color-foreground-base);
+	color: var(--color--foreground);
 	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 

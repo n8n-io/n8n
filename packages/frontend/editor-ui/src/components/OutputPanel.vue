@@ -14,7 +14,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { CanvasNodeDirtiness } from '@/types';
+import { CanvasNodeDirtiness } from '@/features/canvas/canvas.types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -24,6 +24,7 @@ import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -76,6 +77,7 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -141,7 +143,11 @@ const defaultOutputMode = computed<OutputType>(() => {
 });
 
 const isNodeRunning = computed(() => {
-	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
+	return (
+		workflowRunning.value &&
+		!!node.value &&
+		workflowState.executingNode.isNodeExecuting(node.value.name)
+	);
 });
 
 const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
@@ -534,7 +540,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .title {
 	text-transform: uppercase;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
@@ -570,7 +576,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	margin-bottom: var(--ndv-spacing);
 
 	* {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
