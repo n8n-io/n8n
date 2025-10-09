@@ -182,7 +182,7 @@ export class UsersController {
 			where: { id },
 		});
 
-		return user.settings;
+		return this.userService.getSettingsWithDefaults(user.settings);
 	}
 
 	/**

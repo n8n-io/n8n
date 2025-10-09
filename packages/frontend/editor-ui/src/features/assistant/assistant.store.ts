@@ -74,6 +74,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const workflowDataStale = ref<boolean>(true);
 	const workflowExecutionDataStale = ref<boolean>(true);
 
+	const currentUserPreferences = computed(() => usersStore.currentUser?.settings?.aiAssistant);
+
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
 	);
@@ -324,7 +326,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
+			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'], {
+					// TODO: Get these types in line
+					allowSendingParameters:
+						currentUserPreferences?.value?.allowAssistantToSendParameterValues,
+					allowSendingResolvedExpressions:
+						currentUserPreferences?.value?.allowAssistantToSendExpressions,
+				})
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -346,6 +354,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
 				}
 			: undefined;
+
 		return {
 			currentView: {
 				name: currentView,
@@ -366,7 +375,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
+						allowSendingParameterValues:
+							currentUserPreferences?.value?.allowAssistantToSendParameterValues,
+					})
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
@@ -446,6 +458,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
 			context.node,
+			{
+				allowSendingParameters: currentUserPreferences?.value?.allowAssistantToSendParameterValues,
+			},
 		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
@@ -457,10 +472,17 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			error: context.error,
-			node: assistantHelpers.processNodeForAssistant(context.node, [
-				'position',
-				'parameters.notice',
-			]),
+			node: assistantHelpers.processNodeForAssistant(
+				context.node,
+				['position', 'parameters.notice'],
+				{
+					// TODO: Get these types in line
+					allowSendingParameters:
+						currentUserPreferences?.value?.allowAssistantToSendParameterValues,
+					allowSendingResolvedExpressions:
+						currentUserPreferences?.value?.allowAssistantToSendExpressions,
+				},
+			),
 			nodeInputData,
 			executionSchema: schemas,
 			authType,
@@ -808,5 +830,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		initCredHelp,
 		isCredTypeActive,
 		handleServiceError,
+		workflowDataStale,
 	};
 });

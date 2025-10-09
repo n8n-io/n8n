@@ -65,4 +65,33 @@ describe('SettingsUpdateRequestDto', () => {
 
 		expect(result.success).toBe(true);
 	});
+
+	it('should pass validation with aiAssistant toggles', () => {
+		const data = {
+			aiAssistant: {
+				allowAssistantToSendParameterValues: true,
+				allowAssistantToSendExpressions: false,
+			},
+		};
+
+		const result = SettingsUpdateRequestDto.safeParse(data);
+
+		expect(result.success).toBe(true);
+	});
+
+	it('should fail validation with invalid aiAssistant values', () => {
+		const data = {
+			aiAssistant: {
+				allowAssistantToSendParameterValues: 'yes',
+			},
+		};
+
+		const result = SettingsUpdateRequestDto.safeParse(data);
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0].path).toEqual([
+			'aiAssistant',
+			'allowAssistantToSendParameterValues',
+		]);
+	});
 });

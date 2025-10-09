@@ -3110,6 +3110,11 @@ export type NpsSurveyWaitingState = {
 };
 export type NpsSurveyState = NpsSurveyRespondedState | NpsSurveyWaitingState;
 
+export interface IAiAssistantUserSettings {
+	allowAssistantToSendParameterValues?: boolean;
+	allowAssistantToSendExpressions?: boolean;
+}
+
 export interface IUserSettings {
 	isOnboarded?: boolean;
 	firstSuccessfulWorkflowId?: string;
@@ -3120,6 +3125,7 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	aiAssistant?: IAiAssistantUserSettings;
 }
 
 export interface IProcessedDataConfig {

@@ -4,7 +4,7 @@ import type { PublicUser } from '@n8n/db';
 import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
-import type { IUserSettings } from 'n8n-workflow';
+import type { IAiAssistantUserSettings, IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -20,6 +20,11 @@ import { RoleService } from './role.service';
 
 @Service()
 export class UserService {
+	private static readonly DEFAULT_AI_ASSISTANT_SETTINGS: Required<IAiAssistantUserSettings> = {
+		allowAssistantToSendParameterValues: false,
+		allowAssistantToSendExpressions: false,
+	};
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
@@ -47,11 +52,7 @@ export class UserService {
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
 		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
-		if (user.settings) {
-			Object.assign(user.settings, newSettings);
-		} else {
-			user.settings = newSettings;
-		}
+		user.settings = this.mergeUserSettings(user.settings, newSettings);
 
 		await this.userRepository.save(user);
 	}
@@ -97,6 +98,8 @@ export class UserService {
 
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
+		publicUser.settings = this.getSettingsWithDefaults(publicUser.settings);
+
 		return publicUser;
 	}
 
@@ -109,6 +112,40 @@ export class UserService {
 		invitee.inviteAcceptUrl = url.toString();
 
 		return invitee;
+	}
+
+	private mergeUserSettings(
+		currentSettings: IUserSettings | null | undefined,
+		incomingSettings: Partial<IUserSettings>,
+	): IUserSettings {
+		const merged: IUserSettings = { ...(currentSettings ?? {}) };
+
+		if (incomingSettings.aiAssistant) {
+			merged.aiAssistant = {
+				...(merged.aiAssistant ?? {}),
+				...incomingSettings.aiAssistant,
+			};
+		}
+
+		Object.entries(incomingSettings).forEach(([key, value]) => {
+			if (key === 'aiAssistant' || value === undefined) return;
+			(merged as Record<string, unknown>)[key] = value;
+		});
+
+		return merged;
+	}
+
+	private withAiAssistantDefaults(settings?: IUserSettings | null): IUserSettings {
+		const normalized: IUserSettings = { ...(settings ?? {}) };
+		normalized.aiAssistant = {
+			...UserService.DEFAULT_AI_ASSISTANT_SETTINGS,
+			...(settings?.aiAssistant ?? {}),
+		};
+		return normalized;
+	}
+
+	getSettingsWithDefaults(settings?: IUserSettings | null): IUserSettings {
+		return this.withAiAssistantDefaults(settings);
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
