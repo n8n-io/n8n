@@ -1851,6 +1851,9 @@
 	"prompts.npsSurvey.reviewUs": "If you’d like to help even more, leave us a <a target=\"_blank\" href=\"https://www.g2.com/products/n8n/reviews/start\">review on G2</a>.",
 	"prompts.npsSurvey.thanks": "Thanks for your feedback",
 
+	"projectRoles.manageRoles.paywall.title": "Available on the Enterprise plan",
+	"projectRoles.manageRoles.paywall.text": "Create custom roles with granular permissions to control exactly what team members can do inside projects.",
+
 	"projectRoles.project:read": "View",
 	"projectRoles.project:update": "Edit",
 	"projectRoles.project:delete": "Delete",

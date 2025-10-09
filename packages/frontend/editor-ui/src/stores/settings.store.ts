@@ -135,6 +135,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
 
+	const isCustomRolesFeatureEnabled = computed(
+		() => settings.value.enterprise?.customRoles ?? false,
+	);
+
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
@@ -341,6 +345,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMfaFeatureEnabled,
 		isFoldersFeatureEnabled,
 		isAiAssistantEnabled,
+		isCustomRolesFeatureEnabled,
 		areTagsEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,

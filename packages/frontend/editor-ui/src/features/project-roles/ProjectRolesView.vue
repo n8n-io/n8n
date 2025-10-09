@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useMessage } from '@/composables/useMessage';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import {
+	N8nActionBox,
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
@@ -25,6 +28,8 @@ const router = useRouter();
 const message = useMessage();
 const i18n = useI18n();
 const $style = useCssModule();
+const settingsStore = useSettingsStore();
+const { goToUpgrade } = usePageRedirectionHelper();
 
 const headers = ref<Array<TableHeader<Role>>>([
 	{
@@ -190,38 +195,59 @@ function handleRowClick(item: Role) {
 	<div class="pb-xl">
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">{{ i18n.baseText('settings.projectRoles') }}</N8nHeading>
-			<N8nButton type="secondary" @click="router.push({ name: VIEWS.PROJECT_NEW_ROLE })">
+			<N8nButton
+				v-if="settingsStore.isCustomRolesFeatureEnabled"
+				type="secondary"
+				@click="router.push({ name: VIEWS.PROJECT_NEW_ROLE })"
+			>
 				{{ i18n.baseText('projectRoles.addRole') }}
 			</N8nButton>
 		</div>
 
-		<N8nDataTableServer
-			:items="rolesStore.processedProjectRoles"
-			:headers="headers"
-			:items-length="rolesStore.processedProjectRoles.length"
-			:items-per-page="rolesStore.processedProjectRoles.length"
-			:page-sizes="[rolesStore.processedProjectRoles.length]"
-			:row-props="rowProps"
-			@click:row="(_event, { item }) => handleRowClick(item)"
-		>
-			<template #[`item.displayName`]="{ item }">
-				<N8nText tag="div" class="mb-4xs">{{ item.displayName }}</N8nText>
-				<N8nText tag="div" size="small" color="text-light">{{ item.description }}</N8nText>
-			</template>
-			<template #[`item.systemRole`]="{ item }">
-				<template v-if="item.systemRole">
-					<N8nIcon icon="lock" /> {{ i18n.baseText('projectRoles.literal.system') }}</template
-				>
-				<template v-else>{{ i18n.baseText('projectRoles.literal.custom') }}</template>
-			</template>
-			<template #[`item.actions`]="{ item }">
-				<N8nActionToggle
-					v-if="!item.systemRole"
-					:actions="rowActions(item)"
-					@action="($event) => handleAction($event, item)"
-				/>
-			</template>
-		</N8nDataTableServer>
+		<template v-if="!settingsStore.isCustomRolesFeatureEnabled">
+			<N8nActionBox
+				class="mt-2xl mb-l"
+				:button-text="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
+				description="yes"
+				@click="goToUpgrade('custom-roles', 'upgrade-custom-roles')"
+			>
+				<template #heading>
+					<span>{{ i18n.baseText('projectRoles.manageRoles.paywall.title') }}</span>
+				</template>
+				<template #description>
+					{{ i18n.baseText('projectRoles.manageRoles.paywall.text') }}
+				</template>
+			</N8nActionBox>
+		</template>
+		<template v-else>
+			<N8nDataTableServer
+				:items="rolesStore.processedProjectRoles"
+				:headers="headers"
+				:items-length="rolesStore.processedProjectRoles.length"
+				:items-per-page="rolesStore.processedProjectRoles.length"
+				:page-sizes="[rolesStore.processedProjectRoles.length]"
+				:row-props="rowProps"
+				@click:row="(_event, { item }) => handleRowClick(item)"
+			>
+				<template #[`item.displayName`]="{ item }">
+					<N8nText tag="div" class="mb-4xs">{{ item.displayName }}</N8nText>
+					<N8nText tag="div" size="small" color="text-light">{{ item.description }}</N8nText>
+				</template>
+				<template #[`item.systemRole`]="{ item }">
+					<template v-if="item.systemRole">
+						<N8nIcon icon="lock" /> {{ i18n.baseText('projectRoles.literal.system') }}</template
+					>
+					<template v-else>{{ i18n.baseText('projectRoles.literal.custom') }}</template>
+				</template>
+				<template #[`item.actions`]="{ item }">
+					<N8nActionToggle
+						v-if="!item.systemRole"
+						:actions="rowActions(item)"
+						@action="($event) => handleAction($event, item)"
+					/>
+				</template>
+			</N8nDataTableServer>
+		</template>
 	</div>
 </template>
 
