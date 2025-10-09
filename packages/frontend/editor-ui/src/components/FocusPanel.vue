@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import CssEditor from '@/components/CssEditor/CssEditor.vue';
+import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
-import JsEditor from '@/components/JsEditor/JsEditor.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
-import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+import SqlEditor from '@/features/editors/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
@@ -58,6 +58,7 @@ import {
 	N8nResizeWrapper,
 	N8nText,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -79,6 +80,7 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
@@ -227,7 +229,9 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 	};
 });
 
-const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
+const isNodeExecuting = computed(() =>
+	workflowState.executingNode.isNodeExecuting(node.value?.name ?? ''),
+);
 
 const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
 

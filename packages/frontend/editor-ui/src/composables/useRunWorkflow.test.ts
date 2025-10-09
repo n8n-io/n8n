@@ -59,7 +59,6 @@ vi.mock('@/stores/workflows.store', () => {
 		getPinnedDataLastRemovedAt: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
-		markExecutionAsStopped: vi.fn(),
 		private: {
 			setWorkflowSettings: vi.fn(),
 			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
@@ -116,7 +115,6 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
-		setDocumentTitle: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
 	}),
@@ -1029,7 +1027,7 @@ describe('useRunWorkflow({ router })', () => {
 				startedAt: new Date('2025-04-01T00:00:00.000Z'),
 				createdAt: new Date('2025-04-01T00:00:00.000Z'),
 			};
-			const markStoppedSpy = vi.spyOn(workflowsStore, 'markExecutionAsStopped');
+			const markStoppedSpy = vi.spyOn(workflowState, 'markExecutionAsStopped');
 			const getExecutionSpy = vi.spyOn(workflowsStore, 'getExecution');
 
 			workflowsStore.activeWorkflows = ['test-wf-id'];

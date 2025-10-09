@@ -1,8 +1,10 @@
 from src.errors import (
+    ConfigurationError,
     TaskCancelledError,
     TaskRuntimeError,
     TaskTimeoutError,
     SecurityViolationError,
+    WebsocketConnectionError,
 )
 
 # Messages
@@ -73,10 +75,12 @@ ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
 IGNORED_ERROR_TYPES = (
+    ConfigurationError,
     TaskRuntimeError,
     TaskCancelledError,
     TaskTimeoutError,
     SecurityViolationError,
+    WebsocketConnectionError,
     SyntaxError,
 )
 

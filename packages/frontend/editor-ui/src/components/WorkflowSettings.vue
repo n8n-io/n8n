@@ -8,6 +8,7 @@ import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import type { WorkflowSettings } from 'n8n-workflow';
@@ -96,6 +97,16 @@ const workflowOwnerName = computed(() => {
 	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const isEligibleForMCPAccess = computed(() => {
+	if (!workflow.value?.active) {
+		return false;
+	}
+	// If it's active, check if workflow has at least one enabled webhook trigger:
+	return workflow.value?.nodes.some(
+		(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
+	);
+});
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -846,7 +857,11 @@ onBeforeUnmount(() => {
 							{{ i18n.baseText('workflowSettings.availableInMCP') }}
 							<N8nTooltip placement="top">
 								<template #content>
-									{{ i18n.baseText('workflowSettings.availableInMCP.tooltip') }}
+									{{
+										isEligibleForMCPAccess
+											? i18n.baseText('workflowSettings.availableInMCP.tooltip')
+											: i18n.baseText('mcp.workflowNotEligable.description')
+									}}
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -854,13 +869,18 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<ElSwitch
-								ref="inputField"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:model-value="workflowSettings.availableInMCP ?? false"
-								data-test-id="workflow-settings-available-in-mcp"
-								@update:model-value="toggleAvailableInMCP"
-							></ElSwitch>
+							<N8nTooltip placement="top" :disabled="isEligibleForMCPAccess">
+								<template #content>
+									{{ i18n.baseText('mcp.workflowNotEligable.description') }}
+								</template>
+								<ElSwitch
+									ref="inputField"
+									:disabled="readOnlyEnv || !workflowPermissions.update || !isEligibleForMCPAccess"
+									:model-value="workflowSettings.availableInMCP ?? false"
+									data-test-id="workflow-settings-available-in-mcp"
+									@update:model-value="toggleAvailableInMCP"
+								></ElSwitch>
+							</N8nTooltip>
 						</div>
 					</ElCol>
 				</ElRow>

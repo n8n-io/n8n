@@ -19,7 +19,7 @@ import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -42,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
+	close: [];
 }>();
 
 const uiStore = useUIStore();
@@ -78,6 +79,7 @@ function closeNodeCreator(hasAddedNodes = false) {
 	if (props.createNodeActive) {
 		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
 	}
+	emit('close');
 }
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
