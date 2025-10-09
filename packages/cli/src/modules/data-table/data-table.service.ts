@@ -433,6 +433,7 @@ export class DataTableService {
 		rows: DataTableRows,
 		columns: Array<{ name: string; type: DataTableColumnType }>,
 		includeSystemColumns = false,
+		skipDateTransform = false,
 	): DataTableRows {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
@@ -454,7 +455,12 @@ export class DataTableService {
 				if (!columnNames.has(key)) {
 					throw new DataTableValidationError(`unknown column name '${key}'`);
 				}
-				transformedRow[key] = this.validateAndTransformCell(row[key], key, columnTypeMap);
+				transformedRow[key] = this.validateAndTransformCell(
+					row[key],
+					key,
+					columnTypeMap,
+					skipDateTransform,
+				);
 			}
 			return transformedRow;
 		});
@@ -464,6 +470,7 @@ export class DataTableService {
 		cell: DataTableColumnJsType,
 		key: string,
 		columnTypeMap: Map<string, string>,
+		skipDateTransform = false,
 	): DataTableColumnJsType {
 		if (cell === null) return null;
 
@@ -484,8 +491,10 @@ export class DataTableService {
 			);
 		}
 
-		// Special handling for date type to convert from luxon DateTime to ISO string
 		if (columnType === 'date') {
+			if (skipDateTransform && cell instanceof Date) {
+				return cell;
+			}
 			try {
 				const dateInISO = (validationResult.newValue as DateTime).toISO();
 				return dateInISO;
@@ -542,6 +551,7 @@ export class DataTableService {
 		filterObject: DataTableFilter,
 		columns: DataTableColumn[],
 	): DataTableFilter {
+		// Skip date transformation for filters - TypeORM needs Date objects for parameterized queries
 		const transformedRows = this.validateAndTransformRows(
 			filterObject.filters.map((f) => {
 				return {
@@ -549,6 +559,7 @@ export class DataTableService {
 				};
 			}),
 			columns,
+			true,
 			true,
 		);
 

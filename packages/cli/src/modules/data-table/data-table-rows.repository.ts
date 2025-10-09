@@ -22,7 +22,6 @@ import {
 	DataTableInsertRowsResult,
 	DataTableRowReturnWithState,
 	DataTableRawRowReturn,
-	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -77,12 +76,8 @@ function getConditionAndParams(
 		}
 	}
 
-	// Find the column type to normalize the value consistently
-	const columnInfo = columns?.find((col) => col.name === filter.columnName);
-	const columnType = columnInfo?.type ?? DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP[filter.columnName];
-	const value = columnType
-		? normalizeValueForDatabase(filter.value, columnType, dbType)
-		: filter.value;
+	// For filters, we let TypeORM handle date conversion through parameterized queries.
+	const value = filter.value;
 
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {
