@@ -119,4 +119,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#team-catalysts'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Benchmark run failed for n8n tag `${{ inputs.n8n_tag || 'nightly' }}`
+          message: Benchmark run failed for n8n tag `${{ inputs.n8n_tag || 'nightly' }}` - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
