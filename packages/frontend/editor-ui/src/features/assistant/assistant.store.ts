@@ -1,11 +1,11 @@
 import { chatWithAssistant, replaceCode } from '@/api/ai';
 import {
-	VIEWS,
-	EDITABLE_CANVAS_VIEWS,
+	type VIEWS,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	ASK_AI_SLIDE_OUT_DURATION_MS,
+	EDITABLE_CANVAS_VIEWS,
 } from '@/constants';
+import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -28,31 +28,18 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
+import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 
-export const MAX_CHAT_WIDTH = 425;
-export const MIN_CHAT_WIDTH = 380;
-export const DEFAULT_CHAT_WIDTH = 400;
-export const ENABLED_VIEWS = [
-	...EDITABLE_CANVAS_VIEWS,
-	VIEWS.EXECUTION_PREVIEW,
-	VIEWS.WORKFLOWS,
-	VIEWS.CREDENTIALS,
-	VIEWS.PROJECTS_CREDENTIALS,
-	VIEWS.PROJECTS_WORKFLOWS,
-	VIEWS.PROJECT_SETTINGS,
-	VIEWS.TEMPLATE_SETUP,
-];
+export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
-	const chatWidth = ref<number>(DEFAULT_CHAT_WIDTH);
-
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
+	const chatPanelStateStore = useChatPanelStateStore();
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
-	const chatWindowOpen = ref<boolean>(false);
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
@@ -102,7 +89,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		return !sessionStarted || sessionExplicitlyEnded;
 	});
 
-	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
+	const isAssistantOpen = computed(
+		() =>
+			canShowAssistant.value &&
+			chatPanelStateStore.isOpen &&
+			chatPanelStateStore.activeMode === 'assistant',
+	);
 
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
@@ -144,43 +136,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
 	}
 
-	// As assistant sidebar opens and closes, use window width to calculate the container width
-	// This will prevent animation race conditions from making ndv twitchy
-	function openChat() {
-		chatWindowOpen.value = true;
-		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatWidth.value,
-		};
-	}
-
-	function closeChat() {
-		chatWindowOpen.value = false;
-		// Looks smoother if we wait for slide animation to finish before updating the grid width
-		// Has to wait for longer than SlideTransition duration
-		setTimeout(() => {
-			uiStore.appGridDimensions = {
-				...uiStore.appGridDimensions,
-				width: window.innerWidth,
-			};
-			// If session has ended, reset the chat
-			if (isSessionEnded.value) {
-				resetAssistantChat();
-			}
-		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
-	}
-
-	function toggleChat() {
-		if (isAssistantOpen.value) {
-			closeChat();
-		} else {
-			openChat();
-		}
-	}
-
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
-		const read = chatWindowOpen.value;
+		const read = chatPanelStateStore.isOpen && chatPanelStateStore.activeMode === 'assistant';
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
@@ -240,10 +197,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 		});
 		chatMessages.value = messages;
-	}
-
-	function updateWindowWidth(width: number) {
-		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
 	}
 
 	function isNodeErrorActive(context: ChatRequest.ErrorContext) {
@@ -439,7 +392,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionCredType.value = credentialType;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
-		openChat();
 		streaming.value = true;
 
 		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
@@ -497,8 +449,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
-		openChat();
-
 		streaming.value = true;
 		const payload: ChatRequest.RequestPayload['payload'] = {
 			role: 'user',
@@ -833,7 +783,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isAssistantEnabled,
 		canShowAssistantButtonsOnCanvas,
 		hideAssistantFloatingButton,
-		chatWidth,
 		chatMessages,
 		unreadCount,
 		streaming,
@@ -845,10 +794,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isFloatingButtonShown,
 		onNodeExecution,
 		trackUserOpenedAssistant,
-		openChat,
-		closeChat,
-		toggleChat,
-		updateWindowWidth,
 		isNodeErrorActive,
 		initErrorHelper,
 		initSupportChat,
@@ -856,7 +801,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		applyCodeDiff,
 		undoCodeDiff,
 		resetAssistantChat,
-		chatWindowOpen,
 		addAssistantMessages,
 		assistantThinkingMessage,
 		chatSessionError,

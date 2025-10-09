@@ -15,7 +15,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import { useToast } from '@/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
 import { nextTick } from 'vue';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '../../builder.store';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
