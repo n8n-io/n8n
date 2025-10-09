@@ -148,8 +148,8 @@ onBeforeMount(() => {
 	height: 37px;
 	position: absolute;
 	top: 35%;
-	border-radius: var(--border-radius-large);
-	border: var(--border-base);
+	border-radius: var(--radius--lg);
+	border: var(--border);
 	background-color: #fbfcfe;
 	cursor: pointer;
 
@@ -218,7 +218,7 @@ onBeforeMount(() => {
 .agile {
 	&__list {
 		width: 100%;
-		padding-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing--2xs);
 		overflow-x: auto;
 		transition: all 1s ease-in-out;
 	}

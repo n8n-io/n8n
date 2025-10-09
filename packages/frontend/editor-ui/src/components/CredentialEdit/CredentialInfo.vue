@@ -55,21 +55,21 @@ const i18n = useI18n();
 <style lang="scss" module>
 .container {
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 	}
 }
 
 .label {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	max-width: 230px;
 }
 
 .accessLabel {
 	composes: label;
-	margin-top: var(--spacing-5xs);
+	margin-top: var(--spacing--5xs);
 }
 
 .valueLabel {
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 </style>

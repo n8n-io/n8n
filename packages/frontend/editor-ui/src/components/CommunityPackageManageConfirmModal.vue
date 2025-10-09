@@ -285,7 +285,7 @@ onMounted(async () => {
 <style module lang="scss">
 .descriptionContainer {
 	display: flex;
-	margin: var(--spacing-s) 0;
+	margin: var(--spacing--sm) 0;
 	flex-direction: column;
 }
 
@@ -295,6 +295,6 @@ onMounted(async () => {
 }
 
 .descriptionText {
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 }
 </style>

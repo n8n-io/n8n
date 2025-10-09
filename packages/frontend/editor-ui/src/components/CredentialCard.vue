@@ -179,7 +179,7 @@ function moveResource() {
 
 <style lang="scss" module>
 .cardLink {
-	--card--padding: 0 0 0 var(--spacing-s);
+	--card--padding: 0 0 0 var(--spacing--sm);
 
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -191,15 +191,15 @@ function moveResource() {
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
-	padding: var(--spacing-s) 0 0;
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--sm) 0 0;
 }
 
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s);
+	padding: 0 0 var(--spacing--sm);
 }
 
 .cardActions {
@@ -208,13 +208,13 @@ function moveResource() {
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 
 @include mixins.breakpoint('sm-and-down') {
 	.cardLink {
-		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
 
 		flex-wrap: wrap;

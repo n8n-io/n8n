@@ -141,37 +141,37 @@ function onDropdownVisibleChange(visible: boolean) {
 	overflow: auto;
 
 	background-color: var(--color--background--light-3);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
+	border: var(--border);
+	border-radius: var(--radius);
 }
 
 .section {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 
 	&:not(:last-child) {
-		border-bottom: var(--border-base);
+		border-bottom: var(--border);
 	}
 }
 
 .metadata {
-	padding-top: var(--spacing-s);
+	padding-top: var(--spacing--sm);
 }
 
 .heading {
 	display: flex;
 	justify-content: space-between;
 	align-items: baseline;
-	padding-right: var(--spacing-l);
+	padding-right: var(--spacing--lg);
 }
 
 .controls {
-	padding: var(--spacing-s) 0 var(--spacing-xs);
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-m);
+	padding-right: var(--spacing--md);
 
 	button {
 		display: flex;
@@ -184,17 +184,17 @@ function onDropdownVisibleChange(visible: boolean) {
 	flex-direction: column;
 
 	&:not(:first-of-type) {
-		margin-top: var(--spacing-s);
+		margin-top: var(--spacing--sm);
 	}
 
 	.key {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
 .noResultsContainer {
 	width: 100%;
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 
 .execution-annotation-panel {

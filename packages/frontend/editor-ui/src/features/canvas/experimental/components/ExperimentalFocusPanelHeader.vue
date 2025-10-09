@@ -84,15 +84,15 @@ const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeV
 .component {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-2xs);
-	gap: var(--spacing-2xs);
-	border-bottom: var(--border-base);
+	padding: var(--spacing--2xs);
+	gap: var(--spacing--2xs);
+	border-bottom: var(--border);
 }
 
 .breadcrumbs {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	flex-grow: 1;
 	flex-shrink: 1;
 }

@@ -145,51 +145,51 @@ function onCancelFeedback() {
 .rating {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	margin-top: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .buttons {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .feedbackContainer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .feedbackInput {
 	:global(.el-textarea__inner) {
 		resize: none;
 		font-family: var(--font-family);
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 
 		&::placeholder {
-			font-size: var(--font-size-s);
+			font-size: var(--font-size--sm);
 		}
 	}
 }
 
 .feedbackActions {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
 }
 
 .success {
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	margin: 0;
 }
 
 /* Minimal style specific */
 .minimal {
-	margin-top: var(--spacing-5xs);
+	margin-top: var(--spacing--5xs);
 
 	.buttons {
-		gap: var(--spacing-5xs);
+		gap: var(--spacing--5xs);
 	}
 
 	.ratingButton {
@@ -199,15 +199,15 @@ function onCancelFeedback() {
 	}
 
 	.feedbackContainer {
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 	}
 
 	.feedbackInput {
 		:global(.el-textarea__inner) {
-			font-size: var(--font-size-2xs);
+			font-size: var(--font-size--2xs);
 
 			&::placeholder {
-				font-size: var(--font-size-2xs);
+				font-size: var(--font-size--2xs);
 			}
 		}
 	}

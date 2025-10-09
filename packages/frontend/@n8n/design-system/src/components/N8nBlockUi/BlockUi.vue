@@ -29,7 +29,7 @@ withDefaults(defineProps<BlockUiProps>(), {
 	background-color: var(--color-block-ui-overlay);
 	z-index: 10;
 	opacity: 0.6;
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 }
 </style>
 

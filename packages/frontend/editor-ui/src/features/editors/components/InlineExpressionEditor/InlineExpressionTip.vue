@@ -145,17 +145,17 @@ watchDebounced(
 .tip {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
-	line-height: var(--font-line-height-regular);
+	gap: var(--spacing--4xs);
+	line-height: var(--line-height--md);
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-2xs);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--2xs);
 
 	code {
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size--3xs);
 		background: var(--color--background);
-		padding: var(--spacing-5xs);
-		border-radius: var(--border-radius-base);
+		padding: var(--spacing--5xs);
+		border-radius: var(--radius);
 	}
 }
 
@@ -165,7 +165,7 @@ watchDebounced(
 
 .tipText {
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	white-space: nowrap;
 	align-self: flex-start;
 }
@@ -183,12 +183,12 @@ watchDebounced(
 	align-items: center;
 	color: var(--color--text--shade-1);
 
-	border: var(--border-base);
+	border: var(--border);
 	border-color: var(--color--foreground--tint-1);
 	background-color: var(--color--background--light-3);
-	padding: var(--spacing-5xs) var(--spacing-3xs);
-	margin: 0 var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	margin: 0 var(--spacing--4xs);
+	border-radius: var(--radius);
 }
 
 .highlight {

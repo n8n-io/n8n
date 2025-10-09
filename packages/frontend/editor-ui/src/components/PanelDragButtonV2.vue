@@ -55,13 +55,13 @@ const onDragStart = () => {
 
 	display: flex;
 	align-items: baseline;
-	gap: var(--spacing-3xs);
-	padding: var(--spacing-4xs) var(--spacing-3xs) 0 var(--spacing-3xs);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs) 0 var(--spacing--3xs);
 	color: var(--color--foreground--shade-1);
-	border: var(--border-base);
+	border: var(--border);
 	border-bottom: none;
-	border-top-left-radius: var(--border-radius-base);
-	border-top-right-radius: var(--border-radius-base);
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
 
 	.arrow {
 		opacity: 0;

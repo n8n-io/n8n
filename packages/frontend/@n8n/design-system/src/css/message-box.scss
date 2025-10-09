@@ -7,11 +7,11 @@
 @include mixins.b(message-box) {
 	display: inline-block;
 	width: var.$msgbox-width;
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 	vertical-align: middle;
 	background-color: var.$color-white;
 	border-radius: var.$msgbox-border-radius;
-	border: 1px solid var(--border-color-light);
+	border: 1px solid var(--border-color--light);
 	font-size: var.$messagebox-font-size;
 	box-shadow: var.$box-shadow-light;
 	text-align: left;
@@ -38,7 +38,7 @@
 	@include mixins.e(header) {
 		position: relative;
 		padding: var.$msgbox-padding-primary;
-		padding-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing--2xs);
 	}
 
 	@include mixins.e(title) {
@@ -73,7 +73,7 @@
 	}
 
 	@include mixins.e(content) {
-		padding: var(--spacing-2xs) var.$msgbox-padding-primary var(--spacing-s);
+		padding: var(--spacing--2xs) var.$msgbox-padding-primary var(--spacing--sm);
 		color: var.$messagebox-content-color;
 		font-size: var.$messagebox-content-font-size;
 	}
@@ -131,7 +131,7 @@
 
 		& p {
 			margin: 0;
-			line-height: var(--font-line-height-loose);
+			line-height: var(--line-height--lg);
 		}
 	}
 
@@ -143,7 +143,7 @@
 	}
 
 	@include mixins.e(btns) {
-		padding: var(--spacing-s) var(--spacing-s) 0;
+		padding: var(--spacing--sm) var(--spacing--sm) 0;
 		text-align: right;
 
 		& button {

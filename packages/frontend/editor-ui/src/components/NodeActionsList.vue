@@ -116,19 +116,19 @@ watch(
 
 <style lang="scss" module>
 .component {
-	padding-block: var(--spacing-2xs);
+	padding-block: var(--spacing--2xs);
 }
 
 .label {
-	padding: var(--spacing-3xs) var(--spacing-s);
+	padding: var(--spacing--3xs) var(--spacing--sm);
 	text-transform: uppercase;
 }
 
 .option {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-3xs) var(--spacing-s);
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--3xs) var(--spacing--sm);
+	gap: var(--spacing--2xs);
 	cursor: pointer;
 
 	&.selected,
