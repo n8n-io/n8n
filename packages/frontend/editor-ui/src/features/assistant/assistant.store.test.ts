@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import {
+	useChatPanelStore,
 	DEFAULT_CHAT_WIDTH,
-	ENABLED_VIEWS,
 	MAX_CHAT_WIDTH,
 	MIN_CHAT_WIDTH,
-	useAssistantStore,
-} from '@/features/assistant/assistant.store';
+} from './chatPanel.store';
+import { ASSISTANT_ENABLED_VIEWS } from './constants';
+
+const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { usePostHog } from '@/stores/posthog.store';
@@ -79,46 +82,47 @@ describe('AI Assistant store', () => {
 
 	it('initializes with default values', () => {
 		const assistantStore = useAssistantStore();
+		const chatPanelStore = useChatPanelStore();
 
-		expect(assistantStore.chatWidth).toBe(DEFAULT_CHAT_WIDTH);
+		expect(chatPanelStore.width).toBe(DEFAULT_CHAT_WIDTH);
 		expect(assistantStore.chatMessages).toEqual([]);
-		expect(assistantStore.chatWindowOpen).toBe(false);
+		expect(chatPanelStore.isOpen).toBe(false);
 		expect(assistantStore.streaming).toBeUndefined();
 	});
 
 	it('can change chat width', () => {
-		const assistantStore = useAssistantStore();
+		const chatPanelStore = useChatPanelStore();
 
-		assistantStore.updateWindowWidth(400);
-		expect(assistantStore.chatWidth).toBe(400);
+		chatPanelStore.updateWidth(400);
+		expect(chatPanelStore.width).toBe(400);
 	});
 
 	it('should not allow chat width to be less than the minimal width', () => {
-		const assistantStore = useAssistantStore();
+		const chatPanelStore = useChatPanelStore();
 
-		assistantStore.updateWindowWidth(100);
-		expect(assistantStore.chatWidth).toBe(MIN_CHAT_WIDTH);
+		chatPanelStore.updateWidth(100);
+		expect(chatPanelStore.width).toBe(MIN_CHAT_WIDTH);
 	});
 
 	it('should not allow chat width to be more than the maximal width', () => {
-		const assistantStore = useAssistantStore();
+		const chatPanelStore = useChatPanelStore();
 
-		assistantStore.updateWindowWidth(2000);
-		expect(assistantStore.chatWidth).toBe(MAX_CHAT_WIDTH);
+		chatPanelStore.updateWidth(2000);
+		expect(chatPanelStore.width).toBe(MAX_CHAT_WIDTH);
 	});
 
-	it('should open chat window', () => {
-		const assistantStore = useAssistantStore();
+	it('should open chat window', async () => {
+		const chatPanelStore = useChatPanelStore();
 
-		assistantStore.openChat();
-		expect(assistantStore.chatWindowOpen).toBe(true);
+		await chatPanelStore.open({ mode: 'assistant' });
+		expect(chatPanelStore.isOpen).toBe(true);
 	});
 
 	it('should close chat window', () => {
-		const assistantStore = useAssistantStore();
+		const chatPanelStore = useChatPanelStore();
 
-		assistantStore.closeChat();
-		expect(assistantStore.chatWindowOpen).toBe(false);
+		chatPanelStore.close();
+		expect(chatPanelStore.isOpen).toBe(false);
 	});
 
 	it('can add a simple assistant message', () => {
