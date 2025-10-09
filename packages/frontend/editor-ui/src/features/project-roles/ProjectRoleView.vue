@@ -338,7 +338,7 @@ const displayNameValidationRules = [
 
 		<div :class="$style.cardContainer">
 			<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
-				<div style="width: 133px" :class="$style.cardTitle">
+				<div :class="$style.cardTitle">
 					{{ i18n.baseText(`projectRoles.type.${type}`) }}
 				</div>
 				<div>
@@ -357,7 +357,9 @@ const displayNameValidationRules = [
 		</div>
 
 		<div v-if="roleSlug && !initialState?.systemRole" class="mt-xl">
-			<N8nHeading tag="h2" class="mb-2xs">Danger zone</N8nHeading>
+			<N8nHeading tag="h2" class="mb-2xs">{{
+				i18n.baseText('projectRoles.dangerZone')
+			}}</N8nHeading>
 			<N8nText tag="p" class="mb-s">
 				<template v-if="initialState?.usedByUsers">
 					{{
@@ -401,6 +403,7 @@ const displayNameValidationRules = [
 }
 
 .cardTitle {
+	width: 133px;
 	text-transform: capitalize;
 }
 

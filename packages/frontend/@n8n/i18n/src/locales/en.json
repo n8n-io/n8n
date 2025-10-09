@@ -1920,6 +1920,7 @@
 	"projectRoles.action.delete.text": "Are you sure that you want to delete '{roleName}' permanently? This action cannot be undone.",
 	"projectRoles.action.delete.warning": "Deleting a role is permanent. This can’t be undone.",
 	"projectRoles.action.delete.useWarning": "You can’t delete this role while it’s assigned to {count} users. Unassign it from all users first.",
+	"projectRoles.dangerZone": "Danger zone",
 
 	"projectRoles.action.duplicate": "Duplicate",
 	"projectRoles.action.duplicate.name": "Copy of {roleName}",
