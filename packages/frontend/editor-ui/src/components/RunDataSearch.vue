@@ -190,7 +190,7 @@ watch(
 	transition: max-width 0.3s $ease-out-expo;
 
 	.ioSearchIcon {
-		color: var(--color-foreground-xdark);
+		color: var(--color--foreground--xdark);
 		cursor: pointer;
 		vertical-align: middle;
 	}
@@ -219,7 +219,7 @@ watch(
 	input {
 		border: var(--input-border-color, var(--border-color-base))
 			var(--input-border-style, var(--border-style-base)) var(--border-width-base);
-		background: var(--input-background-color, var(--color-foreground-xlight));
+		background: var(--input-background-color, var(--color--foreground--xlight));
 		opacity: 1;
 		cursor: text;
 	}

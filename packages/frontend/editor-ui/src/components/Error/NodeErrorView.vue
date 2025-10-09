@@ -695,8 +695,8 @@ async function onAskAssistantClick() {
 	&__header {
 		margin: 0 auto var(--spacing-s) auto;
 		padding-bottom: var(--spacing-3xs);
-		background-color: var(--color-background-xlight);
-		border: 1px solid var(--color-foreground-base);
+		background-color: var(--color--background--xlight);
+		border: 1px solid var(--color--foreground--base);
 		border-radius: var(--border-radius-large);
 
 		.node-error-view_compact & {
@@ -707,12 +707,12 @@ async function onAskAssistantClick() {
 
 	&__header-title {
 		padding: var(--spacing-2xs) var(--spacing-s);
-		border-bottom: 1px solid var(--color-danger-tint-1);
+		border-bottom: 1px solid var(--color--danger--tint-1);
 		font-size: var(--font-size-3xs);
 		font-weight: var(--font-weight-medium);
-		background-color: var(--color-danger-tint-2);
+		background-color: var(--color--danger--tint-2);
 		border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
-		color: var(--color-danger);
+		color: var(--color--danger);
 
 		.node-error-view_compact & {
 			border-radius: var(--border-radius-base);
@@ -725,7 +725,7 @@ async function onAskAssistantClick() {
 		align-items: center;
 		gap: var(--spacing-xs);
 		padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
-		color: var(--color-danger);
+		color: var(--color--danger);
 		font-weight: var(--font-weight-medium);
 		font-size: var(--font-size-s);
 	}
@@ -742,8 +742,8 @@ async function onAskAssistantClick() {
 
 		code {
 			font-size: var(--font-size-xs);
-			color: var(--color-text-base);
-			background: var(--color-background-base);
+			color: var(--color--text--base);
+			background: var(--color--background--base);
 			padding: var(--spacing-5xs);
 			border-radius: var(--border-radius-base);
 		}
@@ -775,7 +775,7 @@ async function onAskAssistantClick() {
 			padding: var(--spacing-s);
 			width: 100%;
 			overflow: auto;
-			background: var(--color-background-light);
+			background: var(--color--background--light);
 			code {
 				font-size: var(--font-size-s);
 			}
@@ -787,7 +787,7 @@ async function onAskAssistantClick() {
 		align-items: center;
 		margin-top: var(--spacing-s);
 		padding-top: var(--spacing-3xs);
-		border-top: 1px solid var(--color-foreground-base);
+		border-top: 1px solid var(--color--foreground--base);
 	}
 
 	&__feedback-button {
@@ -798,13 +798,13 @@ async function onAskAssistantClick() {
 		justify-content: center;
 		cursor: pointer;
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 
 	&__info {
 		margin: 0 auto;
-		border: 1px solid var(--color-foreground-base);
+		border: 1px solid var(--color--foreground--base);
 		border-radius: var(--border-radius-large);
 
 		.node-error-view_compact & {
@@ -817,13 +817,13 @@ async function onAskAssistantClick() {
 		align-items: center;
 		justify-content: space-between;
 		padding: var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs) var(--spacing-s);
-		border-bottom: 1px solid var(--color-foreground-base);
+		border-bottom: 1px solid var(--color--foreground--base);
 	}
 
 	&__info-title {
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
-		color: var(--color-text-dark);
+		color: var(--color--text--dark);
 	}
 
 	&__info-content {
@@ -846,7 +846,7 @@ async function onAskAssistantClick() {
 	&__details-summary {
 		padding: var(--spacing-5xs) 0;
 		font-size: var(--font-size-2xs);
-		color: var(--color-text-dark);
+		color: var(--color--text--dark);
 		cursor: pointer;
 		list-style-type: none;
 		outline: none;
@@ -862,7 +862,7 @@ async function onAskAssistantClick() {
 	}
 
 	&__details-row:not(:first-child) {
-		border-top: 1px solid var(--color-foreground-base);
+		border-top: 1px solid var(--color--foreground--base);
 	}
 
 	&__details-icon {

@@ -318,7 +318,7 @@ defineExpose({
 }
 
 .topText {
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 }
 
 .newWorkflowButtonWrapper {
@@ -326,13 +326,13 @@ defineExpose({
 	flex-direction: column;
 	flex-flow: wrap;
 	gap: var(--spacing-2xs);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light);
 	padding: var(--spacing-xs);
 	border: 0;
 }
 
 .newWorkflowText {
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 	font-size: var(--font-size-2xs);
 }
 </style>

@@ -126,9 +126,9 @@ defineExpose({
 	padding-left: var(--spacing-2xs);
 
 	&[aria-readonly='true'] {
-		background-color: var(--disabled-fill, var(--color-background-light));
+		background-color: var(--disabled-fill, var(--color--background--light));
 		border-color: var(--disabled-border, var(--border-color-base));
-		color: var(--disabled-color, var(--color-text-base));
+		color: var(--disabled-color, var(--color--text--base));
 		cursor: not-allowed;
 
 		border-top-left-radius: 0;

@@ -149,19 +149,19 @@ const commonClasses = computed(() => [
 }
 
 .runData {
-	color: var(--color-success);
+	color: var(--color--success);
 }
 
 .waiting {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 
 .pinnedData {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 
 .running {
-	color: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
+	color: hsl(var(--color--primary-h), var(--color--primary-s), var(--color--primary-l));
 
 	&.absoluteSpinner {
 		width: 100%;
@@ -170,7 +170,7 @@ const commonClasses = computed(() => [
 		align-items: center;
 		justify-content: center;
 		font-size: 3.75em;
-		color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+		color: hsla(var(--color--primary-h), var(--color--primary-s), var(--color--primary-l), 0.7);
 		position: absolute;
 		left: 0;
 		top: 0;
@@ -185,7 +185,7 @@ const commonClasses = computed(() => [
 }
 
 .issues {
-	color: var(--color-danger);
+	color: var(--color--danger);
 	cursor: default;
 }
 
@@ -194,10 +194,10 @@ const commonClasses = computed(() => [
 }
 
 .warning {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 
 .disabled {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--xdark);
 }
 </style>

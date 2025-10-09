@@ -441,7 +441,7 @@ onMounted(async () => {
 }
 
 .table-link {
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 
 	:global(.n8n-text) {
 		display: flex;

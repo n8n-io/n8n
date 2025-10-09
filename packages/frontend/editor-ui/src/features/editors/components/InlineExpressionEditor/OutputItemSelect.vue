@@ -104,7 +104,7 @@ function prevItem() {
 	line-height: calc(var(--input-height) - var(--spacing-4xs));
 
 	&.hovering {
-		--input-font-color: var(--color-secondary);
+		--input-font-color: var(--color--secondary);
 	}
 
 	:global(.el-input__inner) {

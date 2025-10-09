@@ -73,8 +73,8 @@ function onDelete() {
 
 <style lang="scss">
 @mixin dark-button-styles {
-	--button-background-color: var(--color-background-base);
-	--button-hover-background-color: var(--color-background-light);
+	--button-background-color: var(--color--background--base);
+	--button-hover-background-color: var(--color--background--light);
 }
 
 @media (prefers-color-scheme: dark) {

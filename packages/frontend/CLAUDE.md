@@ -10,59 +10,59 @@ application. These variables cover colors, spacing, typography, and borders.
 #### Colors
 ```css
 /* Primary Colors */
---color-primary-shade-1
---color-primary
---color-primary-tint-1
---color-primary-tint-2
---color-primary-tint-3
+--color--primary--shade-1
+--color--primary
+--color--primary--tint-1
+--color--primary--tint-2
+--color--primary--tint-3
 
 /* Secondary Colors */
---color-secondary-shade-1
---color-secondary
---color-secondary-tint-1
---color-secondary-tint-3
+--color--secondary--shade-1
+--color--secondary
+--color--secondary--tint-1
+--color--secondary--tint-3
 
 /* Success Colors */
---color-success-shade-1
---color-success
---color-success-light
---color-success-light-2
---color-success-tint-1
---color-success-tint-2
+--color--success--shade-1
+--color--success
+--color--success--light
+--color--success--light-2
+--color--success--tint-1
+--color--success--tint-2
 
 /* Warning Colors */
---color-warning-shade-1
---color-warning
---color-warning-tint-1
---color-warning-tint-2
+--color--warning--shade-1
+--color--warning
+--color--warning--tint-1
+--color--warning--tint-2
 
 /* Danger Colors */
---color-danger-shade-1
---color-danger
---color-danger-tint-1
---color-danger-tint-2
+--color--danger--shade-1
+--color--danger
+--color--danger--tint-1
+--color--danger--tint-2
 
 /* Text Colors */
---color-text-dark
---color-text-base
---color-text-light
---color-text-lighter
---color-text-xlight
---color-text-danger
+--color--text--dark
+--color--text--base
+--color--text--light
+--color--text--lighter
+--color--text--xlight
+--color--text--danger
 
 /* Foreground Colors */
---color-foreground-xdark
---color-foreground-dark
---color-foreground-base
---color-foreground-light
---color-foreground-xlight
+--color--foreground--xdark
+--color--foreground--dark
+--color--foreground--base
+--color--foreground--light
+--color--foreground--xlight
 
 /* Background Colors */
---color-background-dark
---color-background-medium
---color-background-base
---color-background-light
---color-background-xlight
+--color--background--dark
+--color--background--medium
+--color--background--base
+--color--background--light
+--color--background--xlight
 ```
 
 #### Spacing
@@ -112,6 +112,6 @@ application. These variables cover colors, spacing, typography, and borders.
 
 --border-width-base: 1px
 --border-style-base: solid
---border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base)
+--border-base: var(--border-width-base) var(--border-style-base) var(--color--foreground--base)
 ```
 

@@ -86,47 +86,47 @@ const classes = computed(() => {
 }
 
 .primary {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .secondary {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 
 .text-dark {
-	color: var(--color-text-dark);
+	color: var(--color--text--dark);
 }
 
 .text-base {
-	color: var(--color-text-base);
+	color: var(--color--text--base);
 }
 
 .text-light {
-	color: var(--color-text-light);
+	color: var(--color--text--light);
 }
 
 .text-xlight {
-	color: var(--color-text-xlight);
+	color: var(--color--text--xlight);
 }
 
 .danger {
-	color: var(--color-text-danger);
+	color: var(--color--text--danger);
 }
 
 .success {
-	color: var(--color-success);
+	color: var(--color--success);
 }
 
 .warning {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 
 .foreground-dark {
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--dark);
 }
 
 .foreground-xdark {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--xdark);
 }
 
 .align-left {

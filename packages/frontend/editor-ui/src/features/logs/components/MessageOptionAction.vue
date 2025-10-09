@@ -32,11 +32,11 @@ const onClick = () => {
 }
 
 .icon {
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--dark);
 	cursor: pointer;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 </style>

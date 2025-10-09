@@ -540,7 +540,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .title {
 	text-transform: uppercase;
-	color: var(--color-text-light);
+	color: var(--color--text--light);
 	letter-spacing: 2px;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
@@ -576,7 +576,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	margin-bottom: var(--ndv-spacing);
 
 	* {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
