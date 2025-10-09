@@ -19,7 +19,7 @@ import {
 	expressionSessionKeyProperty,
 } from '../descriptions';
 
-class MemoryChatBufferSingleton {
+export class MemoryChatBufferSingleton {
 	private static instance: MemoryChatBufferSingleton;
 
 	private memoryBuffer: Map<
