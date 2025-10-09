@@ -160,7 +160,7 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 		case 'removeFromMCP':
 			try {
 				await workflowsStore.updateWorkflowSetting(workflow.id, 'availableInMCP', false);
-				await fetchAvailableWorkflows();
+				availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflow.id);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 			}
