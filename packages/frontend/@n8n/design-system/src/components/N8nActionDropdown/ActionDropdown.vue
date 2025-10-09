@@ -185,7 +185,7 @@ defineExpose({ open, close });
 
 .activator {
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 	}
 }
 

@@ -391,16 +391,16 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .running,
 .spinner {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 .waiting {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 .success {
-	color: var(--color-success);
+	color: var(--color--success);
 }
 .error {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .newInfo,
@@ -441,7 +441,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 }
 
 .highlightDataButtonOpen {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	background-color: var(--color-button-secondary-hover-background);
 	border-color: var(--color-button-secondary-hover-active-focus-border);
 }

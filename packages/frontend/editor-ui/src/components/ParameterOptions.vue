@@ -10,8 +10,8 @@ import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
-import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useIsInExperimentalNdv } from '@/features/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 
 import { N8nActionToggle, N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 interface Props {
@@ -241,11 +241,11 @@ $container-height: 22px;
 
 .focusButton {
 	outline: none;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 
 	&:hover {
 		cursor: pointer;
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 </style>

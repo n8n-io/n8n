@@ -307,7 +307,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 .output {
 	[aria-readonly] {
-		background: var(--color-background-light);
+		background: var(--color--background--light-2);
 	}
 }
 
@@ -335,7 +335,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 	&:hover,
 	&:active {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 

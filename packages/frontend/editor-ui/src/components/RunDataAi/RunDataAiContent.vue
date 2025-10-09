@@ -148,7 +148,7 @@ const outputError = computed(() => props.inputData.runData?.error as NodeError |
 	align-items: center;
 	font-size: var(--font-size-s);
 	gap: var(--spacing-3xs);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 .meta {
 	list-style: none;
@@ -158,7 +158,7 @@ const outputError = computed(() => props.inputData.runData?.error as NodeError |
 	font-size: var(--font-size-xs);
 
 	& > li:not(:last-child) {
-		border-right: 1px solid var(--color-text-base);
+		border-right: 1px solid var(--color--text);
 		padding-right: var(--spacing-3xs);
 	}
 

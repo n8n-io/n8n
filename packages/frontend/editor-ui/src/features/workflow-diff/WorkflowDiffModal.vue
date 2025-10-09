@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
+import Node from '@/features/canvas/components/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -736,8 +736,8 @@ const modifiers = [
 	left: 12px;
 	z-index: 1;
 	border-radius: 4px;
-	border: 1px solid var(--color-foreground-light);
-	background: var(--color-foreground-xlight);
+	border: 1px solid var(--color--foreground--tint-1);
+	background: var(--color--foreground--tint-2);
 	display: flex;
 	height: 30px;
 	padding: 0 12px;
@@ -800,12 +800,12 @@ const modifiers = [
 	transition: background-color 0.2s ease;
 
 	&:hover {
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 	}
 }
 
 .clickableChangeActive {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .nodeName {
@@ -819,7 +819,7 @@ const modifiers = [
 .separator {
 	width: 1px;
 	height: 10px;
-	background-color: var(--color-foreground-xdark);
+	background-color: var(--color--foreground--shade-2);
 	margin: 0 0 -5px var(--spacing-xs);
 	position: relative;
 	z-index: 1;
@@ -835,7 +835,7 @@ const modifiers = [
 		left: 50%;
 		transform: translate(-50%, -50%);
 		border-radius: 4px;
-		color: var(--color-text-xlight);
+		color: var(--color--text--tint-3);
 		font-family: Inter, var(--font-family);
 		font-size: 10px;
 		font-weight: 700;
@@ -897,8 +897,8 @@ const modifiers = [
 	pointer-events: none;
 	cursor: default;
 	--color-sticky-background: rgba(126, 129, 134, 0.2);
-	--canvas-node-icon-color: var(--color-foreground-xdark);
-	--color-sticky-border: var(--color-foreground-xdark);
+	--canvas-node-icon-color: var(--color--foreground--shade-2);
+	--color-sticky-border: var(--color--foreground--shade-2);
 	&:deep(img) {
 		filter: contrast(0) grayscale(100%);
 	}
@@ -945,8 +945,8 @@ const modifiers = [
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background-color: var(--color-primary);
-	color: var(--color-text-xlight);
+	background-color: var(--color--primary);
+	color: var(--color--text--tint-3);
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
@@ -990,7 +990,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: 1px solid var(--color--foreground);
 }
 
 .emptyWorkflow {

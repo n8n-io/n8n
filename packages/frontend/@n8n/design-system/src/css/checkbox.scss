@@ -22,7 +22,7 @@
 		height: var.$checkbox-bordered-height;
 
 		&.is-checked {
-			border-color: var(--color-primary);
+			border-color: var(--color--primary);
 		}
 
 		&.is-disabled {
@@ -274,7 +274,7 @@
 		);
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 
 		& .el-icon {
