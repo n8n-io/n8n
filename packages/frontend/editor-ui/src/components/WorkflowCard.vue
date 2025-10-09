@@ -208,7 +208,7 @@ const actions = computed(() => {
 		!props.readOnly &&
 		!props.data.isArchived
 	) {
-		if (props.data.settings?.availableInMCP) {
+		if (isAvailableInMCP.value) {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
