@@ -496,7 +496,8 @@ export class DataTableService {
 				return cell;
 			}
 			try {
-				const dateInISO = (validationResult.newValue as DateTime).toISO();
+				// Convert to UTC to ensure consistent timezone handling
+				const dateInISO = (validationResult.newValue as DateTime).toUTC().toISO();
 				return dateInISO;
 			} catch {
 				throw new DataTableValidationError(

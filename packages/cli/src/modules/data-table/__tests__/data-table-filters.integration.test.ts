@@ -1179,7 +1179,7 @@ describe('dataTable filters', () => {
 					const createdAtTimestamp = inserted[0].createdAt;
 
 					const midnight = new Date(createdAtTimestamp);
-					midnight.setHours(0, 0, 0, 0);
+					midnight.setUTCHours(0, 0, 0, 0);
 
 					// ACT - Check the row is not returned if filtered before midnight
 					const beforeMidnightResult = await dataTableService.getManyRowsAndCount(
