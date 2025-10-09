@@ -64,7 +64,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
-import { ProxyFromEnvHttpAgent, ProxyFromEnvHttpsAgent } from '@/http-proxy';
+import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
@@ -139,8 +139,10 @@ function setAxiosAgents(
 
 	const targetUrl = buildTargetUrl(config.url, config.baseURL);
 
-	config.httpAgent = ProxyFromEnvHttpAgent(customProxyUrl, agentOptions, targetUrl);
-	config.httpsAgent = ProxyFromEnvHttpsAgent(customProxyUrl, agentOptions, targetUrl);
+	if (!targetUrl) return;
+
+	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, agentOptions);
+	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
 }
 
 axios.interceptors.request.use((config) => {
@@ -194,8 +196,8 @@ const getBeforeRedirectFn =
 
 		// Create both agents and set them
 		const targetUrl = redirectedRequest.href;
-		const httpAgent = ProxyFromEnvHttpAgent(customProxyUrl, redirectAgentOptions, targetUrl);
-		const httpsAgent = ProxyFromEnvHttpsAgent(customProxyUrl, redirectAgentOptions, targetUrl);
+		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
+		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
 
 		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
 			? httpsAgent
