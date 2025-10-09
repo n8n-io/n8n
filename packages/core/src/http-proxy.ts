@@ -42,6 +42,12 @@ function createFallbackAgent<T extends http.Agent | https.Agent>(AgentClass: new
 	return new AgentClass();
 }
 
+/**
+ * Node.js is working on native HTTP proxy support (as of Node.js 24)
+ * When it is stable we can use it and remove this implementation
+ *
+ * https://nodejs.org/api/http.html#built-in-proxy-support
+ */
 class HttpProxyManager extends http.Agent {
 	private readonly proxyAgentCache = new Map<string, HttpProxyAgent<string>>();
 	private readonly fallbackAgent = createFallbackAgent(http.Agent);
