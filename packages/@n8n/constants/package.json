@@ -18,7 +18,7 @@
   "files": [
     "dist/**/*"
   ],
-  "devDependencies": {
+  "dependencies": {
     "@n8n/typescript-config": "workspace:*"
   }
 }
