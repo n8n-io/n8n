@@ -36,9 +36,9 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
-} from '@/utils/canvasUtils';
+} from '@/features/canvas/canvas.utils';
 import type { Connection } from '@vue-flow/core';
-import { CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
