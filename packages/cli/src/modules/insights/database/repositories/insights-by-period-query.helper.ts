@@ -54,28 +54,6 @@ const getDatetimeSql = ({
 	return `DATE_SUB(NOW(), INTERVAL ${daysFromToday} DAY)`;
 };
 
-const getEndDatetimeSql = ({
-	dbType,
-	endDate,
-}: {
-	dbType: DatabaseConfig['type'];
-	endDate: Date;
-}) => {
-	const endDateStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
-	const today = DateTime.now().startOf('day');
-	const daysFromEndDateToToday = Math.floor(today.diff(endDateStartOfDay, 'days').days);
-
-	const isEndDateToday = daysFromEndDateToToday === 0;
-
-	if (isEndDateToday) {
-		return getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false });
-	}
-
-	// We take the start of the day of the next day after endDate to make the end of the range exclusive,
-	// ensuring that queries include all data up to the end of the specified endDate.
-	return getDatetimeSql({ dbType, daysFromToday: daysFromEndDateToToday - 1, useStartOfDay: true });
-};
-
 /**
  * Generates a CTE query for date range filtering based on the insights-query-spec
  *
@@ -117,39 +95,29 @@ export const getDateRangesCommonTableExpressionQuery = ({
 
 	let prevStartDateSql: string;
 	let startDateSql: string;
-	const endDateSql = getEndDatetimeSql({ dbType, endDate });
+	let endDateSql: string;
 
-	// Hour periodicity (1 day - when startDate == endDate)
-	if (daysDiff === 0) {
-		if (isEndDateToday) {
-			// Last 24 hours: prev_start = now - 48h, start = now - 24h, end = now
-			prevStartDateSql = getDatetimeSql({ dbType, daysFromToday: 2, useStartOfDay: false });
-			startDateSql = getDatetimeSql({ dbType, daysFromToday: 1, useStartOfDay: false });
-		} else {
-			// Specific day: prev_start = (day - 1) at 00:00:00, start = day at 00:00:00, end = day+1 at 00:00:00
-			prevStartDateSql = getDatetimeSql({
-				dbType,
-				daysFromToday: prevStartDaysFromToday,
-				useStartOfDay: true,
-			});
-			startDateSql = getDatetimeSql({
-				dbType,
-				daysFromToday: daysFromStartDateToToday,
-				useStartOfDay: true,
-			});
-		}
+	if (daysDiff === 0 && isEndDateToday) {
+		// Last 24 hours
+		prevStartDateSql = getDatetimeSql({ dbType, daysFromToday: 2, useStartOfDay: false });
+		startDateSql = getDatetimeSql({ dbType, daysFromToday: 1, useStartOfDay: false });
+		endDateSql = getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false });
 	} else {
-		// Day or Week periodicity (2+ days)
 		prevStartDateSql = getDatetimeSql({
 			dbType,
 			daysFromToday: prevStartDaysFromToday,
 			useStartOfDay: true,
 		});
+
 		startDateSql = getDatetimeSql({
 			dbType,
 			daysFromToday: daysFromStartDateToToday,
 			useStartOfDay: true,
 		});
+
+		endDateSql = isEndDateToday
+			? getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false })
+			: getDatetimeSql({ dbType, daysFromToday: daysFromEndDateToToday - 1, useStartOfDay: true });
 	}
 
 	return sql`SELECT
