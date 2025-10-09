@@ -9,7 +9,7 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
-} from '@/types';
+} from '@/features/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
