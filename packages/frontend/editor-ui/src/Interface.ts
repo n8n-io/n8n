@@ -27,7 +27,6 @@ import type {
 	IRunData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
-	PublicInstalledPackage,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
@@ -42,6 +41,7 @@ import type {
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -804,6 +804,7 @@ export type NodeCreatorOpenSource =
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
+	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'

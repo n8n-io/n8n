@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
+import Node from '@/features/canvas/components/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
