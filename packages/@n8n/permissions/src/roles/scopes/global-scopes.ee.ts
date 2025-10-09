@@ -89,7 +89,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'folder:create',
 	'folder:list',
 	'oidc:manage',
-	'dataStore:list',
+	'dataTable:list',
 	'role:manage',
 	'mcp:manage',
 	'mcpApiKey:create',
@@ -114,7 +114,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'user:list',
 	'variable:list',
 	'variable:read',
-	'dataStore:list',
+	'dataTable:list',
 	'mcpApiKey:create',
 	'mcpApiKey:rotate',
 ];
