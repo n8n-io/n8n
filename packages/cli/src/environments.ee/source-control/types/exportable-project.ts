@@ -1,4 +1,4 @@
-import type { RemoteResourceOwner } from './resource-owner';
+import type { TeamResourceOwner } from './resource-owner';
 
 export interface ExportableProject {
 	id: string;
@@ -9,5 +9,9 @@ export interface ExportableProject {
 	 * Only team projects are supported
 	 */
 	type: 'team';
-	owner: RemoteResourceOwner;
+	owner: TeamResourceOwner;
 }
+
+export type ExportableProjectWithFileName = ExportableProject & {
+	filename: string;
+};

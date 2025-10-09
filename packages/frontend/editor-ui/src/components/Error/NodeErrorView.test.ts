@@ -6,7 +6,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { IExecutionResponse } from '@/Interface';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

@@ -70,7 +70,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
@@ -89,7 +89,7 @@ import type {
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
@@ -99,14 +99,13 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
-import { sourceControlEventBus } from '@/event-bus/source-control';
+import { sourceControlEventBus } from '@/features/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -143,7 +142,7 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
-import { useParentFolder } from '@/composables/useParentFolder';
+import { useParentFolder } from '@/features/folders/composables/useParentFolder';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
@@ -175,7 +174,6 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowHelpers = useWorkflowHelpers();
 const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
 
@@ -433,10 +431,6 @@ async function initializeRoute(force = false) {
 
 			if (!isDemoRoute.value) {
 				await loadCredentials();
-
-				// Fetch builder credits when initializing the route
-				// Only needed if workflow is editable where builder can be used
-				void builderStore.fetchBuilderCredits();
 			}
 
 			// If there is no workflow id, treat it as a new workflow
@@ -544,7 +538,7 @@ function updateNodesIssues() {
 
 function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
+	documentTitle.setDocumentTitle(data.name, 'IDLE');
 
 	initializeWorkspace(data);
 
@@ -596,7 +590,7 @@ function onTidyUp(event: CanvasLayoutEvent, options?: { trackEvents?: boolean })
 }
 
 function onExtractWorkflow(nodeIds: string[]) {
-	void extractWorkflow(nodeIds);
+	extractWorkflow(nodeIds);
 }
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
@@ -1451,7 +1445,7 @@ async function onSourceControlPull() {
 		if (workflowId.value && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
+				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 				openWorkflow(workflowData);
 			}
 		}
@@ -1474,6 +1468,7 @@ function removeSourceControlEventBindings() {
 function addCommandBarEventBindings() {
 	canvasEventBus.on('create:sticky', onCreateSticky);
 }
+
 function removeCommandBarEventBindings() {
 	canvasEventBus.off('create:sticky', onCreateSticky);
 }
@@ -1624,7 +1619,7 @@ function checkIfRouteIsAllowed() {
  */
 
 async function initializeDebugMode() {
-	workflowHelpers.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+	documentTitle.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
 
 	if (!workflowsStore.isInDebugMode) {
 		await applyExecutionData(route.params.executionId as string);
@@ -1802,12 +1797,12 @@ watch(
 			parameters: {},
 		};
 
-		const aiPromptItem: INodeUi = {
-			id: CanvasNodeRenderType.AIPrompt,
-			name: CanvasNodeRenderType.AIPrompt,
-			type: CanvasNodeRenderType.AIPrompt,
+		const choicePromptItem: INodeUi = {
+			id: CanvasNodeRenderType.ChoicePrompt,
+			name: CanvasNodeRenderType.ChoicePrompt,
+			type: CanvasNodeRenderType.ChoicePrompt,
 			typeVersion: 1,
-			position: [-300, -100],
+			position: [0, 0],
 			parameters: {},
 			draggable: false,
 		};
@@ -1816,7 +1811,7 @@ watch(
 			builderStore.isAIBuilderEnabled &&
 			builderStore.isAssistantEnabled &&
 			builderStore.assistantMessages.length === 0
-				? [aiPromptItem]
+				? [choicePromptItem]
 				: [addNodesItem];
 	},
 );

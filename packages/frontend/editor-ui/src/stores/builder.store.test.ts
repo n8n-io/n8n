@@ -25,7 +25,11 @@ import {
 } from '@/composables/useWorkflowState';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import {
+	DEFAULT_CHAT_WIDTH,
+	MAX_CHAT_WIDTH,
+	MIN_CHAT_WIDTH,
+} from '@/features/assistant/assistant.store';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import type {} from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';

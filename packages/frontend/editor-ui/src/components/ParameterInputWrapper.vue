@@ -12,7 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';

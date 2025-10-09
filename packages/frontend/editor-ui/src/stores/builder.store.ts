@@ -10,7 +10,7 @@ import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@n8n/utils/assert';
@@ -18,7 +18,11 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
-import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import {
+	DEFAULT_CHAT_WIDTH,
+	MAX_CHAT_WIDTH,
+	MIN_CHAT_WIDTH,
+} from '@/features/assistant/assistant.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
 import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
@@ -160,14 +164,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Opens the chat panel and adjusts the canvas viewport to make room.
 	 */
 	async function openChat() {
-		chatWindowOpen.value = true;
 		chatMessages.value = [];
+		await fetchBuilderCredits();
+		await loadSessions();
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,
 			width: window.innerWidth - chatWidth.value,
 		};
-		await fetchBuilderCredits();
-		await loadSessions();
+		chatWindowOpen.value = true;
 	}
 
 	/**
@@ -190,6 +194,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				width: window.innerWidth,
 			};
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
+	}
+
+	/**
+	 * Toggles between open and closed state for the chat panel.
+	 */
+	async function toggleChat() {
+		if (isAssistantOpen.value) {
+			closeChat();
+		} else {
+			await openChat();
+		}
 	}
 
 	/**
@@ -576,6 +591,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsClaimed.value = claimed;
 	}
 
+	// Watch for route changes and close chat when leaving enabled views
+	watch(
+		() => route.name,
+		(newRoute) => {
+			// Close the chat window when navigating away from canvas/enabled views
+			if (!ENABLED_VIEWS.includes(newRoute as VIEWS) && chatWindowOpen.value) {
+				chatWindowOpen.value = false;
+			}
+		},
+	);
+
 	// Public API
 	return {
 		// State
@@ -605,6 +631,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		stopStreaming,
 		closeChat,
 		openChat,
+		toggleChat,
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,

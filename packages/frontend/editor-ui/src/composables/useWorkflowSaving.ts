@@ -13,7 +13,7 @@ import {
 } from '@/constants';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
