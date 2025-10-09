@@ -111,19 +111,13 @@ export class ChatHubService {
 		provider: ChatHubProvider,
 		apiKey: string,
 	): Promise<ChatModelsResponse[ChatHubProvider]> {
-		try {
-			switch (provider) {
-				case 'openai':
-					return { models: await this.fetchOpenAiModels(apiKey) };
-				case 'anthropic':
-					return { models: await this.fetchAnthropicModels(apiKey) };
-				case 'google':
-					return { models: await this.fetchGoogleModels(apiKey) };
-			}
-		} catch (error) {
-			this.logger.debug(`Failed to fetch OpenAI models: ${error}`);
-
-			return { models: [], error: error.message };
+		switch (provider) {
+			case 'openai':
+				return { models: await this.fetchOpenAiModels(apiKey) };
+			case 'anthropic':
+				return { models: await this.fetchAnthropicModels(apiKey) };
+			case 'google':
+				return { models: await this.fetchGoogleModels(apiKey) };
 		}
 	}
 
