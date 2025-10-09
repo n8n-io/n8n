@@ -129,7 +129,7 @@ export function useDataTableNavigationCommands(options: {
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
 		const hasCreatePermission =
 			!sourceControlStore.preferences.branchReadOnly &&
-			getResourcePermissions(homeProject.value?.scopes).dataStore.create;
+			getResourcePermissions(homeProject.value?.scopes).dataTable.create;
 
 		const newDataTableCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_DATA_TABLE,

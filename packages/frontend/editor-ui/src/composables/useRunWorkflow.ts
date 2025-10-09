@@ -48,7 +48,6 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
-import { injectWorkflowState } from './useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
