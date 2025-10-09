@@ -1,3 +1,4 @@
+import type { ChatHubProvider } from '@n8n/api-types';
 import type { Suggestion } from './chat.types';
 
 // Route and view identifiers
@@ -27,3 +28,9 @@ export const SUGGESTIONS: Suggestion[] = [
 		icon: '✉️',
 	},
 ];
+
+export const providerDisplayNames: Record<ChatHubProvider, string> = {
+	openai: 'OpenAI',
+	anthropic: 'Anthropic',
+	google: 'Google',
+};

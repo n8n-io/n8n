@@ -4,12 +4,16 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchChatModelsApi, sendText } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ChatHubProvider } from '@n8n/api-types';
-import type { StructuredChunk, ChatMessage, ChatHubConversationModel } from './chat.types';
+import type {
+	ChatHubConversationModel,
+	ChatHubSendMessageRequest,
+	ChatModelsResponse,
+} from '@n8n/api-types';
+import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
-	const models = ref<ChatHubConversationModel[]>([]);
+	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
 	const isResponding = ref(false);
 	const chatMessages = ref<ChatMessage[]>([]);
@@ -19,11 +23,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	);
 	const usersMessages = computed(() => chatMessages.value.filter((msg) => msg.role === 'user'));
 
-	function setModels(newModels: ChatHubConversationModel[]) {
-		models.value = newModels;
-	}
-
-	async function fetchChatModels(credentialMap: Record<ChatHubProvider, string | null>) {
+	async function fetchChatModels(credentialMap: CredentialsMap) {
 		loadingModels.value = true;
 		models.value = await fetchChatModelsApi(rootStore.restApiContext, {
 			credentials: credentialMap,
@@ -104,21 +104,23 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		isResponding.value = false;
 	}
 
-	const askAI = (message: string, sessionId: string, model: ChatHubConversationModel) => {
+	const askAI = (
+		message: string,
+		sessionId: string,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
+	) => {
 		const messageId = uuidv4();
 		addUserMessage(message, messageId);
 
 		sendText(
 			rootStore.restApiContext,
 			{
-				model: model.model,
-				provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				model,
 				messageId,
 				sessionId,
 				message,
-				credentials: {
-					openAiApi: { id: 'Jtx6ADZkQZARdxae', name: 'OpenAi account' },
-				},
+				credentials,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(chunk, messageId),
 			onStreamDone,
@@ -129,7 +131,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	return {
 		models,
 		loadingModels,
-		setModels,
 		fetchChatModels,
 		askAI,
 		isResponding,
