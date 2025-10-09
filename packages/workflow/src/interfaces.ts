@@ -2170,6 +2170,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
 	hints?: NodeHint[];
+	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
@@ -2871,6 +2872,7 @@ export interface INodeGraphItem {
 	items_total?: number;
 	metric_names?: string[];
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
+	package_version?: string; // only for community nodes
 }
 
 export interface INodeNameIndex {

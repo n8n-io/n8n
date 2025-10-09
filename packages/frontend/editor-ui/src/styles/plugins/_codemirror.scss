@@ -12,7 +12,7 @@
 }
 
 #cm-tooltip-container .cm-tooltip-autocomplete {
-	background-color: var(--color-background-xlight) !important;
+	background-color: var(--color--background--light-3) !important;
 	box-shadow: var(--box-shadow-light);
 	border: none;
 	border-radius: var(--border-radius-base);
@@ -43,7 +43,7 @@
 			border-bottom-left-radius: 0;
 			border-top-right-radius: var(--border-radius-base);
 			border-bottom-right-radius: var(--border-radius-base);
-			background-color: var(--color-background-xlight);
+			background-color: var(--color--background--light-3);
 		}
 
 		&:has(+ .cm-completionInfo) {
@@ -51,7 +51,7 @@
 		}
 
 		li[role='option'] {
-			color: var(--color-text-base);
+			color: var(--color--text);
 			display: flex;
 			line-height: var(--font-line-height-xloose);
 			justify-content: space-between;
@@ -73,21 +73,21 @@
 		}
 
 		li .cm-completionDetail {
-			color: var(--color-text-light);
+			color: var(--color--text--tint-1);
 			font-size: var(--font-size-3xs);
 			margin-left: 0;
 			font-style: normal;
 		}
 
 		li[aria-selected] {
-			background-color: var(--color-background-base);
+			background-color: var(--color--background);
 			color: var(--color-autocomplete-item-selected);
 		}
 
 		> .cm-section-header {
 			padding: var(--spacing-4xs) var(--spacing-3xs);
 			border-bottom: 1px solid var(--color-autocomplete-section-header-border);
-			background-color: var(--color-background-xlight);
+			background-color: var(--color--background--light-3);
 			position: sticky;
 			top: 0;
 		}
@@ -97,7 +97,7 @@
 		}
 
 		.cm-section-title {
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 			font-family: var(--font-family);
 			font-weight: var(--font-weight-bold);
 			font-size: var(--font-size-3xs);
@@ -137,24 +137,24 @@
 	strong.autocomplete-info-arg-name {
 		font-weight: var(--font-weight-regular);
 		text-decoration: underline;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 
 	.autocomplete-info-description {
 		padding: 0 var(--spacing-xs);
-		color: var(--color-text-base);
+		color: var(--color--text);
 		font-size: var(--font-size-2xs);
 
 		.autocomplete-info-example {
 			border-radius: var(--border-radius-base);
 			border: 1px solid var(--color-infobox-examples-border-color);
-			color: var(--color-text-base);
+			color: var(--color--text);
 			margin-top: var(--spacing-xs);
 		}
 
 		code {
 			padding: 0;
-			color: var(--color-text-base);
+			color: var(--color--text);
 			font-size: var(--font-size-2xs);
 			font-family: var(--font-family);
 			background-color: transparent;
@@ -166,7 +166,7 @@
 	}
 
 	a {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 
 		&:hover,
 		&:active {
@@ -176,7 +176,7 @@
 
 	.autocomplete-info-header {
 		padding: 0 var(--spacing-xs);
-		color: var(--color-text-base);
+		color: var(--color--text);
 		font-size: var(--font-size-2xs);
 		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
@@ -187,7 +187,7 @@
 	}
 
 	.autocomplete-info-arg {
-		color: var(--color-text-base);
+		color: var(--color--text);
 		font-weight: var(--font-weight-regular);
 		padding: 0;
 		display: inline-block;
@@ -218,17 +218,17 @@
 
 	.autocomplete-info-arg-name {
 		font-size: var(--font-size-2xs);
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 
 	.autocomplete-info-arg-description {
-		color: var(--color-text-base);
+		color: var(--color--text);
 		margin-left: var(--spacing-4xs);
 		font-size: var(--font-size-2xs);
 
 		code {
 			padding: 0;
-			color: var(--color-text-base);
+			color: var(--color--text);
 			font-size: var(--font-size-2xs);
 			font-family: var(--font-family);
 			background-color: transparent;
@@ -252,11 +252,11 @@
 	}
 
 	.autocomplete-info-example {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 
 	.autocomplete-info-example code {
-		color: var(--color-text-base);
+		color: var(--color--text);
 		display: block;
 		padding: var(--spacing-3xs) var(--spacing-2xs);
 		font-size: 0.688rem; // Equals 11px. Add a new token in _tokens.scss if this size is needed elsewhere
@@ -268,7 +268,7 @@
 	}
 
 	.autocomplete-info-example-comment {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 
 	.autocomplete-info-example + .autocomplete-info-example {
@@ -280,7 +280,7 @@
 		padding: 0 var(--spacing-xs) var(--spacing-3xs) var(--spacing-xs);
 		border-bottom: 1px solid var(--color-autocomplete-section-header-border);
 		text-transform: uppercase;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		font-size: var(--font-size-3xs);
 		font-weight: var(--font-weight-bold);
 	}
@@ -311,7 +311,7 @@
 }
 
 #cm-tooltip-container .cm-tooltip.cm-completionInfo {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border: var(--border-base);
 	box-shadow: var(--box-shadow-light);
 	clip-path: inset(-12px -12px -12px 0); // Clip box-shadow on the left

@@ -266,7 +266,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 body {
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .container {
@@ -290,7 +290,7 @@ body {
 }
 
 .formError input {
-	border-color: var(--color-danger);
+	border-color: var(--color--danger);
 }
 
 .recoveryCodeLink {

@@ -11,7 +11,7 @@ import type {
 	NodeConnectionType,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL } from '@/constants';
@@ -24,7 +24,7 @@ import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import get from 'lodash/get';
 
-import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import ExperimentalEmbeddedNdvHeader from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import NodeActionsList from '@/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
@@ -53,7 +53,6 @@ import {
 	getNodeSettingsInitialValues,
 	nameIsParameter,
 } from '@/utils/nodeSettingsUtils';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
@@ -62,6 +61,7 @@ import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/Communi
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 const props = withDefaults(
 	defineProps<{
 		eventBus?: EventBus;
@@ -116,6 +116,7 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 
@@ -381,7 +382,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				value: nodeParameters,
 			};
 
-			workflowsStore.setNodeParameters(updateInformation);
+			workflowState.setNodeParameters(updateInformation);
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
@@ -813,7 +814,7 @@ function handleSelectAction(params: INodeParameters) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 }
 
 .featureRequest {
@@ -828,7 +829,7 @@ function handleSelectAction(params: INodeParameters) {
 
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 </style>
@@ -838,7 +839,7 @@ function handleSelectAction(params: INodeParameters) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	height: 100%;
 	width: 100%;
 
@@ -894,14 +895,14 @@ function handleSelectAction(params: INodeParameters) {
 			}
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-2xs);
-				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid var(--color-background-xlight);
+				background: var(--color--foreground--shade-1);
+				border: var(--spacing-5xs) solid var(--color--background--light-3);
 			}
 		}
 	}
 
 	&.dragging {
-		border-color: var(--color-primary);
+		border-color: var(--color--primary);
 		box-shadow: 0 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
@@ -946,7 +947,7 @@ function handleSelectAction(params: INodeParameters) {
 	font-size: var(--font-size-xs);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .parameter-value {

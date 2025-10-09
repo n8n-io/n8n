@@ -60,7 +60,7 @@ const onTypeChange = (type: string): void => {
 
 <style lang="scss" module>
 .icon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .option {

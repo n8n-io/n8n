@@ -2,7 +2,7 @@
 import { useTelemetry } from '@/composables/useTelemetry';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 import type { INodeUi } from '@/Interface';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { isCommunityPackageName } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -91,7 +91,7 @@ function onMissingNodeLearnMoreLinkClick() {
 }
 
 .warningIcon {
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 	font-size: var(--font-size-2xl);
 }
 

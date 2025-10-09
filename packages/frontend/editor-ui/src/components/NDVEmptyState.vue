@@ -29,13 +29,13 @@ defineSlots<{
 	gap: var(--spacing-2xs);
 
 	line-height: 2;
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .title {
 	font-size: var(--font-size-m);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	margin: 0;
 }
 

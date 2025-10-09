@@ -15,6 +15,7 @@ export {
 	chatModelsRequestSchema,
 	type ChatModelsRequest,
 	type ChatModelsResponse,
+	ChatHubSendMessageRequest,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';

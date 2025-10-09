@@ -66,6 +66,6 @@ const simplyText = computed(() => {
 	font-family: monospace;
 }
 .highlight {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 </style>

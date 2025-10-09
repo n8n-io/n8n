@@ -63,15 +63,15 @@ import type {
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ViewportBoundaries,
-} from '@/types';
-import { CanvasConnectionMode } from '@/types';
+} from '@/features/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 import {
 	createCanvasConnectionHandleString,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyConnectionToCanvasConnection,
 	parseCanvasConnectionHandleString,
-} from '@/utils/canvasUtils';
+} from '@/features/canvas/canvas.utils';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
@@ -108,15 +108,15 @@ import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { isPresent } from '../utils/typesUtils';
+import { isPresent } from '@/utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { CanvasLayoutEvent } from './useCanvasLayout';
+import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
@@ -284,7 +284,7 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
-		workflowsStore.setNodeParameters({
+		workflowState.setNodeParameters({
 			name: node.name,
 			value: newParameters,
 		});
@@ -592,7 +592,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		workflowsStore.setNodeParameters(
+		workflowState.setNodeParameters(
 			{
 				name: node.name,
 				value: parameters as NodeParameterValueType,

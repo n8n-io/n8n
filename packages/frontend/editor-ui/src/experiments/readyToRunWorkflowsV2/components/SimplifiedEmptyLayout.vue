@@ -208,7 +208,7 @@ const emit = defineEmits<{
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 
 		.cardIcon svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 

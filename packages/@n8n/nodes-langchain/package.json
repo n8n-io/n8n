@@ -196,7 +196,7 @@
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:^",
     "@n8n/json-schema-to-zod": "workspace:*",
-    "@n8n/typeorm": "0.3.20-12",
+    "@n8n/typeorm": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "^5.0.2",
