@@ -1,8 +1,26 @@
-import type { ChatHubConversationModel } from '@n8n/api-types';
+import {
+	chatHubProviderSchema,
+	type ChatHubConversationModel,
+	type ChatModelsResponse,
+} from '@n8n/api-types';
 
-export function isSameModel(
-	one: ChatHubConversationModel,
-	another: ChatHubConversationModel,
-): boolean {
-	return one.model === another.model && one.provider === another.provider;
+export function modelsResponseContains(
+	response: ChatModelsResponse,
+	model: ChatHubConversationModel,
+) {
+	return chatHubProviderSchema.options.some((provider) =>
+		response[provider].models.some((m) => m.name === model.model),
+	);
+}
+
+export function findOneFromModelsResponse(
+	response: ChatModelsResponse,
+): ChatHubConversationModel | undefined {
+	for (const provider of chatHubProviderSchema.options) {
+		if (response[provider].models.length > 0) {
+			return { model: response[provider].models[0].name, provider };
+		}
+	}
+
+	return undefined;
 }
