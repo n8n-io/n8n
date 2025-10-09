@@ -19,8 +19,13 @@ async function main(): Promise<void> {
 		? process.argv[process.argv.indexOf('--test-case') + 1]
 		: undefined;
 
+	// Parse command line arguments for repetitions
+	const repetitions = process.argv.includes('--repetitions')
+		? parseInt(process.argv[process.argv.indexOf('--repetitions') + 1], 10)
+		: 1;
+
 	if (useLangsmith) {
-		await runLangsmithEvaluation();
+		await runLangsmithEvaluation(repetitions);
 	} else {
 		await runCliEvaluation(testCaseId);
 	}
