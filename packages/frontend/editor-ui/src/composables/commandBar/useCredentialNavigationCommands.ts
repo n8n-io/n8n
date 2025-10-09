@@ -129,6 +129,7 @@ export function useCredentialNavigationCommands(options: {
 				interpolate: { projectName: currentProjectName.value },
 			}),
 			section: i18n.baseText('commandBar.sections.credentials'),
+			keywords: [i18n.baseText('credentials.add')],
 			icon: {
 				component: N8nIcon,
 				props: {

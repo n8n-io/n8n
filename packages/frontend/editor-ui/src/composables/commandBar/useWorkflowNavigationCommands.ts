@@ -296,6 +296,7 @@ export function useWorkflowNavigationCommands(options: {
 			title: i18n.baseText('commandBar.workflows.create', {
 				interpolate: { projectName: currentProjectName.value },
 			}),
+			keywords: [i18n.baseText('workflows.add')],
 			section: i18n.baseText('commandBar.sections.workflows'),
 			icon: {
 				component: N8nIcon,
