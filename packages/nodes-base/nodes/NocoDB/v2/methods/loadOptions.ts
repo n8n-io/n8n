@@ -14,7 +14,7 @@ export async function getApiVersions(this: ILoadOptionsFunctions) {
 	if (
 		resource === 'row' &&
 		['get', 'search', 'create', 'update', 'delete'].includes(operation) &&
-		!credentials.isCloudNocoDb
+		!credentials?.isCloudNocoDb
 	) {
 		return [
 			{
