@@ -1,8 +1,9 @@
-import { computed, ref, type Component } from 'vue';
+import { computed, type Component } from 'vue';
 import type { RouteLocationNormalized } from 'vue-router';
 import type { CommandBarItem } from './types';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
+import { useLocalStorage } from '@vueuse/core';
 import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -27,55 +28,15 @@ interface RecentNode {
 
 type RecentNodesMap = Record<string, RecentNode[]>;
 
-function loadRecentWorkflows(): RecentWorkflow[] {
-	try {
-		const stored = localStorage.getItem(RECENT_WORKFLOWS_STORAGE_KEY);
-		if (stored) {
-			return JSON.parse(stored) as RecentWorkflow[];
-		}
-	} catch {
-		// If parsing fails, return empty array
-	}
-	return [];
-}
-
-function saveRecentWorkflows(workflows: RecentWorkflow[]): void {
-	try {
-		localStorage.setItem(RECENT_WORKFLOWS_STORAGE_KEY, JSON.stringify(workflows));
-	} catch {
-		// Silently fail if localStorage is not available
-	}
-}
-
-function loadRecentNodes(): RecentNodesMap {
-	try {
-		const stored = localStorage.getItem(RECENT_NODES_STORAGE_KEY);
-		if (stored) {
-			return JSON.parse(stored) as RecentNodesMap;
-		}
-	} catch {
-		// If parsing fails, return empty object
-	}
-	return {};
-}
-
-function saveRecentNodes(nodesMap: RecentNodesMap): void {
-	try {
-		localStorage.setItem(RECENT_NODES_STORAGE_KEY, JSON.stringify(nodesMap));
-	} catch {
-		// Silently fail if localStorage is not available
-	}
-}
-
-const recentWorkflows = ref<RecentWorkflow[]>(loadRecentWorkflows());
-const recentNodes = ref<RecentNodesMap>(loadRecentNodes());
-
 export function useRecentResources() {
 	const i18n = useI18n();
 	const router = useRouter();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { setNodeActive } = useCanvasOperations();
+
+	const recentWorkflows = useLocalStorage<RecentWorkflow[]>(RECENT_WORKFLOWS_STORAGE_KEY, []);
+	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});
 
 	function trackResourceOpened(to: RouteLocationNormalized): void {
 		if (to.name === VIEWS.WORKFLOW && typeof to.params.name === 'string') {
@@ -98,16 +59,13 @@ export function useRecentResources() {
 	function registerWorkflowOpen(workflowId: string): void {
 		const filtered = recentWorkflows.value.filter((w) => w.id !== workflowId);
 
-		const updatedWorkflows = [
+		recentWorkflows.value = [
 			{
 				id: workflowId,
 				openedAt: Date.now(),
 			},
 			...filtered,
 		].slice(0, MAX_RECENT_ITEMS);
-
-		recentWorkflows.value = updatedWorkflows;
-		saveRecentWorkflows(updatedWorkflows);
 	}
 
 	function registerNodeOpen(workflowId: string, nodeId: string): void {
@@ -127,8 +85,6 @@ export function useRecentResources() {
 			...recentNodes.value,
 			[workflowId]: updatedNodes,
 		};
-
-		saveRecentNodes(recentNodes.value);
 	}
 
 	const recentResourceCommands = computed<CommandBarItem[]>(() => {

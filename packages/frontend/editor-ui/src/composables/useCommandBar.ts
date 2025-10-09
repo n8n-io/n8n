@@ -278,7 +278,6 @@ export function useCommandBar() {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 		const initPromises = activeCommandGroups.value.map(async (group) => {
-			console.log('group', group);
 			if (group.initialize) {
 				await group.initialize();
 			}
