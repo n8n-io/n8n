@@ -64,7 +64,7 @@ function onCopyToClipboard(content: string) {
 	cursor: pointer !important;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 </style>

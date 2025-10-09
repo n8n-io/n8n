@@ -122,7 +122,7 @@ function onDropdownVisibleChange(visible: boolean) {
 }
 
 .highlightDataButtonOpen {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	background-color: var(--color-button-secondary-hover-background);
 	border-color: var(--color-button-secondary-hover-active-focus-border);
 }
@@ -140,7 +140,7 @@ function onDropdownVisibleChange(visible: boolean) {
 	flex-direction: column;
 	overflow: auto;
 
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 }

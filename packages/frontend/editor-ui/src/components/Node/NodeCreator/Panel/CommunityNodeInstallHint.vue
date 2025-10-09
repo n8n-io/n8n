@@ -27,7 +27,7 @@ defineProps<Props>();
 	margin: var(--spacing-xs);
 	margin-top: 0;
 	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color-foreground-base);
+	border: var(--border-width-base) solid var(--color--foreground);
 	border-radius: 0.25em;
 	pointer-events: none;
 	cursor: default;

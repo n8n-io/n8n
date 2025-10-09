@@ -1,30 +1,42 @@
 <script lang="ts" setup>
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
+import { useRoute } from 'vue-router';
+import { BUILDER_ENABLED_VIEWS } from '../constants';
+import type { VIEWS } from '@/constants';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/assistant/components/HubSwitcher.vue';
 
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
+const chatPanelStore = useChatPanelStore();
+const route = useRoute();
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
-const isBuildMode = ref(builderStore.isAIBuilderEnabled);
+const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
+const chatWidth = computed(() => chatPanelStore.width);
 
-const chatWidth = computed(() => {
-	return isBuildMode.value ? builderStore.chatWidth : assistantStore.chatWidth;
+// Show toggle only when both modes are available in current view
+const canToggleModes = computed(() => {
+	const currentRoute = route?.name;
+	return (
+		builderStore.isAIBuilderEnabled &&
+		currentRoute &&
+		BUILDER_ENABLED_VIEWS.includes(currentRoute as VIEWS)
+	);
 });
 
 function onResize(data: { direction: string; x: number; width: number }) {
-	builderStore.updateWindowWidth(data.width);
-	assistantStore.updateWindowWidth(data.width);
+	chatPanelStore.updateWidth(data.width);
 }
 
 function onResizeDebounced(data: { direction: string; x: number; width: number }) {
@@ -32,38 +44,33 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 }
 
 async function toggleAssistantMode() {
-	const wasOpen = builderStore.isAssistantOpen || assistantStore.isAssistantOpen;
+	const wasOpen = chatPanelStore.isOpen;
 	const switchingToBuild = !isBuildMode.value;
-
-	isBuildMode.value = !isBuildMode.value;
+	const newMode = switchingToBuild ? 'builder' : 'assistant';
 
 	if (wasOpen) {
-		// If chat is already open, just toggle the window flags without reloading
 		if (switchingToBuild) {
-			// Load sessions first if builder has no messages
+			// Load sessions before switching mode if builder has no messages
 			if (builderStore.chatMessages.length === 0) {
 				await builderStore.fetchBuilderCredits();
 				await builderStore.loadSessions();
 			}
-			builderStore.chatWindowOpen = true;
-			assistantStore.chatWindowOpen = false;
-		} else {
-			assistantStore.chatWindowOpen = true;
-			builderStore.chatWindowOpen = false;
 		}
+
+		// Now switch the mode - data is already loaded
+		chatPanelStore.switchMode(newMode);
 	} else {
 		// Opening from closed state - use full open logic
-		if (isBuildMode.value) {
-			await builderStore.openChat();
+		if (switchingToBuild) {
+			await chatPanelStore.open({ mode: 'builder' });
 		} else {
-			assistantStore.openChat();
+			await chatPanelStore.open({ mode: 'assistant' });
 		}
 	}
 }
 
 function onClose() {
-	builderStore.closeChat();
-	assistantStore.closeChat();
+	chatPanelStore.close();
 }
 
 function onSlideEnterComplete() {
@@ -77,14 +84,14 @@ function onSlideEnterComplete() {
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode
-	if (['toggleChat', 'openChat', 'initErrorHelper', 'initCredHelp'].includes(name)) {
-		isBuildMode.value = false;
+	if (['initErrorHelper', 'initCredHelp'].includes(name)) {
+		chatPanelStore.switchMode('assistant');
 	}
 });
 
 const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
-	if (['toggleChat', 'openChat', 'sendChatMessage'].includes(name)) {
-		isBuildMode.value = true;
+	if (['sendChatMessage'].includes(name)) {
+		chatPanelStore.switchMode('builder');
 	}
 });
 
@@ -97,9 +104,11 @@ onBeforeUnmount(() => {
 <template>
 	<SlideTransition @after-enter="onSlideEnterComplete">
 		<N8nResizeWrapper
-			v-show="builderStore.isAssistantOpen || assistantStore.isAssistantOpen"
+			v-show="chatPanelStore.isOpen"
 			:supported-directions="['left']"
 			:width="chatWidth"
+			:min-width="chatPanelStore.MIN_CHAT_WIDTH"
+			:max-width="chatPanelStore.MAX_CHAT_WIDTH"
 			:class="$style.resizeWrapper"
 			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
@@ -107,13 +116,13 @@ onBeforeUnmount(() => {
 			<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
 				<div :class="$style.assistantContent">
 					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
-						<template #header>
+						<template v-if="canToggleModes" #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>
 					</AskAssistantBuild>
 					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
-						<!-- Header switcher is only visible when AIBuilder is enabled -->
-						<template v-if="builderStore.isAIBuilderEnabled" #header>
+						<!-- Header switcher is only visible when both modes are available in current view -->
+						<template v-if="canToggleModes" #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>
 					</AskAssistantChat>

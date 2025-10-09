@@ -451,7 +451,7 @@ onMounted(() => {
 
 .scroller {
 	max-height: 100%;
-	scrollbar-color: var(--color-foreground-base) transparent;
+	scrollbar-color: var(--color--foreground) transparent;
 	outline: var(--border-base);
 
 	:global(.scrollerItem) {
@@ -539,7 +539,7 @@ onMounted(() => {
 }
 
 .tab {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	background-color: transparent;
 	border: 1px solid transparent;
 	padding: var(--spacing-2xs);
@@ -550,12 +550,12 @@ onMounted(() => {
 	flex-direction: column;
 	gap: 2px;
 	&:hover {
-		border-color: var(--color-background-base);
+		border-color: var(--color--background);
 	}
 }
 
 .tabActive {
-	background-color: var(--color-background-base);
-	color: var(--color-text-dark);
+	background-color: var(--color--background);
+	color: var(--color--text--shade-1);
 }
 </style>

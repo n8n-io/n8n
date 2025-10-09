@@ -30,7 +30,7 @@
 		// set empty text line height up to contrainer min-height as workaround.
 		line-height: 60px;
 		width: 50%;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 
 	// 展开行
@@ -44,7 +44,7 @@
 	@include mixins.e(expand-icon) {
 		position: relative;
 		cursor: pointer;
-		color: var(--color-text-base);
+		color: var(--color--text);
 		font-size: 12px;
 		transition: transform 0.2s ease-in-out;
 		height: 20px;
@@ -205,7 +205,7 @@
 			width: 100%;
 
 			&.highlight {
-				color: var(--color-primary);
+				color: var(--color--primary);
 			}
 		}
 
@@ -461,22 +461,22 @@
 		left: 7px;
 
 		&.ascending {
-			border-bottom-color: var(--color-text-light);
+			border-bottom-color: var(--color--text--tint-1);
 			top: 5px;
 		}
 
 		&.descending {
-			border-top-color: var(--color-text-light);
+			border-top-color: var(--color--text--tint-1);
 			bottom: 7px;
 		}
 	}
 
 	.ascending .sort-caret.ascending {
-		border-bottom-color: var(--color-primary);
+		border-bottom-color: var(--color--primary);
 	}
 
 	.descending .sort-caret.descending {
-		border-top-color: var(--color-primary);
+		border-top-color: var(--color--primary);
 	}
 
 	.hidden-columns {

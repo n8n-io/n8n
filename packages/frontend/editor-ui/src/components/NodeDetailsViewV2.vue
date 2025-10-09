@@ -883,7 +883,7 @@ onBeforeUnmount(() => {
 	background: var(--border-color-base);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	min-width: 0;
 }
 

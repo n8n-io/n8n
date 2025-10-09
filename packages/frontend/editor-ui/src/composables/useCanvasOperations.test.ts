@@ -8,8 +8,8 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
-import type { CanvasConnection, CanvasNode } from '@/types';
-import { CanvasConnectionMode } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/features/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -50,9 +50,9 @@ import {
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import { createCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
 import { nextTick, reactive, ref } from 'vue';
-import type { CanvasLayoutEvent } from './useCanvasLayout';
+import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
@@ -157,13 +157,13 @@ describe('useCanvasOperations', () => {
 	let workflowState: WorkflowState;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
+
 		const pinia = createTestingPinia({ initialState });
 		setActivePinia(pinia);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
-		vi.clearAllMocks();
 	});
 
 	describe('requireNodeTypeDescription', () => {
@@ -3783,6 +3783,8 @@ describe('useCanvasOperations', () => {
 	describe('replaceNodeParameters', () => {
 		it('should replace node parameters and track history', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowState = useWorkflowState();
+			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			const historyStore = mockedStore(useHistoryStore);
 
 			const nodeId = 'node1';
@@ -3796,12 +3798,14 @@ describe('useCanvasOperations', () => {
 				parameters: currentParameters,
 			});
 
+			workflowsStore.workflow.nodes = [node];
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: true });
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: newParameters,
 			});
@@ -3830,12 +3834,14 @@ describe('useCanvasOperations', () => {
 				parameters: currentParameters,
 			});
 
+			workflowsStore.workflow.nodes = [node];
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: false });
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: newParameters,
 			});
@@ -3849,12 +3855,14 @@ describe('useCanvasOperations', () => {
 			const currentParameters = { param1: 'value1' };
 			const newParameters = { param1: 'value2' };
 
+			workflowsStore.workflow.nodes = [];
 			workflowsStore.getNodeById.mockReturnValue(undefined);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters);
 
-			expect(workflowsStore.setNodeParameters).not.toHaveBeenCalled();
+			expect(setNodeParameters).not.toHaveBeenCalled();
 		});
 
 		it('should handle bulk tracking when replacing parameters for multiple nodes', () => {
@@ -3881,7 +3889,9 @@ describe('useCanvasOperations', () => {
 				parameters: currentParameters2,
 			});
 
+			workflowsStore.workflow.nodes = [node1, node2];
 			workflowsStore.getNodeById.mockReturnValueOnce(node1).mockReturnValueOnce(node2);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId1, currentParameters1, newParameters1, {
@@ -3895,7 +3905,7 @@ describe('useCanvasOperations', () => {
 
 			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
 			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledTimes(2);
+			expect(setNodeParameters).toHaveBeenCalledTimes(2);
 		});
 
 		it('should revert replaced node parameters', async () => {
@@ -3912,12 +3922,14 @@ describe('useCanvasOperations', () => {
 				parameters: newParameters,
 			});
 
+			workflowsStore.workflow.nodes = [node];
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { revertReplaceNodeParameters } = useCanvasOperations();
 			await revertReplaceNodeParameters(nodeId, currentParameters, newParameters);
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: currentParameters,
 			});
@@ -4224,7 +4236,177 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.addConnection).toHaveBeenCalledTimes(2);
 		});
 	});
+	describe('replaceNode', () => {
+		const sourceNode = createTestNode({ id: 'source', name: 'Source Node' });
+		const targetNode = createTestNode({ id: 'target', name: 'Target Node' });
+		const replacementNode = createTestNode({
+			id: 'replacement',
+			name: 'Replacement Node',
+		});
+		const nextNode = createTestNode({ id: 'next', name: 'Next Node' });
+		const connectionSourceMain0 = {
+			node: sourceNode.name,
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		};
+		const connectionSourceMain1 = {
+			node: sourceNode.name,
+			type: NodeConnectionTypes.Main,
+			index: 1,
+		};
+		const connectionTargetMain0 = {
+			node: targetNode.name,
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		};
+		const connectionTargetMain1 = {
+			node: targetNode.name,
+			type: NodeConnectionTypes.Main,
+			index: 1,
+		};
+		const connectionReplacementMain0 = {
+			node: replacementNode.name,
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		};
+		const connectionReplacementMain1 = {
+			node: replacementNode.name,
+			type: NodeConnectionTypes.Main,
+			index: 1,
+		};
 
+		const connectionNextMain0 = {
+			node: nextNode.name,
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		};
+
+		let historyStore: ReturnType<typeof mockedStore<typeof useHistoryStore>>;
+		let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+		beforeEach(() => {
+			historyStore = mockedStore(useHistoryStore);
+			nodeTypesStore = mockedStore(useNodeTypesStore);
+			workflowsStore = mockedStore(useWorkflowsStore);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+		});
+		afterEach(() => {
+			// Mock cleanup handled automatically by test isolation
+		});
+
+		describe('common cases', () => {
+			beforeEach(() => {
+				workflowsStore.workflow.nodes = [sourceNode, targetNode, replacementNode, nextNode];
+				workflowsStore.workflow.connections = {
+					[sourceNode.name]: {
+						[NodeConnectionTypes.Main]: [[connectionTargetMain0], [connectionTargetMain1]],
+					},
+					[targetNode.name]: {
+						[NodeConnectionTypes.Main]: [[connectionNextMain0]],
+					},
+				};
+
+				workflowsStore.getNodeById = vi.fn().mockImplementation((id) => {
+					if (id === sourceNode.id) return sourceNode;
+					if (id === targetNode.id) return targetNode;
+					if (id === replacementNode.id) return replacementNode;
+					if (id === nextNode.id) return nextNode;
+					return undefined;
+				});
+				workflowsStore.getNodeByName = vi.fn().mockImplementation((name) => {
+					if (name === sourceNode.name) return sourceNode;
+					if (name === targetNode.name) return targetNode;
+					if (name === replacementNode.name) return replacementNode;
+					if (name === nextNode.name) return nextNode;
+					return undefined;
+				});
+				workflowsStore.incomingConnectionsByNodeName = vi.fn().mockImplementation((name) => {
+					if (name === sourceNode.name) return {};
+					if (name === targetNode.name)
+						return {
+							[NodeConnectionTypes.Main]: [[connectionSourceMain0], [connectionSourceMain1]],
+						};
+					if (name === nextNode.name)
+						return {
+							[NodeConnectionTypes.Main]: [[connectionTargetMain0]],
+						};
+
+					return {};
+				});
+				workflowsStore.outgoingConnectionsByNodeName = vi.fn().mockImplementation((name) => {
+					if (name === sourceNode.name)
+						return {
+							[NodeConnectionTypes.Main]: [[connectionTargetMain0], [connectionTargetMain1]],
+						};
+					if (name === targetNode.name)
+						return {
+							[NodeConnectionTypes.Main]: [[connectionNextMain0]],
+						};
+					if (name === nextNode.name) return {};
+
+					return undefined;
+				});
+			});
+			it('should replace an existing node and track history', () => {
+				const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+				workflowsStore.workflowObject = workflowObject;
+
+				const { replaceNode } = useCanvasOperations();
+				replaceNode(targetNode.id, replacementNode.id, { trackHistory: true });
+
+				expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(6);
+				// These are called twice with the same input, once for input connections, once for output connections
+				expect(workflowsStore.removeConnection).toHaveBeenNthCalledWith(1, {
+					connection: [connectionSourceMain0, connectionTargetMain0],
+				});
+				expect(workflowsStore.removeConnection).toHaveBeenNthCalledWith(2, {
+					connection: [connectionSourceMain1, connectionTargetMain1],
+				});
+				expect(workflowsStore.removeConnection).toHaveBeenNthCalledWith(3, {
+					connection: [connectionTargetMain0, connectionNextMain0],
+				});
+				expect(workflowsStore.removeConnection).toHaveBeenNthCalledWith(4, {
+					connection: [connectionSourceMain0, connectionTargetMain0],
+				});
+				expect(workflowsStore.removeConnection).toHaveBeenNthCalledWith(5, {
+					connection: [connectionSourceMain1, connectionTargetMain1],
+				});
+				expect(workflowsStore.removeConnection).toHaveBeenNthCalledWith(6, {
+					connection: [connectionTargetMain0, connectionNextMain0],
+				});
+				expect(workflowsStore.addConnection).toHaveBeenCalledTimes(4);
+				expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+					connection: [connectionSourceMain0, connectionReplacementMain0],
+				});
+				expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+					connection: [connectionSourceMain1, connectionReplacementMain1],
+				});
+				expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+					connection: [connectionReplacementMain0, connectionNextMain0],
+				});
+				expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(targetNode.id);
+
+				expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+				expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			});
+		});
+		it('should not track history if flag is false', () => {
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const { replaceNode } = useCanvasOperations();
+			replaceNode(targetNode.id, replacementNode.id, { trackHistory: false });
+
+			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
+		});
+	});
 	describe('openWorkflowTemplate', () => {
 		let templatesStore: ReturnType<typeof mockedStore<typeof useTemplatesStore>>;
 		let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;

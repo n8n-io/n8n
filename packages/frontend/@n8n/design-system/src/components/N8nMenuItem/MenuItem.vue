@@ -100,7 +100,7 @@ const iconColor = computed(() => {
 
 .router-link-active,
 .active {
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 
 .menuItem {
@@ -110,7 +110,7 @@ const iconColor = computed(() => {
 	padding: var(--spacing-3xs);
 	gap: var(--spacing-3xs);
 	cursor: pointer;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	border-radius: var(--spacing-4xs);
 	cursor: pointer;
 	min-width: 0;
@@ -118,17 +118,17 @@ const iconColor = computed(() => {
 	position: relative;
 
 	&:hover .menuItemIcon {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 
 .menuItem:hover {
-	background-color: var(--color-foreground-base);
-	color: var(--color-text-dark);
+	background-color: var(--color--foreground);
+	color: var(--color--text--shade-1);
 }
 
 .menuItem:focus-visible {
-	outline: 1px solid var(--color-secondary);
+	outline: 1px solid var(--color--secondary);
 	outline-offset: -1px;
 }
 
@@ -142,7 +142,7 @@ const iconColor = computed(() => {
 }
 
 .menuItemText * {
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .menuItemIcon {
@@ -158,7 +158,7 @@ const iconColor = computed(() => {
 		right: calc(var(--spacing-5xs) * -1);
 		width: var(--spacing-4xs);
 		height: var(--spacing-4xs);
-		background-color: var(--color-danger);
+		background-color: var(--color--danger);
 		border-radius: 50%;
 	}
 }
@@ -170,7 +170,7 @@ const iconColor = computed(() => {
 
 .menuItem.active {
 	.menuItemIcon {
-		color: var(--color-foreground-xdark);
+		color: var(--color--foreground--shade-2);
 	}
 }
 </style>
