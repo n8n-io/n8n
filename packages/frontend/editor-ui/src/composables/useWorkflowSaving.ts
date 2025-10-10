@@ -399,7 +399,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 					value: changedNodes[nodeName],
 					name: nodeName,
 				} as IUpdateInformation;
-				workflowsStore.setNodeValue(changes);
+				workflowState.setNodeValue(changes);
 			});
 
 			const createdTags = (workflowData.tags || []) as ITag[];

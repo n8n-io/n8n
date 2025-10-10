@@ -60,6 +60,7 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 type Props = {
 	modalName: string;
@@ -74,6 +75,7 @@ const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 
@@ -1040,7 +1042,7 @@ async function onAuthTypeChanged(type: string): Promise<void> {
 		uiStore.activeCredentialType = credentialsForType.name;
 		resetCredentialData();
 		// Update current node auth type so credentials dropdown can be displayed properly
-		updateNodeAuthType(ndvStore.activeNode, type);
+		updateNodeAuthType(workflowState, ndvStore.activeNode, type);
 		// Also update credential name but only if the default name is still used
 		if (hasUnsavedChanges.value && !hasUserSpecifiedName.value) {
 			const newDefaultName = await credentialsStore.getNewCredentialName({
