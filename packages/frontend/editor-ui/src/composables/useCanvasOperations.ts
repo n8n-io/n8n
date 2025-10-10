@@ -117,7 +117,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
