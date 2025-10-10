@@ -4,7 +4,7 @@ import isObject from 'lodash/isObject';
 import { isObjectEmpty, jsonParse, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 
-import { readBinaryData } from './binary';
+import { getBinaryDataFile } from '../../../../helpers/binary-data';
 import type {
 	ChatContent,
 	ChatInputItem,
@@ -37,16 +37,17 @@ export async function formatInputMessages(
 				const detail = (message.imageDetail as ResponseInputImage['detail']) || ('auto' as const);
 
 				if (message.imageType === 'base64') {
-					const { buffer, binaryData } = await readBinaryData.call(
+					const { fileContent, contentType } = await getBinaryDataFile(
 						this,
 						i,
 						message.binaryPropertyName as string,
 					);
+					const buffer = await this.helpers.binaryToBuffer(fileContent);
 					content = [
 						{
 							type: 'input_image',
 							detail,
-							image_url: `data:${binaryData.mimeType};base64,${buffer.toString('base64')}`,
+							image_url: `data:${contentType};base64,${buffer.toString('base64')}`,
 						},
 					];
 				} else {

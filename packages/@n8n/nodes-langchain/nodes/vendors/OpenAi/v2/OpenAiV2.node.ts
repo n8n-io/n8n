@@ -15,6 +15,7 @@ import * as conversation from './actions/conversation';
 import * as file from './actions/file';
 import * as image from './actions/image';
 import * as text from './actions/text';
+import * as video from './actions/video';
 
 export class OpenAiV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -62,6 +63,10 @@ export class OpenAiV2 implements INodeType {
 							name: 'Conversation',
 							value: 'conversation',
 						},
+						{
+							name: 'Video',
+							value: 'video',
+						},
 					],
 					default: 'text',
 				},
@@ -70,6 +75,7 @@ export class OpenAiV2 implements INodeType {
 				...image.description,
 				...text.description,
 				...conversation.description,
+				...video.description,
 			],
 		};
 	}

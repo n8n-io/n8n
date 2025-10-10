@@ -1,17 +1,18 @@
 import {
+	NodeApiError,
 	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeApiError,
 } from 'n8n-workflow';
 
+import { getCustomErrorMessage } from '../../helpers/error-handling';
+import type { OpenAiType } from './node.type';
 import * as audio from './audio';
+import * as conversation from './conversation';
 import * as file from './file';
 import * as image from './image';
-import type { OpenAiType } from './node.type';
 import * as text from './text';
-import { getCustomErrorMessage } from '../../helpers/error-handling';
-import * as conversation from './conversation';
+import * as video from './video';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
@@ -41,6 +42,9 @@ export async function router(this: IExecuteFunctions) {
 			break;
 		case 'conversation':
 			execute = conversation[openAiTypeData.operation].execute;
+			break;
+		case 'video':
+			execute = video[openAiTypeData.operation].execute;
 			break;
 		default:
 			throw new NodeOperationError(

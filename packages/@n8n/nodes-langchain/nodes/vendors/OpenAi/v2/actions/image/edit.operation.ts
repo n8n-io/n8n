@@ -7,8 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
+import { getBinaryDataFile } from '../../../helpers/binary-data';
 import { apiRequest } from '../../../transport';
-import { readBinaryData } from '../text/helpers/binary';
 
 export const properties: INodeProperties[] = [
 	{
@@ -392,18 +392,24 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.filter((n): n is string => Boolean(n));
 
 		for (const fieldName of imageFieldNames) {
-			const { buffer, binaryData } = await readBinaryData.call(this, i, fieldName);
+			const { fileContent, contentType, filename } = await getBinaryDataFile(this, i, fieldName);
+			const buffer = await this.helpers.binaryToBuffer(fileContent);
 			formData.append('image[]', buffer, {
-				filename: binaryData.fileName,
-				contentType: binaryData.mimeType,
+				filename,
+				contentType,
 			});
 		}
 	} else {
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-		const { buffer, binaryData } = await readBinaryData.call(this, i, binaryPropertyName);
+		const { fileContent, contentType, filename } = await getBinaryDataFile(
+			this,
+			i,
+			binaryPropertyName,
+		);
+		const buffer = await this.helpers.binaryToBuffer(fileContent);
 		formData.append('image', buffer, {
-			filename: binaryData.fileName,
-			contentType: binaryData.mimeType,
+			filename,
+			contentType,
 		});
 	}
 
@@ -439,10 +445,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (options.imageMask && typeof options.imageMask === 'string') {
-		const { buffer, binaryData } = await readBinaryData.call(this, i, options.imageMask);
+		const { fileContent, contentType, filename } = await getBinaryDataFile(
+			this,
+			i,
+			options.imageMask,
+		);
+		const buffer = await this.helpers.binaryToBuffer(fileContent);
 		formData.append('mask', buffer, {
-			filename: binaryData.fileName,
-			contentType: binaryData.mimeType,
+			filename,
+			contentType,
 		});
 	}
 

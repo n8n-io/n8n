@@ -110,3 +110,21 @@ export type ExternalApiCallOptions = {
 	requestOptions: IDataObject;
 	sendParametersIn: string;
 };
+
+export type VideoJob = {
+	id: string;
+	completed_at?: number;
+	created_at: number;
+	error?: {
+		code: string;
+		message: string;
+	};
+	expires_at?: number;
+	model: string;
+	object: 'video';
+	progress?: number;
+	remixed_from_video_id?: string;
+	seconds: string;
+	size: string;
+	status: 'completed' | 'queued' | 'in_progress';
+};

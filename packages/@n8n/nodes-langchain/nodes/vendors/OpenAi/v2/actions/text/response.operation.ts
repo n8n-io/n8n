@@ -616,126 +616,121 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	try {
-		const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
-		const messages = this.getNodeParameter('responses.values', i, []) as IDataObject[];
-		const options = this.getNodeParameter('options', i, {});
-		const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
-		const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
-		const abortSignal = this.getExecutionCancelSignal();
+	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
+	const messages = this.getNodeParameter('responses.values', i, []) as IDataObject[];
+	const options = this.getNodeParameter('options', i, {});
+	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
+	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
+	const abortSignal = this.getExecutionCancelSignal();
 
-		const hideTools = this.getNodeParameter('hideTools', i, '') as string;
+	const hideTools = this.getNodeParameter('hideTools', i, '') as string;
 
-		let tools;
-		let externalTools: Tool[] = [];
+	let tools;
+	let externalTools: Tool[] = [];
 
-		if (hideTools !== 'hide') {
-			const enforceUniqueNames = true;
-			externalTools = await getConnectedTools(this, enforceUniqueNames, false);
+	if (hideTools !== 'hide') {
+		const enforceUniqueNames = true;
+		externalTools = await getConnectedTools(this, enforceUniqueNames, false);
+	}
+
+	if (externalTools.length) {
+		tools = externalTools.length ? externalTools?.map(formatToOpenAIResponsesTool) : undefined;
+	}
+
+	const body = await createRequest.call(this, i, {
+		model,
+		messages,
+		options,
+		tools,
+		builtInTools,
+	});
+	let response = (await apiRequest.call(this, 'POST', '/responses', {
+		body,
+	})) as ChatResponse;
+
+	if (!response) return [];
+
+	let toolCalls = response.output.filter((item) => item.type === 'function_call');
+	const answeredToolCalls = new Set<string>();
+	let currentIteration = 1;
+	while (toolCalls.length) {
+		if (
+			abortSignal?.aborted ||
+			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
+		) {
+			break;
 		}
 
-		if (externalTools.length) {
-			tools = externalTools.length ? externalTools?.map(formatToOpenAIResponsesTool) : undefined;
+		for (const item of toolCalls) {
+			if (item.type !== 'function_call' || answeredToolCalls.has(item.call_id)) {
+				continue;
+			}
+			body.input.push(item);
+			const functionName = item.name;
+			const functionArgs = item.arguments;
+			const callId = item.call_id;
+
+			let functionResponse;
+			for (const tool of externalTools ?? []) {
+				if (tool.name === functionName) {
+					const parsedArgs: { input: string } = jsonParse(functionArgs);
+					const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
+					functionResponse = await tool.invoke(functionInput);
+				}
+
+				if (typeof functionResponse === 'object') {
+					functionResponse = JSON.stringify(functionResponse);
+				}
+			}
+
+			body.input.push({
+				type: 'function_call_output',
+				call_id: callId,
+				output: functionResponse,
+			});
+
+			answeredToolCalls.add(callId);
 		}
 
-		const body = await createRequest.call(this, i, {
-			model,
-			messages,
-			options,
-			tools,
-			builtInTools,
-		});
-		let response = (await apiRequest.call(this, 'POST', '/responses', {
+		response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
 		})) as ChatResponse;
+		toolCalls = response.output.filter((item) => item.type === 'function_call');
 
-		if (!response) return [];
-
-		let toolCalls = response.output.filter((item) => item.type === 'function_call');
-		const answeredToolCalls = new Set<string>();
-		let currentIteration = 1;
-		while (toolCalls.length) {
-			if (
-				abortSignal?.aborted ||
-				(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
-			) {
-				break;
-			}
-
-			for (const item of toolCalls) {
-				if (item.type !== 'function_call' || answeredToolCalls.has(item.call_id)) {
-					continue;
-				}
-				body.input.push(item);
-				const functionName = item.name;
-				const functionArgs = item.arguments;
-				const callId = item.call_id;
-
-				let functionResponse;
-				for (const tool of externalTools ?? []) {
-					if (tool.name === functionName) {
-						const parsedArgs: { input: string } = jsonParse(functionArgs);
-						const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
-						functionResponse = await tool.invoke(functionInput);
-					}
-
-					if (typeof functionResponse === 'object') {
-						functionResponse = JSON.stringify(functionResponse);
-					}
-				}
-
-				body.input.push({
-					type: 'function_call_output',
-					call_id: callId,
-					output: functionResponse,
-				});
-
-				answeredToolCalls.add(callId);
-			}
-
-			response = (await apiRequest.call(this, 'POST', '/responses', {
-				body,
-			})) as ChatResponse;
-			toolCalls = response.output.filter((item) => item.type === 'function_call');
-
-			currentIteration++;
-		}
-
-		const formatType = get(body, 'text.format.type');
-		if (formatType === 'json_object' || formatType === 'json_schema') {
-			try {
-				response.output = response.output.map((item) => {
-					if (item.type === 'message') {
-						item.content = item.content.map((content) => {
-							if (content.type === 'output_text') {
-								content.text = JSON.parse(content.text);
-							}
-							return content;
-						});
-					}
-					return item;
-				});
-			} catch (error) {}
-		}
-
-		const simplify = this.getNodeParameter('simplify', i) as boolean;
-
-		const returnData: INodeExecutionData[] = [];
-
-		if (simplify) {
-			for (const entry of response.output) {
-				returnData.push({
-					json: entry as unknown as IDataObject,
-					pairedItem: { item: i },
-				});
-			}
-		} else {
-			returnData.push({ json: response as unknown as IDataObject, pairedItem: { item: i } });
-		}
-
-		return returnData;
-	} catch (error) {
-		console.error(error);
-		throw error;
+		currentIteration++;
 	}
+
+	const formatType = get(body, 'text.format.type');
+	if (formatType === 'json_object' || formatType === 'json_schema') {
+		try {
+			response.output = response.output.map((item) => {
+				if (item.type === 'message') {
+					item.content = item.content.map((content) => {
+						if (content.type === 'output_text') {
+							content.text = JSON.parse(content.text);
+						}
+						return content;
+					});
+				}
+				return item;
+			});
+		} catch (error) {}
+	}
+
+	const simplify = this.getNodeParameter('simplify', i) as boolean;
+
+	const returnData: INodeExecutionData[] = [];
+
+	if (simplify) {
+		for (const entry of response.output) {
+			returnData.push({
+				json: entry as unknown as IDataObject,
+				pairedItem: { item: i },
+			});
+		}
+	} else {
+		returnData.push({ json: response as unknown as IDataObject, pairedItem: { item: i } });
+	}
+
+	return returnData;
 }

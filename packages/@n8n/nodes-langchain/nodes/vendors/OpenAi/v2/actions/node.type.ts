@@ -6,6 +6,7 @@ type NodeMap = {
 	image: 'generate' | 'analyze';
 	text: 'message' | 'classify';
 	conversation: 'create' | 'get' | 'update' | 'remove';
+	video: 'generate';
 };
 
 export type OpenAiType = AllEntities<NodeMap>;

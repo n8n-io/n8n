@@ -4,13 +4,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
-import { readBinaryData } from '../text/helpers/binary';
+import { getBinaryDataFile } from '../../../helpers/binary-data';
 
 const properties: INodeProperties[] = [
 	{
@@ -168,17 +168,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.map((propertyName) => propertyName.trim());
 
 		for (const propertyName of binaryPropertyName) {
-			const { buffer, binaryData } = await readBinaryData.call(this, i, propertyName);
+			const { fileContent, contentType } = await getBinaryDataFile(this, i, propertyName);
+			const buffer = await this.helpers.binaryToBuffer(fileContent);
 			const fileBase64 = buffer.toString('base64');
-
-			if (!binaryData) {
-				throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-			}
 
 			content.push({
 				type: 'input_image',
 				detail,
-				image_url: `data:${binaryData.mimeType};base64,${fileBase64}`,
+				image_url: `data:${contentType};base64,${fileBase64}`,
 			});
 		}
 	}
