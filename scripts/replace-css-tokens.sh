@@ -8,10 +8,12 @@ FRONTEND_DIR="./packages/frontend"
 
 # Find all files in frontend folder except _tokens.scss (which is already updated)
 echo "Finding files to process..."
-files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss")
+# files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss")
+files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
+echo "$files"
 
 file_count=$(echo "$files" | wc -l | xargs)
-echo "Found $file_count files to process"
+echo "Found $file_count files to process test $files"
 echo ""
 echo "Starting token replacements..."
 echo ""
@@ -186,9 +188,9 @@ echo ""
 
 # Canvas tokens
 echo "[17] Replacing canvas tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-canvas-background-h/--canvas--color-background-h/g'
-echo "$files" | xargs perl -pi -e 's/--color-canvas-background-s/--canvas--color-background-s/g'
-echo "$files" | xargs perl -pi -e 's/--color-canvas-background-l/--canvas--color-background-l/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-background-h/--canvas--color-background--h/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-background-s/--canvas--color-background--s/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-background-l/--canvas--color-background--l/g'
 echo "$files" | xargs perl -pi -e 's/--color-canvas-background/--canvas--color-background/g'
 echo "$files" | xargs perl -pi -e 's/--color-canvas-dot/--canvas--dot--color/g'
 echo "$files" | xargs perl -pi -e 's/--color-canvas-read-only-line/--canvas--read-only-line--color/g'
@@ -357,7 +359,7 @@ echo "$files" | xargs perl -pi -e 's/--tag-background-hover-color/--tag--color-b
 echo "$files" | xargs perl -pi -e 's/--tag-background-color/--tag--color-background/g'
 echo "$files" | xargs perl -pi -e 's/--tag-border-hover-color/--tag--border-color--hover/g'
 echo "$files" | xargs perl -pi -e 's/--tag-border-color/--tag--border-color/g'
-echo "$files" | xargs perl -pi -e 's/--tag-border-radius/--tag--border-radius/g'
+echo "$files" | xargs perl -pi -e 's/--tag-border-radius/--tag--radius/g'
 echo "$files" | xargs perl -pi -e 's/--tag-text-color/--tag--color-text/g'
 echo "$files" | xargs perl -pi -e 's/--tag-font-size/--tag--font-size/g'
 echo "$files" | xargs perl -pi -e 's/--tag-font-weight/--tag--font-weight/g'
@@ -417,7 +419,7 @@ echo "$files" | xargs perl -pi -e 's/--input-disabled-border/--input--border-col
 echo "$files" | xargs perl -pi -e 's/--input-disabled-color/--input--color--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--input-placeholder-color/--input--placeholder--color/g'
 echo "$files" | xargs perl -pi -e 's/--input-background-color/--input--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--input-border-radius/--input--border-radius/g'
+echo "$files" | xargs perl -pi -e 's/--input-border-radius/--input--radius/g'
 echo "$files" | xargs perl -pi -e 's/--input-border-color/--input--border-color/g'
 echo "$files" | xargs perl -pi -e 's/--input-label-color/--input--label--color/g'
 echo "$files" | xargs perl -pi -e 's/--input-font-size/--input--font-size/g'
