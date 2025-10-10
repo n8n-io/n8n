@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as permissionsModule from '@n8n/permissions';
 import { useDataTableNavigationCommands } from './useDataTableNavigationCommands';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -36,6 +37,15 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 			return key;
 		},
 	}),
+}));
+
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal()),
+	getResourcePermissions: vi.fn(() => ({
+		dataTable: {
+			create: true,
+		},
+	})),
 }));
 
 describe('useDataTableNavigationCommands', () => {
@@ -109,6 +119,7 @@ describe('useDataTableNavigationCommands', () => {
 		mockSourceControlStore.preferences.branchReadOnly = false;
 
 		vi.clearAllMocks();
+		vi.mocked(permissionsModule).getResourcePermissions.mockRestore();
 	});
 
 	describe('create data table command', () => {
@@ -132,6 +143,22 @@ describe('useDataTableNavigationCommands', () => {
 				currentProjectName: ref('Team Project'),
 			});
 
+			const createCommand = commands.value.find((cmd) => cmd.id === 'create-data-table');
+			expect(createCommand).toBeUndefined();
+		});
+
+		it('should not include create data table command when user has no permission', () => {
+			vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
+				dataTable: {
+					create: false,
+				},
+			} as unknown as permissionsModule.PermissionsRecord);
+
+			const { commands } = useDataTableNavigationCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+				currentProjectName: ref('Team Project'),
+			});
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-data-table');
 			expect(createCommand).toBeUndefined();
 		});

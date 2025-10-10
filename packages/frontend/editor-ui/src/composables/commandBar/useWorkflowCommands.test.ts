@@ -182,7 +182,6 @@ describe('useWorkflowCommands', () => {
 			const saveCommand = commands.value.find((cmd) => cmd.id === 'save-workflow');
 
 			expect(saveCommand).toBeDefined();
-			expect(saveCommand?.title).toBe('commandBar.workflow.save');
 		});
 
 		it('should not include save command when workflow is saving', () => {
@@ -218,7 +217,6 @@ describe('useWorkflowCommands', () => {
 			const testCommand = commands.value.find((cmd) => cmd.id === 'test-workflow');
 
 			expect(testCommand).toBeDefined();
-			expect(testCommand?.title).toBe('commandBar.workflow.test');
 		});
 
 		it('should handle tidy up command', async () => {

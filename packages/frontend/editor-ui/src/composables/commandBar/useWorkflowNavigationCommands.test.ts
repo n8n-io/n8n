@@ -12,6 +12,7 @@ import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl
 import { useFoldersStore } from '@/features/folders/folders.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import * as permissionsModule from '@n8n/permissions';
 
 vi.mock('lodash/debounce', () => ({
 	default: (fn: (...args: unknown[]) => unknown) => fn,
@@ -40,6 +41,15 @@ vi.mock('@/components/Node/NodeCreator/composables/useActionsGeneration', () => 
 			mergedNodes: visibleNodeTypes,
 		}),
 	}),
+}));
+
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal()),
+	getResourcePermissions: vi.fn(() => ({
+		workflow: {
+			create: true,
+		},
+	})),
 }));
 
 describe('useWorkflowNavigationCommands', () => {
@@ -151,6 +161,7 @@ describe('useWorkflowNavigationCommands', () => {
 		});
 
 		resolveMock.mockClear();
+		vi.mocked(permissionsModule).getResourcePermissions.mockRestore();
 	});
 
 	it('exposes create and open commands, respecting read-only mode', () => {
@@ -164,6 +175,21 @@ describe('useWorkflowNavigationCommands', () => {
 		expect(ids).toEqual(expect.arrayContaining(['create-workflow', 'open-workflow']));
 
 		mockSourceControlStore.preferences.branchReadOnly = true;
+		const apiReadOnly = useWorkflowNavigationCommands({
+			lastQuery: ref(''),
+			activeNodeId: ref(null),
+			currentProjectName: ref('My Project'),
+		});
+		const idsReadOnly = apiReadOnly.commands.value.map((c) => c.id);
+		expect(idsReadOnly).not.toContain('create-workflow');
+	});
+
+	it('should not include create workflow command when user has no permission', () => {
+		vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
+			workflow: {
+				create: false,
+			},
+		} as unknown as permissionsModule.PermissionsRecord);
 		const apiReadOnly = useWorkflowNavigationCommands({
 			lastQuery: ref(''),
 			activeNodeId: ref(null),

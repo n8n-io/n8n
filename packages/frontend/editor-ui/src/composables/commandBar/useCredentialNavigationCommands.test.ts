@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as permissionsModule from '@n8n/permissions';
 import { useCredentialNavigationCommands } from './useCredentialNavigationCommands';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -27,6 +28,15 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+}));
+
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal()),
+	getResourcePermissions: vi.fn(() => ({
+		credential: {
+			create: true,
+		},
+	})),
 }));
 
 describe('useCredentialNavigationCommands', () => {
@@ -111,6 +121,7 @@ describe('useCredentialNavigationCommands', () => {
 		mockSourceControlStore.preferences.branchReadOnly = false;
 
 		vi.clearAllMocks();
+		vi.mocked(permissionsModule).getResourcePermissions.mockRestore();
 	});
 
 	describe('initialize', () => {
@@ -149,6 +160,21 @@ describe('useCredentialNavigationCommands', () => {
 				currentProjectName: ref('Team Project'),
 			});
 
+			const createCommand = commands.value.find((cmd) => cmd.id === 'create-credential');
+			expect(createCommand).toBeUndefined();
+		});
+
+		it('should not include create credential command when user has no permission', () => {
+			vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
+				credential: {
+					create: false,
+				},
+			} as unknown as permissionsModule.PermissionsRecord);
+			const { commands } = useCredentialNavigationCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+				currentProjectName: ref('Team Project'),
+			});
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-credential');
 			expect(createCommand).toBeUndefined();
 		});
