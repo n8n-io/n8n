@@ -576,9 +576,9 @@ defineExpose({
 
 .header {
 	height: 65px; // same as header height in editor
-	padding: 0 var(--spacing-l);
+	padding: 0 var(--spacing--lg);
 	background-color: var(--color--background--light-3);
-	border: var(--border-base);
+	border: var(--border);
 	border-top: 0;
 	display: flex;
 
@@ -594,13 +594,13 @@ defineExpose({
 
 .betaTag {
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 }
 
 .body {
 	background-color: var(--color--background--light-2);
-	border: var(--border-base);
+	border: var(--border);
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
@@ -612,7 +612,7 @@ defineExpose({
 }
 
 .placeholder {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -637,45 +637,45 @@ defineExpose({
 }
 
 .messagesContent {
-	padding: var(--spacing-xs);
-	padding-bottom: var(--spacing-xl); // Extra padding for fade area
+	padding: var(--spacing--xs);
+	padding-bottom: var(--spacing--xl); // Extra padding for fade area
 }
 
 .message {
-	margin-bottom: var(--spacing-s);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-xloose);
+	margin-bottom: var(--spacing--sm);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--xl);
 }
 
 .firstToolMessage {
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing--md);
 }
 
 .lastToolMessage {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 }
 
 .chatTitle {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .headerText {
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .assistantTitle {
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .greeting {
 	color: var(--color--text--shade-1);
-	font-size: var(--font-size-m);
-	margin-bottom: var(--spacing-s);
+	font-size: var(--font-size--md);
+	margin-bottom: var(--spacing--sm);
 }
 
 .info {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	color: var(--color--text);
 
 	button {
@@ -688,34 +688,34 @@ defineExpose({
 }
 
 .quickReplies {
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 
 	> * {
-		margin-bottom: var(--spacing-3xs);
+		margin-bottom: var(--spacing--3xs);
 	}
 }
 
 .quickRepliesTitle {
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	color: var(--color--text);
 }
 
 .inputWrapper {
-	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
 	background-color: transparent;
 	width: 100%;
 	position: relative;
-	border-left: var(--border-base);
-	border-right: var(--border-base);
+	border-left: var(--border);
+	border-right: var(--border);
 
 	// Add a gradient fade from the chat to the input
 	&::before {
 		content: '';
 		position: absolute;
-		top: calc(-1 * var(--spacing-m));
+		top: calc(-1 * var(--spacing--md));
 		left: 0;
-		right: var(--spacing-xs);
-		height: var(--spacing-m);
+		right: var(--spacing--xs);
+		height: var(--spacing--md);
 		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
 		pointer-events: none;
 		z-index: 1;

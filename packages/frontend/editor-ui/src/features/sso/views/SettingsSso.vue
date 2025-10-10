@@ -585,13 +585,13 @@ async function onOidcSettingsSave() {
 
 <style lang="scss" module>
 .heading {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .switch {
 	span {
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--bold);
 		color: var(--color--text--tint-1);
 	}
 }
@@ -599,37 +599,37 @@ async function onOidcSettingsSave() {
 .buttons {
 	display: flex;
 	justify-content: flex-start;
-	padding: var(--spacing-2xl) 0 var(--spacing-2xs);
+	padding: var(--spacing--2xl) 0 var(--spacing--2xs);
 
 	button {
-		margin: 0 var(--spacing-s) 0 0;
+		margin: 0 var(--spacing--sm) 0 0;
 	}
 }
 
 .group {
-	padding: var(--spacing-xl) 0 0;
+	padding: var(--spacing--xl) 0 0;
 
 	> label {
 		display: inline-block;
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-medium);
-		padding: 0 0 var(--spacing-2xs);
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--medium);
+		padding: 0 0 var(--spacing--2xs);
 	}
 
 	small {
 		display: block;
-		padding: var(--spacing-2xs) 0 0;
-		font-size: var(--font-size-2xs);
+		padding: var(--spacing--2xs) 0 0;
+		font-size: var(--font-size--2xs);
 		color: var(--color--text);
 	}
 }
 
 .actionBox {
-	margin: var(--spacing-2xl) 0 0;
+	margin: var(--spacing--2xl) 0 0;
 }
 
 .footer {
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 </style>

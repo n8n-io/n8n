@@ -412,28 +412,28 @@ function onDragEnd() {
 <style lang="scss" module>
 .dataPanel {
 	position: absolute;
-	height: calc(100% - 2 * var(--spacing-l));
+	height: calc(100% - 2 * var(--spacing--lg));
 	position: absolute;
-	top: var(--spacing-l);
+	top: var(--spacing--lg);
 	z-index: 0;
 	min-width: 280px;
 }
 
 .inputPanel {
 	composes: dataPanel;
-	left: var(--spacing-l);
+	left: var(--spacing--lg);
 
 	> * {
-		border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
+		border-radius: var(--radius--lg) 0 0 var(--radius--lg);
 	}
 }
 
 .outputPanel {
 	composes: dataPanel;
-	right: var(--spacing-l);
+	right: var(--spacing--lg);
 
 	> * {
-		border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
+		border-radius: 0 var(--radius--lg) var(--radius--lg) 0;
 	}
 }
 
@@ -450,8 +450,8 @@ function onDragEnd() {
 
 .mainPanelInner {
 	height: 100%;
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
+	border: var(--border);
+	border-radius: var(--radius--lg);
 	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
 	overflow: hidden;
 

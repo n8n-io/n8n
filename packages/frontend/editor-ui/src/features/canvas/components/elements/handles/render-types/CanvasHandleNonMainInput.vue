@@ -74,7 +74,7 @@ function onClickAdd() {
 	top: 20px;
 	left: 50%;
 	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--node-type-supplemental-color);
 	background: var(--color-canvas-label-background);
 	z-index: 1;

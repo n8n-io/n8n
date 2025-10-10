@@ -55,6 +55,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .container {
-	margin: 0 var(--spacing-4xs);
+	margin: 0 var(--spacing--4xs);
 }
 </style>

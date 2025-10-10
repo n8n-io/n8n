@@ -213,18 +213,18 @@ watchEffect(async () => {
 
 <style lang="scss" module>
 .header {
-	border-bottom: 1px solid var(--border-color-base);
-	padding-bottom: var(--spacing-s);
+	border-bottom: 1px solid var(--border-color);
+	padding-bottom: var(--spacing--sm);
 }
 
 .tab {
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 }
 
 .suggestions {
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	overflow-x: auto;
 	min-height: 182px;
 }
@@ -239,7 +239,7 @@ watchEffect(async () => {
 .videos {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	overflow-x: auto;
 }
 
@@ -247,8 +247,8 @@ watchEffect(async () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-l);
+	gap: var(--spacing--xs);
+	padding: var(--spacing--lg);
 	color: var(--color--text--tint-1);
 }
 </style>

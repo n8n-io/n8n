@@ -241,21 +241,21 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 	width: 300px;
 
 	.popover-header {
-		padding: var(--spacing-2xs);
-		border-bottom: var(--border-base);
+		padding: var(--spacing--2xs);
+		border-bottom: var(--border);
 	}
 
 	.popover-body {
-		padding: var(--spacing-xs);
+		padding: var(--spacing--xs);
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-xs);
+		gap: var(--spacing--xs);
 	}
 
 	.error-message {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
+		gap: var(--spacing--4xs);
 		color: var(--color--text--danger);
 	}
 
@@ -266,6 +266,6 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 .add-column-option-content {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 </style>

@@ -214,7 +214,7 @@ const getListItemName = (path: string) => {
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 	right: 0;
 	overflow-y: hidden;
 	line-height: 1.5;
@@ -246,7 +246,7 @@ const getListItemName = (path: string) => {
 	}
 
 	&.compact {
-		padding-left: var(--spacing-2xs);
+		padding-left: var(--spacing--2xs);
 	}
 }
 </style>
@@ -255,7 +255,7 @@ const getListItemName = (path: string) => {
 .vjs-tree {
 	color: var(--color-json-default);
 	--color-line-break: var(--color-code-line-break);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .vjs-tree-node {
@@ -273,14 +273,14 @@ const getListItemName = (path: string) => {
 	> span {
 		color: var(--color--text--shade-1);
 		line-height: 1.7;
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 	}
 }
 
 .vjs-value {
 	> span {
-		padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
-		margin-left: var(--spacing-5xs);
+		padding: 0 var(--spacing--5xs) 0 var(--spacing--5xs);
+		margin-left: var(--spacing--5xs);
 		white-space: pre-wrap;
 	}
 }
@@ -330,6 +330,6 @@ const getListItemName = (path: string) => {
 }
 
 .vjs-tree .vjs-tree-list-holder-inner {
-	padding-bottom: var(--spacing-3xl);
+	padding-bottom: var(--spacing--3xl);
 }
 </style>

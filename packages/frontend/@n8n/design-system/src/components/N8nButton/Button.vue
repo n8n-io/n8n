@@ -85,12 +85,12 @@ const classes = computed(() => {
 .el-button {
 	@include Button.n8n-button(true);
 
-	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--2xs);
+	--button-padding-horizontal: var(--spacing--xs);
+	--button-font-size: var(--font-size--2xs);
 
 	+ .el-button {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 
 	&.btn--cancel,
@@ -144,9 +144,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  */
 
 .xmini {
-	--button-padding-vertical: var(--spacing-4xs);
-	--button-padding-horizontal: var(--spacing-3xs);
-	--button-font-size: var(--font-size-3xs);
+	--button-padding-vertical: var(--spacing--4xs);
+	--button-padding-horizontal: var(--spacing--3xs);
+	--button-font-size: var(--font-size--3xs);
 
 	&.square {
 		height: 22px;
@@ -155,9 +155,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .mini {
-	--button-padding-vertical: var(--spacing-4xs);
-	--button-padding-horizontal: var(--spacing-2xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--4xs);
+	--button-padding-horizontal: var(--spacing--2xs);
+	--button-font-size: var(--font-size--2xs);
 
 	&.square {
 		height: 22px;
@@ -166,9 +166,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .small {
-	--button-padding-vertical: var(--spacing-3xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--3xs);
+	--button-padding-horizontal: var(--spacing--xs);
+	--button-font-size: var(--font-size--2xs);
 
 	&.square {
 		height: 26px;
@@ -177,9 +177,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .medium {
-	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--2xs);
+	--button-padding-horizontal: var(--spacing--xs);
+	--button-font-size: var(--font-size--2xs);
 
 	&.square {
 		height: 30px;
@@ -195,9 +195,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .xlarge {
-	--button-padding-vertical: var(--spacing-xs);
-	--button-padding-horizontal: var(--spacing-s);
-	--button-font-size: var(--font-size-m);
+	--button-padding-vertical: var(--spacing--xs);
+	--button-padding-horizontal: var(--spacing--sm);
+	--button-font-size: var(--font-size--md);
 
 	&.square {
 		height: 46px;

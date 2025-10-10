@@ -29,4 +29,31 @@ export class ExecutionsComposer {
 			await responsePromise;
 		}
 	}
+
+	/**
+	 * Execute a specific node and capture the workflow run request payload.
+	 * Sets up request interception before executing the node, then returns the parsed request body.
+	 * Useful for testing the payload structure sent to the workflow run API.
+	 *
+	 * @param nodeName - The name of the node to execute
+	 * @returns The parsed request body from the workflow run API call
+	 * @example
+	 * // Execute a node and verify payload structure
+	 * const payload = await n8n.executionsComposer.executeNodeAndCapturePayload('Process The Data');
+	 * expect(payload).toHaveProperty('runData');
+	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	async executeNodeAndCapturePayload(nodeName: string): Promise<any> {
+		const workflowRunPromise = this.n8n.page.waitForRequest(
+			(request) =>
+				request.url().includes('/rest/workflows/') &&
+				request.url().includes('/run') &&
+				request.method() === 'POST',
+		);
+
+		await this.n8n.canvas.executeNode(nodeName);
+
+		const workflowRunRequest = await workflowRunPromise;
+		return workflowRunRequest.postDataJSON();
+	}
 }

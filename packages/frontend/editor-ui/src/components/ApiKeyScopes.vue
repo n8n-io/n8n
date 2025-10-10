@@ -132,51 +132,51 @@ function goToUpgradeApiKeyScopes() {
 
 <style module>
 .api-key-scopes :global(.el-tag) {
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 }
 
 .api-key-scopes :global(.el-tag__close) {
 	color: white;
-	margin-left: var(--spacing-3xs);
+	margin-left: var(--spacing--3xs);
 	background-color: var(--color--text);
 }
 
 .api-key-scopes :global(.el-checkbox) {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 
 .scopes-dropdown-container :global(.el-select-group__title) {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight-bold);
-	border-bottom: var(--spacing-5xs) solid var(--color--text--tint-2);
-	padding-left: var(--spacing-xs);
+	font-weight: var(--font-weight--bold);
+	border-bottom: var(--spacing--5xs) solid var(--color--text--tint-2);
+	padding-left: var(--spacing--xs);
 }
 
 .scopes-dropdown-container :global(.el-select-dropdown__item) {
 	color: var(--color--text);
-	font-weight: var(--font-weight-regular);
-	padding-left: var(--spacing-xs);
+	font-weight: var(--font-weight--regular);
+	padding-left: var(--spacing--xs);
 }
 
 .scopes-dropdown-container
 	:global(.el-select-dropdown.is-multiple .el-select-dropdown__item.selected) {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .scopes-dropdown-container :global(.el-select-group__wrap:not(:last-of-type)) {
 	padding: 0;
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 }
 
 .scopes-dropdown-container :global(.el-checkbox) {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 }
 
 .scopes-dropdown-container :global(.el-select-dropdown__header) {
-	margin-top: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
-	border-bottom: var(--spacing-5xs) solid var(--color--text--tint-2);
+	margin-top: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
+	border-bottom: var(--spacing--5xs) solid var(--color--text--tint-2);
 }
 
 .scopes-checkbox {

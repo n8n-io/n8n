@@ -174,19 +174,19 @@ const onItemMounted = ({
 	align-items: center;
 	text-align: center;
 	color: var(--color--text);
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 }
 
 .loader {
-	padding: 0 var(--spacing-s);
+	padding: 0 var(--spacing--sm);
 }
 
 .retention {
 	display: grid;
-	padding: var(--spacing-s);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
+	padding: var(--spacing--sm);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
 	text-align: center;
 }
 </style>

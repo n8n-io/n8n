@@ -15,13 +15,13 @@ defineProps<Props>();
 
 <style lang="scss" module>
 .label {
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
-	margin-bottom: var(--spacing-4xs);
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--sm);
+	margin-bottom: var(--spacing--4xs);
 	letter-spacing: 1px;
-	padding-top: var(--spacing-s);
+	padding-top: var(--spacing--sm);
 	font-style: normal;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	font-size: 10px;
 	line-height: 12px;
 	text-transform: uppercase;

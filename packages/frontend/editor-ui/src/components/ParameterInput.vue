@@ -1334,7 +1334,7 @@ onUpdated(async () => {
 				"
 			>
 				<ElDialog
-					width="calc(100% - var(--spacing-3xl))"
+					width="calc(100% - var(--spacing--3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
@@ -1817,11 +1817,11 @@ onUpdated(async () => {
 
 <style scoped lang="scss">
 .readonly-code {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .switch-input {
-	margin: var(--spacing-5xs) 0 var(--spacing-2xs) 0;
+	margin: var(--spacing--5xs) 0 var(--spacing--2xs) 0;
 }
 
 .parameter-value-container {
@@ -1838,7 +1838,7 @@ onUpdated(async () => {
 	display: inline-flex;
 	align-self: flex-start;
 	justify-items: center;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .parameter-input {
@@ -1901,16 +1901,16 @@ onUpdated(async () => {
 	padding-right: 20px;
 
 	.option-headline {
-		font-weight: var(--font-weight-medium);
-		line-height: var(--font-line-height-regular);
+		font-weight: var(--font-weight--medium);
+		line-height: var(--line-height--md);
 		overflow-wrap: break-word;
 	}
 
 	.option-description {
 		margin-top: 2px;
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-regular);
-		line-height: var(--font-line-height-xloose);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--regular);
+		line-height: var(--line-height--xl);
 		color: $custom-font-very-light;
 	}
 }
@@ -1944,9 +1944,9 @@ onUpdated(async () => {
 	background-color: var(--color-code-background);
 	padding: 3px;
 	line-height: 9px;
-	border: var(--border-base);
-	border-top-left-radius: var(--border-radius-base);
-	border-bottom-right-radius: var(--border-radius-base);
+	border: var(--border);
+	border-top-left-radius: var(--radius);
+	border-bottom-right-radius: var(--radius);
 	cursor: pointer;
 	border-right: none;
 	border-bottom: none;
@@ -1981,11 +1981,11 @@ onUpdated(async () => {
 
 <style lang="css" module>
 .modal {
-	--dialog-close-top: var(--spacing-m);
+	--dialog-close-top: var(--spacing--md);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
-	height: calc(100% - var(--spacing-4xl));
+	height: calc(100% - var(--spacing--4xl));
 	margin-bottom: 0;
 
 	:global(.el-dialog__header) {
@@ -1993,8 +1993,8 @@ onUpdated(async () => {
 	}
 
 	:global(.el-dialog__body) {
-		height: calc(100% - var(--spacing-3xl));
-		padding: var(--spacing-s);
+		height: calc(100% - var(--spacing--3xl));
+		padding: var(--spacing--sm);
 	}
 }
 
@@ -2008,7 +2008,7 @@ onUpdated(async () => {
 	z-index: 2;
 	top: 100%;
 	background: var(--color-code-background);
-	border: var(--border-base);
+	border: var(--border);
 	border-top: none;
 	width: 100%;
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
