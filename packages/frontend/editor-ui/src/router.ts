@@ -17,7 +17,7 @@ import { middleware } from '@/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { projectsRoutes } from '@/routes/projects.routes';
+import { projectsRoutes } from '@/features/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from './composables/useCalloutHelpers';
 
@@ -67,7 +67,8 @@ const SettingsSourceControl = async () =>
 const SettingsExternalSecrets = async () =>
 	await import('@/features/externalSecrets/views/SettingsExternalSecrets.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
-const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
+const WorkflowHistory = async () =>
+	await import('@/features/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 const EvaluationsView = async () =>
 	await import('@/features/evaluation.ee/views/EvaluationsView.vue');

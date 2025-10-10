@@ -1,7 +1,7 @@
 import { fireEvent } from '@testing-library/vue';
 import CanvasNodeStickyColorSelector from './CanvasNodeStickyColorSelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide } from '@/features/canvas/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CanvasNodeStickyColorSelector);
 

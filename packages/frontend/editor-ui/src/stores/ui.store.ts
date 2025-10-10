@@ -77,7 +77,7 @@ import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import identity from 'lodash/identity';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
 import { useTelemetry } from '@/composables/useTelemetry';

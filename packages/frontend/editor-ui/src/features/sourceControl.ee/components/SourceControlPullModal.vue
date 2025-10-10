@@ -5,10 +5,10 @@ import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import { SOURCE_CONTROL_PULL_MODAL_KEY } from '../sourceControl.constants';
 import { sourceControlEventBus } from '../sourceControl.eventBus';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
-import type { ProjectListItem } from '@/types/projects.types';
+import type { ProjectListItem } from '@/features/projects/projects.types';
 import {
 	getPullPriorityByStatus,
 	getStatusText,
