@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useProjectPages } from '@/composables/useProjectPages';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
 import { useInsightsStore } from '@/features/insights/insights.store';
 
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataTableResource } from '@/features/dataTable/types';
 import DataTableCard from '@/features/dataTable/components/DataTableCard.vue';

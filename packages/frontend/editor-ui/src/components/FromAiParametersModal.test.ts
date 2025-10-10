@@ -6,7 +6,7 @@ import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRouter } from 'vue-router';
 import type { Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';

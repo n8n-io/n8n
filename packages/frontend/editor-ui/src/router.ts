@@ -17,7 +17,7 @@ import { middleware } from '@/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { projectsRoutes } from '@/routes/projects.routes';
+import { projectsRoutes } from '@/features/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from './composables/useCalloutHelpers';
 

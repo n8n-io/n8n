@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import debounce from 'lodash/debounce';
 import type { ICredentialsResponse } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { CommandGroup, CommandBarItem } from '../commandBar.types';
 
