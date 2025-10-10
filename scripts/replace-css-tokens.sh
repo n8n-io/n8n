@@ -24,9 +24,12 @@ echo "$files" | xargs perl -pi -e 's/--color-primary-shade-1/--color--primary--s
 echo "$files" | xargs perl -pi -e 's/--color-primary-tint-3/--color--primary--tint-3/g'
 echo "$files" | xargs perl -pi -e 's/--color-primary-tint-2/--color--primary--tint-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-primary-tint-1/--color--primary--tint-1/g'
-echo "$files" | xargs perl -pi -e 's/--color-primary-h/--color--primary-h/g'
-echo "$files" | xargs perl -pi -e 's/--color-primary-s/--color--primary-s/g'
-echo "$files" | xargs perl -pi -e 's/--color-primary-l/--color--primary-l/g'
+echo "$files" | xargs perl -pi -e 's/--color--primary-h/--color--primary--h/g'
+echo "$files" | xargs perl -pi -e 's/--color--primary-s/--color--primary--s/g'
+echo "$files" | xargs perl -pi -e 's/--color--primary-l/--color--primary--l/g'
+echo "$files" | xargs perl -pi -e 's/--color-primary-h/--color--primary--h/g'
+echo "$files" | xargs perl -pi -e 's/--color-primary-s/--color--primary--s/g'
+echo "$files" | xargs perl -pi -e 's/--color-primary-l/--color--primary--l/g'
 echo "$files" | xargs perl -pi -e 's/--color-primary(?!-)/--color--primary/g'
 echo "✓ Primary color tokens replaced"
 echo ""
