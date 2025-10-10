@@ -47,32 +47,25 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"ok": true,
-					"usergroup": {
-						"id": "S07XXXXXX",
-						"team_id": "T1234567890",
-						"is_usergroup": true,
-						"is_subteam": true,
-						"name": "Marketing Team",
-						"description": "Marketing department user group",
-						"handle": "marketing",
-						"is_external": false,
-						"date_create": 1734322671,
-						"date_update": 1734322671,
-						"date_delete": 0,
-						"auto_type": null,
-						"auto_provision": false,
-						"enterprise_subteam_id": "",
-						"created_by": "U1234567890",
-						"updated_by": "U1234567890",
-						"deleted_by": null,
-						"prefs": {
-							"channels": ["C08514ZPKB8"],
-							"groups": []
-						},
-						"users": [],
-						"user_count": 0
-					}
+					"auto_type": null,
+					"created_by": "U060RNRCZ",
+					"date_create": 1446746793,
+					"date_delete": 0,
+					"date_update": 1446746793,
+					"deleted_by": null,
+					"description": "Marketing gurus, PR experts and product advocates.",
+					"handle": "marketing-team",
+					"id": "S0615G0KT",
+					"is_external": false,
+					"is_usergroup": true,
+					"name": "Marketing Team",
+					"prefs": {
+						"channels": [],
+						"groups": []
+					},
+					"team_id": "T060RNRCH",
+					"updated_by": "U060RNRCZ",
+					"user_count": "0"
 				}
 			}
 		]

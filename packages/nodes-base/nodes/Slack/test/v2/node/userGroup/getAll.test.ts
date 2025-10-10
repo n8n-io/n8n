@@ -58,7 +58,10 @@ const API_RESPONSE = {
 };
 
 describe('Test SlackV2, userGroup => getAll', () => {
-	nock('https://slack.com').post('/api/usergroups.list').reply(200, API_RESPONSE);
+	nock('https://slack.com')
+		.get('/api/usergroups.list')
+		.query({ include_count: 'true', include_disabled: 'true', include_users: 'true' })
+		.reply(200, API_RESPONSE);
 
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['getAll.workflow.json'],

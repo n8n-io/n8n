@@ -48,32 +48,29 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"ok": true,
-					"usergroup": {
-						"id": "S07XXXXXX",
-						"team_id": "T1234567890",
-						"is_usergroup": true,
-						"is_subteam": true,
-						"name": "Marketing Team Updated",
-						"description": "Updated marketing department user group",
-						"handle": "marketing-team",
-						"is_external": false,
-						"date_create": 1734322671,
-						"date_update": 1734322900,
-						"date_delete": 0,
-						"auto_type": null,
-						"auto_provision": false,
-						"enterprise_subteam_id": "",
-						"created_by": "U1234567890",
-						"updated_by": "U1234567890",
-						"deleted_by": null,
-						"prefs": {
-							"channels": ["C08514ZPKB8", "C08514ZPKB9"],
-							"groups": []
-						},
-						"users": [],
-						"user_count": 0
-					}
+					"auto_provision": false,
+					"auto_type": null,
+					"created_by": "U1234567890",
+					"date_create": 1734322671,
+					"date_delete": 0,
+					"date_update": 1734322900,
+					"deleted_by": null,
+					"description": "Updated marketing department user group",
+					"enterprise_subteam_id": "",
+					"handle": "marketing-team",
+					"id": "S07XXXXXX",
+					"is_external": false,
+					"is_subteam": true,
+					"is_usergroup": true,
+					"name": "Marketing Team Updated",
+					"prefs": {
+						"channels": ["C08514ZPKB8", "C08514ZPKB9"],
+						"groups": []
+					},
+					"team_id": "T1234567890",
+					"updated_by": "U1234567890",
+					"user_count": 0,
+					"users": []
 				}
 			}
 		]

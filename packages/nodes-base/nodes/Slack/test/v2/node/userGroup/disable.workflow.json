@@ -44,32 +44,29 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"ok": true,
-					"usergroup": {
-						"id": "S07XXXXXX",
-						"team_id": "T1234567890",
-						"is_usergroup": true,
-						"is_subteam": true,
-						"name": "Marketing Team",
-						"description": "Marketing department user group",
-						"handle": "marketing",
-						"is_external": false,
-						"date_create": 1734322671,
-						"date_update": 1734322671,
-						"date_delete": 1734322800,
-						"auto_type": null,
-						"auto_provision": false,
-						"enterprise_subteam_id": "",
-						"created_by": "U1234567890",
-						"updated_by": "U1234567890",
-						"deleted_by": "U1234567890",
-						"prefs": {
-							"channels": [],
-							"groups": []
-						},
-						"users": [],
-						"user_count": 0
-					}
+					"auto_provision": false,
+					"auto_type": null,
+					"created_by": "U1234567890",
+					"date_create": 1734322671,
+					"date_delete": 1734322800,
+					"date_update": 1734322671,
+					"deleted_by": "U1234567890",
+					"description": "Marketing department user group",
+					"enterprise_subteam_id": "",
+					"handle": "marketing",
+					"id": "S07XXXXXX",
+					"is_external": false,
+					"is_subteam": true,
+					"is_usergroup": true,
+					"name": "Marketing Team",
+					"prefs": {
+						"channels": [],
+						"groups": []
+					},
+					"team_id": "T1234567890",
+					"updated_by": "U1234567890",
+					"user_count": 0,
+					"users": []
 				}
 			}
 		]
