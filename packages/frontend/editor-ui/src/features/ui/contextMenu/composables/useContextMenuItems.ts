@@ -9,8 +9,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
-import { isPresent } from '../utils/typesUtils';
-import { usePinnedData } from './usePinnedData';
+import { isPresent } from '@/utils/typesUtils';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 export type ContextMenuAction =
 	| 'open'
