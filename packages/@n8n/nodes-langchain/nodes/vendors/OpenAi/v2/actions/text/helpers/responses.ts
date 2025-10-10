@@ -105,6 +105,7 @@ export async function createRequest(
 		top_logprobs: options.topLogprobs as number,
 		tools,
 		max_tool_calls: options.maxToolCalls as number,
+		background: get(options, 'backgroundMode.values.enabled', false) as boolean,
 	};
 
 	if (options.truncation !== undefined) {

@@ -7,10 +7,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../../helpers/constants';
 import type { ChatResponse } from '../../../helpers/interfaces';
 import { formatToOpenAIResponsesTool } from '../../../helpers/utils';
+import { pollUntilAvailable } from '../../../helpers/polling';
 import { apiRequest } from '../../../transport';
 import { messageOptions, metadataProperty, modelRLC } from '../descriptions';
 import { createRequest } from './helpers/responses';
@@ -602,6 +603,40 @@ const properties: INodeProperties[] = [
 				description:
 					"Whether to truncate the input to the model's context window size. When disabled will throw a 400 error instead.",
 			},
+			{
+				displayName: 'Background Mode',
+				name: 'backgroundMode',
+				type: 'fixedCollection',
+				default: { values: [{ backgroundMode: true }] },
+				options: [
+					{
+						displayName: 'Bakground',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Background Mode',
+								name: 'enabled',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether to run the model in background mode. If true, the model will run in background mode.',
+							},
+							{
+								displayName: 'Timeout',
+								name: 'timeout',
+								type: 'number',
+								default: 300,
+								description:
+									'The timeout for the background mode in seconds. If 0, the timeout is infinite.',
+								typeOptions: {
+									minValue: 0,
+									maxValue: 3600,
+								},
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 ];
@@ -647,6 +682,26 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let response = (await apiRequest.call(this, 'POST', '/responses', {
 		body,
 	})) as ChatResponse;
+
+	if (body.background) {
+		const timeoutSeconds = get(options, 'backgroundMode.values.timeout', 300) as number;
+		response = await pollUntilAvailable(
+			this,
+			async () => {
+				return (await apiRequest.call(this, 'GET', `/responses/${response.id}`)) as ChatResponse;
+			},
+			(response) => {
+				if (response.error) {
+					throw new NodeOperationError(this.getNode(), 'Background mode error', {
+						description: response.error.message,
+					});
+				}
+				return response.status === 'completed';
+			},
+			timeoutSeconds,
+			10,
+		);
+	}
 
 	if (!response) return [];
 
