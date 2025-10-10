@@ -225,11 +225,12 @@ export const useDataTableColumns = ({
 		if (!columnToBeMoved) {
 			return;
 		}
-		const middleWithIndex = colDefs.value.slice(1, -1).map((col, idx) => ({ ...col, index: idx }));
+		const middleWithIndex = colDefs.value
+			.slice(1, -1)
+			.map((col, idx) => ({ column: col, index: idx }));
 		const reorderedMiddle = reorderItem(middleWithIndex, fromIndex, newIndex)
 			.sort((a, b) => a.index - b.index)
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			.map(({ index, ...col }) => col);
+			.map(({ column }) => column);
 		colDefs.value = [colDefs.value[0], ...reorderedMiddle, colDefs.value[colDefs.value.length - 1]];
 	};
 

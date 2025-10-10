@@ -38,7 +38,7 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		return gridApi.value;
 	});
 
-	function onClipboardPaste(data: string) {
+	const onClipboardPaste = (data: string) => {
 		if (!gridApi.value) return;
 		const focusedCell = initializedGridApi.value.getFocusedCell();
 		const isEditing = initializedGridApi.value.getEditingCells().length > 0;
@@ -58,13 +58,13 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 				row.setDataValue(focusedCell.column.getColId(), new Date(data));
 			}
 		} else if (colDef.cellDataType === 'boolean') {
-			if (data === 'true') {
+			if (data.toLowerCase() === 'true') {
 				row.setDataValue(focusedCell.column.getColId(), true);
-			} else if (data === 'false') {
+			} else if (data.toLowerCase() === 'false') {
 				row.setDataValue(focusedCell.column.getColId(), false);
 			}
 		}
-	}
+	};
 
 	const { copy: copyToClipboard } = useClipboard({
 		onPaste: onClipboardPaste,
