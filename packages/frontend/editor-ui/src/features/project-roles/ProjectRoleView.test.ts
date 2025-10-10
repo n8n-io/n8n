@@ -149,6 +149,8 @@ describe('ProjectRoleView', () => {
 		createTestingPinia();
 		rolesStore = mockedStore(useRolesStore);
 
+		rolesStore.fetchRoles.mockResolvedValue();
+
 		// Mock store properties
 		rolesStore.processedProjectRoles = mockSystemRoles;
 	});
@@ -312,6 +314,8 @@ describe('ProjectRoleView', () => {
 			expect(getByText('Credentials')).toBeInTheDocument();
 			expect(getByText('Source control')).toBeInTheDocument();
 
+			await waitFor(() => expect(getByTestId('scope-checkbox-project:read')).toBeInTheDocument());
+
 			// Check some specific scope checkboxes
 			expect(getByTestId('scope-checkbox-project:read')).toBeInTheDocument();
 			expect(getByTestId('scope-checkbox-workflow:create')).toBeInTheDocument();
@@ -319,7 +323,9 @@ describe('ProjectRoleView', () => {
 		});
 
 		it('should toggle scope when checkbox is clicked', async () => {
-			const { getByTestId } = renderComponent();
+			const { getByTestId, html } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('scope-checkbox-project:update')).toBeInTheDocument());
 
 			// Find the checkbox by its label text
 			const label = getByTestId('scope-checkbox-project:update');
