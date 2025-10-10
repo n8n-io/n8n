@@ -16,13 +16,13 @@ export class ExecutionData {
 	// This is because manual executions of unsaved workflows have no workflow id
 	// and IWorkflowDb has it as a mandatory field. IWorkflowBase reflects the correct
 	// data structure for this entity.
+	/**
+	 * Workaround: Pindata causes TS errors from excessively deep type instantiation
+	 * due to `INodeExecutionData`, so we use a simplified version so `QueryDeepPartialEntity`
+	 * can resolve and calls to `update`, `insert`, and `insert` pass typechecking.
+	 */
 	@JsonColumn()
 	workflowData: Omit<IWorkflowBase, 'pinData'> & { pinData?: ISimplifiedPinData };
-	/**
-	 * We simplify pindata to prevent excessively deep type instantiation error from `INodeExecutionData` in `IPinData` in a TypeORM entity field, e.g. TagEntity -> WorkflowEntity[] -> TestRun[] -> TestCaseExecution[] -> ExecutionEntity -> ExecutionData -> IWorkflowBase -> IPinData -> INodeExecutionData[] -> NodeApiError -> Error -> cause: unknown -> Type 'unknown' is not assignable to type '(() => string) | _QueryDeepPartialEntity<unknown, unknown> | undefined'.
-	 *
-	 * This simplification is temporary until we can use `WorkflowEntity` in this field.
-	 */
 
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
