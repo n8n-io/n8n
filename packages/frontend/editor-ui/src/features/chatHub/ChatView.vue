@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
-import { N8nHeading, N8nIcon, N8nText, N8nScrollArea } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nText, N8nScrollArea, N8nIconButton } from '@n8n/design-system';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import ModelSelector from './components/ModelSelector.vue';
 import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
@@ -33,10 +33,12 @@ import { useLocalStorage } from '@vueuse/core';
 import {
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
+	CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY,
 } from '@/constants';
 import { CHAT_CONVERSATION_VIEW, CHAT_VIEW, SUGGESTIONS } from '@/features/chatHub/constants';
 import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
 import { useToast } from '@/composables/useToast';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 const router = useRouter();
 const route = useRoute();
@@ -45,6 +47,7 @@ const userStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const toast = useToast();
+const { isMobileDevice } = useDeviceSupport();
 
 const inputRef = useTemplateRef('inputRef');
 const message = ref('');
@@ -288,15 +291,22 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 <template>
 	<PageViewLayout>
-		<ModelSelector
-			:class="$style.modelSelector"
-			:models="chatStore.models ?? null"
-			:selected-model="selectedModel"
-			:disabled="chatStore.isResponding"
-			:credentials-name="credentialsName"
-			@change="onModelChange"
-			@configure="onConfigure"
-		/>
+		<div :class="$style.modelSelector">
+			<N8nIconButton
+				v-if="isMobileDevice"
+				type="secondary"
+				icon="menu"
+				@click="uiStore.openModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY)"
+			/>
+			<ModelSelector
+				:models="chatStore.models ?? null"
+				:selected-model="selectedModel"
+				:disabled="chatStore.isResponding"
+				:credentials-name="credentialsName"
+				@change="onModelChange"
+				@configure="onConfigure"
+			/>
+		</div>
 		<CredentialSelectorModal
 			v-if="credentialSelectorProvider"
 			:key="credentialSelectorProvider"
@@ -725,5 +735,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	top: var(--spacing-xs);
 	left: var(--spacing-xs);
 	z-index: 100;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 </style>
