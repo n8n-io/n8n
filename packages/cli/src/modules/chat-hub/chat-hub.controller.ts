@@ -1,4 +1,4 @@
-import type { ChatHubSendMessageRequest, ChatModelsResponse } from '@n8n/api-types';
+import { ChatHubSendMessageRequest, ChatModelsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Post, Body, GlobalScope } from '@n8n/decorators';
