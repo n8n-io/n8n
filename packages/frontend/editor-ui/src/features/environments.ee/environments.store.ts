@@ -4,7 +4,7 @@ import type { EnvironmentVariable } from './environments.types';
 import * as environmentsApi from './environments.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ExpressionError } from 'n8n-workflow';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 export const useEnvironmentsStore = defineStore('environments', () => {
 	const rootStore = useRootStore();

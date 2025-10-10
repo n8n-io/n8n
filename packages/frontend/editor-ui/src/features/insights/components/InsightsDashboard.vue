@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData } from '@/types/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, defineAsyncComponent, onBeforeMount, onMounted, ref, watch } from 'vue';
@@ -238,7 +238,7 @@ onBeforeMount(async () => {
 .insightsContainer {
 	width: 100%;
 	max-width: var(--content-container-width);
-	padding: var(--spacing-l) var(--spacing-2xl);
+	padding: var(--spacing--lg) var(--spacing--2xl);
 	margin: 0 auto;
 }
 
@@ -252,12 +252,12 @@ onBeforeMount(async () => {
 }
 
 .insightsContent {
-	padding: var(--spacing-l) 0;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	padding: var(--spacing--lg) 0;
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-top: 0;
 	border-bottom-left-radius: 6px;
 	border-bottom-right-radius: 6px;
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 }
 
 .insightsContentWrapper {
@@ -268,13 +268,13 @@ onBeforeMount(async () => {
 .insightsChartWrapper {
 	position: relative;
 	height: 292px;
-	padding: 0 var(--spacing-l);
+	padding: 0 var(--spacing--lg);
 	z-index: 1;
 }
 
 .insightsTableWrapper {
 	position: relative;
-	padding: var(--spacing-l) var(--spacing-l) 0;
+	padding: var(--spacing--lg) var(--spacing--lg) 0;
 	z-index: 1;
 }
 
@@ -310,7 +310,7 @@ onBeforeMount(async () => {
 		left: 0;
 		width: 100%;
 		height: 100%;
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 		opacity: 0.75;
 		z-index: 1;
 	}

@@ -729,12 +729,12 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	--disabled-fill: var(--color-background-base);
+	--disabled-fill: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;
 		top: -3px;
-		left: calc(-0.5 * var(--spacing-xs));
+		left: calc(-0.5 * var(--spacing--xs));
 		transition: opacity 100ms ease-in;
 		Button {
 			color: var(--color-icon-base);
@@ -745,12 +745,12 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	.indent > div {
-		padding-left: var(--spacing-s);
+		padding-left: var(--spacing--sm);
 	}
 
 	.multi-parameter {
 		position: relative;
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 
 		.parameter-info {
 			display: none;
@@ -759,7 +759,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 	.parameter-item {
 		position: relative;
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 	}
 	.parameter-item:hover > .icon-button,
 	.multi-parameter:hover > .icon-button {
@@ -767,23 +767,23 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	.parameter-notice {
-		background-color: var(--color-warning-tint-2);
+		background-color: var(--color--warning--tint-2);
 		color: $custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 		}
 	}
 
 	.async-notice {
 		display: block;
-		padding: var(--spacing-3xs) 0;
+		padding: var(--spacing--3xs) 0;
 	}
 
 	.callout-dismiss {
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing--xs);
 		line-height: 1;
 		cursor: pointer;
 	}

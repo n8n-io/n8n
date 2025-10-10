@@ -88,6 +88,6 @@ const runMetadata = computed(() => {
 <style lang="scss" module>
 .tooltipRow {
 	display: flex;
-	column-gap: var(--spacing-4xs);
+	column-gap: var(--spacing--4xs);
 }
 </style>

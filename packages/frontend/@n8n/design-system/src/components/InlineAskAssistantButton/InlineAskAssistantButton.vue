@@ -63,7 +63,7 @@ const onClick = () => {
 
 <style lang="scss" module>
 .button {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	position: relative;
 	border: 1px solid transparent;
 	padding: 0;
@@ -107,11 +107,11 @@ const onClick = () => {
 
 .asked {
 	cursor: not-allowed;
-	background: var(--color-foreground-base);
-	color: var(--color-text-light);
+	background: var(--color--foreground);
+	color: var(--color--text--tint-1);
 }
 
 .icon {
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 </style>

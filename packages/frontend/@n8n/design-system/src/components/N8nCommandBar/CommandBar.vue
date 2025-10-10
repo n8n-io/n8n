@@ -321,10 +321,10 @@ onUnmounted(() => {
 	top: 20vh;
 	left: 50%;
 	transform: translateX(-50%);
-	background: var(--color-background-xlight);
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	box-shadow: var(--box-shadow-dark);
+	background: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	box-shadow: var(--shadow--dark);
 	width: 100%;
 	max-width: 600px;
 	z-index: 1000;
@@ -335,39 +335,39 @@ onUnmounted(() => {
 	border: none;
 	outline: none;
 	background: transparent;
-	font-size: var(--font-size-m);
+	font-size: var(--font-size--md);
 	font-family: var(--font-family);
-	color: var(--color-text-base);
-	padding: var(--spacing-m) var(--spacing-l);
-	border-bottom: var(--border-base);
+	color: var(--color--text);
+	padding: var(--spacing--md) var(--spacing--lg);
+	border-bottom: var(--border);
 
 	&::placeholder {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .itemsList {
 	max-height: 300px;
 	overflow-y: auto;
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 
 .sectionHeader {
-	padding: var(--spacing-xs) var(--spacing-l);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-text-light);
+	padding: var(--spacing--xs) var(--spacing--lg);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text--tint-1);
 }
 
 .noResults {
-	padding: var(--spacing-l);
+	padding: var(--spacing--lg);
 	text-align: center;
-	color: var(--color-text-light);
-	font-size: var(--font-size-s);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
 }
 
 .contextContainer {
-	padding: var(--spacing-xs) var(--spacing-l) 0;
+	padding: var(--spacing--xs) var(--spacing--lg) 0;
 }
 </style>
 
