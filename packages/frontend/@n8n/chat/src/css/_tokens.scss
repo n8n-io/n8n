@@ -101,6 +101,10 @@
 	--chat--button--hover--background: var(--chat--color--primary-shade-50);
 	--chat--close--button--color-hover: var(--chat--color--primary);
 
+	/* Message Action Buttons */
+	--chat--message-actions--gap: var(--chat--spacing);
+	--chat--message-actions--icon-size: var(--chat--toggle--size);
+
 	/* Send and File Buttons */
 	--chat--input--send--button--background: var(--chat--color-white);
 	--chat--input--send--button--color: var(--chat--color--secondary);

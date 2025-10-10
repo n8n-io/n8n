@@ -38,11 +38,11 @@ function copyToInput() {
 <template>
 	<div v-if="options.enableMessageActions" class="message-actions">
 		<N8nTooltip v-if="message.sender === 'user'">
-			<N8nIcon icon="redo-2" size="xsmall" class="icon" @click="repostMessage" />
-			<template #content> Reuse message </template>
+			<N8nIcon icon="redo-2" size="medium" class="icon" @click="repostMessage" />
+			<template #content> Resend message </template>
 		</N8nTooltip>
 		<N8nTooltip v-if="message.sender === 'user'">
-			<N8nIcon icon="files" size="xsmall" class="icon" @click="copyToInput" />
+			<N8nIcon icon="files" size="medium" class="icon" @click="copyToInput" />
 			<template #content> Reuse Message </template>
 		</N8nTooltip>
 	</div>

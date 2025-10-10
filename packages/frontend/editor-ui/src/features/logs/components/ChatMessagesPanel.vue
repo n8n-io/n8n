@@ -453,18 +453,7 @@ onUnmounted(() => {
 
 		/* Message Action Buttons */
 		--chat--message-actions--gap: var(--spacing-s) !important;
-		--chat--message-actions--button-size: 28px !important;
-		--chat--message-actions--button-border: none !important;
-		--chat--message-actions--button-border-radius: 6px !important;
-		--chat--message-actions--button-background: transparent !important;
-		--chat--message-actions--button-color: rgba(255, 255, 255, 0.7) !important;
-		--chat--message-actions--button-shadow: none !important;
-		--chat--message-actions--button-transition: all 0.15s ease !important;
-		--chat--message-actions--button-hover-background: rgba(255, 255, 255, 0.1) !important;
-		--chat--message-actions--button-hover-color: rgba(255, 255, 255, 1) !important;
-		--chat--message-actions--button-hover-transform: scale(1.1) !important;
-		--chat--message-actions--button-active-transform: scale(0.95) !important;
-		--chat--message-actions--button-active-background: rgba(255, 255, 255, 0.2) !important;
+		--chat--message-actions--icon-size: 32px;
 	}
 
 	/* Hide the default chat header since we use our own */
@@ -487,12 +476,12 @@ onUnmounted(() => {
 			--chat--footer--border-top: none !important;
 
 			/* Bot Messages - darker background with subtle border */
-			--chat--message--bot--background: var(--color--background--shade-1) !important;
+			--chat--message--bot--background: transparent;
 			--chat--message--bot--color: var(--color--text) !important;
-			--chat--message--bot--border: 1px solid var(--color--foreground) !important;
+			--chat--message--bot--border: 0;
 
 			/* User Messages - darker user message background */
-			--chat--message--user--background: var(--color--foreground--shade-1) !important;
+			--chat--message--user--background: var(--color--foreground);
 			--chat--message--user--color: white !important;
 
 			/* Code blocks */
@@ -503,15 +492,6 @@ onUnmounted(() => {
 			--chat--input--text-color: var(--color--text) !important;
 			--chat--input--border: 1px solid var(--color--foreground) !important;
 			--chat--input--border-active: 1px solid var(--color--primary) !important;
-
-			/* Message Action Buttons - dark mode */
-			--chat--message-actions--button-size: 32px;
-			--chat--message-actions--button-background: transparent !important;
-			--chat--message-actions--button-color: rgba(255, 255, 255, 0.6) !important;
-			--chat--message-actions--button-border: none !important;
-			--chat--message-actions--button-hover-background: rgba(255, 255, 255, 0.15) !important;
-			--chat--message-actions--button-hover-color: rgba(255, 255, 255, 0.9) !important;
-			--chat--message-actions--button-active-background: rgba(255, 255, 255, 0.25) !important;
 		}
 	}
 }
