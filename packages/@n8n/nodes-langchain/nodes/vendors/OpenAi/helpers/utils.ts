@@ -46,6 +46,16 @@ export function formatToOpenAIAssistantTool(tool: Tool): OpenAIClient.Beta.Assis
 	};
 }
 
+export function formatToOpenAIResponsesTool(tool: Tool): OpenAIClient.Responses.FunctionTool {
+	return {
+		type: 'function',
+		name: tool.name,
+		parameters: zodToJsonSchema(tool.schema),
+		strict: true,
+		description: tool.description,
+	};
+}
+
 export async function getChatMessages(memory: BufferWindowMemory): Promise<BaseMessage[]> {
 	return (await memory.loadMemoryVariables({}))[memory.memoryKey] as BaseMessage[];
 }
