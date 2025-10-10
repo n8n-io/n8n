@@ -22,9 +22,9 @@ describe('css-var-naming rule', () => {
 			const namespacePattern = `
 				:root {
 					--n8n--color--primary: #0d6efd;
-					--n8n--button--color-background--primary: #0d6efd;
-					--n8n--button--color-background--primary--hover: #0b5ed7;
-					--n8n--color-text--muted: #888;
+					--n8n--button--color--background--primary: #0d6efd;
+					--n8n--button--color--background--primary--hover: #0b5ed7;
+					--n8n--color--text--muted: #888;
 				}
 			`;
 			const result = await lintCSS(namespacePattern);
@@ -35,8 +35,8 @@ describe('css-var-naming rule', () => {
 			const namespacePattern = `
 				:root {
 					--chat--color--primary: #0d6efd;
-					--chat--button--color-background--primary: #0d6efd;
-					--chat--color-text--base: #333;
+					--chat--button--color--background--primary: #0d6efd;
+					--chat--color--text--base: #333;
 				}
 			`;
 			const result = await lintCSS(namespacePattern);
@@ -60,7 +60,7 @@ describe('css-var-naming rule', () => {
 			const noNamespace = `
 				:root {
 					--color--primary: #0d6efd;
-					--button--color-background--primary: #0d6efd;
+					--button--color--background--primary: #0d6efd;
 				}
 			`;
 			const result = await lintCSS(noNamespace);
@@ -73,7 +73,7 @@ describe('css-var-naming rule', () => {
 			// Other first groups are treated as components, which is valid
 			const componentFirst = `
 				:root {
-					--button--color-background--primary: #0d6efd;
+					--button--color--background--primary: #0d6efd;
 					--tabs--tab--color--base: #333;
 				}
 			`;
@@ -84,7 +84,7 @@ describe('css-var-naming rule', () => {
 		it('should accept namespace with component and states', async () => {
 			const complexNamespace = `
 				:root {
-					--n8n--button--color-background--primary--solid--hover: #0b5ed7;
+					--n8n--button--color--background--primary--solid--hover: #0b5ed7;
 					--chat--input--border-color--primary--focus: blue;
 				}
 			`;
@@ -95,7 +95,7 @@ describe('css-var-naming rule', () => {
 		it('should accept namespace with all 8 groups', async () => {
 			const maxGroups = `
 				:root {
-					--n8n--button--part--color-text--primary--solid--hover--dark: #000;
+					--n8n--button--part--color--text--primary--solid--hover--dark: #000;
 				}
 			`;
 			const result = await lintCSS(maxGroups);
@@ -108,8 +108,8 @@ describe('css-var-naming rule', () => {
 			const validPatterns = `
 				:root {
 					--color--primary: #0d6efd;
-					--color-text--muted: #5b6270;
-					--color-background--surface: #ffffff;
+					--color--text--muted: #5b6270;
+					--color--background--surface: #ffffff;
 					--spacing--md: 20px;
 					--font-size--lg: 18px;
 				}
@@ -204,10 +204,10 @@ describe('css-var-naming rule', () => {
 			expect(result.warnings.length).toBeGreaterThan(0);
 		});
 
-		it('should reject patterns with more than 8 groups', async () => {
+		it('should reject patterns with more than 10 groups', async () => {
 			const invalidPattern = `
 				:root {
-					--a--b--c--d--e--f--g--h--i: value;
+					--a--b--c--d--e--f--g--h--i--j--k: value;
 				}
 			`;
 			const result = await lintCSS(invalidPattern);
@@ -237,9 +237,9 @@ describe('css-var-naming rule', () => {
 			const validProperties = `
 				:root {
 					--color--primary: #0d6efd;
-					--color-text--base: #333;
-					--color-background--light: #fff;
-					--color-foreground--light: #f5f5f5;
+					--color--text--base: #333;
+					--color--background--light: #fff;
+					--color--foreground--light: #f5f5f5;
 					--border-color--primary: #ddd;
 					--border-left-width--thin: 1px;
 					--icon-color--muted: #888;
@@ -283,18 +283,118 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(invalidProperty);
 			expect(result.warnings.length).toBeGreaterThan(0);
 		});
+
+		it('should reject semantic values before property', async () => {
+			const invalidOrder = `
+				:root {
+					--primary--color: #0d6efd;
+					--secondary--color: #6c757d;
+					--success--color: #28a745;
+					--danger--color: #dc3545;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject scale values before property', async () => {
+			const invalidOrder = `
+				:root {
+					--md--spacing: 20px;
+					--lg--font-size: 18px;
+					--xl--radius: 12px;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject component with semantic value before property', async () => {
+			const invalidOrder = `
+				:root {
+					--button--primary--color: #0d6efd;
+					--card--surface--color--background: #fff;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject namespace with semantic value before property', async () => {
+			const invalidOrder = `
+				:root {
+					--n8n--primary--color: #0d6efd;
+					--chat--muted--color--text: #888;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject invalid single-dash format for color properties', async () => {
+			const invalidFormat = `
+				:root {
+					--color-text--primary: #0d6efd;
+					--color-background--surface: #fff;
+					--color-foreground--light: #f5f5f5;
+				}
+			`;
+			const result = await lintCSS(invalidFormat);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must include a valid property from vocabulary'),
+			});
+		});
+
+		it('should reject invalid single-dash format with components', async () => {
+			const invalidFormat = `
+				:root {
+					--button--color-text--primary: #0d6efd;
+					--card--color-background--surface: #fff;
+				}
+			`;
+			const result = await lintCSS(invalidFormat);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must include a valid property from vocabulary'),
+			});
+		});
+
+		it('should accept valid double-dash format for color properties', async () => {
+			const validFormat = `
+				:root {
+					--color--text--primary: #0d6efd;
+					--color--background--surface: #fff;
+					--color--foreground--light: #f5f5f5;
+				}
+			`;
+			const result = await lintCSS(validFormat);
+			expect(result.warnings).toHaveLength(0);
+		});
 	});
 
 	describe('component tokens', () => {
 		it('should accept component-level tokens', async () => {
 			const componentTokens = `
 				:root {
-					--button--color-background--primary: #0d6efd;
-					--button--color-text--on-primary: #fff;
+					--button--color--background--primary: #0d6efd;
+					--button--color--text--on-primary: #fff;
 					--button--border-color--outline: #ddd;
 					--card--radius--md: 8px;
-					--tabs--tab--color-text--muted: #888;
-					--select--menu--color-background--dark: #000;
+					--tabs--tab--color--text--muted: #888;
+					--select--menu--color--background--dark: #000;
 					--tooltip--arrow--color--primary: #333;
 				}
 			`;
@@ -305,12 +405,37 @@ describe('css-var-naming rule', () => {
 		it('should accept component with part tokens', async () => {
 			const componentPartTokens = `
 				:root {
-					--tabs--tab--color-background--surface: #fff;
+					--tabs--tab--color--background--surface: #fff;
 					--select--menu--shadow--lg: 0 4px 8px rgba(0,0,0,0.1);
 					--tooltip--arrow--border-color--primary: #ddd;
 				}
 			`;
 			const result = await lintCSS(componentPartTokens);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should reject callout component tokens with semantic value before property', async () => {
+			const invalidCalloutTokens = `
+				:root {
+					--callout--secondary--icon-color: #0d6efd;
+					--callout--secondary--color--text: #888;
+				}
+			`;
+			const result = await lintCSS(invalidCalloutTokens);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should accept callout component tokens with property before value', async () => {
+			const validCalloutTokens = `
+				:root {
+					--callout--icon-color--secondary: #0d6efd;
+					--callout--color--text--secondary: #888;
+				}
+			`;
+			const result = await lintCSS(validCalloutTokens);
 			expect(result.warnings).toHaveLength(0);
 		});
 	});
@@ -319,16 +444,16 @@ describe('css-var-naming rule', () => {
 		it('should accept valid state modifiers', async () => {
 			const stateModifiers = `
 				:root {
-					--button--color-background--primary--hover: #0b5ed7;
-					--button--color-background--primary--active: #0a58ca;
-					--button--color-background--primary--focus: #0d6efd;
-					--button--color-background--primary--focus-visible: #0d6efd;
-					--button--color-background--primary--disabled: #ccc;
+					--button--color--background--primary--hover: #0b5ed7;
+					--button--color--background--primary--active: #0a58ca;
+					--button--color--background--primary--focus: #0d6efd;
+					--button--color--background--primary--focus-visible: #0d6efd;
+					--button--color--background--primary--disabled: #ccc;
 					--input--border-color--primary--invalid: red;
-					--checkbox--color-background--primary--checked: #0d6efd;
-					--select--color-background--surface--opened: #fff;
-					--accordion--color-background--surface--closed: #f5f5f5;
-					--button--color-background--primary--loading: #999;
+					--checkbox--color--background--primary--checked: #0d6efd;
+					--select--color--background--surface--opened: #fff;
+					--accordion--color--background--surface--closed: #f5f5f5;
+					--button--color--background--primary--loading: #999;
 				}
 			`;
 			const result = await lintCSS(stateModifiers);
@@ -338,8 +463,8 @@ describe('css-var-naming rule', () => {
 		it('should accept link-specific states', async () => {
 			const linkStates = `
 				:root {
-					--link--color-text--primary--visited: purple;
-					--link--color-text--primary--hover: blue;
+					--link--color--text--primary--visited: purple;
+					--link--color--text--primary--hover: blue;
 				}
 			`;
 			const result = await lintCSS(linkStates);
@@ -351,12 +476,12 @@ describe('css-var-naming rule', () => {
 		it('should accept valid variant modifiers', async () => {
 			const variantModifiers = `
 				:root {
-					--button--color-background--primary--solid: #0d6efd;
-					--button--color-background--primary--outline: transparent;
-					--button--color-background--primary--ghost: transparent;
-					--button--color-background--primary--link: transparent;
-					--button--color-background--primary--soft: #e7f1ff;
-					--button--color-background--primary--subtle: #f0f8ff;
+					--button--color--background--primary--solid: #0d6efd;
+					--button--color--background--primary--outline: transparent;
+					--button--color--background--primary--ghost: transparent;
+					--button--color--background--primary--link: transparent;
+					--button--color--background--primary--soft: #e7f1ff;
+					--button--color--background--primary--subtle: #f0f8ff;
 				}
 			`;
 			const result = await lintCSS(variantModifiers);
@@ -366,9 +491,9 @@ describe('css-var-naming rule', () => {
 		it('should accept variants with states (variant before state)', async () => {
 			const variantWithState = `
 				:root {
-					--button--color-background--primary--solid--hover: #0b5ed7;
-					--button--color-background--primary--outline--active: #0a58ca;
-					--button--color-background--primary--ghost--focus: rgba(13, 110, 253, 0.1);
+					--button--color--background--primary--solid--hover: #0b5ed7;
+					--button--color--background--primary--outline--active: #0a58ca;
+					--button--color--background--primary--ghost--focus: rgba(13, 110, 253, 0.1);
 				}
 			`;
 			const result = await lintCSS(variantWithState);
@@ -378,7 +503,7 @@ describe('css-var-naming rule', () => {
 		it('should reject when state comes before variant', async () => {
 			const invalidOrder = `
 				:root {
-					--button--color-background--primary--hover--solid: #0b5ed7;
+					--button--color--background--primary--hover--solid: #0b5ed7;
 				}
 			`;
 			const result = await lintCSS(invalidOrder);
@@ -395,9 +520,9 @@ describe('css-var-naming rule', () => {
 				:root {
 					--color--primary--dark: #66a3ff;
 					--color--primary--light: #0d6efd;
-					--color-background--surface--dark: #000;
-					--color-background--surface--light: #fff;
-					--color-text--base--hc: #000;
+					--color--background--surface--dark: #000;
+					--color--background--surface--light: #fff;
+					--color--text--base--hc: #000;
 					--spacing--md--rtl: 20px;
 					--color--primary--print: #000;
 				}
@@ -485,7 +610,7 @@ describe('css-var-naming rule', () => {
 			const descriptiveValues = `
 				:root {
 					--color--purple: #800080;
-					--color-text--base: #333;
+					--color--text--base: #333;
 					--border-left-width--thin: 1px;
 					--z--modal: 1000;
 					--duration--fast: 200ms;
@@ -551,8 +676,8 @@ describe('css-var-naming rule', () => {
 		it('should accept component names as values', async () => {
 			const componentValues = `
 				:root {
-					--button--color-background--surface: #fff;
-					--tooltip--color-text--on-surface: #000;
+					--button--color--background--surface: #fff;
+					--tooltip--color--text--on-surface: #000;
 				}
 			`;
 			const result = await lintCSS(componentValues);
@@ -565,12 +690,24 @@ describe('css-var-naming rule', () => {
 					--color--primary--h: 220;
 					--color--primary--s: 90%;
 					--color--primary--l: 50%;
-					--color-background--surface--h: 0;
-					--color-background--surface--s: 0%;
-					--color-background--surface--l: 100%;
+					--color--background--surface--h: 0;
+					--color--background--surface--s: 0%;
+					--color--background--surface--l: 100%;
 				}
 			`;
 			const result = await lintCSS(hslValues);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should accept HSL color components with component names', async () => {
+			const hslComponentValues = `
+				:root {
+					--node-type--color--background--l: 50%;
+					--node-type--color--h: 220;
+					--button--color--background--s: 90%;
+				}
+			`;
+			const result = await lintCSS(hslComponentValues);
 			expect(result.warnings).toHaveLength(0);
 		});
 	});
@@ -579,8 +716,8 @@ describe('css-var-naming rule', () => {
 		it('should validate CSS variables in var() references', async () => {
 			const varReferences = `
 				.button {
-					background: var(--button--color-background--primary);
-					color: var(--button--color-text--on-primary);
+					background: var(--button--color--background--primary);
+					color: var(--button--color--text--on-primary);
 					border-color: var(--button--border-color--outline);
 				}
 			`;
@@ -591,13 +728,13 @@ describe('css-var-naming rule', () => {
 		it('should reject invalid CSS variables in var() references', async () => {
 			const invalidVarReferences = `
 				.button {
-					background: var(--button-color-background);
+					background: var(--button-color--background);
 				}
 			`;
 			const result = await lintCSS(invalidVarReferences);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must have at least 2 groups'),
+				text: expect.stringContaining('Must include a valid property'),
 			});
 		});
 
@@ -617,7 +754,7 @@ describe('css-var-naming rule', () => {
 		it('should reject invalid CSS variables with mixed order in var() references', async () => {
 			const invalidVarReferences = `
 				.button {
-					background: var(--button--color-background--primary--hover--solid);
+					background: var(--button--color--background--primary--hover--solid);
 				}
 			`;
 			const result = await lintCSS(invalidVarReferences);
@@ -630,7 +767,7 @@ describe('css-var-naming rule', () => {
 		it('should accept var() with fallback values', async () => {
 			const varWithFallback = `
 				.button {
-					background: var(--button--color-background--primary, var(--color--primary));
+					background: var(--button--color--background--primary, var(--color--primary));
 					border-radius: var(--button--radius--md, var(--radius--md));
 				}
 			`;
@@ -643,15 +780,15 @@ describe('css-var-naming rule', () => {
 		it('should accept all examples from proposal section 6', async () => {
 			const proposalExamples = `
 				.button {
-					background: var(--button--color-background--primary);
-					color: var(--button--color-text--on-primary);
+					background: var(--button--color--background--primary);
+					color: var(--button--color--text--on-primary);
 					border-color: var(--button--border-color--ghost);
 					border-radius: var(--button--radius--md, var(--radius--md));
 					box-shadow: var(--button--shadow--sm, var(--shadow--sm));
 				}
 
 				.button:hover {
-					background: var(--button--color-background--primary--hover);
+					background: var(--button--color--background--primary--hover);
 				}
 
 				.input:focus-visible {
@@ -659,7 +796,7 @@ describe('css-var-naming rule', () => {
 				}
 
 				.card {
-					background: var(--card--color-background--surface, var(--color--surface));
+					background: var(--card--color--background--surface, var(--color--surface));
 					box-shadow: var(--card--shadow--lg, var(--shadow--lg));
 				}
 			`;
@@ -672,15 +809,15 @@ describe('css-var-naming rule', () => {
 				:root {
 					--color--primary: #0d6efd;
 					--color--surface: #ffffff;
-					--color-text--muted: #5b6270;
-					--button--color-background--primary: var(--color--primary);
-					--button--color-text--on-primary: #ffffff;
+					--color--text--muted: #5b6270;
+					--button--color--background--primary: var(--color--primary);
+					--button--color--text--on-primary: #ffffff;
 				}
 
 				:root[data-theme="dark"] {
 					--color--primary: #66a3ff;
 					--color--surface: #0f1115;
-					--color-text--muted: #9aa3b2;
+					--color--text--muted: #9aa3b2;
 				}
 			`;
 			const result = await lintCSS(themingExample);
@@ -739,7 +876,7 @@ describe('css-var-naming rule', () => {
 		it('should accept kebab-case within groups', async () => {
 			const kebabCase = `
 				:root {
-					--color-text--on-primary: #fff;
+					--color--text--on-primary: #fff;
 					--outline-color--focus-visible: blue;
 					--font-weight--semi-bold: 600;
 				}
@@ -762,7 +899,7 @@ describe('css-var-naming rule', () => {
 		it('should accept maximum valid pattern (8 groups)', async () => {
 			const maximumPattern = `
 				:root {
-					--namespace--component--part--color-text--primary--solid--hover--dark: #000;
+					--namespace--component--part--color--text--primary--solid--hover--dark: #000;
 				}
 			`;
 			const result = await lintCSS(maximumPattern);

@@ -188,23 +188,23 @@ echo ""
 
 # Canvas tokens
 echo "[17] Replacing canvas tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-canvas-background-h/--canvas--color-background--h/g'
-echo "$files" | xargs perl -pi -e 's/--color-canvas-background-s/--canvas--color-background--s/g'
-echo "$files" | xargs perl -pi -e 's/--color-canvas-background-l/--canvas--color-background--l/g'
-echo "$files" | xargs perl -pi -e 's/--color-canvas-background/--canvas--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-background-h/--canvas--color--background--h/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-background-s/--canvas--color--background--s/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-background-l/--canvas--color--background--l/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-background/--canvas--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-canvas-dot/--canvas--dot--color/g'
 echo "$files" | xargs perl -pi -e 's/--color-canvas-read-only-line/--canvas--read-only-line--color/g'
 echo "$files" | xargs perl -pi -e 's/--color-canvas-selected-transparent/--canvas--color--selected-transparent/g'
 echo "$files" | xargs perl -pi -e 's/--color-canvas-selected/--canvas--color--selected/g'
-echo "$files" | xargs perl -pi -e 's/--color-canvas-label-background/--canvas--label--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-label-background/--canvas--label--color--background/g'
 echo "✓ Canvas tokens replaced"
 echo ""
 
 # Node tokens
 echo "[18] Replacing node tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-node-background/--node--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-node-executing-background/--node--color-background--executing/g'
-echo "$files" | xargs perl -pi -e 's/--color-node-executing-other-background/--node--color-background--executing-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-node-background/--node--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-node-executing-background/--node--color--background--executing/g'
+echo "$files" | xargs perl -pi -e 's/--color-node-executing-other-background/--node--color--background--executing-1/g'
 echo "$files" | xargs perl -pi -e 's/--color-node-pinned-border/--node--border-color--pinned/g'
 echo "$files" | xargs perl -pi -e 's/--color-node-running-border/--node--border-color--running/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-main-color/--node--type-main--color/g'
@@ -214,48 +214,48 @@ echo ""
 
 # Sticky note tokens
 echo "[19] Replacing sticky note tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background-1/--sticky--color-background--variant-1/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background-1/--sticky--color--background--variant-1/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border-1/--sticky--border-color--variant-1/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background-2/--sticky--color-background--variant-2/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background-2/--sticky--color--background--variant-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border-2/--sticky--border-color--variant-2/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background-3/--sticky--color-background--variant-3/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background-3/--sticky--color--background--variant-3/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border-3/--sticky--border-color--variant-3/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background-4/--sticky--color-background--variant-4/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background-4/--sticky--color--background--variant-4/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border-4/--sticky--border-color--variant-4/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background-5/--sticky--color-background--variant-5/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background-5/--sticky--color--background--variant-5/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border-5/--sticky--border-color--variant-5/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background-6/--sticky--color-background--variant-6/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background-6/--sticky--color--background--variant-6/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border-6/--sticky--border-color--variant-6/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background-7/--sticky--color-background--variant-7/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background-7/--sticky--color--background--variant-7/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border-7/--sticky--border-color--variant-7/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-code-background/--sticky--code--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-code-font/--sticky--code--color-text/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-background/--sticky--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-code-background/--sticky--code--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-code-font/--sticky--code--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-background/--sticky--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-sticky-border/--sticky--border-color/g'
-echo "$files" | xargs perl -pi -e 's/--color-sticky-font/--sticky--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-sticky-font/--sticky--color--text/g'
 echo "✓ Sticky note tokens replaced"
 echo ""
 
 # AI Assistant tokens
 echo "[20] Replacing AI assistant tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-askAssistant-button-background-gradient-active/--assistant--button--color-background--gradient--active/g'
-echo "$files" | xargs perl -pi -e 's/--color-askAssistant-button-background-gradient-hover/--assistant--button--color-background--gradient--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-askAssistant-button-background-gradient/--assistant--button--color-background--gradient/g'
+echo "$files" | xargs perl -pi -e 's/--color-askAssistant-button-background-gradient-active/--assistant--button--color--background--gradient--active/g'
+echo "$files" | xargs perl -pi -e 's/--color-askAssistant-button-background-gradient-hover/--assistant--button--color--background--gradient--hover/g'
+echo "$files" | xargs perl -pi -e 's/--color-askAssistant-button-background-gradient/--assistant--button--color--background--gradient/g'
 echo "$files" | xargs perl -pi -e 's/--color-assistant-highlight-1/--assistant--color--highlight-1/g'
 echo "$files" | xargs perl -pi -e 's/--color-assistant-highlight-2/--assistant--color--highlight-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-assistant-highlight-3/--assistant--color--highlight-3/g'
 echo "$files" | xargs perl -pi -e 's/--color-assistant-highlight-gradient/--assistant--color--highlight-gradient/g'
 echo "$files" | xargs perl -pi -e 's/--color-assistant-highlight-reverse/--assistant--color--highlight-gradient--reverse/g'
-echo "$files" | xargs perl -pi -e 's/--color-assistant-inner-highlight-hover/--assistant--button--color-background--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-assistant-inner-highlight-active/--assistant--button--color-background--active/g'
+echo "$files" | xargs perl -pi -e 's/--color-assistant-inner-highlight-hover/--assistant--button--color--background--hover/g'
+echo "$files" | xargs perl -pi -e 's/--color-assistant-inner-highlight-active/--assistant--button--color--background--active/g'
 echo "✓ AI assistant tokens replaced"
 echo ""
 
 # Chat tokens
 echo "[21] Replacing chat tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-lm-chat-messages-background/--lm-chat--messages--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-lm-chat-bot-background/--lm-chat--bot--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-lm-chat-user-background/--lm-chat--user--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-lm-chat-messages-background/--lm-chat--messages--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-lm-chat-bot-background/--lm-chat--bot--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-lm-chat-user-background/--lm-chat--user--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-lm-chat-user-color/--lm-chat--user--color/g'
 echo "✓ Chat tokens replaced"
 echo ""
@@ -282,21 +282,21 @@ echo ""
 
 # Expression editor tokens
 echo "[23] Replacing expression editor tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-valid-resolvable-foreground/--expression-editor--resolvable--color-foreground--valid/g'
-echo "$files" | xargs perl -pi -e 's/--color-valid-resolvable-background/--expression-editor--resolvable--color-background--valid/g'
-echo "$files" | xargs perl -pi -e 's/--color-invalid-resolvable-foreground/--expression-editor--resolvable--color-foreground--invalid/g'
-echo "$files" | xargs perl -pi -e 's/--color-invalid-resolvable-background/--expression-editor--resolvable--color-background--invalid/g'
-echo "$files" | xargs perl -pi -e 's/--color-pending-resolvable-foreground/--expression-editor--resolvable--color-foreground--pending/g'
-echo "$files" | xargs perl -pi -e 's/--color-pending-resolvable-background/--expression-editor--resolvable--color-background--pending/g'
-echo "$files" | xargs perl -pi -e 's/--color-expression-editor-modal-background/--expression-editor--modal--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-expression-editor-background/--expression-editor--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-valid-resolvable-foreground/--expression-editor--resolvable--color--foreground--valid/g'
+echo "$files" | xargs perl -pi -e 's/--color-valid-resolvable-background/--expression-editor--resolvable--color--background--valid/g'
+echo "$files" | xargs perl -pi -e 's/--color-invalid-resolvable-foreground/--expression-editor--resolvable--color--foreground--invalid/g'
+echo "$files" | xargs perl -pi -e 's/--color-invalid-resolvable-background/--expression-editor--resolvable--color--background--invalid/g'
+echo "$files" | xargs perl -pi -e 's/--color-pending-resolvable-foreground/--expression-editor--resolvable--color--foreground--pending/g'
+echo "$files" | xargs perl -pi -e 's/--color-pending-resolvable-background/--expression-editor--resolvable--color--background--pending/g'
+echo "$files" | xargs perl -pi -e 's/--color-expression-editor-modal-background/--expression-editor--modal--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-expression-editor-background/--expression-editor--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-expression-syntax-example/--expression-editor--syntax-example--color/g'
 
 ## autocomplete
 echo "$files" | xargs perl -pi -e 's/--color-autocomplete-section-header-border/--autocomplete--section-header--border-color/g'
 echo "$files" | xargs perl -pi -e 's/--color-autocomplete-item-selected/--autocomplete--item--color--selected/g'
 echo "$files" | xargs perl -pi -e 's/--color-infobox-examples-border-color/--autocomplete--infobox--examples--border-color/g'
-echo "$files" | xargs perl -pi -e 's/--color-infobox-background/--autocomplete--infobox--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-infobox-background/--autocomplete--infobox--color--background/g'
 echo "✓ Expression editor tokens replaced"
 echo ""
 
@@ -336,16 +336,16 @@ echo ""
 
 # Code editor tokens
 echo "[26] Replacing code editor tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-code-background-readonly/--code--color-background--readonly/g'
-echo "$files" | xargs perl -pi -e 's/--color-code-background/--code--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-code-background-readonly/--code--color--background--readonly/g'
+echo "$files" | xargs perl -pi -e 's/--color-code-background/--code--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-lineHighlight/--code--line-highlight--color/g'
-echo "$files" | xargs perl -pi -e 's/--color-code-foreground/--code--color-foreground/g'
+echo "$files" | xargs perl -pi -e 's/--color-code-foreground/--code--color--foreground/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-caret/--code--caret--color/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-selection-highlight/--code--selection--color--highlight/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-selection/--code--selection--color/g'
-echo "$files" | xargs perl -pi -e 's/--color-code-gutter-foreground-active/--code--gutter--color-foreground--active/g'
-echo "$files" | xargs perl -pi -e 's/--color-code-gutter-background/--code--gutter--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-code-gutter-foreground/--code--gutter--color-foreground/g'
+echo "$files" | xargs perl -pi -e 's/--color-code-gutter-foreground-active/--code--gutter--color--foreground--active/g'
+echo "$files" | xargs perl -pi -e 's/--color-code-gutter-background/--code--gutter--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-code-gutter-foreground/--code--gutter--color--foreground/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-indentation-marker-active/--code--indentation-marker--color--active/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-indentation-marker/--code--indentation-marker--color/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-line-break/--code--line-break--color/g'
@@ -355,12 +355,12 @@ echo ""
 
 # Tag tokens
 echo "[27] Replacing tag tokens..."
-echo "$files" | xargs perl -pi -e 's/--tag-background-hover-color/--tag--color-background--hover/g'
-echo "$files" | xargs perl -pi -e 's/--tag-background-color/--tag--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--tag-background-hover-color/--tag--color--background--hover/g'
+echo "$files" | xargs perl -pi -e 's/--tag-background-color/--tag--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--tag-border-hover-color/--tag--border-color--hover/g'
 echo "$files" | xargs perl -pi -e 's/--tag-border-color/--tag--border-color/g'
 echo "$files" | xargs perl -pi -e 's/--tag-border-radius/--tag--radius/g'
-echo "$files" | xargs perl -pi -e 's/--tag-text-color/--tag--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--tag-text-color/--tag--color--text/g'
 echo "$files" | xargs perl -pi -e 's/--tag-font-size/--tag--font-size/g'
 echo "$files" | xargs perl -pi -e 's/--tag-font-weight/--tag--font-weight/g'
 echo "$files" | xargs perl -pi -e 's/--tag-line-height/--tag--line-height/g'
@@ -371,37 +371,37 @@ echo ""
 
 # Variables usage tokens
 echo "[28] Replacing variables usage tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-variables-usage-syntax-bg/--variables-usage--syntax--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-variables-usage-font/--variables-usage--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-variables-usage-syntax-bg/--variables-usage--syntax--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-variables-usage-font/--variables-usage--color--text/g'
 echo "✓ Variables usage tokens replaced"
 echo ""
 
 # Button primary tokens
 echo "[29] Replacing button primary tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-button-primary-hover-active-focus-background/--button--color-background--primary--hover-active-focus/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-primary-hover-active-focus-background/--button--color--background--primary--hover-active-focus/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-primary-hover-active-border/--button--border-color--primary--hover-active/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-primary-disabled-background/--button--color-background--primary--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-primary-disabled-background/--button--color--background--primary--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-primary-disabled-border/--button--border-color--primary--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-primary-disabled-font/--button--color-text--primary--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-primary-disabled-font/--button--color--text--primary--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-primary-focus-outline/--button--outline-color--primary--focus/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-primary-background/--button--color-background--primary/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-primary-background/--button--color--background--primary/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-primary-border/--button--border-color--primary/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-primary-font/--button--color-text--primary/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-primary-font/--button--color--text--primary/g'
 echo "✓ Button primary tokens replaced"
 echo ""
 
 # Button secondary tokens
 echo "[30] Replacing button secondary tokens..."
 echo "$files" | xargs perl -pi -e 's/--color-button-secondary-hover-active-focus-border/--button--border-color--secondary--hover-active-focus/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-secondary-hover-active-focus-font/--button--color-text--secondary--hover-active-focus/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-secondary-active-focus-background/--button--color-background--secondary--active-focus/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-secondary-disabled-background/--button--color-background--secondary--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-hover-active-focus-font/--button--color--text--secondary--hover-active-focus/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-active-focus-background/--button--color--background--secondary--active-focus/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-disabled-background/--button--color--background--secondary--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-secondary-disabled-border/--button--border-color--secondary--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-secondary-disabled-font/--button--color-text--secondary--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-secondary-hover-background/--button--color-background--secondary--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-secondary-background/--button--color-background--secondary/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-disabled-font/--button--color--text--secondary--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-hover-background/--button--color--background--secondary--hover/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-background/--button--color--background--secondary/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-secondary-border/--button--border-color--secondary/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-secondary-font/--button--color-text--secondary/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-font/--button--color--text--secondary/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-secondary-focus-outline/--button--outline-color--secondary--focus/g'
 echo "✓ Button secondary tokens replaced"
 echo ""
@@ -415,11 +415,11 @@ echo "$files" | xargs perl -pi -e 's/--input-border-left-color/--input--border-l
 echo "$files" | xargs perl -pi -e 's/--input-focus-border-color/--input--border-color--focus/g'
 echo "$files" | xargs perl -pi -e 's/--input-hover-border-color/--input--border-color--hover/g'
 echo "$files" | xargs perl -pi -e 's/--input-disabled-placeholder/--input--placeholder--color--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--input-disabled-background/--input--color-background--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--input-disabled-background/--input--color--background--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--input-disabled-border/--input--border-color--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--input-disabled-color/--input--color--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--input-placeholder-color/--input--placeholder--color/g'
-echo "$files" | xargs perl -pi -e 's/--input-background-color/--input--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--input-background-color/--input--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--input-border-radius/--input--radius/g'
 echo "$files" | xargs perl -pi -e 's/--input-border-color/--input--border-color/g'
 echo "$files" | xargs perl -pi -e 's/--input-label-color/--input--label--color/g'
@@ -430,159 +430,159 @@ echo ""
 
 # Button highlight tokens
 echo "[33] Replacing button highlight tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-button-highlight-hover-active-focus-font/--button--color-text--highlight--hover-active-focus/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-hover-active-focus-font/--button--color--text--highlight--hover-active-focus/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-highlight-hover-active-focus-border/--button--border-color--highlight--hover-active-focus/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-highlight-hover-background/--button--color-background--highlight--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-highlight-active-focus-background/--button--color-background--highlight--active-focus/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-hover-background/--button--color--background--highlight--hover/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-active-focus-background/--button--color--background--highlight--active-focus/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-highlight-focus-outline/--button--outline-color--highlight--focus/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-highlight-disabled-font/--button--color-text--highlight--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-disabled-font/--button--color--text--highlight--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-highlight-disabled-border/--button--border-color--highlight--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-highlight-disabled-background/--button--color-background--highlight--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-highlight-font/--button--color-text--highlight/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-disabled-background/--button--color--background--highlight--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-font/--button--color--text--highlight/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-highlight-border/--button--border-color--highlight/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-highlight-background/--button--color-background--highlight/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-background/--button--color--background--highlight/g'
 echo "✓ Button highlight tokens replaced"
 echo ""
 
 # Button success, warning, danger tokens
 echo "[34] Replacing button success, warning, danger tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-button-success-disabled-font/--button--color-text--success--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-success-font/--button--color-text--success/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-warning-disabled-font/--button--color-text--warning--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-warning-font/--button--color-text--warning/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-success-disabled-font/--button--color--text--success--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-success-font/--button--color--text--success/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-warning-disabled-font/--button--color--text--warning--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-warning-font/--button--color--text--warning/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-danger-focus-outline/--button--outline-color--danger--focus/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-danger-disabled-background/--button--color-background--danger--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-danger-disabled-background/--button--color--background--danger--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-danger-disabled-border/--button--border-color--danger--disabled/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-danger-disabled-font/--button--color-text--danger--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-danger-disabled-font/--button--color--text--danger--disabled/g'
 echo "$files" | xargs perl -pi -e 's/--color-button-danger-border/--button--border-color--danger/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-danger-font/--button--color-text--danger/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-danger-font/--button--color--text--danger/g'
 echo "✓ Button success, warning, danger tokens replaced"
 echo ""
 
 # Text button tokens
 echo "[35] Replacing text button tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-text-button-secondary-font/--text-button--color-text--secondary/g'
+echo "$files" | xargs perl -pi -e 's/--color-text-button-secondary-font/--text-button--color--text--secondary/g'
 echo "✓ Text button tokens replaced"
 echo ""
 
 # Node Creator Button tokens
 echo "[36] Replacing node creator button tokens..."
 echo "$files" | xargs perl -pi -e 's/--color-button-node-creator-hover-border/--node-creator--button--border-color--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-node-creator-hover-font/--node-creator--button--color-text--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-node-creator-border-font/--node-creator--button--color-text/g'
-echo "$files" | xargs perl -pi -e 's/--color-button-node-creator-background/--node-creator--button--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-node-creator-hover-font/--node-creator--button--color--text--hover/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-node-creator-border-font/--node-creator--button--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-node-creator-background/--node-creator--button--color--background/g'
 echo "✓ Node Creator Button tokens replaced"
 echo ""
 
 # Table tokens
 echo "[37] Replacing table tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-table-row-highlight-background/--table--row--color-background--highlight/g'
-echo "$files" | xargs perl -pi -e 's/--color-table-row-hover-background/--table--row--color-background--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-table-row-even-background/--table--row--color-background--even/g'
-echo "$files" | xargs perl -pi -e 's/--color-table-row-background/--table--row--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-table-header-background/--table--header--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-table-row-highlight-background/--table--row--color--background--highlight/g'
+echo "$files" | xargs perl -pi -e 's/--color-table-row-hover-background/--table--row--color--background--hover/g'
+echo "$files" | xargs perl -pi -e 's/--color-table-row-even-background/--table--row--color--background--even/g'
+echo "$files" | xargs perl -pi -e 's/--color-table-row-background/--table--row--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-table-header-background/--table--header--color--background/g'
 echo "✓ Table tokens replaced"
 echo ""
 
 # Notification tokens
 echo "[38] Replacing notification tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-notification-background/--notification--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-notification-background/--notification--color--background/g'
 echo "✓ Notification tokens replaced"
 echo ""
 
 # Execution tokens
 echo "[39] Replacing execution tokens..."
-echo "$files" | xargs perl -pi -e 's/--execution-card-background-hover/--execution-card--color-background--hover/g'
-echo "$files" | xargs perl -pi -e 's/--execution-card-background/--execution-card--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--execution-card-background-hover/--execution-card--color--background--hover/g'
+echo "$files" | xargs perl -pi -e 's/--execution-card-background/--execution-card--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--execution-card-border-unknown/--execution-card--border-color--unknown/g'
 echo "$files" | xargs perl -pi -e 's/--execution-card-border-running/--execution-card--border-color--running/g'
 echo "$files" | xargs perl -pi -e 's/--execution-card-border-waiting/--execution-card--border-color--waiting/g'
 echo "$files" | xargs perl -pi -e 's/--execution-card-border-error/--execution-card--border-color--error/g'
 echo "$files" | xargs perl -pi -e 's/--execution-card-border-success/--execution-card--border-color--success/g'
 echo "$files" | xargs perl -pi -e 's/--execution-card-border-new/--execution-card--border-color--new/g'
-echo "$files" | xargs perl -pi -e 's/--execution-card-text-waiting/--execution-card--color-text--waiting/g'
-echo "$files" | xargs perl -pi -e 's/--execution-selector-background/--execution-selector--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--execution-selector-text/--execution-selector--color-text/g'
-echo "$files" | xargs perl -pi -e 's/--execution-select-all-text/--execution-select-all--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--execution-card-text-waiting/--execution-card--color--text--waiting/g'
+echo "$files" | xargs perl -pi -e 's/--execution-selector-background/--execution-selector--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--execution-selector-text/--execution-selector--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--execution-select-all-text/--execution-select-all--color--text/g'
 echo "✓ Execution tokens replaced"
 echo ""
 
 # NDV tokens
 echo "[40] Replacing NDV tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-ndv-droppable-parameter-active-background/--ndv--droppable-parameter--color-background--active/g'
-echo "$files" | xargs perl -pi -e 's/--color-ndv-droppable-parameter-background/--ndv--droppable-parameter--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-ndv-droppable-parameter-active-background/--ndv--droppable-parameter--color--background--active/g'
+echo "$files" | xargs perl -pi -e 's/--color-ndv-droppable-parameter-background/--ndv--droppable-parameter--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-ndv-droppable-parameter/--ndv--droppable-parameter--color/g'
-echo "$files" | xargs perl -pi -e 's/--color-ndvv2-run-data-background/--ndvv2--run-data--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-run-data-background/--run-data--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-ndv-back-font/--ndv--back--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-ndvv2-run-data-background/--ndvv2--run-data--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-run-data-background/--run-data--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-ndv-back-font/--ndv--back--color--text/g'
 echo "✓ NDV tokens replaced"
 echo ""
 
 # Notice tokens
 echo "[41] Replacing notice tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-notice-warning-background/--notice--color-background--warning/g'
+echo "$files" | xargs perl -pi -e 's/--color-notice-warning-background/--notice--color--background--warning/g'
 echo "$files" | xargs perl -pi -e 's/--color-notice-warning-border/--notice--border-color--warning/g'
-echo "$files" | xargs perl -pi -e 's/--color-notice-font/--notice--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-notice-font/--notice--color--text/g'
 echo "✓ Notice tokens replaced"
 echo ""
 
 # Callout tokens
 echo "[42] Replacing callout tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-callout-info-background/--callout--color-background--info/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-info-background/--callout--color--background--info/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-info-border/--callout--border-color--info/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-info-font/--callout--color-text--info/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-info-font/--callout--color--text--info/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-info-icon/--callout--icon-color--info/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-success-background/--callout--color-background--success/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-success-background/--callout--color--background--success/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-success-border/--callout--border-color--success/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-success-font/--callout--color-text--success/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-success-font/--callout--color--text--success/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-success-icon/--callout--icon-color--success/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-warning-background/--callout--color-background--warning/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-warning-background/--callout--color--background--warning/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-warning-border/--callout--border-color--warning/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-warning-font/--callout--color-text--warning/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-warning-font/--callout--color--text--warning/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-warning-icon/--callout--icon-color--warning/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-danger-background/--callout--color-background--danger/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-danger-background/--callout--color--background--danger/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-danger-border/--callout--border-color--danger/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-danger-font/--callout--color-text--danger/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-danger-font/--callout--color--text--danger/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-danger-icon/--callout--icon-color--danger/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-secondary-background/--callout--color-background--secondary/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-secondary-background/--callout--color--background--secondary/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-secondary-border/--callout--border-color--secondary/g'
-echo "$files" | xargs perl -pi -e 's/--color-callout-secondary-font/--callout--color-text--secondary/g'
+echo "$files" | xargs perl -pi -e 's/--color-callout-secondary-font/--callout--color--text--secondary/g'
 echo "$files" | xargs perl -pi -e 's/--color-callout-secondary-icon/--callout--icon-color--secondary/g'
 echo "✓ Callout tokens replaced"
 echo ""
 
 # Dialog and overlay tokens
 echo "[43] Replacing dialog and overlay tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-dialog-overlay-background-dark/--dialog--overlay--color-background--dark/g'
-echo "$files" | xargs perl -pi -e 's/--color-dialog-overlay-background/--dialog--overlay--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-dialog-background/--dialog--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-dialog-overlay-background-dark/--dialog--overlay--color--background--dark/g'
+echo "$files" | xargs perl -pi -e 's/--color-dialog-overlay-background/--dialog--overlay--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-dialog-background/--dialog--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-block-ui-overlay/--block-ui--overlay--color/g'
 echo "✓ Dialog and overlay tokens replaced"
 echo ""
 
 # Avatar tokens
 echo "[44] Replacing avatar tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-avatar-font/--avatar--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-avatar-font/--avatar--color--text/g'
 echo "✓ Avatar tokens replaced"
 echo ""
 
 # NPS Survey tokens
 echo "[45] Replacing NPS Survey tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-nps-survey-background/--nps-survey--color-background/g'
-echo "$files" | xargs perl -pi -e 's/--color-nps-survey-font/--nps-survey--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-nps-survey-background/--nps-survey--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-nps-survey-font/--nps-survey--color--text/g'
 echo "✓ NPS Survey tokens replaced"
 echo ""
 
 # Action Dropdown tokens
 echo "[46] Replacing Action Dropdown tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-action-dropdown-item-active-background/--action-dropdown--item--color-background--active/g'
+echo "$files" | xargs perl -pi -e 's/--color-action-dropdown-item-active-background/--action-dropdown--item--color--background--active/g'
 echo "✓ Action Dropdown tokens replaced"
 echo ""
 
 # Switch tokens
 echo "[47] Replacing Switch tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-switch-active-background/--switch--color-background--active/g'
-echo "$files" | xargs perl -pi -e 's/--color-switch-background/--switch--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-switch-active-background/--switch--color--background--active/g'
+echo "$files" | xargs perl -pi -e 's/--color-switch-background/--switch--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-switch-border-color/--switch--border-color/g'
 echo "$files" | xargs perl -pi -e 's/--color-switch-toggle/--switch--toggle--color/g'
 echo "✓ Switch tokens replaced"
@@ -590,34 +590,34 @@ echo ""
 
 # Feature Request tokens
 echo "[48] Replacing Feature Request tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-feature-request-font/--feature-request--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-feature-request-font/--feature-request--color--text/g'
 echo "✓ Feature Request tokens replaced"
 echo ""
 
 # Input Triple tokens
 echo "[49] Replacing Input Triple tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-background-input-triple/--input-triple--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-background-input-triple/--input-triple--color--background/g'
 echo "✓ Input Triple tokens replaced"
 echo ""
 
 # Node error tokens
 echo "[50] Replacing Node error tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-node-error-output-text-color/--node--error-output--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-node-error-output-text-color/--node--error-output--color--text/g'
 echo "✓ Node error tokens replaced"
 echo ""
 
 # MFA tokens
 echo "[51] Replacing MFA tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-mfa-recovery-code-background/--mfa--recovery-code--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-mfa-recovery-code-background/--mfa--recovery-code--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--color-mfa-recovery-code-color/--mfa--recovery-code--color/g'
-echo "$files" | xargs perl -pi -e 's/--color-mfa-lose-access-text-color/--mfa--lose-access--color-text/g'
+echo "$files" | xargs perl -pi -e 's/--color-mfa-lose-access-text-color/--mfa--lose-access--color--text/g'
 echo "$files" | xargs perl -pi -e 's/--color-qr-code-border/--qr-code--border-color/g'
 echo "✓ MFA tokens replaced"
 echo ""
 
 # Text highlight tokens
 echo "[52] Replacing text highlight tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-text-highlight-background/--text-highlight--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-text-highlight-background/--text-highlight--color--background/g'
 echo "✓ Text highlight tokens replaced"
 echo ""
 
@@ -633,63 +633,63 @@ echo "$files" | xargs perl -pi -e 's/--node-type-supplemental-color-l/--node-typ
 echo "$files" | xargs perl -pi -e 's/--node-type-supplemental-label-color/--node-type--supplemental--label--color/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-supplemental-icon/--node-type--supplemental--icon--color/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-supplemental-color/--node-type--supplemental--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-supplemental-background/--node-type--supplemental--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-supplemental-background/--node-type--supplemental--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-supplemental-connector-color/--node-type--supplemental--connector--color/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_chain-color-h/--node-type--ai-chain--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_chain-color-s/--node-type--ai-chain--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_chain-color-l/--node-type--ai-chain--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_chain-color/--node-type--ai-chain--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-chain-background/--node-type--chain--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-chain-background/--node-type--chain--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_document-color-h/--node-type--ai-document--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_document-color-s/--node-type--ai-document--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_document-color-l/--node-type--ai-document--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_document-color/--node-type--ai-document--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_document-background/--node-type--ai-document--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_document-background/--node-type--ai-document--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_embedding-color-h/--node-type--ai-embedding--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_embedding-color-s/--node-type--ai-embedding--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_embedding-color-l/--node-type--ai-embedding--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_embedding-color/--node-type--ai-embedding--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_embedding-background/--node-type--ai-embedding--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_embedding-background/--node-type--ai-embedding--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_languageModel-color-h/--node-type--ai-language-model--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_languageModel-color-s/--node-type--ai-language-model--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_languageModel-color-l/--node-type--ai-language-model--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_languageModel-color/--node-type--ai-language-model--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_languageModel-background/--node-type--ai-language-model--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_languageModel-background/--node-type--ai-language-model--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_memory-color-h/--node-type--ai-memory--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_memory-color-s/--node-type--ai-memory--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_memory-color-l/--node-type--ai-memory--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_memory-color/--node-type--ai-memory--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_memory-background/--node-type--ai-memory--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_memory-background/--node-type--ai-memory--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_outputParser-color-h/--node-type--ai-output-parser--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_outputParser-color-s/--node-type--ai-output-parser--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_outputParser-color-l/--node-type--ai-output-parser--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_outputParser-color/--node-type--ai-output-parser--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_outputParser-background/--node-type--ai-output-parser--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_outputParser-background/--node-type--ai-output-parser--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_tool-color-h/--node-type--ai-tool--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_tool-color-s/--node-type--ai-tool--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_tool-color-l/--node-type--ai-tool--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_tool-color/--node-type--ai-tool--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_tool-background/--node-type--ai-tool--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_tool-background/--node-type--ai-tool--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_retriever-color-h/--node-type--ai-retriever--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_retriever-color-s/--node-type--ai-retriever--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_retriever-color-l/--node-type--ai-retriever--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_retriever-color/--node-type--ai-retriever--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_retriever-background/--node-type--ai-retriever--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_retriever-background/--node-type--ai-retriever--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_textSplitter-color-h/--node-type--ai-text-splitter--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_textSplitter-color-s/--node-type--ai-text-splitter--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_textSplitter-color-l/--node-type--ai-text-splitter--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_textSplitter-color/--node-type--ai-text-splitter--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_textSplitter-background/--node-type--ai-text-splitter--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_textSplitter-background/--node-type--ai-text-splitter--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorRetriever-color-h/--node-type--ai-vector-retriever--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorRetriever-color-s/--node-type--ai-vector-retriever--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorRetriever-color-l/--node-type--ai-vector-retriever--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorRetriever-color/--node-type--ai-vector-retriever--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorRetriever-background/--node-type--ai-vector-retriever--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorRetriever-background/--node-type--ai-vector-retriever--color--background/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorStore-color-h/--node-type--ai-vector-store--color--hue/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorStore-color-s/--node-type--ai-vector-store--color--saturation/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorStore-color-l/--node-type--ai-vector-store--color--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorStore-color/--node-type--ai-vector-store--color/g'
-echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorStore-background/--node-type--ai-vector-store--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--node-type-ai_vectorStore-background/--node-type--ai-vector-store--color--background/g'
 echo "✓ AI Node type tokens replaced"
 echo ""
 
@@ -724,9 +724,9 @@ echo ""
 
 # Menu tokens
 echo "[56] Replacing menu tokens..."
-echo "$files" | xargs perl -pi -e 's/--color-menu-hover-background/--menu--color-background--hover/g'
-echo "$files" | xargs perl -pi -e 's/--color-menu-active-background/--menu--color-background--active/g'
-echo "$files" | xargs perl -pi -e 's/--color-menu-background/--menu--color-background/g'
+echo "$files" | xargs perl -pi -e 's/--color-menu-hover-background/--menu--color--background--hover/g'
+echo "$files" | xargs perl -pi -e 's/--color-menu-active-background/--menu--color--background--active/g'
+echo "$files" | xargs perl -pi -e 's/--color-menu-background/--menu--color--background/g'
 echo "✓ Menu tokens replaced"
 echo ""
 
@@ -739,14 +739,14 @@ echo ""
 
 # Grid tokens
 echo "[58] Replacing grid tokens..."
-echo "$files" | xargs perl -pi -e 's/--grid-row-selected-background/--grid--row--color-background--selected/g'
+echo "$files" | xargs perl -pi -e 's/--grid-row-selected-background/--grid--row--color--background--selected/g'
 echo "$files" | xargs perl -pi -e 's/--grid-cell-editing-border/--grid--cell--border-color--editing/g'
 echo "✓ Grid tokens replaced"
 echo ""
 
 # HSL component tokens - these need to stay as they are used in HSL functions
 echo "[59] Renaming HSL component tokens for proper vocabulary..."
-echo "$files" | xargs perl -pi -e 's/--node-type--background--lightness/--node-type--color-background--lightness/g'
+echo "$files" | xargs perl -pi -e 's/--node-type--background--lightness/--node-type--color--background--lightness/g'
 echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--label--color--hue/--node-type--supplemental--label--color--hsl-h/g'
 echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--label--color--saturation/--node-type--supplemental--label--color--hsl-s/g'
 echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--label--color--lightness/--node-type--supplemental--label--color--hsl-l/g'

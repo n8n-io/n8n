@@ -12,11 +12,13 @@ const meta = {
 };
 
 // Reserved vocabulary from proposal.md
+// NOTE: color--text, color--background, color--foreground use double dashes
+// to separate "color" from the subtype (text/background/foreground)
 const PROPERTY_VOCABULARY = new Set([
 	'color',
-	'color-text',
-	'color-background',
-	'color-foreground',
+	'color--text',
+	'color--background',
+	'color--foreground',
 	'border-color',
 	'border-top-color',
 	'border-bottom-color',
@@ -110,7 +112,8 @@ const SCALE_VALUES = new Set([
 const FONT_WEIGHT_VALUES = new Set(['regular', 'medium', 'semibold', 'bold']);
 
 // Regex for basic validation
-const BASIC_PATTERN = /^--[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z0-9]+(?:-[a-z0-9]+)*){1,7}$/;
+// Allows 2-10 groups to accommodate double-dash properties like color--text
+const BASIC_PATTERN = /^--[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z0-9]+(?:-[a-z0-9]+)*){1,9}$/;
 
 interface ValidationResult {
 	valid: boolean;
@@ -143,7 +146,7 @@ function validateCssVariable(variable: string): ValidationResult {
 		};
 	}
 
-	// Check group count (2-8 groups)
+	// Check group count (2-10 groups to accommodate double-dash properties like color--text)
 	if (groups.length < 2) {
 		return {
 			valid: false,
@@ -151,10 +154,10 @@ function validateCssVariable(variable: string): ValidationResult {
 		};
 	}
 
-	if (groups.length > 8) {
+	if (groups.length > 10) {
 		return {
 			valid: false,
-			reason: 'Must have at most 8 groups (too many segments)',
+			reason: 'Must have at most 10 groups (too many segments)',
 		};
 	}
 
@@ -191,6 +194,18 @@ function validateCssVariable(variable: string): ValidationResult {
 		.slice(startIndex)
 		.findIndex((group) => PROPERTY_VOCABULARY.has(group));
 	const absolutePropertyIndex = startIndex + propertyIndex;
+
+	// Check if any semantic or scale values appear before the property
+	const groupsBeforeProperty = groups.slice(startIndex, absolutePropertyIndex);
+	for (const group of groupsBeforeProperty) {
+		// Check if this group is a semantic value, scale value, or font-weight value
+		if (SEMANTIC_VALUES.has(group) || SCALE_VALUES.has(group) || FONT_WEIGHT_VALUES.has(group)) {
+			return {
+				valid: false,
+				reason: `Value "${group}" appears before the property. Values must come after the property (e.g., --color--${group}, not --${group}--color)`,
+			};
+		}
+	}
 
 	// Get the property name to validate specific property-value combinations
 	const propertyName = groups[absolutePropertyIndex];
