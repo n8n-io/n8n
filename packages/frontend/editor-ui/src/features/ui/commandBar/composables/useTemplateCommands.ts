@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import type { CommandGroup } from '../commandBar.types';
+import type { CommandGroup } from '../types';
 
 export function useTemplateCommands(): CommandGroup {
 	const i18n = useI18n();

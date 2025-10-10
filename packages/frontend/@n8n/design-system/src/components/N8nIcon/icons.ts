@@ -33,6 +33,7 @@ import VectorSquare from './custom/vector-square.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
+import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
 import IconLucideArrowDown from '~icons/lucide/arrow-down';
 import IconLucideArrowLeft from '~icons/lucide/arrow-left';
 import IconLucideArrowLeftRight from '~icons/lucide/arrow-left-right';
@@ -82,6 +83,7 @@ import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
+import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
 import IconLucideCrosshair from '~icons/lucide/crosshair';
@@ -291,6 +293,7 @@ export const deprecatedIconSet = {
 	'code-branch': IconLucideGitBranch,
 	cog: IconLucideCog,
 	cogs: IconLucideCog,
+	'columns-3-cog': IconLucideColumns3Cog,
 	comment: IconLucideMessageCircle,
 	comments: IconLucideMessagesSquare,
 	clipboard: IconLucideClipboard,
@@ -463,6 +466,7 @@ export const updatedIconSet = {
 	// lucide
 	'align-right': IconLucideAlignRight,
 	archive: IconLucideArchive,
+	'archive-restore': IconLucideArchiveRestore,
 	'arrow-down': IconLucideArrowDown,
 	'arrow-left': IconLucideArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,

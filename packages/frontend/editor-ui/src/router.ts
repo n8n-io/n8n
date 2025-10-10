@@ -20,6 +20,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from './composables/useCalloutHelpers';
+import { useRecentResources } from '@/features/ui/commandBar/composables/useRecentResources';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -903,6 +904,9 @@ router.afterEach((to, from) => {
 			templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
 		}
 		telemetry.page(to);
+
+		const { trackResourceOpened } = useRecentResources();
+		trackResourceOpened(to);
 	} catch (failure) {
 		if (isNavigationFailure(failure)) {
 			console.log(failure);

@@ -48,13 +48,12 @@ const {
 	initialize: initializeCommandBar,
 	isEnabled: isCommandBarEnabled,
 	items,
+	placeholder,
+	context,
 	onCommandBarChange,
 	onCommandBarNavigateTo,
+	isLoading: isCommandBarLoading,
 } = useCommandBar();
-
-const showCommandBar = computed(
-	() => isCommandBarEnabled.value && hasPermission(['authenticated']),
-);
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -70,6 +69,10 @@ const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
+
+const showCommandBar = computed(
+	() => isCommandBarEnabled.value && hasPermission(['authenticated']) && !isDemoMode.value,
+);
 
 const chatPanelWidth = computed(() => chatPanelStore.width);
 
@@ -172,6 +175,9 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<N8nCommandBar
 				v-if="showCommandBar"
 				:items="items"
+				:placeholder="placeholder"
+				:context="context"
+				:is-loading="isCommandBarLoading"
 				@input-change="onCommandBarChange"
 				@navigate-to="onCommandBarNavigateTo"
 			/>

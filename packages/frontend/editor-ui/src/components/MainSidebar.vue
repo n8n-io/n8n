@@ -28,6 +28,7 @@ import {
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
+import { EXTERNAL_LINKS } from '@/constants/externalLinks';
 import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -221,7 +222,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
-					href: 'https://www.youtube.com/watch?v=4cQWJViybAQ',
+					href: EXTERNAL_LINKS.QUICKSTART_VIDEO,
 					target: '_blank',
 				},
 			},
@@ -230,7 +231,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'book',
 				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
-					href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
+					href: EXTERNAL_LINKS.DOCUMENTATION,
 					target: '_blank',
 				},
 			},
@@ -239,7 +240,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'users',
 				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
-					href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
+					href: EXTERNAL_LINKS.FORUM,
 					target: '_blank',
 				},
 			},
@@ -248,7 +249,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'graduation-cap',
 				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
-					href: 'https://docs.n8n.io/courses/',
+					href: EXTERNAL_LINKS.COURSES,
 					target: '_blank',
 				},
 			},

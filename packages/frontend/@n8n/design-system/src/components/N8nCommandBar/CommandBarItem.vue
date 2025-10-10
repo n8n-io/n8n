@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { ref } from 'vue';
+
 import type { CommandBarItem } from './types';
 
 const props = defineProps<{
@@ -10,8 +12,18 @@ const emit = defineEmits<{
 	select: [item: CommandBarItem];
 }>();
 
+const isHovered = ref(false);
+
 const handleSelect = () => {
 	emit('select', props.item);
+};
+
+const handleMouseEnter = () => {
+	isHovered.value = true;
+};
+
+const handleMouseLeave = () => {
+	isHovered.value = false;
 };
 </script>
 
@@ -21,9 +33,15 @@ const handleSelect = () => {
 		:data-item-id="item.id"
 		:class="[$style.item, { [$style.selected]: isSelected }]"
 		@click.stop="handleSelect"
+		@mouseenter="handleMouseEnter"
+		@mouseleave="handleMouseLeave"
 	>
 		<div v-if="item.icon" :class="$style.icon">
-			<span v-if="item.icon && 'html' in item.icon" v-n8n-html="item.icon.html"></span>
+			<span
+				v-if="item.icon && 'html' in item.icon"
+				v-n8n-html="item.icon.html"
+				:class="$style.iconHtml"
+			></span>
 			<component
 				:is="item.icon.component"
 				v-else-if="item.icon && 'component' in item.icon"
@@ -31,7 +49,14 @@ const handleSelect = () => {
 			/>
 		</div>
 		<div :class="$style.content">
-			<div :class="$style.title">{{ item.title }}</div>
+			<div :class="$style.title">
+				<template v-if="typeof item.title === 'string'">{{ item.title }}</template>
+				<component
+					:is="item.title.component"
+					v-else
+					v-bind="{ ...item.title.props, isSelected, isHovered }"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -41,38 +66,18 @@ const handleSelect = () => {
 	display: flex;
 	gap: var(--spacing--2xs);
 	align-items: center;
-	height: var(--spacing--2xl);
-	padding: 0 var(--spacing--sm);
+	height: 40px;
+	padding: 0 var(--spacing--2xs);
 	cursor: pointer;
-	position: relative;
-	margin-left: var(--border-width);
+	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
-	&::before {
-		content: '';
-		position: absolute;
-		left: calc(-1 * var(--border-width));
-		top: 0;
-		bottom: 0;
-		width: calc(2 * var(--border-width));
-		background-color: transparent;
-		transition: background-color 0.1s ease;
-	}
-
 	&:hover {
-		background-color: var(--color--foreground);
-
-		&::before {
-			background-color: var(--color--foreground--shade-1);
-		}
+		background-color: var(--color-command-bar-item-hover-background);
 	}
 
 	&.selected {
-		background-color: var(--color--foreground);
-
-		&::before {
-			background-color: var(--color--primary);
-		}
+		background-color: var(--color-command-bar-item-hover-background);
 	}
 }
 
@@ -85,6 +90,14 @@ const handleSelect = () => {
 	flex-shrink: 0;
 }
 
+.iconHtml {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+}
+
 .content {
 	flex: 1;
 	min-width: 0;
@@ -93,7 +106,7 @@ const handleSelect = () => {
 .title {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
-	color: var(--color--text--shade-1);
+	color: var(--color--text);
 	line-height: var(--line-height--sm);
 	overflow: hidden;
 	text-overflow: ellipsis;
