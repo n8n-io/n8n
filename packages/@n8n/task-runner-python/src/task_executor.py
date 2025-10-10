@@ -16,6 +16,8 @@ from src.errors import (
     TaskProcessExitError,
     SecurityViolationError,
 )
+from src.import_validation import validate_module_import
+from src.config.security_config import SecurityConfig
 
 from src.message_types.broker import NodeMode, Items
 from src.constants import (
@@ -24,11 +26,8 @@ from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
     SIGTERM_EXIT_CODE,
-    ERROR_STDLIB_DISALLOWED,
-    ERROR_EXTERNAL_DISALLOWED,
 )
-from typing import Any, Set
-from dataclasses import dataclass
+from typing import Any
 
 from multiprocessing.context import ForkServerProcess
 from multiprocessing import shared_memory
@@ -39,15 +38,6 @@ MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
-
-
-@dataclass
-class SecurityConfig:
-    """Configuration for security restrictions on code execution."""
-
-    stdlib_allow: Set[str]
-    external_allow: Set[str]
-    builtins_deny: set[str]
 
 
 class TaskExecutor:
@@ -427,42 +417,13 @@ class TaskExecutor:
         original_import = __builtins__["__import__"]
 
         def safe_import(name, *args, **kwargs):
-            module_name = name.split(".")[0]
-            is_stdlib = module_name in sys.stdlib_module_names
-            is_external = not is_stdlib
-            stdlib_allowed_str = (
-                ", ".join(sorted(security_config.stdlib_allow))
-                if security_config.stdlib_allow
-                else "none"
-            )
-            external_allowed_str = (
-                ", ".join(sorted(security_config.external_allow))
-                if security_config.external_allow
-                else "none"
-            )
+            is_allowed, error_msg = validate_module_import(name, security_config)
 
-            if (
-                is_stdlib
-                and "*" not in security_config.stdlib_allow
-                and module_name not in security_config.stdlib_allow
-            ):
+            if not is_allowed:
+                assert error_msg is not None
                 raise SecurityViolationError(
                     message="Security violation detected",
-                    description=ERROR_STDLIB_DISALLOWED.format(
-                        module=name, allowed=stdlib_allowed_str
-                    ),
-                )
-
-            if (
-                is_external
-                and "*" not in security_config.external_allow
-                and module_name not in security_config.external_allow
-            ):
-                raise SecurityViolationError(
-                    message="Security violation detected",
-                    description=ERROR_EXTERNAL_DISALLOWED.format(
-                        module=name, allowed=external_allowed_str
-                    ),
+                    description=error_msg,
                 )
 
             return original_import(name, *args, **kwargs)
