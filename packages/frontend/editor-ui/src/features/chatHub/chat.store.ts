@@ -17,6 +17,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const isResponding = ref(false);
 	const chatMessages = ref<ChatMessage[]>([]);
+	const latestMessage = computed(() => {
+		return chatMessages.value.length > 0 ? chatMessages.value[chatMessages.value.length - 1] : null;
+	});
 
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
@@ -41,17 +44,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		});
 	}
 
-	function addAiMessage(content: string, id: string) {
+	function addAiMessage(content: string, messageId: string, key: string) {
 		chatMessages.value.push({
-			id,
+			id: messageId,
+			key,
 			role: 'assistant',
 			type: 'message',
 			text: content,
 		});
 	}
 
-	function appendMessage(content: string, id: string) {
-		const existingMessage = chatMessages.value.find((m) => m.id === id);
+	function appendMessage(content: string, key: string) {
+		const existingMessage = chatMessages.value.find((m) => m.key === key);
 		if (existingMessage && existingMessage.type === 'message') {
 			existingMessage.text += content;
 			return;
@@ -60,7 +64,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	function onBeginMessage(messageId: string, nodeId: string, runIndex?: number) {
 		isResponding.value = true;
-		addAiMessage('', `${messageId}-${nodeId}-${runIndex ?? 0}`);
+		addAiMessage('', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
 	function onChunk(messageId: string, chunk: string, nodeId?: string, runIndex?: number) {
@@ -111,6 +115,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) => {
 		const messageId = uuidv4();
+		const previousMessageId = latestMessage.value?.id ?? null;
+
 		addUserMessage(message, messageId);
 
 		sendText(
@@ -121,6 +127,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				sessionId,
 				message,
 				credentials,
+				previousMessageId,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(chunk, messageId),
 			onStreamDone,

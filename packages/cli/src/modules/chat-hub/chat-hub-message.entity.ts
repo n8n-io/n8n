@@ -2,8 +2,8 @@ import { ChatHubProvider } from '@n8n/api-types';
 import { ExecutionEntity, WithTimestampsAndStringId, WorkflowEntity } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from '@n8n/typeorm';
 
+import { ChatHubSession } from './chat-hub-session.entity';
 import { MessageState } from './chat-hub.types';
-import { ChatHubSession } from './chat-session.entity';
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
 export type ChatHubMessageRole = 'user' | 'assistant' | 'system' | 'tool' | null;
