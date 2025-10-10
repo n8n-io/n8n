@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
@@ -60,7 +60,11 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import { injectWorkflowState, workflowStateEventBus } from '@/composables/useWorkflowState';
+import {
+	injectWorkflowState,
+	WorkflowStateBusEvents,
+	workflowStateEventBus,
+} from '@/composables/useWorkflowState';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -162,21 +166,23 @@ const canManageLogStreaming = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } }),
 );
 
+function onUpdateNodeProperties(event: WorkflowStateBusEvents['updateNodeProperties']) {
+	const updateInformation = event[1];
+	if (updateInformation.name === destination.id) {
+		if ('credentials' in updateInformation.properties) {
+			unchanged.value = false;
+			nodeParameters.value.credentials = updateInformation.properties
+				.credentials as NodeParameterValueType;
+		}
+	}
+}
+
 onMounted(() => {
 	setupNode(Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), destination));
-	workflowStateEventBus.on('updateNodeProperties', (event) => {
-		// @WORKFLOWSTATE(ckolb): Once we support multiple opened workflows, this will need to differentiate
-		// which workflowState the event was triggered to react to the appropriate workflow only
-		const updateInformation = event[1];
-		if (updateInformation.name === destination.id) {
-			if ('credentials' in updateInformation.properties) {
-				unchanged.value = false;
-				nodeParameters.value.credentials = updateInformation.properties
-					.credentials as NodeParameterValueType;
-			}
-		}
-	});
+	workflowStateEventBus.on('updateNodeProperties', onUpdateNodeProperties);
 });
+
+onUnmounted(() => workflowStateEventBus.off('updateNodeProperties', onUpdateNodeProperties));
 
 function onInput() {
 	unchanged.value = false;
