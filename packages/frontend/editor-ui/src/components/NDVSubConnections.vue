@@ -409,12 +409,12 @@ defineExpose({
 	--plus-button-size: 30px;
 	--animation-duration: 150ms;
 	--collapsed-offset: 10px;
-	padding-top: calc(var(--node-size) + var(--spacing-3xs));
+	padding-top: calc(var(--node-size) + var(--spacing--3xs));
 }
 .connections {
 	// Make sure container has matching height if there's no connections
 	// since the plus button is absolutely positioned
-	min-height: calc(var(--node-size) + var(--spacing-m));
+	min-height: calc(var(--node-size) + var(--spacing--md));
 	position: absolute;
 	bottom: calc((var(--node-size) / 2) * -1);
 	left: 0;
@@ -431,8 +431,8 @@ defineExpose({
 	transition: all calc((var(--animation-duration) - 50ms)) ease;
 }
 .connectionLabel {
-	margin-bottom: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
+	margin-bottom: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
 	user-select: none;
 	text-wrap: nowrap;
 
@@ -450,7 +450,7 @@ defineExpose({
 .plusButton {
 	transition: all var(--animation-duration) ease;
 	position: absolute;
-	top: var(--spacing-2xs);
+	top: var(--spacing--2xs);
 
 	&.hasIssues {
 		animation: horizontal-shake 500ms;
@@ -468,7 +468,7 @@ defineExpose({
 
 		.connectedNodesWrapperExpanded & {
 			// left: 100%;
-			margin-right: var(--spacing-2xs);
+			margin-right: var(--spacing--2xs);
 			opacity: 1;
 			pointer-events: all;
 		}
@@ -489,10 +489,10 @@ defineExpose({
 	visibility: hidden;
 }
 .connectedNode {
-	border: var(--border-base);
+	border: var(--border);
 	background-color: var(--color-node-background);
 	border-radius: 100%;
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	cursor: pointer;
 	pointer-events: all;
 	transition: all var(--animation-duration) ease;
@@ -511,7 +511,7 @@ defineExpose({
 		margin-right: 0;
 		// Negative margin to offset the absolutely positioned plus button
 		// when the nodes are expanded to center the nodes
-		margin-right: calc((var(--spacing-2xs) + var(--plus-button-size)) * -1);
+		margin-right: calc((var(--spacing--2xs) + var(--plus-button-size)) * -1);
 	}
 }
 .nodeWrapper {
@@ -519,11 +519,11 @@ defineExpose({
 	transform-origin: center;
 	z-index: 1;
 	.connectedNodesWrapperExpanded &:not(:first-child) {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 	&.hasIssues {
 		.connectedNode {
-			border-width: calc(var(--border-width-base) * 2);
+			border-width: calc(var(--border-width) * 2);
 			border-color: var(--color--danger);
 		}
 	}

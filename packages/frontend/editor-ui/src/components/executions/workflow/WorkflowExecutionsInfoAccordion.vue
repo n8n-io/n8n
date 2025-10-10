@@ -237,8 +237,8 @@ async function onSaveWorkflowClick(): Promise<void> {
 		display: flex;
 		flex-direction: row;
 		justify-content: space-between;
-		padding-block: var(--spacing-2xs);
-		padding-inline: var(--spacing-s);
+		padding-block: var(--spacing--2xs);
+		padding-inline: var(--spacing--sm);
 		width: 100%;
 		user-select: none;
 		color: var(--color--text) !important;
@@ -249,7 +249,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		padding: 0 var(--spacing-s) var(--spacing-2xs) !important;
+		padding: 0 var(--spacing--sm) var(--spacing--2xs) !important;
 
 		span {
 			width: 100%;
@@ -259,7 +259,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 	footer {
 		text-align: left;
 		width: 100%;
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 	}
 
 	.disabled a {

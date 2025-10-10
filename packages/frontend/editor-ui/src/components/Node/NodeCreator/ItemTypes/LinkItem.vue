@@ -33,7 +33,7 @@ defineProps<Props>();
 <style lang="scss" module>
 .creatorLink {
 	--action-arrow-color: var(--color--text--tint-1);
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-xs);
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--xs);
 }
 </style>

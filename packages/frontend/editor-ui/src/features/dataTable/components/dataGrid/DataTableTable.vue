@@ -238,22 +238,22 @@ defineExpose({
 	--ag-accent-color: var(--p--color--secondary-470);
 	--ag-row-hover-color: var(--color--background--light-1);
 	--ag-background-color: var(--color--background--light-3);
-	--ag-border-color: var(--border-color-base);
-	--ag-border-radius: var(--border-radius-base);
+	--ag-border-color: var(--border-color);
+	--ag-border-radius: var(--radius);
 	--ag-wrapper-border-radius: 0;
 	--ag-font-family: var(--font-family);
-	--ag-font-size: var(--font-size-xs);
+	--ag-font-size: var(--font-size--xs);
 	--ag-font-color: var(--color--text);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-background-color: var(--color--background--light-1);
-	--ag-header-font-size: var(--font-size-xs);
-	--ag-header-font-weight: var(--font-weight-medium);
+	--ag-header-font-size: var(--font-size--xs);
+	--ag-header-font-weight: var(--font-weight--medium);
 	--ag-header-foreground-color: var(--color--text--shade-1);
-	--ag-cell-horizontal-padding: var(--spacing-2xs);
+	--ag-cell-horizontal-padding: var(--spacing--2xs);
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--p--color--secondary-470);
-	--ag-input-padding-start: var(--spacing-2xs);
+	--ag-input-padding-start: var(--spacing--2xs);
 	--ag-input-background-color: var(--color--text--tint-3);
 	--ag-focus-shadow: none;
 
@@ -263,18 +263,18 @@ defineExpose({
 	}
 
 	:global(.ag-header-cell-resize) {
-		width: var(--spacing-xs);
+		width: var(--spacing--xs);
 		// this is needed so that we compensate for the width
 		right: -7px;
 	}
 
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
 		border: none;
-		padding-left: var(--spacing-l);
+		padding-left: var(--spacing--lg);
 	}
 
 	:global(.ag-header-cell[col-id='ag-Grid-SelectionColumn']) {
-		padding-left: var(--spacing-l);
+		padding-left: var(--spacing--lg);
 		&:after {
 			display: none;
 		}
@@ -308,7 +308,7 @@ defineExpose({
 
 		button {
 			position: relative;
-			left: calc(var(--spacing-4xs) * -1);
+			left: calc(var(--spacing--4xs) * -1);
 		}
 	}
 
@@ -335,7 +335,7 @@ defineExpose({
 		padding: 0;
 
 		textarea {
-			padding-top: var(--spacing-2xs);
+			padding-top: var(--spacing--2xs);
 
 			&:where(:focus-within, :active) {
 				border: var(--grid-cell-editing-border);
@@ -365,7 +365,7 @@ defineExpose({
 	}
 
 	:global(.ag-picker-field-wrapper) {
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 		padding-left: var(--ag-spacing);
 	}
 
@@ -387,7 +387,7 @@ defineExpose({
 
 	&.has-records {
 		:global(.ag-floating-bottom) {
-			border-top: var(--border-width-base) var(--border-style-base) var(--ag-border-color);
+			border-top: var(--border-width) var(--border-style) var(--ag-border-color);
 		}
 	}
 
@@ -426,7 +426,7 @@ defineExpose({
 	width: 100%;
 	min-height: 500px;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	align-items: center;
 }
 
@@ -434,8 +434,8 @@ defineExpose({
 	display: flex;
 	width: 100%;
 	justify-content: flex-end;
-	margin-bottom: var(--spacing-l);
-	padding-right: var(--spacing-xl);
+	margin-bottom: var(--spacing--lg);
+	padding-right: var(--spacing--xl);
 
 	:global(.el-pagination__sizes) {
 		height: 100%;
@@ -448,7 +448,7 @@ defineExpose({
 		}
 
 		:global(.el-input__suffix) {
-			width: var(--spacing-m);
+			width: var(--spacing--md);
 		}
 	}
 

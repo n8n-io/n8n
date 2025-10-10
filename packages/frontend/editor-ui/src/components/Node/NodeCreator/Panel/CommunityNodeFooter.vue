@@ -89,13 +89,13 @@ onMounted(async () => {
 	display: flex;
 	justify-content: right;
 	align-items: center;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-s);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
 }
 .separator {
-	height: var(--border-width-base);
+	height: var(--border-width);
 	background: var(--color--foreground);
-	margin-right: var(--spacing-s);
-	margin-left: var(--spacing-s);
+	margin-right: var(--spacing--sm);
+	margin-left: var(--spacing--sm);
 }
 </style>

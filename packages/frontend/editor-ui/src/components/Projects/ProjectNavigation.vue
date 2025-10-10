@@ -188,7 +188,7 @@ onBeforeMount(async () => {
 .projects {
 	width: 100%;
 	align-items: start;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	&:hover {
 		.plusBtn {
 			display: block;
@@ -197,7 +197,7 @@ onBeforeMount(async () => {
 }
 
 .projectItems {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 }
 
 .upgradeLink {
@@ -211,8 +211,8 @@ onBeforeMount(async () => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
-	padding: 0 var(--spacing-s);
-	margin-top: var(--spacing-m);
+	padding: 0 var(--spacing--sm);
+	margin-top: var(--spacing--md);
 
 	&.collapsed {
 		padding: 0;
@@ -229,14 +229,14 @@ onBeforeMount(async () => {
 }
 
 .addFirstProjectBtn {
-	font-size: var(--font-size-xs);
-	margin: 0 var(--spacing-s);
-	width: calc(100% - var(--spacing-s) * 2);
+	font-size: var(--font-size--xs);
+	margin: 0 var(--spacing--sm);
+	width: calc(100% - var(--spacing--sm) * 2);
 
 	&.collapsed {
 		> span:last-child {
 			display: none;
-			margin: 0 var(--spacing-s) var(--spacing-m);
+			margin: 0 var(--spacing--sm) var(--spacing--md);
 		}
 	}
 }
@@ -244,6 +244,6 @@ onBeforeMount(async () => {
 
 <style lang="scss" scoped>
 .home {
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 }
 </style>

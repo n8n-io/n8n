@@ -154,16 +154,16 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	min-width: $sidebar-expanded-width;
 	height: 100%;
 	background-color: var(--color--background--light-3);
-	border-right: var(--border-base);
+	border-right: var(--border);
 	position: relative;
 	overflow: auto;
 }
 
 .returnButton {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	cursor: pointer;
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	align-items: center;
 	&:hover {
 		color: var(--color--primary);
@@ -174,11 +174,11 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	display: flex;
 	flex-direction: column;
 
-	padding: 0 var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs);
 }
 
 .versionContainer {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 }
 
 @media screen and (max-height: 420px) {

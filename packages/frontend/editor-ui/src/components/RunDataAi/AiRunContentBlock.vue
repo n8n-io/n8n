@@ -86,10 +86,10 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 
 <style lang="scss" module>
 .block {
-	padding: var(--spacing-s) 0 var(--spacing-2xs) var(--spacing-2xs);
+	padding: var(--spacing--sm) 0 var(--spacing--2xs) var(--spacing--2xs);
 	border: 1px solid var(--color--foreground--tint-1);
-	margin-top: var(--spacing-s);
-	border-radius: var(--border-radius-base);
+	margin-top: var(--spacing--sm);
+	border-radius: var(--radius);
 }
 
 :root .blockContent {
@@ -105,7 +105,7 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 	opacity: 0;
 	height: fit-content;
 	margin-left: auto;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 
 	.block:hover & {
 		opacity: 1;
@@ -114,11 +114,11 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 
 .blockHeader {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 	cursor: pointer;
 	/* This hack is needed to make the whole surface of header clickable  */
-	margin: calc(-1 * var(--spacing-xs));
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	margin: calc(-1 * var(--spacing--xs));
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	align-items: center;
 
 	& * {
@@ -127,10 +127,10 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 }
 
 .blockTitle {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	color: var(--color--text--shade-1);
 	margin: 0;
-	padding-bottom: var(--spacing-4xs);
+	padding-bottom: var(--spacing--4xs);
 }
 
 .blockToggle {
@@ -138,10 +138,10 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 	background: none;
 	padding: 0;
 	color: var(--color--text);
-	margin-top: calc(-1 * var(--spacing-3xs));
+	margin-top: calc(-1 * var(--spacing--3xs));
 }
 
 .error {
-	padding: var(--spacing-s) 0;
+	padding: var(--spacing--sm) 0;
 }
 </style>

@@ -180,7 +180,7 @@ onMounted(async () => {
 }
 
 .notFound {
-	padding-top: var(--spacing-xl);
+	padding-top: var(--spacing--xl);
 }
 
 .title {
@@ -192,8 +192,8 @@ onMounted(async () => {
 }
 
 .mainContent {
-	padding-right: var(--spacing-2xl);
-	margin-bottom: var(--spacing-l);
+	padding-right: var(--spacing--2xl);
+	margin-bottom: var(--spacing--lg);
 	width: 100%;
 
 	@media (max-width: $breakpoint-xs) {
@@ -202,7 +202,7 @@ onMounted(async () => {
 }
 
 .markdown {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 }
 
 .details {

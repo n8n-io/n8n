@@ -194,8 +194,8 @@ async function onAskAssistantButtonClick() {
 	right: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-s);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
 	pointer-events: all !important;
 }
 

@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: row;
 	width: fit-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .color {
@@ -155,11 +155,11 @@ onBeforeUnmount(() => {
 
 .option {
 	display: inline-block;
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 	color: var(--color--text--tint-1);
 
 	svg {
-		width: var(--font-size-s) !important;
+		width: var(--font-size--sm) !important;
 	}
 
 	&:hover {

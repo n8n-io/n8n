@@ -46,8 +46,8 @@ const sizes = computed(() => [...SIZES, ...(props.property === 'margin' ? ['auto
 $box-size: 64px;
 
 .spacing-group {
-	border: var(--border-base);
-	margin: var(--spacing-s);
+	border: var(--border);
+	margin: var(--spacing--sm);
 	display: inline-flex;
 }
 
@@ -69,6 +69,6 @@ $box-size: 64px;
 	position: absolute;
 	bottom: -1rem;
 	right: 0;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 </style>
