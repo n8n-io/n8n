@@ -81,7 +81,7 @@ export class ChatHubController {
 
 	@Get('/conversations')
 	async getConversations(
-		req: AuthenticatedRequest,
+		_req: AuthenticatedRequest,
 		_res: Response,
 	): Promise<ChatHubConversationsResponse> {
 		return await this.chatService.getConversations();
