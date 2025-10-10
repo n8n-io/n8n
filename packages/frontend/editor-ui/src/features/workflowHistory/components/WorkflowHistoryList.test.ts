@@ -4,9 +4,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { faker } from '@faker-js/faker';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
-import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
+import WorkflowHistoryList from './WorkflowHistoryList.vue';
 import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workflowHistory';
-import { workflowHistoryDataFactory } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
+import { workflowHistoryDataFactory } from '../__tests__/utils';
 import type { IUser } from 'n8n-workflow';
 
 vi.stubGlobal(

@@ -8,15 +8,12 @@ import { useRoute, useRouter } from 'vue-router';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import WorkflowHistoryPage from '@/views/WorkflowHistory.vue';
-import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import WorkflowHistoryPage from './WorkflowHistory.vue';
+import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { STORES } from '@n8n/stores';
 import { VIEWS } from '@/constants';
-import {
-	workflowHistoryDataFactory,
-	workflowVersionDataFactory,
-} from '@/stores/__tests__/utils/workflowHistoryTestUtils';
+import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/plugins/telemetry';
