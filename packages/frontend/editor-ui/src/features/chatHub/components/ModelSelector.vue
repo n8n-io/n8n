@@ -94,7 +94,7 @@ function onSelect(id: string) {
 			<CredentialIcon
 				v-if="selectedModel"
 				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
-				:size="20"
+				:size="credentialsName ? 20 : 16"
 				:class="$style.icon"
 			/>
 			<div :class="$style.selected">
