@@ -182,13 +182,13 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
-			v-if="!isCompact || !props.latestInfo?.deleted"
+			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
 			type="secondary"
 			size="small"
 			icon="square-pen"
 			icon-size="medium"
 			:style="{
-				visibility: props.canOpenNdv ? '' : 'hidden',
+				visibility: props.data.isSubExecution ? 'hidden' : '',
 			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
@@ -237,14 +237,14 @@ watch(
 	overflow: hidden;
 	position: relative;
 	z-index: 1;
-	padding-inline-end: var(--spacing-5xs);
+	padding-inline-end: var(--spacing--5xs);
 	cursor: pointer;
 
 	& > * {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		padding: var(--spacing-2xs);
+		padding: var(--spacing--2xs);
 	}
 }
 
@@ -254,15 +254,15 @@ watch(
 	top: 0;
 	width: calc(100% - var(--indent-depth) * 32px);
 	height: 100%;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	z-index: -1;
 
 	.selected & {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 
 	.container:hover:not(.selected) & {
-		background-color: var(--color-background-light-base);
+		background-color: var(--color--background--light-1);
 	}
 
 	.selected:not(:hover).error & {
@@ -273,7 +273,7 @@ watch(
 .indent {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: var(--spacing-xl);
+	width: var(--spacing--xl);
 	align-self: stretch;
 	position: relative;
 	overflow: hidden;
@@ -282,18 +282,18 @@ watch(
 	&.connectorCurved:before {
 		content: '';
 		position: absolute;
-		left: var(--spacing-s);
-		bottom: var(--spacing-s);
+		left: var(--spacing--sm);
+		bottom: var(--spacing--sm);
 		border: 2px solid var(--color-canvas-dot);
-		width: var(--spacing-l);
-		height: var(--spacing-l);
-		border-radius: var(--border-radius-large);
+		width: var(--spacing--lg);
+		height: var(--spacing--lg);
+		border-radius: var(--radius--lg);
 	}
 
 	&.connectorStraight:after {
 		content: '';
 		position: absolute;
-		left: var(--spacing-s);
+		left: var(--spacing--sm);
 		top: 0;
 		border-left: 2px solid var(--color-canvas-dot);
 		height: 100%;
@@ -318,7 +318,7 @@ watch(
 	width: 20%;
 
 	.statusTextIcon {
-		margin-right: var(--spacing-5xs);
+		margin-right: var(--spacing--5xs);
 		vertical-align: text-bottom;
 	}
 }
@@ -374,7 +374,7 @@ watch(
 	flex-shrink: 0;
 	border: none;
 	background: transparent;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	align-items: center;
 	justify-content: center;
 
@@ -392,12 +392,12 @@ watch(
 }
 
 .statusIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	flex-grow: 0;
 	flex-shrink: 0;
 	width: 26px;
 	height: 26px;
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 
 	&.placeholder {
 		color: transparent;

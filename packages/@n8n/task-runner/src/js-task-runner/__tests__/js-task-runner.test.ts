@@ -131,6 +131,26 @@ describe('JsTaskRunner', () => {
 		});
 	};
 
+	describe('Buffer security', () => {
+		it('should redirect Buffer.allocUnsafe to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafe(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should redirect Buffer.allocUnsafeSlow to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafeSlow(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+	});
+
 	describe('console', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
 			'should make an rpc call for console log in %s mode',

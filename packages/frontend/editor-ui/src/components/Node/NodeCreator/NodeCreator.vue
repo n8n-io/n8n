@@ -12,8 +12,7 @@ import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
-import { useAssistantStore } from '@/stores/assistant.store';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
 
@@ -37,8 +36,7 @@ const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 const uiStore = useUIStore();
-const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -58,11 +56,8 @@ const nodeCreatorInlineStyle = computed(() => {
 });
 
 function getRightOffset() {
-	if (assistantStore.isAssistantOpen) {
-		return assistantStore.chatWidth;
-	}
-	if (builderStore.isAssistantOpen) {
-		return builderStore.chatWidth;
+	if (chatPanelStore.isOpen) {
+		return chatPanelStore.width;
 	}
 
 	return 0;
@@ -204,11 +199,11 @@ onClickOutside(
 
 <style module lang="scss">
 :global(strong) {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 .nodeCreator {
 	--node-creator-width: #{$node-creator-width};
-	--node-icon-color: var(--color-text-base);
+	--node-icon-color: var(--color--text);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
@@ -238,8 +233,8 @@ onClickOutside(
 .close {
 	position: absolute;
 	z-index: calc(var(--z-index-node-creator) + 1);
-	top: var(--spacing-xs);
-	right: var(--spacing-xs);
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
 	background: transparent;
 	border: 0;
 	display: none;

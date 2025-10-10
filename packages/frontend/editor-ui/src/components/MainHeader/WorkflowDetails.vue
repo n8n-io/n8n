@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
+import CollaborationPane from '@/features/collaboration/components/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import SaveButton from '@/components/SaveButton.vue';
@@ -23,11 +23,11 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/features/projects/projects.utils';
 
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -42,15 +42,11 @@ import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/event-bus';
-import type {
-	ActionDropdownItem,
-	FolderShortInfo,
-	IWorkflowDb,
-	IWorkflowToShare,
-} from '@/Interface';
-import { useFoldersStore } from '@/stores/folders.store';
+import type { ActionDropdownItem, IWorkflowDb, IWorkflowToShare } from '@/Interface';
+import type { FolderShortInfo } from '@/features/folders/folders.types';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { sanitizeFilename } from '@/utils/fileUtils';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -410,7 +406,7 @@ async function onNameSubmit(name: string) {
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
-		workflowHelpers.setDocumentTitle(newName, 'IDLE');
+		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	renameInput.value?.forceCancel();
@@ -905,7 +901,7 @@ $--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .name-container {
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing--sm);
 
 	:deep(.el-input) {
 		padding: 0;
@@ -914,13 +910,13 @@ $--header-spacing: 20px;
 
 .name {
 	color: $custom-font-dark;
-	font-size: var(--font-size-s);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .activator {
 	color: $custom-font-dark;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	font-size: 13px;
 	line-height: $--text-line-height;
 	align-items: center;
@@ -934,7 +930,7 @@ $--header-spacing: 20px;
 	font-size: 12px;
 	padding: 20px 0; // to be more clickable
 	color: $custom-font-very-light;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	white-space: nowrap;
 
 	&:hover {
@@ -967,7 +963,7 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	flex-wrap: nowrap;
 }
 
@@ -981,21 +977,21 @@ $--header-spacing: 20px;
 
 @media (max-width: 1390px) {
 	.name-container {
-		margin-right: var(--spacing-xs);
+		margin-right: var(--spacing--xs);
 	}
 
 	.actions {
-		gap: var(--spacing-xs);
+		gap: var(--spacing--xs);
 	}
 }
 
 @media (max-width: 1350px) {
 	.name-container {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 
 	.actions {
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 	}
 }
 </style>
@@ -1004,21 +1000,21 @@ $--header-spacing: 20px;
 .container {
 	position: relative;
 	width: 100%;
-	padding: var(--spacing-xs) var(--spacing-m);
+	padding: var(--spacing--xs) var(--spacing--md);
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
 }
 
 .path-separator {
-	font-size: var(--font-size-xl);
-	color: var(--color-foreground-base);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--xl);
+	color: var(--color--foreground);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .group {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .hiddenInput {
@@ -1026,7 +1022,7 @@ $--header-spacing: 20px;
 }
 
 .deleteItem {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .disabledShareButton {
@@ -1035,8 +1031,8 @@ $--header-spacing: 20px;
 
 .closeNodeViewDiscovery {
 	position: absolute;
-	right: var(--spacing-xs);
-	top: var(--spacing-xs);
+	right: var(--spacing--xs);
+	top: var(--spacing--xs);
 	cursor: pointer;
 }
 </style>

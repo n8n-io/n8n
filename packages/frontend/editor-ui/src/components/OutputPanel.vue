@@ -14,7 +14,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { CanvasNodeDirtiness } from '@/types';
+import { CanvasNodeDirtiness } from '@/features/canvas/canvas.types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -24,6 +24,7 @@ import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -76,6 +77,7 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -141,7 +143,11 @@ const defaultOutputMode = computed<OutputType>(() => {
 });
 
 const isNodeRunning = computed(() => {
-	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
+	return (
+		workflowRunning.value &&
+		!!node.value &&
+		workflowState.executingNode.isNodeExecuting(node.value.name)
+	);
 });
 
 const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
@@ -358,6 +364,17 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #node-not-run>
 			<template v-if="isNDVV2">
 				<NDVEmptyState
+					v-if="isReadOnly"
+					:title="
+						i18n.baseText(
+							isTriggerNode
+								? 'ndv.output.noOutputData.trigger.title'
+								: 'ndv.output.noOutputData.v2.title',
+						)
+					"
+				/>
+				<NDVEmptyState
+					v-else
 					:title="
 						i18n.baseText(
 							isTriggerNode
@@ -379,6 +396,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					</template>
 					<template #default>
 						<I18nT
+							v-if="!canPinData || isSubNodeType"
 							tag="span"
 							:keypath="
 								isSubNodeType
@@ -406,6 +424,28 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<br />
 							</template>
 						</I18nT>
+						<template v-else>
+							<NodeExecuteButton
+								hide-icon
+								transparent
+								type="secondary"
+								:node-name="activeNode?.name ?? ''"
+								:label="
+									i18n.baseText(
+										isTriggerNode
+											? 'ndv.output.noOutputData.trigger.action'
+											: 'ndv.output.noOutputData.v2.action',
+									)
+								"
+								telemetry-source="inputs"
+								@execute="emit('execute')"
+							/>
+							<br />
+							{{ i18n.baseText('generic.or') }}
+							<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
+								{{ i18n.baseText('ndv.output.insertTestData') }}
+							</N8nText>
+						</template>
 					</template>
 				</NDVEmptyState>
 			</template>
@@ -439,7 +479,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 		<template #node-waiting>
 			<NDVEmptyState :title="i18n.baseText('ndv.output.waitNodeWaiting.title')" wide>
-				<span v-n8n-html="waitingNodeTooltip(node)" />
+				<span v-n8n-html="waitingNodeTooltip(node, workflowObject)" />
 			</NDVEmptyState>
 		</template>
 
@@ -482,7 +522,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	background-color: var(--color-ndvv2-run-data-background);
 }
 .outputTypeSelect {
-	margin-bottom: var(--spacing-4xs);
+	margin-bottom: var(--spacing--4xs);
 	width: fit-content;
 }
 .titleSection {
@@ -490,44 +530,44 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	align-items: center;
 
 	> * {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 }
 
 .titleSectionV2 {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 
 .title {
 	text-transform: uppercase;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--sm);
 }
 
 .titleV2 {
 	letter-spacing: 2px;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .noOutputData {
 	max-width: 180px;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
 .link {
 	display: inline;
 	padding: 0;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
 }
 
 .spinner {
@@ -536,7 +576,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	margin-bottom: var(--ndv-spacing);
 
 	* {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		min-height: 40px;
 		min-width: 40px;
 	}

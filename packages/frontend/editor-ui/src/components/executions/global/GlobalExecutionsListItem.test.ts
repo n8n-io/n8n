@@ -21,7 +21,6 @@ const globalExecutionsListItemQueuedTooltipRenderSpy = vi.fn();
 const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 	global: {
 		stubs: {
-			FontAwesomeIcon: true,
 			N8nTooltip: true,
 			N8nButton: true,
 			I18nT: true,

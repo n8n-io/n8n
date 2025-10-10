@@ -24,13 +24,13 @@
 		height: var.$switch-height;
 		display: inline-block;
 		font-size: var.$switch-font-size;
-		font-weight: var(--font-weight-medium);
+		font-weight: var(--font-weight--medium);
 		cursor: pointer;
 		vertical-align: middle;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 
 		@include mixins.when(active) {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 
 		@include mixins.m(left) {

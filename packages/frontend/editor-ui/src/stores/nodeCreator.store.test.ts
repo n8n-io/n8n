@@ -7,9 +7,9 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/constants';
 import type { INodeCreateElement } from '@/Interface';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import { parseCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -53,7 +53,7 @@ vi.mock('@/stores/workflows.store', () => {
 	};
 });
 
-vi.mock('@/utils/canvasUtils', () => {
+vi.mock('@/features/canvas/canvas.utils', () => {
 	return {
 		parseCanvasConnectionHandleString: vi.fn(),
 	};
@@ -205,7 +205,7 @@ describe('useNodeCreatorStore', () => {
 		const mockTrigger = {
 			key: 'n8n-node.exampleTrigger',
 			properties: {
-				name: 'n8n-node.exampleTrigge',
+				name: 'n8n-node.exampleTrigger',
 				displayName: 'Example Trigger',
 			},
 		} as INodeCreateElement;
@@ -222,6 +222,20 @@ describe('useNodeCreatorStore', () => {
 			properties: {},
 		} as INodeCreateElement;
 
+		const mockCommunity1 = {
+			key: 'community-node1.example',
+			properties: {
+				name: 'n8n-nodes-community-node1',
+			},
+		} as INodeCreateElement;
+
+		const mockCommunity2 = {
+			key: 'community-node2.example',
+			properties: {
+				name: '@author/n8n-nodes-community-node2',
+			},
+		} as INodeCreateElement;
+
 		nodeCreatorStore.onCreatorOpened({
 			source,
 			mode,
@@ -229,7 +243,7 @@ describe('useNodeCreatorStore', () => {
 		});
 		nodeCreatorStore.onNodeFilterChanged({
 			newValue,
-			filteredNodes: [mockCustom, mockRegular, mockTrigger],
+			filteredNodes: [mockCustom, mockRegular, mockTrigger, mockCommunity1, mockCommunity2],
 			filterMode: REGULAR_NODE_CREATOR_VIEW,
 			subcategory,
 			title,
@@ -239,9 +253,10 @@ describe('useNodeCreatorStore', () => {
 			search_string: newValue,
 			filter_mode: 'regular',
 			category_name: subcategory,
-			results_count: 2,
+			results_count: 4,
 			trigger_count: 1,
-			regular_count: 1,
+			regular_count: 3,
+			community_count: 2,
 			nodes_panel_session_id: getSessionId(now),
 			title,
 		});

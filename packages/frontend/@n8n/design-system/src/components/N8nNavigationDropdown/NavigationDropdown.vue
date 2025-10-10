@@ -14,18 +14,19 @@ type BaseItem = {
 	disabled?: boolean;
 	icon?: IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 	route?: RouteLocationRaw;
+	isDivider?: false;
 };
 
-type Item = BaseItem & {
-	submenu?: BaseItem[];
-};
+type Divider = { isDivider: true; id: string };
+
+type Item = BaseItem & { submenu?: Array<BaseItem | Divider> };
 
 defineOptions({
 	name: 'N8nNavigationDropdown',
 });
 
 defineProps<{
-	menu: Item[];
+	menu: Array<Item | Divider>;
 	disabled?: boolean;
 	teleport?: boolean;
 }>();
@@ -36,6 +37,12 @@ const ROOT_MENU_INDEX = '-1';
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
 	select: [id: Item['id']];
+}>();
+
+defineSlots<{
+	default?: () => unknown;
+	'item-icon'?: (props: { item: BaseItem }) => unknown;
+	[key: `item.append.${string}`]: (props: { item: Item }) => unknown;
 }>();
 
 const close = () => {
@@ -84,36 +91,57 @@ defineExpose({
 			</template>
 
 			<template v-for="item in menu" :key="item.id">
-				<template v-if="item.submenu">
+				<hr v-if="item.isDivider" />
+				<template v-else-if="item.submenu">
 					<ElSubMenu
 						:popper-class="$style.nestedSubmenu"
 						:index="item.id"
 						:popper-offset="-10"
 						data-test-id="navigation-submenu"
 					>
-						<template #title>{{ item.title }}</template>
+						<template #title>
+							<div :class="$style.subMenuTitle">
+								<slot name="item-icon" v-bind="{ item }">
+									<!-- Default icon rendering -->
+									<template v-if="item.icon">
+										<N8nIcon
+											v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
+											:class="$style.submenu__icon"
+											:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+										/>
+										<N8nText v-else-if="item.icon.type === 'emoji'" :class="$style.submenu__icon">
+											{{ item.icon.value }}
+										</N8nText>
+									</template>
+								</slot>
+								{{ item.title }}
+							</div>
+						</template>
 						<template v-for="subitem in item.submenu" :key="subitem.id">
-							<ConditionalRouterLink :to="(!subitem.disabled && subitem.route) || undefined">
+							<hr v-if="subitem.isDivider" />
+							<ConditionalRouterLink v-else :to="(!subitem.disabled && subitem.route) || undefined">
 								<ElMenuItem
 									data-test-id="navigation-submenu-item"
 									:index="subitem.id"
 									:disabled="subitem.disabled"
 									@click="emit('itemClick', $event)"
 								>
-									<!-- <N8nIcon v-if="subitem.icon" :icon="subitem.icon" :class="$style.submenu__icon" /> -->
-									<template v-if="subitem.icon">
-										<N8nIcon
-											v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
-											:class="$style.submenu__icon"
-											:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
-										/>
-										<N8nText
-											v-else-if="subitem.icon.type === 'emoji'"
-											:class="$style.submenu__icon"
-										>
-											{{ subitem.icon.value }}
-										</N8nText>
-									</template>
+									<slot name="item-icon" v-bind="{ item: subitem }">
+										<!-- Default icon rendering -->
+										<template v-if="subitem.icon">
+											<N8nIcon
+												v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
+												:class="$style.submenu__icon"
+												:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
+											/>
+											<N8nText
+												v-else-if="subitem.icon.type === 'emoji'"
+												:class="$style.submenu__icon"
+											>
+												{{ subitem.icon.value }}
+											</N8nText>
+										</template>
+									</slot>
 
 									{{ subitem.title }}
 									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
@@ -159,6 +187,12 @@ defineExpose({
 			}
 		}
 	}
+
+	& hr {
+		border-top: none;
+		border-bottom: var(--border);
+		margin-block: var(--spacing--4xs);
+	}
 }
 
 .nestedSubmenu {
@@ -173,7 +207,7 @@ defineExpose({
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		background-color: var(--color-menu-background);
 	}
 
@@ -187,14 +221,14 @@ defineExpose({
 	}
 
 	:global(.el-menu--popup) {
-		border: 1px solid var(--color-foreground-base);
-		border-radius: var(--border-radius-base);
+		border: 1px solid var(--color--foreground);
+		border-radius: var(--radius);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item.is-disabled) {
 		opacity: 1;
 		cursor: default;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 
 	:global(.el-sub-menu__icon-arrow svg) {
@@ -202,8 +236,14 @@ defineExpose({
 	}
 }
 
+.subMenuTitle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+}
+
 .submenu__icon {
-	margin-right: var(--spacing-2xs);
-	color: var(--color-text-base);
+	margin-right: var(--spacing--2xs);
+	color: var(--color--text);
 }
 </style>

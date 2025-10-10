@@ -1,4 +1,4 @@
-import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
+import SourceControlInitializationErrorMessage from '@/features/sourceControl.ee/components/SourceControlInitializationErrorMessage.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
@@ -15,11 +15,11 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
@@ -28,7 +28,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from './stores/roles.store';
-import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 
 export const state = {
 	initialized: false,
@@ -136,7 +136,7 @@ export async function initializeAuthenticatedFeatures(
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
 	const versionsStore = useVersionsStore();
-	const dataStoreStore = useDataStoreStore();
+	const dataTableStore = useDataTableStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -176,13 +176,13 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		void dataStoreStore
-			.fetchDataStoreSize()
+		void dataTableStore
+			.fetchDataTableSize()
 			.then(({ quotaStatus }) => {
 				if (quotaStatus === 'error') {
-					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
 				} else if (quotaStatus === 'warn') {
-					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
 				}
 			})
 			.catch((error) => {

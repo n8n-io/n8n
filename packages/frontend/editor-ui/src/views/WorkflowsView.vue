@@ -1,20 +1,20 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
-import EmptySharedSectionActionBox from '@/components/Folders/EmptySharedSectionActionBox.vue';
-import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
-import FolderCard from '@/components/Folders/FolderCard.vue';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import EmptySharedSectionActionBox from '@/features/folders/components/EmptySharedSectionActionBox.vue';
+import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
+import FolderCard from '@/features/folders/components/FolderCard.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/folders/folders.constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { DragTarget, DropTarget } from '@/composables/useFolders';
-import { useFolders } from '@/composables/useFolders';
+import type { DragTarget, DropTarget, FolderListItem } from '@/features/folders/folders.types';
+import { useFolders } from '@/features/folders/composables/useFolders';
 import { useMessage } from '@/composables/useMessage';
-import { useProjectPages } from '@/composables/useProjectPages';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
@@ -40,7 +40,6 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
 	BaseFilters,
-	FolderListItem,
 	FolderResource,
 	Resource,
 	SortingAndPaginationUpdates,
@@ -49,17 +48,21 @@ import type {
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
-import { useFoldersStore } from '@/stores/folders.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import {
+	type Project,
+	type ProjectSharingData,
+	ProjectTypes,
+} from '@/features/projects/projects.types';
 import { getEasyAiWorkflowJson } from '@/features/templates/utils/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
@@ -2345,14 +2348,14 @@ const onNameSubmit = async (name: string) => {
 
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
-	margin-top: var(--spacing-xs);
-	padding-left: var(--spacing-s);
-	padding-right: var(--spacing-m);
+	margin-top: var(--spacing--xs);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--md);
 
 	.callout-trailing-content {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-m);
+		gap: var(--spacing--md);
 	}
 }
 
@@ -2363,12 +2366,12 @@ const onNameSubmit = async (name: string) => {
 	height: 230px;
 
 	& + & {
-		margin-left: var(--spacing-s);
+		margin-left: var(--spacing--sm);
 	}
 
 	&:hover {
 		svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }
@@ -2409,7 +2412,7 @@ const onNameSubmit = async (name: string) => {
 
 .empty-folder-container {
 	button {
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing--2xs);
 	}
 }
 
@@ -2427,21 +2430,21 @@ const onNameSubmit = async (name: string) => {
 
 .drop-active {
 	:global(.card) {
-		border-color: var(--color-secondary);
+		border-color: var(--color--secondary);
 		background-color: var(--color-callout-secondary-background);
 	}
 }
 
 .path-separator {
-	font-size: var(--font-size-xl);
-	color: var(--color-foreground-base);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--xl);
+	color: var(--color--foreground);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .name {
 	color: $custom-font-dark;
-	font-size: var(--font-size-s);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .pointer-disabled {
@@ -2454,13 +2457,13 @@ const onNameSubmit = async (name: string) => {
 	width: 500px;
 	padding-bottom: 0;
 	.el-message-box__message {
-		font-size: var(--font-size-xl);
+		font-size: var(--font-size--xl);
 	}
 	.el-message-box__btns {
-		padding: 0 var(--spacing-l) var(--spacing-l);
+		padding: 0 var(--spacing--lg) var(--spacing--lg);
 	}
 	.el-message-box__content {
-		padding: var(--spacing-l);
+		padding: var(--spacing--lg);
 	}
 }
 </style>

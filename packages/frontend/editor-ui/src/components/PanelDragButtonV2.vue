@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { N8nIcon } from '@n8n/design-system';
 import Draggable from './Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
@@ -38,9 +39,9 @@ const onDragStart = () => {
 	>
 		<template #default="{ isDragging }">
 			<button :class="[$style.dragButton, { [$style.dragging]: isDragging }]">
-				<FontAwesomeIcon v-if="canMoveLeft" :class="$style.arrow" icon="arrow-left" />
-				<FontAwesomeIcon :class="$style.handle" icon="bars" />
-				<FontAwesomeIcon v-if="canMoveRight" :class="$style.arrow" icon="arrow-right" />
+				<N8nIcon v-if="canMoveLeft" :class="$style.arrow" icon="arrow-left" />
+				<N8nIcon :class="$style.handle" icon="menu" />
+				<N8nIcon v-if="canMoveRight" :class="$style.arrow" icon="arrow-right" />
 			</button>
 		</template>
 	</Draggable>
@@ -51,21 +52,21 @@ const onDragStart = () => {
 	cursor: ew-resize;
 	border: none;
 	outline: none;
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 
 	display: flex;
 	align-items: baseline;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs);
-	color: var(--color-foreground-dark);
-	border: var(--border-base);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs) 0 var(--spacing--3xs);
+	color: var(--color--foreground--shade-1);
+	border: var(--border);
 	border-bottom: none;
-	border-top-left-radius: var(--border-radius-base);
-	border-top-right-radius: var(--border-radius-base);
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
 
 	.arrow {
 		opacity: 0;
-		width: 7px;
+		width: 10px;
 	}
 
 	.handle {

@@ -210,6 +210,10 @@ describe('VirtualSchema.vue', () => {
 					DynamicScrollerItem: DynamicScrollerItemStub,
 					N8nIcon: true,
 					Notice: NoticeStub,
+					NodeIcon: {
+						template: '<node-icon-stub :node-type="nodeType.name" :size="size"></node-icon-stub>',
+						props: ['node-type', 'size'],
+					},
 				},
 			},
 			pinia,

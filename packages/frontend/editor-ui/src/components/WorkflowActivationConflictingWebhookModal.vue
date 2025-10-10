@@ -110,7 +110,7 @@ const onClick = async () => {
 
 <style module lang="scss">
 .container {
-	margin-top: var(--spacing-m);
-	margin-bottom: var(--spacing-s);
+	margin-top: var(--spacing--md);
+	margin-bottom: var(--spacing--sm);
 }
 </style>

@@ -14,9 +14,9 @@ import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
 import type {
-	IDataStoreProjectAggregateService,
-	IDataStoreProjectService,
-} from './data-store.types';
+	IDataTableProjectAggregateService,
+	IDataTableProjectService,
+} from './data-table.types';
 import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
@@ -925,24 +925,24 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 
 export type ContextType = 'flow' | 'node';
 
-export type DataStoreProxyProvider = {
-	getDataStoreAggregateProxy(
+export type DataTableProxyProvider = {
+	getDataTableAggregateProxy(
 		workflow: Workflow,
 		node: INode,
 		projectId?: string,
-	): Promise<IDataStoreProjectAggregateService>;
-	getDataStoreProxy(
+	): Promise<IDataTableProjectAggregateService>;
+	getDataTableProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreId: string,
+		dataTableId: string,
 		projectId?: string,
-	): Promise<IDataStoreProjectService>;
+	): Promise<IDataTableProjectService>;
 };
 
-export type DataStoreProxyFunctions = {
-	// These are optional to account for situations where the data-store module is disabled
-	getDataStoreAggregateProxy?(): Promise<IDataStoreProjectAggregateService>;
-	getDataStoreProxy?(dataStoreId: string): Promise<IDataStoreProjectService>;
+export type DataTableProxyFunctions = {
+	// These are optional to account for situations where the data-table module is disabled
+	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
+	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
@@ -1008,7 +1008,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataStoreProxyFunctions & {
+			DataTableProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1093,7 +1093,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataStoreProxyFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -1620,6 +1620,10 @@ export interface INodePropertyOptions {
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
+	displayOptions?: IDisplayOptions;
+	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
+	// it needs to be implemented, if needed
+	disabledOptions?: undefined;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2166,6 +2170,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
 	hints?: NodeHint[];
+	communityNodePackageVersion?: string;
+	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
@@ -2446,6 +2452,8 @@ export interface ITaskSubRunMetadata {
 export interface RelatedExecution {
 	executionId: string;
 	workflowId: string;
+	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
+	shouldResume?: boolean;
 }
 
 type SubNodeExecutionDataAction = {
@@ -2464,6 +2472,7 @@ export interface ITaskMetadata {
 		actions: SubNodeExecutionDataAction[];
 		metadata: object;
 	};
+	preserveSourceOverwrite?: boolean;
 }
 
 /** The data that gets returned when a node execution starts */
@@ -2864,6 +2873,7 @@ export interface INodeGraphItem {
 	items_total?: number;
 	metric_names?: string[];
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
+	package_version?: string; // only for community nodes
 }
 
 export interface INodeNameIndex {

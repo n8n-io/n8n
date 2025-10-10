@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nLogo } from '@n8n/design-system';
-import SSOLogin from '@/components/SSOLogin.vue';
+import SSOLogin from '@/features/sso/components/SSOLogin.vue';
 import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { EmailOrLdapLoginIdAndPassword } from './SigninView.vue';
@@ -65,14 +65,14 @@ const {
 
 <style lang="scss" module>
 body {
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .container {
 	display: flex;
 	align-items: center;
 	flex-direction: column;
-	padding-top: var(--spacing-2xl);
+	padding-top: var(--spacing--2xl);
 
 	> * {
 		width: 352px;
@@ -84,6 +84,6 @@ body {
 }
 
 .formContainer {
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 }
 </style>

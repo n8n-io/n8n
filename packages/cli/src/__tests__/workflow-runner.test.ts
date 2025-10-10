@@ -1,6 +1,6 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE } from '@n8n/db';
+import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE, Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
@@ -32,6 +32,7 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -41,6 +42,10 @@ let runner: WorkflowRunner;
 setupTestServer({ endpointGroups: [] });
 
 mockInstance(Telemetry);
+
+mockInstance(OwnershipService, {
+	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+});
 
 beforeAll(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
@@ -232,7 +237,7 @@ describe('run', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], id: 'workflow-id' },
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
@@ -247,11 +252,10 @@ describe('run', () => {
 		await runner.run(data);
 
 		// ASSERT
-		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
-			data.userId,
-			undefined,
-			undefined,
-		);
+		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+			userId: data.userId,
+			workflowId: 'workflow-id',
+		});
 		expect(ManualExecutionService.prototype.runManually).toHaveBeenCalledWith(
 			data,
 			expect.any(Workflow),

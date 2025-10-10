@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
+import Node from '@/features/canvas/components/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -11,7 +11,7 @@ import { useProvideViewportSync } from '@/features/workflow-diff/useViewportSync
 import { NodeDiffStatus, useWorkflowDiff } from '@/features/workflow-diff/useWorkflowDiff';
 import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -736,8 +736,8 @@ const modifiers = [
 	left: 12px;
 	z-index: 1;
 	border-radius: 4px;
-	border: 1px solid var(--color-foreground-light);
-	background: var(--color-foreground-xlight);
+	border: 1px solid var(--color--foreground--tint-1);
+	background: var(--color--foreground--tint-2);
 	display: flex;
 	height: 30px;
 	padding: 0 12px;
@@ -768,15 +768,15 @@ const modifiers = [
 	> li {
 		display: flex;
 		align-items: flex-start;
-		gap: var(--spacing-2xs);
-		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
+		gap: var(--spacing--2xs);
+		padding: 10px 0 var(--spacing--3xs) var(--spacing--2xs);
 
 		> div {
 			min-width: 0;
 		}
 
 		.clickableChange {
-			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
+			padding: var(--spacing--3xs) var(--spacing--xs) var(--spacing--3xs) 0;
 			margin-left: -4px;
 		}
 	}
@@ -791,21 +791,21 @@ const modifiers = [
 .clickableChange {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	border-radius: 4px;
-	padding: var(--spacing-xs) var(--spacing-2xs);
-	margin-right: var(--spacing-xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
+	margin-right: var(--spacing--xs);
 	line-height: unset;
 	min-width: 0;
 	transition: background-color 0.2s ease;
 
 	&:hover {
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 	}
 }
 
 .clickableChangeActive {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .nodeName {
@@ -819,8 +819,8 @@ const modifiers = [
 .separator {
 	width: 1px;
 	height: 10px;
-	background-color: var(--color-foreground-xdark);
-	margin: 0 0 -5px var(--spacing-xs);
+	background-color: var(--color--foreground--shade-2);
+	margin: 0 0 -5px var(--spacing--xs);
 	position: relative;
 	z-index: 1;
 }
@@ -835,7 +835,7 @@ const modifiers = [
 		left: 50%;
 		transform: translate(-50%, -50%);
 		border-radius: 4px;
-		color: var(--color-text-xlight);
+		color: var(--color--text--tint-3);
 		font-family: Inter, var(--font-family);
 		font-size: 10px;
 		font-weight: 700;
@@ -897,8 +897,8 @@ const modifiers = [
 	pointer-events: none;
 	cursor: default;
 	--color-sticky-background: rgba(126, 129, 134, 0.2);
-	--canvas-node-icon-color: var(--color-foreground-xdark);
-	--color-sticky-border: var(--color-foreground-xdark);
+	--canvas-node-icon-color: var(--color--foreground--shade-2);
+	--color-sticky-border: var(--color--foreground--shade-2);
 	&:deep(img) {
 		filter: contrast(0) grayscale(100%);
 	}
@@ -945,8 +945,8 @@ const modifiers = [
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background-color: var(--color-primary);
-	color: var(--color-text-xlight);
+	background-color: var(--color--primary);
+	color: var(--color--text--tint-3);
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
@@ -990,7 +990,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: 1px solid var(--color--foreground);
 }
 
 .emptyWorkflow {
@@ -1026,6 +1026,6 @@ const modifiers = [
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	padding: var(--spacing-m) var(--spacing-xs);
+	padding: var(--spacing--md) var(--spacing--xs);
 }
 </style>

@@ -22,7 +22,7 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
@@ -502,14 +502,14 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 <style lang="scss" module>
 .userCount {
 	display: block;
-	padding: var(--spacing-3xs) 0 0;
+	padding: var(--spacing--3xs) 0 0;
 }
 
 .buttonContainer {
 	display: flex;
 	justify-content: space-between;
-	gap: var(--spacing-s);
-	margin: 0 0 var(--spacing-s);
+	gap: var(--spacing--sm);
+	margin: 0 0 var(--spacing--sm);
 }
 
 .search {
@@ -523,13 +523,13 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 .settingsContainer {
 	display: flex;
 	align-items: center;
-	padding-left: var(--spacing-s);
-	margin-bottom: var(--spacing-l);
+	padding-left: var(--spacing--sm);
+	margin-bottom: var(--spacing--lg);
 	justify-content: space-between;
 	flex-shrink: 0;
 
 	border-radius: 4px;
-	border: 1px solid var(--Colors-Foreground---color-foreground-base, #d9dee8);
+	border: 1px solid var(--Colors-Foreground---color--foreground, #d9dee8);
 }
 
 .settingsContainerInfo {
