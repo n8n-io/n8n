@@ -72,14 +72,6 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		},
 	},
 	{
-		title: i18n.baseText('workflowDetails.active'),
-		key: 'active',
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
 		title: '',
 		key: 'actions',
 		align: 'end',
@@ -160,7 +152,7 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 		case 'removeFromMCP':
 			try {
 				await workflowsStore.updateWorkflowSetting(workflow.id, 'availableInMCP', false);
-				await fetchAvailableWorkflows();
+				availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflow.id);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 			}
@@ -365,13 +357,6 @@ onMounted(async () => {
 								</N8nLink>
 							</span>
 							<N8nText v-else data-test-id="mcp-workflow-no-project">-</N8nText>
-						</template>
-						<template #[`item.active`]="{ item }">
-							<N8nIcon
-								:icon="item.active ? 'check' : 'x'"
-								:size="16"
-								:color="item.active ? 'success' : 'danger'"
-							/>
 						</template>
 						<template #[`item.actions`]="{ item }">
 							<N8nActionToggle
