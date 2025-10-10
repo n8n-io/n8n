@@ -24,6 +24,7 @@ type WeaviateLibArgs = OriginalWeaviateLibArgs & {
 	queryProperties?: string;
 	maxVectorDistance?: number;
 	fusionType?: 'Ranked' | 'RelativeScore';
+	hybridExplainScore?: boolean;
 };
 
 class ExtendedWeaviateVectorStore extends WeaviateStore {
@@ -75,6 +76,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 					: undefined,
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
 				fusionType: args.fusionType,
+				returnMetadata: args.hybridExplainScore ? ['explainScore'] : undefined,
 			};
 			const content = await super.hybridSearch(args.hybridQuery, options);
 			return content.map((doc) => {
@@ -218,6 +220,14 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Provide a query text to combine vector search with a keyword/text search',
 			},
 			{
+				displayName: 'Hybrid: Explain Score',
+				name: 'hybridExplainScore',
+				type: 'boolean',
+				default: false,
+				validateType: 'boolean',
+				description: 'Whether to show the score fused between hybrid and vector search explanation',
+			},
+			{
 				displayName: 'Hybrid: Fusion Type',
 				name: 'fusionType',
 				type: 'options',
@@ -315,6 +325,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			skip_init_checks: boolean;
 			proxy_grpc: string;
 			metadataKeys?: string;
+			hybridExplainScore?: boolean;
 		};
 		// check if textKey is valid
 
@@ -350,6 +361,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			queryProperties: options.queryProperties,
 			maxVectorDistance: options.maxVectorDistance,
 			fusionType: options.fusionType,
+			hybridExplainScore: options.hybridExplainScore ?? false,
 		};
 
 		const validFilter = (filter && Object.keys(filter).length > 0 ? filter : undefined) as
