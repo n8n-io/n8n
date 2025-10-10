@@ -275,12 +275,14 @@ function buildSteps(
 
 	if (response) {
 		const responses = response?.actionResponses ?? [];
+
+		if (response.metadata?.previousRequests) {
+			steps.push(...response.metadata.previousRequests);
+		}
+
 		for (const tool of responses) {
 			if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
 
-			if (response.metadata?.previousRequests) {
-				steps.push(...response.metadata.previousRequests);
-			}
 			const toolInput: IDataObject = {
 				...tool.action.input,
 				id: tool.action.id,
