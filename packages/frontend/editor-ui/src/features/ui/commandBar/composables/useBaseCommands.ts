@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { CommandGroup } from './types';
+import type { CommandGroup } from '../commandBar.types';
 
 export function useBaseCommands(): CommandGroup {
 	const i18n = useI18n();

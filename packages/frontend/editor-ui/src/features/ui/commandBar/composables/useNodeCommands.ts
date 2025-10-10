@@ -9,7 +9,7 @@ import { canvasEventBus } from '@/event-bus/canvas';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
 import type { SimplifiedNodeType } from '@/Interface';
-import type { CommandGroup } from './types';
+import type { CommandGroup } from '../commandBar.types';
 
 function getIconSource(nodeType: SimplifiedNodeType | null, baseUrl: string) {
 	if (!nodeType) return {};
