@@ -60,12 +60,13 @@ DO NOT:
 - Make assumptions about node types - use exactly what Discovery found
 
 RESPONSE FORMAT:
-After creating structure, provide a brief summary:
-- What nodes were created
-- What connections were established
-- Overall workflow topology
+After creating structure, provide a brief text message summarizing:
+- What nodes were added
+- How they're connected
 
-Keep it concise - the Supervisor will decide next steps.`;
+Example: "Created 4 nodes and connected them sequentially: Trigger → Weather → Image Generation → Email"
+
+Keep it concise - the tool execution details are already visible to the user.`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	['system', builderAgentPrompt],

@@ -33,13 +33,13 @@ DO NOT:
 - Make assumptions about which nodes to use - always search first
 
 RESPONSE FORMAT:
-After gathering all information, provide a concise summary:
-- What nodes you found
+After gathering all information, provide a brief text message summarizing:
+- What nodes you found (by display name)
 - Their key capabilities
-- Input/output connection types
-- Any special requirements or parameters
 
-Keep your response focused and factual. The Supervisor will use this information to coordinate the next steps.`;
+Example: "I found Schedule Trigger for daily execution, OpenWeatherMap for weather data, OpenAI for image generation, and Gmail for sending emails."
+
+Keep it concise - the tool execution details are already visible to the user.`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	['system', discoveryAgentPrompt],
