@@ -187,24 +187,24 @@ const onLearnMoreLinkClick = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
+	border: var(--border-width) var(--border-style) var(--color-info-tint-1);
+	border-radius: var(--radius);
+	background-color: var(--color--background--light-2);
 
 	button {
 		& > span {
 			flex-direction: row-reverse;
 			& > span {
-				margin-left: var(--spacing-3xs);
+				margin-left: var(--spacing--3xs);
 			}
 		}
 	}
 }
 
 .formContainer {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-text-base);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text);
 }
 
 .checkbox {
@@ -214,10 +214,10 @@ const onLearnMoreLinkClick = () => {
 }
 
 .error {
-	color: var(--color-danger);
+	color: var(--color--danger);
 
 	span {
-		border-color: var(--color-danger);
+		border-color: var(--color--danger);
 	}
 }
 </style>
@@ -232,7 +232,7 @@ const onLearnMoreLinkClick = () => {
 		line-height: 1.2;
 	}
 	p + p {
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing--2xs);
 	}
 }
 </style>

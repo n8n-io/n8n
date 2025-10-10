@@ -37,16 +37,16 @@ const emit = defineEmits<{
 	border: 0;
 	height: 30px;
 	width: 30px;
-	background-color: var(--color-foreground-base);
-	color: var(--color-foreground-xdark);
+	background-color: var(--color--foreground);
+	color: var(--color--foreground--shade-2);
 
 	&:hover {
-		color: var(--color-foreground-xdark);
-		background-color: var(--color-secondary);
+		color: var(--color--foreground--shade-2);
+		background-color: var(--color--secondary);
 
 		svg {
 			// ensure enough contrast in both light and dark mode
-			color: var(--p-gray-200);
+			color: var(--p--color--gray-200);
 		}
 	}
 }

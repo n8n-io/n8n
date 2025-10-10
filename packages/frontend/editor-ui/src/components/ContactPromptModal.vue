@@ -111,11 +111,11 @@ const send = async () => {
 
 <style lang="scss" module>
 .description {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .disclaimer {
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing--4xs);
 }
 </style>
 

@@ -28,6 +28,7 @@ import {
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
+import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -198,6 +199,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
+		id: 'chat',
+		icon: 'bot',
+		label: 'Chat',
+		position: 'bottom',
+		route: { to: { name: CHAT_VIEW } },
+		available:
+			settingsStore.isChatFeatureEnabled &&
+			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		id: 'help',
@@ -677,14 +688,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	width: $sidebar-expanded-width;
-	background-color: var(--menu-background, var(--color-background-xlight));
+	background-color: var(--menu-background, var(--color--background--light-3));
 
 	.logo {
 		display: flex;
 		align-items: center;
-		padding: var(--spacing-xs);
+		padding: var(--spacing--xs);
 		justify-content: space-between;
 
 		img {
@@ -719,15 +730,15 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: var(--color-text-base);
-	background-color: var(--color-foreground-xlight);
+	color: var(--color--text);
+	background-color: var(--color--foreground--tint-2);
 	width: 20px;
 	height: 20px;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: 50%;
 
 	&:hover {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 
@@ -738,24 +749,24 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 }
 
 .bottomMenuItems {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 }
 
 .popover {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	min-width: 200px;
 }
 
 .popoverTitle {
 	display: block;
-	margin-bottom: var(--spacing-3xs);
+	margin-bottom: var(--spacing--3xs);
 }
 
 .userArea {
 	display: flex;
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	align-items: center;
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 
 	.userName {
 		display: none;
@@ -798,10 +809,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 .readOnlyEnvironmentIcon {
 	display: inline-block;
 	color: white;
-	background-color: var(--color-warning);
+	background-color: var(--color--warning);
 	align-self: center;
 	padding: 2px;
-	border-radius: var(--border-radius-small);
+	border-radius: var(--radius--sm);
 	margin: 7px 12px 0 5px;
 }
 </style>

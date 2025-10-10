@@ -502,14 +502,14 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 <style lang="scss" module>
 .userCount {
 	display: block;
-	padding: var(--spacing-3xs) 0 0;
+	padding: var(--spacing--3xs) 0 0;
 }
 
 .buttonContainer {
 	display: flex;
 	justify-content: space-between;
-	gap: var(--spacing-s);
-	margin: 0 0 var(--spacing-s);
+	gap: var(--spacing--sm);
+	margin: 0 0 var(--spacing--sm);
 }
 
 .search {
@@ -523,13 +523,13 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 .settingsContainer {
 	display: flex;
 	align-items: center;
-	padding-left: var(--spacing-s);
-	margin-bottom: var(--spacing-l);
+	padding-left: var(--spacing--sm);
+	margin-bottom: var(--spacing--lg);
 	justify-content: space-between;
 	flex-shrink: 0;
 
 	border-radius: 4px;
-	border: 1px solid var(--Colors-Foreground---color-foreground-base, #d9dee8);
+	border: 1px solid var(--Colors-Foreground---color--foreground, #d9dee8);
 }
 
 .settingsContainerInfo {

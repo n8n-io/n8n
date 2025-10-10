@@ -45,6 +45,7 @@ export {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	isDomainAllowed,
+	isCommunityPackageName,
 } from './utils';
 export {
 	isINodeProperties,

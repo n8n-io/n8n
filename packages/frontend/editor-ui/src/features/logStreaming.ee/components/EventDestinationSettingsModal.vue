@@ -560,7 +560,7 @@ const { width } = useElementSize(defNameRef);
 	margin-left: 1.5em;
 	margin-bottom: 0.5em;
 	span {
-		color: var(--color-text-dark) !important;
+		color: var(--color--text--shade-1) !important;
 	}
 }
 
@@ -580,7 +580,7 @@ const { width } = useElementSize(defNameRef);
 	padding-top: 1em;
 	max-width: 170px;
 	min-width: 170px;
-	margin-right: var(--spacing-l);
+	margin-right: var(--spacing--lg);
 	flex-grow: 1;
 
 	ul {
@@ -590,7 +590,7 @@ const { width } = useElementSize(defNameRef);
 
 .cardTitle {
 	font-size: 14px;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .header {
@@ -613,19 +613,19 @@ const { width } = useElementSize(defNameRef);
 	display: flex;
 	width: 100%;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
-	margin-bottom: var(--spacing-l);
+	gap: var(--spacing--4xs);
+	margin-bottom: var(--spacing--lg);
 }
 
 .destinationActions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-right: var(--spacing-xl);
-	margin-bottom: var(--spacing-l);
+	margin-right: var(--spacing--xl);
+	margin-bottom: var(--spacing--lg);
 
 	> * {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>
