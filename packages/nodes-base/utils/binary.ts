@@ -173,33 +173,41 @@ export async function extractDataFromPDF(
 		isEvalSupported: false,
 		data: new Uint8Array(buffer),
 	}).promise;
-	const { info, metadata } = await document
-		.getMetadata()
-		.catch(() => ({ info: null, metadata: null }));
 
-	const pages = [];
-	if (maxPages !== 0) {
-		let pagesToRead = document.numPages;
-		if (maxPages && maxPages < document.numPages) {
-			pagesToRead = maxPages;
+	try {
+		const { info, metadata } = await document
+			.getMetadata()
+			.catch(() => ({ info: null, metadata: null }));
+
+		const pages = [];
+		if (maxPages !== 0) {
+			let pagesToRead = document.numPages;
+			if (maxPages && maxPages < document.numPages) {
+				pagesToRead = maxPages;
+			}
+			for (let i = 1; i <= pagesToRead; i++) {
+				const page = await document.getPage(i);
+				const text = await page.getTextContent().then(parseText);
+				pages.push(text);
+				// Clean up page resources after processing
+				page.cleanup();
+			}
 		}
-		for (let i = 1; i <= pagesToRead; i++) {
-			const page = await document.getPage(i);
-			const text = await page.getTextContent().then(parseText);
-			pages.push(text);
-		}
+
+		const text = joinPages ? pages.join('\n\n') : pages;
+
+		const returnData = {
+			numpages: document.numPages,
+			numrender: document.numPages,
+			info,
+			metadata: (metadata && Object.fromEntries([...metadata])) ?? undefined,
+			text,
+			version: pdfJsVersion,
+		};
+
+		return returnData;
+	} finally {
+		// Always clean up document resources, even if an error occurs
+		await document.destroy();
 	}
-
-	const text = joinPages ? pages.join('\n\n') : pages;
-
-	const returnData = {
-		numpages: document.numPages,
-		numrender: document.numPages,
-		info,
-		metadata: (metadata && Object.fromEntries([...metadata])) ?? undefined,
-		text,
-		version: pdfJsVersion,
-	};
-
-	return returnData;
 }
