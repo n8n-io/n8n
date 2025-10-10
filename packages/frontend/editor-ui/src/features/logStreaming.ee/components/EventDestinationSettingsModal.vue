@@ -62,7 +62,7 @@ import {
 } from '@n8n/design-system';
 import {
 	injectWorkflowState,
-	WorkflowStateBusEvents,
+	type WorkflowStateBusEvents,
 	workflowStateEventBus,
 } from '@/composables/useWorkflowState';
 
