@@ -8,6 +8,7 @@ import type {
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
+import { readBinaryData } from '../text/helpers/binary';
 
 export const properties: INodeProperties[] = [
 	{
@@ -391,20 +392,18 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.filter((n): n is string => Boolean(n));
 
 		for (const fieldName of imageFieldNames) {
-			const bin = this.helpers.assertBinaryData(i, fieldName);
-			const buf = await this.helpers.getBinaryDataBuffer(i, fieldName);
-			formData.append('image[]', buf, {
-				filename: bin.fileName,
-				contentType: bin.mimeType,
+			const { buffer, binaryData } = await readBinaryData.call(this, i, fieldName);
+			formData.append('image[]', buffer, {
+				filename: binaryData.fileName,
+				contentType: binaryData.mimeType,
 			});
 		}
 	} else {
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-		const bin = this.helpers.assertBinaryData(i, binaryPropertyName);
-		const buf = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-		formData.append('image', buf, {
-			filename: bin.fileName,
-			contentType: bin.mimeType,
+		const { buffer, binaryData } = await readBinaryData.call(this, i, binaryPropertyName);
+		formData.append('image', buffer, {
+			filename: binaryData.fileName,
+			contentType: binaryData.mimeType,
 		});
 	}
 
@@ -440,11 +439,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (options.imageMask && typeof options.imageMask === 'string') {
-		const bin = this.helpers.assertBinaryData(i, options.imageMask);
-		const buf = await this.helpers.getBinaryDataBuffer(i, options.imageMask);
-		formData.append('mask', buf, {
-			filename: bin.fileName,
-			contentType: bin.mimeType,
+		const { buffer, binaryData } = await readBinaryData.call(this, i, options.imageMask);
+		formData.append('mask', buffer, {
+			filename: binaryData.fileName,
+			contentType: binaryData.mimeType,
 		});
 	}
 

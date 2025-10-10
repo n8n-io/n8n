@@ -48,11 +48,12 @@ const imageProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Image Data',
-		name: 'imageData',
+		name: 'binaryPropertyName',
 		type: 'string',
-		default: '',
-		placeholder: 'e.g. data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAA...',
-		description: 'Base64 encoded image to be sent',
+		default: 'data',
+		placeholder: 'e.g. data',
+		hint: 'The name of the input field containing the binary file data to be processed',
+		description: 'Name of the binary property which contains the image(s)',
 		displayOptions: {
 			show: {
 				type: ['image'],
@@ -859,7 +860,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			tools = externalTools.length ? externalTools?.map(formatToOpenAIResponsesTool) : undefined;
 		}
 
-		const body = createRequest({ model, messages, options, tools, builtInTools });
+		const body = await createRequest.call(this, i, {
+			model,
+			messages,
+			options,
+			tools,
+			builtInTools,
+		});
 		let response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
 		})) as ChatResponse;

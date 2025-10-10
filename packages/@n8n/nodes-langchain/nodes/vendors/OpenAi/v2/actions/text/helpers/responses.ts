@@ -1,12 +1,15 @@
-import { isObjectEmpty, jsonParse, type IDataObject } from 'n8n-workflow';
-import type {
-	ChatInputItem,
-	ChatContent,
-	ChatResponseRequest,
-} from '../../../../helpers/interfaces';
 import type { OpenAIClient } from '@langchain/openai';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
+import { isObjectEmpty, jsonParse, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
+import type { ResponseInputImage } from 'openai/resources/responses/responses';
+
+import { readBinaryData } from './binary';
+import type {
+	ChatContent,
+	ChatInputItem,
+	ChatResponseRequest,
+} from '../../../../helpers/interfaces';
 
 const toArray = (str: string) => str.split(',').map((e) => e.trim());
 
@@ -19,38 +22,56 @@ const removeEmptyProperties = <T>(rest: { [key: string]: any }): T => {
 		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {}) as unknown as T;
 };
 
-const formatInput = (messages: IDataObject[]) => {
-	return messages.map<ChatInputItem>((message) => {
-		const role = message.role as ChatInputItem['role'];
-		let content: ChatContent = [];
-		if (message.type === 'text') {
-			content = [{ type: 'input_text', text: message.content as string }];
-		}
-		if (message.type === 'image') {
-			content = [
-				{
-					type: 'input_image',
-					detail: (message.imageDetail as any) || 'auto',
-					...(message.imageType === 'url' && { image_url: message.imageUrl as string }),
-					...(message.imageType === 'base64' && { image_url: message.imageData as string }),
-					...(message.fileId && { file_id: message.fileId as string }),
-				},
-			];
-		}
-		if (message.type === 'file') {
-			content = [
-				{
-					type: 'input_file',
-					...(message.fileName && { file_name: message.fileName as string }),
-					...(message.fileType === 'url' && { file_url: message.fileUrl as string }),
-					...(message.fileType === 'fileId' && { file_id: message.fileId as string }),
-					...(message.fileType === 'base64' && { file_data: message.fileData as string }),
-				},
-			];
-		}
-		return { role, content };
-	});
-};
+async function formatInput(this: IExecuteFunctions, i: number, messages: IDataObject[]) {
+	return await Promise.all(
+		messages.map<Promise<ChatInputItem>>(async (message) => {
+			const role = message.role as ChatInputItem['role'];
+			let content: ChatContent = [];
+			if (message.type === 'text') {
+				content = [{ type: 'input_text', text: message.content as string }];
+			}
+			if (message.type === 'image') {
+				const detail = (message.imageDetail as ResponseInputImage['detail']) || ('auto' as const);
+
+				if (message.imageType === 'base64') {
+					const { buffer, binaryData } = await readBinaryData.call(
+						this,
+						i,
+						message.binaryPropertyName as string,
+					);
+					content = [
+						{
+							type: 'input_image',
+							detail,
+							image_url: `data:${binaryData.mimeType};base64,${buffer.toString('base64')}`,
+						},
+					];
+				} else {
+					content = [
+						{
+							type: 'input_image',
+							detail,
+							...(message.imageType === 'url' && { image_url: message.imageUrl as string }),
+							...(message.fileId && { file_id: message.fileId as string }),
+						},
+					];
+				}
+			}
+			if (message.type === 'file') {
+				content = [
+					{
+						type: 'input_file',
+						...(message.fileName && { file_name: message.fileName as string }),
+						...(message.fileType === 'url' && { file_url: message.fileUrl as string }),
+						...(message.fileType === 'fileId' && { file_id: message.fileId as string }),
+						...(message.fileType === 'base64' && { file_data: message.fileData as string }),
+					},
+				];
+			}
+			return { role, content };
+		}),
+	);
+}
 
 interface CreateRequestOptions {
 	model: string;
@@ -60,16 +81,14 @@ interface CreateRequestOptions {
 	tools?: OpenAIClient.Responses.FunctionTool[];
 }
 
-export const createRequest = ({
-	model,
-	messages,
-	options,
-	builtInTools,
-	tools,
-}: CreateRequestOptions): ChatResponseRequest => {
+export async function createRequest(
+	this: IExecuteFunctions,
+	i: number,
+	{ model, messages, options, builtInTools, tools }: CreateRequestOptions,
+): Promise<ChatResponseRequest> {
 	const body: ChatResponseRequest = {
 		model,
-		input: formatInput(messages),
+		input: await formatInput.call(this, i, messages),
 		parallel_tool_calls: get(options, 'parallelToolCalls', true) as boolean,
 		store: get(options, 'store', true) as boolean,
 		instructions: options.instructions as string,
@@ -265,5 +284,5 @@ export const createRequest = ({
 		body.tools = newTools;
 	}
 
-	return removeEmptyProperties(body);
-};
+	return await removeEmptyProperties(body);
+}

@@ -1,13 +1,16 @@
 import type {
-	INodeProperties,
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	IDataObject,
+	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
+import type { ResponseInputImage } from 'openai/resources/responses/responses';
+import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
+import { readBinaryData } from '../text/helpers/binary';
 
 const properties: INodeProperties[] = [
 	{
@@ -138,14 +141,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const inputType = this.getNodeParameter('inputType', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 
-	const content: IDataObject[] = [
+	const content: ChatContent = [
 		{
-			type: 'text',
+			type: 'input_text',
 			text,
 		},
 	];
 
-	const detail = (options.detail as string) || 'auto';
+	const detail = (options.detail as string as ResponseInputImage['detail']) || ('auto' as const);
 
 	if (inputType === 'url') {
 		const imageUrls = (this.getNodeParameter('imageUrls', i) as string)
@@ -154,11 +157,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		for (const url of imageUrls) {
 			content.push({
-				type: 'image_url',
-				image_url: {
-					url,
-					detail,
-				},
+				type: 'input_image',
+				detail,
+				image_url: url,
 			});
 		}
 	} else {
@@ -167,54 +168,53 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.map((propertyName) => propertyName.trim());
 
 		for (const propertyName of binaryPropertyName) {
-			const binaryData = this.helpers.assertBinaryData(i, propertyName);
-
-			let fileBase64;
-			if (binaryData.id) {
-				const chunkSize = 256 * 1024;
-				const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
-				const buffer = await this.helpers.binaryToBuffer(stream);
-				fileBase64 = buffer.toString('base64');
-			} else {
-				fileBase64 = binaryData.data;
-			}
+			const { buffer, binaryData } = await readBinaryData.call(this, i, propertyName);
+			const fileBase64 = buffer.toString('base64');
 
 			if (!binaryData) {
 				throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 			}
 
 			content.push({
-				type: 'image_url',
-				image_url: {
-					url: `data:${binaryData.mimeType};base64,${fileBase64}`,
-					detail,
-				},
+				type: 'input_image',
+				detail,
+				image_url: `data:${binaryData.mimeType};base64,${fileBase64}`,
 			});
 		}
 	}
 
-	const body = {
+	const body: ChatResponseRequest = {
 		model,
-		messages: [
+		input: [
 			{
 				role: 'user',
 				content,
 			},
 		],
-		max_tokens: (options.maxTokens as number) || 300,
+		max_output_tokens: (options.maxTokens as number) || 300,
 	};
 
-	let response = await apiRequest.call(this, 'POST', '/chat/completions', { body });
+	const response = (await apiRequest.call(this, 'POST', '/responses', {
+		body,
+	})) as ChatResponse;
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 
-	if (simplify && response.choices) {
-		response = { content: response.choices[0].message.content };
+	if (simplify && response.output[0]) {
+		const firstMessage =
+			response.output.find((item) => item.type === 'message') ?? response.output[0];
+		const output = firstMessage.type === 'message' ? firstMessage.content[0] : firstMessage;
+		return [
+			{
+				json: output as unknown as IDataObject,
+				pairedItem: { item: i },
+			},
+		];
 	}
 
 	return [
 		{
-			json: response,
+			json: response as unknown as IDataObject,
 			pairedItem: { item: i },
 		},
 	];
