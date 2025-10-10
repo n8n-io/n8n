@@ -33,6 +33,6 @@ const openCommunityNodeDocsPage = () => {
 	display: flex;
 	align-items: center;
 	margin-left: auto;
-	padding-bottom: var(--spacing-5xs);
+	padding-bottom: var(--spacing--5xs);
 }
 </style>

@@ -13,8 +13,8 @@ import {
 } from '@/__tests__/utils';
 import { within, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createProjectListItem } from '@/__tests__/data/projects';
-import { useProjectsStore } from '@/stores/projects.store';
+import { createProjectListItem } from '@/features/projects/__tests__/utils';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type {
 	FrontendModuleSettings,
 	InsightsByTime,

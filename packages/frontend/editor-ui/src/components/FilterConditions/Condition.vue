@@ -253,10 +253,10 @@ const onBlur = (): void => {
 	position: relative;
 	display: flex;
 	align-items: flex-end;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 
 	&.hasIssues {
-		--input-border-color: var(--color-danger);
+		--input-border-color: var(--color--danger);
 	}
 
 	&:hover {
@@ -280,9 +280,9 @@ const onBlur = (): void => {
 }
 
 .defaultTopPadding {
-	top: var(--spacing-m);
+	top: var(--spacing--md);
 }
 .extraTopPadding {
-	top: calc(14px + var(--spacing-m));
+	top: calc(14px + var(--spacing--md));
 }
 </style>

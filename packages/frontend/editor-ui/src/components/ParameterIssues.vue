@@ -24,8 +24,8 @@ const i18n = useI18n();
 .parameter-issues {
 	text-align: right;
 	float: right;
-	color: var(--color-danger-light);
-	font-size: var(--font-size-s);
-	padding-left: var(--spacing-3xs);
+	color: var(--color--danger--tint-1);
+	font-size: var(--font-size--sm);
+	padding-left: var(--spacing--3xs);
 }
 </style>

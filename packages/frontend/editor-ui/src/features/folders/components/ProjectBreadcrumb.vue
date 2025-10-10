@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { type Project, ProjectTypes } from '@/types/projects.types';
+import { type Project, ProjectTypes } from '@/features/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
-import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
 type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;
@@ -95,28 +95,28 @@ const onProjectMouseUp = () => {
 <style module lang="scss">
 .home-project {
 	display: flex;
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
-	border: var(--border-width-base) var(--border-style-base) transparent;
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+	border: var(--border-width) var(--border-style) transparent;
 
 	&.dragging:hover {
-		border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
-		border-radius: var(--border-radius-base);
+		border: var(--border-width) var(--border-style) var(--color--secondary);
+		border-radius: var(--radius);
 		background-color: var(--color-callout-secondary-background);
 		* {
 			cursor: grabbing;
-			color: var(--color-text-base);
+			color: var(--color--text);
 		}
 	}
 
 	&:hover :global(.n8n-text) {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 
 .project-link :global(.n8n-text) {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 :global(.n8n-text).project-label {
