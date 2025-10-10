@@ -12,8 +12,7 @@ from src.constants import (
     ERROR_EXTERNAL_DISALLOWED,
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
-    ALWAYS_BLOCKED_ATTRIBUTES,
-    UNSAFE_ATTRIBUTES,
+    BLOCKED_ATTRIBUTES,
 )
 
 CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
@@ -58,17 +57,10 @@ class SecurityValidator(ast.NodeVisitor):
     def visit_Attribute(self, node: ast.Attribute) -> None:
         """Detect access to unsafe attributes that could bypass security restrictions."""
 
-        if node.attr in UNSAFE_ATTRIBUTES:
-            # Block regardless of context
-            if node.attr in ALWAYS_BLOCKED_ATTRIBUTES:
-                self._add_violation(
-                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
-                )
-            # Block in attribute chains (e.g., x.__class__.__bases__) or on literals (e.g., "".__class__)
-            elif isinstance(node.value, (ast.Attribute, ast.Constant)):
-                self._add_violation(
-                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
-                )
+        if node.attr in BLOCKED_ATTRIBUTES:
+            self._add_violation(
+                node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
+            )
 
         self.generic_visit(node)
 
