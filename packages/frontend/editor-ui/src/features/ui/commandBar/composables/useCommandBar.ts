@@ -4,14 +4,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { COMMAND_BAR_EXPERIMENT, VIEWS } from '@/constants';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
-import { useNodeCommands } from './commandBar/useNodeCommands';
-import { useWorkflowCommands } from './commandBar/useWorkflowCommands';
-import { useWorkflowNavigationCommands } from './commandBar/useWorkflowNavigationCommands';
-import { useTemplateCommands } from './commandBar/useTemplateCommands';
-import { useBaseCommands } from './commandBar/useBaseCommands';
-import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
-import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
-import type { CommandGroup } from './commandBar/types';
+import { useNodeCommands } from './useNodeCommands';
+import { useWorkflowCommands } from './useWorkflowCommands';
+import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
+import { useTemplateCommands } from './useTemplateCommands';
+import { useBaseCommands } from './useBaseCommands';
+import { useDataTableNavigationCommands } from './useDataTableNavigationCommands';
+import { useCredentialNavigationCommands } from './useCredentialNavigationCommands';
+import type { CommandGroup } from '../commandBar.types';
 import { usePostHog } from '@/stores/posthog.store';
 
 export function useCommandBar() {
