@@ -225,7 +225,7 @@ function setPreset(slug: string) {
 		return;
 	}
 
-	form.value.scopes = preset.scopes;
+	form.value.scopes = structuredClone(preset.scopes);
 }
 
 async function deleteRole() {
