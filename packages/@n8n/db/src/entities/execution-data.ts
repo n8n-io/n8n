@@ -3,6 +3,7 @@ import { IWorkflowBase } from 'n8n-workflow';
 
 import { JsonColumn } from './abstract-entity';
 import { ExecutionEntity } from './execution-entity';
+import { ISimplifiedPinData } from './types-db';
 import { idStringifier } from '../utils/transformers';
 
 @Entity()
@@ -16,7 +17,7 @@ export class ExecutionData {
 	// and IWorkflowDb has it as a mandatory field. IWorkflowBase reflects the correct
 	// data structure for this entity.
 	@JsonColumn()
-	workflowData: IWorkflowBase;
+	workflowData: Omit<IWorkflowBase, 'pinData'> & { pinData?: ISimplifiedPinData };
 
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
