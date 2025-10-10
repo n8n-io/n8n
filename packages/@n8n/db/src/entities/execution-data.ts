@@ -18,6 +18,11 @@ export class ExecutionData {
 	// data structure for this entity.
 	@JsonColumn()
 	workflowData: Omit<IWorkflowBase, 'pinData'> & { pinData?: ISimplifiedPinData };
+	/**
+	 * We simplify pindata to prevent excessively deep type instantiation error from `INodeExecutionData` in `IPinData` in a TypeORM entity field, e.g. TagEntity -> WorkflowEntity[] -> TestRun[] -> TestCaseExecution[] -> ExecutionEntity -> ExecutionData -> IWorkflowBase -> IPinData -> INodeExecutionData[] -> NodeApiError -> Error -> cause: unknown -> Type 'unknown' is not assignable to type '(() => string) | _QueryDeepPartialEntity<unknown, unknown> | undefined'.
+	 *
+	 * This simplification is temporary until we can use `WorkflowEntity` in this field.
+	 */
 
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
