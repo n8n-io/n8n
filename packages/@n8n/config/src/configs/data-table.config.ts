@@ -20,9 +20,4 @@ export class DataTableConfig {
 	 */
 	@Env('N8N_DATA_TABLES_SIZE_CHECK_CACHE_DURATION_MS')
 	sizeCheckCacheDuration: number = 60 * 1000;
-
-	sanitize() {
-		// Set warningThreshold to 80% of maxSize if not explicitly configured
-		this.warningThreshold ??= Math.floor(0.8 * this.maxSize);
-	}
 }
