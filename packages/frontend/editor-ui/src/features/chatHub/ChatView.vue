@@ -394,6 +394,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 							type="text"
 							:placeholder="inputPlaceholder"
 							autocomplete="off"
+							autofocus
 							:disabled="chatStore.isResponding"
 						/>
 
