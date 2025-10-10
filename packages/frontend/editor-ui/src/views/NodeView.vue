@@ -129,7 +129,7 @@ import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
