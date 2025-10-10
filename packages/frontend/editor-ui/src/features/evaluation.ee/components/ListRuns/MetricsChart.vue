@@ -76,18 +76,18 @@ watchEffect(() => {
 
 <style lang="scss" module>
 .metricsChartContainer {
-	background: var(--color-background-xlight);
-	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-foreground-base);
+	background: var(--color--background--light-3);
+	border-radius: var(--radius--lg);
+	border: 1px solid var(--color--foreground);
 
 	.chartHeader {
-		padding: var(--spacing-xs) var(--spacing-s) 0;
+		padding: var(--spacing--xs) var(--spacing--sm) 0;
 	}
 
 	.chartTitle {
-		font-size: var(--font-size-l);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text-base);
+		font-size: var(--font-size--lg);
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text);
 	}
 
 	.metricSelect {
@@ -98,7 +98,7 @@ watchEffect(() => {
 		position: relative;
 		height: var(--metrics-chart-height, 147px);
 		width: 100%;
-		padding: var(--spacing-s);
+		padding: var(--spacing--sm);
 	}
 }
 </style>

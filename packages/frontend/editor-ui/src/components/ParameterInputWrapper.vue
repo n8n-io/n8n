@@ -12,7 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
@@ -227,10 +227,10 @@ defineExpose({
 .parameterInput {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .hovering {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 </style>

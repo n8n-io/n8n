@@ -27,7 +27,6 @@ import type {
 	IRunData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
-	PublicInstalledPackage,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
@@ -42,6 +41,7 @@ import type {
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -65,9 +65,13 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { IUser, IUserResponse } from '@n8n/rest-api-client/api/users';
+import type {
+	BaseFolderItem,
+	FolderListItem,
+	ResourceParentFolder,
+} from '@/features/folders/folders.types';
 
 export * from '@n8n/design-system/types';
 
@@ -186,12 +190,6 @@ export interface IAiDataContent {
 			executionId: string;
 		};
 	};
-}
-
-export interface IAiData {
-	data: IAiDataContent[];
-	node: string;
-	runIndex: number;
 }
 
 export interface IStartRunData {
@@ -349,54 +347,7 @@ export type WorkflowListItem = Omit<
 	resource: 'workflow';
 };
 
-export type FolderShortInfo = {
-	id: string;
-	name: string;
-	parentFolder?: string;
-};
-
-export type BaseFolderItem = BaseResource & {
-	createdAt: string;
-	updatedAt: string;
-	workflowCount: number;
-	subFolderCount: number;
-	parentFolder?: ResourceParentFolder;
-	homeProject?: ProjectSharingData;
-	tags?: ITag[];
-};
-
-export type ResourceParentFolder = {
-	id: string;
-	name: string;
-	parentFolderId: string | null;
-};
-
-export interface FolderListItem extends BaseFolderItem {
-	resource: 'folder';
-}
-
-export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
-	path: string[];
-}
-
-export type FolderPathItem = PathItem & { parentFolder?: string };
-
-export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
-	resource: 'folder' | 'project';
-}
-
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
-
-export type FolderCreateResponse = Omit<
-	FolderListItem,
-	'workflowCount' | 'tags' | 'sharedWithProjects' | 'homeProject'
->;
-
-export type FolderTreeResponseItem = {
-	id: string;
-	name: string;
-	children: FolderTreeResponseItem[];
-};
 
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
@@ -853,6 +804,7 @@ export type NodeCreatorOpenSource =
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
+	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
@@ -1012,12 +964,6 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
-
-export interface EnvironmentVariable {
-	id: string;
-	key: string;
-	value: string;
-}
 
 export type ExecutionFilterMetadata = {
 	key: string;

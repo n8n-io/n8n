@@ -1,8 +1,7 @@
 <script setup lang="ts">
+import NodeIcon from '@/components/NodeIcon.vue';
 import type { NodeIconSource } from '@/utils/nodeIcon';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
 
 import {
 	N8nIcon,
@@ -24,15 +23,6 @@ const i18n = useI18n();
 
 const emit = defineEmits<{ close: []; rename: [name: string] }>();
 
-const hasCustomName = computed(() => props.nodeName !== props.nodeTypeName);
-const docsLabel = computed(() => {
-	if (!hasCustomName.value) {
-		return i18n.baseText('nodeSettings.docs');
-	}
-
-	return `${props.nodeTypeName} ${i18n.baseText('nodeSettings.docs')}`;
-});
-
 function onRename(newNodeName: string) {
 	emit('rename', newNodeName || props.nodeTypeName);
 }
@@ -52,27 +42,24 @@ function onRename(newNodeName: string) {
 					@update:model-value="onRename"
 				/>
 			</div>
+		</div>
 
+		<div :class="$style.actions">
 			<N8nLink v-if="docsUrl" theme="text" target="_blank" :href="docsUrl">
 				<span :class="$style.docsLabel">
 					<N8nText size="small" bold>
-						{{ docsLabel }}
+						{{ i18n.baseText('nodeSettings.docs') }}
 					</N8nText>
 					<N8nIcon icon="external-link" />
 				</span>
 			</N8nLink>
-
-			<N8nText v-else-if="hasCustomName" size="small" bold>
-				{{ nodeTypeName }}
-			</N8nText>
+			<N8nTooltip>
+				<template #content>
+					{{ i18n.baseText('ndv.close.tooltip') }}
+				</template>
+				<N8nIconButton icon="x" type="tertiary" text @click="emit('close')" />
+			</N8nTooltip>
 		</div>
-
-		<N8nTooltip>
-			<template #content>
-				{{ i18n.baseText('ndv.close.tooltip') }}
-			</template>
-			<N8nIconButton icon="x" type="tertiary" @click="emit('close')" />
-		</N8nTooltip>
 	</header>
 </template>
 
@@ -82,33 +69,41 @@ function onRename(newNodeName: string) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs);
-	background: var(--color-background-xlight);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs);
+	background: var(--color--background--light-3);
 }
 
 .content {
 	display: flex;
-	align-items: flex-end;
-	gap: var(--spacing-2xs);
-	margin-left: var(--spacing-2xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-left: var(--spacing--2xs);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.actions button:hover {
+	background-color: var(--color--background);
+}
+
+.actions > *:not(:last-child) {
+	border-right: var(--border);
+	padding-right: var(--spacing--2xs);
 }
 
 .title {
-	color: var(--color-text-dark);
-	font-size: var(--font-size-m);
-}
-
-.subtitle {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing-2xs);
-	margin: 0;
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--sm);
 }
 
 .docsLabel {
 	display: flex;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .icon {

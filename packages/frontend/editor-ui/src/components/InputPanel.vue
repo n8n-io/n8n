@@ -29,11 +29,12 @@ import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
-import { type SearchShortcut } from '@/types';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -103,6 +104,7 @@ const inputModes = [
 
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const posthogStore = usePostHog();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
@@ -197,19 +199,20 @@ const isExecutingPrevious = computed(() => {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
-	const executingNode = workflowsStore.executingNode;
+	const executingNode = workflowState.executingNode.executingNode;
 
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		workflowsStore.isNodeExecuting(props.currentNodeName)
+		workflowState.executingNode.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
 
 	if (executingNode.length || triggeredNode) {
 		return !!parentNodes.value.find(
-			(node) => workflowsStore.isNodeExecuting(node.name) || node.name === triggeredNode,
+			(node) =>
+				workflowState.executingNode.isNodeExecuting(node.name) || node.name === triggeredNode,
 		);
 	}
 	return false;
@@ -264,7 +267,10 @@ const activeNodeType = computed(() => {
 
 const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
-	return parentNode && waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name));
+	return (
+		parentNode &&
+		waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name), props.workflowObject)
+	);
 });
 
 const isNDVV2 = computed(() =>
@@ -497,7 +503,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 				<template v-else-if="isNDVV2">
 					<NDVEmptyState
-						v-if="isMappingEnabled || hasRootNodeRun"
+						v-if="readOnly"
+						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
+					/>
+					<NDVEmptyState
+						v-else-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
 						icon="arrow-right-to-line"
 					>
@@ -673,7 +683,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 }
 
 .mappedNode {
-	padding: 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .titleSection {
@@ -682,12 +692,12 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	align-items: center;
 
 	> * {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 }
 
 .titleSectionV2 {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 .inputModeTab {
 	margin-left: auto;
@@ -696,7 +706,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 250px;
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -704,11 +714,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 300px;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -719,7 +729,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .titleV2 {
 	letter-spacing: 2px;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .executeButton {

@@ -39,7 +39,6 @@ import type {
 	INodeUi,
 	IWorkflowDb,
 	TargetItem,
-	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -49,7 +48,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import get from 'lodash/get';
 
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -57,7 +56,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -542,17 +540,6 @@ export function useWorkflowHelpers() {
 	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
-	const documentTitle = useDocumentTitle();
-
-	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
-		let icon = '⚠️';
-		if (status === 'EXECUTING') {
-			icon = '🔄';
-		} else if (status === 'IDLE') {
-			icon = '▶️';
-		}
-		documentTitle.set(`${icon} ${workflowName}`);
-	};
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -1063,7 +1050,6 @@ export function useWorkflowHelpers() {
 	}
 
 	return {
-		setDocumentTitle,
 		resolveParameter,
 		resolveRequiredParameters,
 		getConnectedNodes,

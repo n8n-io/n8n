@@ -32,7 +32,7 @@ const { name, isError, isDeleted } = defineProps<{
 	white-space: nowrap;
 
 	& del:not(:last-child) {
-		margin-right: var(--spacing-4xs);
+		margin-right: var(--spacing--4xs);
 	}
 }
 </style>

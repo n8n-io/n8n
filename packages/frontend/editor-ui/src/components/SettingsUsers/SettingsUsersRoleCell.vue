@@ -63,7 +63,7 @@ const onActionSelect = (role: Role) => {
 .roleLabel {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	background: transparent;
 	padding: 0;
 	border: none;
@@ -74,7 +74,7 @@ const onActionSelect = (role: Role) => {
 	max-width: 268px;
 	display: inline-flex;
 	flex-direction: column;
-	padding: var(--spacing-2xs) 0;
+	padding: var(--spacing--2xs) 0;
 
 	span {
 		white-space: normal;
@@ -83,6 +83,6 @@ const onActionSelect = (role: Role) => {
 
 .removeUser {
 	display: block;
-	padding: var(--spacing-2xs) var(--spacing-l);
+	padding: var(--spacing--2xs) var(--spacing--lg);
 }
 </style>

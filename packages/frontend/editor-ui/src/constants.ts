@@ -9,10 +9,10 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
-} from '@/types';
+} from '@/features/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
-import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
+import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
 import type { TelemetryContext } from './types/telemetry';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { WorkflowState } from './composables/useWorkflowState';
@@ -72,8 +72,6 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
-export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
@@ -83,8 +81,6 @@ export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
-export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
-export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
@@ -230,8 +226,8 @@ export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
-export const DATA_STORE_NODE_TYPE = 'n8n-nodes-base.dataTable';
-export const DATA_STORE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
+export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
+export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -239,7 +235,7 @@ export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 // template categories
 export const TEMPLATE_CATEGORY_AI = 'categories/ai';
 
-export const DATA_STORE_NODES = [DATA_STORE_NODE_TYPE, DATA_STORE_TOOL_NODE_TYPE];
+export const DATA_TABLE_NODES = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
@@ -262,7 +258,7 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_TRANSFORM_NODE_TYPE,
 ];
 export const MODULE_ENABLED_NODES = [
-	...DATA_STORE_NODES.map((nodeType) => ({ nodeType, module: DATA_STORE_MODULE_NAME })),
+	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
 ];
 
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
@@ -298,6 +294,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	ADD_NODE_BUTTON: 'add_node_button',
 	TAB: 'tab',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
+	REPLACE_NODE_ACTION: 'replace_node_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
@@ -480,28 +477,6 @@ export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
 export const MODAL_CLOSE = 'close';
 
-export const ILLEGAL_FOLDER_CHARACTERS = [
-	'[',
-	']',
-	'^',
-	'\\',
-	'/',
-	':',
-	'*',
-	'?',
-	'"',
-	'<',
-	'>',
-	'|',
-];
-export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
-	`[${ILLEGAL_FOLDER_CHARACTERS.map((char) => {
-		return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	}).join('')}]`,
-);
-
-export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
-export const FOLDER_NAME_MAX_LENGTH = 100;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
@@ -532,6 +507,8 @@ export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
 export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
 	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
 export const LOCAL_STORAGE_RUN_DATA_WORKER = 'N8N_RUN_DATA_WORKER';
+export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = 'N8N_CHAT_HUB_SELECTED_MODEL';
+export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = 'N8N_CHAT_HUB_CREDENTIALS';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
