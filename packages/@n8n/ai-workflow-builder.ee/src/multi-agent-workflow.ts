@@ -1,5 +1,4 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage } from '@langchain/core/messages';
 import { StateGraph, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -81,7 +80,7 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 * Decides which specialist agent should work next
 	 */
 	const callSupervisor = async (state: typeof WorkflowState.State) => {
-		logger?.debug('[Supervisor] Called', {
+		console.log('[Supervisor] Called', {
 			messageCount: state.messages.length,
 			currentAgent: state.currentAgent,
 		});
@@ -91,7 +90,7 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		// Filter messages to remove tool execution details
 		const filteredMessages = filterMessagesForSupervisor(state.messages);
 
-		logger?.debug('[Supervisor] Filtered messages', {
+		console.log('[Supervisor] Filtered messages', {
 			originalCount: state.messages.length,
 			filteredCount: filteredMessages.length,
 		});
@@ -99,9 +98,8 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		// Prepare messages with trimmed workflow context and cache control
 		const messagesWithContext = prepareMessagesWithContext(filteredMessages, state);
 
-		logger?.debug('[Supervisor] About to invoke with context', {
+		console.log('[Supervisor] About to invoke', {
 			messageCount: messagesWithContext.length,
-			lastMessageType: messagesWithContext[messagesWithContext.length - 1]?.constructor.name,
 		});
 
 		// Invoke supervisor with filtered context
@@ -109,21 +107,12 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 			messages: messagesWithContext,
 		})) as SupervisorRouting;
 
-		logger?.debug('Supervisor routing decision', routing);
+		console.log('[Supervisor] Routing decision', routing);
 
-		// Create a message with the routing decision
-		// Note: We don't include routing details in message content to avoid template variable conflicts
-		const routingMessage = new AIMessage({
-			content: `Supervisor: Routing to ${routing.next} agent`,
-			additional_kwargs: {
-				routing,
-			},
-		});
-
+		// Store routing decision in state (no message needed - supervisor is internal coordination)
 		return {
-			messages: [routingMessage],
-			// Store routing in state for conditional edges
 			next: routing.next,
+			currentAgent: '', // Reset currentAgent for next agent to pick up
 		};
 	};
 
@@ -149,7 +138,7 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 * Searches for and analyzes nodes
 	 */
 	const callDiscovery = async (state: typeof WorkflowState.State) => {
-		logger?.debug('[Discovery] Called', {
+		console.log('[Discovery] Called', {
 			messageCount: state.messages.length,
 			currentAgent: state.currentAgent,
 			isReturningAfterTools: state.currentAgent === 'discovery',
@@ -164,7 +153,7 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 				? state.messages // Already executing, don't filter (preserve tool pairs)
 				: filterMessagesForDiscovery(state.messages); // New call, filter to prevent contamination
 
-		logger?.debug('[Discovery] Message strategy', {
+		console.log('[Discovery] Message strategy', {
 			originalCount: state.messages.length,
 			finalCount: messagesToUse.length,
 			filtered: state.currentAgent !== 'discovery',
@@ -174,14 +163,30 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 			messages: messagesToUse,
 		});
 
-		logger?.debug('[Discovery] Response received', {
+		console.log('[Discovery] Response received', {
 			hasToolCalls: response.tool_calls?.length ?? 0,
 			hasContent: !!response.content,
-			content: typeof response.content === 'string' ? response.content.substring(0, 100) : '',
+			contentPreview:
+				typeof response.content === 'string' ? response.content.substring(0, 100) : '',
 		});
 
+		// Extract discovery results from tool messages to populate state
+		// This helps supervisor make informed routing decisions
+		const discoveryContext =
+			response.tool_calls && response.tool_calls.length === 0
+				? {
+						// Discovery completed - extract from recent tool results
+						foundNodes: [], // TODO: Parse from tool results if needed
+						timestamp: Date.now(),
+					}
+				: state.discoveryContext; // Keep existing if still working
+
 		// Mark this agent as currently executing (for tool result routing)
-		return { messages: [response], currentAgent: 'discovery' };
+		return {
+			messages: [response],
+			currentAgent: 'discovery',
+			discoveryContext,
+		};
 	};
 
 	/**
@@ -284,11 +289,14 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 
 		const decision = hasToolCalls ? 'tools' : 'supervisor';
 
-		logger?.debug('[shouldExecuteTools] Decision', {
+		console.log('[shouldExecuteTools] Decision', {
 			currentAgent: state.currentAgent,
 			decision,
 			hasToolCalls,
-			lastMessageType: lastMessage?.constructor.name,
+			toolCallCount:
+				lastMessage && 'tool_calls' in lastMessage && Array.isArray(lastMessage.tool_calls)
+					? lastMessage.tool_calls.length
+					: 0,
 		});
 
 		return decision;
@@ -306,10 +314,11 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		if (currentAgent === 'builder') destination = 'builder';
 		if (currentAgent === 'configurator') destination = 'configurator';
 
-		logger?.debug('[routeAfterOperations] Routing', {
+		console.log('[routeAfterOperations] Routing', {
 			currentAgent,
 			destination,
 			nodeCount: state.workflowJSON.nodes.length,
+			messageCount: state.messages.length,
 		});
 
 		return destination;
@@ -327,12 +336,12 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 			destination = 'responder';
 		}
 
-		logger?.debug('[routeFromSupervisor] Routing', {
+		console.log('[routeFromSupervisor] Routing', {
 			supervisorDecision: next,
 			destination,
 			currentAgent: state.currentAgent,
 			nodeCount: state.workflowJSON.nodes.length,
-			lastMessageType: state.messages[state.messages.length - 1]?.constructor.name,
+			messageCount: state.messages.length,
 		});
 
 		return destination;

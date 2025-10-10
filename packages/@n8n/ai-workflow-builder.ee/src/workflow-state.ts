@@ -97,4 +97,17 @@ export const WorkflowState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
 	}),
+
+	// Multi-agent: discovery agent results (helps supervisor make routing decisions)
+	discoveryContext: Annotation<{
+		foundNodes: Array<{
+			type: string;
+			displayName: string;
+			description: string;
+		}>;
+		timestamp: number;
+	} | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
+	}),
 });

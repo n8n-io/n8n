@@ -51,6 +51,7 @@ describe('tool-executor', () => {
 			previousSummary: 'EMPTY',
 			next: '',
 			currentAgent: '',
+			discoveryContext: null,
 		});
 
 		// Helper to create mock tool

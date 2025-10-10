@@ -76,17 +76,31 @@ CRITICAL RULES:
 CONTEXT YOU HAVE:
 - User's request and conversation history
 - Current workflow state (node count, structure, connections)
+- Discovery results (if discovery has been run) - shown in <discovery_results> section
 - Outputs from previous agents (their final conclusions only)
 
-CRITICAL DETECTION RULES:
-- If workflow has NO nodes AND no agent has responded yet → discovery
-- If the last agent response says it found/discovered nodes → builder
-- If workflow has nodes but NO connections → builder
-- If workflow has nodes AND connections but last agent was builder → configurator
-- If the last agent was configurator AND provided setup/completion → FINISH
-- If user asks conversational question → responder
+ROUTING GUIDANCE (not strict rules - use your judgment):
 
-NEVER route to the same agent twice in a row unless it explicitly failed or requested retry.
+For CONVERSATIONAL queries (questions, help, clarification):
+→ responder
+
+For NEW workflow requests:
+- Check <discovery_results> - has discovery already run?
+- If no discovery results and no nodes → probably need discovery
+- If discovery results exist but no nodes → probably need builder
+- If nodes exist but not all connected → probably need builder
+- If nodes connected but unconfigured → probably need configurator
+- If workflow looks complete → probably FINISH
+
+For MODIFICATIONS:
+- User wants to add features → may need discovery for new nodes
+- User wants to change parameters → configurator
+- User wants to restructure → builder
+
+IMPORTANT:
+- Don't loop on the same agent if no progress is being made
+- If discovery results exist, don't run discovery again unless user asks for different functionality
+- Trust the workflow state - it tells you what's been done
 
 YOUR RESPONSE:
 Provide:

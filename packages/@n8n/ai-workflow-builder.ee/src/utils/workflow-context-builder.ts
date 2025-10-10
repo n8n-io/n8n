@@ -34,7 +34,8 @@ export function buildWorkflowContextForAgent(state: typeof WorkflowState.State):
 	const executionData = state.workflowContext?.executionData ?? {};
 	const executionSchema = state.workflowContext?.executionSchema ?? [];
 
-	return [
+	// Build context sections
+	const sections = [
 		'',
 		'<current_workflow_json>',
 		JSON.stringify(trimmedWorkflow, null, 2),
@@ -51,7 +52,20 @@ export function buildWorkflowContextForAgent(state: typeof WorkflowState.State):
 		'<current_execution_nodes_schemas>',
 		JSON.stringify(executionSchema, null, 2),
 		'</current_execution_nodes_schemas>',
-	].join('\n');
+	];
+
+	// Add discovery context if available (helps supervisor avoid re-running discovery)
+	if (state.discoveryContext) {
+		sections.push(
+			'',
+			'<discovery_results>',
+			`Discovery completed at: ${new Date(state.discoveryContext.timestamp).toISOString()}`,
+			`Found ${state.discoveryContext.foundNodes.length} relevant nodes`,
+			'</discovery_results>',
+		);
+	}
+
+	return sections.join('\n');
 }
 
 /**
