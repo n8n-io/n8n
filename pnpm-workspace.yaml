@@ -9,6 +9,8 @@ packages:
 minimumReleaseAge: 2880 # 2 days
 minimumReleaseAgeExclude:
   - eslint-plugin-storybook
+  - '@n8n/*'
+  - '@n8n_io/*'
 
 catalog:
   '@n8n/typeorm': 0.3.20-13
