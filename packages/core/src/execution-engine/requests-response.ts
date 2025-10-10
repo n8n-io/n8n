@@ -58,9 +58,9 @@ function prepareRequestedNodesForExecution(
 		};
 		const parentNode = currentNode.name;
 		const parentSourceData = executionData.source?.main?.[runIndex];
-		const parentOutputIndex = parentSourceData?.previousNodeOutput || 0;
-		const parentRunIndex = parentSourceData?.previousNodeRun || 0;
-		const parentSourceNode = parentSourceData?.previousNode || currentNode.name;
+		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
+		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
+		const parentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
 		const parentOutputData: INodeExecutionData[][] = [
 			[
 				{
@@ -70,7 +70,7 @@ function prepareRequestedNodesForExecution(
 					},
 					pairedItem: {
 						item: parentRunIndex,
-						input: parentOutputIndex || undefined,
+						input: parentOutputIndex,
 						sourceOverwrite: {
 							previousNode: parentSourceNode,
 							previousNodeOutput: parentOutputIndex,
