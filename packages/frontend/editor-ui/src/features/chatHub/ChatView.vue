@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
@@ -44,6 +44,7 @@ const userStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 
+const inputRef = useTemplateRef('inputRef');
 const message = ref('');
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
@@ -173,6 +174,8 @@ watch(
 		if (!isNew && !chatStore.messagesBySession[id]) {
 			void chatStore.fetchMessages(id);
 		}
+
+		inputRef.value?.focus();
 	},
 	{ immediate: true },
 );
@@ -385,6 +388,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 				<form :class="$style.prompt" @submit.prevent="onSubmit">
 					<div :class="$style.inputWrap">
 						<input
+							ref="inputRef"
 							v-model="message"
 							:class="$style.input"
 							type="text"

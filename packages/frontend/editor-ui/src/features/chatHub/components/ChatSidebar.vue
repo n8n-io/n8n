@@ -25,7 +25,10 @@ function onReturn() {
 }
 
 function onNewChat() {
-	void router.push({ name: CHAT_VIEW });
+	void router.push({
+		name: CHAT_VIEW,
+		force: true, // to focus input again when the user is already in CHAT_VIEW
+	});
 }
 </script>
 
