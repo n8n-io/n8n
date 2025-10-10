@@ -342,67 +342,11 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .chat {
-	--chat--spacing: var(--spacing-xs);
-	--chat--message--padding: var(--spacing-2xs);
-	--chat--message--font-size: var(--font-size-2xs);
-	--chat--input--font-size: var(--font-size-s);
-	--chat--input--placeholder--font-size: var(--font-size-xs);
-	--chat--message--bot--background: transparent;
-	--chat--message--user--background: var(--color--text--tint-2);
-	--chat--message--bot--color: var(--color--text--shade-1);
-	--chat--message--user--color: var(--color--text--shade-1);
-	--chat--message--bot--border: none;
-	--chat--message--user--border: none;
-	--chat--message--user--border: none;
-	--chat--input--padding: var(--spacing-xs);
-	--chat--color-typing: var(--color--text--tint-1);
-	--chat--textarea--max-height: calc(var(--logs-panel-height) * 0.3);
-	--chat--message--pre--background: var(--color--foreground--tint-1);
-	--chat--textarea--height: calc(
-		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *
-			var(--chat--input--line-height)
-	);
 	height: 100%;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
 	background-color: var(--color--background--light-2);
-}
-
-.chatHeader {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
-	line-height: 18px;
-	text-align: left;
-	border-bottom: 1px solid var(--color--foreground);
-	padding: var(--chat--spacing);
-	background-color: var(--color--foreground--tint-2);
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.chatTitle {
-	font-weight: var(--font-weight-medium);
-}
-
-.session {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-2xs);
-	color: var(--color--text);
-	max-width: 70%;
-}
-
-.sessionId {
-	display: inline-block;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-
-	&.copyable {
-		cursor: pointer;
-	}
 }
 
 .headerButton {
@@ -425,7 +369,6 @@ onUnmounted(() => {
 .chatContainer {
 	height: 100%;
 	width: 100%;
-	background: var(--color-background-base);
 	border-radius: 0;
 
 	:global(.chat-layout) {
@@ -436,15 +379,15 @@ onUnmounted(() => {
 		--chat--transition-duration: 0.15s !important;
 
 		/* Colors - Primary and Secondary */
-		--chat--color-primary: var(--color-primary) !important;
-		--chat--color-secondary: var(--color-secondary) !important;
-		--chat--color-light-shade-100: var(--color-foreground-base) !important;
-		--chat--color-disabled: var(--color-text-light) !important;
+		--chat--color--primary: var(--color--primary) !important;
+		--chat--color--secondary: var(--color--secondary) !important;
+		--chat--color-light-shade-100: var(--color--foreground) !important;
+		--chat--color-disabled: var(--color--text--tint-1) !important;
 
 		/* Body and Footer */
-		--chat--body--background: var(--color-background-light);
-		--chat--footer--background: var(--color-background-light);
-		--chat--footer--color: var(--color-text-base) !important;
+		--chat--body--background: var(--color--background--light-2);
+		--chat--footer--background: var(--color--background--light-2);
+		--chat--footer--color: var(--color--text) !important;
 
 		/* Messages List */
 		--chat--messages-list--padding: var(--spacing-m) !important;
@@ -458,16 +401,16 @@ onUnmounted(() => {
 
 		/* Bot Messages */
 		--chat--message--bot--background: none !important;
-		--chat--message--bot--color: var(--color-text-dark) !important;
+		--chat--message--bot--color: var(--color--text--shade-1) !important;
 		--chat--message--bot--border: none !important;
 
 		/* User Messages */
-		--chat--message--user--background: var(--color-text-lighter);
-		--chat--message--user--color: var(--color-text-dark) !important;
+		--chat--message--user--background: var(--color--text--tint-2);
+		--chat--message--user--color: var(--color--text--shade-1) !important;
 		--chat--message--user--border: none !important;
 
 		/* Code blocks in messages */
-		--chat--message--pre--background: var(--color-background-xlight) !important;
+		--chat--message--pre--background: var(--color--background--light-3) !important;
 
 		/* Footer Container */
 		--chat--footer--padding: var(--spacing-m) !important;
@@ -475,8 +418,8 @@ onUnmounted(() => {
 
 		/* Input Container - unified rounded container */
 		--chat--input--width: 95% !important;
-		--chat--input--container--background: var(--color-background-xlight) !important;
-		--chat--input--container--border: 1px solid var(--color-foreground-light) !important;
+		--chat--input--container--background: var(--color--background--light-3) !important;
+		--chat--input--container--border: 1px solid var(--color--foreground--tint-1) !important;
 		--chat--input--container--border-radius: 24px !important;
 		--chat--input--container--padding: 12px !important;
 
@@ -487,24 +430,24 @@ onUnmounted(() => {
 		--chat--input--border: none !important;
 		--chat--input--border-active: none !important;
 		--chat--input--background: transparent !important;
-		--chat--input--text-color: var(--color-text-dark) !important;
+		--chat--input--text-color: var(--color--text--shade-1) !important;
 		--chat--input--line-height: var(--font-line-height-regular) !important;
 		--chat--input--placeholder--font-size: var(--font-size-s) !important;
 		--chat--textarea--height: 44px !important;
 		--chat--textarea--max-height: 200px !important;
 
 		/* Send Button - integrated into container */
-		--chat--input--send--button--color: var(--color-primary) !important;
-		--chat--input--send--button--color-hover: var(--color-primary-shade-1) !important;
+		--chat--input--send--button--color: var(--color--primary) !important;
+		--chat--input--send--button--color-hover: var(--color--primary--shade-1) !important;
 		--chat--input--send--button--background: transparent !important;
-		--chat--input--send--button--background-hover: var(--color-primary-tint-2) !important;
+		--chat--input--send--button--background-hover: var(--color--primary--tint-2) !important;
 		--chat--input--send--button--border-radius: 20px !important;
 		--chat--input--send--button--size: 36px !important;
 		--chat--input--send--button--margin: 4px !important;
 
 		/* File Button */
-		--chat--input--file--button--color: var(--color-text-light) !important;
-		--chat--input--file--button--color-hover: var(--color-text-base) !important;
+		--chat--input--file--button--color: var(--color--text--tint-1) !important;
+		--chat--input--file--button--color-hover: var(--color--text) !important;
 		--chat--input--file--button--background: transparent !important;
 		--chat--input--file--button--background-hover: transparent !important;
 
@@ -538,31 +481,31 @@ onUnmounted(() => {
 	body[data-theme='dark'] & {
 		:global(.chat-layout) {
 			/* Body and Footer - darker background like the old design */
-			--chat--body--background: var(--color-background-xlight) !important;
-			--chat--footer--background: var(--color-background-xlight) !important;
-			--chat--footer--color: var(--color-text-base) !important;
+			--chat--body--background: var(--color-background--xlight) !important;
+			--chat--footer--background: var(--color-background--xlight) !important;
+			--chat--footer--color: var(--color--text) !important;
 			--chat--footer--border-top: none !important;
 
 			/* Bot Messages - darker background with subtle border */
-			--chat--message--bot--background: var(--color-background-medium) !important;
-			--chat--message--bot--color: var(--color-text-base) !important;
-			--chat--message--bot--border: 1px solid var(--color-foreground-base) !important;
+			--chat--message--bot--background: var(--color--background--shade-1) !important;
+			--chat--message--bot--color: var(--color--text) !important;
+			--chat--message--bot--border: 1px solid var(--color--foreground) !important;
 
 			/* User Messages - darker user message background */
-			--chat--message--user--background: var(--color-foreground-dark) !important;
+			--chat--message--user--background: var(--color--foreground--shade-1) !important;
 			--chat--message--user--color: white !important;
 
 			/* Code blocks */
-			--chat--message--pre--background: var(--color-background-base) !important;
+			--chat--message--pre--background: var(--color--background) !important;
 
 			/* Input Area - match the old design's input styling */
-			--chat--input--background: var(--color-background-light) !important;
-			--chat--input--text-color: var(--color-text-base) !important;
-			--chat--input--border: 1px solid var(--color-foreground-base) !important;
-			--chat--input--border-active: 1px solid var(--color-primary) !important;
+			--chat--input--background: var(--color--background--light-2) !important;
+			--chat--input--text-color: var(--color--text) !important;
+			--chat--input--border: 1px solid var(--color--foreground) !important;
+			--chat--input--border-active: 1px solid var(--color--primary) !important;
 
 			/* Message Action Buttons - dark mode */
-			--chat--message-actions--button-size: 16px;
+			--chat--message-actions--button-size: 32px;
 			--chat--message-actions--button-background: transparent !important;
 			--chat--message-actions--button-color: rgba(255, 255, 255, 0.6) !important;
 			--chat--message-actions--button-border: none !important;
@@ -571,51 +514,5 @@ onUnmounted(() => {
 			--chat--message-actions--button-active-background: rgba(255, 255, 255, 0.25) !important;
 		}
 	}
-}
-
-.messagesInput {
-	--input-border-color: var(--border-color-base);
-	--chat--input--border: none;
-
-	--chat--input--border-radius: 0.5rem;
-	--chat--input--send--button--background: transparent;
-	--chat--input--send--button--color: var(--color--primary);
-	--chat--input--file--button--background: transparent;
-	--chat--input--file--button--color: var(--color--primary);
-	--chat--input--border-active: var(--input-focus-border-color, var(--color--secondary));
-	--chat--files-spacing: var(--spacing-2xs);
-	--chat--input--background: transparent;
-	--chat--input--file--button--color: var(--color-button-secondary-font);
-	--chat--input--file--button--color-hover: var(--color--primary);
-
-	padding: var(--spacing-5xs);
-	margin: 0 var(--chat--spacing) var(--chat--spacing);
-	flex-grow: 1;
-	display: flex;
-	background: var(--color-lm-chat-bot-background);
-	border-radius: var(--chat--input--border-radius);
-	transition: border-color 200ms ease-in-out;
-	border: var(--input-border-color, var(--border-color-base))
-		var(--input-border-style, var(--border-style-base))
-		var(--input-border-width, var(--border-width-base));
-
-	[data-theme='dark'] & {
-		--chat--input--text-color: var(--input-font-color, var(--color--text--shade-1));
-	}
-	@media (prefers-color-scheme: dark) {
-		--chat--input--text-color: var(--input-font-color, var(--color--text--shade-1));
-	}
-
-	&:focus-within {
-		--input-border-color: #4538a3;
-	}
-}
-
-.messagesHistory {
-	height: var(--chat--textarea--height);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
 }
 </style>

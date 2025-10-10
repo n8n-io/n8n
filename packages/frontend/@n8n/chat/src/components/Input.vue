@@ -392,8 +392,8 @@ function adjustTextAreaHeight() {
 	display: flex;
 	justify-content: center;
 	align-items: flex-end;
-	background: var(--chat--input--container--background, var(--color-background-light));
-	border: var(--chat--input--container--border, 1px solid var(--color-foreground-light));
+	background: var(--chat--input--container--background, var(--color--background--light-2));
+	border: var(--chat--input--container--border, 1px solid var(--color--foreground--tint-1));
 	border-radius: var(--chat--input--container--border-radius, 24px);
 	padding: var(--chat--input--container--padding, 12px);
 
@@ -428,7 +428,7 @@ function adjustTextAreaHeight() {
 	width: calc(var(--chat--textarea--height, 2.5rem) - 16px);
 	background: var(--chat--input--send--button--background, transparent);
 	cursor: pointer;
-	color: var(--chat--input--send--button--color, var(--chat--color-secondary));
+	color: var(--chat--input--send--button--color, var(--chat--color--secondary));
 	border: none;
 	border-radius: var(--chat--input--button--border-radius, 16px);
 	font-size: 24px;
@@ -449,16 +449,16 @@ function adjustTextAreaHeight() {
 
 	&:hover:not([disabled]) {
 		background: var(--chat--input--send--button--background-hover, rgba(0, 0, 0, 0.05));
-		color: var(--chat--input--send--button--color-hover, var(--chat--color-secondary));
+		color: var(--chat--input--send--button--color-hover, var(--chat--color--secondary));
 	}
 }
 .chat-input-file-button {
 	background: var(--chat--input--file--button--background, transparent);
-	color: var(--chat--input--file--button--color, var(--chat--color-secondary));
+	color: var(--chat--input--file--button--color, var(--chat--color--secondary));
 
 	&:hover:not([disabled]) {
 		background: var(--chat--input--file--button--background-hover, rgba(0, 0, 0, 0.05));
-		color: var(--chat--input--file--button--color-hover, var(--chat--color-secondary));
+		color: var(--chat--input--file--button--color-hover, var(--chat--color--secondary));
 	}
 }
 

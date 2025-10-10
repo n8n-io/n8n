@@ -61,7 +61,7 @@ function copyToInput() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--chat--color-primary);
+		color: var(--chat--color--primary);
 	}
 }
 </style>
