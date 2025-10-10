@@ -201,8 +201,6 @@ echo ""
 # Node tokens
 echo "[18] Replacing node tokens..."
 echo "$files" | xargs perl -pi -e 's/--color-node-background/--node--color-background/g'
-
-# todo?
 echo "$files" | xargs perl -pi -e 's/--color-node-executing-background/--node--color-background--executing/g'
 echo "$files" | xargs perl -pi -e 's/--color-node-executing-other-background/--node--color-background--executing-1/g'
 echo "$files" | xargs perl -pi -e 's/--color-node-pinned-border/--node--border-color--pinned/g'
