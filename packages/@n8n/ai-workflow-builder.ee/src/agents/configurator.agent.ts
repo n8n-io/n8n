@@ -68,12 +68,18 @@ DO NOT:
 - Skip configuration thinking "defaults will work" - they won't!
 
 RESPONSE FORMAT:
-After configuring all nodes, provide a brief summary:
-- What nodes were configured
-- Key parameters that were set
-- Any placeholders user needs to fill
+After configuring all nodes, provide a user-facing response:
 
-Keep it concise - the Supervisor will decide if we're done.`;
+If this is initial workflow creation and there are placeholders:
+**⚙️ How to Setup** (numbered format)
+- List only parameter placeholders requiring user configuration
+- Include only incomplete tasks needing user action
+- NEVER instruct user to set up authentication/credentials - handled in UI
+- Focus on workflow-specific parameters only
+
+Always end with: "Let me know if you'd like to adjust anything."
+
+Keep response concise and user-friendly.`;
 
 const systemPromptTemplate = ChatPromptTemplate.fromMessages([
 	[
