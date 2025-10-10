@@ -27,9 +27,9 @@
 	--color--background--light-2: var(--p--color--gray-820);
 	--color--background--light-3: var(--p--color--gray-740);
 
-	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
-	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
-	--box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+	--shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
+	--shadow--dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
+	--shadow--light: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
 
 	// Secondary tokens
 
@@ -505,9 +505,9 @@
 	// Various
 	--color-info-tint-1: var(--p--color--gray-420);
 	--color-info-tint-2: var(--p--color--gray-740);
-	--border-color-base: var(--color--foreground);
-	--border-color-light: var(--color--foreground--tint-1);
-	--border-base: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	--border-color: var(--color--foreground);
+	--border-color--light: var(--color--foreground--tint-1);
+	--border: var(--border-width) var(--border-style) var(--color--foreground);
 	--node-type-supplemental-label-color-l: 100%;
 	--node-type-supplemental-label-color: hsl(
 		var(--node-type-supplemental-label-color-h),

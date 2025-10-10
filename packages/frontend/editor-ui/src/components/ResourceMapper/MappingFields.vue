@@ -445,7 +445,7 @@ defineExpose({
 .parameterItem {
 	--delete-option-width: 22px;
 	display: flex;
-	padding: 0 0 0 var(--spacing-s);
+	padding: 0 0 0 var(--spacing--sm);
 
 	.parameterInput {
 		width: calc(100% - var(--delete-option-width));
@@ -458,7 +458,7 @@ defineExpose({
 	&.hasIssues {
 		.parameterIssues {
 			float: none;
-			padding-top: var(--spacing-xl);
+			padding-top: var(--spacing--xl);
 		}
 		input,
 		input:focus {
@@ -469,21 +469,21 @@ defineExpose({
 }
 
 .parameterTooltipIcon {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1) !important;
 	width: 26px; // match trash button size
 	text-align: center;
 }
 
 .addOption {
-	margin-top: var(--spacing-l);
-	padding: 0 0 0 var(--spacing-s);
+	margin-top: var(--spacing--lg);
+	padding: 0 0 0 var(--spacing--sm);
 }
 
 .staleDataWarning {
 	display: flex;
-	height: var(--spacing-m);
+	height: var(--spacing--md);
 	align-items: baseline;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 }
 </style>

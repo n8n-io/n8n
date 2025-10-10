@@ -416,8 +416,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
-	padding-bottom: var(--spacing-l);
+	gap: var(--spacing--md);
+	padding-bottom: var(--spacing--lg);
 
 	height: 100%;
 	min-height: 0;
@@ -431,7 +431,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 }
 
 .fullHeight {
@@ -449,9 +449,9 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 .suggestions {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(220px, 1fr));
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	width: min(960px, 90%);
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing--md);
 }
 @media (max-width: 800px) {
 	.suggestions {
@@ -461,11 +461,11 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 .card {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing-s);
-	padding: var(--spacing-m);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--md);
 	border: 1px solid var(--color--foreground);
 	background: var(--color--background);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 	text-align: left;
 	cursor: pointer;
 	transition:
@@ -501,15 +501,15 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 }
 
 .thread {
-	padding: var(--spacing-m);
+	padding: var(--spacing--md);
 	background: var(--color--background--light-2);
 }
 
 .message {
 	display: grid;
 	grid-template-columns: 28px 1fr;
-	gap: var(--spacing-s);
-	margin-bottom: var(--spacing-m);
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--md);
 }
 .avatar {
 	display: grid;
@@ -525,8 +525,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	display: block;
 	position: relative;
 	max-width: fit-content;
-	padding: var(--spacing-m);
-	border-radius: var(--border-radius-large);
+	padding: var(--spacing--md);
+	border-radius: var(--radius--lg);
 
 	&.chatMessageFromAssistant {
 		background-color: var(--color--background);
@@ -550,7 +550,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		}
 
 		p {
-			margin: var(--spacing-xs) 0;
+			margin: var(--spacing--xs) 0;
 		}
 
 		pre {
@@ -604,7 +604,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	display: grid;
 	place-items: center;
 	width: 100%;
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing--md);
 }
 .inputWrap {
 	position: relative;
@@ -673,15 +673,15 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 }
 
 .disclaimer {
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 	color: var(--color--text--tint-2);
 	text-align: center;
 }
 
 .modelSelector {
 	position: absolute;
-	top: var(--spacing-s);
-	left: var(--spacing-s);
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
 	z-index: 100;
 }
 </style>

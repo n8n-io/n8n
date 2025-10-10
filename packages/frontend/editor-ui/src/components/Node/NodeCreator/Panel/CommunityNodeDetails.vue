@@ -153,14 +153,14 @@ const onInstall = async () => {
 <style lang="scss" module>
 .container {
 	width: 100%;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
-	padding-bottom: var(--spacing-xs);
+	padding-bottom: var(--spacing--xs);
 }
 .header {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 	justify-content: space-between;
 }
@@ -168,24 +168,24 @@ const onInstall = async () => {
 	display: flex;
 	align-items: center;
 	color: var(--color-text);
-	font-size: var(--font-size-xl);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--xl);
+	font-weight: var(--font-weight--bold);
 }
 .nodeIcon {
 	--node-icon-size: 36px;
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing--sm);
 }
 
 .installedIcon {
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .officialIcon {
 	display: inline-flex;
 	flex-shrink: 0;
-	margin-left: var(--spacing-4xs);
+	margin-left: var(--spacing--4xs);
 	color: var(--color--text);
 	width: 14px;
 }
@@ -193,6 +193,6 @@ const onInstall = async () => {
 .installed {
 	display: flex;
 	align-items: center;
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
 }
 </style>

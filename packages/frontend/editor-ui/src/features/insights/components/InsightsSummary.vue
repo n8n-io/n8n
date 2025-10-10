@@ -148,14 +148,14 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 .insights {
 	display: grid;
 	grid-template-rows: auto 1fr;
-	padding: var(--spacing-xs) 0 var(--spacing-2xl);
+	padding: var(--spacing--xs) 0 var(--spacing--2xl);
 
 	ul {
 		display: flex;
 		height: 101px;
 		align-items: stretch;
 		justify-content: space-evenly;
-		border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+		border: var(--border-width) var(--border-style) var(--color--foreground);
 		border-radius: 6px;
 		list-style: none;
 		overflow-x: auto;
@@ -165,7 +165,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			justify-content: stretch;
 			align-items: stretch;
 			flex: 1 0;
-			border-left: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+			border-left: var(--border-width) var(--border-style) var(--color--foreground);
 
 			&:first-child {
 				border-left: 0;
@@ -178,7 +178,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			align-content: center;
 			width: 100%;
 			height: 100%;
-			padding: var(--spacing-3xs) var(--spacing-l) 0;
+			padding: var(--spacing--3xs) var(--spacing--lg) 0;
 			border-bottom: 3px solid transparent;
 
 			&:hover {
@@ -195,17 +195,17 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			strong {
 				justify-self: flex-start;
 				color: var(--color--text--shade-1);
-				font-size: var(--font-size-s);
+				font-size: var(--font-size--sm);
 				font-weight: 400;
 				white-space: nowrap;
-				margin-bottom: var(--spacing-3xs);
+				margin-bottom: var(--spacing--3xs);
 			}
 
 			.days {
 				padding: 0;
-				margin: 0 0 var(--spacing-xs);
+				margin: 0 0 var(--spacing--xs);
 				color: var(--color--text--tint-1);
-				font-size: var(--font-size-2xs);
+				font-size: var(--font-size--2xs);
 				font-weight: var(--font-weight-normal);
 			}
 
@@ -223,7 +223,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 					small {
 						padding: 0;
 						height: 21px;
-						font-weight: var(--font-weight-bold);
+						font-weight: var(--font-weight--bold);
 
 						.icon {
 							top: 5px;
@@ -243,7 +243,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				line-height: 100%;
 				font-weight: 600;
 				font-style: normal;
-				gap: var(--spacing-5xs);
+				gap: var(--spacing--5xs);
 
 				i {
 					font-size: 22px;
@@ -256,9 +256,9 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				display: flex;
 				align-items: center;
 				padding: 0 0 0 14px;
-				margin: 0 0 0 var(--spacing-xs);
-				font-size: var(--font-size-2xs);
-				font-weight: var(--font-weight-bold);
+				margin: 0 0 0 var(--spacing--xs);
+				font-size: var(--font-size--2xs);
+				font-weight: var(--font-weight--bold);
 				white-space: nowrap;
 			}
 		}
@@ -267,7 +267,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 	.noData {
 		em {
 			color: var(--color--text--tint-1);
-			font-size: var(--font-size-m);
+			font-size: var(--font-size--md);
 		}
 	}
 }

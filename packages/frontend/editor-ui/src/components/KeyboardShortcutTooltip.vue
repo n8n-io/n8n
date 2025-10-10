@@ -28,8 +28,8 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 .shortcut {
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-2xs);
-	gap: var(--spacing-2xs);
+	font-size: var(--font-size--2xs);
+	gap: var(--spacing--2xs);
 }
 
 .label {

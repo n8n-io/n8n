@@ -33,14 +33,14 @@ const navigateTo = () => {
 }
 
 .icon {
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 	color: var(--color--foreground--shade-1);
-	font-size: var(--font-size-m);
+	font-size: var(--font-size--md);
 }
 
 .text {
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 	color: var(--color--text);
 }
 </style>

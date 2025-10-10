@@ -2163,12 +2163,12 @@ onBeforeUnmount(() => {
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-s);
+	bottom: var(--spacing--sm);
 	width: auto;
 
 	@include mixins.breakpoint('sm-only') {
 		left: auto;
-		right: var(--spacing-s);
+		right: var(--spacing--sm);
 		transform: none;
 	}
 
@@ -2201,8 +2201,8 @@ onBeforeUnmount(() => {
 
 .setupCredentialsButtonWrapper {
 	position: absolute;
-	left: var(--spacing-s);
-	top: var(--spacing-s);
+	left: var(--spacing--sm);
+	top: var(--spacing--sm);
 }
 
 .readOnlyEnvironmentNotification {

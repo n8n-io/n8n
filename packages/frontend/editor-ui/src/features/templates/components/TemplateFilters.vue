@@ -137,17 +137,17 @@ watch(
 
 <style lang="scss" module>
 .title {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text);
 }
 
 .categories {
-	padding-top: var(--spacing-xs);
+	padding-top: var(--spacing--xs);
 	list-style-type: none;
 }
 
 .item {
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 
 	&:nth-child(1) {
 		margin-top: 0;
@@ -155,7 +155,7 @@ watch(
 }
 
 .button {
-	padding-top: var(--spacing-2xs);
+	padding-top: var(--spacing--2xs);
 	cursor: pointer;
 }
 </style>
@@ -170,10 +170,10 @@ watch(
 	.el-checkbox__label {
 		top: -2px;
 		position: relative;
-		font-size: var(--font-size-xs);
-		line-height: var(--font-line-height-loose);
+		font-size: var(--font-size--xs);
+		line-height: var(--line-height--lg);
 		color: var(--color--text--shade-1);
-		padding-left: var(--spacing-2xs);
+		padding-left: var(--spacing--2xs);
 	}
 }
 </style>

@@ -18,18 +18,32 @@ const PROPERTY_VOCABULARY = new Set([
 	'background',
 	'border-color',
 	'border-width',
+	'border-style',
+	'border',
 	'icon-color',
 	'radius',
 	'shadow',
 	'spacing',
 	'font-size',
 	'font-weight',
+	'font-family',
 	'line-height',
 	'z',
 	'duration',
 	'easing',
 	'outline-color',
 	'outline-width',
+]);
+
+// Properties that can be used as standalone single-group variables (without a value)
+const STANDALONE_PROPERTIES = new Set([
+	'shadow',
+	'radius',
+	'border-color',
+	'border-style',
+	'border-width',
+	'border',
+	'font-family',
 ]);
 
 const STATES = new Set([
@@ -71,7 +85,9 @@ const SEMANTIC_VALUES = new Set([
 ]);
 
 const SCALE_VALUES = new Set([
-	'none',
+	'5xs',
+	'4xs',
+	'3xs',
 	'2xs',
 	'xs',
 	'sm',
@@ -80,13 +96,12 @@ const SCALE_VALUES = new Set([
 	'xl',
 	'2xl',
 	'3xl',
-	'pill',
-	'full',
-	'regular',
-	'medium',
-	'semibold',
-	'bold',
+	'4xl',
+	'5xl',
 ]);
+
+// Font weight specific values (only valid with font-weight property)
+const FONT_WEIGHT_VALUES = new Set(['regular', 'medium', 'semibold', 'bold']);
 
 // Regex for basic validation
 const BASIC_PATTERN = /^--[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z0-9]+(?:-[a-z0-9]+)*){1,7}$/;
@@ -97,7 +112,23 @@ interface ValidationResult {
 }
 
 function validateCssVariable(variable: string): ValidationResult {
-	// Basic pattern check
+	// Split into groups first (drop first empty element from leading --)
+	const groups = variable.slice(2).split('--');
+
+	// Check if this is a single-group variable (e.g., --shadow, --radius, --border-color)
+	if (groups.length === 1) {
+		const singleGroup = groups[0];
+		// Allow standalone properties that are in the STANDALONE_PROPERTIES set
+		if (STANDALONE_PROPERTIES.has(singleGroup)) {
+			return { valid: true };
+		}
+		return {
+			valid: false,
+			reason: 'Must have at least 2 groups separated by double dashes (--property--value minimum)',
+		};
+	}
+
+	// Basic pattern check for multi-group variables
 	if (!BASIC_PATTERN.test(variable)) {
 		return {
 			valid: false,
@@ -105,9 +136,6 @@ function validateCssVariable(variable: string): ValidationResult {
 				'Must follow pattern: --[group]--[group]--... with lowercase alphanumerics and single dash within groups',
 		};
 	}
-
-	// Split into groups (drop first empty element from leading --)
-	const groups = variable.slice(2).split('--');
 
 	// Check group count (2-8 groups)
 	if (groups.length < 2) {
@@ -158,9 +186,23 @@ function validateCssVariable(variable: string): ValidationResult {
 		.findIndex((group) => PROPERTY_VOCABULARY.has(group));
 	const absolutePropertyIndex = startIndex + propertyIndex;
 
+	// Get the property name to validate specific property-value combinations
+	const propertyName = groups[absolutePropertyIndex];
+
 	// The group after property should be a value (semantic or scale)
 	if (absolutePropertyIndex + 1 < groups.length) {
 		const valueGroup = groups[absolutePropertyIndex + 1];
+
+		// Check if this is a font-weight specific value
+		if (FONT_WEIGHT_VALUES.has(valueGroup)) {
+			// Font weight values are only valid with font-weight property
+			if (propertyName !== 'font-weight') {
+				return {
+					valid: false,
+					reason: `Value "${valueGroup}" can only be used with font-weight property (e.g., --font-weight--${valueGroup})`,
+				};
+			}
+		}
 
 		// Check if this is a known modifier (variant, state, mode, media)
 		const isModifier =
@@ -175,6 +217,7 @@ function validateCssVariable(variable: string): ValidationResult {
 			const isValidValue =
 				SEMANTIC_VALUES.has(valueGroup) ||
 				SCALE_VALUES.has(valueGroup) ||
+				FONT_WEIGHT_VALUES.has(valueGroup) ||
 				// Allow color shades like "primary-500", "shade-50", "tint-50"
 				/^[a-z]+-\d+$/.test(valueGroup) ||
 				// Allow descriptive names (4+ chars) - these are likely intentional semantic names

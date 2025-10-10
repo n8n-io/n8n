@@ -90,7 +90,7 @@ const startNewSession = async () => {
 }
 
 .assistantIcon {
-	margin-right: var(--spacing-4xs);
+	margin-right: var(--spacing--4xs);
 }
 
 .footer {

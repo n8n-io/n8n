@@ -52,15 +52,15 @@ function onButtonClick() {
 .icon {
 	min-height: 96px;
 	min-width: 108px;
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 	color: var(--color--foreground);
 }
 
 .message {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 
 	* {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 		display: flex;
 		justify-content: center;
 	}

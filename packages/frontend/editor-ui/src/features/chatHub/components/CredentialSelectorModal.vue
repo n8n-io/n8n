@@ -96,16 +96,16 @@ function onCancel() {
 
 <style lang="scss" module>
 .title {
-	font-size: var(--font-size-l);
-	line-height: var(--font-line-height-regular);
+	font-size: var(--font-size--lg);
+	line-height: var(--line-height--md);
 	margin: 0;
 }
 
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
-	padding: var(--spacing-s) 0;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) 0;
 }
 
 .footer {
@@ -117,6 +117,6 @@ function onCancel() {
 
 .footerRight {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 </style>

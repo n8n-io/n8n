@@ -79,7 +79,7 @@ function onGroupSelect(group: string) {
 					placement="right-start"
 					:show-arrow="false"
 					:offset="2"
-					:popper-style="{ padding: 'var(--spacing-3xs) 0' }"
+					:popper-style="{ padding: 'var(--spacing--3xs) 0' }"
 					width="auto"
 				>
 					<template #reference>
@@ -133,17 +133,17 @@ function onGroupSelect(group: string) {
 
 .group {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 	justify-content: space-between;
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-regular);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
 	color: var(--color--text--shade-1);
-	padding: var(--spacing-2xs) var(--spacing-s);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 	cursor: pointer;
 
 	&.suggested {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 
 	&:hover {
@@ -153,7 +153,7 @@ function onGroupSelect(group: string) {
 
 .groupTitle {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 </style>

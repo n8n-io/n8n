@@ -851,8 +851,8 @@ onBeforeUnmount(() => {
 
 .data-display-wrapper {
 	height: 100%;
-	margin-top: var(--spacing-xl) !important;
-	margin-bottom: var(--spacing-xl) !important;
+	margin-top: var(--spacing--xl) !important;
+	margin-bottom: var(--spacing--xl) !important;
 	width: 100%;
 	background: none;
 	border: none;
@@ -891,11 +891,11 @@ $main-panel-width: 360px;
 
 .backToCanvas {
 	position: fixed;
-	top: var(--spacing-xs);
-	left: var(--spacing-l);
+	top: var(--spacing--xs);
+	left: var(--spacing--lg);
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	span {
 		color: var(--color-ndv-back-font);
@@ -908,21 +908,21 @@ $main-panel-width: 360px;
 
 @media (min-width: $breakpoint-lg) {
 	.backToCanvas {
-		top: var(--spacing-xs);
-		left: var(--spacing-m);
+		top: var(--spacing--xs);
+		left: var(--spacing--md);
 	}
 }
 
 .featureRequest {
 	position: absolute;
-	bottom: var(--spacing-4xs);
-	left: calc(100% + var(--spacing-s));
+	bottom: var(--spacing--4xs);
+	left: calc(100% + var(--spacing--sm));
 	color: var(--color-feature-request-font);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 
 	* {
-		margin-right: var(--spacing-3xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 </style>
