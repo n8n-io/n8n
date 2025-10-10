@@ -54,6 +54,7 @@ from src.message_serde import MessageSerde
 from src.task_state import TaskState, TaskStatus
 from src.task_executor import TaskExecutor
 from src.task_analyzer import TaskAnalyzer
+from src.config.security_config import SecurityConfig
 
 
 class TaskOffer:
@@ -84,7 +85,12 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
-        self.analyzer = TaskAnalyzer(config.stdlib_allow, config.external_allow)
+        self.security_config = SecurityConfig(
+            stdlib_allow=config.stdlib_allow,
+            external_allow=config.external_allow,
+            builtins_deny=config.builtins_deny,
+        )
+        self.analyzer = TaskAnalyzer(self.security_config)
         self.logger = logging.getLogger(__name__)
 
         self.idle_coroutine: Optional[asyncio.Task] = None
@@ -297,9 +303,7 @@ class TaskRunner:
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
-                stdlib_allow=self.config.stdlib_allow,
-                external_allow=self.config.external_allow,
-                builtins_deny=self.config.builtins_deny,
+                security_config=self.security_config,
             )
 
             task_state.process = process
