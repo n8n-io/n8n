@@ -1,7 +1,6 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
-
 import { Document } from 'langchain/document';
 import {
 	ApplicationError,
@@ -36,8 +35,20 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		args: WeaviateLibArgs,
 		defaultFilter?: WeaviateCompositeFilter,
 	): Promise<ExtendedWeaviateVectorStore> {
-		// Call parent constructor (returns a store instance)
-		const base = (await super.fromExistingIndex(embeddings, args)) as ExtendedWeaviateVectorStore;
+		// Call parent factory method but bound to this (subclass) so the created instance is of the subclass
+		const ctor = this as unknown as typeof ExtendedWeaviateVectorStore & typeof WeaviateStore;
+		const baseCandidate = await ctor.fromExistingIndex(embeddings, args);
+
+		// Prefer a runtime type check instead of a cast to satisfy "Prefer Typeguards over Type casting" rule.
+		if (!(baseCandidate instanceof ExtendedWeaviateVectorStore)) {
+			// If the factory didn't return an instance of the subclass, fail with a clear error so callers
+			// don't operate on an unexpected type.
+			throw new ApplicationError(
+				'Weaviate store factory did not return an ExtendedWeaviateVectorStore instance',
+			);
+		}
+
+		const base = baseCandidate;
 
 		// Attach per-instance config
 		base.args = args;
