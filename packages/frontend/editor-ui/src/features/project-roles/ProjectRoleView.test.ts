@@ -323,7 +323,7 @@ describe('ProjectRoleView', () => {
 		});
 
 		it('should toggle scope when checkbox is clicked', async () => {
-			const { getByTestId, html } = renderComponent();
+			const { getByTestId } = renderComponent();
 
 			await waitFor(() => expect(getByTestId('scope-checkbox-project:update')).toBeInTheDocument());
 
