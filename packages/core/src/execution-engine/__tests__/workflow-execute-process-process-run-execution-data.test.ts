@@ -7,6 +7,7 @@ import type {
 	WorkflowExecuteMode,
 	IExecuteFunctions,
 	IPairedItemData,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
@@ -647,7 +648,9 @@ describe('processRunExecutionData', () => {
 				.return(function (this: IExecuteFunctions, response?: EngineResponse) {
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-						const connectionInputData = (this as any).connectionInputData || [];
+						const connectionInputData =
+							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
+								.connectionInputData || [];
 						const firstItem = connectionInputData[0];
 						const pairedItem: IPairedItemData = firstItem?.pairedItem ?? { item: 0 };
 						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
@@ -794,7 +797,9 @@ describe('processRunExecutionData', () => {
 				.return(function (this: IExecuteFunctions) {
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-						const connectionInputData = (this as any).connectionInputData ?? [];
+						const connectionInputData =
+							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
+								.connectionInputData ?? [];
 						const firstItem = connectionInputData[0];
 						const pairedItem = firstItem?.pairedItem ?? { item: 0 };
 						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
