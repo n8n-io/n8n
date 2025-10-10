@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { useContextMenu } from '@/composables/useContextMenu';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { useContextMenu } from '../composables/useContextMenu';
+import { type ContextMenuAction } from '../composables/useContextMenuItems';
 import { useStyles } from '@/composables/useStyles';
 import { ref, watch } from 'vue';
 import { type ComponentExposed } from 'vue-component-type-helpers';
