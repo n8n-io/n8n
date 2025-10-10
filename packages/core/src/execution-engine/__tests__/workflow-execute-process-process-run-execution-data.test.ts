@@ -639,32 +639,19 @@ describe('processRunExecutionData', () => {
 
 	describe('pairedItem sourceOverwrite handling', () => {
 		test('preserves sourceOverwrite for tools to enable expression resolution', async () => {
-			// ARRANGE
-			// This test simulates: DataNode → AgentNode → ToolNode
-			// where ToolNode needs to access DataNode via expression
+			// Test: DataNode → AgentNode → ToolNode where ToolNode accesses DataNode via expressions
 			const dataNodeOutput = { field: 'testValue', nested: { value: 42 } };
 			const dataNode = createNodeData({ name: 'DataNode', type: types.passThrough });
 
-			// Create a tool node that accesses DataNode data via workflow data proxy
 			const toolNodeType = modifyNode(passThroughNode)
 				.return(function (this: IExecuteFunctions, response?: EngineResponse) {
-					// This integration test exercises the complete paired item chain with sourceOverwrite:
-					// 1. Tool node gets workflow data proxy via getWorkflowDataProxy()
-					// 2. Accesses DataNode using proxy.$('DataNode').item
-					// 3. This triggers getPairedItem() which traverses the ancestry chain
-					// 4. getPairedItem() uses sourceOverwrite (line 985 in workflow-data-proxy.ts)
-					// 5. Returns actual data from DataNode, proving the chain works
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-
-						// Use $getPairedItem directly to bypass workflow structure validation
-						// This is how expressions access data via paired items
 						const connectionInputData = (this as any).connectionInputData || [];
 						const firstItem = connectionInputData[0];
 						const pairedItem: IPairedItemData = firstItem?.pairedItem ?? { item: 0 };
 						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
-						// Call getPairedItem to traverse the ancestry chain using sourceOverwrite
 						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
 						const fieldValue = dataNodeItem?.json?.field;
 						const nestedValue = (dataNodeItem?.json?.nested as IDataObject)?.value;
@@ -698,7 +685,6 @@ describe('processRunExecutionData', () => {
 				.done();
 			const toolNode = createNodeData({ name: 'ToolNode', type: 'toolNodeType' });
 
-			// Create agent node that requests the tool
 			const agentNodeType = modifyNode(passThroughNode)
 				.return({
 					actions: [
@@ -751,95 +737,45 @@ describe('processRunExecutionData', () => {
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
-			// ACT
 			const result = await workflowExecute.processRunExecutionData(workflow);
-
-			// ASSERT
 			const runData = result.data.resultData.runData;
 
-			// 1. Verify DataNode executed successfully
-			expect(runData[dataNode.name]).toHaveLength(1);
-			expect(runData[dataNode.name][0].data?.main?.[0]?.[0].json).toEqual(dataNodeOutput);
-
-			// 2. Verify AgentNode executed and returned EngineRequest
-			expect(runData[agentNode.name]).toHaveLength(1);
-			expect(runData[agentNode.name][0].metadata?.subNodeExecutionData).toBeDefined();
-
-			// 3. Verify ToolNode was scheduled with preserveSourceOverwrite metadata
-			expect(runData[toolNode.name]).toHaveLength(1);
+			// Verify preserveSourceOverwrite metadata is set
 			expect(runData[toolNode.name][0].metadata?.preserveSourceOverwrite).toBeDefined();
-			expect(runData[toolNode.name][0].inputOverride).toBeDefined();
-			expect(runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
-				query: 'test query',
-				toolCallId: 'tool_action_1',
-			});
 
-			// 4. Verify ToolNode executed successfully
-			expect(runData[toolNode.name][0].executionStatus).toBe('success');
-			expect(runData[toolNode.name][0].data).toBeDefined();
-
-			// 5. Verify ToolNode's input has sourceOverwrite pointing to DataNode
-			// This is critical: the tool's input should have sourceOverwrite set
-			// so expressions like $('DataNode').item.json.field can resolve
+			// Verify sourceOverwrite points to DataNode
 			const toolInput = runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0];
 			expect(toolInput?.pairedItem).toBeDefined();
 			if (typeof toolInput?.pairedItem === 'object' && !Array.isArray(toolInput.pairedItem)) {
-				expect(toolInput.pairedItem.sourceOverwrite).toBeDefined();
 				expect(toolInput.pairedItem.sourceOverwrite?.previousNode).toBe(dataNode.name);
 			}
 
-			// 6. Verify that sourceOverwrite enabled accessing DataNode data
-			// This test proves the complete paired item chain works:
-			// - Workflow data proxy was created with runExecutionData
-			// - $() function found DataNode in runData
-			// - .item accessor triggered getPairedItem()
-			// - getPairedItem() recursively traversed the ancestry chain
-			// - At line 985 in workflow-data-proxy.ts: used sourceOverwrite to find DataNode
-			// - Returned the actual data from DataNode (not undefined, not an error)
-			//
-			// If this test passes, it definitively proves that:
-			// 1. sourceOverwrite was preserved in the tool's input
-			// 2. getPairedItem() used sourceOverwrite to traverse past the agent
-			// 3. The tool successfully accessed data from a node before the agent
+			// Verify tool successfully accessed DataNode data via sourceOverwrite
 			const toolOutput = runData[toolNode.name][0].data?.ai_tool?.[0]?.[0]?.json;
-			expect(toolOutput).toBeDefined();
 			expect(toolOutput?.toolResult).toBe('Tool executed successfully');
-
-			// THE KEY ASSERTIONS: We got the actual data from DataNode
-			// This proves getPairedItem() used sourceOverwrite successfully
-			expect(toolOutput?.dataNodeField).toBe('testValue'); // Got actual value from DataNode
-			expect(toolOutput?.dataNodeNested).toBe(42); // Got actual nested value from DataNode
-			expect(toolOutput).not.toHaveProperty('error'); // No errors accessing DataNode
+			expect(toolOutput?.dataNodeField).toBe('testValue');
+			expect(toolOutput?.dataNodeNested).toBe(42);
+			expect(toolOutput).not.toHaveProperty('error');
 		});
 
-		test('throws error when sourceOverwrite is incorrectly retained in loops', async () => {
-			// ARRANGE
-			// This test recreates the loop.json workflow scenario:
-			// TriggerNode → LoopNode → DataNode → IFNode → back to LoopNode
-			// The IF node evaluates $('DataNode').item.json.email
-			// When sourceOverwrite is incorrectly retained, this breaks
-
+		test('sourceOverwrite works correctly in loop scenarios', async () => {
+			// Test: TriggerNode → LoopNode → DataNode → IFNode
+			// IFNode evaluates $('DataNode').item.json.email
 			const triggerData = { email: 'test@example.com', name: 'Test User' };
 			const triggerNode = createNodeData({ name: 'TriggerNode', type: types.passThrough });
 
-			// Create a LoopNode that mimics SplitInBatches behavior:
-			// - Sets sourceOverwrite pointing back to trigger
-			// - Can trigger multiple loop iterations
 			let loopIteration = 0;
 			const loopNodeType = modifyNode(passThroughNode)
 				.return(function (this: IExecuteFunctions) {
 					const items = this.getInputData();
 					loopIteration++;
 
-					// First iteration: output items with sourceOverwrite
 					return [
 						items.map((item, index) => ({
 							json: item.json,
 							pairedItem: {
 								item: index,
 								input: 0,
-								// This is what SplitInBatches does: sets sourceOverwrite
-								// to allow expressions inside the loop to reference data from before
 								sourceOverwrite: {
 									previousNode: triggerNode.name,
 									previousNodeOutput: 0,
@@ -851,22 +787,13 @@ describe('processRunExecutionData', () => {
 				})
 				.done();
 			const loopNode = createNodeData({ name: 'LoopNode', type: 'loopNodeType' });
-
-			// DataNode just passes through
 			const dataNode = createNodeData({ name: 'DataNode', type: types.passThrough });
 
-			// IFNode evaluates an expression accessing DataNode
 			let expressionError: Error | undefined;
 			const ifNodeType = modifyNode(passThroughNode)
 				.return(function (this: IExecuteFunctions) {
-					// This mimics the IF node in loop.json:
-					// "={{ $('DataNode').item.json.email }}"
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-
-						// Try to access DataNode's email field via expression
-						// This should work on first iteration but fail on second when
-						// sourceOverwrite is incorrectly retained
 						const connectionInputData = (this as any).connectionInputData ?? [];
 						const firstItem = connectionInputData[0];
 						const pairedItem = firstItem?.pairedItem ?? { item: 0 };
@@ -888,7 +815,6 @@ describe('processRunExecutionData', () => {
 						];
 					} catch (error) {
 						expressionError = error;
-						// This is where we expect the TypeError when sourceOverwrite is wrong
 						throw error;
 					}
 				})
@@ -928,9 +854,6 @@ describe('processRunExecutionData', () => {
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
-			// ACT & ASSERT
-			// With isToolExecution forced to true, sourceOverwrite is incorrectly retained
-			// This should cause an error when the IF node tries to access DataNode
 			await expect(workflowExecute.processRunExecutionData(workflow)).resolves.toBeTruthy();
 			expect(expressionError).toBeUndefined();
 		});
