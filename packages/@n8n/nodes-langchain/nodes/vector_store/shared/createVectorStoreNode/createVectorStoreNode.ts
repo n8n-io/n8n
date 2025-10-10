@@ -20,6 +20,7 @@ import {
 	handleUpdateOperation,
 	handleRetrieveOperation,
 	handleRetrieveAsToolOperation,
+	handleDeleteOperation,
 } from './operations';
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
@@ -91,7 +92,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					return inputs;
 				}
 
-				if (['insert', 'load', 'update'].includes(mode)) {
+				if (['insert', 'load', 'update', 'delete'].includes(mode)) {
 					inputs.push({ displayName: "", type: "${NodeConnectionTypes.Main}"})
 				}
 
@@ -286,6 +287,11 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				return [resultData];
 			}
 
+			if (mode === 'delete') {
+				const resultData = await handleDeleteOperation(this, args, embeddings);
+				return [resultData];
+			}
+
 			if (mode === 'update') {
 				const resultData = await handleUpdateOperation(this, args, embeddings);
 				return [resultData];
@@ -293,7 +299,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load", "update" and "insert" operation modes are supported with execute',
+				'Only the "load", "update", "delete" and "insert" operation modes are supported with execute',
 			);
 		}
 

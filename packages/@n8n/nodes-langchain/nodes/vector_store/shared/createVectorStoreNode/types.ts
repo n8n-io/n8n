@@ -14,7 +14,13 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 
-export type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'retrieve-as-tool';
+export type NodeOperationMode =
+	| 'insert'
+	| 'load'
+	| 'retrieve'
+	| 'update'
+	| 'retrieve-as-tool'
+	| 'delete';
 
 export interface NodeMeta {
 	displayName: string;
@@ -75,6 +81,16 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 		embeddings: Embeddings,
 		itemIndex: number,
 	) => Promise<T>;
+
+	/**
+	 * Optional method to enable deleting embedded documents (`VectorStore.delete()`).
+	 */
+	deleteEmbeddedDocuments?: (
+		context: IExecuteFunctions | ISupplyDataFunctions,
+		embeddings: Embeddings,
+		ids: string[],
+		itemIndex: number,
+	) => Promise<void>;
 
 	/**
 	 * Optional function to release resources associated with the vector store client

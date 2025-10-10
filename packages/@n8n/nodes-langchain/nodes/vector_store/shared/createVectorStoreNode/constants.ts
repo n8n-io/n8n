@@ -18,6 +18,12 @@ export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 		action: 'Get ranked documents from vector store',
 	},
 	{
+		name: 'Delete Documents',
+		value: 'delete',
+		description: 'Delete documents from a vector store',
+		action: 'Delete documents from a vector store',
+	},
+	{
 		name: 'Insert Documents',
 		value: 'insert',
 		description: 'Insert documents into vector store',
