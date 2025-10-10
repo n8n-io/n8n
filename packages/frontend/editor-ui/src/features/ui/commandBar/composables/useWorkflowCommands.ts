@@ -10,7 +10,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import { DUPLICATE_MODAL_KEY, EXECUTE_WORKFLOW_NODE_TYPE, VIEWS } from '@/constants';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';

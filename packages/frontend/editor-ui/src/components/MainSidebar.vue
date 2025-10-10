@@ -56,7 +56,7 @@ import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTempl
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import ProjectNavigation from './Projects/ProjectNavigation.vue';
+import ProjectNavigation from '@/features/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();

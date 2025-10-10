@@ -3,9 +3,9 @@ import CredentialCard from '@/components/CredentialCard.vue';
 import EmptySharedSectionActionBox from '@/features/folders/components/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type { BaseFilters, Resource, ICredentialTypeMap } from '@/Interface';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useProjectPages } from '@/composables/useProjectPages';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -20,12 +20,12 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { Project } from '@/types/projects.types';
+import type { Project } from '@/features/projects/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import pickBy from 'lodash/pickBy';
