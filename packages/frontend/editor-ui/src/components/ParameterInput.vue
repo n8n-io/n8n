@@ -93,7 +93,7 @@ import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/utils/nodes/nodeTransforms';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';

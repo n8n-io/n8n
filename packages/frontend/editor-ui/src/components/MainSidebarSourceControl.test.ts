@@ -10,7 +10,7 @@ import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue'
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;

@@ -21,7 +21,7 @@ import type {
 	DataTableColumnCreatePayload,
 	DataTableRow,
 } from '@/features/dataTable/dataTable.types';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { reorderItem } from '@/features/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';

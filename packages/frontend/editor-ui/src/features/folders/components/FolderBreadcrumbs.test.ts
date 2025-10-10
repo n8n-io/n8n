@@ -7,8 +7,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { useRoute } from 'vue-router';
 import type { Mock } from 'vitest';
 import { mockedStore } from '@/__tests__/utils';
-import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectTypes, type Project } from '@/types/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import { ProjectTypes, type Project } from '@/features/projects/projects.types';
 import { useFoldersStore } from '../folders.store';
 import type { IUser } from 'n8n-workflow';
 
