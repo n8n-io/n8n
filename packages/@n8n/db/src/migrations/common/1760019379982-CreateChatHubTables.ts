@@ -13,9 +13,9 @@ export class CreateChatHubTables1760019379982 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(table.sessions)
 			.withColumns(
-				column('id').varchar(36).primary,
+				column('id').uuid.primary,
 				column('title').varchar(256).notNull,
-				column('ownerId').varchar(36).notNull,
+				column('ownerId').uuid.notNull,
 				column('lastMessageAt').timestampTimezone(),
 
 				column('credentialId').varchar(36),
@@ -41,28 +41,28 @@ export class CreateChatHubTables1760019379982 implements ReversibleMigration {
 
 		await createTable(table.messages)
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
-				column('sessionId').varchar(36).notNull,
+				column('id').uuid.primary.notNull,
+				column('sessionId').uuid.notNull,
+				column('previousMessageId').uuid,
+				column('revisionOfMessageId').uuid,
+				column('turnId').uuid,
+				column('retryOfMessageId').uuid,
 				column('type').varchar(16).notNull, // 'human', 'ai', 'system', 'tool', 'generic'
 				column('name').varchar(128).notNull,
-				column('responseOfMessageId').varchar(36),
 				column('state').varchar(16).default("'active'").notNull, // 'active', 'superseded', 'hidden', 'deleted'
 				column('content').text.notNull,
 				column('provider').varchar(16), // 'openai', 'anthropic', 'google', 'n8n'
 				column('model').varchar(64), // 'gpt-4' ...
 				column('workflowId').varchar(36),
-				column('turnId').varchar(36),
-				column('retryOfMessageId').varchar(36),
 				column('runIndex').int.notNull.default(0), // the nth time this message has generated/retried this turn
-				column('revisionOfMessageId').varchar(36),
-				column('executionId').varchar(36),
+				column('executionId').int,
 			)
 			.withForeignKey('sessionId', {
 				tableName: table.sessions,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withForeignKey('responseOfMessageId', {
+			.withForeignKey('previousMessageId', {
 				tableName: table.messages,
 				columnName: 'id',
 				onDelete: 'CASCADE',

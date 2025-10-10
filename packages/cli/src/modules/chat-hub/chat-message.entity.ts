@@ -83,22 +83,22 @@ export class ChatMessage extends WithTimestampsAndStringId {
 	execution?: ExecutionEntity | null;
 
 	/**
-	 * ID of the message this message is a response to, NULL on the initial message.
+	 * ID of the previous message this message is a response to, NULL on the initial message.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	responseOfMessageId!: string | null;
+	previousMessageId: string | null;
 
 	/**
-	 * The message this message is a response to, NULL on the initial message.
+	 * The previous message this message is a response to, NULL on the initial message.
 	 */
 	@ManyToOne('ChatMessage', (m: ChatMessage) => m.responses, { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'responseOfMessageId' })
-	responseOfMessage?: ChatMessage | null;
+	@JoinColumn({ name: 'previousMessageId' })
+	previousMessage?: ChatMessage | null;
 
 	/**
 	 * Messages that are responses to this message. This could branch out to multiple threads.
 	 */
-	@OneToMany('ChatMessage', (m: ChatMessage) => m.responseOfMessage)
+	@OneToMany('ChatMessage', (m: ChatMessage) => m.previousMessage)
 	responses?: ChatMessage[];
 
 	/**
