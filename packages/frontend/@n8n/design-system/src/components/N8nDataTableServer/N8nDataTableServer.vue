@@ -129,7 +129,7 @@ type ColumnMeta = {
 };
 
 const getColumnMeta = (column: CoreColumn<T, unknown>) => {
-	return (column.columnDef.meta ?? { align: 'start' }) as ColumnMeta;
+	return (column.columnDef.meta ?? { cellProps: { align: 'start' } }) as ColumnMeta;
 };
 
 function getRowProps(row: T, index: number) {
