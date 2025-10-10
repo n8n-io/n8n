@@ -158,7 +158,7 @@ const onTagsEditEsc = () => {
 	white-space: nowrap;
 	padding: var(--spacing-4xs) var(--spacing-3xs);
 	background-color: var(--color-button-secondary-background);
-	border: 1px solid var(--color-foreground-light);
+	border: 1px solid var(--color--foreground--tint-1);
 	border-radius: var(--border-radius-base);
 	font-weight: var(--font-weight-regular);
 

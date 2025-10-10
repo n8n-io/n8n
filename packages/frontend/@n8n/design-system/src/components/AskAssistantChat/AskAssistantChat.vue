@@ -377,7 +377,7 @@ function getMessageColor(message: ChatUI.AssistantMessage): string | undefined {
 	if (message.type === 'text' && message.role === 'assistant') {
 		const isTaskAbortedMessage = message.content === t('aiAssistant.builder.streamAbortedMessage');
 		if (isTaskAbortedMessage) {
-			return 'var(--color-text-base)';
+			return 'var(--color--text)';
 		}
 	}
 	return undefined;
@@ -571,13 +571,13 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .header {
 	height: 65px; // same as header height in editor
 	padding: 0 var(--spacing-l);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border: var(--border-base);
 	border-top: 0;
 	display: flex;
@@ -593,13 +593,13 @@ defineExpose({
 }
 
 .betaTag {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 }
 
 .body {
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	border: var(--border-base);
 	border-top: 0;
 	border-bottom: 0;
@@ -669,14 +669,14 @@ defineExpose({
 }
 
 .greeting {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-size: var(--font-size-m);
 	margin-bottom: var(--spacing-s);
 }
 
 .info {
 	font-size: var(--font-size-s);
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	button {
 		display: inline-flex;
@@ -697,7 +697,7 @@ defineExpose({
 
 .quickRepliesTitle {
 	font-size: var(--font-size-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .inputWrapper {
@@ -716,7 +716,7 @@ defineExpose({
 		left: 0;
 		right: var(--spacing-xs);
 		height: var(--spacing-m);
-		background: linear-gradient(to bottom, transparent 0%, var(--color-background-light) 100%);
+		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
 		pointer-events: none;
 		z-index: 1;
 	}

@@ -27,10 +27,10 @@
 		font-weight: var(--font-weight-medium);
 		cursor: pointer;
 		vertical-align: middle;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 
 		@include mixins.when(active) {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 
 		@include mixins.m(left) {

@@ -319,9 +319,9 @@ const openCommunityRegisterModal = () => {
 	height: 54px;
 	padding: 0 var(--spacing-s);
 	margin: 0 0 var(--spacing-xs);
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-foreground-base);
+	border: 1px solid var(--color--foreground);
 	white-space: nowrap;
 
 	.count {
@@ -362,14 +362,14 @@ const openCommunityRegisterModal = () => {
 	max-width: 260px;
 	margin: 0 var(--spacing-m);
 	border-radius: 10px;
-	background: var(--color-background-base);
+	background: var(--color--background);
 }
 
 .chartBar {
 	float: left;
 	height: 100%;
 	max-width: 100%;
-	background: var(--color-secondary);
+	background: var(--color--secondary);
 	border-radius: 10px;
 	transition: width 0.2s $ease-out-expo;
 }

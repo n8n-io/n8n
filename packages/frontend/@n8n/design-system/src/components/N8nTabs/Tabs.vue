@@ -175,7 +175,7 @@ const scrollRight = () => scroll(50);
 }
 
 .tabs {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-weight: var(--font-weight-medium);
 	display: flex;
 	align-items: center;
@@ -208,9 +208,9 @@ const scrollRight = () => scroll(50);
 
 	cursor: pointer;
 	white-space: nowrap;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	span + span {
@@ -233,9 +233,9 @@ const scrollRight = () => scroll(50);
 }
 
 .activeTab {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	padding-bottom: var(--spacing-2xs);
-	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
+	border-bottom: var(--color--primary) var(--active-tab-border-width) solid;
 
 	.modern & {
 		padding-bottom: var(--spacing-xs);
@@ -248,10 +248,10 @@ const scrollRight = () => scroll(50);
 
 .link {
 	cursor: pointer;
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -270,16 +270,16 @@ const scrollRight = () => scroll(50);
 }
 
 .dangerTab {
-	color: var(--color-danger);
+	color: var(--color--danger);
 
 	&:hover {
-		color: var(--color-danger);
+		color: var(--color--danger);
 	}
 }
 
 .button {
 	position: absolute;
-	background-color: var(--color-tabs-arrow-buttons, var(--color-background-base));
+	background-color: var(--color-tabs-arrow-buttons, var(--color--background));
 	z-index: 1;
 	height: 24px;
 	width: 10px;
@@ -305,7 +305,7 @@ const scrollRight = () => scroll(50);
 		display: block;
 		height: 0.3em;
 		width: 0.3em;
-		background-color: var(--color-primary);
+		background-color: var(--color--primary);
 		border-radius: 50%;
 	}
 }
