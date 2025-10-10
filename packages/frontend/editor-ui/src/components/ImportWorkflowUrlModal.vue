@@ -84,14 +84,14 @@ const focusInput = async () => {
 <style lang="scss" module>
 .error-text {
 	color: var(--color--danger);
-	font-size: var(--font-size-2xs);
-	margin-top: var(--spacing-2xs);
-	height: var(--spacing-s);
+	font-size: var(--font-size--2xs);
+	margin-top: var(--spacing--2xs);
+	height: var(--spacing--sm);
 	visibility: hidden;
 }
 .footer {
 	> * {
-		margin-left: var(--spacing-3xs);
+		margin-left: var(--spacing--3xs);
 	}
 }
 .noScrollbar {

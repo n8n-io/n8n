@@ -467,7 +467,7 @@ onBeforeUnmount(() => {
 	padding-bottom: 100px;
 
 	> * {
-		margin-bottom: var(--spacing-2xl);
+		margin-bottom: var(--spacing--2xl);
 	}
 }
 
@@ -492,7 +492,7 @@ onBeforeUnmount(() => {
 .username {
 	display: grid;
 	grid-template-columns: 1fr;
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing--sm);
 
 	@media (max-width: $breakpoint-sm) {
 		max-width: 100px;
@@ -508,19 +508,19 @@ onBeforeUnmount(() => {
 .disableMfaButton {
 	--button-color: var(--color--danger);
 	> span {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
 .button {
-	font-size: var(--spacing-xs);
+	font-size: var(--spacing--xs);
 	> span {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
 .infoText {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 }
 

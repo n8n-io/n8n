@@ -13,7 +13,7 @@ import { tags } from '@lezer/highlight';
 
 const BASE_STYLING = {
 	fontSize: '0.8em',
-	fontFamily: 'var(--font-family-monospace)',
+	fontFamily: 'var(--font-family--monospace)',
 	maxHeight: '400px',
 	tooltip: {
 		maxWidth: '250px',
@@ -92,8 +92,8 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
-			border: 'var(--border-base)',
-			borderRadius: 'var(--border-radius-base)',
+			border: 'var(--border)',
+			borderRadius: 'var(--radius)',
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
 			height: '100%',
@@ -101,9 +101,9 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
 			caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
-			lineHeight: 'var(--font-line-height-xloose)',
-			paddingTop: 'var(--spacing-2xs)',
-			paddingBottom: 'var(--spacing-s)',
+			lineHeight: 'var(--line-height--xl)',
+			paddingTop: 'var(--spacing--2xs)',
+			paddingBottom: 'var(--spacing--sm)',
 		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-code-caret)',
@@ -114,7 +114,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			},
 		'&.cm-editor': {
 			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
-			borderColor: 'var(--border-color-base)',
+			borderColor: 'var(--border-color)',
 			overflow: 'hidden',
 		},
 		'&.cm-editor.cm-focused': {
@@ -136,7 +136,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 				: 'var(--color-code-gutter-background)',
 			color: 'var(--color-code-gutter-foreground)',
 			border: '0',
-			borderRadius: 'var(--border-radius-base)',
+			borderRadius: 'var(--radius)',
 		},
 		'.cm-gutterElement': {
 			padding: 0,
@@ -155,10 +155,10 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 					}),
 		},
 		'.cm-lineNumbers .cm-gutterElement': {
-			padding: '0 var(--spacing-5xs) 0 var(--spacing-2xs)',
+			padding: '0 var(--spacing--5xs) 0 var(--spacing--2xs)',
 		},
 		'.cm-gutter,.cm-content': {
-			minHeight: rows && rows !== -1 ? 'auto' : (minHeight ?? 'calc(35vh - var(--spacing-2xl))'),
+			minHeight: rows && rows !== -1 ? 'auto' : (minHeight ?? 'calc(35vh - var(--spacing--2xl))'),
 		},
 		'.cm-foldGutter': {
 			width: '16px',
@@ -186,16 +186,16 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			backgroundColor: 'var(--color-infobox-background)',
 		},
 		'.cm-diagnosticText': {
-			fontSize: 'var(--font-size-xs)',
+			fontSize: 'var(--font-size--xs)',
 			color: 'var(--color--text)',
 		},
 		'.cm-diagnosticDocs': {
-			fontSize: 'var(--font-size-2xs)',
+			fontSize: 'var(--font-size--2xs)',
 		},
 		'.cm-foldPlaceholder': {
 			color: 'var(--color--text)',
 			backgroundColor: 'var(--color--background)',
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 		},
 		'.cm-lintRange-error': {
 			backgroundImage:
@@ -219,20 +219,20 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			opacity: 0.6,
 		},
 		'.cm-panel.cm-search': {
-			padding: 'var(--spacing-4xs) var(--spacing-2xs)',
+			padding: 'var(--spacing--4xs) var(--spacing--2xs)',
 		},
 		'.cm-panels': {
 			background: 'var(--color--background--light-2)',
 			color: 'var(--color--text)',
 		},
 		'.cm-panels-bottom': {
-			borderTop: 'var(--border-base)',
+			borderTop: 'var(--border)',
 		},
 		'.cm-textfield': {
 			color: 'var(--color--text--shade-1)',
 			background: 'var(--color--foreground--tint-2)',
-			borderRadius: 'var(--border-radius-base)',
-			border: 'var(--border-base)',
+			borderRadius: 'var(--radius)',
+			border: 'var(--border)',
 			fontSize: '90%',
 		},
 		'.cm-textfield:focus': {
@@ -243,11 +243,11 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			color: 'var(--color--text)',
 		},
 		'.cm-panel input[type="checkbox"]': {
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 			outline: 'none',
 		},
 		'.cm-panel input[type="checkbox"]:hover': {
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 			outline: 'none',
 		},
 		'.cm-panel.cm-search label': {
@@ -256,11 +256,11 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 		'.cm-button': {
 			outline: 'none',
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 			color: 'var(--color--text--shade-1)',
 			backgroundColor: 'var(--color--foreground--tint-2)',
 			backgroundImage: 'none',
-			borderRadius: 'var(--border-radius-base)',
+			borderRadius: 'var(--radius)',
 			fontSize: '90%',
 		},
 	}),

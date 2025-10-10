@@ -332,8 +332,8 @@ tr.dangerBg {
 	line-height: 1.2;
 	max-width: 100%;
 	color: var(--color--text--shade-1);
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 	max-width: 450px;
 }
 </style>

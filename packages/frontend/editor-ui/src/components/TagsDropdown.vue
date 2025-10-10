@@ -285,11 +285,11 @@ onClickOutside(
 	}
 
 	.el-tag {
-		padding: var(--spacing-5xs) var(--spacing-4xs);
+		padding: var(--spacing--5xs) var(--spacing--4xs);
 		color: var(--color--text);
 		background-color: var(--color--background);
-		border-radius: var(--border-radius-base);
-		font-size: var(--font-size-2xs);
+		border-radius: var(--radius);
+		font-size: var(--font-size--2xs);
 		border: 0;
 
 		.el-tag__close {
@@ -356,7 +356,7 @@ onClickOutside(
 		padding: $--item-padding;
 		margin: 0;
 		line-height: $--item-line-height;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 		font-size: $--item-font-size;
 
 		&.is-disabled {
@@ -365,7 +365,7 @@ onClickOutside(
 		}
 
 		&.selected {
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 
 			> span {
 				display: inline-block;

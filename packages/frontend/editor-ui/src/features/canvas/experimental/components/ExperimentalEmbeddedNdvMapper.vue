@@ -104,7 +104,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 		:side-flip="false"
 		align="start"
 		width="360px"
-		:max-height="`calc(100vh - var(--spacing-s) * 2)`"
+		:max-height="`calc(100vh - var(--spacing--sm) * 2)`"
 		:reference="reference"
 		:suppress-auto-focus="true"
 		:z-index="APP_Z_INDEXES.NDV + 1"
@@ -136,7 +136,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 <style lang="scss" module>
 .inputPanel {
 	background-color: transparent;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	height: 100%;
 	overflow: auto;
 }

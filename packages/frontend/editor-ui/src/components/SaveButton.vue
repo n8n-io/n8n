@@ -81,10 +81,10 @@ const shortcutTooltipLabel = computed(() => {
 .saved {
 	color: $custom-font-very-light;
 	font-size: 12px;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	line-height: 12px;
 	text-align: center;
-	padding: var(--spacing-2xs) var(--spacing-2xs);
+	padding: var(--spacing--2xs) var(--spacing--2xs);
 	min-width: 53px;
 }
 </style>

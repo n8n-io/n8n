@@ -260,8 +260,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 }
 
 .folder-icon {
-	width: var(--spacing-xl);
-	height: var(--spacing-xl);
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	flex-shrink: 0;
 	color: var(--color--text);
 	align-content: center;
@@ -272,8 +272,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-xs);
-	margin-bottom: var(--spacing-5xs);
+	padding-right: var(--spacing--xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .card-footer {
@@ -284,7 +284,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	& + & {
 		&::before {
 			content: '|';
-			margin: 0 var(--spacing-4xs);
+			margin: 0 var(--spacing--4xs);
 		}
 	}
 }
@@ -294,13 +294,13 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		padding-right: 0;
 	}
 	:global(.n8n-breadcrumbs) {
-		padding-left: var(--spacing-5xs);
+		padding-left: var(--spacing--5xs);
 	}
 }
 
 .card-actions {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 @include mixins.breakpoint('sm-and-down') {
@@ -309,7 +309,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 		:global(.n8n-card-append) {
 			width: 100%;
-			margin-top: var(--spacing-3xs);
+			margin-top: var(--spacing--3xs);
 			padding-left: 40px;
 		}
 		.card-actions {

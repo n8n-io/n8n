@@ -343,9 +343,9 @@ defineExpose({ isWithinDropdown });
 :root .popover {
 	--content-height: 236px;
 	padding: 0 !important;
-	border: var(--border-base);
+	border: var(--border);
 	display: flex;
-	max-height: calc(var(--content-height) + var(--spacing-xl));
+	max-height: calc(var(--content-height) + var(--spacing--xl));
 	flex-direction: column;
 
 	& ::-webkit-scrollbar {
@@ -376,9 +376,9 @@ defineExpose({ isWithinDropdown });
 }
 
 .searchInput {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 	--input-border-color: none;
-	--input-font-size: var(--font-size-2xs);
+	--input-font-size: var(--font-size--2xs);
 	width: 100%;
 	z-index: 1;
 }
@@ -389,7 +389,7 @@ defineExpose({ isWithinDropdown });
 
 .resourceItem {
 	display: flex;
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 	white-space: nowrap;
 	height: 32px;
 	cursor: pointer;
@@ -400,7 +400,7 @@ defineExpose({ isWithinDropdown });
 }
 
 .loadingItem {
-	padding: 10px var(--spacing-xs);
+	padding: 10px var(--spacing--xs);
 }
 
 .loader {
@@ -419,8 +419,8 @@ defineExpose({ isWithinDropdown });
 .searchRequired {
 	height: 50px;
 	margin-top: 40px;
-	padding-left: var(--spacing-xs);
-	font-size: var(--font-size-xs);
+	padding-left: var(--spacing--xs);
+	font-size: var(--font-size--xs);
 	color: var(--color--text);
 	display: flex;
 	align-items: center;
@@ -429,9 +429,9 @@ defineExpose({ isWithinDropdown });
 .urlLink {
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	color: var(--color--text);
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 
 	&:hover {
 		color: var(--color--primary);
@@ -441,7 +441,7 @@ defineExpose({ isWithinDropdown });
 .resourceNameContainer {
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	min-width: 0;
 	align-self: center;
 }
@@ -456,12 +456,12 @@ defineExpose({ isWithinDropdown });
 }
 
 .addResourceText {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .addResourceIcon {
 	color: var(--color--text--tint-1);
 
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 }
 </style>

@@ -23,11 +23,11 @@ defineProps<Props>();
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
-	margin: var(--spacing-xs);
+	gap: var(--spacing--sm);
+	margin: var(--spacing--xs);
 	margin-top: 0;
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color--foreground);
+	padding: var(--spacing--xs);
+	border: var(--border-width) solid var(--color--foreground);
 	border-radius: 0.25em;
 	pointer-events: none;
 	cursor: default;
