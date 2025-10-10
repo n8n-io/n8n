@@ -231,7 +231,7 @@ watch(workflowIssues, async () => {
 	flex-direction: column;
 	padding: var(--spacing-xs);
 	gap: var(--spacing-xs);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 	line-height: var(--font-line-height-loose);
@@ -241,13 +241,13 @@ watch(workflowIssues, async () => {
 
 .description {
 	margin: 0;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	line-height: var(--font-line-height-regular);
 }
 
 .noIssuesMessage {
 	margin: 0;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .issuesList {

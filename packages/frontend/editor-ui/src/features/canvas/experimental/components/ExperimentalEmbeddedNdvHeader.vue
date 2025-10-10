@@ -75,7 +75,7 @@ defineSlots<{ actions?: {} }>();
 	cursor: grab;
 
 	.disabled & {
-		background-color: var(--color-foreground-light);
+		background-color: var(--color--foreground--tint-1);
 	}
 }
 

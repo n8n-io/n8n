@@ -115,12 +115,12 @@ function onCardClick(e: MouseEvent) {
 	border-left: var(--border-base);
 	border-right: var(--border-base);
 	border-bottom: var(--border-base);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 
 	display: flex;
 	align-items: center;
 	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	cursor: pointer;
 
 	&:hover {
@@ -163,13 +163,13 @@ function onCardClick(e: MouseEvent) {
 
 .line {
 	padding: 0 6px;
-	color: var(--color-foreground-base);
+	color: var(--color--foreground);
 	font-size: var(--font-size-2xs);
 }
 
 .loading {
 	width: 100%;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .nodesContainer {

@@ -37,7 +37,7 @@
 
 	@include mixins.e(arrow) {
 		font-size: 12px;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		position: absolute;
 		left: 0;
 		width: 100%;
@@ -48,7 +48,7 @@
 		cursor: pointer;
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 
 		&.el-icon-arrow-up {
@@ -90,7 +90,7 @@
 		height: 32px;
 		line-height: 32px;
 		font-size: 12px;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 
 		&:hover:not(.disabled):not(.active) {
 			background: var.$background-color-base;
@@ -98,12 +98,12 @@
 		}
 
 		&.active:not(.disabled) {
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 			font-weight: var(--font-weight-bold);
 		}
 
 		&.disabled {
-			color: var(--color-text-lighter);
+			color: var(--color--text--tint-2);
 			cursor: not-allowed;
 		}
 	}

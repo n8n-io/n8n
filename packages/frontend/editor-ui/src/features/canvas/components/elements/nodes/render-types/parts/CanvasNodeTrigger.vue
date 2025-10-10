@@ -147,7 +147,7 @@ async function handleClickExecute() {
 .bolt {
 	position: absolute;
 	right: 0;
-	color: var(--color-primary);
+	color: var(--color--primary);
 	padding: var(--spacing-s);
 	opacity: 1;
 	translate: 0 0;

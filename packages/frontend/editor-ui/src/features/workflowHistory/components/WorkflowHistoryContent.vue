@@ -169,7 +169,7 @@ const onAction = ({
 			}
 
 			.label {
-				color: var(--color-text-light);
+				color: var(--color--text--tint-1);
 				padding-right: var(--spacing-4xs);
 			}
 

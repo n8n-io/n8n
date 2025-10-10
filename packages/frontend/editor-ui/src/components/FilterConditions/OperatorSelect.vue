@@ -123,7 +123,7 @@ function onGroupSelect(group: string) {
 
 <style lang="scss" module>
 .icon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .groups {
@@ -138,7 +138,7 @@ function onGroupSelect(group: string) {
 	justify-content: space-between;
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-regular);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: var(--spacing-2xs) var(--spacing-s);
 	cursor: pointer;
 
@@ -147,7 +147,7 @@ function onGroupSelect(group: string) {
 	}
 
 	&:hover {
-		background: var(--color-background-base);
+		background: var(--color--background);
 	}
 }
 

@@ -54,7 +54,7 @@ function onMouseLeave() {
 <style lang="scss" module>
 .button {
 	border: var(--border-base);
-	background: var(--color-foreground-xlight);
+	background: var(--color--foreground--tint-2);
 	border-radius: var(--border-radius-base);
 	display: flex;
 	align-items: center;

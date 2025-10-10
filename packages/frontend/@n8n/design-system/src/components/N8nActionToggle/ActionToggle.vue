@@ -144,20 +144,20 @@ defineExpose({
 	align-items: center;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		cursor: pointer;
 	}
 
 	&:focus {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
 .dark {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 
 	&:focus {
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 	}
 }
 
@@ -166,7 +166,7 @@ defineExpose({
 }
 
 li:hover .iconContainer svg {
-	color: var(--color-primary-tint-1);
+	color: var(--color--primary--tint-1);
 }
 
 .loading-dropdown {

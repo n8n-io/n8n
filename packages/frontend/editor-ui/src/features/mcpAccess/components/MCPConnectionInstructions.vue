@@ -208,7 +208,7 @@ const apiKeyText = computed(() => {
 		display: flex;
 		align-items: stretch;
 		gap: var(--spacing-2xs);
-		background: var(--color-background-xlight);
+		background: var(--color--background--light-3);
 		border: var(--border-base);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-s);

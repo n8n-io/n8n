@@ -201,7 +201,7 @@ defineSlots<{
 
 .expandedCell {
 	white-space: normal;
-	background: var(--color-background-light-base);
+	background: var(--color--background--light-1);
 	border-bottom: 1px solid var(--border-color-light) !important;
 	vertical-align: top !important;
 
@@ -212,12 +212,12 @@ defineSlots<{
 
 .customRow {
 	cursor: pointer;
-	--color-table-row-hover-background: var(--color-background-base);
+	--color-table-row-hover-background: var(--color--background);
 }
 
 .customDisabledRow {
 	cursor: default;
-	--color-table-row-hover-background: var(--color-background-light);
+	--color-table-row-hover-background: var(--color--background--light-2);
 }
 
 .customHeaderCell {
@@ -231,7 +231,7 @@ defineSlots<{
 	text-overflow: ellipsis;
 	font-size: 12px;
 	font-weight: var(--font-weight-bold);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .customHeaderCellSort {
@@ -243,7 +243,7 @@ defineSlots<{
 	border-radius: 12px;
 
 	:global(.el-table__column-resize-proxy) {
-		background-color: var(--color-primary);
+		background-color: var(--color--primary);
 		width: 3px;
 	}
 
@@ -256,7 +256,7 @@ defineSlots<{
 	}
 
 	:global(.el-scrollbar__thumb) {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 
 	:global(.el-scrollbar__bar) {

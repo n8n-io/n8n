@@ -44,7 +44,7 @@ const backgroundColor = computed(() => {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-text-xlight);
+	color: var(--color--text--tint-3);
 	font-size: var(--font-size-3xs);
 	font-weight: 700;
 	width: 16px;

@@ -151,9 +151,9 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 .mouseOverTooltip {
 	opacity: 0;
 	margin-left: var(--spacing-3xs);
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	.categorizedItemsRenderer:hover & {
