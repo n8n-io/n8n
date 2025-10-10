@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import WorkerAccordion from './WorkerAccordion.ee.vue';
-import { WORKER_HISTORY_LENGTH, useOrchestrationStore } from '@/stores/orchestration.store';
+import WorkerAccordion from './WorkerAccordion.vue';
+import { WORKER_HISTORY_LENGTH, useOrchestrationStore } from '../orchestration.store';
 import { ref } from 'vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
-import { averageWorkerLoadFromLoads, memAsGb } from '@/utils/workerUtils';
+import { averageWorkerLoadFromLoads, memAsGb } from '../orchestration.utils';
 import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{

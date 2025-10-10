@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import WorkerList from '@/components/WorkerList.ee.vue';
+import WorkerList from '../components/WorkerList.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';

@@ -3,13 +3,13 @@ import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
-import { useOrchestrationStore } from '@/stores/orchestration.store';
+import { useOrchestrationStore } from '../orchestration.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/composables/useTelemetry';
-import WorkerCard from './Workers/WorkerCard.ee.vue';
+import WorkerCard from './WorkerCard.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';

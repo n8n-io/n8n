@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WorkerStatus } from '@n8n/api-types';
-import WorkerAccordion from './WorkerAccordion.ee.vue';
+import WorkerAccordion from './WorkerAccordion.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
