@@ -68,12 +68,12 @@ Provide:
 - instructions: Specific guidance for the next agent (optional)`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
-	['system', supervisorAgentPrompt],
-	['placeholder', '{messages}'],
 	[
 		'system',
-		'Given the conversation above, which agent should act next? Provide your reasoning and selection.',
+		supervisorAgentPrompt +
+			'\n\nGiven the conversation above, which agent should act next? Provide your reasoning and selection.',
 	],
+	['placeholder', '{messages}'],
 ]);
 
 /**
