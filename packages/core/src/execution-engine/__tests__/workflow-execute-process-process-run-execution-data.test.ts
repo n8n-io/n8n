@@ -232,7 +232,6 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('waiting tools', () => {
-		// eslint-disable-next-line complexity
 		test('handles Request objects with actions correctly', async () => {
 			// ARRANGE
 			let response: EngineResponse | undefined;
@@ -356,15 +355,44 @@ describe('processRunExecutionData', () => {
 
 			// Tool nodes should have been added to runData with inputOverride
 			expect(runData[tool1Node.name]).toHaveLength(1);
-			expect(runData[tool1Node.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
-				query: 'test input',
-				toolCallId: 'action_1',
+
+			expect(runData[tool1Node.name][0].inputOverride).toEqual({
+				ai_tool: [
+					[
+						{
+							json: { query: 'test input', toolCallId: 'action_1' },
+							pairedItem: {
+								input: undefined,
+								item: 0,
+								sourceOverwrite: {
+									previousNode: 'Start',
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
+							},
+						},
+					],
+				],
 			});
 
 			expect(runData[tool2Node.name]).toHaveLength(1);
-			expect(runData[tool2Node.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
-				data: 'another input',
-				toolCallId: 'action_2',
+			expect(runData[tool2Node.name][0].inputOverride).toEqual({
+				ai_tool: [
+					[
+						{
+							json: { data: 'another input', toolCallId: 'action_2' },
+							pairedItem: {
+								input: undefined,
+								item: 0,
+								sourceOverwrite: {
+									previousNode: 'Start',
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
+							},
+						},
+					],
+				],
 			});
 
 			// Tools should have executed successfully
@@ -460,9 +488,23 @@ describe('processRunExecutionData', () => {
 
 			// 2. Tool nodes get added to runData with inputOverride but are never actually executed
 			expect(runData[tool1Node.name]).toHaveLength(1);
-			expect(runData[tool1Node.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
-				query: 'test input',
-				toolCallId: 'action_1',
+			expect(runData[tool1Node.name][0].inputOverride).toEqual({
+				ai_tool: [
+					[
+						{
+							json: { query: 'test input', toolCallId: 'action_1' },
+							pairedItem: {
+								input: undefined,
+								item: 0,
+								sourceOverwrite: {
+									previousNode: 'nodeWithRequests',
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
+							},
+						},
+					],
+				],
 			});
 			// The tool node should not have execution data since it was never run
 			expect(runData[tool1Node.name][0].data).toBeUndefined();
