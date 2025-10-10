@@ -75,7 +75,7 @@ vi.mock('@/stores/nodeTypes.store', () => {
 	};
 });
 
-vi.mock('@/plugins/codemirror/completions/datatype.completions', () => {
+vi.mock('@/features/editors/plugins/codemirror/completions/datatype.completions', () => {
 	return {
 		datatypeCompletions: vi.fn(() => mockCompletionResult),
 	};
@@ -361,6 +361,7 @@ describe('ParameterInput.vue', () => {
 		// @ts-expect-error Readonly property
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test',
+			properties: [],
 			credentials: [
 				{
 					name: 'openAiApi',

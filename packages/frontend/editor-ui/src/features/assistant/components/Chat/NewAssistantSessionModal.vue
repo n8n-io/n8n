@@ -3,14 +3,17 @@ import { NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
+import { useChatPanelStore } from '../../chatPanel.store';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import type { ICredentialType } from 'n8n-workflow';
 
 import { N8nAssistantIcon, N8nAssistantText, N8nButton, N8nText } from '@n8n/design-system';
+
 const i18n = useI18n();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
+const chatPanelStore = useChatPanelStore();
 
 const props = defineProps<{
 	name: string;
@@ -25,14 +28,14 @@ const close = () => {
 
 const startNewSession = async () => {
 	if ('errorHelp' in props.data.context) {
-		await assistantStore.initErrorHelper(props.data.context.errorHelp);
+		await chatPanelStore.openWithErrorHelper(props.data.context.errorHelp);
 		assistantStore.trackUserOpenedAssistant({
 			source: 'error',
 			task: 'error',
 			has_existing_session: true,
 		});
 	} else if ('credHelp' in props.data.context) {
-		await assistantStore.initCredHelp(props.data.context.credHelp.credType);
+		await chatPanelStore.openWithCredHelp(props.data.context.credHelp.credType);
 	}
 	close();
 };
@@ -80,6 +83,7 @@ const startNewSession = async () => {
 	p {
 		line-height: normal;
 	}
+
 	p + p {
 		margin-top: 10px;
 	}

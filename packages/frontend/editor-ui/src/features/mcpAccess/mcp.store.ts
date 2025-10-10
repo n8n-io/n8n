@@ -3,7 +3,12 @@ import { MCP_STORE } from './mcp.constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchApiKey, updateMcpSettings, rotateApiKey } from '@/features/mcpAccess/mcp.api';
+import {
+	updateMcpSettings,
+	toggleWorkflowMcpAccessApi,
+	fetchApiKey,
+	rotateApiKey,
+} from '@/features/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isWorkflowListItem } from '@/utils/typeGuards';
@@ -46,6 +51,22 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return updated;
 	}
 
+	async function toggleWorkflowMcpAccess(
+		workflowId: string,
+		availableInMCP: boolean,
+	): Promise<{
+		id: string;
+		settings: { availableInMCP?: boolean } | undefined;
+		versionId: string;
+	}> {
+		const response = await toggleWorkflowMcpAccessApi(
+			rootStore.restApiContext,
+			workflowId,
+			availableInMCP,
+		);
+		return response;
+	}
+
 	async function getOrCreateApiKey(): Promise<ApiKey> {
 		const apiKey = await fetchApiKey(rootStore.restApiContext);
 		currentUserMCPKey.value = apiKey;
@@ -62,6 +83,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		mcpAccessEnabled,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
+		toggleWorkflowMcpAccess,
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,

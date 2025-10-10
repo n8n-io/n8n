@@ -234,7 +234,7 @@ const handleDragEnd = () => {
 }
 
 .grip {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	cursor: move;
 
 	&.hidden {
@@ -249,7 +249,7 @@ const handleDragEnd = () => {
 .column {
 	display: flex;
 	gap: 12px;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: 6px 0;
 	align-items: center;
 
@@ -295,10 +295,10 @@ const handleDragEnd = () => {
 }
 
 .hidden {
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 
 	label {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 

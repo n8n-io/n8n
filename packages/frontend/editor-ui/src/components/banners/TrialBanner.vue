@@ -116,40 +116,40 @@ function onUpdatePlanClick() {
 	border: 0;
 	height: 5px;
 	border-radius: 20px;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 .progressBar::-webkit-progress-bar {
 	width: 62.4px;
 	border: 0;
 	height: 5px;
 	border-radius: 20px;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 .progressBar::-moz-progress-bar {
 	width: 62.4px;
 	border: 0;
 	height: 5px;
 	border-radius: 20px;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 
 .progressBarSuccess::-moz-progress-bar {
-	background: var(--color-foreground-xdark);
+	background: var(--color--foreground--shade-2);
 	border-radius: 20px;
 }
 
 .progressBarSuccess::-webkit-progress-value {
-	background: var(--color-foreground-xdark);
+	background: var(--color--foreground--shade-2);
 	border-radius: 20px;
 }
 
 .progressBarDanger::-webkit-progress-value {
-	background: var(--color-danger);
+	background: var(--color--danger);
 	border-radius: 20px;
 }
 
 .progressBarDanger::-moz-progress-bar {
-	background: var(--color-danger);
+	background: var(--color--danger);
 }
 
 .usageText {
@@ -168,7 +168,7 @@ function onUpdatePlanClick() {
 }
 
 .danger {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .executionsCountSection {

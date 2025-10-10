@@ -106,7 +106,7 @@ const supportedIconName = computed((): IconName | undefined => {
 
 .badge {
 	position: absolute;
-	background: var(--color-background-node-icon-badge, var(--color-background-base));
+	background: var(--color-background-node-icon-badge, var(--color--background));
 	border-radius: 50%;
 }
 </style>

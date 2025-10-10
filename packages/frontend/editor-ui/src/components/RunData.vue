@@ -38,7 +38,7 @@ import {
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -75,7 +75,7 @@ import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
-import { type SearchShortcut } from '@/types';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
 
 import {
 	N8nBlockUi,
@@ -1956,7 +1956,7 @@ defineExpose({ enterEditMode });
 
 <style lang="scss" module>
 .infoIcon {
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 }
 
 .center {
@@ -1989,13 +1989,14 @@ defineExpose({ enterEditMode });
 	border-top: 0;
 	border-left: 0;
 	border-right: 0;
+	height: 40px;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--ndv-spacing);
-	padding: var(--ndv-spacing) var(--ndv-spacing) 0 var(--ndv-spacing);
+	padding: var(--ndv-spacing) var(--spacing-3xs) 0 var(--ndv-spacing);
 	position: relative;
 	overflow-x: auto;
 	overflow-y: hidden;
@@ -2156,7 +2157,7 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv-spacing);
 
 	* {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
@@ -2262,12 +2263,12 @@ defineExpose({ enterEditMode });
 
 .executingMessage {
 	.compact & {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .resetCollapseButton {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 }
 
 @container (max-width: 240px) {

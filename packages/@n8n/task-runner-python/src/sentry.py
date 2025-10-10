@@ -44,12 +44,22 @@ class TaskRunnerSentry:
     def _filter_out_ignored_errors(self, event: Any, hint: Any) -> Optional[Any]:
         if "exc_info" in hint:
             exc_type, _, _ = hint["exc_info"]
-            if exc_type in IGNORED_ERROR_TYPES:
-                return None
+            for ignored_type in IGNORED_ERROR_TYPES:
+                if (
+                    isinstance(exc_type, type)
+                    and isinstance(ignored_type, type)
+                    and issubclass(exc_type, ignored_type)
+                ):
+                    return None
 
         for exception in event.get("exception", {}).get("values", []):
             if self._is_from_user_code(exception):
                 return None
+
+            exc_type_name = exception.get("type", "")
+            for ignored_type in IGNORED_ERROR_TYPES:
+                if ignored_type.__name__ == exc_type_name:
+                    return None
 
         return event
 
