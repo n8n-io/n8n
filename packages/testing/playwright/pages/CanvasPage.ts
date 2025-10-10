@@ -159,12 +159,15 @@ export class CanvasPage extends BasePage {
 		await this.clickSaveWorkflowButton();
 	}
 
-	getExecuteWorkflowButton(): Locator {
-		return this.page.getByTestId('execute-workflow-button');
+	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
+		const testId = triggerNodeName
+			? `execute-workflow-button-${triggerNodeName}`
+			: 'execute-workflow-button';
+		return this.page.getByTestId(testId);
 	}
 
-	async clickExecuteWorkflowButton(): Promise<void> {
-		await this.page.getByTestId('execute-workflow-button').click();
+	async clickExecuteWorkflowButton(triggerNodeName?: string): Promise<void> {
+		await this.getExecuteWorkflowButton(triggerNodeName).click();
 	}
 
 	async clickDebugInEditorButton(): Promise<void> {
@@ -633,8 +636,12 @@ export class CanvasPage extends BasePage {
 		await this.clickContextMenuAction('execute');
 	}
 
+	clearExecutionDataButton(): Locator {
+		return this.page.getByTestId('clear-execution-data-button');
+	}
+
 	async clearExecutionData(): Promise<void> {
-		await this.page.getByTestId('clear-execution-data-button').click();
+		await this.clearExecutionDataButton().click();
 	}
 
 	getManualChatModal(): Locator {
@@ -789,6 +796,18 @@ export class CanvasPage extends BasePage {
 
 	getNodeWarningStatusIndicator(nodeName: string): Locator {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
+	}
+
+	getNodeRunningStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+	}
+
+	stopExecutionWaitingForWebhookButton(): Locator {
+		return this.page.getByTestId('stop-execution-waiting-for-webhook-button');
+	}
+
+	getExecuteWorkflowButtonSpinner(): Locator {
+		return this.getExecuteWorkflowButton().locator('.n8n-spinner');
 	}
 
 	getCanvasPlusButton(): Locator {
