@@ -23,6 +23,7 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
+import { createMultiAgentWorkflow } from './multi-agent-workflow';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
@@ -50,6 +51,12 @@ export interface WorkflowBuilderAgentConfig {
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
 	onGenerationSuccess?: () => Promise<void>;
+	/**
+	 * Enable multi-agent supervisor architecture (experimental)
+	 * When true, uses specialized agents (Discovery, Builder, Configurator) with a Supervisor
+	 * When false, uses the legacy single-agent architecture
+	 */
+	enableMultiAgent?: boolean;
 }
 
 export interface ChatPayload {
@@ -77,6 +84,7 @@ export class WorkflowBuilderAgent {
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
+	private enableMultiAgent: boolean;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -89,6 +97,7 @@ export class WorkflowBuilderAgent {
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
+		this.enableMultiAgent = config.enableMultiAgent ?? false;
 	}
 
 	private getBuilderTools(): BuilderTool[] {
@@ -100,7 +109,24 @@ export class WorkflowBuilderAgent {
 		});
 	}
 
-	private createWorkflow() {
+	/**
+	 * Create the multi-agent workflow graph
+	 * Uses supervisor pattern with specialized agents
+	 */
+	private createMultiAgentGraph() {
+		return createMultiAgentWorkflow({
+			parsedNodeTypes: this.parsedNodeTypes,
+			llmSimpleTask: this.llmSimpleTask,
+			llmComplexTask: this.llmComplexTask,
+			logger: this.logger,
+			instanceUrl: this.instanceUrl,
+		});
+	}
+
+	/**
+	 * Create the legacy single-agent workflow graph
+	 */
+	private createLegacyWorkflow() {
 		const builderTools = this.getBuilderTools();
 
 		// Extract just the tools for LLM binding
@@ -351,6 +377,19 @@ export class WorkflowBuilderAgent {
 			.addConditionalEdges('agent', shouldContinue);
 
 		return workflow;
+	}
+
+	/**
+	 * Create the workflow graph based on configuration
+	 */
+	private createWorkflow() {
+		if (this.enableMultiAgent) {
+			this.logger?.debug('Using multi-agent supervisor architecture');
+			return this.createMultiAgentGraph();
+		}
+
+		this.logger?.debug('Using legacy single-agent architecture');
+		return this.createLegacyWorkflow();
 	}
 
 	async getState(workflowId: string, userId?: string) {
