@@ -85,4 +85,43 @@ describe('ImportWorkflowUrlModal', () => {
 		await userEvent.type(urlInput, 'invalid-url');
 		expect(confirmButton).toBeDisabled();
 	});
+
+	it('should accept URLs without .json extension', async () => {
+		const { getByTestId } = renderModal({
+			global,
+			pinia,
+		});
+
+		const urlInput = getByTestId('workflow-url-import-input');
+		const confirmButton = getByTestId('confirm-workflow-import-url-button');
+
+		await userEvent.type(urlInput, 'https://example.com/workflow');
+		expect(confirmButton).toBeEnabled();
+	});
+
+	it('should accept GitHub raw URLs', async () => {
+		const { getByTestId } = renderModal({
+			global,
+			pinia,
+		});
+
+		const urlInput = getByTestId('workflow-url-import-input');
+		const confirmButton = getByTestId('confirm-workflow-import-url-button');
+
+		await userEvent.type(urlInput, 'https://raw.githubusercontent.com/user/repo/main/workflow');
+		expect(confirmButton).toBeEnabled();
+	});
+
+	it('should accept URLs with query parameters', async () => {
+		const { getByTestId } = renderModal({
+			global,
+			pinia,
+		});
+
+		const urlInput = getByTestId('workflow-url-import-input');
+		const confirmButton = getByTestId('confirm-workflow-import-url-button');
+
+		await userEvent.type(urlInput, 'https://example.com/api/workflow?id=123');
+		expect(confirmButton).toBeEnabled();
+	});
 });
