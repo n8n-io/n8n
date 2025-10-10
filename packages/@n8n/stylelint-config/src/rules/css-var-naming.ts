@@ -210,6 +210,35 @@ function validateCssVariable(variable: string): ValidationResult {
 	// Get the property name to validate specific property-value combinations
 	const propertyName = groups[absolutePropertyIndex];
 
+	// Check if HSL components (h, s, l) appear in non-final positions or as suffixes
+	const hslComponents = new Set(['h', 's', 'l']);
+
+	// Check all groups after property for HSL-related issues
+	for (let i = absolutePropertyIndex + 1; i < groups.length; i++) {
+		const group = groups[i];
+		const isLastGroup = i === groups.length - 1;
+
+		// Check if group is exactly h, s, or l (allowed only at the end)
+		if (hslComponents.has(group)) {
+			if (!isLastGroup) {
+				return {
+					valid: false,
+					reason: `HSL component "${group}" must be at the end of the variable name (e.g., --color--primary--${group}, not --color--${group}--primary)`,
+				};
+			}
+			// If it's the last group and exactly h/s/l, it's valid
+			continue;
+		}
+
+		// Check if group ends with -h, -s, or -l (never allowed)
+		if (group.endsWith('-h') || group.endsWith('-s') || group.endsWith('-l')) {
+			return {
+				valid: false,
+				reason: `HSL component suffix in "${group}" is not allowed. Use standalone HSL components instead (e.g., --color--primary--h, not --color--primary-h)`,
+			};
+		}
+	}
+
 	// The group after property should be a value (semantic or scale)
 	if (absolutePropertyIndex + 1 < groups.length) {
 		const valueGroup = groups[absolutePropertyIndex + 1];
@@ -243,8 +272,8 @@ function validateCssVariable(variable: string): ValidationResult {
 				/^[a-z]+-\d+$/.test(valueGroup) ||
 				// Allow descriptive names (3+ chars) - these are likely intentional semantic names
 				valueGroup.length >= 3 ||
-				// Support hsl css variables
-				['h', 's', 'l'].includes(valueGroup);
+				// Support hsl css variables (only allowed at the end, checked above)
+				hslComponents.has(valueGroup);
 
 			if (!isValidValue) {
 				return {

@@ -842,6 +842,160 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(hslComponentValues);
 			expect(result.warnings).toHaveLength(0);
 		});
+
+		it('should reject HSL component h in middle position', async () => {
+			const invalidHsl = `
+				:root {
+					--color--h--primary: 220;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject HSL component s in middle position', async () => {
+			const invalidHsl = `
+				:root {
+					--color--s--primary: 90%;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject HSL component l in middle position', async () => {
+			const invalidHsl = `
+				:root {
+					--color--l--primary: 50%;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject HSL component in middle with component name', async () => {
+			const invalidHsl = `
+				:root {
+					--button--color--h--primary: 220;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject HSL component in middle with state', async () => {
+			const invalidHsl = `
+				:root {
+					--button--color--l--primary--hover: 50%;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should accept HSL components at the end with states', async () => {
+			const validHsl = `
+				:root {
+					--button--color--background--primary--hover--l: 50%;
+					--button--color--background--primary--h: 220;
+				}
+			`;
+			const result = await lintCSS(validHsl);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should reject group ending with -h in middle position', async () => {
+			const invalidHsl = `
+				:root {
+					--color--primary-h--base: 220;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject group ending with -s in middle position', async () => {
+			const invalidHsl = `
+				:root {
+					--color--primary-s--base: 90%;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject group ending with -l in middle position', async () => {
+			const invalidHsl = `
+				:root {
+					--color--primary-l--base: 50%;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject component with group ending with -h in middle', async () => {
+			const invalidHsl = `
+				:root {
+					--button--color--primary-h--hover: 220;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject group ending with -h at the end', async () => {
+			const invalidHsl = `
+				:root {
+					--color--primary-h: 220;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
+
+		it('should reject component with group ending with -h at the end', async () => {
+			const invalidHsl = `
+				:root {
+					--button--color--primary-h: 220;
+				}
+			`;
+			const result = await lintCSS(invalidHsl);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('HSL component'),
+			});
+		});
 	});
 
 	describe('var() references validation', () => {
