@@ -20,13 +20,7 @@ defineProps<Props>();
 		:is-trigger="false"
 	>
 		<template v-if="openTemplate.icon" #icon>
-			<N8nNodeIcon
-				type="icon"
-				:name="openTemplate.icon"
-				:circle="false"
-				:show-tooltip="false"
-				:use-updated-icons="true"
-			/>
+			<N8nNodeIcon type="icon" :name="openTemplate.icon" :circle="false" :show-tooltip="false" />
 		</template>
 
 		<template v-if="openTemplate.nodes" #extraDetails>

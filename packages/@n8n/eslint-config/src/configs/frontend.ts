@@ -64,7 +64,6 @@ export const frontendConfig = tseslint.config(
 				'error',
 				{
 					ignorePatterns: [
-						'FontAwesomeIcon', // Globally registered in plugins/icons/index.ts
 						'RouterLink', // Vue Router global component
 						'RouterView', // Vue Router global component
 						'Teleport', // Vue 3 built-in
