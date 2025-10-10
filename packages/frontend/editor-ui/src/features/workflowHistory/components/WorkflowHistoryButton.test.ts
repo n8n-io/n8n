@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import WorkflowHistoryButton from './WorkflowHistoryButton.vue';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => vi.fn(),
