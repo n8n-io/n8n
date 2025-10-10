@@ -64,7 +64,7 @@ const getCredentialRouterLocation = (
 	margin: 0;
 
 	li {
-		padding: 0 0 var(--spacing-3xs);
+		padding: 0 0 var(--spacing--3xs);
 
 		&:last-child {
 			padding-bottom: 0;

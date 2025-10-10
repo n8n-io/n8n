@@ -22,9 +22,9 @@ const Template =
 	});
 
 export const BorderRadius = Template(
-	"<variable-table :variables=\"['--border-radius-small','--border-radius-base', '--border-radius-large', '--border-radius-xlarge']\" />",
+	"<variable-table :variables=\"['--radius--sm','--radius', '--radius--lg', '--radius--xl']\" />",
 );
 
-export const BorderWidth = Template('<variable-table :variables="[\'--border-width-base\']" />');
+export const BorderWidth = Template('<variable-table :variables="[\'--border-width\']" />');
 
-export const BorderStyle = Template('<variable-table :variables="[\'--border-style-base\']" />');
+export const BorderStyle = Template('<variable-table :variables="[\'--border-style\']" />');

@@ -124,8 +124,8 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-start;
-	gap: var(--spacing-m);
-	padding-bottom: var(--spacing-l);
+	gap: var(--spacing--md);
+	padding-bottom: var(--spacing--lg);
 }
 
 .header {
@@ -137,13 +137,13 @@ onMounted(async () => {
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 }
 
 .grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	width: 100%;
 	box-sizing: border-box;
 
@@ -151,7 +151,7 @@ onMounted(async () => {
 	align-content: start;
 	grid-auto-rows: auto;
 
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .card {
@@ -165,8 +165,8 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	gap: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
 }
 
 .templateLink {

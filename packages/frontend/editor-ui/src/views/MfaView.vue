@@ -273,7 +273,7 @@ body {
 	display: flex;
 	align-items: center;
 	flex-direction: column;
-	padding-top: var(--spacing-2xl);
+	padding-top: var(--spacing--2xl);
 
 	> * {
 		width: 352px;
@@ -281,12 +281,12 @@ body {
 }
 
 .formContainer {
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 }
 
 .headerContainer {
 	text-align: center;
-	margin-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing--xl);
 }
 
 .formError input {
@@ -298,6 +298,6 @@ body {
 }
 
 .infoBox {
-	padding-top: var(--spacing-4xs);
+	padding-top: var(--spacing--4xs);
 }
 </style>

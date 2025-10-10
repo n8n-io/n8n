@@ -147,7 +147,7 @@ const InPopoverTemplate: StoryFn = (args) => ({
 		N8nScrollArea,
 	},
 	template: `
-		<div style="width: 260px; padding: 16px; background-color: var(--color--foreground--tint-2); border: var(--border-base); border-radius: var(--border-radius-base); box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;">
+		<div style="width: 260px; padding: 16px; background-color: var(--color--foreground--tint-2); border: var(--border); border-radius: var(--radius); box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;">
 			<N8nScrollArea v-bind="args">
 				<div style="display: flex; flex-direction: column; gap: 12px;">
 					<h3 style="margin: 0; font-size: 14px; font-weight: 600;">Long Menu Items</h3>

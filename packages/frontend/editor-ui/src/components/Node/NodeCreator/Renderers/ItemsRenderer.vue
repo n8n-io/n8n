@@ -250,7 +250,7 @@ watch(
 }
 .empty {
 	:global([role='alert']) {
-		margin: var(--spacing-xs) var(--spacing-s);
+		margin: var(--spacing--xs) var(--spacing--sm);
 	}
 }
 .itemsRenderer {
@@ -267,14 +267,14 @@ watch(
 	position: relative;
 
 	&:last-child {
-		margin-top: var(--spacing-s);
-		padding-top: var(--spacing-xs);
+		margin-top: var(--spacing--sm);
+		padding-top: var(--spacing--xs);
 
 		&:after {
 			content: '';
 			position: absolute;
-			left: var(--spacing-s);
-			right: var(--spacing-s);
+			left: var(--spacing--sm);
+			right: var(--spacing--sm);
 			top: 0;
 			margin: auto;
 			bottom: 0;
@@ -286,14 +286,14 @@ watch(
 	position: relative;
 
 	&:last-child {
-		margin-bottom: var(--spacing-s);
-		padding-bottom: var(--spacing-xs);
+		margin-bottom: var(--spacing--sm);
+		padding-bottom: var(--spacing--xs);
 
 		&:after {
 			content: '';
 			position: absolute;
-			left: var(--spacing-s);
-			right: var(--spacing-s);
+			left: var(--spacing--sm);
+			right: var(--spacing--sm);
 			top: 0;
 			margin: auto;
 			bottom: 0;

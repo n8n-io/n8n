@@ -768,15 +768,15 @@ const modifiers = [
 	> li {
 		display: flex;
 		align-items: flex-start;
-		gap: var(--spacing-2xs);
-		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
+		gap: var(--spacing--2xs);
+		padding: 10px 0 var(--spacing--3xs) var(--spacing--2xs);
 
 		> div {
 			min-width: 0;
 		}
 
 		.clickableChange {
-			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
+			padding: var(--spacing--3xs) var(--spacing--xs) var(--spacing--3xs) 0;
 			margin-left: -4px;
 		}
 	}
@@ -791,10 +791,10 @@ const modifiers = [
 .clickableChange {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	border-radius: 4px;
-	padding: var(--spacing-xs) var(--spacing-2xs);
-	margin-right: var(--spacing-xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
+	margin-right: var(--spacing--xs);
 	line-height: unset;
 	min-width: 0;
 	transition: background-color 0.2s ease;
@@ -820,7 +820,7 @@ const modifiers = [
 	width: 1px;
 	height: 10px;
 	background-color: var(--color--foreground--shade-2);
-	margin: 0 0 -5px var(--spacing-xs);
+	margin: 0 0 -5px var(--spacing--xs);
 	position: relative;
 	z-index: 1;
 }
@@ -1026,6 +1026,6 @@ const modifiers = [
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	padding: var(--spacing-m) var(--spacing-xs);
+	padding: var(--spacing--md) var(--spacing--xs);
 }
 </style>

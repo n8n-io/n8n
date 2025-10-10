@@ -94,6 +94,7 @@ import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
+import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
 import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
@@ -197,6 +198,7 @@ const sqliteMigrations: Migration[] = [
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
 	AddProjectIdToVariableTable1758794506893,
 	AddAudienceColumnToApiKeys1758731786132,
+	ChangeValueTypesForInsights1759399811000,
 ];
 
 export { sqliteMigrations };

@@ -39,22 +39,22 @@ const handleSelect = () => {
 <style lang="scss" module>
 .item {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
-	height: var(--spacing-2xl);
-	padding: 0 var(--spacing-s);
+	height: var(--spacing--2xl);
+	padding: 0 var(--spacing--sm);
 	cursor: pointer;
 	position: relative;
-	margin-left: var(--border-width-base);
+	margin-left: var(--border-width);
 	transition: background-color 0.1s ease;
 
 	&::before {
 		content: '';
 		position: absolute;
-		left: calc(-1 * var(--border-width-base));
+		left: calc(-1 * var(--border-width));
 		top: 0;
 		bottom: 0;
-		width: calc(2 * var(--border-width-base));
+		width: calc(2 * var(--border-width));
 		background-color: transparent;
 		transition: background-color 0.1s ease;
 	}
@@ -80,8 +80,8 @@ const handleSelect = () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing-l);
-	height: var(--spacing-l);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 	flex-shrink: 0;
 }
 
@@ -91,10 +91,10 @@ const handleSelect = () => {
 }
 
 .title {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text--shade-1);
-	line-height: var(--font-line-height-compact);
+	line-height: var(--line-height--sm);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -103,7 +103,7 @@ const handleSelect = () => {
 .meta {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 }
 </style>

@@ -42,8 +42,8 @@ const props = withDefaults(defineProps<Props>(), {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: var(--border-width-base) var(--border-style-base) var(--color--foreground--tint-1);
-	border-radius: var(--border-radius-base);
+	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border-radius: var(--radius);
 
 	&.round {
 		border-radius: 50%;
@@ -55,33 +55,33 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .mini {
-	width: var(--spacing-xs);
-	height: var(--spacing-xs);
+	width: var(--spacing--xs);
+	height: var(--spacing--xs);
 
 	.icon {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 	}
 
 	.emoji {
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size--3xs);
 	}
 }
 
 .small {
-	min-width: var(--spacing-l);
-	height: var(--spacing-l);
+	min-width: var(--spacing--lg);
+	height: var(--spacing--lg);
 
 	.emoji {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 	}
 }
 
 .medium {
-	min-width: var(--spacing-xl);
-	height: var(--spacing-xl);
+	min-width: var(--spacing--xl);
+	height: var(--spacing--xl);
 
 	.emoji {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size--xs);
 	}
 }
 
@@ -91,7 +91,7 @@ const props = withDefaults(defineProps<Props>(), {
 	height: 40px;
 
 	.emoji {
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 	}
 }
 </style>

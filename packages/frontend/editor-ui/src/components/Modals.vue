@@ -89,7 +89,7 @@ import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import WhatsNewModal from '@/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
 import WorkflowExtractionNameModal from '@/components/WorkflowExtractionNameModal.vue';
-import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
+import WorkflowHistoryVersionRestoreModal from '@/features/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';

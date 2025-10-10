@@ -119,13 +119,13 @@ function openCredentialType() {
 
 <style module lang="scss">
 .title {
-	font-size: var(--font-size-xl);
-	line-height: var(--font-line-height-regular);
+	font-size: var(--font-size--xl);
+	line-height: var(--line-height--md);
 }
 
 .subtitle {
-	margin-bottom: var(--spacing-s);
-	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
+	margin-bottom: var(--spacing--sm);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
 }
 </style>

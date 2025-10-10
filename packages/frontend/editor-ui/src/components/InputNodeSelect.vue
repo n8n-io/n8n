@@ -171,26 +171,26 @@ function onInputNodeChange(value: string) {
 	max-width: var(--max-select-width);
 
 	:global(.el-input--suffix .el-input__inner) {
-		padding-left: calc(var(--spacing-l) + var(--spacing-4xs));
-		padding-right: var(--spacing-l);
+		padding-left: calc(var(--spacing--lg) + var(--spacing--4xs));
+		padding-right: var(--spacing--lg);
 	}
 }
 
 .node {
-	--select-option-padding: 0 var(--spacing-s);
+	--select-option-padding: 0 var(--spacing--sm);
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-2xs);
-	gap: var(--spacing-4xs);
+	font-size: var(--font-size--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .icon {
-	padding-right: var(--spacing-4xs);
+	padding-right: var(--spacing--4xs);
 }
 
 .title {
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	max-width: var(--max-select-width);
 	overflow: hidden;
 	white-space: nowrap;
@@ -203,8 +203,8 @@ function onInputNodeChange(value: string) {
 
 .subtitle {
 	margin-left: auto;
-	padding-left: var(--spacing-2xs);
+	padding-left: var(--spacing--2xs);
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 </style>

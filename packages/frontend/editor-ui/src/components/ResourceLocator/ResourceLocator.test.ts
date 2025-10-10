@@ -68,7 +68,6 @@ const renderComponent = createComponentRenderer(ResourceLocator, {
 			ExpressionParameterInput: true,
 			ParameterIssues: true,
 			N8nCallout: true,
-			FontAwesomeIcon: true,
 			FromAiOverrideField: true,
 			FromAiOverrideButton: true,
 			ParameterOverrideSelectableList: true,

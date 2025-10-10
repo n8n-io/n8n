@@ -78,8 +78,8 @@ const onDragStart = () => {
 	background-color: var(--color--background);
 	width: 64px;
 	height: 21px;
-	border-top-left-radius: var(--border-radius-base);
-	border-top-right-radius: var(--border-radius-base);
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
 	cursor: grab;
 	display: flex;
 	align-items: center;
@@ -103,7 +103,7 @@ const onDragStart = () => {
 .arrow {
 	position: absolute;
 	color: var(--color--background--light-3);
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	visibility: hidden;
 	top: 0;
 }

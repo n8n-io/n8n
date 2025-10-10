@@ -113,11 +113,11 @@ const redirectToSearchPage = (node: ITemplatesNode) => {
 	flex-wrap: wrap;
 }
 .icon {
-	margin-right: var(--spacing-xs);
-	margin-bottom: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
+	margin-bottom: var(--spacing--xs);
 	cursor: pointer;
 }
 .text {
-	padding-bottom: var(--spacing-xs);
+	padding-bottom: var(--spacing--xs);
 }
 </style>

@@ -161,7 +161,10 @@ export class InsightsController {
 		if (query.dateRange) {
 			const maxAgeInDays = keyRangeToDays[query.dateRange];
 			return {
-				startDate: DateTime.now().minus({ days: maxAgeInDays }).toJSDate(),
+				startDate:
+					maxAgeInDays === 1
+						? DateTime.now().startOf('day').toJSDate()
+						: DateTime.now().minus({ days: maxAgeInDays }).toJSDate(),
 				endDate: today,
 			};
 		}

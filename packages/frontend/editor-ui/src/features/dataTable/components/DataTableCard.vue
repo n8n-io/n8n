@@ -142,8 +142,8 @@ const getDataTableSize = computed(() => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-xs);
-	margin-bottom: var(--spacing-5xs);
+	padding-right: var(--spacing--xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .card-footer {
@@ -154,7 +154,7 @@ const getDataTableSize = computed(() => {
 	& + & {
 		&::before {
 			content: '|';
-			margin: 0 var(--spacing-4xs);
+			margin: 0 var(--spacing--4xs);
 		}
 	}
 }
