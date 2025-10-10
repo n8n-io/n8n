@@ -3,12 +3,12 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { BuilderTool } from '@/utils/stream-processor';
-
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
-import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
+import { createRemoveNodeTool } from '../tools/remove-node.tool';
+
+import type { BuilderTool } from '@/utils/stream-processor';
 
 /**
  * Builder Agent Prompt
@@ -33,10 +33,10 @@ Each add_nodes call creates ONE node. You must provide:
 - nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest")
 - name: Descriptive name (e.g., "Fetch Weather Data")
 - connectionParametersReasoning: Explain your thinking about connection parameters
-- connectionParameters: Parameters that affect connections (or {} if none needed)
+- connectionParameters: Parameters that affect connections (or {{}} if none needed)
 
 CONNECTION PARAMETERS EXAMPLES:
-- Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={}
+- Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
 - AI Agent with parser: reasoning="hasOutputParser creates additional input", parameters={{ hasOutputParser: true }}
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
