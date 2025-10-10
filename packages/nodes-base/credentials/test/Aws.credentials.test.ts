@@ -1,7 +1,8 @@
 import { sign, type Request } from 'aws4';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import { Aws, type AwsCredentialsType } from '../Aws.credentials';
+import { Aws } from '../Aws.credentials';
+import type { AwsIamCredentialsType } from '../common/aws/types';
 
 jest.mock('aws4', () => ({
 	sign: jest.fn(),
@@ -34,7 +35,7 @@ describe('Aws Credential', () => {
 	});
 
 	describe('authenticate', () => {
-		const credentials: AwsCredentialsType = {
+		const credentials: AwsIamCredentialsType = {
 			region: 'eu-central-1',
 			accessKeyId: 'hakuna',
 			secretAccessKey: 'matata',
@@ -183,7 +184,7 @@ describe('Aws Credential', () => {
 		});
 
 		describe('China regions', () => {
-			const chinaCredentials: AwsCredentialsType = {
+			const chinaCredentials: AwsIamCredentialsType = {
 				region: 'cn-north-1',
 				accessKeyId: 'hakuna',
 				secretAccessKey: 'matata',
