@@ -362,7 +362,7 @@ describe('processRunExecutionData', () => {
 						{
 							json: { query: 'test input', toolCallId: 'action_1' },
 							pairedItem: {
-								input: undefined,
+								input: 0,
 								item: 0,
 								sourceOverwrite: {
 									previousNode: 'Start',
@@ -382,7 +382,7 @@ describe('processRunExecutionData', () => {
 						{
 							json: { data: 'another input', toolCallId: 'action_2' },
 							pairedItem: {
-								input: undefined,
+								input: 0,
 								item: 0,
 								sourceOverwrite: {
 									previousNode: 'Start',
@@ -494,7 +494,7 @@ describe('processRunExecutionData', () => {
 						{
 							json: { query: 'test input', toolCallId: 'action_1' },
 							pairedItem: {
-								input: undefined,
+								input: 0,
 								item: 0,
 								sourceOverwrite: {
 									previousNode: 'nodeWithRequests',
