@@ -37,14 +37,11 @@ export class ChatHubController {
 		res.header('Cache-Control', 'no-cache');
 		res.flushHeaders();
 
-		// TODO: Save human message to DB
-
 		const replyId = crypto.randomUUID();
-
-		this.logger.info(`Chat send request received: ${JSON.stringify(payload)}`);
+		this.logger.debug(`Chat send request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.askN8n(res, req.user, {
+			await this.chatService.respondMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
 				replyId,

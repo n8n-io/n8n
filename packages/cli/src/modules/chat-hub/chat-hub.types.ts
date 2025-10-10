@@ -11,9 +11,10 @@ export interface ChatPayloadWithCredentials {
 	credentials: INodeCredentials;
 }
 
-export type ChatMessage = {
-	id: string;
+// From packages/@n8n/nodes-langchain/nodes/memory/MemoryManager/MemoryManager.node.ts
+export type MessageRole = 'ai' | 'system' | 'user';
+export interface MessageRecord {
+	type: MessageRole;
 	message: string;
-	type: 'user' | 'ai' | 'system';
-	createdAt: Date;
-};
+	hideFromUI: boolean;
+}

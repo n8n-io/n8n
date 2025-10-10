@@ -26,6 +26,13 @@ export class ChatHubModule implements ModuleInterface {
 		return { chatAccessEnabled };
 	}
 
+	async entities() {
+		const { ChatSession } = await import('./chat-session.entity');
+		const { ChatMessage } = await import('./chat-message.entity');
+
+		return [ChatSession, ChatMessage];
+	}
+
 	@OnShutdown()
 	async shutdown() {}
 }
