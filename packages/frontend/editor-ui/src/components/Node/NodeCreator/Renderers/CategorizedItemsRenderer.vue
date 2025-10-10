@@ -150,10 +150,10 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 <style lang="scss" module>
 .mouseOverTooltip {
 	opacity: 0;
-	margin-left: var(--spacing-3xs);
-	color: var(--color-foreground-xdark);
+	margin-left: var(--spacing--3xs);
+	color: var(--color--foreground--shade-2);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	.categorizedItemsRenderer:hover & {
@@ -164,11 +164,11 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 	max-width: 260px;
 }
 .contentSlot {
-	padding: 0 var(--spacing-s) var(--spacing-3xs);
-	margin-top: var(--spacing-xs);
+	padding: 0 var(--spacing--sm) var(--spacing--3xs);
+	margin-top: var(--spacing--xs);
 }
 .categorizedItemsRenderer {
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 .preview {
 	opacity: 0.7;

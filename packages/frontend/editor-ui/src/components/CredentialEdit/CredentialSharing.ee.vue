@@ -168,7 +168,7 @@ function goToUpgrade() {
 .container {
 	width: 100%;
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 	}
 }
 </style>

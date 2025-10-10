@@ -1,7 +1,11 @@
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowState, type WorkflowState } from './useWorkflowState';
 import { createPinia, setActivePinia } from 'pinia';
-import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -87,6 +91,35 @@ describe('useWorkflowState', () => {
 				new Date('2023-01-01T09:00:00Z'),
 			);
 			expect(workflowsStore.workflowExecutionData?.stoppedAt).toBeUndefined();
+		});
+	});
+	describe('setNodeParameters', () => {
+		beforeEach(() => {
+			workflowsStore.setNodes([createTestNode({ name: 'a', parameters: { p: 1, q: true } })]);
+		});
+
+		it('should set node parameters', () => {
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
+
+			workflowState.setNodeParameters({ name: 'a', value: { q: false, r: 's' } });
+
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ q: false, r: 's' });
+		});
+
+		it('should set node parameters preserving existing ones if append=true', () => {
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
+
+			workflowState.setNodeParameters({ name: 'a', value: { q: false, r: 's' } }, true);
+
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: false, r: 's' });
+		});
+
+		it('should not update last parameter update time if parameters are set to the same value', () => {
+			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+
+			workflowState.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
+
+			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
 		});
 	});
 });

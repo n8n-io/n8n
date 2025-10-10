@@ -229,25 +229,25 @@ watch(workflowIssues, async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing-xs);
-	gap: var(--spacing-xs);
-	background-color: var(--color-background-xlight);
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	line-height: var(--font-line-height-loose);
+	padding: var(--spacing--xs);
+	gap: var(--spacing--xs);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	line-height: var(--line-height--lg);
 	position: relative;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .description {
 	margin: 0;
-	color: var(--color-text-dark);
-	line-height: var(--font-line-height-regular);
+	color: var(--color--text--shade-1);
+	line-height: var(--line-height--md);
 }
 
 .noIssuesMessage {
 	margin: 0;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .issuesList {

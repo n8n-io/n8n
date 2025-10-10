@@ -2348,14 +2348,14 @@ const onNameSubmit = async (name: string) => {
 
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
-	margin-top: var(--spacing-xs);
-	padding-left: var(--spacing-s);
-	padding-right: var(--spacing-m);
+	margin-top: var(--spacing--xs);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--md);
 
 	.callout-trailing-content {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-m);
+		gap: var(--spacing--md);
 	}
 }
 
@@ -2366,12 +2366,12 @@ const onNameSubmit = async (name: string) => {
 	height: 230px;
 
 	& + & {
-		margin-left: var(--spacing-s);
+		margin-left: var(--spacing--sm);
 	}
 
 	&:hover {
 		svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }
@@ -2412,7 +2412,7 @@ const onNameSubmit = async (name: string) => {
 
 .empty-folder-container {
 	button {
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing--2xs);
 	}
 }
 
@@ -2430,21 +2430,21 @@ const onNameSubmit = async (name: string) => {
 
 .drop-active {
 	:global(.card) {
-		border-color: var(--color-secondary);
+		border-color: var(--color--secondary);
 		background-color: var(--color-callout-secondary-background);
 	}
 }
 
 .path-separator {
-	font-size: var(--font-size-xl);
-	color: var(--color-foreground-base);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--xl);
+	color: var(--color--foreground);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .name {
 	color: $custom-font-dark;
-	font-size: var(--font-size-s);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .pointer-disabled {
@@ -2457,13 +2457,13 @@ const onNameSubmit = async (name: string) => {
 	width: 500px;
 	padding-bottom: 0;
 	.el-message-box__message {
-		font-size: var(--font-size-xl);
+		font-size: var(--font-size--xl);
 	}
 	.el-message-box__btns {
-		padding: 0 var(--spacing-l) var(--spacing-l);
+		padding: 0 var(--spacing--lg) var(--spacing--lg);
 	}
 	.el-message-box__content {
-		padding: var(--spacing-l);
+		padding: var(--spacing--lg);
 	}
 }
 </style>

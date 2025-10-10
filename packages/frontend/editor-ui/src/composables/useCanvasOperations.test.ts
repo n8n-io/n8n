@@ -157,13 +157,13 @@ describe('useCanvasOperations', () => {
 	let workflowState: WorkflowState;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
+
 		const pinia = createTestingPinia({ initialState });
 		setActivePinia(pinia);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
-		vi.clearAllMocks();
 	});
 
 	describe('requireNodeTypeDescription', () => {
@@ -3783,6 +3783,8 @@ describe('useCanvasOperations', () => {
 	describe('replaceNodeParameters', () => {
 		it('should replace node parameters and track history', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowState = useWorkflowState();
+			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			const historyStore = mockedStore(useHistoryStore);
 
 			const nodeId = 'node1';
@@ -3796,12 +3798,14 @@ describe('useCanvasOperations', () => {
 				parameters: currentParameters,
 			});
 
+			workflowsStore.workflow.nodes = [node];
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: true });
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: newParameters,
 			});
@@ -3830,12 +3834,14 @@ describe('useCanvasOperations', () => {
 				parameters: currentParameters,
 			});
 
+			workflowsStore.workflow.nodes = [node];
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: false });
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: newParameters,
 			});
@@ -3849,12 +3855,14 @@ describe('useCanvasOperations', () => {
 			const currentParameters = { param1: 'value1' };
 			const newParameters = { param1: 'value2' };
 
+			workflowsStore.workflow.nodes = [];
 			workflowsStore.getNodeById.mockReturnValue(undefined);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters);
 
-			expect(workflowsStore.setNodeParameters).not.toHaveBeenCalled();
+			expect(setNodeParameters).not.toHaveBeenCalled();
 		});
 
 		it('should handle bulk tracking when replacing parameters for multiple nodes', () => {
@@ -3881,7 +3889,9 @@ describe('useCanvasOperations', () => {
 				parameters: currentParameters2,
 			});
 
+			workflowsStore.workflow.nodes = [node1, node2];
 			workflowsStore.getNodeById.mockReturnValueOnce(node1).mockReturnValueOnce(node2);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId1, currentParameters1, newParameters1, {
@@ -3895,7 +3905,7 @@ describe('useCanvasOperations', () => {
 
 			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
 			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledTimes(2);
+			expect(setNodeParameters).toHaveBeenCalledTimes(2);
 		});
 
 		it('should revert replaced node parameters', async () => {
@@ -3912,12 +3922,14 @@ describe('useCanvasOperations', () => {
 				parameters: newParameters,
 			});
 
+			workflowsStore.workflow.nodes = [node];
 			workflowsStore.getNodeById.mockReturnValue(node);
+			const setNodeParameters = vi.spyOn(workflowState, 'setNodeParameters');
 
 			const { revertReplaceNodeParameters } = useCanvasOperations();
 			await revertReplaceNodeParameters(nodeId, currentParameters, newParameters);
 
-			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+			expect(setNodeParameters).toHaveBeenCalledWith({
 				name: node.name,
 				value: currentParameters,
 			});

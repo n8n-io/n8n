@@ -194,17 +194,17 @@ watch(
 	display: flex;
 	width: 100%;
 	align-items: center;
-	padding: var(--spacing-2xs) 0;
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--2xs) 0;
+	gap: var(--spacing--2xs);
 }
 
 .selectedProjects {
 	li {
 		padding: 0;
-		border-bottom: var(--border-base);
+		border-bottom: var(--border);
 
 		&:first-child {
-			padding-top: var(--spacing-m);
+			padding-top: var(--spacing--md);
 		}
 
 		&:last-child {
@@ -218,6 +218,6 @@ watch(
 }
 
 .emoji {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 </style>

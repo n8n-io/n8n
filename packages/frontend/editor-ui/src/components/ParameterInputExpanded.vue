@@ -172,9 +172,9 @@ function onDocumentationUrlClick(): void {
 
 <style lang="scss" module>
 .errors {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 .hint {
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing--4xs);
 }
 </style>

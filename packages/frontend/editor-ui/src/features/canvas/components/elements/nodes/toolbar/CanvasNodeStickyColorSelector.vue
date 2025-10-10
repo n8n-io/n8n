@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: row;
 	width: fit-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .color {
@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
 	height: 20px;
 	border-width: 1px;
 	border-style: solid;
-	border-color: var(--color-foreground-xdark);
+	border-color: var(--color--foreground--shade-2);
 	border-radius: 50%;
 	background: var(--color-sticky-background);
 
@@ -155,15 +155,15 @@ onBeforeUnmount(() => {
 
 .option {
 	display: inline-block;
-	padding: var(--spacing-3xs);
-	color: var(--color-text-light);
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
 
 	svg {
-		width: var(--font-size-s) !important;
+		width: var(--font-size--sm) !important;
 	}
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 </style>

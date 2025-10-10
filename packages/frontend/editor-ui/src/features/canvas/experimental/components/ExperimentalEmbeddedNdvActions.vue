@@ -33,10 +33,10 @@ const emit = defineEmits<{ openNdv: []; toggleExpand: [] }>();
 .actions {
 	display: flex;
 	align-items: center;
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	& > button {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 </style>

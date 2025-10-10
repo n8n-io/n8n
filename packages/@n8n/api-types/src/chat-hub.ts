@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Z } from 'zod-class';
 
 /**
  * Supported AI model providers
@@ -39,4 +40,20 @@ export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 /**
  * Response type for fetching available chat models
  */
-export type ChatModelsResponse = ChatHubConversationModel[];
+export type ChatModelsResponse = Record<
+	ChatHubProvider,
+	{ models: Array<{ name: string }>; error?: string }
+>;
+
+export class ChatHubSendMessageRequest extends Z.class({
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	message: z.string(),
+	model: chatHubConversationModelSchema,
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+}) {}

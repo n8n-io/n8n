@@ -361,7 +361,7 @@ onMounted(async () => {
 
 .textBlock {
 	display: block;
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 
 .tooltipText {

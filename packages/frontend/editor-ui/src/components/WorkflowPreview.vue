@@ -281,7 +281,7 @@ watch(
 }
 
 .spinner {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	position: absolute;
 	top: 50% !important;
 	-ms-transform: translateY(-50%);

@@ -195,8 +195,8 @@ const projectLocation = computed(() => {
 .wrapper {
 	display: flex;
 	align-items: center;
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
+	border: var(--border);
+	border-radius: var(--radius);
 
 	&.no-border {
 		border: none;
@@ -204,32 +204,32 @@ const projectLocation = computed(() => {
 }
 
 .badge {
-	padding: var(--spacing-4xs) var(--spacing-2xs);
-	background-color: var(--color-background-xlight);
-	border-color: var(--color-foreground-base);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	background-color: var(--color--background--light-3);
+	border-color: var(--color--foreground);
 
 	z-index: 1;
 	position: relative;
 	height: 23px;
 	:global(.n8n-text),
 	a {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 
 .projectBadge {
 	& > span {
 		display: flex;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 	}
 }
 
 .count-badge {
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-4xs) var(--spacing-3xs);
-	color: var(--color-text-base);
-	border-left: var(--border-base);
-	line-height: var(--font-line-height-regular);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	color: var(--color--text);
+	border-left: var(--border);
+	line-height: var(--line-height--md);
 }
 
 .nowrap {

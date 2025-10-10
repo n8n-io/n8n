@@ -155,7 +155,7 @@ function getThStyle(column: DatatableColumn) {
 	align-items: center;
 	bottom: 0;
 	overflow: visible;
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 
 .pageSizeSelector {

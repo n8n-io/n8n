@@ -8,6 +8,8 @@ packages:
 
 minimumReleaseAge: 2880 # 2 days
 minimumReleaseAgeExclude:
+  - '@n8n/typeorm'
+  - '@n8n_io/ai-assistant-sdk'
   - eslint-plugin-storybook
 
 catalog:

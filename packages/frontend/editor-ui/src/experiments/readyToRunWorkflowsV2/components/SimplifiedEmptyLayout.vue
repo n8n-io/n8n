@@ -160,8 +160,8 @@ const emit = defineEmits<{
 
 .header {
 	position: fixed;
-	top: var(--spacing-l);
-	left: var(--spacing-l);
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
 	opacity: 0.6;
 }
 
@@ -174,11 +174,11 @@ const emit = defineEmits<{
 }
 
 .welcome {
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 }
 
 .welcomeTitle {
-	margin-bottom: var(--spacing-m);
+	margin-bottom: var(--spacing--md);
 }
 
 .welcomeDescription {
@@ -187,7 +187,7 @@ const emit = defineEmits<{
 
 .actionsContainer {
 	display: flex;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	justify-content: center;
 	flex-wrap: wrap;
 }
@@ -208,7 +208,7 @@ const emit = defineEmits<{
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 
 		.cardIcon svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 
@@ -223,12 +223,12 @@ const emit = defineEmits<{
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-m);
+	padding: var(--spacing--md);
 }
 
 .cardIcon {
 	font-size: 48px;
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 
 	svg {
 		transition: color 0.3s ease;

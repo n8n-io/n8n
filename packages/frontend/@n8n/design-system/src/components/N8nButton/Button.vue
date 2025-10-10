@@ -85,12 +85,12 @@ const classes = computed(() => {
 .el-button {
 	@include Button.n8n-button(true);
 
-	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--2xs);
+	--button-padding-horizontal: var(--spacing--xs);
+	--button-font-size: var(--font-size--2xs);
 
 	+ .el-button {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 
 	&.btn--cancel,
@@ -144,9 +144,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  */
 
 .xmini {
-	--button-padding-vertical: var(--spacing-4xs);
-	--button-padding-horizontal: var(--spacing-3xs);
-	--button-font-size: var(--font-size-3xs);
+	--button-padding-vertical: var(--spacing--4xs);
+	--button-padding-horizontal: var(--spacing--3xs);
+	--button-font-size: var(--font-size--3xs);
 
 	&.square {
 		height: 22px;
@@ -155,9 +155,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .mini {
-	--button-padding-vertical: var(--spacing-4xs);
-	--button-padding-horizontal: var(--spacing-2xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--4xs);
+	--button-padding-horizontal: var(--spacing--2xs);
+	--button-font-size: var(--font-size--2xs);
 
 	&.square {
 		height: 22px;
@@ -166,9 +166,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .small {
-	--button-padding-vertical: var(--spacing-3xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--3xs);
+	--button-padding-horizontal: var(--spacing--xs);
+	--button-font-size: var(--font-size--2xs);
 
 	&.square {
 		height: 26px;
@@ -177,9 +177,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .medium {
-	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-vertical: var(--spacing--2xs);
+	--button-padding-horizontal: var(--spacing--xs);
+	--button-font-size: var(--font-size--2xs);
 
 	&.square {
 		height: 30px;
@@ -195,9 +195,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .xlarge {
-	--button-padding-vertical: var(--spacing-xs);
-	--button-padding-horizontal: var(--spacing-s);
-	--button-font-size: var(--font-size-m);
+	--button-padding-vertical: var(--spacing--xs);
+	--button-padding-horizontal: var(--spacing--sm);
+	--button-font-size: var(--font-size--md);
 
 	&.square {
 		height: 46px;
@@ -213,42 +213,42 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-disabled-background-color: transparent;
 
 	&.primary {
-		--button-font-color: var(--color-primary);
-		--button-disabled-font-color: var(--color-primary-tint-1);
-		--button-disabled-border-color: var(--color-primary-tint-1);
+		--button-font-color: var(--color--primary);
+		--button-disabled-font-color: var(--color--primary--tint-1);
+		--button-disabled-border-color: var(--color--primary--tint-1);
 		--button-disabled-background-color: transparent;
 	}
 
 	&.success {
-		--button-font-color: var(--color-success);
-		--button-border-color: var(--color-success);
-		--button-hover-border-color: var(--color-success);
-		--button-hover-background-color: var(--color-success);
-		--button-active-background-color: var(--color-success);
-		--button-disabled-font-color: var(--color-success-light);
-		--button-disabled-border-color: var(--color-success-light);
+		--button-font-color: var(--color--success);
+		--button-border-color: var(--color--success);
+		--button-hover-border-color: var(--color--success);
+		--button-hover-background-color: var(--color--success);
+		--button-active-background-color: var(--color--success);
+		--button-disabled-font-color: var(--color--success--tint-1);
+		--button-disabled-border-color: var(--color--success--tint-1);
 		--button-disabled-background-color: transparent;
 	}
 
 	&.warning {
-		--button-font-color: var(--color-warning);
-		--button-border-color: var(--color-warning);
-		--button-hover-border-color: var(--color-warning);
-		--button-hover-background-color: var(--color-warning);
-		--button-active-background-color: var(--color-warning);
-		--button-disabled-font-color: var(--color-warning-tint-1);
-		--button-disabled-border-color: var(--color-warning-tint-1);
+		--button-font-color: var(--color--warning);
+		--button-border-color: var(--color--warning);
+		--button-hover-border-color: var(--color--warning);
+		--button-hover-background-color: var(--color--warning);
+		--button-active-background-color: var(--color--warning);
+		--button-disabled-font-color: var(--color--warning--tint-1);
+		--button-disabled-border-color: var(--color--warning--tint-1);
 		--button-disabled-background-color: transparent;
 	}
 
 	&.danger {
-		--button-font-color: var(--color-danger);
-		--button-border-color: var(--color-danger);
-		--button-hover-border-color: var(--color-danger);
-		--button-hover-background-color: var(--color-danger);
-		--button-active-background-color: var(--color-danger);
-		--button-disabled-font-color: var(--color-danger-tint-1);
-		--button-disabled-border-color: var(--color-danger-tint-1);
+		--button-font-color: var(--color--danger);
+		--button-border-color: var(--color--danger);
+		--button-hover-border-color: var(--color--danger);
+		--button-hover-background-color: var(--color--danger);
+		--button-active-background-color: var(--color--danger);
+		--button-disabled-font-color: var(--color--danger--tint-3);
+		--button-disabled-border-color: var(--color--danger--tint-3);
 		--button-disabled-background-color: transparent;
 	}
 }
@@ -271,35 +271,35 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	}
 
 	&.primary {
-		--button-font-color: var(--color-primary);
-		--button-hover-font-color: var(--color-primary-shade-1);
-		--button-active-font-color: var(--color-primary-shade-1);
-		--button-focus-font-color: var(--color-primary);
-		--button-disabled-font-color: var(--color-primary-tint-1);
+		--button-font-color: var(--color--primary);
+		--button-hover-font-color: var(--color--primary--shade-1);
+		--button-active-font-color: var(--color--primary--shade-1);
+		--button-focus-font-color: var(--color--primary);
+		--button-disabled-font-color: var(--color--primary--tint-1);
 	}
 
 	&.success {
-		--button-font-color: var(--color-success);
-		--button-hover-font-color: var(--color-success-shade-1);
-		--button-active-font-color: var(--color-success-shade-1);
-		--button-focus-font-color: var(--color-success);
-		--button-disabled-font-color: var(--color-success-light);
+		--button-font-color: var(--color--success);
+		--button-hover-font-color: var(--color--success--shade-1);
+		--button-active-font-color: var(--color--success--shade-1);
+		--button-focus-font-color: var(--color--success);
+		--button-disabled-font-color: var(--color--success--tint-1);
 	}
 
 	&.warning {
-		--button-font-color: var(--color-warning);
-		--button-hover-font-color: var(--color-warning-shade-1);
-		--button-active-font-color: var(--color-warning-shade-1);
-		--button-focus-font-color: var(--color-warning);
-		--button-disabled-font-color: var(--color-warning-tint-1);
+		--button-font-color: var(--color--warning);
+		--button-hover-font-color: var(--color--warning--shade-1);
+		--button-active-font-color: var(--color--warning--shade-1);
+		--button-focus-font-color: var(--color--warning);
+		--button-disabled-font-color: var(--color--warning--tint-1);
 	}
 
 	&.danger {
-		--button-font-color: var(--color-danger);
-		--button-hover-font-color: var(--color-danger-shade-1);
-		--button-active-font-color: var(--color-danger-shade-1);
-		--button-focus-font-color: var(--color-danger);
-		--button-disabled-font-color: var(--color-danger-tint-1);
+		--button-font-color: var(--color--danger);
+		--button-hover-font-color: var(--color--danger--shade-1);
+		--button-active-font-color: var(--color--danger--shade-1);
+		--button-focus-font-color: var(--color--danger);
+		--button-disabled-font-color: var(--color--danger--tint-3);
 	}
 
 	&:hover {

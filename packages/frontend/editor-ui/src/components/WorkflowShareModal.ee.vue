@@ -390,6 +390,6 @@ watch(
 }
 
 .roleSelectRemoveOption {
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: 1px solid var(--color--foreground);
 }
 </style>

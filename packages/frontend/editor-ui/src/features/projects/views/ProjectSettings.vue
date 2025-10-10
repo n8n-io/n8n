@@ -638,21 +638,21 @@ onMounted(() => {
 	form {
 		width: 100%;
 		max-width: var(--content-container-width);
-		padding: 0 var(--spacing-2xl);
+		padding: 0 var(--spacing--2xl);
 
 		fieldset {
-			padding-bottom: var(--spacing-xl);
+			padding-bottom: var(--spacing--xl);
 
 			h3 {
 				label {
-					font-size: var(--font-size-l);
+					font-size: var(--font-size--lg);
 				}
 			}
 
 			label {
 				display: block;
-				margin-bottom: var(--spacing-xs);
-				font-size: var(--font-size-s);
+				margin-bottom: var(--spacing--xs);
+				font-size: var(--font-size--sm);
 			}
 		}
 	}
@@ -661,7 +661,7 @@ onMounted(() => {
 .header {
 	width: 100%;
 	max-width: var(--content-container-width);
-	padding: var(--spacing-l) var(--spacing-2xl) 0;
+	padding: var(--spacing--lg) var(--spacing--2xl) 0;
 }
 
 .upgrade {
@@ -675,17 +675,17 @@ onMounted(() => {
 }
 
 .membersTableContainer {
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 
 .search {
 	max-width: var(--project-field-width);
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .projectName {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	max-width: var(--project-field-width);
 
 	.projectNameInput {

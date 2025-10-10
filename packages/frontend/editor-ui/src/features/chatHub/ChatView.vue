@@ -6,12 +6,18 @@ import hljs from 'highlight.js/lib/core';
 import { N8nHeading, N8nIcon, N8nText, N8nScrollArea } from '@n8n/design-system';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import ModelSelector from './components/ModelSelector.vue';
+import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { ChatMessage, Suggestion } from './chat.types';
+import {
+	credentialsMapSchema,
+	type ChatMessage,
+	type CredentialsMap,
+	type Suggestion,
+} from './chat.types';
 import {
 	chatHubConversationModelSchema,
 	type ChatHubProvider,
@@ -23,41 +29,23 @@ import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import { useLocalStorage } from '@vueuse/core';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
+import {
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
+} from '@/constants';
 import { SUGGESTIONS } from '@/features/chatHub/constants';
-import { isSameModel } from '@/features/chatHub/chat.utils';
+import { findOneFromModelsResponse, modelsResponseContains } from '@/features/chatHub/chat.utils';
 
 const chatStore = useChatStore();
 const userStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 
-onMounted(async () => {
-	await Promise.all([
-		credentialsStore.fetchCredentialTypes(false),
-		credentialsStore.fetchAllCredentials(),
-	]);
-
-	const models = await chatStore.fetchChatModels(
-		Object.fromEntries(
-			chatHubProviderSchema.options.map((provider) => [
-				provider,
-				credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])[0]?.id ??
-					null,
-			]),
-		) as Record<ChatHubProvider, string | null>,
-	);
-	const selected = selectedModel.value;
-
-	if (selected === null || models.every((model) => !isSameModel(model, selected))) {
-		selectedModel.value = models[0] ?? null;
-	}
-});
-
 const message = ref('');
 const sessionId = ref(uuidv4());
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
 const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	null,
@@ -67,8 +55,7 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 		serializer: {
 			read: (value) => {
 				try {
-					const result = chatHubConversationModelSchema.parse(JSON.parse(value));
-					return result;
+					return chatHubConversationModelSchema.parse(JSON.parse(value));
 				} catch (error) {
 					return null;
 				}
@@ -77,6 +64,43 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+
+const selectedCredentials = useLocalStorage<CredentialsMap>(
+	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
+	{},
+	{
+		writeDefaults: false,
+		shallow: true,
+		serializer: {
+			read: (value) => {
+				try {
+					return credentialsMapSchema.parse(JSON.parse(value));
+				} catch (error) {
+					return {};
+				}
+			},
+			write: (value) => JSON.stringify(value),
+		},
+	},
+);
+
+const autoSelectCredentials = computed<CredentialsMap>(() =>
+	Object.fromEntries(
+		chatHubProviderSchema.options.map((provider) => {
+			const lastCreatedCredential =
+				credentialsStore
+					.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])
+					.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
+
+			return [provider, lastCreatedCredential];
+		}),
+	),
+);
+
+const mergedCredentials = computed(() => ({
+	...autoSelectCredentials.value,
+	...selectedCredentials.value,
+}));
 
 const hasMessages = computed(() => chatStore.chatMessages.length > 0);
 const inputPlaceholder = computed(() => {
@@ -122,11 +146,49 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+// TODO: fix duplicate requests
+watch(
+	mergedCredentials,
+	async (credentials) => {
+		const models = await chatStore.fetchChatModels(credentials);
+		const selected = selectedModel.value;
+
+		if (selected === null || !modelsResponseContains(models, selected)) {
+			selectedModel.value = findOneFromModelsResponse(models) ?? null;
+		}
+	},
+	{ immediate: true },
+);
+
+onMounted(async () => {
+	await Promise.all([
+		credentialsStore.fetchCredentialTypes(false),
+		credentialsStore.fetchAllCredentials(),
+	]);
+});
+
 function onModelChange(selection: ChatHubConversationModel) {
 	selectedModel.value = selection;
 }
 
 function onConfigure(provider: ChatHubProvider) {
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0) {
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+
+	credentialSelectorProvider.value = provider;
+	uiStore.openModal('chatCredentialSelector');
+}
+
+function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
+	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialId };
+}
+
+function onCreateNewCredential(provider: ChatHubProvider) {
 	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
@@ -135,7 +197,19 @@ function onSubmit() {
 		return;
 	}
 
-	chatStore.askAI(message.value, sessionId.value, selectedModel.value);
+	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+
+	if (!credentialsId) {
+		return;
+	}
+
+	chatStore.askAI(message.value, sessionId.value, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	});
+
 	message.value = '';
 }
 
@@ -177,11 +251,19 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	<PageViewLayout>
 		<ModelSelector
 			:class="$style.modelSelector"
-			:models="chatStore.models"
+			:models="chatStore.models ?? null"
 			:selected-model="selectedModel"
 			:disabled="chatStore.isResponding"
 			@change="onModelChange"
 			@configure="onConfigure"
+		/>
+		<CredentialSelectorModal
+			v-if="credentialSelectorProvider"
+			:key="credentialSelectorProvider"
+			:provider="credentialSelectorProvider"
+			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
+			@select="onCredentialSelected"
+			@create-new="onCreateNewCredential"
 		/>
 		<div
 			:class="{
@@ -334,8 +416,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
-	padding-bottom: var(--spacing-l);
+	gap: var(--spacing--md);
+	padding-bottom: var(--spacing--lg);
 
 	height: 100%;
 	min-height: 0;
@@ -349,7 +431,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 }
 
 .fullHeight {
@@ -367,9 +449,9 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 .suggestions {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(220px, 1fr));
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	width: min(960px, 90%);
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing--md);
 }
 @media (max-width: 800px) {
 	.suggestions {
@@ -379,11 +461,11 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 .card {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing-s);
-	padding: var(--spacing-m);
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-base);
-	border-radius: var(--border-radius-large);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--md);
+	border: 1px solid var(--color--foreground);
+	background: var(--color--background);
+	border-radius: var(--radius--lg);
 	text-align: left;
 	cursor: pointer;
 	transition:
@@ -392,7 +474,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		border-color 0.06s ease;
 }
 .card:hover {
-	border-color: var(--color-primary);
+	border-color: var(--color--primary);
 	background: rgba(124, 58, 237, 0.04);
 }
 .cardIcon {
@@ -419,15 +501,15 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 }
 
 .thread {
-	padding: var(--spacing-m);
-	background: var(--color-background-light);
+	padding: var(--spacing--md);
+	background: var(--color--background--light-2);
 }
 
 .message {
 	display: grid;
 	grid-template-columns: 28px 1fr;
-	gap: var(--spacing-s);
-	margin-bottom: var(--spacing-m);
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--md);
 }
 .avatar {
 	display: grid;
@@ -435,23 +517,23 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	width: 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: var(--color-background-xlight);
-	color: var(--color-text-light);
+	background: var(--color--background--light-3);
+	color: var(--color--text--tint-1);
 }
 
 .chatMessage {
 	display: block;
 	position: relative;
 	max-width: fit-content;
-	padding: var(--spacing-m);
-	border-radius: var(--border-radius-large);
+	padding: var(--spacing--md);
+	border-radius: var(--radius--lg);
 
 	&.chatMessageFromAssistant {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 	}
 
 	&.chatMessageFromUser {
-		background-color: var(--color-background-medium);
+		background-color: var(--color--background--shade-1);
 	}
 
 	> .chatMessageMarkdown {
@@ -468,7 +550,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		}
 
 		p {
-			margin: var(--spacing-xs) 0;
+			margin: var(--spacing--xs) 0;
 		}
 
 		pre {
@@ -522,7 +604,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	display: grid;
 	place-items: center;
 	width: 100%;
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing--md);
 }
 .inputWrap {
 	position: relative;
@@ -539,14 +621,14 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	flex: 1;
 	font: inherit;
 	padding: 14px 112px 14px 14px;
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-light);
-	color: var(--color-text-dark);
+	border: 1px solid var(--color--foreground);
+	background: var(--color--background--light-2);
+	color: var(--color--text--shade-1);
 	border-radius: 16px;
 	outline: none;
 }
 .input:focus {
-	border-color: var(--color-primary);
+	border-color: var(--color--primary);
 	box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
@@ -568,19 +650,19 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	border-radius: 10px;
 	border: none;
 	background: transparent;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	cursor: pointer;
 }
 .iconBtn:hover {
 	background: rgba(0, 0, 0, 0.04);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 .sendBtn {
 	height: 32px;
 	padding: 0 10px;
 	border-radius: 10px;
 	border: none;
-	background: var(--color-primary);
+	background: var(--color--primary);
 	color: #fff;
 	font-weight: 600;
 	cursor: pointer;
@@ -591,15 +673,15 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 }
 
 .disclaimer {
-	margin-top: var(--spacing-xs);
-	color: var(--color-text-lighter);
+	margin-top: var(--spacing--xs);
+	color: var(--color--text--tint-2);
 	text-align: center;
 }
 
 .modelSelector {
 	position: absolute;
-	top: var(--spacing-s);
-	left: var(--spacing-s);
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
 	z-index: 100;
 }
 </style>

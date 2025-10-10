@@ -229,6 +229,7 @@ describe('InsightsService', () => {
 
 		test('mixed period data are summarized correctly', async () => {
 			// ARRANGE
+
 			// current period
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
@@ -338,11 +339,11 @@ describe('InsightsService', () => {
 
 			// ASSERT
 			expect(summary).toEqual({
-				averageRunTime: { value: 0, unit: 'millisecond', deviation: -7157.8 },
+				averageRunTime: { value: 0, unit: 'millisecond', deviation: -8947.25 },
 				failed: { value: 20, unit: 'count', deviation: 18 },
-				failureRate: { value: 0.909, unit: 'ratio', deviation: 0.509 },
+				failureRate: { value: 0.87, unit: 'ratio', deviation: 0.37 },
 				timeSaved: { value: 0, unit: 'minute', deviation: -15 },
-				total: { value: 22, unit: 'count', deviation: 17 },
+				total: { value: 23, unit: 'count', deviation: 19 },
 			});
 		});
 
@@ -687,7 +688,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
@@ -696,7 +697,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'day',
-					periodStart: now.minus({ days: 14 }),
+					periodStart: now.minus({ days: 15 }),
 				});
 			}
 
@@ -843,21 +844,20 @@ describe('InsightsService', () => {
 				});
 
 				// Barely in range insight (should be included)
-				// 1 hour before 14 days ago
 				await createCompactedInsightsEvent(workflow, {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
-				// 14 days ago
+				// 15 days ago
 				await createCompactedInsightsEvent(workflow, {
 					type: 'success',
 					value: 1,
 					periodUnit: 'day',
-					periodStart: now.minus({ days: 14 }),
+					periodStart: now.minus({ days: 15 }),
 				});
 			}
 
@@ -1001,12 +1001,11 @@ describe('InsightsService', () => {
 				});
 
 				// Barely in range insight (should be included)
-				// 1 hour before 14 days ago
 				await createCompactedInsightsEvent(workflow, {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
+					periodStart: DateTime.utc().minus({ days: 14 }).startOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
@@ -1015,7 +1014,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'day',
-					periodStart: DateTime.utc().minus({ days: 14 }),
+					periodStart: DateTime.utc().minus({ days: 15 }),
 				});
 			}
 
@@ -1199,25 +1198,29 @@ describe('InsightsService', () => {
 			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
 			licenseStateMock.getInsightsMaxHistory.mockReturnValue(30);
 
-			const today = DateTime.now().startOf('day');
-			const startDate = today.minus({ hours: 12 }).toJSDate();
-			const endDate = today.toJSDate();
+			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
+			const endDate = startDate.plus({ hours: 10 });
 
-			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
-				new UserError('Hourly data is not available with your current license'),
-			);
+			expect(() =>
+				insightsService.validateDateFiltersLicense({
+					startDate: startDate.toJSDate(),
+					endDate: endDate.toJSDate(),
+				}),
+			).toThrowError(new UserError('Hourly data is not available with your current license'));
 		});
 
 		test('does not throw if granularity is hour and hourly data is licensed', () => {
 			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
 			licenseStateMock.getInsightsMaxHistory.mockReturnValue(30);
 
-			const today = DateTime.now().startOf('day');
-			const startDate = today.minus({ hours: 12 }).toJSDate();
-			const endDate = today.toJSDate();
+			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
+			const endDate = startDate.endOf('day');
 
 			expect(() =>
-				insightsService.validateDateFiltersLicense({ startDate, endDate }),
+				insightsService.validateDateFiltersLicense({
+					startDate: startDate.toJSDate(),
+					endDate: endDate.toJSDate(),
+				}),
 			).not.toThrow();
 		});
 

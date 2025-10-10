@@ -131,14 +131,14 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 
 <style lang="scss" module>
 .spaced {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .footer {
 	text-align: right;
 
 	> * {
-		margin-left: var(--spacing-s);
+		margin-left: var(--spacing--sm);
 	}
 }
 </style>

@@ -127,7 +127,47 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(invalidPattern);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must follow pattern'),
+				text: expect.stringContaining('Must have at least 2 groups'),
+			});
+		});
+
+		it('should reject properties without values', async () => {
+			const invalidPattern = `
+				:root {
+					--color: #0d6efd;
+					--spacing: 4px;
+				}
+			`;
+			const result = await lintCSS(invalidPattern);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must have at least 2 groups'),
+			});
+		});
+
+		it('should reject spacing property without value', async () => {
+			const invalidPattern = `
+				:root {
+					--spacing: 4px;
+				}
+			`;
+			const result = await lintCSS(invalidPattern);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must have at least 2 groups'),
+			});
+		});
+
+		it('should reject variable without proeprty', async () => {
+			const invalidPattern = `
+				:root {
+					--button: 4px;
+				}
+			`;
+			const result = await lintCSS(invalidPattern);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 
@@ -140,7 +180,7 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(invalidPattern);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must follow pattern'),
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 
@@ -404,14 +444,24 @@ describe('css-var-naming rule', () => {
 		it('should accept scale values', async () => {
 			const scaleValues = `
 				:root {
-					--spacing--2xs: 2px;
-					--spacing--xs: 4px;
-					--spacing--sm: 8px;
-					--spacing--md: 16px;
+					--spacing--5xs: 2px;
+					--spacing--4xs: 4px;
+					--spacing--3xs: 6px;
+					--spacing--2xs: 8px;
+					--spacing--xs: 12px;
+					--spacing--sm: 16px;
+					--spacing--md: 20px;
 					--spacing--lg: 24px;
 					--spacing--xl: 32px;
 					--spacing--2xl: 48px;
 					--spacing--3xl: 64px;
+					--spacing--4xl: 128px;
+					--spacing--5xl: 256px;
+					--font-size--5xs: 8px;
+					--font-size--4xs: 9px;
+					--font-size--3xs: 10px;
+					--font-size--2xs: 12px;
+					--font-size--xs: 13px;
 					--radius--none: 0;
 					--radius--sm: 2px;
 					--radius--md: 4px;
@@ -441,6 +491,33 @@ describe('css-var-naming rule', () => {
 			`;
 			const result = await lintCSS(descriptiveValues);
 			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should accept font-weight specific values only with font-weight property', async () => {
+			const fontWeightValues = `
+				:root {
+					--font-weight--regular: 400;
+					--font-weight--medium: 500;
+					--font-weight--semibold: 600;
+					--font-weight--bold: 700;
+					--button--font-weight--bold: 700;
+				}
+			`;
+			const result = await lintCSS(fontWeightValues);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should reject font-weight specific values with non-font-weight properties', async () => {
+			const invalidFontWeight = `
+				:root {
+					--spacing--bold: 20px;
+				}
+			`;
+			const result = await lintCSS(invalidFontWeight);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('can only be used with font-weight property'),
+			});
 		});
 
 		it('should reject very short value names (<4 chars)', async () => {
@@ -502,7 +579,7 @@ describe('css-var-naming rule', () => {
 			const result = await lintCSS(invalidVarReferences);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must follow pattern'),
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 
@@ -594,6 +671,38 @@ describe('css-var-naming rule', () => {
 	});
 
 	describe('edge cases', () => {
+		it('should accept single-property shorthand variables', async () => {
+			const singleProperties = `
+				:root {
+					--shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+					--radius: 4px;
+					--border-color: #ddd;
+					--border-style: solid;
+					--border-width: 1px;
+					--border: 1px solid #ddd;
+					--font-family: InterVariable, sans-serif;
+				}
+			`;
+			const result = await lintCSS(singleProperties);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should accept shorthand properties in component patterns', async () => {
+			const componentShorthand = `
+				:root {
+					--n8n--button--border-color: #ddd;
+					--button--border: 1px solid #ddd;
+					--chat--font--font-family: InterVariable, sans-serif;
+					--menu--tab--radius: 4px;
+					--card--shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+					--input--border-style: solid;
+					--input--border-width: 1px;
+				}
+			`;
+			const result = await lintCSS(componentShorthand);
+			expect(result.warnings).toHaveLength(0);
+		});
+
 		it('should accept variables with numbers in groups', async () => {
 			const numbersInGroups = `
 				:root {

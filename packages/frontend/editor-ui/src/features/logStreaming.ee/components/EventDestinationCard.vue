@@ -187,7 +187,7 @@ async function onAction(action: string) {
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
-	padding: 0 0 0 var(--spacing-s);
+	padding: 0 0 0 var(--spacing--sm);
 	align-items: stretch;
 
 	&:hover {
@@ -197,23 +197,23 @@ async function onAction(action: string) {
 
 .activeStatusText {
 	width: 64px; // Required to avoid jumping when changing active state
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing--2xs);
 	box-sizing: border-box;
 	display: inline-block;
 	text-align: right;
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	word-break: break-word;
-	padding: var(--spacing-s) 0 0 var(--spacing-s);
+	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
 }
 
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .cardActions {
@@ -221,7 +221,7 @@ async function onAction(action: string) {
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 </style>

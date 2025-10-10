@@ -19,15 +19,15 @@ defineProps<{
 
 <style lang="scss" module>
 .block {
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 }
 
 .header {
-	padding: 0 0 var(--spacing-4xs);
-	border-bottom: var(--border-base);
+	padding: 0 0 var(--spacing--4xs);
+	border-bottom: var(--border);
 }
 
 .content {
-	padding: var(--spacing-xs) 0 0;
+	padding: var(--spacing--xs) 0 0;
 }
 </style>

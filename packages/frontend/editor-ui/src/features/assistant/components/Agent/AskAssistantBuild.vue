@@ -318,21 +318,21 @@ defineExpose({
 }
 
 .topText {
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .newWorkflowButtonWrapper {
 	display: flex;
 	flex-direction: column;
 	flex-flow: wrap;
-	gap: var(--spacing-2xs);
-	background-color: var(--color-background-light);
-	padding: var(--spacing-xs);
+	gap: var(--spacing--2xs);
+	background-color: var(--color--background--light-2);
+	padding: var(--spacing--xs);
 	border: 0;
 }
 
 .newWorkflowText {
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
 }
 </style>

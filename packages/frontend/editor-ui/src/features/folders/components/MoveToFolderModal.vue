@@ -504,17 +504,17 @@ onMounted(async () => {
 }
 
 .description {
-	font-size: var(--font-size-s);
-	margin: var(--spacing-s) 0;
+	font-size: var(--font-size--sm);
+	margin: var(--spacing--sm) 0;
 }
 
 .block {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .footer {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
 }
 
@@ -523,6 +523,6 @@ onMounted(async () => {
 }
 
 .credentialsCallout {
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 </style>

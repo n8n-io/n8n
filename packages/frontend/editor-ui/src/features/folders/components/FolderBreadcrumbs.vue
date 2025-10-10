@@ -257,7 +257,7 @@ onBeforeUnmount(() => {
 
 .action-toggle {
 	span[role='button'] {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 </style>

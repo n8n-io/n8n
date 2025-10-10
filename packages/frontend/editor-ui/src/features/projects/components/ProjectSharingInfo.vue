@@ -50,7 +50,7 @@ const projectIcon = computed(() => {
 	display: flex;
 	align-items: center;
 	width: 100%;
-	padding: var(--spacing-2xs) 0;
+	padding: var(--spacing--2xs) 0;
 	gap: 8px;
 	justify-content: space-between;
 
@@ -61,16 +61,16 @@ const projectIcon = computed(() => {
 	}
 
 	p {
-		font-size: var(--font-size-s);
-		color: var(--color-text-dark);
-		font-weight: var(--font-weight-medium);
-		line-height: var(--font-line-height-loose);
+		font-size: var(--font-size--sm);
+		color: var(--color--text--shade-1);
+		font-weight: var(--font-weight--medium);
+		line-height: var(--line-height--lg);
 	}
 
 	small {
-		font-size: var(--font-size-xs);
-		color: var(--color-text-light);
-		line-height: var(--font-line-height-loose);
+		font-size: var(--font-size--xs);
+		color: var(--color--text--tint-1);
+		line-height: var(--line-height--lg);
 	}
 }
 
