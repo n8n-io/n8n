@@ -60,13 +60,13 @@ function runningSince(started: Date): string {
 .accordionItem {
 	display: block !important;
 	text-align: left;
-	margin-bottom: var(--spacing-4xs);
+	margin-bottom: var(--spacing--4xs);
 }
 
 .empty {
 	display: block !important;
 	text-align: left;
-	margin-top: var(--spacing-2xs);
-	margin-left: var(--spacing-4xs);
+	margin-top: var(--spacing--2xs);
+	margin-left: var(--spacing--4xs);
 }
 </style>

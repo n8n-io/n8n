@@ -66,11 +66,11 @@
 
 	@include mixins.when(exceed) {
 		.el-textarea__inner {
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 		}
 
 		.el-input__count {
-			color: var(--color-danger);
+			color: var(--color--danger);
 		}
 	}
 }
@@ -128,7 +128,7 @@
 		min-height: var.$input-height;
 		line-height: var.$input-height;
 		outline: none;
-		padding: 0 0 0 var(--spacing-2xs);
+		padding: 0 0 0 var(--spacing--2xs);
 		transition: var.$border-transition-base;
 		width: 100%;
 
@@ -145,10 +145,10 @@
 	@include mixins.e(suffix) {
 		position: absolute;
 		height: 100%;
-		right: var(--spacing-2xs);
+		right: var(--spacing--2xs);
 		top: 0;
 		text-align: center;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		transition: all 0.3s;
 		pointer-events: none;
 		display: flex;
@@ -217,12 +217,12 @@
 
 	@include mixins.when(exceed) {
 		.el-input__inner {
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 		}
 
 		.el-input__suffix {
 			.el-input__count {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 		}
 	}
@@ -309,7 +309,7 @@
 		padding: 0 10px;
 		width: 1px;
 		white-space: nowrap;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 
 		&:focus {
 			outline: none;

@@ -78,9 +78,9 @@ defineExpose({
 .searchContainer {
 	display: flex;
 	height: 40px;
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 	align-items: center;
-	margin: var(--search-margin, var(--spacing-s));
+	margin: var(--search-margin, var(--spacing--sm));
 	filter: drop-shadow(0 2px 5px rgba(46, 46, 50, 0.04));
 
 	border: 1px solid $node-creator-border-color;
@@ -89,14 +89,14 @@ defineExpose({
 	border-radius: 4px;
 
 	&:focus-within {
-		border-color: var(--color-secondary);
+		border-color: var(--color--secondary);
 	}
 }
 
 .prefix {
 	text-align: center;
-	font-size: var(--font-size-m);
-	margin-right: var(--spacing-xs);
+	font-size: var(--font-size--md);
+	margin-right: var(--spacing--xs);
 
 	&.active {
 		color: $color-primary !important;
@@ -110,10 +110,10 @@ defineExpose({
 		width: 100%;
 		border: none;
 		outline: none;
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 		appearance: none;
-		background-color: var(--color-background-xlight);
-		color: var(--color-text-dark);
+		background-color: var(--color--background--light-3);
+		color: var(--color--text--shade-1);
 
 		&::placeholder,
 		&::-webkit-input-placeholder {

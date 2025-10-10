@@ -194,7 +194,6 @@ function onBackButton() {
 						:circle="false"
 						:show-tooltip="false"
 						:size="20"
-						:use-updated-icons="true"
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
 
@@ -271,13 +270,13 @@ function onBackButton() {
 	z-index: 1;
 }
 .info {
-	margin: var(--spacing-2xs) var(--spacing-s);
+	margin: var(--spacing--2xs) var(--spacing--sm);
 }
 .backButton {
 	background: transparent;
 	border: none;
 	cursor: pointer;
-	padding: var(--spacing-2xs) var(--spacing-xs) 0 0;
+	padding: var(--spacing--2xs) var(--spacing--xs) 0 0;
 }
 
 .backButtonIcon {
@@ -286,7 +285,8 @@ function onBackButton() {
 }
 .nodeIcon {
 	--node-icon-size: 20px;
-	margin-right: var(--spacing-s);
+	--node-icon-color: var(--color--text);
+	margin-right: var(--spacing--sm);
 }
 .renderedItems {
 	overflow: auto;
@@ -294,7 +294,7 @@ function onBackButton() {
 	display: flex;
 	flex-direction: column;
 	scrollbar-width: none; /* Firefox 64 */
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 	&::-webkit-scrollbar {
 		display: none;
 	}
@@ -303,10 +303,10 @@ function onBackButton() {
 	flex-shrink: 0;
 }
 .nodesListPanel {
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	height: 100%;
 	background-color: $node-creator-background-color;
-	--color-background-node-icon-badge: var(--color-background-xlight);
+	--color-background-node-icon-badge: var(--color--background--light-3);
 	width: var(--node-creator-width);
 	display: flex;
 	flex-direction: column;
@@ -321,12 +321,12 @@ function onBackButton() {
 	}
 }
 .footer {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	margin: 0 var(--spacing-xs) 0;
-	padding: var(--spacing-4xs) 0;
-	line-height: var(--font-line-height-regular);
-	border-top: 1px solid var(--color-foreground-base);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	margin: 0 var(--spacing--xs) 0;
+	padding: var(--spacing--4xs) 0;
+	line-height: var(--line-height--md);
+	border-top: 1px solid var(--color--foreground);
 	z-index: 1;
 	margin-top: -1px;
 }
@@ -335,11 +335,11 @@ function onBackButton() {
 	align-items: center;
 }
 .header {
-	font-size: var(--font-size-l);
-	font-weight: var(--font-weight-bold);
-	line-height: var(--font-line-height-compact);
+	font-size: var(--font-size--lg);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--sm);
 
-	padding: var(--spacing-s) var(--spacing-s);
+	padding: var(--spacing--sm) var(--spacing--sm);
 
 	&.hasBg {
 		border-bottom: $node-creator-border-color solid 1px;
@@ -348,25 +348,25 @@ function onBackButton() {
 }
 .title {
 	line-height: 24px;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-l);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--lg);
 	margin: 0;
 
 	.hasBg & {
-		font-size: var(--font-size-s-m);
+		font-size: var(--font-size--sm-m);
 		line-height: 22px;
 	}
 }
 .subtitle {
-	margin-top: var(--spacing-4xs);
-	font-size: var(--font-size-s);
+	margin-top: var(--spacing--4xs);
+	font-size: var(--font-size--sm);
 	line-height: 19px;
 
-	color: var(--color-text-base);
-	font-weight: var(--font-weight-regular);
+	color: var(--color--text);
+	font-weight: var(--font-weight--regular);
 }
 .offsetSubtitle {
-	margin-left: calc(var(--spacing-xl) + var(--spacing-4xs));
+	margin-left: calc(var(--spacing--xl) + var(--spacing--4xs));
 }
 </style>
 

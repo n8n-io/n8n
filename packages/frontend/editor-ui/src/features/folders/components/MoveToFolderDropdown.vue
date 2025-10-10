@@ -181,19 +181,19 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 <style module lang="scss">
 .move-folder-dropdown {
 	display: flex;
-	padding-top: var(--spacing-2xs);
+	padding-top: var(--spacing--2xs);
 }
 
 .folder-select-item {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 	max-width: 90%;
 	overflow: hidden;
 	white-space: nowrap;
 
 	li {
-		padding: var(--spacing-4xs) var(--spacing-5xs) var(--spacing-5xs);
+		padding: var(--spacing--4xs) var(--spacing--5xs) var(--spacing--5xs);
 	}
 }
 
@@ -210,21 +210,21 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 	overflow: hidden;
 	text-overflow: ellipsis;
 
-	color: var(--color-text-light);
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-xsmall);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xs);
 }
 
 .item {
-	max-width: var(--spacing-4xl);
+	max-width: var(--spacing--4xl);
 }
 
 .item.current span {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .separator {
-	font-size: var(--font-size-s);
-	color: var(--color-text-light);
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
 }
 </style>

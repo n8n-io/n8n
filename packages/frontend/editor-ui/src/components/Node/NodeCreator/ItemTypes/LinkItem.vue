@@ -19,21 +19,15 @@ defineProps<Props>();
 		:show-action-arrow="true"
 	>
 		<template #icon>
-			<N8nNodeIcon
-				type="icon"
-				:name="link.icon"
-				:circle="false"
-				:show-tooltip="false"
-				:use-updated-icons="true"
-			/>
+			<N8nNodeIcon type="icon" :name="link.icon" :circle="false" :show-tooltip="false" />
 		</template>
 	</N8nNodeCreatorNode>
 </template>
 
 <style lang="scss" module>
 .creatorLink {
-	--action-arrow-color: var(--color-text-light);
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-xs);
+	--action-arrow-color: var(--color--text--tint-1);
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--xs);
 }
 </style>

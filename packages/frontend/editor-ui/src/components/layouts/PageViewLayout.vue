@@ -16,10 +16,10 @@
 	max-width: var(--content-container-width);
 	box-sizing: border-box;
 	align-content: start;
-	padding: var(--spacing-l) var(--spacing-2xl) 0;
+	padding: var(--spacing--lg) var(--spacing--2xl) 0;
 
 	@include mixins.breakpoint('sm-and-down') {
-		padding: var(--spacing-s) var(--spacing-s) 0;
+		padding: var(--spacing--sm) var(--spacing--sm) 0;
 	}
 }
 

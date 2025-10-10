@@ -1,8 +1,8 @@
 import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubProvider,
-	type ChatHubConversationModel,
 	type ChatModelsResponse,
+	chatHubProviderSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -18,62 +18,70 @@ import {
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
 	type IConnections,
 	type INode,
-	type INodeCredentialsDetails,
 	type ITaskData,
 	type IWorkflowBase,
 	type StartNodeData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatPayloadWithCredentials } from './chat-hub.types';
+import type { ChatPayloadWithCredentials, ChatMessage } from './chat-hub.types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ActiveExecutions } from '@/active-executions';
 
 @Service()
 export class ChatHubService {
+	private sesssions: Map<string, ChatMessage[]>;
+
 	constructor(
 		private readonly logger: Logger,
+		private readonly credentialsService: CredentialsService,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-	) {}
+		private readonly activeExecutions: ActiveExecutions,
+	) {
+		this.sesssions = new Map<string, ChatMessage[]>();
+	}
 
 	async getModels(
-		userId: string,
+		user: User,
 		credentialIds: Record<ChatHubProvider, string | null>,
 	): Promise<ChatModelsResponse> {
-		const models: ChatHubConversationModel[] = [];
-		const additionalData = await getBase({ userId });
+		const additionalData = await getBase({ userId: user.id });
 
-		for (const [providerKey, credentialId] of Object.entries(credentialIds)) {
-			if (!credentialId) {
-				continue;
-			}
+		const responses = await Promise.all(
+			chatHubProviderSchema.options.map<
+				Promise<[ChatHubProvider, ChatModelsResponse[ChatHubProvider]]>
+			>(async (provider) => {
+				const credentialId = credentialIds[provider];
 
-			// Type assertion is safe here because credentialIds type guarantees valid keys
-			const provider = providerKey as ChatHubProvider;
-			const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+				if (!credentialId) {
+					return [provider, { models: [] }];
+				}
 
-			try {
-				// Get the decrypted credential data
-				const nodeCredentials: INodeCredentialsDetails = {
-					id: credentialId,
-					name: credentialType,
-				};
+				// Ensure the user has the permission to read the credential
+				await this.credentialsService.getOne(user, credentialId, false);
 
 				const credentials = await this.credentialsHelper.getDecrypted(
 					additionalData,
-					nodeCredentials,
-					credentialType,
+					{
+						id: credentialId,
+						name: PROVIDER_CREDENTIAL_TYPE_MAP[provider],
+					},
+					PROVIDER_CREDENTIAL_TYPE_MAP[provider],
 					'internal',
 					undefined,
 					true,
@@ -81,25 +89,39 @@ export class ChatHubService {
 
 				// Extract API key from credentials based on provider
 				const apiKey = this.extractApiKey(provider, credentials);
+
 				if (!apiKey) {
-					continue;
+					return [provider, { models: [] }];
 				}
 
-				// Fetch models dynamically from the provider
-				const providerModels = await this.fetchModelsForProvider(provider, apiKey);
-				models.push(...providerModels);
-			} catch (error) {
-				this.logger.debug(`Failed to get models for ${provider}: ${error}`);
-			}
-		}
+				try {
+					return [provider, await this.fetchModelsForProvider(provider, apiKey)];
+				} catch {
+					return [
+						provider,
+						{ models: [], error: 'Could not retrieve models. Verify credentials.' },
+					];
+				}
+			}),
+		);
 
-		return models;
+		return responses.reduce<ChatModelsResponse>(
+			(acc, [provider, res]) => {
+				acc[provider] = res;
+				return acc;
+			},
+			{
+				openai: { models: [] },
+				anthropic: { models: [] },
+				google: { models: [] },
+			},
+		);
 	}
 
 	private async fetchModelsForProvider(
 		provider: ChatHubProvider,
 		apiKey: string,
-	): Promise<ChatHubConversationModel[]> {
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		switch (provider) {
 			case 'openai':
 				return await this.fetchOpenAiModels(apiKey);
@@ -110,127 +132,88 @@ export class ChatHubService {
 		}
 	}
 
-	private async fetchOpenAiModels(apiKey: string): Promise<ChatHubConversationModel[]> {
-		try {
-			const response = await fetch('https://api.openai.com/v1/models', {
+	private async fetchOpenAiModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const response = await fetch('https://api.openai.com/v1/models', {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+			},
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch OpenAI models: ${response.statusText}`);
+		}
+
+		const data = await response.json();
+
+		return {
+			models: data.data
+				.filter(
+					(model: { id: string }) =>
+						model.id.includes('gpt') &&
+						!model.id.includes('instruct') &&
+						!model.id.includes('audio'),
+				)
+				.map((model: { id: string }) => ({ name: model.id })),
+		};
+	}
+
+	private async fetchAnthropicModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const response = await fetch('https://api.anthropic.com/v1/models', {
+			method: 'GET',
+			headers: {
+				'x-api-key': apiKey,
+				'anthropic-version': '2023-06-01',
+			},
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch Anthropic models: ${response.statusText}`);
+		}
+
+		const data = (await response.json()) as {
+			data: Array<{ id: string; display_name: string; type: string; created_at: string }>;
+		};
+
+		return {
+			models: (data.data || [])
+				.sort((a, b) => {
+					const dateA = new Date(a.created_at);
+					const dateB = new Date(b.created_at);
+					return dateB.getTime() - dateA.getTime();
+				})
+				.map((model) => ({ name: model.id })),
+		};
+	}
+
+	private async fetchGoogleModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const response = await fetch(
+			`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
+			{
 				method: 'GET',
-				headers: {
-					Authorization: `Bearer ${apiKey}`,
-				},
-			});
+			},
+		);
 
-			if (!response.ok) {
-				throw new Error(`Failed to fetch OpenAI models: ${response.statusText}`);
-			}
-
-			const data = await response.json();
-			const models: ChatHubConversationModel[] = [];
-
-			// Filter for chat models only (GPT models)
-			const chatModels = data.data.filter(
-				(model: { id: string }) =>
-					model.id.includes('gpt') && !model.id.includes('instruct') && !model.id.includes('audio'),
-			);
-
-			for (const model of chatModels) {
-				models.push({
-					provider: 'openai',
-					model: model.id,
-				});
-			}
-
-			return models;
-		} catch (error) {
-			this.logger.debug(`Failed to fetch OpenAI models: ${error}`);
-			return [];
+		if (!response.ok) {
+			throw new Error(`Failed to fetch Google models: ${response.statusText}`);
 		}
-	}
 
-	private async fetchAnthropicModels(apiKey: string): Promise<ChatHubConversationModel[]> {
-		// Anthropic doesn't have a public models list endpoint, so we'll use a curated list
-		// but validate the API key first
-		try {
-			const response = await fetch('https://api.anthropic.com/v1/messages', {
-				method: 'POST',
-				headers: {
-					'x-api-key': apiKey,
-					'anthropic-version': '2023-06-01',
-					'content-type': 'application/json',
-				},
-				body: JSON.stringify({
-					model: 'claude-3-haiku-20240307',
-					max_tokens: 1,
-					messages: [{ role: 'user', content: 'test' }],
+		const data = await response.json();
+
+		return {
+			models: data.models
+				?.filter(
+					(model: { name: string; supportedGenerationMethods?: string[] }) =>
+						model.name.includes('gemini') &&
+						model.supportedGenerationMethods?.includes('generateContent'),
+				)
+				.map((model: { name: string }) => {
+					// Extract model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
+					const modelId = model.name.split('/').pop();
+
+					return { name: modelId };
 				}),
-			});
-
-			// If authentication fails, don't return models
-			if (response.status === 401 || response.status === 403) {
-				return [];
-			}
-
-			// Return known Anthropic models
-			return [
-				{
-					provider: 'anthropic',
-					model: 'claude-3-5-sonnet-20241022',
-				},
-				{
-					provider: 'anthropic',
-					model: 'claude-3-opus-20240229',
-				},
-				{
-					provider: 'anthropic',
-					model: 'claude-3-sonnet-20240229',
-				},
-				{
-					provider: 'anthropic',
-					model: 'claude-3-haiku-20240307',
-				},
-			];
-		} catch (error) {
-			this.logger.debug(`Failed to validate Anthropic API key: ${error}`);
-			return [];
-		}
-	}
-
-	private async fetchGoogleModels(apiKey: string): Promise<ChatHubConversationModel[]> {
-		try {
-			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
-				{
-					method: 'GET',
-				},
-			);
-
-			if (!response.ok) {
-				throw new Error(`Failed to fetch Google models: ${response.statusText}`);
-			}
-
-			const data = await response.json();
-			const models: ChatHubConversationModel[] = [];
-
-			// Filter for Gemini chat models
-			const chatModels = data.models?.filter(
-				(model: { name: string; supportedGenerationMethods?: string[] }) =>
-					model.name.includes('gemini') &&
-					model.supportedGenerationMethods?.includes('generateContent'),
-			);
-
-			for (const model of chatModels || []) {
-				// Extract model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
-				const modelId = model.name.split('/').pop();
-				models.push({
-					provider: 'google',
-					model: modelId,
-				});
-			}
-
-			return models;
-		} catch (error) {
-			this.logger.debug(`Failed to fetch Google models: ${error}`);
-			return [];
-		}
+		};
 	}
 
 	private extractApiKey(provider: ChatHubProvider, credentials: unknown): string | undefined {
@@ -309,6 +292,24 @@ export class ChatHubService {
 	}
 
 	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
+		let session = this.sesssions.get(payload.sessionId);
+		if (!session) {
+			session = [];
+			this.sesssions.set(payload.sessionId, session);
+		}
+
+		const chatHistory = session.map((msg) => ({
+			type: msg.type,
+			message: msg.message,
+		}));
+
+		session.push({
+			id: payload.messageId,
+			message: payload.message,
+			type: 'user',
+			createdAt: new Date(),
+		});
+
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
 			{
@@ -317,7 +318,7 @@ export class ChatHubService {
 					mode: 'webhook',
 					options: { responseMode: 'streaming' },
 				},
-				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
 				typeVersion: 1.3,
 				position: [0, 0],
 				id: uuidv4(),
@@ -326,36 +327,62 @@ export class ChatHubService {
 			},
 			{
 				parameters: {
+					promptType: 'define',
+					text: "={{ $('When chat message received').item.json.chatInput }}",
 					options: {
 						enableStreaming: true,
 					},
 				},
-				type: '@n8n/n8n-nodes-langchain.agent',
+				type: AGENT_LANGCHAIN_NODE_TYPE,
 				typeVersion: 3,
-				position: [200, 0],
+				position: [600, 0],
 				id: uuidv4(),
 				name: 'AI Agent',
 			},
+			this.createModelNode(payload),
 			{
 				parameters: {
-					model: { __rl: true, mode: 'list', value: payload.model },
-					options: {},
+					sessionIdType: 'customKey',
+					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
 				},
-				type: payload.provider,
-				typeVersion: 1.2,
-				position: [80, 200],
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				typeVersion: 1.3,
+				position: [500, 200],
 				id: uuidv4(),
-				name: 'Chat Model',
-				credentials: payload.credentials,
+				name: 'Memory',
+			},
+			{
+				parameters: {
+					mode: 'insert',
+					messages: {
+						messageValues: chatHistory,
+					},
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryManager',
+				typeVersion: 1.1,
+				position: [200, 0],
+				id: uuidv4(),
+				name: 'Restore Chat Memory',
 			},
 		];
 
 		const connections: IConnections = {
 			'When chat message received': {
+				main: [[{ node: 'Restore Chat Memory', type: 'main', index: 0 }]],
+			},
+			'Restore Chat Memory': {
 				main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
 			},
 			'Chat Model': {
 				ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+			},
+			Memory: {
+				ai_memory: [
+					[
+						{ node: 'AI Agent', type: 'ai_memory', index: 0 },
+						{ node: 'Restore Chat Memory', type: 'ai_memory', index: 0 },
+					],
+				],
 			},
 		};
 
@@ -368,7 +395,7 @@ export class ChatHubService {
 		};
 		/* eslint-enable @typescript-eslint/naming-convention */
 
-		const startNodes: StartNodeData[] = [{ name: 'AI Agent', sourceData: null }];
+		const startNodes: StartNodeData[] = [{ name: 'Restore Chat Memory', sourceData: null }];
 		const triggerToStartFrom: {
 			name: string;
 			data?: ITaskData;
@@ -384,7 +411,7 @@ export class ChatHubService {
 						[
 							{
 								json: {
-									sessionId: payload.sessionId,
+									sessionId: `${payload.sessionId}-${payload.messageId}`,
 									action: 'sendMessage',
 									chatInput: payload.message,
 								},
@@ -409,34 +436,78 @@ export class ChatHubService {
 			true,
 			res,
 		);
-
 		if (!executionId) {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		// TODO: The execution finishes after a while, how do we store the full AI response on the database?
-		// Is there a better way to listen for the execution to finish?
-		const onClose = async () => {
-			this.logger.debug(`Connection closed by client, execution ID: ${executionId}`);
+		const result = await this.activeExecutions.getPostExecutePromise(executionId);
+		if (!result) {
+			throw new OperationalError('There was a problem executing the chat workflow.');
+		}
 
-			// TODO: we could maybe stop executions here if user disconnected early?
-			// if (execution && ['running', 'waiting'].includes(execution.status)) {
-			// 	await this.executionService.stop(executionId, [workflow.id]);
-			// }
+		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+			workflow.id,
+		]);
+		if (!execution) {
+			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
+		}
 
-			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-				workflow.id,
-			]);
+		const message = this.getMessage(execution);
+		if (message) {
+			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
+			session.push({
+				id: payload.replyId,
+				message,
+				type: 'ai',
+				createdAt: new Date(),
+			});
+		}
+	}
 
-			// Persist the assistant message to the database
-			if (execution?.data?.resultData) {
-				// resultData is only available if the execution finished
-				const message = this.getMessage(execution);
-				this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
-			}
+	private createModelNode(payload: ChatPayloadWithCredentials): INode {
+		const common = {
+			position: [600, 200] as [number, number],
+			id: uuidv4(),
+			name: 'Chat Model',
+			credentials: payload.credentials,
 		};
 
-		res.on('close', onClose);
-		res.on('error', onClose);
+		switch (payload.model.provider) {
+			case 'openai':
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'list', value: payload.model.model },
+						options: {},
+					},
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+				};
+			case 'anthropic':
+				return {
+					...common,
+					parameters: {
+						model: {
+							__rl: true,
+							mode: 'list',
+							value: payload.model.model,
+							cachedResultName: payload.model.model,
+						},
+						options: {},
+					},
+					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+					typeVersion: 1.3,
+				};
+			case 'google':
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'list', value: payload.model.model },
+						options: {},
+					},
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1.2,
+				};
+		}
 	}
 }

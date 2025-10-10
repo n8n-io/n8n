@@ -34,7 +34,7 @@ const classes = computed(() => ({
 	top: -20px;
 	left: 50%;
 	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--node-type-supplemental-color);
 	background: var(--color-canvas-label-background);
 	z-index: 0;
@@ -43,7 +43,7 @@ const classes = computed(() => ({
 
 .required .label::after {
 	content: '*';
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 :global(.vue-flow__handle:not(.connectionindicator)) .plus {

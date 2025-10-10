@@ -46,10 +46,7 @@ const handleClick = (event: Event) => {
 				</N8nText>
 			</slot>
 		</div>
-		<N8nBadge
-			v-if="isOptional"
-			style="background-color: var(--color-background-base); border: none"
-		>
+		<N8nBadge v-if="isOptional" style="background-color: var(--color--background); border: none">
 			{{ locale.baseText('evaluations.setupWizard.stepHeader.optional') }}
 		</N8nBadge>
 	</div>
@@ -59,7 +56,7 @@ const handleClick = (event: Event) => {
 .stepHeader {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 	cursor: pointer;
 	position: relative;
 }

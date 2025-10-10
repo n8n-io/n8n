@@ -73,8 +73,8 @@ const onClick = async () => {
 <style lang="scss" module>
 .container {
 	position: absolute;
-	right: var(--spacing-s);
-	bottom: var(--ask-assistant-floating-button-bottom-offset, --spacing-2xl);
+	right: var(--spacing--sm);
+	bottom: var(--ask-assistant-floating-button-bottom-offset, --spacing--2xl);
 	z-index: var(--z-index-ask-assistant-floating-button);
 }
 
@@ -85,13 +85,13 @@ const onClick = async () => {
 }
 
 .assistant {
-	font-size: var(--font-size-3xs);
-	line-height: var(--spacing-s);
-	font-weight: var(--font-weight-bold);
-	margin-top: var(--spacing-xs);
+	font-size: var(--font-size--3xs);
+	line-height: var(--spacing--sm);
+	font-weight: var(--font-weight--bold);
+	margin-top: var(--spacing--xs);
 
 	> span {
-		margin-left: var(--spacing-4xs);
+		margin-left: var(--spacing--4xs);
 	}
 }
 
