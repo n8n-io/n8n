@@ -241,7 +241,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		padding-inline: var(--spacing-s);
 		width: 100%;
 		user-select: none;
-		color: var(--color-text-base) !important;
+		color: var(--color--text) !important;
 	}
 
 	// Accordion description

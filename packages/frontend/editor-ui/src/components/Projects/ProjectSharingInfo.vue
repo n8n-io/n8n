@@ -62,14 +62,14 @@ const projectIcon = computed(() => {
 
 	p {
 		font-size: var(--font-size-s);
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		font-weight: var(--font-weight-medium);
 		line-height: var(--font-line-height-loose);
 	}
 
 	small {
 		font-size: var(--font-size-xs);
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		line-height: var(--font-line-height-loose);
 	}
 }

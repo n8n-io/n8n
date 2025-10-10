@@ -53,7 +53,7 @@ const { width } = useElementSize(wrapperRef);
 	display: flex;
 	font-size: var(--font-size-m);
 	margin-right: var(--spacing-s);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	width: 100%;
 }
 

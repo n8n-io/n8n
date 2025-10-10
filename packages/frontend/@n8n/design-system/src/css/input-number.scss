@@ -32,7 +32,7 @@
 	}
 
 	@include mixins.e((increase, decrease)) {
-		--disabled-color: var(--color-text-light);
+		--disabled-color: var(--color--text--tint-1);
 		position: absolute;
 		z-index: 1;
 		top: 1px;
@@ -43,12 +43,12 @@
 		width: var.$input-height;
 		height: auto;
 		background: var.$background-color-base;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		cursor: pointer;
 		font-size: 13px;
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 
 			&:not(.is-disabled) ~ .el-input .el-input__inner:not(.is-disabled) {
 				border-color: var.$input-focus-border;

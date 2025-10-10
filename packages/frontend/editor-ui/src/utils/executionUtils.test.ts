@@ -8,7 +8,14 @@ import {
 	getExecutionErrorToastConfiguration,
 	findTriggerNodeToAutoSelect,
 } from './executionUtils';
-import type { INode, IRunData, IPinData, ExecutionError, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INode,
+	IRunData,
+	IPinData,
+	ExecutionError,
+	INodeTypeDescription,
+	Workflow,
+} from 'n8n-workflow';
 import { type INodeUi } from '../Interface';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -53,6 +60,31 @@ vi.mock('@n8n/i18n', () => ({
 			return texts[key] || key;
 		},
 	},
+}));
+
+vi.mock('@/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: (type: string) => {
+			const nodeTypes: Record<string, { waitingNodeTooltip?: string }> = {
+				'n8n-nodes-base.wait': {
+					waitingNodeTooltip:
+						'={{$node.parameters.resume === "form" ? "Waiting for form submission: <a href=\\"" + $execution.resumeFormUrl + "\\" target=\\"_blank\\">" + $execution.resumeFormUrl + "</a>" : $node.parameters.resume === "webhook" ? "Waiting for webhook call: <a href=\\"" + $execution.resumeUrl + "\\" target=\\"_blank\\">" + $execution.resumeUrl + "</a>" : "Waiting for execution to resume..."}}',
+				},
+				'n8n-nodes-base.form': {
+					waitingNodeTooltip:
+						'Waiting for form submission: <a href="{{$execution.resumeFormUrl}}" target="_blank">{{$execution.resumeFormUrl}}</a>',
+				},
+				'n8n-nodes-base.sendWait': {
+					waitingNodeTooltip: 'Waiting for approval...',
+				},
+				[GITHUB_NODE_TYPE]: {
+					waitingNodeTooltip:
+						'Waiting for webhook call: <a href="{{$execution.resumeUrl}}" target="_blank">{{$execution.resumeUrl}}</a>',
+				},
+			};
+			return nodeTypes[type] || null;
+		},
+	}),
 }));
 
 describe('displayForm', () => {
@@ -326,6 +358,39 @@ describe('executionFilterToQueryFilter()', () => {
 });
 
 describe('waitingNodeTooltip', () => {
+	const mockWorkflow = {
+		expression: {
+			getSimpleParameterValue: (
+				node: INodeUi,
+				template: string,
+				_mode: string,
+				additionalData: { $execution: { resumeFormUrl: string; resumeUrl: string } },
+			) => {
+				if (template.startsWith('={{')) {
+					const resume = node.parameters?.resume;
+					if (resume === 'form') {
+						return `Waiting for form submission: <a href="${additionalData.$execution.resumeFormUrl}" target="_blank">${additionalData.$execution.resumeFormUrl}</a>`;
+					} else if (resume === 'webhook') {
+						return `Waiting for webhook call: <a href="${additionalData.$execution.resumeUrl}" target="_blank">${additionalData.$execution.resumeUrl}</a>`;
+					} else {
+						return 'Waiting for execution to resume...';
+					}
+				}
+
+				let result = template;
+				result = result.replace(
+					/\{\{(\$execution\.resumeFormUrl)\}\}/g,
+					additionalData.$execution.resumeFormUrl,
+				);
+				result = result.replace(
+					/\{\{(\$execution\.resumeUrl)\}\}/g,
+					additionalData.$execution.resumeUrl,
+				);
+				return result;
+			},
+		},
+	} as unknown as Workflow;
+
 	it('should return empty string for null or undefined node', () => {
 		expect(waitingNodeTooltip(null)).toBe('');
 		expect(waitingNodeTooltip(undefined)).toBe('');
@@ -343,7 +408,7 @@ describe('waitingNodeTooltip', () => {
 			},
 		};
 
-		expect(waitingNodeTooltip(node)).toBe('Waiting for execution to resume...');
+		expect(waitingNodeTooltip(node, mockWorkflow)).toBe('Waiting for execution to resume...');
 	});
 
 	it('should return form submission message with URL for form resume type', () => {
@@ -359,7 +424,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/form-waiting/123';
-		expect(waitingNodeTooltip(node)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
 			`Waiting for form submission: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -379,8 +444,8 @@ describe('waitingNodeTooltip', () => {
 			},
 		};
 
-		const expectedUrl = 'http://localhost:5678/webhook-waiting/123/test-suffix';
-		expect(waitingNodeTooltip(node)).toBe(
+		const expectedUrl = 'http://localhost:5678/webhook-waiting/123';
+		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -396,7 +461,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/form-waiting/123';
-		expect(waitingNodeTooltip(node)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
 			`Waiting for form submission: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -413,7 +478,7 @@ describe('waitingNodeTooltip', () => {
 			},
 		};
 
-		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
+		expect(waitingNodeTooltip(node, mockWorkflow)).toBe('Waiting for approval...');
 	});
 
 	it('should handle GitHub dispatchAndWait operation', () => {
@@ -429,7 +494,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/webhook-waiting/123';
-		expect(waitingNodeTooltip(node)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -450,9 +515,25 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/webhook-waiting/123';
-		expect(waitingNodeTooltip(node)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
+	});
+
+	it('should return raw waitingNodeTooltip when no workflow is provided', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'SendWait',
+			type: 'n8n-nodes-base.sendWait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				operation: 'sendAndWait',
+			},
+		};
+
+		// Test without workflow - should return the raw tooltip string
+		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
 	});
 });
 

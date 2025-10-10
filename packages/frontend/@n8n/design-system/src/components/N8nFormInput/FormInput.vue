@@ -279,16 +279,16 @@ defineExpose({ inputRef });
 	margin-top: var(--spacing-2xs);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .errors {
 	composes: infoText;
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .errorInput {
-	--input-border-color: var(--color-danger);
+	--input-border-color: var(--color--danger);
 }
 
 .multiSelectSmallTags {

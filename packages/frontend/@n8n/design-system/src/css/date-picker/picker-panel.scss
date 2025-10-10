@@ -3,7 +3,7 @@
 @use '../mixins/button';
 
 @include mixins.b(picker-panel) {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	border: 1px solid var.$datepicker-border-color;
 	box-shadow: var.$box-shadow-light;
 	background: var.$color-white;
@@ -68,7 +68,7 @@
 		font-size: 12px;
 
 		&[disabled] {
-			color: var(--color-text-lighter);
+			color: var(--color--text--tint-2);
 			cursor: not-allowed;
 		}
 	}

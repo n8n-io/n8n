@@ -230,7 +230,7 @@ function getCustomClass() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-primary-tint-1);
+	color: var(--color--primary--tint-1);
 	font-size: 30px;
 	height: 80%;
 }

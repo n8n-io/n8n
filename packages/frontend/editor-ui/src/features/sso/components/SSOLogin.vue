@@ -55,7 +55,7 @@ const onSSOLogin = async () => {
 		left: 0;
 		width: 100%;
 		height: 1px;
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 
 	span {
@@ -63,7 +63,7 @@ const onSSOLogin = async () => {
 		display: inline-block;
 		margin: var(--spacing-2xs) auto;
 		padding: var(--spacing-l);
-		background: var(--color-background-xlight);
+		background: var(--color--background--light-3);
 	}
 }
 </style>

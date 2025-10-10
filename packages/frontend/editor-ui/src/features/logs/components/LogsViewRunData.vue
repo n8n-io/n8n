@@ -10,7 +10,7 @@ import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
-import { type SearchShortcut } from '@/types';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
@@ -109,7 +109,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template #header-end="itemCountProps">
-			<RunDataItemCount v-bind="itemCountProps" />
+			<RunDataItemCount
+				v-bind="itemCountProps"
+				:search="displayMode === 'schema' ? '' : itemCountProps.search"
+			/>
 		</template>
 
 		<template #no-output-data>
@@ -118,7 +121,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 
 		<template #node-waiting>
 			<NDVEmptyState :title="locale.baseText('ndv.output.waitNodeWaiting.title')" wide>
-				<span v-n8n-html="waitingNodeTooltip(logEntry.node)" />
+				<span v-n8n-html="waitingNodeTooltip(logEntry.node, logEntry.workflow)" />
 			</NDVEmptyState>
 		</template>
 
@@ -140,7 +143,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 
 <style lang="scss" module>
 .component {
-	--color-run-data-background: var(--color-background-light);
+	--color-run-data-background: var(--color--background--light-2);
 }
 
 .title {
