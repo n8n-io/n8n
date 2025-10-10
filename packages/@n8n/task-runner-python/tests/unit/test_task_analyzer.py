@@ -2,12 +2,13 @@ import pytest
 
 from src.errors.security_violation_error import SecurityViolationError
 from src.task_analyzer import TaskAnalyzer
+from src.config.security_config import SecurityConfig
 
 
 class TestTaskAnalyzer:
     @pytest.fixture
     def analyzer(self) -> TaskAnalyzer:
-        return TaskAnalyzer(
+        security_config = SecurityConfig(
             stdlib_allow={
                 "json",
                 "math",
@@ -21,7 +22,10 @@ class TestTaskAnalyzer:
                 "operator",
             },
             external_allow=set(),
+            builtins_deny=set(),
         )
+
+        return TaskAnalyzer(security_config)
 
 
 class TestImportValidation(TestTaskAnalyzer):
@@ -164,7 +168,10 @@ class TestDynamicImportDetection(TestTaskAnalyzer):
 
 class TestAllowAll(TestTaskAnalyzer):
     def test_allow_all_bypasses_validation(self) -> None:
-        analyzer = TaskAnalyzer(stdlib_allow={"*"}, external_allow={"*"})
+        security_config = SecurityConfig(
+            stdlib_allow={"*"}, external_allow={"*"}, builtins_deny=set()
+        )
+        analyzer = TaskAnalyzer(security_config)
 
         unsafe_allowed_code = [
             "import os",
