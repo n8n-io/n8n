@@ -78,8 +78,9 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		logger?.debug('Supervisor routing decision', routing);
 
 		// Create a message with the routing decision
+		// Note: We don't include routing details in message content to avoid template variable conflicts
 		const routingMessage = new AIMessage({
-			content: `[Routing to: ${routing.next}] ${routing.reasoning}${routing.instructions ? `\nInstructions: ${routing.instructions}` : ''}`,
+			content: `Supervisor: Routing to ${routing.next} agent`,
 			additional_kwargs: {
 				routing,
 			},
@@ -126,6 +127,7 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		const agent = configuratorAgent.getAgent();
 		const response = await agent.invoke({
 			messages: state.messages,
+			instanceUrl: instanceUrl ?? '',
 		});
 
 		return { messages: [response] };
@@ -188,6 +190,7 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 			discovery: 'discovery',
 			builder: 'builder',
 			configurator: 'configurator',
+			END,
 		})
 
 		// Flow: Each agent → Tools (if needed) or Supervisor
