@@ -31,13 +31,18 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 
 /**
  * Multi-agent graph nodes that should emit messages to frontend
+ *
+ * Only emit user-facing responses:
+ * - agent: V1 single agent (backward compatibility)
+ * - responder: Conversational responses
+ * - configurator: Final workflow setup response
+ *
+ * Internal agents (discovery, builder) are hidden - user sees tool execution via custom events
  */
 const AGENT_NODES_TO_EMIT = [
 	'agent', // V1 single agent (backward compatibility)
 	'responder', // Conversational responses
 	'configurator', // Final configuration responses
-	'discovery', // Optional: show discovery progress
-	'builder', // Optional: show building progress
 ];
 
 /**
@@ -146,7 +151,10 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 
 				if ((agentUpdate?.messages ?? []).length > 0) {
 					const content = extractMessageContent(agentUpdate.messages!);
-					if (content) {
+
+					// Only emit non-empty content
+					// Filter out empty strings, whitespace, and workflow context artifacts
+					if (content && content.trim() && !content.includes('<current_workflow_json>')) {
 						const messageChunk: AgentMessageChunk = {
 							role: 'assistant',
 							type: 'message',
