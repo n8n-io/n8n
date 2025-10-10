@@ -39,6 +39,7 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { type ChatPayloadWithCredentials, type MessageRecord } from './chat-hub.types';
 import { ChatMessageRepository } from './chat-message.repository';
 import { ChatSessionRepository } from './chat-session.repository';
+import { ChatSession } from './chat-session.entity';
 
 @Service()
 export class ChatHubService {
@@ -293,22 +294,34 @@ export class ChatHubService {
 
 	async respondMessage(res: Response, user: User, payload: ChatPayloadWithCredentials) {
 		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
+		const turnId = payload.messageId;
 
 		// TODO: Handle session ID conflicts better (different user, same ID)
-		const session =
-			existing ??
-			(await this.sessionRepository.createChatSession(payload.sessionId, 'New Chat', user.id));
+		let session: ChatSession;
+		if (existing) {
+			session = existing;
+		} else {
+			session = await this.sessionRepository.createChatSession({
+				id: payload.sessionId,
+				ownerId: user.id,
+				title: 'New Chat',
+				provider: payload.model.provider,
+				model: payload.model.model,
+				workflowId: payload.model.workflowId ?? null,
+				credentialId: payload.credentials?.[payload.model.provider]?.id ?? null,
+			});
+		}
 
-		await this.messageRepository.createChatMessage(
-			payload.messageId,
-			payload.sessionId,
-			'human',
-			'user',
-			'User',
-			payload.message,
-			null,
-			null,
-		);
+		await this.messageRepository.createChatMessage({
+			id: payload.messageId,
+			sessionId: payload.sessionId,
+			type: 'human',
+			name: 'You',
+			content: payload.message,
+			state: 'active',
+			turnId,
+			responseOfMessageId: payload.responseOfMessageId ?? null,
+		});
 
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
@@ -355,7 +368,7 @@ export class ChatHubService {
 				parameters: {
 					mode: 'insert',
 					messages: {
-						messageValues: session.messages.map((message) => {
+						messageValues: session.messages?.map((message) => {
 							const typeMap: Record<string, MessageRecord['type']> = {
 								human: 'user',
 								ai: 'ai',
@@ -467,17 +480,16 @@ export class ChatHubService {
 
 		const message = this.getMessage(execution);
 		if (message) {
-			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
-			await this.messageRepository.createChatMessage(
-				payload.replyId,
-				payload.sessionId,
-				'ai',
-				'assistant',
-				'AI',
-				message,
-				null,
-				null,
-			);
+			await this.messageRepository.createChatMessage({
+				id: payload.replyId,
+				sessionId: payload.sessionId,
+				type: 'ai',
+				name: 'AI',
+				content: message,
+				state: 'active',
+				turnId,
+				responseOfMessageId: payload.messageId,
+			});
 		}
 	}
 

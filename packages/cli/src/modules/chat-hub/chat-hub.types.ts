@@ -7,6 +7,7 @@ export interface ChatPayloadWithCredentials {
 	messageId: string;
 	sessionId: string;
 	replyId: string;
+	responseOfMessageId: string | null;
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 }
@@ -18,3 +19,5 @@ export interface MessageRecord {
 	message: string;
 	hideFromUI: boolean;
 }
+
+export type ChatMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
