@@ -5,7 +5,7 @@ export class OAuth2Api implements ICredentialType {
 
 	displayName = 'OAuth2 API';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 

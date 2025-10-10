@@ -5,7 +5,7 @@ export class ConvertKitApi implements ICredentialType {
 
 	displayName = 'ConvertKit API';
 
-	documentationUrl = 'convertKit';
+	documentationUrl = 'convertkit';
 
 	properties: INodeProperties[] = [
 		{

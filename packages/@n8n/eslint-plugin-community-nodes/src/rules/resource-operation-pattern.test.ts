@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 const ruleTester = new RuleTester();

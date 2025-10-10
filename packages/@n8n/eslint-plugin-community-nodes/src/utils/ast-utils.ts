@@ -1,11 +1,13 @@
-import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/utils';
+import type { TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { distance } from 'fastest-levenshtein';
 
 function implementsInterface(node: TSESTree.ClassDeclaration, interfaceName: string): boolean {
 	return (
 		node.implements?.some(
 			(impl) =>
-				impl.type === 'TSClassImplements' &&
-				impl.expression.type === 'Identifier' &&
+				impl.type === AST_NODE_TYPES.TSClassImplements &&
+				impl.expression.type === AST_NODE_TYPES.Identifier &&
 				impl.expression.name === interfaceName,
 		) ?? false
 	);
@@ -16,7 +18,7 @@ export function isNodeTypeClass(node: TSESTree.ClassDeclaration): boolean {
 		return true;
 	}
 
-	if (node.superClass?.type === 'Identifier' && node.superClass.name === 'Node') {
+	if (node.superClass?.type === AST_NODE_TYPES.Identifier && node.superClass.name === 'Node') {
 		return true;
 	}
 
@@ -33,11 +35,11 @@ export function findClassProperty(
 ): TSESTree.PropertyDefinition | null {
 	const property = node.body.body.find(
 		(member) =>
-			member.type === 'PropertyDefinition' &&
-			member.key?.type === 'Identifier' &&
+			member.type === AST_NODE_TYPES.PropertyDefinition &&
+			member.key?.type === AST_NODE_TYPES.Identifier &&
 			member.key.name === propertyName,
 	);
-	return property?.type === 'PropertyDefinition' ? property : null;
+	return property?.type === AST_NODE_TYPES.PropertyDefinition ? property : null;
 }
 
 export function findObjectProperty(
@@ -46,13 +48,15 @@ export function findObjectProperty(
 ): TSESTree.Property | null {
 	const property = obj.properties.find(
 		(prop) =>
-			prop.type === 'Property' && prop.key.type === 'Identifier' && prop.key.name === propertyName,
+			prop.type === AST_NODE_TYPES.Property &&
+			prop.key.type === AST_NODE_TYPES.Identifier &&
+			prop.key.name === propertyName,
 	);
-	return property?.type === 'Property' ? property : null;
+	return property?.type === AST_NODE_TYPES.Property ? property : null;
 }
 
 export function getLiteralValue(node: TSESTree.Node | null): string | boolean | number | null {
-	if (node?.type === 'Literal') {
+	if (node?.type === AST_NODE_TYPES.Literal) {
 		return node.value as string | boolean | number | null;
 	}
 	return null;
@@ -70,7 +74,7 @@ export function getModulePath(node: TSESTree.Node | null): string | null {
 	}
 
 	if (
-		node?.type === 'TemplateLiteral' &&
+		node?.type === AST_NODE_TYPES.TemplateLiteral &&
 		node.expressions.length === 0 &&
 		node.quasis.length === 1
 	) {
@@ -90,7 +94,7 @@ export function findArrayLiteralProperty(
 	propertyName: string,
 ): TSESTree.ArrayExpression | null {
 	const property = findObjectProperty(obj, propertyName);
-	if (property?.value.type === 'ArrayExpression') {
+	if (property?.value.type === AST_NODE_TYPES.ArrayExpression) {
 		return property.value;
 	}
 	return null;
@@ -100,11 +104,11 @@ export function hasArrayLiteralValue(
 	node: TSESTree.PropertyDefinition,
 	searchValue: string,
 ): boolean {
-	if (node.value?.type !== 'ArrayExpression') return false;
+	if (node.value?.type !== AST_NODE_TYPES.ArrayExpression) return false;
 
 	return node.value.elements.some(
 		(element) =>
-			element?.type === 'Literal' &&
+			element?.type === AST_NODE_TYPES.Literal &&
 			typeof element.value === 'string' &&
 			element.value === searchValue,
 	);
@@ -125,14 +129,16 @@ export function isFileType(filename: string, extension: string): boolean {
 
 export function isDirectRequireCall(node: TSESTree.CallExpression): boolean {
 	return (
-		node.callee.type === 'Identifier' && node.callee.name === 'require' && node.arguments.length > 0
+		node.callee.type === AST_NODE_TYPES.Identifier &&
+		node.callee.name === 'require' &&
+		node.arguments.length > 0
 	);
 }
 
 export function isRequireMemberCall(node: TSESTree.CallExpression): boolean {
 	return (
-		node.callee.type === 'MemberExpression' &&
-		node.callee.object.type === 'Identifier' &&
+		node.callee.type === AST_NODE_TYPES.MemberExpression &&
+		node.callee.object.type === AST_NODE_TYPES.Identifier &&
 		node.callee.object.name === 'require' &&
 		node.arguments.length > 0
 	);
@@ -148,7 +154,7 @@ export function extractCredentialInfoFromArray(
 		return { name: stringValue, node: element };
 	}
 
-	if (element.type === 'ObjectExpression') {
+	if (element.type === AST_NODE_TYPES.ObjectExpression) {
 		const nameProperty = findObjectProperty(element, 'name');
 		const testedByProperty = findObjectProperty(element, 'testedBy');
 
@@ -161,7 +167,7 @@ export function extractCredentialInfoFromArray(
 			if (nameValue) {
 				return {
 					name: nameValue,
-					testedBy: testedByValue || undefined,
+					testedBy: testedByValue ?? undefined,
 					node: nameProperty.value,
 				};
 			}
@@ -176,4 +182,26 @@ export function extractCredentialNameFromArray(
 ): { name: string; node: TSESTree.Node } | null {
 	const info = extractCredentialInfoFromArray(element);
 	return info ? { name: info.name, node: info.node } : null;
+}
+
+export function findSimilarStrings(
+	target: string,
+	candidates: Set<string>,
+	maxDistance: number = 3,
+	maxResults: number = 3,
+): string[] {
+	const matches: Array<{ name: string; distance: number }> = [];
+
+	for (const candidate of candidates) {
+		const levenshteinDistance = distance(target.toLowerCase(), candidate.toLowerCase());
+
+		if (levenshteinDistance <= maxDistance) {
+			matches.push({ name: candidate, distance: levenshteinDistance });
+		}
+	}
+
+	return matches
+		.sort((a, b) => a.distance - b.distance)
+		.slice(0, maxResults)
+		.map((match) => match.name);
 }

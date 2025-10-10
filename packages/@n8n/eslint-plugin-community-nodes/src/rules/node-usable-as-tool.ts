@@ -1,12 +1,14 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import { TSESTree } from '@typescript-eslint/types';
+
 import {
 	isNodeTypeClass,
 	findClassProperty,
 	findObjectProperty,
-	getBooleanLiteralValue,
+	createRule,
 } from '../utils/index.js';
 
-export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
+export const NodeUsableAsToolRule = createRule({
+	name: 'node-usable-as-tool',
 	meta: {
 		type: 'problem',
 		docs: {
@@ -33,7 +35,7 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 				}
 
 				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type !== 'ObjectExpression') {
+				if (descriptionValue?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
 					return;
 				}
 
@@ -44,10 +46,10 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 						node,
 						messageId: 'missingUsableAsTool',
 						fix(fixer) {
-							if (descriptionValue?.type === 'ObjectExpression') {
+							if (descriptionValue?.type === TSESTree.AST_NODE_TYPES.ObjectExpression) {
 								const properties = descriptionValue.properties;
 								if (properties.length === 0) {
-									const openBrace = descriptionValue.range![0] + 1;
+									const openBrace = descriptionValue.range[0] + 1;
 									return fixer.insertTextAfterRange(
 										[openBrace, openBrace],
 										'\n\t\tusableAsTool: true,',

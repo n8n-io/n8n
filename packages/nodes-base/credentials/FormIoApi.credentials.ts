@@ -5,7 +5,7 @@ export class FormIoApi implements ICredentialType {
 
 	displayName = 'Form.io API';
 
-	documentationUrl = 'formIoTrigger';
+	documentationUrl = 'formiotrigger';
 
 	properties: INodeProperties[] = [
 		{
