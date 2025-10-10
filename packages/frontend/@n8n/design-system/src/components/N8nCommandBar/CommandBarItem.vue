@@ -67,9 +67,9 @@ const handleMouseLeave = () => {
 	gap: var(--spacing--2xs);
 	align-items: center;
 	height: 40px;
-	padding: 0 var(--spacing-2xs);
+	padding: 0 var(--spacing--2xs);
 	cursor: pointer;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
 	&:hover {
@@ -104,10 +104,10 @@ const handleMouseLeave = () => {
 }
 
 .title {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-text-base);
-	line-height: var(--font-line-height-compact);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text);
+	line-height: var(--line-height--sm);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

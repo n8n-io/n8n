@@ -228,7 +228,7 @@ export const Loading: StoryFn = () => ({
 	},
 	template: `
 		<div>
-			<p style="margin-bottom: 20px; color: var(--color-text-base);">
+			<p style="margin-bottom: 20px; color: var(--color--text);">
 				This example shows the loading state with skeleton loaders.
 			</p>
 			<n8n-command-bar

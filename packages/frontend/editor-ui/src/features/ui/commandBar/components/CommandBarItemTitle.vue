@@ -43,13 +43,13 @@ defineProps<Props>();
 <style lang="scss" module>
 .container {
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	align-items: center;
 	min-width: 0;
 }
 
 .title {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -60,8 +60,8 @@ defineProps<Props>();
 .suffix {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
-	color: var(--color-text-light);
+	gap: var(--spacing--4xs);
+	color: var(--color--text--tint-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -69,7 +69,7 @@ defineProps<Props>();
 }
 
 .action {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	margin-left: auto;
 	flex-shrink: 0;
 }

@@ -340,8 +340,8 @@ onUnmounted(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	background: var(--color--background--light-3);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
+	border: var(--border);
+	border-radius: var(--radius);
 	box-shadow: var(--shadow-command-bar);
 
 	width: 100%;
@@ -354,13 +354,13 @@ onUnmounted(() => {
 	border: none;
 	outline: none;
 	background: transparent;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	font-family: var(--font-family);
-	color: var(--color-text-base);
-	height: var(--spacing-2xl);
-	padding: 0 var(--spacing-2xs);
-	padding-left: var(--spacing-s);
-	border-bottom: var(--border-base);
+	color: var(--color--text);
+	height: var(--spacing--2xl);
+	padding: 0 var(--spacing--2xs);
+	padding-left: var(--spacing--sm);
+	border-bottom: var(--border);
 
 	&::placeholder {
 		color: var(--color--text--tint-1);
@@ -368,26 +368,26 @@ onUnmounted(() => {
 }
 
 .scrollArea {
-	padding: 0 var(--spacing-2xs) var(--spacing-2xs);
+	padding: 0 var(--spacing--2xs) var(--spacing--2xs);
 }
 
 .itemsList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 }
 
 .ungroupedSection {
-	padding-top: var(--spacing-2xs);
+	padding-top: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 }
 
 .sectionHeader {
-	padding: var(--spacing-xs) var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
+	padding: var(--spacing--xs) var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text--tint-1);
 }
 
@@ -399,7 +399,7 @@ onUnmounted(() => {
 }
 
 .contextContainer {
-	padding: var(--spacing-xs) var(--spacing-xs) 0;
+	padding: var(--spacing--xs) var(--spacing--xs) 0;
 }
 
 .loadingContainer {
@@ -408,8 +408,8 @@ onUnmounted(() => {
 }
 
 .loadingItem {
-	height: var(--spacing-2xl);
-	padding: var(--spacing-xs) var(--spacing-s);
+	height: var(--spacing--2xl);
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 </style>
 
