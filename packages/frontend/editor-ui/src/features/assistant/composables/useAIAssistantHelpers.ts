@@ -305,12 +305,13 @@ export const useAIAssistantHelpers = () => {
 
 		// Helper to trim long values
 		const trimValue = (value: string | undefined): string => {
-			if (value && value.length <= MAX_VALUE_LENGTH) {
+			if (value === undefined) {
+				return '<EMPTY>';
+			}
+			if (value.length <= MAX_VALUE_LENGTH) {
 				return value;
 			}
-			return value === undefined
-				? '<EMPTY>'
-				: value.substring(0, MAX_VALUE_LENGTH) + '... [truncated]';
+			return value.substring(0, MAX_VALUE_LENGTH) + '... [truncated]';
 		};
 
 		// Extract expressions from all nodes
@@ -320,14 +321,14 @@ export const useAIAssistantHelpers = () => {
 			const nodeExpressions: ChatRequest.ExpressionValue[] = [];
 
 			// Helper to recursively find and resolve expressions from parameters
-			const extractExpressions = (params: unknown): void => {
+			// Uses a WeakSet to track visited objects and prevent infinite recursion on cycles
+			const extractExpressions = (params: unknown, visited = new WeakSet<object>()): void => {
 				if (typeof params === 'string' && params.startsWith('=')) {
 					// This is an expression - resolve it with node context
 					let resolved: string;
 					try {
 						const resolvedValue = workflowHelpers.resolveExpression(params, undefined, {
 							contextNodeName: node.name,
-							isForCredential: false,
 						});
 						resolved =
 							typeof resolvedValue === 'string' ? resolvedValue : JSON.stringify(resolvedValue);
@@ -341,9 +342,19 @@ export const useAIAssistantHelpers = () => {
 						nodeType: node.type,
 					});
 				} else if (Array.isArray(params)) {
-					params.forEach((item) => extractExpressions(item));
+					// Check if we've already visited this array to prevent cycles
+					if (visited.has(params)) {
+						return;
+					}
+					visited.add(params);
+					params.forEach((item) => extractExpressions(item, visited));
 				} else if (typeof params === 'object' && params !== null) {
-					Object.values(params).forEach((value) => extractExpressions(value));
+					// Check if we've already visited this object to prevent cycles
+					if (visited.has(params)) {
+						return;
+					}
+					visited.add(params);
+					Object.values(params).forEach((value) => extractExpressions(value, visited));
 				}
 			};
 
