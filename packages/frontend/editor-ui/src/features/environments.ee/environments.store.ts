@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { EnvironmentVariable } from './environments.types';
+import type {
+	CreateEnvironmentVariable,
+	EnvironmentVariable,
+	UpdateEnvironmentVariable,
+} from './environments.types';
 import * as environmentsApi from './environments.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ExpressionError } from 'n8n-workflow';
@@ -36,17 +40,27 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		return data;
 	}
 
-	async function createVariable(variable: Omit<EnvironmentVariable, 'id'>) {
+	async function createVariable(variable: CreateEnvironmentVariable) {
 		const data = await environmentsApi.createVariable(rootStore.restApiContext, variable);
-
+		if (variable.projectId) {
+			const project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+			if (project) {
+				data.project = { ...project, name: project?.name ?? '' };
+			}
+		}
 		allVariables.value.unshift(data);
 
 		return data;
 	}
 
-	async function updateVariable(variable: EnvironmentVariable) {
+	async function updateVariable(variable: UpdateEnvironmentVariable) {
 		const data = await environmentsApi.updateVariable(rootStore.restApiContext, variable);
-
+		if (variable.projectId) {
+			const project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+			if (project) {
+				data.project = { ...project, name: project?.name ?? '' };
+			}
+		}
 		allVariables.value = allVariables.value.map((v) => (v.id === data.id ? data : v));
 
 		return data;

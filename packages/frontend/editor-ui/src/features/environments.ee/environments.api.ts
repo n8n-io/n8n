@@ -1,4 +1,8 @@
-import type { EnvironmentVariable } from './environments.types';
+import type {
+	CreateEnvironmentVariable,
+	EnvironmentVariable,
+	UpdateEnvironmentVariable,
+} from './environments.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IDataObject } from 'n8n-workflow';
@@ -16,14 +20,14 @@ export async function getVariable(
 
 export async function createVariable(
 	context: IRestApiContext,
-	data: Omit<EnvironmentVariable, 'id'>,
+	data: CreateEnvironmentVariable,
 ): Promise<EnvironmentVariable> {
 	return await makeRestApiRequest(context, 'POST', '/variables', data as unknown as IDataObject);
 }
 
 export async function updateVariable(
 	context: IRestApiContext,
-	{ id, ...data }: EnvironmentVariable,
+	{ id, ...data }: UpdateEnvironmentVariable,
 ): Promise<EnvironmentVariable> {
 	return await makeRestApiRequest(
 		context,
