@@ -1179,7 +1179,7 @@ describe('dataTable filters', () => {
 					const createdAtTimestamp = inserted[0].createdAt;
 
 					const midnight = new Date(createdAtTimestamp);
-					midnight.setHours(0, 0, 0, 0);
+					midnight.setUTCHours(0, 0, 0, 0);
 
 					// ACT - Check the row is not returned if filtered before midnight
 					const beforeMidnightResult = await dataTableService.getManyRowsAndCount(
@@ -1208,7 +1208,7 @@ describe('dataTable filters', () => {
 					expect(result.count).toBeGreaterThanOrEqual(1);
 					expect(result.data.some((row) => row.name === 'TestRow')).toBe(true);
 
-					// ACT -  - Check the row is returned when using lt on the exact timestamp
+					// ACT - Check the row is returned when using lt on the exact timestamp
 					const resultLt = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
 						filter: {
 							type: 'and',
@@ -1218,6 +1218,114 @@ describe('dataTable filters', () => {
 
 					// ASSERT
 					expect(resultLt.data.some((row) => row.name === 'TestRow')).toBe(false);
+				});
+
+				it('filters by date with timezone offset using eq condition', async () => {
+					// ARRANGE
+					const dateWithOffset = new Date('2024-01-15T10:30:00.000+03:00');
+					const equivalentUtcTime = new Date('2024-01-15T07:30:00.000Z');
+
+					await dataTableService.insertRows(
+						dataTableId,
+						project.id,
+						[{ name: 'TimezoneTest', registeredAt: dateWithOffset }],
+						'all',
+					);
+
+					// ACT
+					const resultWithOffset = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'registeredAt', value: dateWithOffset, condition: 'eq' }],
+							},
+						},
+					);
+
+					const resultWithUtc = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						{
+							filter: {
+								type: 'and',
+								filters: [
+									{ columnName: 'registeredAt', value: equivalentUtcTime, condition: 'eq' },
+								],
+							},
+						},
+					);
+
+					// ASSERT
+					expect(resultWithOffset.count).toBe(1);
+					expect(resultWithOffset.data[0].name).toBe('TimezoneTest');
+					expect(resultWithUtc.count).toBe(1);
+					expect(resultWithUtc.data[0].name).toBe('TimezoneTest');
+				});
+
+				it('filters by date finding multiple rows with same UTC time but different offsets', async () => {
+					// ARRANGE
+					const isoWithOffsetPlus = '2024-01-15T10:30:00.000+05:00';
+					const isoWithOffsetMinus = '2024-01-15T02:30:00.000-03:00';
+					const equivalentUtcTime = new Date('2024-01-15T05:30:00.000Z');
+
+					await dataTableService.insertRows(dataTableId, project.id, [
+						{ name: 'OffsetPlus', registeredAt: isoWithOffsetPlus },
+						{ name: 'OffsetMinus', registeredAt: isoWithOffsetMinus },
+					]);
+
+					// ACT
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'registeredAt', value: equivalentUtcTime, condition: 'eq' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toBe(2);
+					expect(result.data.map((r) => r.name).sort()).toEqual(['OffsetMinus', 'OffsetPlus']);
+				});
+
+				it('correctly compares dates across timezones with gt/lt filters', async () => {
+					// ARRANGE
+					await dataTableService.insertRows(dataTableId, project.id, [
+						{ name: 'TzEarly', registeredAt: new Date('2025-01-15T08:00:00.000+02:00') },
+						{ name: 'TzMiddle', registeredAt: new Date('2025-01-15T12:00:00.000Z') },
+						{ name: 'TzLate', registeredAt: new Date('2025-01-15T20:00:00.000+02:00') },
+					]);
+
+					// ACT
+					const filterDate = new Date('2025-01-15T13:00:00.000+03:00');
+					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'registeredAt', value: filterDate, condition: 'gt' },
+								{ columnName: 'name', value: 'Tz%', condition: 'like' },
+							],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toBe(2);
+					expect(result.data.map((r) => r.name).sort()).toEqual(['TzLate', 'TzMiddle']);
+
+					// ACT
+					const resultLt = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'registeredAt', value: filterDate, condition: 'lt' },
+								{ columnName: 'name', value: 'Tz%', condition: 'like' },
+							],
+						},
+					});
+
+					// ASSERT
+					expect(resultLt.count).toBe(1);
+					expect(resultLt.data[0].name).toBe('TzEarly');
 				});
 			});
 
