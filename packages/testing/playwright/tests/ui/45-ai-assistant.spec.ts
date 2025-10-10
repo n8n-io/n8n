@@ -94,8 +94,6 @@ test.describe('AI Assistant::enabled', () => {
 
 		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(1);
 
-		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(1);
-
 		await expect(n8n.aiAssistant.getChatMessagesAll().first()).toContainText(
 			'Hey, this is an assistant message',
 		);
@@ -290,7 +288,6 @@ test.describe('AI Assistant::enabled', () => {
 		await n8n.ndv.clickBackToCanvasButton();
 
 		await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
-		// TODO: Updated the selector here, check if other tests still work
 		await n8n.canvas.nodeCreator.open();
 
 		await n8n.aiAssistant.sendMessage('Hello', 'enter-key');
