@@ -60,7 +60,7 @@ const projectsStore = useProjectsStore();
 
 const layoutRef = useTemplateRef<ComponentExposed<typeof ResourcesListLayout>>('layoutRef');
 
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 
 const projectId = route.params.projectId;
 
@@ -162,6 +162,12 @@ const handleDeleteVariable = async (variable: EnvironmentVariable) => {
 			id: variable.id,
 			value: variable.value,
 			key: variable.key,
+		});
+		showMessage({
+			title: i18n.baseText('variables.delete.successful.message', {
+				interpolate: { variableName: variable.key },
+			}),
+			type: 'success',
 		});
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.delete'));
