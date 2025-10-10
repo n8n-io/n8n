@@ -414,8 +414,8 @@ const displayNameValidationRules = [
 .cardContainer {
 	padding: 8px 16px;
 	border-radius: 4px;
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-xlight);
+	border: var(--border-base);
+	background-color: var(--color--background--light-3);
 }
 
 .card {
@@ -423,7 +423,7 @@ const displayNameValidationRules = [
 }
 
 .card:not(:last-child) {
-	border-bottom: 1px solid var(--color-foreground-base);
+	border-bottom: var(--border-base);
 }
 
 .cardTitle {
