@@ -292,5 +292,103 @@ describe('useNodeSettingsParameters', () => {
 			expect(displayParameterSpy).toHaveBeenCalled();
 			expect(result).toBe(true);
 		});
+
+		describe('undefined/null value handling in expression resolution', () => {
+			it('should handle undefined expression resolution gracefully', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(false);
+
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: () => undefined, // Simulate expression resolution failure
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { condition: '={{ $json.invalid.path }}' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const parameter: INodeProperties = {
+					name: 'testParam',
+					type: 'string',
+					displayName: 'Test Parameter',
+					displayOptions: {
+						show: {
+							condition: [{ _cnd: { includes: 'test' } }],
+						},
+					},
+					default: '',
+				};
+
+				// Should not crash, should handle undefined gracefully
+				const result = shouldDisplayNodeParameter(nodeParameters, node, parameter);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{ condition: '' },
+					parameter,
+					'',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(false);
+			});
+
+			it('should work correctly with valid expression resolution', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: () => 'this is a test string', // Valid resolution
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { condition: '={{ $json.valid.path }}' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const parameter: INodeProperties = {
+					name: 'testParam',
+					type: 'string',
+					displayName: 'Test Parameter',
+					displayOptions: {
+						show: {
+							condition: [{ _cnd: { includes: 'test' } }],
+						},
+					},
+					default: '',
+				};
+
+				// Should work correctly with valid expressions
+				const result = shouldDisplayNodeParameter(nodeParameters, node, parameter);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{ condition: 'this is a test string' }, // Valid resolved value
+					parameter,
+					'',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
+		});
 	});
 });
