@@ -14,6 +14,7 @@ from src.errors import (
     TaskRuntimeError,
     TaskTimeoutError,
     TaskProcessExitError,
+    SecurityViolationError,
 )
 
 from src.message_types.broker import NodeMode, Items
@@ -23,6 +24,8 @@ from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
     SIGTERM_EXIT_CODE,
+    ERROR_STDLIB_DISALLOWED,
+    ERROR_EXTERNAL_DISALLOWED,
 )
 from typing import Any, Set
 
@@ -183,7 +186,9 @@ class TaskExecutor:
             compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
             globals = {
-                "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
+                "__builtins__": TaskExecutor._filter_builtins(
+                    builtins_deny, stdlib_allow, external_allow
+                ),
                 "_items": items,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
@@ -221,7 +226,9 @@ class TaskExecutor:
             result = []
             for index, item in enumerate(items):
                 globals = {
-                    "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
+                    "__builtins__": TaskExecutor._filter_builtins(
+                        builtins_deny, stdlib_allow, external_allow
+                    ),
                     "_item": item,
                     "print": TaskExecutor._create_custom_print(print_args),
                 }
@@ -278,6 +285,7 @@ class TaskExecutor:
             "message": f"Process exited with code {e.code}"
             if isinstance(e, SystemExit)
             else str(e),
+            "description": getattr(e, "description", ""),
             "stack": traceback.format_exc(),
             "stderr": stderr,
         }
@@ -363,13 +371,21 @@ class TaskExecutor:
     # ========== security ==========
 
     @staticmethod
-    def _filter_builtins(builtins_deny: set[str]):
+    def _filter_builtins(
+        builtins_deny: set[str], stdlib_allow: Set[str], external_allow: Set[str]
+    ):
         """Get __builtins__ with denied ones removed."""
 
         if len(builtins_deny) == 0:
-            return __builtins__
+            filtered = dict(__builtins__)
+        else:
+            filtered = {k: v for k, v in __builtins__.items() if k not in builtins_deny}
 
-        return {k: v for k, v in __builtins__.items() if k not in builtins_deny}
+        filtered["__import__"] = TaskExecutor._create_safe_import(
+            stdlib_allow, external_allow
+        )
+
+        return filtered
 
     @staticmethod
     def _sanitize_sys_modules(stdlib_allow: Set[str], external_allow: Set[str]):
@@ -407,3 +423,46 @@ class TaskExecutor:
 
         for module_name in modules_to_remove:
             del sys.modules[module_name]
+
+    @staticmethod
+    def _create_safe_import(stdlib_allow: Set[str], external_allow: Set[str]):
+        original_import = __builtins__["__import__"]
+
+        def safe_import(name, *args, **kwargs):
+            module_name = name.split(".")[0]
+            is_stdlib = module_name in sys.stdlib_module_names
+            is_external = not is_stdlib
+            stdlib_allowed_str = (
+                ", ".join(sorted(stdlib_allow)) if stdlib_allow else "none"
+            )
+            external_allowed_str = (
+                ", ".join(sorted(external_allow)) if external_allow else "none"
+            )
+
+            if (
+                is_stdlib
+                and "*" not in stdlib_allow
+                and module_name not in stdlib_allow
+            ):
+                raise SecurityViolationError(
+                    message="Security violation detected",
+                    description=ERROR_STDLIB_DISALLOWED.format(
+                        module=name, allowed=stdlib_allowed_str
+                    ),
+                )
+
+            if (
+                is_external
+                and "*" not in external_allow
+                and module_name not in external_allow
+            ):
+                raise SecurityViolationError(
+                    message="Security violation detected",
+                    description=ERROR_EXTERNAL_DISALLOWED.format(
+                        module=name, allowed=external_allowed_str
+                    ),
+                )
+
+            return original_import(name, *args, **kwargs)
+
+        return safe_import
