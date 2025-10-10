@@ -594,6 +594,7 @@ describe('operations-processor', () => {
 			workflowContext: {},
 			previousSummary: 'EMPTY',
 			next: '',
+			currentAgent: '',
 		});
 
 		it('should process operations and clear them', () => {
