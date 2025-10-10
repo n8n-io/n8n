@@ -135,7 +135,7 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/features/folders/composables/useParentFolder';

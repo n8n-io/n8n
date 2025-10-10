@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useExpressionResolveCtx } from '@/features/canvas/experimental/composables/useExpressionResolveCtx';
-import { type ContextMenuAction, useContextMenuItems } from '@/composables/useContextMenuItems';
+import {
+	type ContextMenuAction,
+	useContextMenuItems,
+} from '@/features/ui/contextMenu/composables/useContextMenuItems';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { type INodeUi } from '@/Interface';
 import { computed, provide, ref, watch } from 'vue';
