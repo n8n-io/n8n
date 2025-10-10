@@ -1101,7 +1101,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.0(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.0.5(59c4b57bb4a7c55197fa2a539d980aab)
+        version: 1.0.5(4573fe061489eeaa9fbd7e7be8457019)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.0(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1274,8 +1274,8 @@ importers:
         specifier: ^6.21.0
         version: 6.21.3
       weaviate-client:
-        specifier: 3.6.2
-        version: 3.6.2(encoding@0.1.13)
+        specifier: 3.9.0
+        version: 3.9.0(encoding@0.1.13)
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -18098,8 +18098,8 @@ packages:
   weak-map@1.0.8:
     resolution: {integrity: sha512-lNR9aAefbGPpHO7AEnY0hCFjz1eTkWCXYvkTRrTHs9qv8zJp+SkVYpzfLIFXQQiG3tVvbNFQgVg2bQS8YGgxyw==}
 
-  weaviate-client@3.6.2:
-    resolution: {integrity: sha512-6z+Du0Sp+nVp4Mhsn25sd+Qw6fr60vbyUS1e3gTZqtMrxLuNC1xgA0J/MHu5oHcm6moCBqT/2AQCt4ZV4fYSaw==}
+  weaviate-client@3.9.0:
+    resolution: {integrity: sha512-7qwg7YONAaT4zWnohLrFdzky+rZegVe76J+Tky/+7tuyvjFpdKgSrdqI/wPDh8aji0ZGZrL4DdGwGfFnZ+uV4w==}
     engines: {node: '>=18.0.0'}
 
   web-resource-inliner@6.0.1:
@@ -22399,7 +22399,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.0.5(59c4b57bb4a7c55197fa2a539d980aab)':
+  '@langchain/community@1.0.5(4573fe061489eeaa9fbd7e7be8457019)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.2.3)(encoding@0.1.13)(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -22455,7 +22455,7 @@ snapshots:
       pg: 8.12.0
       playwright: 1.56.0
       redis: 4.6.14
-      weaviate-client: 3.6.2(encoding@0.1.13)
+      weaviate-client: 3.9.0(encoding@0.1.13)
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - '@opentelemetry/api'
@@ -22619,7 +22619,7 @@ snapshots:
     dependencies:
       '@langchain/core': 1.1.0(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       uuid: 10.0.0
-      weaviate-client: 3.6.2(encoding@0.1.13)
+      weaviate-client: 3.9.0(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
@@ -37159,7 +37159,7 @@ snapshots:
 
   weak-map@1.0.8: {}
 
-  weaviate-client@3.6.2(encoding@0.1.13):
+  weaviate-client@3.9.0(encoding@0.1.13):
     dependencies:
       abort-controller-x: 0.4.3
       graphql: 16.11.0
