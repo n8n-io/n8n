@@ -16,12 +16,12 @@ import {
 	EVALUATIONS_DOCS_URL,
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
-	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
+import { useMcp } from '@/features/mcpAccess/composables/useMcp';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -39,6 +39,7 @@ const message = useMessage();
 const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
+const { isEligibleForMcpAccess } = useMcp();
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -71,10 +72,8 @@ const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
 
-const hasWebhookNodes = computed(() => {
-	return props.workflow.nodes.some(
-		(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
-	);
+const isMcpAvailable = computed(() => {
+	return settingsStore.isModuleActive('mcp') && isEligibleForMcpAccess(props.workflow);
 });
 
 const availableActions = computed(() => {
@@ -128,11 +127,7 @@ const availableActions = computed(() => {
 		});
 	}
 
-	if (
-		settingsStore.isModuleActive('mcp') &&
-		hasWebhookNodes.value &&
-		!suggestedActionSettings['mcp-access']?.ignored
-	) {
+	if (isMcpAvailable.value && !suggestedActionSettings['mcp-access']?.ignored) {
 		actions.push({
 			id: 'mcp-access',
 			title: i18n.baseText('mcp.productionCheklist.title'),
