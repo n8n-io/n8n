@@ -64,7 +64,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 <style lang="scss" module>
 .container {
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 	}
 }
 </style>

@@ -13,10 +13,10 @@ const { t } = useI18n();
 	display: inline-block;
 
 	color: var(--color--secondary);
-	font-size: var(--font-size-3xs);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
 	background-color: var(--color--secondary--tint-2);
-	padding: var(--spacing-5xs) var(--spacing-4xs);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
 	border-radius: 16px;
 }
 </style>

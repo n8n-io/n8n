@@ -139,8 +139,8 @@ listenForModalChanges({
 	justify-content: center;
 	align-items: center;
 	min-width: 20px;
-	margin-left: var(--spacing-2xs);
-	font-size: var(--font-size-s);
+	margin-left: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
 }
 
 .invisible {

@@ -77,7 +77,7 @@ $drawer-background-color: var(--color--background--light-3);
 
 // updates-panel
 $updates-panel-info-url-color: var(--color--primary);
-$updates-panel-border: var(--border-base);
+$updates-panel-border: var(--border);
 $updates-panel-dark-background-color: var(--color--background--light-2);
 $updates-panel-description-text-color: var(--color--text);
 $updates-panel-text-color: var(--color--text--shade-1);
@@ -85,7 +85,7 @@ $updates-panel-text-color: var(--color--text--shade-1);
 // versions card
 $version-card-name-text-color: var(--color--text);
 $version-card-background-color: var(--color--background--light-3);
-$version-card-border: var(--border-base);
+$version-card-border: var(--border);
 $version-card-description-text-color: var(--color--text);
 $version-card-release-date-text-color: var(--color--foreground--shade-2);
 $version-card-box-shadow-color: hsla(

@@ -240,10 +240,10 @@ function getCustomClass() {
 }
 
 .subtitle {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .footer {
-	margin-top: var(--spacing-l);
+	margin-top: var(--spacing--lg);
 }
 </style>

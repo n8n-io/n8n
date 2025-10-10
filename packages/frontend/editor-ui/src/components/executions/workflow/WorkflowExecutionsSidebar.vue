@@ -264,8 +264,8 @@ const goToUpgrade = () => {
 .container {
 	flex: 310px 0 0;
 	background-color: var(--color--background--light-3);
-	border-right: var(--border-base);
-	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
+	border-right: var(--border);
+	padding: var(--spacing--lg) 0 var(--spacing--lg) var(--spacing--lg);
 	z-index: 1;
 	display: flex;
 	flex-direction: column;
@@ -277,15 +277,15 @@ const goToUpgrade = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: baseline;
-	padding-right: var(--spacing-l);
+	padding-right: var(--spacing--lg);
 }
 
 .controls {
-	padding: var(--spacing-s) 0 var(--spacing-xs);
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-m);
+	padding-right: var(--spacing--md);
 
 	button {
 		display: flex;
@@ -296,7 +296,7 @@ const goToUpgrade = () => {
 .executionList {
 	flex: 1;
 	overflow: auto;
-	margin-bottom: var(--spacing-m);
+	margin-bottom: var(--spacing--md);
 	background-color: var(--color--background--light-3) !important;
 
 	// Scrolling fader
@@ -318,8 +318,8 @@ const goToUpgrade = () => {
 .infoAccordion {
 	position: absolute;
 	bottom: 0;
-	margin-left: calc(-1 * var(--spacing-l));
-	border-top: var(--border-base);
+	margin-left: calc(-1 * var(--spacing--lg));
+	border-top: var(--border);
 	width: 100%;
 
 	& > div {
@@ -331,7 +331,7 @@ const goToUpgrade = () => {
 
 .noResultsContainer {
 	width: 100%;
-	margin-top: var(--spacing-2xl);
+	margin-top: var(--spacing--2xl);
 	text-align: center;
 }
 </style>

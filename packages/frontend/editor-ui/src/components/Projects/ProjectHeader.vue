@@ -346,7 +346,7 @@ const onSelect = (action: string) => {
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
-					<div style="display: flex; gap: var(--spacing-xs); align-items: center">
+					<div style="display: flex; gap: var(--spacing--xs); align-items: center">
 						<ReadyToRunV2Button :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
@@ -381,8 +381,8 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing-l);
-	min-height: var(--spacing-3xl);
+	padding-bottom: var(--spacing--lg);
+	min-height: var(--spacing--3xl);
 }
 
 .projectDetails {
@@ -391,7 +391,7 @@ const onSelect = (action: string) => {
 }
 
 .actions {
-	padding: var(--spacing-2xs) 0 var(--spacing-xs);
+	padding: var(--spacing--2xs) 0 var(--spacing--xs);
 }
 
 .projectDescriptionWrapper {
@@ -407,9 +407,9 @@ const onSelect = (action: string) => {
 	display: none;
 	position: absolute;
 	top: 0;
-	left: calc(-1 * var(--spacing-3xs));
+	left: calc(-1 * var(--spacing--3xs));
 	background-color: var(--color--background--light-2);
-	padding: 0 var(--spacing-3xs) var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs) var(--spacing--3xs);
 	z-index: 10;
 	white-space: normal;
 	border-radius: 6px;
@@ -420,7 +420,7 @@ const onSelect = (action: string) => {
 	.projectHeader {
 		flex-direction: column;
 		align-items: flex-start;
-		gap: var(--spacing-xs);
+		gap: var(--spacing--xs);
 	}
 
 	.headerActions {

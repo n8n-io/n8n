@@ -688,14 +688,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	border-right: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	width: $sidebar-expanded-width;
 	background-color: var(--menu-background, var(--color--background--light-3));
 
 	.logo {
 		display: flex;
 		align-items: center;
-		padding: var(--spacing-xs);
+		padding: var(--spacing--xs);
 		justify-content: space-between;
 
 		img {
@@ -734,7 +734,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	background-color: var(--color--foreground--tint-2);
 	width: 20px;
 	height: 20px;
-	border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: 50%;
 
 	&:hover {
@@ -749,24 +749,24 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 }
 
 .bottomMenuItems {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 }
 
 .popover {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	min-width: 200px;
 }
 
 .popoverTitle {
 	display: block;
-	margin-bottom: var(--spacing-3xs);
+	margin-bottom: var(--spacing--3xs);
 }
 
 .userArea {
 	display: flex;
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	align-items: center;
-	border-top: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 
 	.userName {
 		display: none;
@@ -812,7 +812,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	background-color: var(--color--warning);
 	align-self: center;
 	padding: 2px;
-	border-radius: var(--border-radius-small);
+	border-radius: var(--radius--sm);
 	margin: 7px 12px 0 5px;
 }
 </style>

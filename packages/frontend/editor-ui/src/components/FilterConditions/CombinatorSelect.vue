@@ -42,8 +42,8 @@ const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
 <style lang="scss" module>
 .combinatorSelect {
 	max-width: 80px;
-	line-height: var(--font-line-height-xloose);
-	font-size: var(--font-size-2xs);
+	line-height: var(--line-height--xl);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 }
 </style>

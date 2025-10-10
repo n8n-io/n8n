@@ -62,6 +62,6 @@ const locale = useI18n();
 
 .entity-card {
 	max-width: 400px;
-	padding: var(--spacing-xl);
+	padding: var(--spacing--xl);
 }
 </style>

@@ -107,19 +107,19 @@ function onCardClick(e: MouseEvent) {
 }
 
 .icon {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 
 .card {
 	position: relative;
-	border-left: var(--border-base);
-	border-right: var(--border-base);
-	border-bottom: var(--border-base);
+	border-left: var(--border);
+	border-right: var(--border);
+	border-bottom: var(--border);
 	background-color: var(--color--background--light-3);
 
 	display: flex;
 	align-items: center;
-	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
 	background-color: var(--color--background--light-3);
 	cursor: pointer;
 
@@ -142,18 +142,18 @@ function onCardClick(e: MouseEvent) {
 }
 
 .loaded {
-	padding-top: var(--spacing-s);
+	padding-top: var(--spacing--sm);
 }
 
 .first {
-	border-top: var(--border-base);
-	border-top-right-radius: var(--border-radius-large);
-	border-top-left-radius: var(--border-radius-large);
+	border-top: var(--border);
+	border-top-right-radius: var(--radius--lg);
+	border-top-left-radius: var(--radius--lg);
 }
 
 .last {
-	border-bottom-right-radius: var(--border-radius-large);
-	border-bottom-left-radius: var(--border-radius-large);
+	border-bottom-right-radius: var(--radius--lg);
+	border-bottom-left-radius: var(--radius--lg);
 }
 
 .content {
@@ -164,7 +164,7 @@ function onCardClick(e: MouseEvent) {
 .line {
 	padding: 0 6px;
 	color: var(--color--foreground);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .loading {
