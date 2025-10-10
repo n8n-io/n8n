@@ -8,11 +8,12 @@ import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CanvasNodeDirtiness } from '@/types';
+import { CanvasNodeDirtiness } from '@/features/canvas/canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
+import { useWorkflowState } from './useWorkflowState';
 
 describe(useNodeDirtiness, () => {
 	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
@@ -126,7 +127,8 @@ describe(useNodeDirtiness, () => {
 
 			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
 
-			workflowsStore.setWorkflowExecutionData({
+			const workflowState = useWorkflowState();
+			workflowState.setWorkflowExecutionData({
 				id: workflowsStore.workflow.id,
 				finished: true,
 				mode: 'manual',
@@ -434,7 +436,8 @@ describe(useNodeDirtiness, () => {
 			});
 		}
 
-		workflowsStore.setWorkflowExecutionData({
+		const workflowState = useWorkflowState();
+		workflowState.setWorkflowExecutionData({
 			id: workflow.id,
 			finished: true,
 			mode: 'manual',

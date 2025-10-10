@@ -229,7 +229,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 							$style.input,
 							{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
 						]"
-						style="border: 1.5px solid var(--color-foreground-base)"
+						style="border: 1.5px solid var(--color--foreground)"
 						type="textarea"
 						:rows="6"
 						:maxlength="inputFieldMaxLength"
@@ -290,7 +290,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 .intro {
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: var(--spacing-2xs) 0 0;
 }
 .inputContainer {
@@ -308,7 +308,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	gap: var(--spacing-2xs);
 	align-items: end;
 	z-index: 1;
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 
 	* {
 		font-size: var(--font-size-2xs);
@@ -316,7 +316,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	}
 }
 .counter {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 .controls {
@@ -325,14 +325,14 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	justify-content: flex-end;
 }
 .warning-text {
-	color: var(--color-warning);
+	color: var(--color--warning);
 	line-height: 1.2;
 }
 .droppable {
 	border: 1.5px dashed var(--color-ndv-droppable-parameter) !important;
 }
 .activeDrop {
-	border: 1.5px solid var(--color-success) !important;
+	border: 1.5px solid var(--color--success) !important;
 	cursor: grabbing;
 }
 .disabled {

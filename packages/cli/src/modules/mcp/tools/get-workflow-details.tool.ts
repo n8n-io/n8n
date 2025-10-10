@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
+import { UserError, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ToolDefinition, WorkflowDetailsResult } from '../mcp.types';
@@ -68,7 +68,7 @@ export async function getWorkflowDetails(
 	}
 
 	const webhooks = workflow.nodes.filter(
-		(node) => node.type === 'n8n-nodes-base.webhook' && node.disabled !== true,
+		(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
 	);
 
 	let triggerNotice = await getWebhookDetails(

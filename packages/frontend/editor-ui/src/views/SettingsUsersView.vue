@@ -22,7 +22,7 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
@@ -529,7 +529,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 	flex-shrink: 0;
 
 	border-radius: 4px;
-	border: 1px solid var(--Colors-Foreground---color-foreground-base, #d9dee8);
+	border: 1px solid var(--Colors-Foreground---color--foreground, #d9dee8);
 }
 
 .settingsContainerInfo {

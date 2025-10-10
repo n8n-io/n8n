@@ -182,13 +182,13 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
-			v-if="!isCompact || !props.latestInfo?.deleted"
+			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
 			type="secondary"
 			size="small"
 			icon="square-pen"
 			icon-size="medium"
 			:style="{
-				visibility: props.canOpenNdv ? '' : 'hidden',
+				visibility: props.data.isSubExecution ? 'hidden' : '',
 			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
@@ -258,11 +258,11 @@ watch(
 	z-index: -1;
 
 	.selected & {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 
 	.container:hover:not(.selected) & {
-		background-color: var(--color-background-light-base);
+		background-color: var(--color--background--light-1);
 	}
 
 	.selected:not(:hover).error & {
@@ -374,7 +374,7 @@ watch(
 	flex-shrink: 0;
 	border: none;
 	background: transparent;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	align-items: center;
 	justify-content: center;
 
@@ -392,7 +392,7 @@ watch(
 }
 
 .statusIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	flex-grow: 0;
 	flex-shrink: 0;
 	width: 26px;

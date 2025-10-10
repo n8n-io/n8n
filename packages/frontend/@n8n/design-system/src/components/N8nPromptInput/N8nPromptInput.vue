@@ -200,9 +200,12 @@ function adjustHeight() {
 
 watch(
 	() => props.modelValue,
-	(newValue) => {
+	async (newValue) => {
 		textValue.value = newValue || '';
-		void nextTick(() => adjustHeight());
+		await nextTick();
+		// Wait for an additional animation frame to ensure DOM has fully updated
+		await new Promise(requestAnimationFrame);
+		adjustHeight();
 	},
 );
 
@@ -239,7 +242,7 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
+	const isSubmitKey = event.key === 'Enter' && (event.ctrlKey || event.metaKey || event.shiftKey);
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
 	if (atMaxLength && isPrintableChar && !isDeletionKey) {
@@ -247,8 +250,8 @@ async function handleKeyDown(event: KeyboardEvent) {
 		return;
 	}
 
-	// Submit on plain Enter (no Shift/Ctrl/Meta). If send disabled, don't submit.
-	if (isPlainEnter) {
+	// Submit on Ctrl/Cmd+Enter. If send disabled, don't submit.
+	if (isSubmitKey) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();
@@ -401,8 +404,8 @@ defineExpose({
 
 <style lang="scss" module>
 .wrapper {
-	background: var(--color-background-light);
-	border: 1px solid var(--color-foreground-base);
+	background: var(--color--background--light-2);
+	border: 1px solid var(--color--foreground);
 	border-radius: var(--border-radius-large);
 }
 
@@ -410,7 +413,7 @@ defineExpose({
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	border: none;
 	border-bottom: 1px transparent solid;
 	border-radius: var(--border-radius-large);
@@ -426,7 +429,7 @@ defineExpose({
 	}
 
 	&.focused {
-		box-shadow: 0 0 0 1px var(--color-secondary);
+		box-shadow: 0 0 0 1px var(--color--secondary);
 		border-bottom: 1px transparent solid;
 	}
 
@@ -435,12 +438,12 @@ defineExpose({
 	}
 
 	&.disabled {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 		cursor: not-allowed;
 
 		textarea {
 			cursor: not-allowed;
-			color: var(--color-text-light);
+			color: var(--color--text--tint-1);
 		}
 	}
 }
@@ -466,7 +469,7 @@ defineExpose({
 	font-family: var(--font-family), sans-serif;
 	font-size: var(--font-size-2xs);
 	line-height: 24px;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: 0 var(--spacing-2xs);
 	height: 24px;
 	overflow: hidden;
@@ -474,7 +477,7 @@ defineExpose({
 	display: block;
 
 	&::placeholder {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -499,7 +502,7 @@ defineExpose({
 	font-family: var(--font-family), sans-serif;
 	font-size: var(--font-size-2xs);
 	line-height: 18px;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: var(--spacing-3xs);
 	margin-bottom: 0;
 	box-sizing: border-box;
@@ -507,7 +510,7 @@ defineExpose({
 	overflow-y: hidden;
 
 	&::placeholder {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -533,7 +536,7 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 
 	b {
@@ -551,17 +554,17 @@ defineExpose({
 }
 
 .noCredits {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 // Common styles
 .characterCount {
 	font-size: var(--font-size-3xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	padding: 0 var(--spacing-3xs);
 
 	.overLimit {
-		color: var(--color-danger);
+		color: var(--color--danger);
 		font-weight: var(--font-weight-bold);
 	}
 }

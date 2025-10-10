@@ -121,8 +121,8 @@ export async function runLangsmithEvaluation(): Promise<void> {
 		// Create workflow generation function
 		const generateWorkflow = createWorkflowGenerator(parsedNodeTypes, llm, tracer);
 
-		// Create LLM-based evaluator
-		const evaluator = createLangsmithEvaluator(llm);
+		// Create evaluator with both LLM-based and programmatic evaluation
+		const evaluator = createLangsmithEvaluator(llm, parsedNodeTypes);
 
 		// Run Langsmith evaluation
 		const results = await evaluate(generateWorkflow, {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IFormInputs, InputAutocompletePropType } from '@/Interface';
-import Logo from '@/components/Logo/Logo.vue';
+import { N8nLogo } from '@n8n/design-system';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
@@ -197,7 +197,7 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<Logo location="authView" :release-channel="releaseChannel" />
+		<N8nLogo size="large" :release-channel="releaseChannel" />
 		<N8nCard>
 			<div :class="$style.headerContainer">
 				<N8nHeading size="xlarge" color="text-dark">{{
@@ -266,7 +266,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 body {
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .container {
@@ -290,7 +290,7 @@ body {
 }
 
 .formError input {
-	border-color: var(--color-danger);
+	border-color: var(--color--danger);
 }
 
 .recoveryCodeLink {

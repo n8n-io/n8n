@@ -7,7 +7,13 @@
                 "channel": {
                     "type": "object",
                     "properties": {
+                        "country": {
+                            "type": "string"
+                        },
                         "description": {
+                            "type": "string"
+                        },
+                        "keywords": {
                             "type": "string"
                         },
                         "title": {
@@ -53,6 +59,9 @@
         "snippet": {
             "type": "object",
             "properties": {
+                "country": {
+                    "type": "string"
+                },
                 "customUrl": {
                     "type": "string"
                 },
@@ -177,5 +186,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

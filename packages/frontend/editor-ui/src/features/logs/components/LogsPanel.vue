@@ -60,7 +60,7 @@ const {
 } = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData(isOpen);
+	useLogsExecutionData({ isEnabled: isOpen });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
@@ -270,7 +270,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	min-height: 0;
 	flex-basis: 0;
 	border-top: var(--border-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 
 	.poppedOut & {
 		border-top: none;

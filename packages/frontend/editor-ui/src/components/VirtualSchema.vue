@@ -35,7 +35,7 @@ import {
 import MappingPill from './MappingPill.vue';
 
 import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
@@ -233,7 +233,7 @@ const contextItems = computed(() => {
 				return renderItem;
 			}
 
-			if (isVarsOpen && environmentsStore.variables.length === 0) {
+			if (isVarsOpen && environmentsStore.scopedVariables.length === 0) {
 				const variablesEmptyNotice: RenderNotice = {
 					type: 'notice',
 					id: 'notice-variablesEmpty',
@@ -584,13 +584,13 @@ const onDragEnd = (el: HTMLElement) => {
 .icon {
 	display: inline-flex;
 	margin-left: var(--spacing-xl);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	margin-bottom: var(--ndv-spacing);
 }
 
 .notice {
 	padding-bottom: var(--spacing-xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
 	margin-left: calc(var(--spacing-l) * var(--schema-level));

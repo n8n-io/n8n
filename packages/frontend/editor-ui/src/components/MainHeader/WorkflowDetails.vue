@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
+import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
@@ -27,7 +27,7 @@ import { ResourceType } from '@/utils/projects.utils';
 
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -42,13 +42,9 @@ import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/event-bus';
-import type {
-	ActionDropdownItem,
-	FolderShortInfo,
-	IWorkflowDb,
-	IWorkflowToShare,
-} from '@/Interface';
-import { useFoldersStore } from '@/stores/folders.store';
+import type { ActionDropdownItem, IWorkflowDb, IWorkflowToShare } from '@/Interface';
+import type { FolderShortInfo } from '@/features/folders/folders.types';
+import { useFoldersStore } from '@/features/folders/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { ProjectTypes } from '@/types/projects.types';
 import { sanitizeFilename } from '@/utils/fileUtils';
@@ -410,7 +406,7 @@ async function onNameSubmit(name: string) {
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
-		workflowHelpers.setDocumentTitle(newName, 'IDLE');
+		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	renameInput.value?.forceCancel();
@@ -1012,7 +1008,7 @@ $--header-spacing: 20px;
 
 .path-separator {
 	font-size: var(--font-size-xl);
-	color: var(--color-foreground-base);
+	color: var(--color--foreground);
 	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
@@ -1026,7 +1022,7 @@ $--header-spacing: 20px;
 }
 
 .deleteItem {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .disabledShareButton {

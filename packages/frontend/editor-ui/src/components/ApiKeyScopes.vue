@@ -138,7 +138,7 @@ function goToUpgradeApiKeyScopes() {
 .api-key-scopes :global(.el-tag__close) {
 	color: white;
 	margin-left: var(--spacing-3xs);
-	background-color: var(--color-text-base);
+	background-color: var(--color--text);
 }
 
 .api-key-scopes :global(.el-checkbox) {
@@ -147,14 +147,14 @@ function goToUpgradeApiKeyScopes() {
 
 .scopes-dropdown-container :global(.el-select-group__title) {
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight-bold);
-	border-bottom: var(--spacing-5xs) solid var(--color-text-lighter);
+	border-bottom: var(--spacing-5xs) solid var(--color--text--tint-2);
 	padding-left: var(--spacing-xs);
 }
 
 .scopes-dropdown-container :global(.el-select-dropdown__item) {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-weight: var(--font-weight-regular);
 	padding-left: var(--spacing-xs);
 }
@@ -176,7 +176,7 @@ function goToUpgradeApiKeyScopes() {
 .scopes-dropdown-container :global(.el-select-dropdown__header) {
 	margin-top: var(--spacing-xs);
 	padding-bottom: var(--spacing-xs);
-	border-bottom: var(--spacing-5xs) solid var(--color-text-lighter);
+	border-bottom: var(--spacing-5xs) solid var(--color--text--tint-2);
 }
 
 .scopes-checkbox {
