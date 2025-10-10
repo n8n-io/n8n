@@ -14,19 +14,18 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Message a Model (Deprecated)',
-				value: 'message',
-				action: 'Message a model(deprecated)',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
-				description:
-					'Create a completion with GPT 3, 4, etc. (Use "Create a Model Response" instead)',
-			},
-			{
 				name: 'Create a Model Response',
 				value: 'response',
 				action: 'Create a Model Response',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period
-				description: 'Create a model response with GPT 3, 4, 5, etc.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
+				description: 'Create a model response with GPT 3, 4, 5, etc. using Responses API',
+			},
+			{
+				name: 'Generate a Chat Completion',
+				value: 'message',
+				action: 'Generate a chat completion',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
+				description: 'Create a completion with GPT 3, 4, etc. using Completions API',
 			},
 			{
 				name: 'Classify Text for Violations',
