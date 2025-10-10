@@ -18,6 +18,24 @@ import {
 import { sign } from 'aws4';
 
 /**
+ * Checks if a request body value should be JSON stringified for AWS requests.
+ * Returns true for plain objects without Content-Length headers.
+ */
+function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
+	if (
+		typeof value === 'object' &&
+		value !== null &&
+		!headers['Content-Length'] &&
+		!headers['content-length'] &&
+		!Buffer.isBuffer(value)
+	) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
  * Gets the AWS domain for a specific region.
  *
  * @param region - The AWS region to get the domain for
@@ -208,6 +226,11 @@ export function awsGetSignInOptionsAndUpdateRequest(
 	const requestWithForm = requestOptions as unknown as { form?: Record<string, string> };
 	let bodyContent = body !== '' ? body : undefined;
 	let contentTypeHeader: string | undefined = undefined;
+
+	if (shouldStringifyBody(bodyContent, requestOptions.headers ?? {})) {
+		bodyContent = JSON.stringify(bodyContent);
+	}
+
 	if (requestWithForm.form) {
 		const params = new URLSearchParams();
 		for (const key in requestWithForm.form) {
