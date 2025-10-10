@@ -744,51 +744,6 @@ echo "$files" | xargs perl -pi -e 's/--grid-cell-editing-border/--grid--cell--bo
 echo "✓ Grid tokens replaced"
 echo ""
 
-# HSL component tokens - these need to stay as they are used in HSL functions
-echo "[59] Renaming HSL component tokens for proper vocabulary..."
-echo "$files" | xargs perl -pi -e 's/--node-type--background--lightness/--node-type--color--background--lightness/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--label--color--hue/--node-type--supplemental--label--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--label--color--saturation/--node-type--supplemental--label--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--label--color--lightness/--node-type--supplemental--label--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--color--hue/--node-type--supplemental--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--color--saturation/--node-type--supplemental--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--supplemental--color--lightness/--node-type--supplemental--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-chain--color--hue/--node-type--ai-chain--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-chain--color--saturation/--node-type--ai-chain--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-chain--color--lightness/--node-type--ai-chain--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-document--color--hue/--node-type--ai-document--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-document--color--saturation/--node-type--ai-document--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-document--color--lightness/--node-type--ai-document--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-embedding--color--hue/--node-type--ai-embedding--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-embedding--color--saturation/--node-type--ai-embedding--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-embedding--color--lightness/--node-type--ai-embedding--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-language-model--color--hue/--node-type--ai-language-model--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-language-model--color--saturation/--node-type--ai-language-model--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-language-model--color--lightness/--node-type--ai-language-model--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-memory--color--hue/--node-type--ai-memory--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-memory--color--saturation/--node-type--ai-memory--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-memory--color--lightness/--node-type--ai-memory--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-output-parser--color--hue/--node-type--ai-output-parser--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-output-parser--color--saturation/--node-type--ai-output-parser--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-output-parser--color--lightness/--node-type--ai-output-parser--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-tool--color--hue/--node-type--ai-tool--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-tool--color--saturation/--node-type--ai-tool--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-tool--color--lightness/--node-type--ai-tool--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-retriever--color--hue/--node-type--ai-retriever--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-retriever--color--saturation/--node-type--ai-retriever--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-retriever--color--lightness/--node-type--ai-retriever--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-text-splitter--color--hue/--node-type--ai-text-splitter--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-text-splitter--color--saturation/--node-type--ai-text-splitter--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-text-splitter--color--lightness/--node-type--ai-text-splitter--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-vector-retriever--color--hue/--node-type--ai-vector-retriever--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-vector-retriever--color--saturation/--node-type--ai-vector-retriever--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-vector-retriever--color--lightness/--node-type--ai-vector-retriever--color--hsl-l/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-vector-store--color--hue/--node-type--ai-vector-store--color--hsl-h/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-vector-store--color--saturation/--node-type--ai-vector-store--color--hsl-s/g'
-echo "$files" | xargs perl -pi -e 's/--node-type--ai-vector-store--color--lightness/--node-type--ai-vector-store--color--hsl-l/g'
-echo "✓ HSL component tokens replaced"
-echo ""
-
 echo "[60] Verifying replacements..."
 remaining=$(echo "$files" | xargs grep -l "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | xargs grep "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | grep -v "\-\-color\-\-" | wc -l | xargs)
 echo "Remaining old tokens found: $remaining"
