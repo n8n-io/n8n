@@ -270,8 +270,9 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
 			}));
 
-			// Always set currentSessionId when we have a sessionId (either from options, localStorage, or generated)
-			currentSessionId.value = sessionId;
+			if (messages.value.length) {
+				currentSessionId.value = sessionId;
+			}
 
 			// Store the sessionId in localStorage for future use
 			localStorage.setItem(localStorageSessionIdKey, sessionId);

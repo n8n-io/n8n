@@ -5,11 +5,11 @@ import { computed, nextTick, onMounted, ref } from 'vue';
 import GetStarted from '@n8n/chat/components/GetStarted.vue';
 import GetStartedFooter from '@n8n/chat/components/GetStartedFooter.vue';
 import Input from '@n8n/chat/components/Input.vue';
+import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import Layout from '@n8n/chat/components/Layout.vue';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 
 const { t } = useI18n();
 const chatStore = useChat();
@@ -24,10 +24,10 @@ const messageHistoryIndex = ref(-1);
 const userMessages = computed(() =>
 	messages.value
 		.filter((m) => m.sender === 'user')
-		.map((m) => (typeof m.text === 'string' ? m.text : '')),
+		.map((m) => ('text' in m && typeof m.text === 'string' ? m.text : '')),
 );
 
-async function getStarted() {
+function getStarted() {
 	if (!chatStore.startNewSession) {
 		return;
 	}
@@ -52,11 +52,9 @@ function closeChat() {
 }
 
 function onArrowKeyDown(payload: ArrowKeyDownPayload) {
-	console.log('Chat received arrow key:', payload); // Debug
 	const userMessagesList = userMessages.value;
 
 	if (userMessagesList.length === 0) {
-		console.log('No user messages available for navigation'); // Debug
 		return;
 	}
 
@@ -65,7 +63,6 @@ function onArrowKeyDown(payload: ArrowKeyDownPayload) {
 		if (messageHistoryIndex.value < userMessagesList.length - 1) {
 			messageHistoryIndex.value++;
 			const messageText = userMessagesList[userMessagesList.length - 1 - messageHistoryIndex.value];
-			console.log('Setting input to:', messageText); // Debug
 			chatEventBus.emit('setInputValue', messageText);
 		}
 	} else if (payload.key === 'ArrowDown') {
@@ -73,11 +70,9 @@ function onArrowKeyDown(payload: ArrowKeyDownPayload) {
 		if (messageHistoryIndex.value > 0) {
 			messageHistoryIndex.value--;
 			const messageText = userMessagesList[userMessagesList.length - 1 - messageHistoryIndex.value];
-			console.log('Setting input to:', messageText); // Debug
 			chatEventBus.emit('setInputValue', messageText);
 		} else if (messageHistoryIndex.value === 0) {
 			messageHistoryIndex.value = -1;
-			console.log('Clearing input'); // Debug
 			chatEventBus.emit('setInputValue', '');
 		}
 	}
@@ -86,7 +81,7 @@ function onArrowKeyDown(payload: ArrowKeyDownPayload) {
 onMounted(async () => {
 	await initialize();
 	if (!options.showWelcomeScreen && !currentSessionId.value) {
-		await getStarted();
+		getStarted();
 	}
 
 	// Reset history index when a new message is sent

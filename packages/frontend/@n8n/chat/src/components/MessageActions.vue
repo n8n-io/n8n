@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import IconContentCopy from 'virtual:icons/mdi/content-copy';
-import IconRestart from 'virtual:icons/mdi/restart';
 import { N8nTooltip, N8nIcon } from '@n8n/design-system';
 
 import { useChat, useOptions } from '@n8n/chat/composables';
@@ -17,7 +15,8 @@ const chatStore = useChat();
 async function repostMessage() {
 	if (props.message.sender === 'user') {
 		// Repost user message by sending it again
-		const messageText = typeof props.message.text === 'string' ? props.message.text : '';
+		const messageText =
+			'text' in props.message && typeof props.message.text === 'string' ? props.message.text : '';
 		if (messageText.trim()) {
 			await chatStore.sendMessage(
 				messageText,
@@ -28,7 +27,8 @@ async function repostMessage() {
 }
 
 function copyToInput() {
-	const messageText = typeof props.message?.text === 'string' ? props.message?.text : '';
+	const messageText =
+		'text' in props.message && typeof props.message?.text === 'string' ? props.message?.text : '';
 	if (messageText.trim()) {
 		chatEventBus.emit('setInputValue', messageText);
 	}
