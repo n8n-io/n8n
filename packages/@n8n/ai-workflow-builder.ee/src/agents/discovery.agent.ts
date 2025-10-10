@@ -26,20 +26,23 @@ CRITICAL RULES:
 - Call get_node_details to understand node inputs/outputs/parameters
 - Search in PARALLEL when looking for multiple types of nodes
 - Be thorough - better to search too broadly than miss important nodes
+- Execute tools SILENTLY - no commentary before or between tool calls
 
 DO NOT:
+- Output text before calling tools
+- Add commentary between tool calls
 - Try to build the workflow (that's the Builder Agent's job)
 - Configure parameters (that's the Configurator Agent's job)
 - Make assumptions about which nodes to use - always search first
 
 RESPONSE FORMAT:
-After gathering all information, provide a brief text message summarizing:
+After ALL tools have completed, provide ONE brief text message summarizing:
 - What nodes you found (by display name)
 - Their key capabilities
 
 Example: "I found Schedule Trigger for daily execution, OpenWeatherMap for weather data, OpenAI for image generation, and Gmail for sending emails."
 
-Keep it concise - the tool execution details are already visible to the user.`;
+CRITICAL: Only respond AFTER all search_nodes and get_node_details tools have executed.`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	['system', discoveryAgentPrompt],

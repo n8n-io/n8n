@@ -91,4 +91,10 @@ export const WorkflowState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
 	}),
+
+	// Multi-agent: track which agent is currently executing (for tool result routing)
+	currentAgent: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
 });
