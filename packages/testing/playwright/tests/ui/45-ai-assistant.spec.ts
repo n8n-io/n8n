@@ -179,98 +179,6 @@ test.describe('AI Assistant::enabled', () => {
 			.click();
 
 		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(1);
-
-		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(1);
-	});
-
-	test('should apply code diff to code node', async ({ n8n, setupRequirements }) => {
-		await setupRequirements(aiEnabledWithCodeDiffRequirements);
-
-		let applySuggestionCalls = 0;
-		await n8n.page.route('**/rest/ai/chat/apply-suggestion', async (route) => {
-			applySuggestionCalls += 1;
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(applyCodeDiffResponse),
-			});
-		});
-
-		await n8n.canvas.openNode('Code');
-
-		await n8n.ndv.execute();
-
-		await n8n.aiAssistant.getNodeErrorViewAssistantButton().click();
-
-		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(2);
-		await expect(n8n.aiAssistant.getCodeDiffs()).toHaveCount(1);
-		await expect(n8n.aiAssistant.getApplyCodeDiffButtons()).toHaveCount(1);
-
-		await n8n.aiAssistant.getApplyCodeDiffButtons().first().click();
-
-		await expect(n8n.aiAssistant.getApplyCodeDiffButtons()).toHaveCount(0);
-		await expect(n8n.aiAssistant.getUndoReplaceCodeButtons()).toHaveCount(1);
-		await expect(n8n.aiAssistant.getCodeReplacedMessage()).toBeVisible();
-		await expect(n8n.ndv.getCodeEditor()).toContainText('item.json.myNewField = 1');
-
-		await n8n.aiAssistant.getUndoReplaceCodeButtons().first().click();
-
-		await expect(n8n.aiAssistant.getApplyCodeDiffButtons()).toHaveCount(1);
-		await expect(n8n.aiAssistant.getCodeReplacedMessage()).toHaveCount(0);
-		expect(applySuggestionCalls).toBe(1);
-		await expect(n8n.ndv.getCodeEditor()).toContainText('item.json.myNewField = 1aaa');
-
-		await n8n.aiAssistant.getApplyCodeDiffButtons().first().click();
-
-		await expect(n8n.ndv.getCodeEditor()).toContainText('item.json.myNewField = 1');
-	});
-
-	test('should ignore node execution success and error messages after the node run successfully once', async ({
-		n8n,
-		setupRequirements,
-	}) => {
-		await setupRequirements(aiEnabledWorkflowBaseRequirements);
-
-		let chatRequestCount = 0;
-		await n8n.page.route('**/rest/ai/chat', async (route) => {
-			chatRequestCount += 1;
-			const response =
-				chatRequestCount === 1 ? codeDiffSuggestionResponse : nodeExecutionSucceededResponse;
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(response),
-			});
-		});
-
-		await n8n.canvas.openNode('Code');
-		await n8n.ndv.execute();
-		await n8n.aiAssistant.getNodeErrorViewAssistantButton().click();
-
-		await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(2);
-
-		await n8n.ndv
-			.getCodeEditor()
-			.fill(
-				"// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();",
-			);
-
-		await n8n.ndv.execute();
-
-		await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);
-
-		await n8n.ndv
-			.getCodeEditor()
-			.fill(
-				"// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1aaaa!;\n}\n\nreturn $input.all();",
-			);
-
-		await n8n.ndv.execute();
-
-		await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);
-		await expect(n8n.aiAssistant.getChatMessagesAssistant().nth(2)).toContainText(
-			'Code node ran successfully, did my solution help resolve your issue?',
-		);
 	});
 
 	test('should end chat session when `end_session` event is received', async ({
@@ -330,10 +238,7 @@ test.describe('AI Assistant::enabled', () => {
 		});
 
 		await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
-
-		const chatInput = n8n.aiAssistant.getChatInput();
-		await chatInput.fill('Hello');
-		await chatInput.press('Shift+Enter');
+		await n8n.aiAssistant.sendMessage('Hello', 'enter-key');
 
 		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(2);
 
@@ -341,8 +246,7 @@ test.describe('AI Assistant::enabled', () => {
 		await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
 		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(2);
 
-		await chatInput.fill('Thanks, bye');
-		await chatInput.press('Shift+Enter');
+		await n8n.aiAssistant.sendMessage('Thanks, bye', 'enter-key');
 
 		await expect(n8n.aiAssistant.getChatMessagesSystem()).toHaveCount(1);
 		await expect(n8n.aiAssistant.getChatMessagesSystem().first()).toContainText(
@@ -365,9 +269,7 @@ test.describe('AI Assistant::enabled', () => {
 		await n8n.ndv.clickBackToCanvasButton();
 
 		await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
-		const chatInput = n8n.aiAssistant.getChatInput();
-		await chatInput.fill('Hello');
-		await chatInput.press('Shift+Enter');
+		await n8n.aiAssistant.sendMessage('Hello', 'enter-key');
 
 		await expect(n8n.aiAssistant.getChatMessagesUser()).toHaveCount(1);
 
@@ -391,15 +293,13 @@ test.describe('AI Assistant::enabled', () => {
 		// TODO: Updated the selector here, check if other tests still work
 		await n8n.canvas.nodeCreator.open();
 
-		const chatInput = n8n.aiAssistant.getChatInput();
-		await chatInput.fill('Hello');
-		await chatInput.press('Shift+Enter');
+		await n8n.aiAssistant.sendMessage('Hello', 'enter-key');
 
 		await expect(n8n.aiAssistant.getPlaceholderMessage()).toHaveCount(0);
 		await expect(n8n.aiAssistant.getChatMessagesUser()).toHaveCount(1);
 	});
 
-	test.describe('General help', () => {
+	test.describe('Support Chat', () => {
 		test('assistant returns code snippet', async ({ n8n, setupRequirements }) => {
 			await setupRequirements(aiEnabledWithCodeSnippetRequirements);
 			await n8n.page.goto('/workflow/new');
@@ -409,8 +309,7 @@ test.describe('AI Assistant::enabled', () => {
 
 			await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
 
-			await n8n.aiAssistant.getChatInput().fill('Show me an expression');
-			await n8n.aiAssistant.getSendMessageButton().click();
+			await n8n.aiAssistant.sendMessage('Show me an expression');
 
 			await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(3);
 			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toContainText(
@@ -438,10 +337,8 @@ test.describe('AI Assistant::enabled', () => {
 			});
 
 			await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
-			await n8n.aiAssistant.getChatInput().fill('What is wrong with this workflow?');
-			await n8n.aiAssistant.getSendMessageButton().click();
+			await n8n.aiAssistant.sendMessage('What is wrong with this workflow?');
 
-			console.log(chatRequests);
 			const supportRequest = chatRequests.find(
 				(request) => request.payload?.question === 'What is wrong with this workflow?',
 			);
@@ -473,14 +370,8 @@ test.describe('AI Assistant::enabled', () => {
 
 			await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
 
-			// TODO: Move this to page action
-			const sendMessage = async (text: string) => {
-				await n8n.aiAssistant.getChatInput().fill(text);
-				await n8n.aiAssistant.getChatInput().press('Shift+Enter');
-			};
-
-			await sendMessage('What is wrong with this workflow?');
-			await sendMessage('And now?');
+			await n8n.aiAssistant.sendMessage('What is wrong with this workflow?', 'enter-key');
+			await n8n.aiAssistant.sendMessage('And now?', 'enter-key');
 
 			const secondRequest = chatRequests.find((request) => request.payload?.text === 'And now?');
 			const secondContext = secondRequest?.payload?.context;
@@ -491,19 +382,110 @@ test.describe('AI Assistant::enabled', () => {
 			await n8n.ndv.close();
 			await n8n.canvas.clickExecuteWorkflowButton();
 
-			await sendMessage('What about now?');
+			await n8n.aiAssistant.sendMessage('What about now?', 'enter-key');
 
 			const thirdRequest = chatRequests.find(
 				(request) => request.payload?.text === 'What about now?',
 			);
-			console.log(chatRequests);
 			const thirdContext = thirdRequest?.payload?.context;
 			expect(thirdContext?.currentWorkflow).toBeTruthy();
 			expect(thirdContext?.executionData).toBeTruthy();
 		});
 	});
 
-	test.describe('AI Assistant Credential Help', () => {
+	test.describe('Code Node Error Help', () => {
+		test('should apply code diff to code node', async ({ n8n, setupRequirements }) => {
+			await setupRequirements(aiEnabledWithCodeDiffRequirements);
+
+			let applySuggestionCalls = 0;
+			await n8n.page.route('**/rest/ai/chat/apply-suggestion', async (route) => {
+				applySuggestionCalls += 1;
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify(applyCodeDiffResponse),
+				});
+			});
+
+			await n8n.canvas.openNode('Code');
+
+			await n8n.ndv.execute();
+
+			await n8n.aiAssistant.getNodeErrorViewAssistantButton().click();
+
+			await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(2);
+			await expect(n8n.aiAssistant.getCodeDiffs()).toHaveCount(1);
+			await expect(n8n.aiAssistant.getApplyCodeDiffButtons()).toHaveCount(1);
+
+			await n8n.aiAssistant.getApplyCodeDiffButtons().first().click();
+
+			await expect(n8n.aiAssistant.getApplyCodeDiffButtons()).toHaveCount(0);
+			await expect(n8n.aiAssistant.getUndoReplaceCodeButtons()).toHaveCount(1);
+			await expect(n8n.aiAssistant.getCodeReplacedMessage()).toBeVisible();
+			await expect(n8n.ndv.getCodeEditor()).toContainText('item.json.myNewField = 1');
+
+			await n8n.aiAssistant.getUndoReplaceCodeButtons().first().click();
+
+			await expect(n8n.aiAssistant.getApplyCodeDiffButtons()).toHaveCount(1);
+			await expect(n8n.aiAssistant.getCodeReplacedMessage()).toHaveCount(0);
+			expect(applySuggestionCalls).toBe(1);
+			await expect(n8n.ndv.getCodeEditor()).toContainText('item.json.myNewField = 1aaa');
+
+			await n8n.aiAssistant.getApplyCodeDiffButtons().first().click();
+
+			await expect(n8n.ndv.getCodeEditor()).toContainText('item.json.myNewField = 1');
+		});
+
+		test('should ignore node execution success and error messages after the node run successfully once', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupRequirements(aiEnabledWorkflowBaseRequirements);
+
+			let chatRequestCount = 0;
+			await n8n.page.route('**/rest/ai/chat', async (route) => {
+				chatRequestCount += 1;
+				const response =
+					chatRequestCount === 1 ? codeDiffSuggestionResponse : nodeExecutionSucceededResponse;
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify(response),
+				});
+			});
+
+			await n8n.canvas.openNode('Code');
+			await n8n.ndv.execute();
+			await n8n.aiAssistant.getNodeErrorViewAssistantButton().click();
+
+			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(2);
+
+			await n8n.ndv
+				.getCodeEditor()
+				.fill(
+					"// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();",
+				);
+
+			await n8n.ndv.execute();
+
+			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);
+
+			await n8n.ndv
+				.getCodeEditor()
+				.fill(
+					"// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1aaaa!;\n}\n\nreturn $input.all();",
+				);
+
+			await n8n.ndv.execute();
+
+			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);
+			await expect(n8n.aiAssistant.getChatMessagesAssistant().nth(2)).toContainText(
+				'Code node ran successfully, did my solution help resolve your issue?',
+			);
+		});
+	});
+
+	test.describe('Credential Help', () => {
 		test('should start credential help from node credential', async ({
 			n8n,
 			setupRequirements,

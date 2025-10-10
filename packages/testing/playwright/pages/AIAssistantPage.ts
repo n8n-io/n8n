@@ -1,6 +1,8 @@
 import { BasePage } from './BasePage';
 
 export class AIAssistantPage extends BasePage {
+	// #region Getters
+
 	getAskAssistantFloatingButton() {
 		return this.page.getByTestId('ask-assistant-floating-button');
 	}
@@ -92,4 +94,22 @@ export class AIAssistantPage extends BasePage {
 	getCodeSnippet() {
 		return this.page.getByTestId('assistant-code-snippet-content');
 	}
+
+	// #endregion
+
+	// #region Actions
+
+	async sendMessage(
+		message: string,
+		method: 'send-message-button' | 'enter-key' = 'send-message-button',
+	) {
+		await this.getChatInput().fill(message);
+		if (method === 'enter-key') {
+			await this.getChatInput().press('Shift+Enter');
+		} else {
+			await this.getSendMessageButton().click();
+		}
+	}
+
+	// #endregion
 }
