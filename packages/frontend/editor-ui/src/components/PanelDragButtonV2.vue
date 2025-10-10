@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { N8nIcon } from '@n8n/design-system';
 import Draggable from './Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
@@ -38,9 +39,9 @@ const onDragStart = () => {
 	>
 		<template #default="{ isDragging }">
 			<button :class="[$style.dragButton, { [$style.dragging]: isDragging }]">
-				<FontAwesomeIcon v-if="canMoveLeft" :class="$style.arrow" icon="arrow-left" />
-				<FontAwesomeIcon :class="$style.handle" icon="bars" />
-				<FontAwesomeIcon v-if="canMoveRight" :class="$style.arrow" icon="arrow-right" />
+				<N8nIcon v-if="canMoveLeft" :class="$style.arrow" icon="arrow-left" />
+				<N8nIcon :class="$style.handle" icon="menu" />
+				<N8nIcon v-if="canMoveRight" :class="$style.arrow" icon="arrow-right" />
 			</button>
 		</template>
 	</Draggable>
@@ -65,7 +66,7 @@ const onDragStart = () => {
 
 	.arrow {
 		opacity: 0;
-		width: 7px;
+		width: 10px;
 	}
 
 	.handle {
