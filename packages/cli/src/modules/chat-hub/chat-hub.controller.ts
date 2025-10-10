@@ -1,7 +1,12 @@
-import { ChatHubSendMessageRequest, ChatModelsResponse } from '@n8n/api-types';
+import {
+	ChatHubSendMessageRequest,
+	ChatModelsResponse,
+	ChatHubConversationsResponse,
+	ChatHubMessagesResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Post, Body, GlobalScope } from '@n8n/decorators';
+import { RestController, Post, Body, GlobalScope, Get } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
@@ -72,5 +77,21 @@ export class ChatHubController {
 
 			if (!res.writableEnded) res.end();
 		}
+	}
+
+	@Get('/conversations')
+	async getConversations(
+		_req: AuthenticatedRequest,
+		_res: Response,
+	): Promise<ChatHubConversationsResponse> {
+		return await this.chatService.getConversations();
+	}
+
+	@Get('/conversations/:id/messages')
+	async getConversationMessages(
+		req: AuthenticatedRequest<{ id: string }>,
+		_res: Response,
+	): Promise<ChatHubMessagesResponse> {
+		return await this.chatService.getConversationMessages(req.params.id);
 	}
 }
