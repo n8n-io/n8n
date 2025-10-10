@@ -12,9 +12,9 @@ import type {
 	WorkflowHistory,
 	WorkflowVersion,
 } from '@n8n/rest-api-client/api/workflowHistory';
-import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
-import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
-import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import WorkflowHistoryList from '../components/WorkflowHistoryList.vue';
+import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
+import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
