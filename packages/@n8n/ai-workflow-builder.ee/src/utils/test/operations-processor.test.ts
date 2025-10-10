@@ -595,6 +595,7 @@ describe('operations-processor', () => {
 			previousSummary: 'EMPTY',
 			next: '',
 			currentAgent: '',
+			discoveryContext: null,
 		});
 
 		it('should process operations and clear them', () => {
