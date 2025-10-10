@@ -27,3 +27,22 @@ The frontend REST client wraps the backend's authentication surface area. Key en
 - **Single sign-on**: SAML routes such as `GET /sso/saml/initsso`, `GET /sso/saml/metadata`, `GET /sso/saml/config`, and `POST /sso/saml/config`/`/toggle`, plus OIDC routes like `GET /sso/oidc/config`, `POST /sso/oidc/config`, and `GET /sso/oidc/login`.
 
 Together these endpoints enable session establishment, self-service account management, MFA enrollment, and SSO integrations within the frontend.
+
+## Cookie creation
+A new browser session cookie is issued right after a successful login (local, LDAP, SSO, etc.). After credentials and optional MFA validation, the login controller calls AuthService.issueCookie, passing the Express response, the authenticated user, the MFA flag, and the browser identifier from the request.
+
+AuthService.issueCookie first enforces seat limits, then signs a JWT via issueJWT. The cookie is set with httpOnly, sameSite, secure, and a maxAge derived from the session duration configuration.
+
+issueJWT builds the payload with the user ID, a hash derived from the user’s credentials (and MFA secret when present), the browser ID fingerprint, and whether MFA was used. The JWT is signed with an expiration matching the configured session duration.
+
+## Cookie validation and renewal
+Every authenticated request goes through the auth middleware. It reads the cookie, checks that the token hasn’t been invalidated, verifies the JWT, and rehydrates the user. Browser ID mismatches or user changes cause the cookie to be cleared and the request rejected.
+
+When the decoded JWT is close to expiring—specifically, when the remaining lifetime drops below the configured refresh timeout—the service transparently calls issueCookie again, emitting a fresh cookie with a new expiration while preserving the session.
+
+## Cookie lifespan and invalidation
+The lifetime of each session cookie is jwtSessionDurationHours (168 hours by default), configurable via N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. The renewal window is controlled by jwtRefreshTimeoutHours; 0 falls back to 25 % of the session duration, while negative values disable auto-refresh.
+
+On logout, the service records the current token in the invalid-token repository (using its exp for TTL) and clears the cookie so the browser stops sending it. Any subsequent request bearing that token is rejected as invalid.
+
+This sequence covers initial issuance, automatic renewal, and eventual expiry or manual invalidation of the cookie-backed session.
