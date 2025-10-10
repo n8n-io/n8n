@@ -17,7 +17,7 @@ import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { getSubtreeTotalConsumedTokens, isPlaceholderLog } from '@/features/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
 const MIN_IO_PANEL_WIDTH = 200;
@@ -207,14 +207,14 @@ function handleResizeEnd() {
 }
 
 .header {
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 }
 
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
-	padding-inline-end: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
+	padding-inline-end: var(--spacing--2xs);
 
 	.pressed {
 		background-color: var(--color-button-secondary-focus-outline);
@@ -228,7 +228,7 @@ function handleResizeEnd() {
 }
 
 .icon {
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 
 .executionSummary {
@@ -253,7 +253,7 @@ function handleResizeEnd() {
 	flex-shrink: 0;
 
 	&:not(:is(:last-child, .collapsed, .full)) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 

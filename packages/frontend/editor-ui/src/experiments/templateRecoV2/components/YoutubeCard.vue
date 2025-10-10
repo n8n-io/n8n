@@ -36,10 +36,10 @@ const openYouTubeVideo = () => {
 .tutorial {
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 }
 
 .video {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 }
 </style>

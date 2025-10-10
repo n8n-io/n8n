@@ -1,12 +1,12 @@
 import { EditorView } from '@codemirror/view';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { highlighter } from '@/features/editors/plugins/codemirror/resolvableHighlighter';
 
 const commonThemeProps = (isReadOnly = false) => ({
 	'&': {
-		borderWidth: 'var(--border-width-base)',
-		borderStyle: 'var(--input-border-style, var(--border-style-base))',
-		borderColor: 'var(--input-border-color, var(--border-color-base))',
-		borderRadius: 'var(--input-border-radius, var(--border-radius-base))',
+		borderWidth: 'var(--border-width)',
+		borderStyle: 'var(--input-border-style, var(--border-style))',
+		borderColor: 'var(--input-border-color, var(--border-color))',
+		borderRadius: 'var(--input-border-radius, var(--radius))',
 		backgroundColor: 'var(--color-expression-editor-background)',
 	},
 	'.cm-cursor, .cm-dropCursor': {
@@ -16,13 +16,13 @@ const commonThemeProps = (isReadOnly = false) => ({
 		overflow: 'hidden',
 	},
 	'&.cm-focused': {
-		borderColor: 'var(--color-secondary)',
+		borderColor: 'var(--color--secondary)',
 		outline: '0 !important',
 	},
 	'.cm-content': {
-		fontFamily: 'var(--font-family-monospace)',
-		padding: 'var(--spacing-xs)',
-		color: 'var(--input-font-color, var(--color-text-dark))',
+		fontFamily: 'var(--font-family--monospace)',
+		padding: 'var(--spacing--xs)',
+		color: 'var(--input-font-color, var(--color--text--shade-1))',
 		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 	},
 	'.cm-line': {

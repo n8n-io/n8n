@@ -21,7 +21,7 @@ export function useVariablesCompletions() {
 
 		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-		const options: Completion[] = environmentsStore.variables.map((variable) => ({
+		const options: Completion[] = environmentsStore.scopedVariables.map((variable) => ({
 			label: `${matcher}.${variable.key}`,
 			info: variable.value,
 		}));

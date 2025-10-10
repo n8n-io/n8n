@@ -147,7 +147,7 @@ const runSummaries = computed(() => {
 }
 
 .grayText {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .alertText {
@@ -169,10 +169,10 @@ const runSummaries = computed(() => {
 }
 
 .warningText {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 
 .errorText {
-	color: var(--color-text-danger);
+	color: var(--color--text--danger);
 }
 </style>

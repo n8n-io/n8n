@@ -728,12 +728,12 @@ onMounted(async () => {
 <style lang="scss" module>
 .container {
 	> * {
-		margin-bottom: var(--spacing-2xl);
+		margin-bottom: var(--spacing--2xl);
 	}
 }
 
 .syncTable {
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 }
 
 .header {
@@ -750,8 +750,8 @@ onMounted(async () => {
 	margin-bottom: var(--spacing-1xl);
 
 	> span {
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
 		padding: 0;
 	}
 
@@ -761,19 +761,19 @@ onMounted(async () => {
 }
 
 .sectionHeader {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .settingsForm {
 	:global(.form-text) {
-		margin-top: var(--spacing-xl);
+		margin-top: var(--spacing--xl);
 	}
 }
 
 .docsInfoTip {
 	&,
 	& > div {
-		margin-bottom: var(--spacing-xl);
+		margin-bottom: var(--spacing--xl);
 	}
 }
 </style>

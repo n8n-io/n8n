@@ -55,6 +55,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				:disabled="buttonDisabled"
 				:icon="buttonIcon"
 				size="large"
+				role="button"
 				@click="$emit('click:button', $event)"
 			/>
 		</N8nTooltip>
@@ -73,15 +74,15 @@ withDefaults(defineProps<ActionBoxProps>(), {
 
 <style lang="scss" module>
 .container {
-	border: 2px dashed var(--color-foreground-base);
-	border-radius: var(--border-radius-large);
+	border: 2px dashed var(--color--foreground);
+	border-radius: var(--radius--lg);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: var(--spacing-3xl);
+	padding: var(--spacing--3xl);
 
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 
 		&:last-child {
 			margin-bottom: 0;
@@ -94,13 +95,13 @@ withDefaults(defineProps<ActionBoxProps>(), {
 }
 
 .heading {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 	text-align: center;
 }
 
 .description {
-	color: var(--color-text-base);
-	margin-bottom: var(--spacing-xl);
+	color: var(--color--text);
+	margin-bottom: var(--spacing--xl);
 	text-align: center;
 }
 
