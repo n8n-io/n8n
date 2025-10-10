@@ -13,7 +13,7 @@ export class DataTableAggregateController {
 	) {}
 
 	@Get('/')
-	@GlobalScope('dataStore:list')
+	@GlobalScope('dataTable:list')
 	async listDataTables(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -23,7 +23,7 @@ export class DataTableAggregateController {
 	}
 
 	@Get('/limits')
-	@GlobalScope('dataStore:list')
+	@GlobalScope('dataTable:list')
 	async getDataTablesSize(req: AuthenticatedRequest) {
 		return await this.dataTableService.getDataTablesSize(req.user);
 	}

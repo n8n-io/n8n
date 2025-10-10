@@ -101,50 +101,50 @@ const statusColor = computed(() => {
 .titleRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .status {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing-m);
+	width: var(--spacing--md);
 	flex-shrink: 0;
 }
 
 .statusText {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 
 	&.status-running {
 		color: var(--execution-card-text-waiting);
 	}
 
 	&.status-completed {
-		color: var(--color-success);
+		color: var(--color--success);
 	}
 
 	&.status-error {
-		color: var(--color-text-danger);
+		color: var(--color--text--danger);
 	}
 }
 
 .content {
-	padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
-	border-radius: var(--border-radius-base);
+	padding: 0 var(--spacing--xs) var(--spacing--xs) var(--spacing--xs);
+	border-radius: var(--radius);
 }
 
 .sectionTitle {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
-	margin-bottom: var(--spacing-3xs);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+	margin-bottom: var(--spacing--3xs);
 }
 
 .errorContent {
-	color: var(--color-danger);
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs);
-	background-color: var(--color-danger-tint-2);
-	border-radius: var(--border-radius-base);
+	color: var(--color--danger);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--xs);
+	background-color: var(--color--danger--tint-4);
+	border-radius: var(--radius);
 }
 </style>

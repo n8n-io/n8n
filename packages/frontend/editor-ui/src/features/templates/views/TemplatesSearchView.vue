@@ -434,15 +434,15 @@ watch(workflows, (newWorkflows) => {
 
 .filters {
 	width: 200px;
-	margin-bottom: var(--spacing-xl);
-	margin-right: var(--spacing-2xl);
+	margin-bottom: var(--spacing--xl);
+	margin-right: var(--spacing--2xl);
 }
 
 .search {
 	width: 100%;
 
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 	}
 
 	@media (max-width: $breakpoint-xs) {
@@ -451,6 +451,6 @@ watch(workflows, (newWorkflows) => {
 }
 
 .header {
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 </style>

@@ -22,7 +22,6 @@ import { i18nInstance } from '@n8n/i18n';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
-import { FontAwesomePlugin } from './plugins/icons';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
@@ -43,7 +42,6 @@ registerModuleRoutes(router);
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
-app.use(FontAwesomePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
 app.use(pinia);

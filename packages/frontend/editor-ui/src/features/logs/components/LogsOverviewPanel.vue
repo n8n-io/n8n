@@ -165,13 +165,13 @@ function handleSwitchView(value: 'overview' | 'details') {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 }
 
 .clearButton {
 	border: none;
-	color: var(--color-text-light);
-	gap: var(--spacing-5xs);
+	color: var(--color--text--tint-1);
+	gap: var(--spacing--5xs);
 }
 
 .content {
@@ -182,7 +182,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: stretch;
-	padding-right: var(--spacing-5xs);
+	padding-right: var(--spacing--5xs);
 
 	&.empty {
 		align-items: center;
@@ -196,7 +196,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 }
 
 .summary {
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 }
 
 .switchViewButtons {
@@ -204,7 +204,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
-	margin: var(--spacing-4xs) var(--spacing-2xs);
+	margin: var(--spacing--4xs) var(--spacing--2xs);
 	visibility: hidden;
 	opacity: 0;
 	transition: opacity 0.3s vars.$ease-out-expo;

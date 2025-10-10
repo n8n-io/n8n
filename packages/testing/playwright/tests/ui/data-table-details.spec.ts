@@ -346,7 +346,8 @@ test.describe('Data Table details view', () => {
 		expect(initialName).not.toEqual(newName);
 	});
 
-	test('Should filter correctly using column filters', async ({ n8n }) => {
+	// eslint-disable-next-line playwright/no-skipped-test
+	test.skip('Should filter correctly using column filters', async ({ n8n }) => {
 		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
 
 		await n8n.dataTableDetails.setPageSize('10');

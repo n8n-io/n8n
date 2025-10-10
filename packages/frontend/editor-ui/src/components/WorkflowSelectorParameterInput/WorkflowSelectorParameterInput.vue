@@ -20,7 +20,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowResourceLocatorDropdown } from './useWorkflowResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_TRIGGER_ID, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';

@@ -18,7 +18,7 @@ import {
 	executionFilterToQueryFilter,
 	getDefaultExecutionFilters,
 } from '@/utils/executionUtils';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export const useExecutionsStore = defineStore('executions', () => {
