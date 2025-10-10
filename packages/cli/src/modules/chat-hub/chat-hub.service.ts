@@ -674,7 +674,12 @@ export class ChatHubService {
 			],
 		};
 
-		// Return conversation-specific data, or empty array if not found
-		return mockConversations[conversationId] ?? [];
+		const messages = mockConversations[conversationId];
+
+		if (messages) {
+			return messages;
+		}
+
+		throw new NotFoundError(`Conversation not found. ID: ${conversationId}`);
 	}
 }

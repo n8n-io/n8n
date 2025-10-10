@@ -34,8 +34,9 @@ import {
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
 } from '@/constants';
-import { CHAT_CONVERSATION_VIEW, SUGGESTIONS } from '@/features/chatHub/constants';
+import { CHAT_CONVERSATION_VIEW, CHAT_VIEW, SUGGESTIONS } from '@/features/chatHub/constants';
 import { findOneFromModelsResponse, modelsResponseContains } from '@/features/chatHub/chat.utils';
+import { useToast } from '@/composables/useToast';
 
 const router = useRouter();
 const route = useRoute();
@@ -43,6 +44,7 @@ const chatStore = useChatStore();
 const userStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
+const toast = useToast();
 
 const inputRef = useTemplateRef('inputRef');
 const message = ref('');
@@ -170,9 +172,14 @@ watch(
 
 watch(
 	[sessionId, isNewSession],
-	([id, isNew]) => {
+	async ([id, isNew]) => {
 		if (!isNew && !chatStore.messagesBySession[id]) {
-			void chatStore.fetchMessages(id);
+			try {
+				await chatStore.fetchMessages(id);
+			} catch (error) {
+				toast.showError(error, 'Error fetching a conversation');
+				await router.push({ name: CHAT_VIEW });
+			}
 		}
 
 		inputRef.value?.focus();
