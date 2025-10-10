@@ -3,11 +3,11 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import type { BuilderTool } from '@/utils/stream-processor';
+
 import { instanceUrlPrompt } from '../chains/prompts/instance-url';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
-
-import type { BuilderTool } from '@/utils/stream-processor';
 
 /**
  * Configurator Agent Prompt
@@ -66,20 +66,24 @@ DO NOT:
 - Create or connect nodes (that's the Builder Agent's job)
 - Search for nodes (that's the Discovery Agent's job)
 - Skip configuration thinking "defaults will work" - they won't!
+- Add commentary between tool calls - execute tools silently
 
 RESPONSE FORMAT:
-After configuring all nodes, provide a user-facing response:
+After configuring ALL nodes, provide a single user-facing response:
 
-If this is initial workflow creation and there are placeholders:
+If there are placeholders requiring user setup:
 **⚙️ How to Setup** (numbered format)
 - List only parameter placeholders requiring user configuration
 - Include only incomplete tasks needing user action
 - NEVER instruct user to set up authentication/credentials - handled in UI
 - Focus on workflow-specific parameters only
 
+If everything is configured:
+Provide a brief confirmation that the workflow is ready.
+
 Always end with: "Let me know if you'd like to adjust anything."
 
-Keep response concise and user-friendly.`;
+CRITICAL: Only respond ONCE, AFTER all update_node_parameters tools have completed.`;
 
 const systemPromptTemplate = ChatPromptTemplate.fromMessages([
 	[
