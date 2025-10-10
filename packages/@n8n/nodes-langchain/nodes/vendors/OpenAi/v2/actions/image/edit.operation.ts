@@ -82,7 +82,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'e.g. data',
 		hint: 'The name of the input field containing the binary file data to be processed',
 		description:
-			'Name of the binary property which contains the image(s). It should be a square png file less than 4MB.',
+			'Name of the binary property which contains the image. It should be a square png file less than 4MB.',
 		displayOptions: {
 			show: {
 				'/model': ['dall-e-2'],
@@ -298,6 +298,15 @@ export const properties: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				displayName: 'Image Mask',
+				name: 'imageMask',
+				type: 'string',
+				default: 'data',
+				hint: 'The name of the input field containing the binary file data to be processed',
+				description:
+					'Name of the binary property which contains the image. An additional image whose fully transparent areas (e.g. where alpha is zero) indicate where image should be edited. If there are multiple images provided, the mask will be applied on the first image. Must be a valid PNG file, less than 4MB, and have the same dimensions as image.',
+			},
 		],
 	},
 ];
@@ -428,6 +437,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 	if (quality && isGPTImage1) {
 		formData.append('quality', quality);
+	}
+
+	if (options.imageMask && typeof options.imageMask === 'string') {
+		const bin = this.helpers.assertBinaryData(i, options.imageMask);
+		const buf = await this.helpers.getBinaryDataBuffer(i, options.imageMask);
+		formData.append('mask', buf, {
+			filename: bin.fileName,
+			contentType: bin.mimeType,
+		});
 	}
 
 	const response = (await apiRequest.call(this, 'POST', '/images/edits', {
