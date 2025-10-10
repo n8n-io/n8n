@@ -2,7 +2,7 @@ export interface EnvironmentVariable {
 	id: string;
 	key: string;
 	value: string;
-	project?: { id: string; name: string | null } | null;
+	project?: { id: string; name: string } | null;
 }
 
 export interface CreateEnvironmentVariable {

@@ -43,7 +43,10 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	async function createVariable(variable: CreateEnvironmentVariable) {
 		const data = await environmentsApi.createVariable(rootStore.restApiContext, variable);
 		if (variable.projectId) {
-			data.project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+			const project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+			if (project) {
+				data.project = { ...project, name: project?.name ?? '' };
+			}
 		}
 		allVariables.value.unshift(data);
 
@@ -53,7 +56,10 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	async function updateVariable(variable: UpdateEnvironmentVariable) {
 		const data = await environmentsApi.updateVariable(rootStore.restApiContext, variable);
 		if (variable.projectId) {
-			data.project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+			const project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+			if (project) {
+				data.project = { ...project, name: project?.name ?? '' };
+			}
 		}
 		allVariables.value = allVariables.value.map((v) => (v.id === data.id ? data : v));
 
