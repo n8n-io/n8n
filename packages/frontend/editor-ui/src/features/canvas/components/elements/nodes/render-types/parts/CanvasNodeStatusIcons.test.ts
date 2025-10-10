@@ -1,6 +1,6 @@
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide, createCanvasProvide } from '@/features/canvas/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 

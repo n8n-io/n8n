@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide, createCanvasProvide } from '@/features/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 
