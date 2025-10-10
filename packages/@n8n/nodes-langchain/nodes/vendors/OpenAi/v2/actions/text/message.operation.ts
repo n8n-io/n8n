@@ -97,7 +97,6 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				modelId: MODELS_NOT_SUPPORT_FUNCTION_CALLS,
-				'@version': [{ _cnd: { gte: 1.2 } }],
 			},
 		},
 	},
@@ -213,11 +212,6 @@ const properties: INodeProperties[] = [
 				default: 15,
 				description:
 					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit.',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.5 } }],
-					},
-				},
 			},
 		],
 	},
@@ -233,13 +227,11 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const nodeVersion = this.getNode().typeVersion;
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
-	const maxToolsIterations =
-		nodeVersion >= 1.5 ? (this.getNodeParameter('options.maxToolsIterations', i, 15) as number) : 0;
+	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 
 	const abortSignal = this.getExecutionCancelSignal();
 
@@ -271,7 +263,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let externalTools: Tool[] = [];
 
 	if (hideTools !== 'hide') {
-		const enforceUniqueNames = nodeVersion > 1;
+		const enforceUniqueNames = true;
 		externalTools = await getConnectedTools(this, enforceUniqueNames, false);
 	}
 
