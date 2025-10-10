@@ -1,17 +1,17 @@
 <script lang="ts" setup>
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY } from '../sourceControl.constants';
 import type { WorkflowResource } from '@/Interface';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
-import { ResourceType } from '@/utils/projects.utils';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import { ResourceType } from '@/features/projects/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
 import type { SourceControlledFile } from '@n8n/api-types';
 import {
@@ -30,7 +30,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/components/Modal.vue';
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import {
 	N8nBadge,
 	N8nButton,

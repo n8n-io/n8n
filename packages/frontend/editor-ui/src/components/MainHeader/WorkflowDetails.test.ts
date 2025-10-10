@@ -18,8 +18,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import type { Project } from '@/types/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { Project } from '@/features/projects/projects.types';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports

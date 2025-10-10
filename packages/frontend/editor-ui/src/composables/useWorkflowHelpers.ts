@@ -57,7 +57,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useI18n } from '@n8n/i18n';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';

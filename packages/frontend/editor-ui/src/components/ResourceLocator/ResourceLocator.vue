@@ -54,7 +54,7 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
 import { completeExpressionSyntax } from '@/utils/expressions';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from '@/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue';

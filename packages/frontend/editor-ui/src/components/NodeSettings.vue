@@ -45,7 +45,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import {
 	collectParametersByTab,
 	collectSettings,
