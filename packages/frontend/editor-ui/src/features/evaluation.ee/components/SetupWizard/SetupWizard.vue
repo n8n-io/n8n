@@ -199,7 +199,7 @@ function onSeePlans() {
 						<N8nButton
 							size="small"
 							text
-							style="color: var(--color-text-light)"
+							style="color: var(--color--text--tint-1)"
 							@click="toggleStep(3)"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step3.skip') }}
@@ -267,7 +267,7 @@ function onSeePlans() {
 
 <style module lang="scss">
 .container {
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .steps {

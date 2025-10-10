@@ -165,12 +165,12 @@ function handleSwitchView(value: 'overview' | 'details') {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 }
 
 .clearButton {
 	border: none;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	gap: var(--spacing-5xs);
 }
 

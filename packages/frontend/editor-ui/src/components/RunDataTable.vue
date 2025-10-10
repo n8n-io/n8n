@@ -786,20 +786,20 @@ watch(
 	text-align: left;
 	width: calc(100%);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	th {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 		border-top: var(--border-base);
 		border-bottom: var(--border-base);
 		border-left: var(--border-base);
 		position: sticky;
 		top: 0;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		z-index: 1;
 
 		.lightHeader & {
-			background-color: var(--color-background-light);
+			background-color: var(--color--background--light-2);
 		}
 
 		&.tableRightMargin {
@@ -862,23 +862,23 @@ watch(
 }
 
 th.isCollapsingColumn {
-	border-top-color: var(--color-foreground-xdark);
-	border-left-color: var(--color-foreground-xdark);
-	border-right-color: var(--color-foreground-xdark);
+	border-top-color: var(--color--foreground--shade-2);
+	border-left-color: var(--color--foreground--shade-2);
+	border-right-color: var(--color--foreground--shade-2);
 }
 
 td.isCollapsingColumn {
-	border-left-color: var(--color-foreground-xdark);
-	border-right-color: var(--color-foreground-xdark);
+	border-left-color: var(--color--foreground--shade-2);
+	border-right-color: var(--color--foreground--shade-2);
 
 	tr:last-child & {
-		border-bottom-color: var(--color-foreground-xdark);
+		border-bottom-color: var(--color--foreground--shade-2);
 	}
 }
 
 td.isCollapsingColumn + td,
 th.isCollapsingColumn + th {
-	border-left-color: var(--color-foreground-xdark);
+	border-left-color: var(--color--foreground--shade-2);
 }
 
 .nodeClass {
@@ -905,7 +905,7 @@ th.isCollapsingColumn + th {
 .draggableHeader {
 	&:hover {
 		cursor: grab;
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 
 		.dragButton {
 			opacity: 1;
@@ -914,12 +914,12 @@ th.isCollapsingColumn + th {
 }
 
 .highlight .draggableHeader {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .draggingHeader {
-	color: var(--color-primary);
-	background-color: var(--color-primary-tint-2);
+	color: var(--color--primary);
+	background-color: var(--color--primary--tint-2);
 }
 
 .activeHeader {
@@ -937,7 +937,7 @@ th.isCollapsingColumn + th {
 }
 
 .dataKey {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	line-height: 1.7;
 	font-weight: var(--font-weight-bold);
 	border-radius: var(--border-radius-base);
@@ -959,7 +959,7 @@ th.isCollapsingColumn + th {
 }
 
 .empty {
-	color: var(--color-danger);
+	color: var(--color--danger);
 	font-style: italic;
 }
 
@@ -972,11 +972,11 @@ th.isCollapsingColumn + th {
 }
 
 .hoveringKey {
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 
 .draggingKey {
-	background-color: var(--color-primary-tint-2);
+	background-color: var(--color--primary--tint-2);
 }
 
 .tableRightMargin {
@@ -996,12 +996,12 @@ th.isCollapsingColumn + th {
 .hoveringRow {
 	td:first-child:after,
 	td:nth-last-child(2):after {
-		background-color: var(--color-secondary);
+		background-color: var(--color--secondary);
 	}
 }
 
 .warningTooltip {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 
 .executionLinkCell {

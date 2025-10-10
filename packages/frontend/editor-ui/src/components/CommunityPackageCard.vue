@@ -176,7 +176,7 @@ watch(
 	padding: var(--spacing-s);
 	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
 	border-radius: var(--border-radius-large);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .packageCard,

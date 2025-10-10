@@ -1268,38 +1268,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('setNodeParameters', () => {
-		beforeEach(() => {
-			workflowsStore.setNodes([createTestNode({ name: 'a', parameters: { p: 1, q: true } })]);
-		});
-
-		it('should set node parameters', () => {
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
-
-			workflowsStore.setNodeParameters({ name: 'a', value: { q: false, r: 's' } });
-
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ q: false, r: 's' });
-		});
-
-		it('should set node parameters preserving existing ones if append=true', () => {
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
-
-			workflowsStore.setNodeParameters({ name: 'a', value: { q: false, r: 's' } }, true);
-
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: false, r: 's' });
-		});
-
-		it('should not update last parameter update time if parameters are set to the same value', () => {
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
-
-			console.log(workflowsStore.workflow.nodes, workflowsStore.workflowObject.nodes);
-
-			workflowsStore.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
-
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
-		});
-	});
-
 	describe('updateWorkflowSetting', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();

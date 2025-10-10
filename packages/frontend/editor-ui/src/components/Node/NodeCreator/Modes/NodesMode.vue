@@ -43,9 +43,8 @@ import { useI18n } from '@n8n/i18n';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 
 import { useActions } from '../composables/useActions';
-import { type INodeParameters } from 'n8n-workflow';
+import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
