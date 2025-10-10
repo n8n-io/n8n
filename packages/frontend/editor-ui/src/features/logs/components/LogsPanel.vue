@@ -60,7 +60,7 @@ const {
 } = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData(isOpen);
+	useLogsExecutionData({ isEnabled: isOpen });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
@@ -269,8 +269,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	height: 100%;
 	min-height: 0;
 	flex-basis: 0;
-	border-top: var(--border-base);
-	background-color: var(--color-background-light);
+	border-top: var(--border);
+	background-color: var(--color--background--light-2);
 
 	.poppedOut & {
 		border-top: none;
@@ -283,7 +283,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	flex-grow: 1;
 
 	& > *:not(:last-child) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 
@@ -298,7 +298,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	align-items: stretch;
 
 	& > *:not(:last-child) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 

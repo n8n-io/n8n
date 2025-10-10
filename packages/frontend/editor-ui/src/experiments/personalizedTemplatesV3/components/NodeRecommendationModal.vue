@@ -104,39 +104,39 @@ watchEffect(async () => {
 
 <style lang="scss" module>
 .modal {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .header {
-	border-bottom: 1px solid var(--border-color-base);
-	padding-bottom: var(--spacing-s);
+	border-bottom: 1px solid var(--border-color);
+	padding-bottom: var(--spacing--sm);
 }
 
 .templates {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-	gap: var(--spacing-m);
-	padding: var(--spacing-s) 0;
+	gap: var(--spacing--md);
+	padding: var(--spacing--sm) 0;
 }
 
 .loading {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-l);
-	color: var(--color-text-light);
+	gap: var(--spacing--xs);
+	padding: var(--spacing--lg);
+	color: var(--color--text--tint-1);
 }
 
 .footerCard {
-	border: 1px solid var(--color-foreground-base);
-	background-color: var(--color-background-light);
+	border: 1px solid var(--color--foreground);
+	background-color: var(--color--background--light-2);
 	cursor: pointer;
 	transition: all 0.2s ease;
 
 	&:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
+		border-color: var(--color--primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -153,6 +153,6 @@ watchEffect(async () => {
 }
 
 .footerIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 </style>

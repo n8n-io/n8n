@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import CssEditor from '@/components/CssEditor/CssEditor.vue';
+import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
-import JsEditor from '@/components/JsEditor/JsEditor.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
-import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+import SqlEditor from '@/features/editors/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
@@ -40,14 +40,14 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import ExperimentalNodeDetailsDrawer from '@/features/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
-import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
+import ExperimentalFocusPanelHeader from '@/features/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
-import { type CanvasNode, CanvasNodeRenderType } from '@/types';
+import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
+import { type CanvasNode, CanvasNodeRenderType } from '@/features/canvas/canvas.types';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 import {
@@ -58,6 +58,7 @@ import {
 	N8nResizeWrapper,
 	N8nText,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -79,6 +80,7 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
@@ -227,7 +229,9 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 	};
 });
 
-const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
+const isNodeExecuting = computed(() =>
+	workflowState.executingNode.isNodeExecuting(node.value?.name ?? ''),
+);
 
 const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
 
@@ -673,8 +677,8 @@ function onRenameNode(value: string) {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	border-left: 1px solid var(--color-foreground-base);
-	background: var(--color-background-xlight);
+	border-left: 1px solid var(--color--foreground);
+	background: var(--color--background--light-3);
 	overflow-y: hidden;
 	height: 100%;
 	flex-grow: 0;
@@ -703,18 +707,18 @@ function onRenameNode(value: string) {
 		}
 
 		.emptyText {
-			margin: 0 var(--spacing-xl);
+			margin: 0 var(--spacing--xl);
 			display: flex;
 			flex-direction: column;
-			gap: var(--spacing-2xs);
+			gap: var(--spacing--2xs);
 		}
 
 		.focusParameterWrapper {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			gap: var(--spacing-2xs);
-			margin-block: var(--spacing-m);
+			gap: var(--spacing--2xs);
+			margin-block: var(--spacing--md);
 
 			.iconWrapper {
 				position: relative;
@@ -739,18 +743,18 @@ function onRenameNode(value: string) {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		border-bottom: 1px solid var(--color-foreground-base);
-		padding: var(--spacing-2xs);
+		border-bottom: 1px solid var(--color--foreground);
+		padding: var(--spacing--2xs);
 
 		.tabHeaderText {
 			display: flex;
-			gap: var(--spacing-4xs);
+			gap: var(--spacing--4xs);
 			align-items: baseline;
 		}
 
 		.buttonWrapper {
 			display: flex;
-			gap: var(--spacing-2xs);
+			gap: var(--spacing--2xs);
 			align-items: center;
 		}
 	}
@@ -759,8 +763,8 @@ function onRenameNode(value: string) {
 		display: flex;
 		height: 100%;
 		flex-direction: column;
-		gap: var(--spacing-2xs);
-		padding: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
+		padding: var(--spacing--2xs);
 
 		.parameterOptionsWrapper {
 			display: flex;
@@ -779,7 +783,7 @@ function onRenameNode(value: string) {
 				display: flex;
 				height: 100%;
 				width: 100%;
-				font-size: var(--font-size-2xs);
+				font-size: var(--font-size--2xs);
 
 				:global(.cm-editor) {
 					background-color: var(--color-code-background);

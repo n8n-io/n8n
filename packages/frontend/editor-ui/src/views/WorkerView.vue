@@ -41,6 +41,6 @@ const goToUpgrade = () => {
 
 <style module lang="scss">
 .actionBox {
-	margin: var(--spacing-2xl) 0 0;
+	margin: var(--spacing--2xl) 0 0;
 }
 </style>

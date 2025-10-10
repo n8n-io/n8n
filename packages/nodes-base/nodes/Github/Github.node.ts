@@ -28,6 +28,15 @@ import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFuncti
 import { removeTrailingSlash } from '../../utils/utilities';
 import { defaultWebhookDescription } from '../Webhook/description';
 
+const waitingTooltip = (parameters: { operation: string }, resumeUrl: string) => {
+	if (parameters?.operation === 'dispatchAndWait') {
+		const message = 'Execution will continue when the following webhook URL is called: ';
+		return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+	}
+
+	return '';
+};
+
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
@@ -46,6 +55,7 @@ export class Github implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -330,7 +340,7 @@ export class Github implements INodeType {
 					},
 					{
 						name: 'Get Issues',
-						value: 'getIssues',
+						value: 'getUserIssues',
 						description: 'Returns the issues assigned to the user',
 						action: "Get a user's issues",
 					},
@@ -558,8 +568,8 @@ export class Github implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-                        operation: ['invite', 'getIssues'],
-                        resource: ['notification', 'user'],
+                        operation: ['invite', 'getUserIssues'],
+                        resource: ['notification'],
 					},
 				},
 			},
@@ -2114,8 +2124,7 @@ export class Github implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: ['user'],
-						operation: ['getIssues'],
+						operation: ['getUserIssues'],
 					},
 				},
 				default: false,
@@ -2127,8 +2136,7 @@ export class Github implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: ['user'],
-						operation: ['getIssues'],
+						operation: ['getUserIssues'],
 						returnAll: [false],
 					},
 				},
@@ -2148,8 +2156,7 @@ export class Github implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: ['user'],
-						operation: ['getIssues'],
+						operation: ['getUserIssues'],
 					},
 				},
 				default: {},
@@ -2356,6 +2363,7 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
+			'user:getUserIssues',
 			'release:getAll',
 			'review:getAll',
 			'organization:getRepositories',
@@ -2433,6 +2441,7 @@ export class Github implements INodeType {
 					fullOperation !== 'user:invite' &&
 					resource !== 'notification'
 				) {
+				if (fullOperation !== 'user:invite' && fullOperation !== 'user:getUserIssues') {
 					// Request the parameters which almost all operations need
 					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
@@ -2440,7 +2449,7 @@ export class Github implements INodeType {
 				let repository = '';
 				if (
 					fullOperation !== 'user:getRepositories' &&
-					fullOperation !== 'user:getIssues' &&
+					fullOperation !== 'user:getUserIssues' &&
 					fullOperation !== 'user:invite' &&
 					fullOperation !== 'organization:getRepositories' &&
 					resource !== 'notification'
@@ -2835,7 +2844,7 @@ export class Github implements INodeType {
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
-					} else if (operation === 'getIssues') {
+					} else if (operation === 'getUserIssues') {
 						// ----------------------------------
 						//         getIssues
 						// ----------------------------------

@@ -115,7 +115,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 
@@ -168,9 +168,9 @@ export const KeyboardShortcut: StoryFn = () => ({
 	}),
 	template: `
 		<div>
-			<p style="margin-bottom: 20px; color: var(--color-text-base);">
-				Press <kbd style="background: var(--color-background-base); padding: 2px 6px; border-radius: 3px;">⌘ + K</kbd>
-				or <kbd style="background: var(--color-background-base); padding: 2px 6px; border-radius: 3px;">Ctrl + K</kbd>
+			<p style="margin-bottom: 20px; color: var(--color--text);">
+				Press <kbd style="background: var(--color--background); padding: 2px 6px; border-radius: 3px;">⌘ + K</kbd>
+				or <kbd style="background: var(--color--background); padding: 2px 6px; border-radius: 3px;">Ctrl + K</kbd>
 				to open the command bar. Use arrow keys to navigate and Enter to select.
 			</p>
 			<n8n-command-bar
@@ -198,7 +198,7 @@ export const SectionGrouping: StoryFn = () => ({
 	}),
 	template: `
 		<div>
-			<p style="margin-bottom: 20px; color: var(--color-text-base);">
+			<p style="margin-bottom: 20px; color: var(--color--text);">
 				This example shows how items are grouped by sections:
 				<br/>• <strong>Recent items</strong> (no section) appear first
 				<br/>• Then items are grouped by <strong>Actions</strong>, <strong>Navigation</strong>, <strong>Tools</strong>, and <strong>Settings</strong> sections

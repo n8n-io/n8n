@@ -1,19 +1,17 @@
 import ast
 import hashlib
-import sys
 from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
+from src.import_validation import validate_module_import
+from src.config.security_config import SecurityConfig
 from src.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
-    ERROR_STDLIB_DISALLOWED,
-    ERROR_EXTERNAL_DISALLOWED,
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
-    ALWAYS_BLOCKED_ATTRIBUTES,
-    UNSAFE_ATTRIBUTES,
+    BLOCKED_ATTRIBUTES,
 )
 
 CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
@@ -24,16 +22,10 @@ ValidationCache = OrderedDict[CacheKey, CachedViolations]
 class SecurityValidator(ast.NodeVisitor):
     """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
 
-    def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
+    def __init__(self, security_config: SecurityConfig):
         self.checked_modules: Set[str] = set()
         self.violations: list[str] = []
-
-        self.stdlib_allow = stdlib_allow
-        self.external_allow = external_allow
-        self._stdlib_allowed_str = self._format_allowed(stdlib_allow)
-        self._external_allowed_str = self._format_allowed(external_allow)
-        self._stdlib_allow_all = "*" in stdlib_allow
-        self._external_allow_all = "*" in external_allow
+        self.security_config = security_config
 
     # ========== Detection ==========
 
@@ -58,17 +50,10 @@ class SecurityValidator(ast.NodeVisitor):
     def visit_Attribute(self, node: ast.Attribute) -> None:
         """Detect access to unsafe attributes that could bypass security restrictions."""
 
-        if node.attr in UNSAFE_ATTRIBUTES:
-            # Block regardless of context
-            if node.attr in ALWAYS_BLOCKED_ATTRIBUTES:
-                self._add_violation(
-                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
-                )
-            # Block in attribute chains (e.g., x.__class__.__bases__) or on literals (e.g., "".__class__)
-            elif isinstance(node.value, (ast.Attribute, ast.Constant)):
-                self._add_violation(
-                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
-                )
+        if node.attr in BLOCKED_ATTRIBUTES:
+            self._add_violation(
+                node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
+            )
 
         self.generic_visit(node)
 
@@ -117,29 +102,12 @@ class SecurityValidator(ast.NodeVisitor):
 
         self.checked_modules.add(module_name)
 
-        is_stdlib = module_name in sys.stdlib_module_names
-        is_external = not is_stdlib
-
-        if is_stdlib and (self._stdlib_allow_all or module_name in self.stdlib_allow):
-            return
-
-        if is_external and (
-            self._external_allow_all or module_name in self.external_allow
-        ):
-            return
-
-        error, allowed_str = (
-            (ERROR_STDLIB_DISALLOWED, self._stdlib_allowed_str)
-            if is_stdlib
-            else (ERROR_EXTERNAL_DISALLOWED, self._external_allowed_str)
+        is_allowed, error_msg = validate_module_import(
+            module_path, self.security_config
         )
 
-        self._add_violation(
-            lineno, error.format(module=module_path, allowed=allowed_str)
-        )
-
-    def _format_allowed(self, allow_set: Set[str]) -> str:
-        return ", ".join(sorted(allow_set)) if allow_set else "none"
+        if not is_allowed:
+            self._add_violation(lineno, error_msg)
 
     def _add_violation(self, lineno: int, message: str) -> None:
         self.violations.append(f"Line {lineno}: {message}")
@@ -148,14 +116,16 @@ class SecurityValidator(ast.NodeVisitor):
 class TaskAnalyzer:
     _cache: ValidationCache = OrderedDict()
 
-    def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
-        self._stdlib_allow = stdlib_allow
-        self._external_allow = external_allow
+    def __init__(self, security_config: SecurityConfig):
+        self._security_config = security_config
         self._allowlists = (
-            tuple(sorted(stdlib_allow)),
-            tuple(sorted(external_allow)),
+            tuple(sorted(security_config.stdlib_allow)),
+            tuple(sorted(security_config.external_allow)),
         )
-        self._allow_all = "*" in stdlib_allow and "*" in external_allow
+        self._allow_all = (
+            "*" in security_config.stdlib_allow
+            and "*" in security_config.external_allow
+        )
 
     def validate(self, code: str) -> None:
         if self._allow_all:
@@ -176,7 +146,7 @@ class TaskAnalyzer:
 
         tree = ast.parse(code)
 
-        security_validator = SecurityValidator(self._stdlib_allow, self._external_allow)
+        security_validator = SecurityValidator(self._security_config)
         security_validator.visit(tree)
 
         self._set_in_cache(cache_key, security_validator.violations)

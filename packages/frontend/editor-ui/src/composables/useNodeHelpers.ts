@@ -51,6 +51,7 @@ import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { injectWorkflowState } from './useWorkflowState';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -67,6 +68,7 @@ export function useNodeHelpers() {
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
@@ -282,7 +284,7 @@ export function useNodeHelpers() {
 
 		const nodeInputIssues = getNodeInputIssues(workflowObject.value, node, nodeType);
 
-		workflowsStore.setNodeIssue({
+		workflowState.setNodeIssue({
 			node: node.name,
 			type: 'input',
 			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
@@ -301,7 +303,7 @@ export function useNodeHelpers() {
 		const nodes = workflowsStore.allNodes;
 
 		for (const node of nodes) {
-			workflowsStore.setNodeIssue({
+			workflowState.setNodeIssue({
 				node: node.name,
 				type: 'execution',
 				value: hasNodeExecutionIssues(node) ? true : null,
@@ -333,7 +335,7 @@ export function useNodeHelpers() {
 			newIssues = fullNodeIssues.credentials!;
 		}
 
-		workflowsStore.setNodeIssue({
+		workflowState.setNodeIssue({
 			node: node.name,
 			type: 'credentials',
 			value: newIssues,
@@ -368,7 +370,7 @@ export function useNodeHelpers() {
 			newIssues = fullNodeIssues.parameters!;
 		}
 
-		workflowsStore.setNodeIssue({
+		workflowState.setNodeIssue({
 			node: node.name,
 			type: 'parameters',
 			value: newIssues,
@@ -599,7 +601,7 @@ export function useNodeHelpers() {
 		for (const node of nodes) {
 			issues = getNodeCredentialIssues(node);
 
-			workflowsStore.setNodeIssue({
+			workflowState.setNodeIssue({
 				node: node.name,
 				type: 'credentials',
 				value: issues?.credentials ?? null,
@@ -730,7 +732,7 @@ export function useNodeHelpers() {
 				workflow_id: workflowsStore.workflowId,
 			});
 
-			workflowsStore.updateNodeProperties(updateInformation);
+			workflowState.updateNodeProperties(updateInformation);
 			workflowsStore.clearNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);

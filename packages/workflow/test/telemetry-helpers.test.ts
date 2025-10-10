@@ -1549,6 +1549,123 @@ describe('generateNodesGraph', () => {
 			evaluationTriggerNodeNames: [],
 		});
 	});
+
+	test('should add package version to node graph', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+					name: 'When clicking ‘Execute workflow’',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+					name: 'Community Installed Node',
+					type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+					name: 'Community Installed Node 2',
+					type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+					typeVersion: 1,
+					position: [300, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+					name: 'Community Missing Node',
+					type: 'community-missing-node.communityMissingNode',
+					typeVersion: 1,
+					position: [400, 400],
+				},
+			],
+		};
+
+		expect(
+			generateNodesGraph(workflow, {
+				...nodeTypes,
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const orig = nodeTypes.getByNameAndVersion(nodeType, version);
+					if (nodeType === 'n8n-nodes-community-installed-node.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.0',
+							},
+						};
+					}
+					if (nodeType === 'n8n-nodes-community-installed-node2.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.1',
+							},
+						};
+					}
+					return orig;
+				},
+			}),
+		).toEqual({
+			evaluationTriggerNodeNames: [],
+			nameIndices: {
+				'When clicking ‘Execute workflow’': '0',
+				'Community Installed Node': '1',
+				'Community Installed Node 2': '2',
+				'Community Missing Node': '3',
+			},
+			webhookNodeNames: [],
+			nodeGraph: {
+				is_pinned: false,
+				node_types: [
+					'n8n-nodes-base.manualTrigger',
+					'n8n-nodes-community-installed-node.communityInstalledNode',
+					'n8n-nodes-community-installed-node2.communityInstalledNode',
+					'community-missing-node.communityMissingNode',
+				],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+						position: [100, 100],
+					},
+					'1': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+						type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+						version: 1,
+						position: [200, 200],
+						package_version: '1.0.0',
+					},
+					'2': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+						type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+						version: 1,
+						position: [300, 300],
+						package_version: '1.0.1',
+					},
+					'3': {
+						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+						type: 'community-missing-node.communityMissingNode',
+						version: 1,
+						position: [400, 400],
+					},
+				},
+				notes: {},
+			},
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {
@@ -2225,7 +2342,7 @@ describe('makeAIMetrics', () => {
 			position: [0, 0],
 		}) as INode;
 
-	it('should count applicable nodes and parameters', async () => {
+	it('should count applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2270,7 +2387,7 @@ describe('makeAIMetrics', () => {
 		});
 	});
 
-	it('should not count non-applicable nodes and parameters', async () => {
+	it('should not count non-applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2290,7 +2407,7 @@ describe('makeAIMetrics', () => {
 		expect(result).toMatchObject({});
 	});
 
-	it('should count ai nodes without tools', async () => {
+	it('should count ai nodes without tools', () => {
 		const nodes = [
 			makeNode(
 				{

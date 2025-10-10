@@ -9,7 +9,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
@@ -183,9 +183,9 @@ watch(
 .setupContent {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 	max-width: 1024px;
-	margin-top: var(--spacing-2xl);
+	margin-top: var(--spacing--2xl);
 	padding: 0;
 }
 
@@ -197,15 +197,15 @@ watch(
 .config {
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 }
 
 .setupDescription {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 
 	ul {
 		li {
-			margin-top: var(--spacing-2xs);
+			margin-top: var(--spacing--2xs);
 		}
 	}
 }

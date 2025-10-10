@@ -31,7 +31,6 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 				:name="item.icon"
 				:circle="false"
 				:show-tooltip="false"
-				:use-updated-icons="true"
 				v-bind="item.iconProps"
 			/>
 		</template>
@@ -40,7 +39,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 
 <style lang="scss" module>
 .subCategory {
-	--action-arrow-color: var(--color-text-light);
+	--action-arrow-color: var(--color--text--tint-1);
 	margin-left: 15px;
 	margin-right: 12px;
 }

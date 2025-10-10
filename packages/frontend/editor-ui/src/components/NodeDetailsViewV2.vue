@@ -864,25 +864,26 @@ onBeforeUnmount(() => {
 .dialog {
 	position: absolute;
 	z-index: var(--z-index-ndv);
-	width: calc(100% - var(--spacing-2xl));
-	height: calc(100% - var(--spacing-2xl));
-	top: var(--spacing-l);
-	left: var(--spacing-l);
+	width: calc(100% - var(--spacing--2xl));
+	height: calc(100% - var(--spacing--2xl));
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
 	border: none;
 	background: none;
 	padding: 0;
 	margin: 0;
 	display: flex;
+	outline: none;
 }
 
 .container {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
-	background: var(--border-color-base);
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	color: var(--color-text-base);
+	background: var(--border-color);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	color: var(--color--text);
 	min-width: 0;
 }
 
@@ -900,15 +901,15 @@ onBeforeUnmount(() => {
 	min-width: 0;
 
 	+ .column {
-		border-left: var(--border-base);
+		border-left: var(--border);
 	}
 
 	&:first-child > div {
-		border-bottom-left-radius: var(--border-radius-large);
+		border-bottom-left-radius: var(--radius--lg);
 	}
 
 	&:last-child {
-		border-bottom-right-radius: var(--border-radius-large);
+		border-bottom-right-radius: var(--radius--lg);
 	}
 }
 
@@ -922,9 +923,9 @@ onBeforeUnmount(() => {
 }
 
 .header {
-	border-bottom: var(--border-base);
-	border-top-left-radius: var(--border-radius-large);
-	border-top-right-radius: var(--border-radius-large);
+	border-bottom: var(--border);
+	border-top-left-radius: var(--radius--lg);
+	border-top-right-radius: var(--radius--lg);
 }
 
 .settings {
@@ -933,7 +934,7 @@ onBeforeUnmount(() => {
 }
 
 .draggable {
-	--draggable-height: 22px;
+	--draggable-height: 18px;
 	position: absolute;
 	top: calc(-1 * var(--draggable-height));
 	left: 50%;

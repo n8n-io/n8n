@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -68,7 +68,6 @@ const renderComponent = createComponentRenderer(ResourceLocator, {
 			ExpressionParameterInput: true,
 			ParameterIssues: true,
 			N8nCallout: true,
-			FontAwesomeIcon: true,
 			FromAiOverrideField: true,
 			FromAiOverrideButton: true,
 			ParameterOverrideSelectableList: true,

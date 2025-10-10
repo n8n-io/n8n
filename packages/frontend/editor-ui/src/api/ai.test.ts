@@ -1,7 +1,7 @@
 import { chatWithBuilder, getBuilderCredits } from './ai';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest } from '@/features/assistant/assistant.types';
 import { vi, describe, it, beforeEach, afterEach, expect } from 'vitest';
 import type { MockInstance } from 'vitest';
 
