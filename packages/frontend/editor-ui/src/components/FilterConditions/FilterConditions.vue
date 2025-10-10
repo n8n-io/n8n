@@ -237,25 +237,25 @@ function getIssues(index: number): string[] {
 .filter {
 	display: flex;
 	flex-direction: column;
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 }
 
 .conditions {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 .combinator {
 	position: relative;
 	z-index: 1;
-	margin-top: var(--spacing-2xs);
-	margin-bottom: calc(var(--spacing-2xs) * -1);
-	margin-left: var(--spacing-l);
+	margin-top: var(--spacing--2xs);
+	margin-bottom: calc(var(--spacing--2xs) * -1);
+	margin-left: var(--spacing--lg);
 }
 
 .condition {
-	padding-left: var(--spacing-l);
-	padding-bottom: var(--spacing-xs);
+	padding-left: var(--spacing--lg);
+	padding-bottom: var(--spacing--xs);
 }
 
 .single {
@@ -264,13 +264,13 @@ function getIssues(index: number): string[] {
 	}
 
 	.content {
-		margin-top: calc(var(--spacing-xs) * -1);
+		margin-top: calc(var(--spacing--xs) * -1);
 	}
 }
 
 .addConditionWrapper {
-	margin-top: var(--spacing-l);
-	margin-left: var(--spacing-l);
+	margin-top: var(--spacing--lg);
+	margin-left: var(--spacing--lg);
 }
 
 .addCondition {
@@ -300,8 +300,8 @@ function getIssues(index: number): string[] {
 }
 .ghost,
 .dragging {
-	border-radius: var(--border-radius-base);
-	padding-right: var(--spacing-xs);
+	border-radius: var(--radius);
+	padding-right: var(--spacing--xs);
 }
 .ghost {
 	background-color: var(--color--background);

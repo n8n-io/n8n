@@ -134,12 +134,12 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 .nodeIconWrapper {
 	width: var(--node-icon-size, 26px);
 	height: var(--node-icon-size, 26px);
-	border-radius: var(--border-radius-small);
+	border-radius: var(--radius--sm);
 	color: var(--node-icon-color, #444);
 	line-height: var(--node-icon-size, 26px);
 	font-size: 1.1em;
 	text-align: center;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	font-size: 20px;
 }
 

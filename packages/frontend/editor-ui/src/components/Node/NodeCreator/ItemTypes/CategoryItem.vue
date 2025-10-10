@@ -41,13 +41,13 @@ const categoryName = computed(() => {
 <style lang="scss" module>
 .triggerIcon {
 	color: var(--color--primary);
-	margin-left: var(--spacing-3xs);
+	margin-left: var(--spacing--3xs);
 }
 .category {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
-	line-height: var(--font-line-height-compact);
-	padding: var(--spacing-2xs) var(--spacing-s);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-bottom: 1px solid $node-creator-border-color;
 	display: flex;
 	cursor: pointer;

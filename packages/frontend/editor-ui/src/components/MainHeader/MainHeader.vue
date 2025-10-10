@@ -329,7 +329,7 @@ async function onWorkflowDeactivated() {
 	background-color: var(--color--background--light-3);
 	width: 100%;
 	box-sizing: border-box;
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .top-menu {
@@ -338,7 +338,7 @@ async function onWorkflowDeactivated() {
 	height: var(--navbar--height);
 	align-items: center;
 	font-size: 0.9em;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	overflow-x: auto;
 	overflow-y: hidden;
 }
@@ -347,9 +347,9 @@ async function onWorkflowDeactivated() {
 	display: flex;
 	align-items: center;
 	align-self: stretch;
-	padding: var(--spacing-5xs) var(--spacing-m);
+	padding: var(--spacing--5xs) var(--spacing--md);
 	background-color: var(--color--background--light-3);
-	border-left: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .close-github-button {
@@ -377,7 +377,7 @@ async function onWorkflowDeactivated() {
 
 @media (max-width: 1390px) {
 	.github-button {
-		padding: var(--spacing-5xs) var(--spacing-xs);
+		padding: var(--spacing--5xs) var(--spacing--xs);
 	}
 }
 

@@ -227,7 +227,7 @@ defineExpose({
 .parameterInput {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .hovering {

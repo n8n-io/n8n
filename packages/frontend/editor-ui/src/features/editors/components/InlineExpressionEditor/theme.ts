@@ -6,7 +6,7 @@ const commonThemeProps = (isReadOnly = false) => ({
 		outline: '0 !important',
 	},
 	'.cm-content': {
-		fontFamily: 'var(--font-family-monospace)',
+		fontFamily: 'var(--font-family--monospace)',
 		color: 'var(--input-font-color, var(--color--text--shade-1))',
 		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 	},
@@ -23,22 +23,22 @@ export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }
 			maxHeight: `${maxHeight}px`,
 			minHeight: '30px',
 			width: '100%',
-			fontSize: 'var(--font-size-2xs)',
-			padding: '0 0 0 var(--spacing-2xs)',
-			borderWidth: 'var(--border-width-base)',
-			borderStyle: 'var(--input-border-style, var(--border-style-base))',
-			borderColor: 'var(--input-border-color, var(--border-color-base))',
+			fontSize: 'var(--font-size--2xs)',
+			padding: '0 0 0 var(--spacing--2xs)',
+			borderWidth: 'var(--border-width)',
+			borderStyle: 'var(--input-border-style, var(--border-style))',
+			borderColor: 'var(--input-border-color, var(--border-color))',
 			borderRightColor:
-				'var(--input-border-right-color,var(--input-border-color, var(--border-color-base)))',
+				'var(--input-border-right-color,var(--input-border-color, var(--border-color)))',
 			borderBottomColor:
-				'var(--input-border-bottom-color,var(--input-border-color, var(--border-color-base)))',
-			borderRadius: 'var(--input-border-radius, var(--border-radius-base))',
+				'var(--input-border-bottom-color,var(--input-border-color, var(--border-color)))',
+			borderRadius: 'var(--input-border-radius, var(--radius))',
 			borderTopLeftRadius: 0,
 			borderTopRightRadius:
-				'var(--input-border-top-right-radius, var(--input-border-radius, var(--border-radius-base)))',
+				'var(--input-border-top-right-radius, var(--input-border-radius, var(--radius)))',
 			borderBottomLeftRadius: 0,
 			borderBottomRightRadius:
-				'var(--input-border-bottom-right-radius, var(--input-border-radius, var(--border-radius-base)))',
+				'var(--input-border-bottom-right-radius, var(--input-border-radius, var(--radius)))',
 			backgroundColor: 'white',
 		},
 		'.cm-cursor, .cm-dropCursor': {
@@ -61,7 +61,7 @@ export const outputTheme = () => {
 		'&': {
 			maxHeight: '95px',
 			width: '100%',
-			fontSize: 'var(--font-size-2xs)',
+			fontSize: 'var(--font-size--2xs)',
 			padding: '0',
 			borderTopLeftRadius: '0',
 			borderBottomLeftRadius: '0',

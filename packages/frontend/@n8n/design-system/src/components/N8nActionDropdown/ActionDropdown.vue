@@ -165,7 +165,7 @@ defineExpose({ open, close });
 :global(.el-dropdown__list) {
 	.userActionsMenu {
 		min-width: 160px;
-		padding: var(--spacing-4xs) 0;
+		padding: var(--spacing--4xs) 0;
 	}
 
 	.elementItem {
@@ -180,7 +180,7 @@ defineExpose({ open, close });
 }
 
 .shadow {
-	box-shadow: var(--box-shadow-light);
+	box-shadow: var(--shadow--light);
 }
 
 .activator {
@@ -192,11 +192,11 @@ defineExpose({ open, close });
 .itemContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	justify-content: space-between;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	line-height: 18px;
-	padding: var(--spacing-3xs) var(--spacing-2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 
 	&.disabled {
 		.shortcut {
@@ -208,7 +208,7 @@ defineExpose({ open, close });
 .icon {
 	display: flex;
 	text-align: center;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 
 	svg {
 		width: 1.2em !important;

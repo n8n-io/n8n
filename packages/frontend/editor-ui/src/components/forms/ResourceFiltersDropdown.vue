@@ -179,7 +179,7 @@ onBeforeMount(async () => {
 	}
 
 	.filter-button-count {
-		margin-right: var(--spacing-4xs);
+		margin-right: var(--spacing--4xs);
 
 		@include mixins.breakpoint('xs-only') {
 			margin-right: 0;

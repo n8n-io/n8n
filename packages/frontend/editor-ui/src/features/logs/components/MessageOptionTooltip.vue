@@ -27,7 +27,7 @@ defineProps({
 .container {
 	display: inline-flex;
 	align-items: center;
-	margin: 0 var(--spacing-4xs);
+	margin: 0 var(--spacing--4xs);
 }
 
 .icon {

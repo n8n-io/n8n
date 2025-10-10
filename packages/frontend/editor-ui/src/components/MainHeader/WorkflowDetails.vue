@@ -912,7 +912,7 @@ $--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .name-container {
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing--sm);
 
 	:deep(.el-input) {
 		padding: 0;
@@ -921,13 +921,13 @@ $--header-spacing: 20px;
 
 .name {
 	color: $custom-font-dark;
-	font-size: var(--font-size-s);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .activator {
 	color: $custom-font-dark;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	font-size: 13px;
 	line-height: $--text-line-height;
 	align-items: center;
@@ -941,7 +941,7 @@ $--header-spacing: 20px;
 	font-size: 12px;
 	padding: 20px 0; // to be more clickable
 	color: $custom-font-very-light;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	white-space: nowrap;
 
 	&:hover {
@@ -974,7 +974,7 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	flex-wrap: nowrap;
 }
 
@@ -988,21 +988,21 @@ $--header-spacing: 20px;
 
 @media (max-width: 1390px) {
 	.name-container {
-		margin-right: var(--spacing-xs);
+		margin-right: var(--spacing--xs);
 	}
 
 	.actions {
-		gap: var(--spacing-xs);
+		gap: var(--spacing--xs);
 	}
 }
 
 @media (max-width: 1350px) {
 	.name-container {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 
 	.actions {
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 	}
 }
 </style>
@@ -1011,21 +1011,21 @@ $--header-spacing: 20px;
 .container {
 	position: relative;
 	width: 100%;
-	padding: var(--spacing-xs) var(--spacing-m);
+	padding: var(--spacing--xs) var(--spacing--md);
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
 }
 
 .path-separator {
-	font-size: var(--font-size-xl);
+	font-size: var(--font-size--xl);
 	color: var(--color--foreground);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .group {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .hiddenInput {
@@ -1042,8 +1042,8 @@ $--header-spacing: 20px;
 
 .closeNodeViewDiscovery {
 	position: absolute;
-	right: var(--spacing-xs);
-	top: var(--spacing-xs);
+	right: var(--spacing--xs);
+	top: var(--spacing--xs);
 	cursor: pointer;
 }
 </style>

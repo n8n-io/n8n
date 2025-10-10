@@ -532,10 +532,10 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 <style lang="scss" module>
 .container {
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 
 	& > div:not(:first-child) {
-		margin-top: var(--spacing-xs);
+		margin-top: var(--spacing--xs);
 	}
 }
 
@@ -551,14 +551,14 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	&:not(:has(li)) .newCredential {
 		border-top: none;
 		box-shadow: none;
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 	}
 }
 
 .warning {
-	margin-left: var(--spacing-4xs);
+	margin-left: var(--spacing--4xs);
 	color: var(--color--danger--tint-1);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 
 .edit {
@@ -566,8 +566,8 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	justify-content: center;
 	align-items: center;
 	color: var(--color--text);
-	margin-left: var(--spacing-3xs);
-	font-size: var(--font-size-s);
+	margin-left: var(--spacing--3xs);
+	font-size: var(--font-size--sm);
 }
 
 .input {
@@ -587,14 +587,14 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 .newCredential {
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	align-items: center;
-	font-weight: var(--font-weight-bold);
-	padding: var(--spacing-xs) var(--spacing-m);
+	font-weight: var(--font-weight--bold);
+	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-2);
 
-	border-top: var(--border-base);
-	box-shadow: var(--box-shadow-light);
+	border-top: var(--border);
+	box-shadow: var(--shadow--light);
 	clip-path: inset(-12px 0 0 0); // Only show box shadow on top
 
 	&:hover {

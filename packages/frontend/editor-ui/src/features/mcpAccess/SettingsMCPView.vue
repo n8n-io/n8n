@@ -377,7 +377,7 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 
 	:global(.table-pagination) {
 		display: none;
@@ -385,18 +385,18 @@ onMounted(async () => {
 }
 
 .headingContainer {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 }
 
 .mainToggleContainer {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	justify-content: space-between;
 	flex-shrink: 0;
 
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
+	border-radius: var(--radius);
+	border: var(--border);
 }
 
 .mainToggleInfo {
@@ -431,7 +431,7 @@ onMounted(async () => {
 	:global(.n8n-text) {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 
 		.link-icon {
 			display: none;
@@ -449,7 +449,7 @@ onMounted(async () => {
 			gap: 0;
 		}
 		.link-icon {
-			margin-left: var(--spacing-3xs);
+			margin-left: var(--spacing--3xs);
 		}
 	}
 }
@@ -457,6 +457,6 @@ onMounted(async () => {
 .folder-cell {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 </style>

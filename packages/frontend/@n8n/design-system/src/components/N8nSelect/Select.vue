@@ -151,7 +151,7 @@ defineExpose({
 
 <style lang="scss" module>
 .xlarge {
-	--input-font-size: var(--font-size-m);
+	--input-font-size: var(--font-size--md);
 	input {
 		height: 48px;
 	}
@@ -167,21 +167,21 @@ defineExpose({
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
 		@-moz-document url-prefix() {
-			padding: 0 var(--spacing-3xs);
+			padding: 0 var(--spacing--3xs);
 		}
 	}
 }
 
 .prepend {
-	font-size: var(--font-size-2xs);
-	border: var(--border-base);
+	font-size: var(--font-size--2xs);
+	border: var(--border);
 	border-right: none;
 	display: flex;
 	align-items: center;
-	padding: 0 var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs);
 	background-color: var(--color--background--light-2);
-	border-bottom-left-radius: var(--input-border-radius, var(--border-radius-base));
-	border-top-left-radius: var(--input-border-radius, var(--border-radius-base));
+	border-bottom-left-radius: var(--input-border-radius, var(--radius));
+	border-top-left-radius: var(--input-border-radius, var(--radius));
 	color: var(--color--text);
 	white-space: nowrap;
 }

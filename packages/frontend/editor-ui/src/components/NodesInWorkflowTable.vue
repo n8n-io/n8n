@@ -109,9 +109,9 @@ const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 
 .status {
 	border-style: solid;
-	border-width: var(--border-width-base);
-	padding: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
+	border-width: var(--border-width);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
 }
 
 .active {

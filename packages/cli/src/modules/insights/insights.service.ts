@@ -275,7 +275,7 @@ export class InsightsService {
 		const endDateTime = DateTime.fromJSDate(endDate);
 		const differenceInDays = endDateTime.diff(startDateTime, 'days').days;
 
-		if (differenceInDays <= 1) {
+		if (differenceInDays < 1) {
 			return 'hour';
 		}
 

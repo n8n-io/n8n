@@ -213,7 +213,7 @@ defineExpose({
 	display: flex;
 	user-select: none;
 	touch-action: none;
-	padding: var(--spacing-5xs);
+	padding: var(--spacing--5xs);
 	background: transparent;
 	transition: background 160ms ease-out;
 	pointer-events: none;
@@ -223,11 +223,11 @@ defineExpose({
 	}
 
 	&[data-orientation='vertical'] {
-		width: var(--spacing-xs);
+		width: var(--spacing--xs);
 	}
 
 	&[data-orientation='horizontal'] {
-		height: var(--spacing-xs);
+		height: var(--spacing--xs);
 		flex-direction: row;
 	}
 }

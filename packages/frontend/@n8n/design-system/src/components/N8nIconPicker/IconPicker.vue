@@ -165,29 +165,29 @@ const togglePopup = () => {
 	max-height: 300px;
 	display: flex;
 	flex-direction: column;
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing--4xs);
 	background-color: var(--color--background--light-3);
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
+	border-radius: var(--radius);
+	border: var(--border);
 	border-color: var(--color--foreground--shade-1);
 
 	.tabs {
-		padding: var(--spacing-2xs);
-		padding-bottom: var(--spacing-5xs);
+		padding: var(--spacing--2xs);
+		padding-bottom: var(--spacing--5xs);
 	}
 
 	.content {
 		display: flex;
 		flex-wrap: wrap;
-		padding: var(--spacing-2xs);
+		padding: var(--spacing--2xs);
 		overflow-y: auto;
 	}
 
 	.icon,
 	.emoji {
 		cursor: pointer;
-		padding: var(--spacing-4xs);
-		border-radius: var(--border-radius-small);
+		padding: var(--spacing--4xs);
+		border-radius: var(--radius--sm);
 
 		&:hover {
 			background-color: var(--color--background--shade-1);

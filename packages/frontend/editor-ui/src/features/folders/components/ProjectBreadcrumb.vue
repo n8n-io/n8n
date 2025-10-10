@@ -95,12 +95,12 @@ const onProjectMouseUp = () => {
 <style module lang="scss">
 .home-project {
 	display: flex;
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
-	border: var(--border-width-base) var(--border-style-base) transparent;
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+	border: var(--border-width) var(--border-style) transparent;
 
 	&.dragging:hover {
-		border: var(--border-width-base) var(--border-style-base) var(--color--secondary);
-		border-radius: var(--border-radius-base);
+		border: var(--border-width) var(--border-style) var(--color--secondary);
+		border-radius: var(--radius);
 		background-color: var(--color-callout-secondary-background);
 		* {
 			cursor: grabbing;
@@ -116,7 +116,7 @@ const onProjectMouseUp = () => {
 .project-link :global(.n8n-text) {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 :global(.n8n-text).project-label {

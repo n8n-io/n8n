@@ -136,7 +136,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 <template>
 	<ElDialog
-		width="calc(100% - var(--spacing-3xl))"
+		width="calc(100% - var(--spacing--3xl))"
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		:class="$style.modal"
 		:model-value="dialogVisible"
@@ -236,16 +236,16 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 <style module lang="scss">
 .modal {
-	--dialog-close-top: var(--spacing-m);
+	--dialog-close-top: var(--spacing--md);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
-	height: calc(100% - var(--spacing-4xl));
+	height: calc(100% - var(--spacing--4xl));
 	margin-bottom: 0;
 
 	:global(.el-dialog__body) {
 		height: 100%;
-		padding: var(--spacing-s);
+		padding: var(--spacing--sm);
 	}
 
 	:global(.el-dialog__header) {
@@ -256,14 +256,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 .container {
 	display: flex;
 	flex-flow: row nowrap;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	height: 100%;
 }
 
 .sidebar {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	flex-basis: 360px;
 	flex-shrink: 0;
 	height: 100%;
@@ -272,13 +272,13 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 .schema {
 	height: 100%;
 	overflow-y: auto;
-	padding-right: var(--spacing-4xs);
+	padding-right: var(--spacing--4xs);
 }
 
 .editor {
 	display: flex;
 	flex: 1 1 0;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 
 	> div {
 		flex: 1 1 0;
@@ -294,14 +294,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 .io {
 	display: flex;
 	flex: 1 1 0;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 }
 
 .input,
 .output {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	flex: 1 1 0;
 }
 
@@ -315,7 +315,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	display: flex;
 	flex-direction: column;
 
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 }
 
 .tip {
@@ -327,10 +327,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	border: none;
 	background: none;
 	cursor: pointer;
-	padding: var(--spacing-4xs);
+	padding: var(--spacing--4xs);
 	position: absolute;
-	right: var(--spacing-s);
-	top: var(--spacing-s);
+	right: var(--spacing--sm);
+	top: var(--spacing--sm);
 	color: var(--color-button-secondary-font);
 
 	&:hover,
@@ -352,7 +352,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	.header {
 		flex-direction: row;
 		align-items: baseline;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 	}
 }
 </style>
