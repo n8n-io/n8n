@@ -1565,13 +1565,13 @@ export class WorkflowExecute {
 								}
 
 								return input.map((item, itemIndex) => {
-									// Preserve any existing sourceOverwrite from the pairedItem.
-									// This allows nodes like SplitInBatches to override the
-									// source information that tracks where an item originated
-									// from, which is critical for maintaining correct data
-									// lineage when nodes need to manipulate the item tracking
-									// chain.
-									// TEMPORARY: Force to true to reproduce sourceOverwrite retention bug
+									// Preserve any existing sourceOverwrite from the pairedItem
+									// for tool executions. Tool calls don't have a main
+									// connection to the agent's input, so the data proxy needs
+									// the sourceOverwrite information to know where to look up
+									// paired items. This is necessary because the workflow data
+									// proxy works on input data which normally scrubs paired
+									// item information before executing the node.
 									const isToolExecution = !!executionData.metadata?.preserveSourceOverwrite;
 									if (
 										isToolExecution &&
