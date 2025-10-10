@@ -23,18 +23,22 @@ export class UniqueRoleNames1760020838000 implements ReversibleMigration {
 		for (const [_, roles] of groupedByName.entries()) {
 			if (roles.length > 1) {
 				const duplicates = roles.slice(1);
-				await Promise.all(
-					duplicates.map(async (role, index) => {
-						if (index === 0) return;
-						return await runQuery(
-							`UPDATE ${tableName} SET ${displayNameColumn} = :displayName WHERE ${slugColumn} = :slug`,
-							{
-								displayName: `${role.displayName} ${index + 1}`,
-								slug: role.slug,
-							},
-						);
-					}),
-				);
+				let index = 2;
+				for (const role of duplicates.values()) {
+					let newDisplayName = `${role.displayName} ${index}`;
+					while (allRoles.some((r) => r.displayName === newDisplayName)) {
+						index++;
+						newDisplayName = `${role.displayName} ${index}`;
+					}
+					await runQuery(
+						`UPDATE ${tableName} SET ${displayNameColumn} = :displayName WHERE ${slugColumn} = :slug`,
+						{
+							displayName: newDisplayName,
+							slug: role.slug,
+						},
+					);
+					index++;
+				}
 			}
 		}
 

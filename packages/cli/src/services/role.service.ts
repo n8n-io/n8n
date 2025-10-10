@@ -174,7 +174,7 @@ export class RoleService {
 
 			return this.dbRoleToRoleDTO(createdRole);
 		} catch (error) {
-			if ('message' in error && isUniqueConstraintError(error as Error)) {
+			if (error instanceof Error && isUniqueConstraintError(error)) {
 				throw new BadRequestError(`A role with the name "${newRole.displayName}" already exists`);
 			}
 			throw error;
