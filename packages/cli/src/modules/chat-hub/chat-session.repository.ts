@@ -10,13 +10,12 @@ export class ChatSessionRepository extends Repository<ChatSession> {
 		super(ChatSession, dataSource.manager);
 	}
 
-	async createChatSession(id: string, name: string, userId: string, trx?: EntityManager) {
+	async createChatSession(session: Partial<ChatSession>, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			const chatSession = em.create(ChatSession, { id, name, userId });
-			await em.save(chatSession);
-
+			const chatSession = em.create(ChatSession, session);
+			const saved = await em.save(chatSession);
 			return await em.findOneOrFail(ChatSession, {
-				where: { id },
+				where: { id: saved.id },
 				relations: ['messages'],
 			});
 		});
@@ -32,9 +31,9 @@ export class ChatSessionRepository extends Repository<ChatSession> {
 		});
 	}
 
-	async updateChatName(id: string, name: string, trx?: EntityManager) {
+	async updateChatTitle(id: string, title: string, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			await em.update(ChatSession, { id }, { name });
+			await em.update(ChatSession, { id }, { title });
 			return await em.findOneOrFail(ChatSession, {
 				where: { id },
 				relations: ['messages'],
@@ -50,14 +49,14 @@ export class ChatSessionRepository extends Repository<ChatSession> {
 
 	async getManyByUserId(userId: string) {
 		return await this.find({
-			where: { userId },
+			where: { ownerId: userId },
 			order: { lastMessageAt: 'DESC' },
 		});
 	}
 
 	async getOneById(id: string, userId: string) {
 		return await this.findOne({
-			where: { id, userId },
+			where: { id, ownerId: userId },
 			relations: ['messages'],
 		});
 	}
