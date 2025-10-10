@@ -15,6 +15,7 @@ import { useDataTableTypes } from '@/features/dataTable/composables/useDataTable
 import ColumnHeader from '@/features/dataTable/components/dataGrid/ColumnHeader.vue';
 import ElDatePickerCellEditor from '@/features/dataTable/components/dataGrid/ElDatePickerCellEditor.vue';
 import ElDatePickerFilter from '@/features/dataTable/components/dataGrid/ElDatePickerFilter.vue';
+import JsonCellEditor from '@/features/dataTable/components/dataGrid/JsonCellEditor.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/dataTable/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataTable/components/dataGrid/AddRowButton.vue';
@@ -79,6 +80,17 @@ export const useDataTableColumns = ({
 			columnDef.cellEditorPopupPosition = 'over';
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			columnDef.filterParams = {
+				filterOptions: getStringColumnFilterOptions(i18n),
+			};
+			// @ts-expect-error
+		} else if (col.type === 'json') {
+			columnDef.cellEditorSelector = () => ({
+				component: JsonCellEditor,
+			});
+			columnDef.cellEditorPopup = true;
+			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			// TODO
 			columnDef.filterParams = {
 				filterOptions: getStringColumnFilterOptions(i18n),
 			};
