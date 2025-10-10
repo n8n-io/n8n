@@ -34,7 +34,7 @@
 				// "N8N_PORT": "5679",
 			},
 			"outputCapture": "std",
-			"killBehavior": "forceful"
+			"killBehavior": "polite"
 		},
 		{
 			"name": "Launch n8n CLI dev with debug",
