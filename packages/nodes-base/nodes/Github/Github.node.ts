@@ -2439,9 +2439,9 @@ export class Github implements INodeType {
 				let owner = '';
 				if (
 					fullOperation !== 'user:invite' &&
+					fullOperation !== 'user:getUserIssues' &&
 					resource !== 'notification'
 				) {
-				if (fullOperation !== 'user:invite' && fullOperation !== 'user:getUserIssues') {
 					// Request the parameters which almost all operations need
 					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
