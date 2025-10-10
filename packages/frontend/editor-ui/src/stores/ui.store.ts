@@ -28,7 +28,6 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	PROJECT_MOVE_RESOURCE_MODAL,
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
@@ -53,6 +52,7 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,

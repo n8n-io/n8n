@@ -24,7 +24,6 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
-	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
@@ -50,6 +49,7 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
