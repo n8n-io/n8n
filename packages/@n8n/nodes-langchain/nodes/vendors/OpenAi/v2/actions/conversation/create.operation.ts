@@ -85,7 +85,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const body: IDataObject = {
 		items: await formatInputMessages.call(this, i, messages),
-		metadata: options.metadata,
 	};
 
 	if (options.metadata) {

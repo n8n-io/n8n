@@ -144,7 +144,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		},
 	];
 
-	const detail = (options.detail as string as ResponseInputImage['detail']) || ('auto' as const);
+	const detail = (options.detail as ResponseInputImage['detail']) || ('auto' as const);
 
 	if (inputType === 'url') {
 		const imageUrls = (this.getNodeParameter('imageUrls', i) as string)
@@ -193,13 +193,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 
-	if (simplify && response.output[0]) {
-		const firstMessage =
-			response.output.find((item) => item.type === 'message') ?? response.output[0];
-		const output = firstMessage.type === 'message' ? firstMessage.content[0] : firstMessage;
+	if (simplify) {
 		return [
 			{
-				json: output as unknown as IDataObject,
+				json: response.output as unknown as IDataObject,
 				pairedItem: { item: i },
 			},
 		];

@@ -25,7 +25,7 @@ export const description: INodeProperties[] = [
 				value: 'message',
 				action: 'Generate a chat completion',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
-				description: 'Create a completion with GPT 3, 4, etc. using Completions API',
+				description: 'Create a completion with GPT 3, 4, 5, etc. using Completions API',
 			},
 			{
 				name: 'Classify Text for Violations',

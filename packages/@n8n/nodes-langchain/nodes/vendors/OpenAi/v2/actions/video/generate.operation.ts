@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		name: 'seconds',
 		type: 'number',
 		default: 4,
-		description: 'Clip duration in seconds. Defaults to 4 seconds.',
+		description: 'Clip duration in seconds',
 		required: true,
 	},
 	{

@@ -709,10 +709,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
 	while (toolCalls.length) {
-		if (
-			abortSignal?.aborted ||
-			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
-		) {
+		if (abortSignal?.aborted || (maxToolsIterations > 0 && currentIteration > maxToolsIterations)) {
 			break;
 		}
 

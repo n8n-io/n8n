@@ -56,7 +56,7 @@ export async function formatInputMessages(
 							type: 'input_image',
 							detail,
 							...(message.imageType === 'url' && { image_url: message.imageUrl as string }),
-							...(message.fileId && { file_id: message.fileId as string }),
+							...(message.imageType === 'fileId' && { file_id: message.fileId as string }),
 						},
 					];
 				}
