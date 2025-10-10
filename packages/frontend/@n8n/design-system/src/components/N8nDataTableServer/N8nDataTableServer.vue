@@ -549,7 +549,6 @@ const table = useVueTable({
 		font-weight: 600;
 		font-size: 12px;
 		padding: 0 8px;
-		text-transform: capitalize;
 		height: 36px;
 		white-space: nowrap;
 

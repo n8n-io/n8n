@@ -4,7 +4,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
-import { N8nButton, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
@@ -38,7 +38,7 @@ const defaultForm = () => ({
 });
 
 const initialState = ref<Role | undefined>();
-const { state: form } = useAsyncState(
+const { state: form, isLoading } = useAsyncState(
 	async () => {
 		if (!props.roleSlug) {
 			return defaultForm();
@@ -296,8 +296,9 @@ const displayNameValidationRules = [
 			:class="$style.backButton"
 			text
 			@click="() => router.back()"
-			>{{ i18n.baseText('projectRoles.backToRoleList') }}</N8nButton
 		>
+			{{ i18n.baseText('projectRoles.backToRoleList') }}
+		</N8nButton>
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
@@ -311,9 +312,9 @@ const displayNameValidationRules = [
 				>
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
-				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">{{
-					i18n.baseText('projectRoles.save')
-				}}</N8nButton>
+				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
+					{{ i18n.baseText('projectRoles.save') }}
+				</N8nButton>
 			</div>
 			<template v-else>
 				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
@@ -341,23 +342,23 @@ const displayNameValidationRules = [
 			></N8nFormInput>
 		</div>
 
-		<N8nHeading tag="h2" size="xlarge" class="mb-s">{{
-			i18n.baseText('projectRoles.permissions')
-		}}</N8nHeading>
-		<N8nText color="text-light" class="mb-2xs" tag="p">{{
-			i18n.baseText('projectRoles.preset')
-		}}</N8nText>
+		<N8nHeading tag="h2" size="xlarge" class="mb-s">
+			{{ i18n.baseText('projectRoles.permissions') }}
+		</N8nHeading>
+		<N8nText color="text-light" class="mb-2xs" tag="p">
+			{{ i18n.baseText('projectRoles.preset') }}
+		</N8nText>
 
 		<div class="mb-s" :class="$style.presetsContainer">
-			<N8nButton type="secondary" @click="setPreset('project:admin')">{{
-				i18n.baseText('projectRoles.admin')
-			}}</N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:editor')">{{
-				i18n.baseText('projectRoles.editor')
-			}}</N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:viewer')">{{
-				i18n.baseText('projectRoles.viewer')
-			}}</N8nButton>
+			<N8nButton type="secondary" @click="setPreset('project:admin')">
+				{{ i18n.baseText('projectRoles.admin') }}
+			</N8nButton>
+			<N8nButton type="secondary" @click="setPreset('project:editor')">
+				{{ i18n.baseText('projectRoles.editor') }}
+			</N8nButton>
+			<N8nButton type="secondary" @click="setPreset('project:viewer')">
+				{{ i18n.baseText('projectRoles.viewer') }}
+			</N8nButton>
 		</div>
 
 		<div :class="$style.cardContainer">
@@ -365,25 +366,28 @@ const displayNameValidationRules = [
 				<div :class="$style.cardTitle">
 					{{ i18n.baseText(`projectRoles.type.${type}`) }}
 				</div>
-				<div>
-					<N8nFormInput
-						v-for="scope in scopes[type]"
-						:key="scope"
-						:data-test-id="`scope-checkbox-${scope}`"
-						:model-value="form.scopes.includes(scope)"
-						:label="i18n.baseText(`projectRoles.${scope}`)"
-						validate-on-blur
-						type="checkbox"
-						@update:model-value="() => toggleScope(scope)"
-					/>
+				<div style="flex: 1">
+					<N8nLoading v-if="isLoading" :rows="scopes[type].length" :shrink-last="false" />
+					<template v-else>
+						<N8nFormInput
+							v-for="scope in scopes[type]"
+							:key="scope"
+							:data-test-id="`scope-checkbox-${scope}`"
+							:model-value="form.scopes.includes(scope)"
+							:label="i18n.baseText(`projectRoles.${scope}`)"
+							validate-on-blur
+							type="checkbox"
+							@update:model-value="() => toggleScope(scope)"
+						/>
+					</template>
 				</div>
 			</div>
 		</div>
 
 		<div v-if="roleSlug && !initialState?.systemRole" class="mt-xl">
-			<N8nHeading tag="h2" class="mb-2xs">{{
-				i18n.baseText('projectRoles.dangerZone')
-			}}</N8nHeading>
+			<N8nHeading tag="h2" class="mb-2xs">
+				{{ i18n.baseText('projectRoles.dangerZone') }}
+			</N8nHeading>
 			<N8nText tag="p" class="mb-s">
 				<template v-if="initialState?.usedByUsers">
 					{{
@@ -396,9 +400,9 @@ const displayNameValidationRules = [
 				</template>
 				<template v-else> {{ i18n.baseText('projectRoles.action.delete.warning') }}</template>
 			</N8nText>
-			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole">{{
-				i18n.baseText('projectRoles.action.delete.button')
-			}}</N8nButton>
+			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole">
+				{{ i18n.baseText('projectRoles.action.delete.button') }}
+			</N8nButton>
 		</div>
 	</div>
 </template>
@@ -416,6 +420,10 @@ const displayNameValidationRules = [
 	border-radius: 4px;
 	border: var(--border-base);
 	background-color: var(--color--background--light-3);
+	:global(.el-skeleton__p) {
+		margin-bottom: 8px;
+		margin-top: 0;
+	}
 }
 
 .card {
@@ -428,7 +436,6 @@ const displayNameValidationRules = [
 
 .cardTitle {
 	width: 133px;
-	text-transform: capitalize;
 }
 
 .backButton {
