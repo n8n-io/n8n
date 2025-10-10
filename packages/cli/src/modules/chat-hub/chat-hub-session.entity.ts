@@ -8,7 +8,7 @@ import {
 } from '@n8n/db';
 import { Column, Entity, ManyToOne, OneToMany, JoinColumn } from '@n8n/typeorm';
 
-import type { ChatHubMessage } from './chat-message.entity';
+import type { ChatHubMessage } from './chat-hub-message.entity';
 
 @Entity({ name: 'chat_hub_sessions' })
 export class ChatHubSession extends WithTimestampsAndStringId {

@@ -23,6 +23,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
 export const chatHubConversationModelSchema = z.object({
 	provider: chatHubProviderSchema,
 	model: z.string(),
+	workflowId: z.string().nullable().default(null),
 });
 
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
@@ -50,6 +51,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 	sessionId: z.string().uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
+	previousMessageId: z.string().uuid().nullable(),
 	credentials: z.record(
 		z.object({
 			id: z.string(),
