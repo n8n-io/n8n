@@ -38,7 +38,7 @@ function onNewChat() {
 				</i>
 				<N8nText bold>Chat</N8nText>
 			</div>
-			<N8nIconButton title="New chat" icon="plus" type="secondary" @click="onNewChat" />
+			<N8nIconButton title="New chat" icon="square-pen" type="tertiary" text @click="onNewChat" />
 		</div>
 		<div :class="$style.items">
 			<div v-for="group in groupedConversations" :key="group.group" :class="$style.group">
