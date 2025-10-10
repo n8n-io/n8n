@@ -522,7 +522,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	background-color: var(--color-ndvv2-run-data-background);
 }
 .outputTypeSelect {
-	margin-bottom: var(--spacing-4xs);
+	margin-bottom: var(--spacing--4xs);
 	width: fit-content;
 }
 .titleSection {
@@ -530,44 +530,44 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	align-items: center;
 
 	> * {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 }
 
 .titleSectionV2 {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 
 .title {
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--sm);
 }
 
 .titleV2 {
 	letter-spacing: 2px;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .noOutputData {
 	max-width: 180px;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
 .link {
 	display: inline;
 	padding: 0;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
 }
 
 .spinner {

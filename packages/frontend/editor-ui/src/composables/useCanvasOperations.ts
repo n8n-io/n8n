@@ -254,7 +254,7 @@ export function useCanvasOperations() {
 		const oldPosition: XYPosition = [...node.position];
 		const newPosition: XYPosition = [position.x, position.y];
 
-		workflowsStore.setNodePositionById(id, newPosition);
+		workflowState.setNodePositionById(id, newPosition);
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(

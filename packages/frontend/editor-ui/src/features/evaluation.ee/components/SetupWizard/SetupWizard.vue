@@ -273,7 +273,7 @@ function onSeePlans() {
 .steps {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 }
 
 .step {
@@ -281,25 +281,25 @@ function onSeePlans() {
 }
 
 .stepContent {
-	padding: 0 0 0 calc(var(--spacing-xs) + 28px);
+	padding: 0 0 0 calc(var(--spacing--xs) + 28px);
 	animation: slideDown 0.2s ease;
 }
 
 .bulletPoints {
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 
 	li {
-		margin-bottom: var(--spacing-3xs);
+		margin-bottom: var(--spacing--3xs);
 	}
 }
 
 .actionButton {
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 	display: flex;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 
 	button {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
@@ -308,7 +308,7 @@ function onSeePlans() {
 }
 
 .quotaNote {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 @keyframes slideDown {

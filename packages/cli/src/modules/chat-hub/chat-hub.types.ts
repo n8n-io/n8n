@@ -10,3 +10,10 @@ export interface ChatPayloadWithCredentials {
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 }
+
+export type ChatMessage = {
+	id: string;
+	message: string;
+	type: 'user' | 'ai' | 'system';
+	createdAt: Date;
+};

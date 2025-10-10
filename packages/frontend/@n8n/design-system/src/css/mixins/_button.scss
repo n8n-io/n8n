@@ -121,9 +121,9 @@
 }
 
 @mixin button-small() {
-	@include button-size(var(--spacing-3xs), var(--spacing-xs), var(--font-size-2xs));
+	@include button-size(var(--spacing--3xs), var(--spacing--xs), var(--font-size--2xs));
 }
 
 @mixin button-medium() {
-	@include button-size(var(--spacing-2xs), var(--spacing-xs), var(--font-size-2xs));
+	@include button-size(var(--spacing--2xs), var(--spacing--xs), var(--font-size--2xs));
 }

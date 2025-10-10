@@ -24,13 +24,13 @@ const onDrop = (value: string) => {
 <style lang="scss" module>
 .area {
 	border: dashed 1px var(--color--foreground--shade-1);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 	background: var(--color--background--light-2);
-	padding: var(--spacing-s) var(--spacing-m);
+	padding: var(--spacing--sm) var(--spacing--md);
 	display: flex;
 	align-items: baseline;
 	justify-content: center;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	transition: border-color 0.1s ease-in;
 	box-shadow: inset 0 0 0 1.5px var(--color--background--light-3);
 

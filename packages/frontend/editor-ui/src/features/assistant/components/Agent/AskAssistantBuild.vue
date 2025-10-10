@@ -325,14 +325,14 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	flex-flow: wrap;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	background-color: var(--color--background--light-2);
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	border: 0;
 }
 
 .newWorkflowText {
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 </style>

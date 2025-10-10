@@ -87,6 +87,6 @@ function onSelect(id: string) {
 .dropdownButton {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 </style>

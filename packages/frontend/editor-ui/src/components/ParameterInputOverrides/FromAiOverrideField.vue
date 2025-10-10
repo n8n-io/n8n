@@ -60,7 +60,7 @@ const emit = defineEmits<{
 }
 
 .overrideCloseButton {
-	padding: 0 var(--spacing-2xs);
+	padding: 0 var(--spacing--2xs);
 	border: 0;
 	color: var(--color--text);
 	margin-left: auto;
@@ -74,8 +74,8 @@ const emit = defineEmits<{
 	align-items: center;
 	white-space: nowrap;
 	width: 100%;
-	gap: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
+	gap: var(--spacing--4xs);
+	border-radius: var(--radius);
 	background-color: var(--color--foreground);
 }
 </style>

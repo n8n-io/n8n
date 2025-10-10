@@ -97,12 +97,12 @@ function onUpdatePlanClick() {
 .content {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .pipe {
 	display: inline-block;
-	font-size: var(--font-size-m);
+	font-size: var(--font-size--md);
 	padding: 0 0 2px;
 }
 
@@ -153,10 +153,10 @@ function onUpdatePlanClick() {
 }
 
 .usageText {
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
-	margin-top: var(--spacing-xs);
-	line-height: var(--spacing-xs);
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--sm);
+	margin-top: var(--spacing--xs);
+	line-height: var(--spacing--xs);
 }
 
 .usageCounter {
@@ -164,7 +164,7 @@ function onUpdatePlanClick() {
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 }
 
 .danger {
@@ -172,6 +172,6 @@ function onUpdatePlanClick() {
 }
 
 .executionsCountSection {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 </style>

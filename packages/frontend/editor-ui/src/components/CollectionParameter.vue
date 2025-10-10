@@ -219,10 +219,10 @@ function valueChanged(parameterData: IUpdateInformation) {
 
 <style lang="scss">
 .collection-parameter {
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 
 	.param-options {
-		margin-top: var(--spacing-xs);
+		margin-top: var(--spacing--xs);
 
 		.button {
 			color: var(--color--text--shade-1);
@@ -251,7 +251,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	.no-items-exist {
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 	}
 	.option {
 		position: relative;

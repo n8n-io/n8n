@@ -21,7 +21,7 @@ defineProps<{
 
 	.titled-list-item {
 		list-style: none;
-		padding-left: var(--spacing-3xs);
+		padding-left: var(--spacing--3xs);
 		&::before {
 			content: '- ';
 		}

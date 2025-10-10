@@ -693,7 +693,7 @@ defineExpose({
 <style module lang="scss">
 .typeConversionOptions {
 	display: grid;
-	padding: var(--spacing-m);
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--md);
+	gap: var(--spacing--2xs);
 }
 </style>

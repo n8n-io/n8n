@@ -141,7 +141,7 @@ async function onImport() {
 }
 
 .container > * {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 	&:last-child {
 		margin-bottom: 0;
 	}

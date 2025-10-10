@@ -10,6 +10,20 @@ import type { AwsIamCredentialsType, AWSRegion } from './common/aws/types';
 import { awsCredentialsTest, awsGetSignInOptionsAndUpdateRequest } from './common/aws/utils';
 import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 
+function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
+	if (
+		typeof value === 'object' &&
+		value !== null &&
+		!headers['Content-Length'] &&
+		!headers['content-length'] &&
+		!Buffer.isBuffer(value)
+	) {
+		return true;
+	}
+
+	return false;
+}
+
 export class Aws implements ICredentialType {
 	name = 'aws';
 

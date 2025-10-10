@@ -123,11 +123,11 @@ defineExpose({
 	padding-left: 0;
 }
 :deep(.cm-content) {
-	padding-left: var(--spacing-2xs);
+	padding-left: var(--spacing--2xs);
 
 	&[aria-readonly='true'] {
 		background-color: var(--disabled-fill, var(--color--background--light-2));
-		border-color: var(--disabled-border, var(--border-color-base));
+		border-color: var(--disabled-border, var(--border-color));
 		color: var(--disabled-color, var(--color--text));
 		cursor: not-allowed;
 

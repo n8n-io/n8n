@@ -20,11 +20,11 @@ withDefaults(defineProps<Props>(), {
 .dragPill {
 	display: inline-flex;
 	height: 24px;
-	padding: 0 var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs);
 	border: 1px solid var(--color--foreground--tint-1);
 	border-radius: 4px;
 	background: var(--color--background--light-3);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text);
 	white-space: nowrap;
 	align-items: center;

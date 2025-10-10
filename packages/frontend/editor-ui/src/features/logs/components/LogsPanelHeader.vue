@@ -27,16 +27,16 @@ function handleClick() {
 
 <style lang="scss" module>
 .container {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	text-align: left;
-	padding-inline-start: var(--spacing-s);
-	padding-inline-end: var(--spacing-2xs);
-	padding-block: var(--spacing-2xs);
+	padding-inline-start: var(--spacing--sm);
+	padding-inline-end: var(--spacing--2xs);
+	padding-block: var(--spacing--2xs);
 	background-color: var(--color--foreground--tint-2);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	line-height: var(--font-line-height-compact);
+	line-height: var(--line-height--sm);
 
 	&.clickable {
 		cursor: pointer;
@@ -44,7 +44,7 @@ function handleClick() {
 
 	&:not(:last-child) {
 		/** Panel open */
-		border-bottom: var(--border-base);
+		border-bottom: var(--border);
 	}
 }
 
@@ -63,6 +63,6 @@ function handleClick() {
 	color: var(--color--text);
 	max-width: 70%;
 	/* Let button heights not affect the header height */
-	margin-block: calc(-1 * var(--spacing-s));
+	margin-block: calc(-1 * var(--spacing--sm));
 }
 </style>

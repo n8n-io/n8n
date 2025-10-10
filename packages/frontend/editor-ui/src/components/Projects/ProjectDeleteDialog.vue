@@ -129,6 +129,6 @@ const onDelete = () => {
 
 <style lang="scss" module>
 .operation {
-	padding: 0 0 var(--spacing-l) var(--spacing-l);
+	padding: 0 0 var(--spacing--lg) var(--spacing--lg);
 }
 </style>
