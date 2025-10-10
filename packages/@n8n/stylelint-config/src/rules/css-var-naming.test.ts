@@ -284,12 +284,48 @@ describe('css-var-naming rule', () => {
 			expect(result.warnings.length).toBeGreaterThan(0);
 		});
 
-		it('should reject semantic values before property', async () => {
+		it('should reject primary semantic value before property', async () => {
 			const invalidOrder = `
 				:root {
 					--primary--color: #0d6efd;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject secondary semantic value before property', async () => {
+			const invalidOrder = `
+				:root {
 					--secondary--color: #6c757d;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject success semantic value before property', async () => {
+			const invalidOrder = `
+				:root {
 					--success--color: #28a745;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject danger semantic value before property', async () => {
+			const invalidOrder = `
+				:root {
 					--danger--color: #dc3545;
 				}
 			`;
@@ -300,11 +336,35 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
-		it('should reject scale values before property', async () => {
+		it('should reject md scale value before property', async () => {
 			const invalidOrder = `
 				:root {
 					--md--spacing: 20px;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject lg scale value before property', async () => {
+			const invalidOrder = `
+				:root {
 					--lg--font-size: 18px;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject xl scale value before property', async () => {
+			const invalidOrder = `
+				:root {
 					--xl--radius: 12px;
 				}
 			`;
@@ -315,10 +375,22 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
-		it('should reject component with semantic value before property', async () => {
+		it('should reject component with primary value before color property', async () => {
 			const invalidOrder = `
 				:root {
 					--button--primary--color: #0d6efd;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject component with surface value before color--background property', async () => {
+			const invalidOrder = `
+				:root {
 					--card--surface--color--background: #fff;
 				}
 			`;
@@ -329,10 +401,22 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
-		it('should reject namespace with semantic value before property', async () => {
+		it('should reject namespace with primary value before color property', async () => {
 			const invalidOrder = `
 				:root {
 					--n8n--primary--color: #0d6efd;
+				}
+			`;
+			const result = await lintCSS(invalidOrder);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject namespace with muted value before color--text property', async () => {
+			const invalidOrder = `
+				:root {
 					--chat--muted--color--text: #888;
 				}
 			`;
@@ -343,11 +427,35 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
-		it('should reject invalid single-dash format for color properties', async () => {
+		it('should reject invalid single-dash color-text format', async () => {
 			const invalidFormat = `
 				:root {
 					--color-text--primary: #0d6efd;
+				}
+			`;
+			const result = await lintCSS(invalidFormat);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must include a valid property from vocabulary'),
+			});
+		});
+
+		it('should reject invalid single-dash color-background format', async () => {
+			const invalidFormat = `
+				:root {
 					--color-background--surface: #fff;
+				}
+			`;
+			const result = await lintCSS(invalidFormat);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must include a valid property from vocabulary'),
+			});
+		});
+
+		it('should reject invalid single-dash color-foreground format', async () => {
+			const invalidFormat = `
+				:root {
 					--color-foreground--light: #f5f5f5;
 				}
 			`;
@@ -358,10 +466,22 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
-		it('should reject invalid single-dash format with components', async () => {
+		it('should reject component with invalid single-dash color-text format', async () => {
 			const invalidFormat = `
 				:root {
 					--button--color-text--primary: #0d6efd;
+				}
+			`;
+			const result = await lintCSS(invalidFormat);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('Must include a valid property from vocabulary'),
+			});
+		});
+
+		it('should reject component with invalid single-dash color-background format', async () => {
+			const invalidFormat = `
+				:root {
 					--card--color-background--surface: #fff;
 				}
 			`;
@@ -414,10 +534,22 @@ describe('css-var-naming rule', () => {
 			expect(result.warnings).toHaveLength(0);
 		});
 
-		it('should reject callout component tokens with semantic value before property', async () => {
+		it('should reject callout with secondary before icon-color property', async () => {
 			const invalidCalloutTokens = `
 				:root {
 					--callout--secondary--icon-color: #0d6efd;
+				}
+			`;
+			const result = await lintCSS(invalidCalloutTokens);
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining('appears before the property'),
+			});
+		});
+
+		it('should reject callout with secondary before color--text property', async () => {
+			const invalidCalloutTokens = `
+				:root {
 					--callout--secondary--color--text: #888;
 				}
 			`;
