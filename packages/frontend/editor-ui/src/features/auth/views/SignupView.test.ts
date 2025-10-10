@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useToast } from '@/composables/useToast';
-import SignupView from '@/views/SignupView.vue';
+import SignupView from './SignupView.vue';
 import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import AuthView from '@/views/AuthView.vue';
+import AuthView from './AuthView.vue';
 import { useToast } from '@/composables/useToast';
 
 import { computed, onMounted, ref } from 'vue';

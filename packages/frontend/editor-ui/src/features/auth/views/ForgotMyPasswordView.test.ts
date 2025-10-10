@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import ForgotMyPasswordView from '@/views/ForgotMyPasswordView.vue';
+import ForgotMyPasswordView from './ForgotMyPasswordView.vue';
 import { useToast } from '@/composables/useToast';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';

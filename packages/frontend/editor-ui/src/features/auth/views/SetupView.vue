@@ -11,7 +11,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 
-import AuthView from '@/views/AuthView.vue';
+import AuthView from './AuthView.vue';
 
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();

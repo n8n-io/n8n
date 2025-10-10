@@ -6,7 +6,7 @@ import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_FORM,
 } from '@/constants';
-import { mfaEventBus } from '@/event-bus';
+import { mfaEventBus } from '../auth.eventBus';
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';

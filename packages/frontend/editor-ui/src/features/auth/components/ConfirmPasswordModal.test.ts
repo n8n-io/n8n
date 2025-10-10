@@ -1,12 +1,12 @@
 import { createTestingPinia } from '@pinia/testing';
-import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
+import ConfirmPasswordModal from './ConfirmPasswordModal.vue';
 import type { createPinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CONFIRM_PASSWORD_MODAL_KEY } from '@/constants';
-import { confirmPasswordEventBus } from './confirm-password.event-bus';
+import { confirmPasswordEventBus } from '../auth.eventBus';
 import { STORES } from '@n8n/stores';
 
 const renderModal = createComponentRenderer(ConfirmPasswordModal);
