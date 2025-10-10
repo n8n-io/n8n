@@ -1,4 +1,4 @@
-# Enforce valid credential documentationUrl format (URL or camelCase slug) (`@n8n/community-nodes/credential-documentation-url`)
+# Enforce valid credential documentationUrl format (URL or lowercase alphanumeric slug) (`@n8n/community-nodes/credential-documentation-url`)
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
@@ -8,10 +8,10 @@
 
 <!-- begin auto-generated rule options list -->
 
-| Name         | Description                                   | Type    |
-| :----------- | :-------------------------------------------- | :------ |
-| `allowSlugs` | Whether to allow camelCase slugs with slashes | Boolean |
-| `allowUrls`  | Whether to allow valid URLs                   | Boolean |
+| Name         | Description                                            | Type    |
+| :----------- | :----------------------------------------------------- | :------ |
+| `allowSlugs` | Whether to allow lowercase alphanumeric slugs with slashes | Boolean |
+| `allowUrls`  | Whether to allow valid URLs                            | Boolean |
 
 <!-- end auto-generated rule options list -->
 
@@ -19,7 +19,7 @@
 
 Ensures that credential `documentationUrl` values are in a valid format. For community packages, this should always be a complete URL to your documentation.
 
-The camelCase/kebab-case slug option (`allowSlugs`) is only intended for internal n8n use when referring to slugs on docs.n8n.io, and should not be used in community packages.
+The lowercase alphanumeric slug option (`allowSlugs`) is only intended for internal n8n use when referring to slugs on docs.n8n.io, and should not be used in community packages. When enabled, uppercase letters in slugs will be automatically converted to lowercase.
 
 ## Examples
 
@@ -38,7 +38,16 @@ export class MyApiCredential implements ICredentialType {
 export class MyApiCredential implements ICredentialType {
   name = 'myApi';
   displayName = 'My API';
-  documentationUrl = 'myApi'; // Slug format not allowed for community packages
+  documentationUrl = 'MyApi'; // Invalid: uppercase letters (will be autofixed to 'myapi')
+  // ...
+}
+```
+
+```typescript
+export class MyApiCredential implements ICredentialType {
+  name = 'myApi';
+  displayName = 'My API';
+  documentationUrl = 'my-api'; // Invalid: special characters not allowed
   // ...
 }
 ```

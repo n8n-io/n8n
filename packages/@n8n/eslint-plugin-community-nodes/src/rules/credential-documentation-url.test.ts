@@ -48,13 +48,13 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 			options: [{ allowUrls: true, allowSlugs: false }],
 		},
 		{
-			name: 'valid slug when slugs are allowed',
-			code: createCredentialCode('myService'),
+			name: 'valid lowercase slug when slugs are allowed',
+			code: createCredentialCode('myservice'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 		},
 		{
-			name: 'valid slug with slashes when slugs are allowed',
-			code: createCredentialCode('myService/advanced/config'),
+			name: 'valid lowercase slug with slashes when slugs are allowed',
+			code: createCredentialCode('myservice/advanced/config'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 		},
 		{
@@ -63,8 +63,8 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 			options: [{ allowUrls: true, allowSlugs: true }],
 		},
 		{
-			name: 'valid slug when both URLs and slugs are allowed',
-			code: createCredentialCode('myService/config'),
+			name: 'valid lowercase slug when both URLs and slugs are allowed',
+			code: createCredentialCode('myservice/config'),
 			options: [{ allowUrls: true, allowSlugs: true }],
 		},
 		{
@@ -76,18 +76,18 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 			code: createRegularClass(),
 		},
 		{
-			name: 'valid camelCase slug with multiple segments',
-			code: createCredentialCode('myService/someFeature/advancedConfig'),
+			name: 'valid lowercase slug with multiple segments',
+			code: createCredentialCode('myservice/somefeature/advancedconfig'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 		},
 		{
-			name: 'valid kebab-case slug',
-			code: createCredentialCode('my-service'),
+			name: 'valid lowercase alphanumeric slug',
+			code: createCredentialCode('myservice123'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 		},
 		{
-			name: 'valid kebab-case slug with slashes',
-			code: createCredentialCode('my-service/advanced-config'),
+			name: 'valid lowercase alphanumeric slug with slashes',
+			code: createCredentialCode('myservice123/config456'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 		},
 	],
@@ -107,19 +107,19 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 		},
 		{
 			name: 'slug not allowed with default options',
-			code: createCredentialCode('myService'),
+			code: createCredentialCode('myservice'),
 			errors: [
 				{
 					messageId: 'invalidDocumentationUrl',
 					data: {
-						value: 'myService',
+						value: 'myservice',
 						expectedFormats: 'a valid URL',
 					},
 				},
 			],
 		},
 		{
-			name: 'invalid slug format when slugs are allowed',
+			name: 'slug with special characters should not be autofixable',
 			code: createCredentialCode('My-Service'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 			errors: [
@@ -127,21 +127,22 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 					messageId: 'invalidDocumentationUrl',
 					data: {
 						value: 'My-Service',
-						expectedFormats: 'a camelCase or kebab-case slug (can contain slashes)',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
 					},
 				},
 			],
 		},
 		{
-			name: 'slug starting with uppercase when slugs are allowed',
+			name: 'uppercase slug should be autofixable',
 			code: createCredentialCode('MyService'),
 			options: [{ allowUrls: false, allowSlugs: true }],
+			output: createCredentialCode('myservice'),
 			errors: [
 				{
 					messageId: 'invalidDocumentationUrl',
 					data: {
 						value: 'MyService',
-						expectedFormats: 'a camelCase or kebab-case slug (can contain slashes)',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
 					},
 				},
 			],
@@ -175,7 +176,7 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 			],
 		},
 		{
-			name: 'slug with invalid characters',
+			name: 'slug with invalid characters (special chars) should not be autofixable',
 			code: createCredentialCode('my@service/config'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 			errors: [
@@ -183,35 +184,50 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 					messageId: 'invalidDocumentationUrl',
 					data: {
 						value: 'my@service/config',
-						expectedFormats: 'a camelCase or kebab-case slug (can contain slashes)',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
 					},
 				},
 			],
 		},
 		{
-			name: 'slug with segment starting with uppercase',
+			name: 'slug with uppercase segment should be autofixable',
 			code: createCredentialCode('myService/Config'),
 			options: [{ allowUrls: false, allowSlugs: true }],
+			output: createCredentialCode('myservice/config'),
 			errors: [
 				{
 					messageId: 'invalidDocumentationUrl',
 					data: {
 						value: 'myService/Config',
-						expectedFormats: 'a camelCase or kebab-case slug (can contain slashes)',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
 					},
 				},
 			],
 		},
 		{
-			name: 'mixed camelCase and kebab-case segments should be invalid',
-			code: createCredentialCode('myService/advanced-config'),
+			name: 'slug with hyphens should not be autofixable',
+			code: createCredentialCode('myservice/advanced-config'),
 			options: [{ allowUrls: false, allowSlugs: true }],
 			errors: [
 				{
 					messageId: 'invalidDocumentationUrl',
 					data: {
-						value: 'myService/advanced-config',
-						expectedFormats: 'a camelCase or kebab-case slug (can contain slashes)',
+						value: 'myservice/advanced-config',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
+					},
+				},
+			],
+		},
+		{
+			name: 'slug with underscores should not be autofixable',
+			code: createCredentialCode('my_service/config_advanced'),
+			options: [{ allowUrls: false, allowSlugs: true }],
+			errors: [
+				{
+					messageId: 'invalidDocumentationUrl',
+					data: {
+						value: 'my_service/config_advanced',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
 					},
 				},
 			],
@@ -225,7 +241,7 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 					messageId: 'invalidDocumentationUrl',
 					data: {
 						value: 'Invalid-Value!',
-						expectedFormats: 'a valid URL or a camelCase or kebab-case slug (can contain slashes)',
+						expectedFormats: 'a valid URL or a lowercase alphanumeric slug (can contain slashes)',
 					},
 				},
 			],
@@ -252,7 +268,36 @@ ruleTester.run('credential-documentation-url', CredentialDocumentationUrlRule, {
 					messageId: 'invalidDocumentationUrl',
 					data: {
 						value: '',
-						expectedFormats: 'a camelCase or kebab-case slug (can contain slashes)',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
+					},
+				},
+			],
+		},
+		{
+			name: 'mixed case slug with numbers should be autofixable',
+			code: createCredentialCode('MyService123/Config456'),
+			options: [{ allowUrls: false, allowSlugs: true }],
+			output: createCredentialCode('myservice123/config456'),
+			errors: [
+				{
+					messageId: 'invalidDocumentationUrl',
+					data: {
+						value: 'MyService123/Config456',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
+					},
+				},
+			],
+		},
+		{
+			name: 'slug starting with number should be invalid and not autofixable',
+			code: createCredentialCode('123service/config'),
+			options: [{ allowUrls: false, allowSlugs: true }],
+			errors: [
+				{
+					messageId: 'invalidDocumentationUrl',
+					data: {
+						value: '123service/config',
+						expectedFormats: 'a lowercase alphanumeric slug (can contain slashes)',
 					},
 				},
 			],
