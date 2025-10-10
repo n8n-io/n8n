@@ -602,7 +602,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	font-weight: var(--font-weight--bold);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-2);
-	color: var(--color-text-dark);
+	color: var(--color-text--dark);
 
 	border: 0;
 	border-top: var(--border);
@@ -612,7 +612,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	&:not([disabled]) {
 		cursor: pointer;
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 
