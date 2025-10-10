@@ -39,12 +39,12 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	});
 
 	const discoveryAgent = new DiscoveryAgent({
-		llm: llmSimpleTask,
+		llm: llmComplexTask,
 		parsedNodeTypes,
 	});
 
 	const builderAgent = new BuilderAgent({
-		llm: llmSimpleTask,
+		llm: llmComplexTask,
 		parsedNodeTypes,
 		logger,
 	});
@@ -183,7 +183,7 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		const next = state.next as string | undefined;
 
 		if (next === 'FINISH') {
-			return END;
+			return 'responder';
 		}
 
 		// Route to appropriate agent

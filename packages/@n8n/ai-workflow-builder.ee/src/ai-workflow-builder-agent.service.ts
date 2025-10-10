@@ -10,7 +10,7 @@ import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45, gpt5mini } from '@/llm-config';
+import { anthropicClaudeHaiku, anthropicClaudeSonnet45, gpt5mini } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
@@ -112,14 +112,11 @@ export class AiWorkflowBuilderService {
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 			});
 
-			// const llmSimpleTask = await gpt5mini({
-			// 	apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
-			// 	// headers: {
-			// 	// 	'anthropic-beta': 'prompt-caching-2024-07-31',
-			// 	// },
-			// });
+			const llmSimpleTask = await anthropicClaudeHaiku({
+				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+			});
 
-			return { llmComplexTask, llmSimpleTask: llmComplexTask };
+			return { llmComplexTask, llmSimpleTask };
 		} catch (error) {
 			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
 			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
