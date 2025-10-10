@@ -1,8 +1,8 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = {
-	sessions: 'chat_sessions',
-	messages: 'chat_messages',
+	sessions: 'chat_hub_sessions',
+	messages: 'chat_hub_messages',
 	user: 'user',
 	credentials: 'credentials_entity',
 	workflows: 'workflow_entity',

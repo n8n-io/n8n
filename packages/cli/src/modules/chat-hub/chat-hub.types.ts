@@ -18,4 +18,4 @@ export type ChatMessage = {
 	createdAt: Date;
 };
 
-export type ChatMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
+export type MessageState = 'active' | 'superseded' | 'hidden' | 'deleted';

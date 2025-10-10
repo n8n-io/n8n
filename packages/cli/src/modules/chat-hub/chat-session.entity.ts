@@ -8,10 +8,10 @@ import {
 } from '@n8n/db';
 import { Column, Entity, ManyToOne, OneToMany, JoinColumn } from '@n8n/typeorm';
 
-import type { ChatMessage } from './chat-message.entity';
+import type { ChatHubMessage } from './chat-message.entity';
 
-@Entity({ name: 'chat_sessions' })
-export class ChatSession extends WithTimestampsAndStringId {
+@Entity({ name: 'chat_hub_sessions' })
+export class ChatHubSession extends WithTimestampsAndStringId {
 	/**
 	 * The title of the chat session/conversation.
 	 * Auto-generated if not provided by the user after the initial AI responses.
@@ -80,6 +80,6 @@ export class ChatSession extends WithTimestampsAndStringId {
 	/**
 	 * All messages that belong to this chat session.
 	 */
-	@OneToMany('ChatMessage', 'session')
-	messages?: ChatMessage[];
+	@OneToMany('ChatHubMessage', 'session')
+	messages?: ChatHubMessage[];
 }

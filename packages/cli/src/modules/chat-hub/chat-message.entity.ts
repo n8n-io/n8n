@@ -2,14 +2,14 @@ import { ChatHubProvider } from '@n8n/api-types';
 import { ExecutionEntity, WithTimestampsAndStringId, WorkflowEntity } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from '@n8n/typeorm';
 
-import { ChatMessageState } from './chat-hub.types';
-import { ChatSession } from './chat-session.entity';
+import { MessageState } from './chat-hub.types';
+import { ChatHubSession } from './chat-session.entity';
 
-export type ChatMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatMessageRole = 'user' | 'assistant' | 'system' | 'tool' | null;
+export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
+export type ChatHubMessageRole = 'user' | 'assistant' | 'system' | 'tool' | null;
 
-@Entity({ name: 'chat_messages' })
-export class ChatMessage extends WithTimestampsAndStringId {
+@Entity({ name: 'chat_hub_messages' })
+export class ChatHubMessage extends WithTimestampsAndStringId {
 	/**
 	 * ID of the chat session/conversation this message belongs to.
 	 */
@@ -19,15 +19,15 @@ export class ChatMessage extends WithTimestampsAndStringId {
 	/**
 	 * The chat session/conversation this message belongs to.
 	 */
-	@ManyToOne('ChatSession', 'messages', { onDelete: 'CASCADE' })
+	@ManyToOne('ChatHubSession', 'messages', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'sessionId' })
-	session: ChatSession;
+	session: ChatHubSession;
 
 	/**
 	 * Type of the message, e.g. 'human', 'ai', 'system', 'tool', 'generic'.
 	 */
 	@Column({ type: 'varchar', length: 16 })
-	type: ChatMessageType;
+	type: ChatHubMessageType;
 
 	/**
 	 * Name of the actor that sent the message, e.g. 'AI', 'HTTP Tool', 'Nathan' etc
@@ -91,15 +91,15 @@ export class ChatMessage extends WithTimestampsAndStringId {
 	/**
 	 * The previous message this message is a response to, NULL on the initial message.
 	 */
-	@ManyToOne('ChatMessage', (m: ChatMessage) => m.responses, { onDelete: 'CASCADE' })
+	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.responses, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'previousMessageId' })
-	previousMessage?: ChatMessage | null;
+	previousMessage?: ChatHubMessage | null;
 
 	/**
 	 * Messages that are responses to this message. This could branch out to multiple threads.
 	 */
-	@OneToMany('ChatMessage', (m: ChatMessage) => m.previousMessage)
-	responses?: ChatMessage[];
+	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.previousMessage)
+	responses?: ChatHubMessage[];
 
 	/**
 	 * Root message of a conversation turn (Human message + AI responses)
@@ -110,15 +110,15 @@ export class ChatMessage extends WithTimestampsAndStringId {
 	/**
 	 * Message that began the turn, probably from the human/user.
 	 */
-	@ManyToOne('ChatMessage', (m: ChatMessage) => m.turnMessages, { onDelete: 'CASCADE' })
+	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.turnMessages, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'turnId' })
-	turn?: ChatMessage | null;
+	turn?: ChatHubMessage | null;
 
 	/**
 	 * All messages that are part of this turn (including the root message).
 	 */
-	@OneToMany('ChatMessage', (m: ChatMessage) => m.turn)
-	turnMessages?: ChatMessage[];
+	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.turn)
+	turnMessages?: ChatHubMessage[];
 
 	/**
 	 * ID of the message that this message is a retry of (if applicable).
@@ -129,15 +129,15 @@ export class ChatMessage extends WithTimestampsAndStringId {
 	/**
 	 * The message that this message is a retry of (if applicable).
 	 */
-	@ManyToOne('ChatMessage', (m: ChatMessage) => m.retries, { onDelete: 'CASCADE' })
+	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.retries, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'retryOfMessageId' })
-	retryOfMessage?: ChatMessage | null;
+	retryOfMessage?: ChatHubMessage | null;
 
 	/**
 	 * All messages that are retries of this message (if applicable).
 	 */
-	@OneToMany('ChatMessage', (m: ChatMessage) => m.retryOfMessage)
-	retries?: ChatMessage[];
+	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.retryOfMessage)
+	retries?: ChatHubMessage[];
 
 	/**
 	 * The nth time this message has been generated/retried within the turn (0 = first attempt).
@@ -154,19 +154,19 @@ export class ChatMessage extends WithTimestampsAndStringId {
 	/**
 	 * The message that this message is a revision/edit of (if applicable).
 	 */
-	@ManyToOne('ChatMessage', (m: ChatMessage) => m.revisions, { onDelete: 'CASCADE' })
+	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.revisions, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'revisionOfMessageId' })
-	revisionOfMessage?: ChatMessage | null;
+	revisionOfMessage?: ChatHubMessage | null;
 
 	/**
 	 * All messages that are revisions/edits of this message (if applicable).
 	 */
-	@OneToMany('ChatMessage', (m: ChatMessage) => m.revisionOfMessage)
-	revisions?: ChatMessage[];
+	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.revisionOfMessage)
+	revisions?: ChatHubMessage[];
 
 	/**
 	 * State of the message, e.g. 'active', 'superseded', 'hidden', 'deleted'.
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'active' })
-	state: ChatMessageState;
+	state: MessageState;
 }
