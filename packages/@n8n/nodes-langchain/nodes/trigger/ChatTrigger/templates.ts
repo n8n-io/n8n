@@ -151,7 +151,6 @@ export function createPage({
 						metadata: metadata,
 						webhookConfig: {
 							headers: {
-								'Content-Type': 'application/json',
 								'X-Instance-Id': '${instanceId}',
 							}
 						},
