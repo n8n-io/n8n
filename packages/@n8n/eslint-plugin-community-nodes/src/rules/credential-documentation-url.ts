@@ -25,8 +25,13 @@ function isValidUrl(value: string): boolean {
 }
 
 function isValidSlug(value: string): boolean {
-	// TODO: Remove this special case once the google/oauth-single-service slug is updated
-	if (value === 'google/oauth-single-service') return true;
+	// TODO: Remove this special case once these slugs are updated
+	if (
+		['google/service-account', 'google/oauth-single-service', 'google/oauth-generic'].includes(
+			value,
+		)
+	)
+		return true;
 
 	return value.split('/').every((segment) => /^[a-z][a-z0-9]*$/.test(segment));
 }
