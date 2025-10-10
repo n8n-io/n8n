@@ -1,4 +1,5 @@
 import { ChatAnthropic } from '@langchain/anthropic';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -9,7 +10,7 @@ import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { anthropicClaudeSonnet45, gpt5mini } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
@@ -73,44 +74,52 @@ export class AiWorkflowBuilderService {
 		user: IUser,
 		useDeprecatedCredentials = false,
 	): Promise<{
-		anthropicClaude: ChatAnthropic;
+		llmComplexTask: BaseChatModel;
+		llmSimpleTask: BaseChatModel;
 		tracingClient?: TracingClient;
 		authHeaders?: { Authorization: string };
 	}> {
 		try {
 			// If client is provided, use it for API proxy
-			if (this.client) {
-				const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
+			// if (this.client) {
+			// 	const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
 
-				// Extract baseUrl from client configuration
-				const baseUrl = this.client.getApiProxyBaseUrl();
+			// 	// Extract baseUrl from client configuration
+			// 	const baseUrl = this.client.getApiProxyBaseUrl();
 
-				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
-					baseUrl: baseUrl + '/anthropic',
-					authHeaders,
-				});
+			// 	const llmComplexTask = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+			// 		baseUrl: baseUrl + '/anthropic',
+			// 		authHeaders,
+			// 	});
 
-				const tracingClient = new TracingClient({
-					apiKey: '-',
-					apiUrl: baseUrl + '/langsmith',
-					autoBatchTracing: false,
-					traceBatchConcurrency: 1,
-					fetchOptions: {
-						headers: {
-							...authHeaders,
-						},
-					},
-				});
+			// 	const tracingClient = new TracingClient({
+			// 		apiKey: '-',
+			// 		apiUrl: baseUrl + '/langsmith',
+			// 		autoBatchTracing: false,
+			// 		traceBatchConcurrency: 1,
+			// 		fetchOptions: {
+			// 			headers: {
+			// 				...authHeaders,
+			// 			},
+			// 		},
+			// 	});
 
-				return { tracingClient, anthropicClaude, authHeaders };
-			}
+			// 	return { tracingClient, llmComplexTask, authHeaders };
+			// }
 
 			// If base URL is not set, use environment variables
-			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+			const llmComplexTask = await AiWorkflowBuilderService.getAnthropicClaudeModel({
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 			});
 
-			return { anthropicClaude };
+			// const llmSimpleTask = await gpt5mini({
+			// 	apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
+			// 	// headers: {
+			// 	// 	'anthropic-beta': 'prompt-caching-2024-07-31',
+			// 	// },
+			// });
+
+			return { llmComplexTask, llmSimpleTask: llmComplexTask };
 		} catch (error) {
 			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
 			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
@@ -172,7 +181,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
+		const { llmComplexTask, llmSimpleTask, tracingClient, authHeaders } = await this.setupModels(
 			user,
 			useDeprecatedCredentials,
 		);
@@ -180,8 +189,8 @@ export class AiWorkflowBuilderService {
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: anthropicClaude,
-			llmComplexTask: anthropicClaude,
+			llmSimpleTask,
+			llmComplexTask,
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			enableMultiAgent: true,

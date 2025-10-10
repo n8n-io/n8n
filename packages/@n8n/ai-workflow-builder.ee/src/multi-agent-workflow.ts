@@ -8,6 +8,7 @@ import {
 	DiscoveryAgent,
 	BuilderAgent,
 	ConfiguratorAgent,
+	ResponderAgent,
 	SupervisorAgent,
 	type SupervisorRouting,
 } from './agents';
@@ -33,6 +34,10 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	const { parsedNodeTypes, llmSimpleTask, llmComplexTask, logger, instanceUrl } = config;
 
 	// Initialize specialist agents
+	const responderAgent = new ResponderAgent({
+		llm: llmSimpleTask,
+	});
+
 	const discoveryAgent = new DiscoveryAgent({
 		llm: llmSimpleTask,
 		parsedNodeTypes,
@@ -91,6 +96,19 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 			// Store routing in state for conditional edges
 			next: routing.next,
 		};
+	};
+
+	/**
+	 * Responder Agent Node
+	 * Handles conversational queries
+	 */
+	const callResponder = async (state: typeof WorkflowState.State) => {
+		const agent = responderAgent.getAgent();
+		const response = await agent.invoke({
+			messages: state.messages,
+		});
+
+		return { messages: [response] };
 	};
 
 	/**
@@ -169,13 +187,14 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		}
 
 		// Route to appropriate agent
-		return next || 'discovery'; // Default to discovery if unclear
+		return next ?? 'discovery'; // Default to discovery if unclear
 	};
 
 	// Build the graph
 	const workflow = new StateGraph(WorkflowState)
 		// Add all nodes
 		.addNode('supervisor', callSupervisor)
+		.addNode('responder', callResponder)
 		.addNode('discovery', callDiscovery)
 		.addNode('builder', callBuilder)
 		.addNode('configurator', callConfigurator)
@@ -185,15 +204,19 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		// Flow: Start → Supervisor
 		.addEdge('__start__', 'supervisor')
 
-		// Flow: Supervisor → Discovery/Builder/Configurator/END
+		// Flow: Supervisor → Responder/Discovery/Builder/Configurator/END
+		// Note: When routeFromSupervisor returns END, LangGraph handles it automatically
 		.addConditionalEdges('supervisor', routeFromSupervisor, {
+			responder: 'responder',
 			discovery: 'discovery',
 			builder: 'builder',
 			configurator: 'configurator',
-			END,
 		})
 
-		// Flow: Each agent → Tools (if needed) or Supervisor
+		// Flow: Responder always ends (conversational queries complete immediately)
+		.addEdge('responder', END)
+
+		// Flow: Each workflow agent → Tools (if needed) or Supervisor
 		.addConditionalEdges('discovery', shouldExecuteTools)
 		.addConditionalEdges('builder', shouldExecuteTools)
 		.addConditionalEdges('configurator', shouldExecuteTools)
