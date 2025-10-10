@@ -8,9 +8,10 @@ FRONTEND_DIR="./packages/frontend"
 
 # Find all files in frontend folder except _tokens.scss (which is already updated)
 echo "Finding files to process..."
-# files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss")
-files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
-echo "$files"
+files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss")
+
+# _tokens file only
+#files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
 
 file_count=$(echo "$files" | wc -l | xargs)
 echo "Found $file_count files to process test $files"
@@ -745,11 +746,6 @@ echo "[58] Replacing grid tokens..."
 echo "$files" | xargs perl -pi -e 's/--grid-row-selected-background/--grid--row--color--background--selected/g'
 echo "$files" | xargs perl -pi -e 's/--grid-cell-editing-border/--grid--cell--border-color--editing/g'
 echo "✓ Grid tokens replaced"
-echo ""
-
-echo "[60] Verifying replacements..."
-remaining=$(echo "$files" | xargs grep -l "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | xargs grep "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | grep -v "\-\-color\-\-" | wc -l | xargs)
-echo "Remaining old tokens found: $remaining"
 echo ""
 
 echo "✓ Token replacements complete!"
