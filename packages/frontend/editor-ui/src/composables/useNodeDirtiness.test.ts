@@ -13,7 +13,15 @@ import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { useWorkflowState } from './useWorkflowState';
+import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
+
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
 
 describe(useNodeDirtiness, () => {
 	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
@@ -21,6 +29,7 @@ describe(useNodeDirtiness, () => {
 	let historyHelper: ReturnType<typeof useHistoryHelper>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let workflowState: WorkflowState;
 
 	const NODE_RUN_AT = new Date('2025-01-01T00:00:01');
 	const WORKFLOW_UPDATED_AT = new Date('2025-01-01T00:00:10');
@@ -33,6 +42,9 @@ describe(useNodeDirtiness, () => {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
+				workflowState = useWorkflowState();
+				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
 				canvasOperations = useCanvasOperations();
 				uiStore = useUIStore();
 
@@ -167,7 +179,7 @@ describe(useNodeDirtiness, () => {
 		it('should not update dirtiness when the notes field is updated', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			workflowsStore.setNodeValue({ key: 'notes', name: 'b', value: 'test' });
+			workflowState.setNodeValue({ key: 'notes', name: 'b', value: 'test' });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});

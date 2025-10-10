@@ -412,7 +412,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: newValue,
 		};
 
-		workflowsStore.setNodeValue(updateInformation);
+		workflowState.setNodeValue(updateInformation);
 	}
 };
 
@@ -468,7 +468,7 @@ const onNodeExecute = () => {
 
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
-	workflowsStore.updateNodeProperties(updateInformation);
+	workflowState.updateNodeProperties(updateInformation);
 
 	const node = workflowsStore.getNodeByName(updateInformation.name);
 
