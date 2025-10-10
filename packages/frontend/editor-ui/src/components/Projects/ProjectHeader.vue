@@ -154,7 +154,7 @@ const menu = computed(() => {
 			label: i18n.baseText('dataTable.add.button.label'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
-				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
+				!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
 		});
 	}
 
@@ -408,7 +408,7 @@ const onSelect = (action: string) => {
 	position: absolute;
 	top: 0;
 	left: calc(-1 * var(--spacing-3xs));
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	padding: 0 var(--spacing-3xs) var(--spacing-3xs);
 	z-index: 10;
 	white-space: normal;

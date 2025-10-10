@@ -286,7 +286,7 @@ watch(
 
 .could-not-be-started {
 	display: inline-block;
-	color: var(--color-text-danger);
+	color: var(--color--text--danger);
 	margin-left: 0.5em;
 }
 </style>

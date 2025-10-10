@@ -321,7 +321,7 @@ onUnmounted(() => {
 	top: 20vh;
 	left: 50%;
 	transform: translateX(-50%);
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 	box-shadow: var(--box-shadow-dark);
@@ -337,12 +337,12 @@ onUnmounted(() => {
 	background: transparent;
 	font-size: var(--font-size-m);
 	font-family: var(--font-family);
-	color: var(--color-text-base);
+	color: var(--color--text);
 	padding: var(--spacing-m) var(--spacing-l);
 	border-bottom: var(--border-base);
 
 	&::placeholder {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -356,13 +356,13 @@ onUnmounted(() => {
 	padding: var(--spacing-xs) var(--spacing-l);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .noResults {
 	padding: var(--spacing-l);
 	text-align: center;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-s);
 }
 

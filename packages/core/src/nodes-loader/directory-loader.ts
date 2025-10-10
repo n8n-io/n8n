@@ -131,7 +131,7 @@ export abstract class DirectoryLoader {
 	}
 
 	/** Loads a nodes class from a file, fixes icons, and augments the codex */
-	loadNodeFromFile(filePath: string) {
+	loadNodeFromFile(filePath: string, packageVersion?: string) {
 		const tempNode = this.loadClass<INodeType | IVersionedNodeType>(filePath);
 		this.addCodex(tempNode, filePath);
 
@@ -154,6 +154,7 @@ export abstract class DirectoryLoader {
 			}
 
 			for (const version of Object.values(tempNode.nodeVersions)) {
+				version.description.communityNodePackageVersion = packageVersion;
 				this.addLoadOptionsMethods(version);
 				this.applySpecialNodeParameters(version);
 			}
@@ -169,6 +170,7 @@ export abstract class DirectoryLoader {
 				);
 			}
 		} else {
+			tempNode.description.communityNodePackageVersion = packageVersion;
 			this.addLoadOptionsMethods(tempNode);
 			this.applySpecialNodeParameters(tempNode);
 

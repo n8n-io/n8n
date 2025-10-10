@@ -44,6 +44,6 @@ const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
 	max-width: 80px;
 	line-height: var(--font-line-height-xloose);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 </style>

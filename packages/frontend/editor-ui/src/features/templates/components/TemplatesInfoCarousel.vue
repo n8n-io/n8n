@@ -161,7 +161,7 @@ onBeforeMount(() => {
 		position: absolute;
 	}
 	svg {
-		color: var(--color-foreground-xdark);
+		color: var(--color--foreground--shade-2);
 	}
 }
 
@@ -174,15 +174,15 @@ onBeforeMount(() => {
 		background: linear-gradient(
 			270deg,
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				50%
 			),
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				100%
 			)
 		);
@@ -198,15 +198,15 @@ onBeforeMount(() => {
 		background: linear-gradient(
 			90deg,
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				50%
 			),
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				100%
 			)
 		);

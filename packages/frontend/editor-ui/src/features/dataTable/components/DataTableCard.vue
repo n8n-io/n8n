@@ -133,7 +133,7 @@ const getDataTableSize = computed(() => {
 
 .card-icon {
 	flex-shrink: 0;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	align-content: center;
 	text-align: center;
 }

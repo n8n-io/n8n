@@ -53,7 +53,7 @@ function onButtonClick() {
 	min-height: 96px;
 	min-width: 108px;
 	margin-bottom: var(--spacing-2xl);
-	color: var(--color-foreground-base);
+	color: var(--color--foreground);
 }
 
 .message {

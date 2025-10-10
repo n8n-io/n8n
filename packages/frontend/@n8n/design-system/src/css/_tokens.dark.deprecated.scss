@@ -1,0 +1,18 @@
+/**
+	Deprecated tokens as we migrate towards new --[group]--[group]--... css variables
+	Keeping temporarily until naming is enforced across the app
+	To minimize bugs related to ongoing work
+**/
+@mixin deprecatedTheme {
+	--color-danger: var(--p--color--alt-h-310);
+}
+
+body[data-theme='dark'] {
+	@include deprecatedTheme;
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme]) {
+		@include deprecatedTheme;
+	}
+}

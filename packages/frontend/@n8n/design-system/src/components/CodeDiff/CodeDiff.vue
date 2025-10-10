@@ -144,7 +144,7 @@ const diffs = computed(() => {
 <style lang="scss" module>
 .container {
 	border: var(--border-base);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--border-radius-base);
 }
 
@@ -171,7 +171,7 @@ const diffs = computed(() => {
 	border-top: var(--border-base);
 	border-bottom: var(--border-base);
 	max-height: 218px; // 12 lines
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	font-family: var(--font-family-monospace);
 }
 
@@ -194,17 +194,17 @@ const diffs = computed(() => {
 }
 
 .add {
-	color: var(--color-success);
-	background-color: var(--color-success-tint-2);
+	color: var(--color--success);
+	background-color: var(--color--success--tint-4);
 }
 
 .del {
-	color: var(--color-danger);
-	background-color: var(--color-danger-tint-2);
+	color: var(--color--danger);
+	background-color: var(--color--danger--tint-4);
 }
 
 .normal {
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 }
 
 .actions {
@@ -218,7 +218,7 @@ const diffs = computed(() => {
 }
 
 .infoText {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size-xs);
 	margin-left: var(--spacing-4xs);
 }

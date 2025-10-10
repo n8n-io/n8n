@@ -116,7 +116,7 @@ function onEdit(id: string) {
 		<div :class="$style.header">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
-				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
+				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color--text--tint-1)' }">
 					({{ i18n.baseText('generic.beta') }})
 				</span>
 			</N8nHeading>
@@ -247,7 +247,7 @@ function onEdit(id: string) {
 .topHint {
 	margin-top: none;
 	margin-bottom: var(--spacing-s);
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 
 	span {
 		font-size: var(--font-size-s);

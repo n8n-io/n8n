@@ -129,7 +129,7 @@ watch(runningTestRun, (run) => {
 	position: sticky;
 	top: 0;
 	left: 0;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	z-index: 2;
 }
 

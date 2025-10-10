@@ -17,6 +17,7 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
+	proxy: 'proxy',
 };
 const CURRENT_USER_ID = '1';
 const CURRENT_INSTANCE_ID = '456';

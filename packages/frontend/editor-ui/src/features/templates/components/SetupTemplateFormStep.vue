@@ -142,7 +142,7 @@ const onCredentialModalOpened = () => {
 .description {
 	margin-bottom: var(--spacing-l);
 	font-size: var(--font-size-s);
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .credentials {
