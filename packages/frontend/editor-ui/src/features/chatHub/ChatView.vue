@@ -227,7 +227,7 @@ function onCreateNewCredential(provider: ChatHubProvider) {
 	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
-async function onSubmit() {
+function onSubmit() {
 	if (!message.value.trim() || chatStore.isResponding || !selectedModel.value) {
 		return;
 	}
@@ -238,7 +238,7 @@ async function onSubmit() {
 		return;
 	}
 
-	await chatStore.askAI(sessionId.value, message.value, selectedModel.value, {
+	chatStore.askAI(sessionId.value, message.value, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -248,7 +248,7 @@ async function onSubmit() {
 	message.value = '';
 
 	if (isNewSession.value) {
-		await router.push({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId.value } });
+		void router.push({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId.value } });
 	}
 }
 
