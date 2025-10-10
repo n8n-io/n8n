@@ -174,6 +174,7 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			allowDisableLoopProtection: false,
 		},
 		endpoints: {
 			metrics: {

@@ -43,6 +43,11 @@ export const predefinedNodesTypes: INodeTypeData = {
 		type: new SplitInBatches(),
 		sourcePath: '',
 	},
+	// Alias for tests using short type name
+	splitInBatches: {
+		type: new SplitInBatches(),
+		sourcePath: '',
+	},
 	'@n8n/n8n-nodes-langchain.toolExecutor': {
 		sourcePath: '',
 		type: {

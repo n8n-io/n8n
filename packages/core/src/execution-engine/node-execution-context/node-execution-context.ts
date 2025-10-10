@@ -2,35 +2,34 @@ import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import get from 'lodash/get';
-import type {
-	FunctionsBase,
-	ICredentialDataDecryptedObject,
-	ICredentialsExpressionResolveValues,
-	IExecuteData,
-	IGetNodeParameterOptions,
-	INode,
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	INodeExecutionData,
-	INodeInputConfiguration,
-	INodeOutputConfiguration,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
-	NodeInputConnections,
-	NodeParameterValueType,
-	NodeTypeAndVersion,
-	Workflow,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
 import {
 	ApplicationError,
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
+	NodeConnectionTypes,
 	NodeHelpers,
 	NodeOperationError,
 	UnexpectedError,
+	type FunctionsBase,
+	type ICredentialDataDecryptedObject,
+	type ICredentialsExpressionResolveValues,
+	type IExecuteData,
+	type IGetNodeParameterOptions,
+	type INode,
+	type INodeCredentialDescription,
+	type INodeCredentialsDetails,
+	type INodeExecutionData,
+	type INodeInputConfiguration,
+	type INodeOutputConfiguration,
+	type IRunExecutionData,
+	type IWorkflowExecuteAdditionalData,
+	type NodeConnectionType,
+	type NodeInputConnections,
+	type NodeParameterValueType,
+	type NodeTypeAndVersion,
+	type Workflow,
+	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
@@ -141,6 +140,58 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			output.push(entry);
 		}
 		return output;
+	}
+
+	/**
+	 * Get outgoing connections from a node.
+	 *
+	 * Returns an immutable copy of connections to prevent accidental modifications
+	 * to the workflow graph structure.
+	 *
+	 * @param nodeName - Name of the node to get outgoing connections from
+	 * @param type - Connection type (default: Main)
+	 * @returns Array of connections from the specified node, or empty array if none exist
+	 *
+	 * @example
+	 * ```typescript
+	 * // Get main output connections from "HTTP Request" node
+	 * const connections = this.getOutgoingConnections('HTTP Request');
+	 * // Returns: [{ node: 'Set', type: 'main', index: 0 }, ...]
+	 * ```
+	 */
+	getOutgoingConnections(
+		nodeName: string,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
+	): NodeInputConnections {
+		const connections = this.workflow.connectionsBySourceNode[nodeName]?.[type] ?? [];
+		// Return deep copy to prevent mutation of internal workflow graph
+		return deepCopy(connections);
+	}
+
+	/**
+	 * Get incoming connections to a node.
+	 *
+	 * Returns an immutable copy of connections to prevent accidental modifications
+	 * to the workflow graph structure.
+	 *
+	 * @param nodeName - Name of the node to get incoming connections to
+	 * @param type - Connection type (default: Main)
+	 * @returns Array of connections to the specified node, or empty array if none exist
+	 *
+	 * @example
+	 * ```typescript
+	 * // Get incoming connections to current node
+	 * const connections = this.getIncomingConnections(this.getNode().name);
+	 * // Returns: [{ node: 'Webhook', type: 'main', index: 0 }, ...]
+	 * ```
+	 */
+	getIncomingConnections(
+		nodeName: string,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
+	): NodeInputConnections {
+		const connections = this.workflow.connectionsByDestinationNode[nodeName]?.[type] ?? [];
+		// Return deep copy to prevent mutation of internal workflow graph
+		return deepCopy(connections);
 	}
 
 	/**
