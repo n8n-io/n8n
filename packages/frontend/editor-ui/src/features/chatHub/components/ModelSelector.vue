@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nNavigationDropdown, N8nIcon, N8nButton } from '@n8n/design-system';
+import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
 	type ChatHubConversationModel,
@@ -16,6 +16,7 @@ const props = defineProps<{
 	disabled?: boolean;
 	models: ChatModelsResponse | null;
 	selectedModel: ChatHubConversationModel | null;
+	credentialsName?: string;
 }>();
 
 const emit = defineEmits<{
@@ -93,11 +94,16 @@ function onSelect(id: string) {
 			<CredentialIcon
 				v-if="selectedModel"
 				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
-				:size="16"
+				:size="20"
 				:class="$style.icon"
 			/>
-			<span>{{ selectedLabel }}</span>
-			<N8nIcon icon="chevron-down" size="small" />
+			<div :class="$style.selected">
+				{{ selectedLabel }}
+				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
+					{{ credentialsName }}
+				</N8nText>
+			</div>
+			<N8nIcon icon="chevron-down" size="medium" />
 		</N8nButton>
 	</N8nNavigationDropdown>
 </template>
@@ -106,7 +112,14 @@ function onSelect(id: string) {
 .dropdownButton {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
+}
+
+.selected {
+	display: flex;
+	flex-direction: column;
+	align-items: start;
+	gap: var(--spacing--4xs);
 }
 
 .icon {

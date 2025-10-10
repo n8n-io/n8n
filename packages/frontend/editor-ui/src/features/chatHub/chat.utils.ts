@@ -6,15 +6,6 @@ import {
 } from '@n8n/api-types';
 import type { GroupedConversations } from './chat.types';
 
-export function modelsResponseContains(
-	response: ChatModelsResponse,
-	model: ChatHubConversationModel,
-) {
-	return chatHubProviderSchema.options.some((provider) =>
-		response[provider].models.some((m) => m.name === model.model),
-	);
-}
-
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
 ): ChatHubConversationModel | undefined {

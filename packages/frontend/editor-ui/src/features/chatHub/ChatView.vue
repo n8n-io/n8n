@@ -35,7 +35,7 @@ import {
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
 } from '@/constants';
 import { CHAT_CONVERSATION_VIEW, CHAT_VIEW, SUGGESTIONS } from '@/features/chatHub/constants';
-import { findOneFromModelsResponse, modelsResponseContains } from '@/features/chatHub/chat.utils';
+import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
 import { useToast } from '@/composables/useToast';
 
 const router = useRouter();
@@ -125,6 +125,14 @@ const inputPlaceholder = computed(() => {
 
 const scrollOnNewMessage = ref(true);
 
+const credentialsName = computed(() =>
+	selectedModel.value
+		? credentialsStore.getCredentialById(
+				mergedCredentials.value[selectedModel.value.provider] ?? '',
+			)?.name
+		: undefined,
+);
+
 function getScrollViewport(): HTMLElement | null {
 	const root = scrollAreaRef.value?.$el as HTMLElement | undefined;
 	return root?.querySelector('[data-reka-scroll-area-viewport]') as HTMLElement | null;
@@ -163,7 +171,7 @@ watch(
 		const models = await chatStore.fetchChatModels(credentials);
 		const selected = selectedModel.value;
 
-		if (selected === null || !modelsResponseContains(models, selected)) {
+		if (selected === null) {
 			selectedModel.value = findOneFromModelsResponse(models) ?? null;
 		}
 	},
@@ -285,6 +293,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 			:models="chatStore.models ?? null"
 			:selected-model="selectedModel"
 			:disabled="chatStore.isResponding"
+			:credentials-name="credentialsName"
 			@change="onModelChange"
 			@configure="onConfigure"
 		/>
