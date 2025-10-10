@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import debounce from 'lodash/debounce';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
 import type { CommandGroup, CommandBarItem } from '../commandBar.types';
 import type { DataTable } from '@/features/dataTable/dataTable.types';

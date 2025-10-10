@@ -109,7 +109,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { isPresent } from '@/utils/typesUtils';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/stores/logs.store';

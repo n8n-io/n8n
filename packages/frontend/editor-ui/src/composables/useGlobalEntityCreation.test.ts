@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { mockedStore } from '@/__tests__/utils';
 import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
@@ -12,7 +12,7 @@ import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl
 import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/constants';
-import type { Project, ProjectListItem } from '@/types/projects.types';
+import type { Project, ProjectListItem } from '@/features/projects/projects.types';
 
 import { useGlobalEntityCreation } from './useGlobalEntityCreation';
 
