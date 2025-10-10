@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useExpressionResolveCtx } from '@/features/canvas/experimental/composables/useExpressionResolveCtx';
-import { type ContextMenuAction, useContextMenuItems } from '@/composables/useContextMenuItems';
+import {
+	type ContextMenuAction,
+	useContextMenuItems,
+} from '@/features/ui/contextMenu/composables/useContextMenuItems';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { type INodeUi } from '@/Interface';
 import { computed, provide, ref, watch } from 'vue';
@@ -80,8 +83,8 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 	flex-direction: column;
 	align-items: center;
 	justify-content: start;
-	padding: var(--spacing-3xl) var(--spacing-m);
-	gap: var(--spacing-m);
+	padding: var(--spacing--3xl) var(--spacing--md);
+	gap: var(--spacing--md);
 }
 
 .multipleNodesActions {
@@ -99,21 +102,21 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		border-color: var(--border-color-light);
+		border-color: var(--border-color--light);
 
 		&:disabled {
-			border-color: var(--border-color-light);
+			border-color: var(--border-color--light);
 		}
 	}
 
 	&:first-of-type button {
-		border-top-left-radius: var(--border-radius-base);
-		border-top-right-radius: var(--border-radius-base);
+		border-top-left-radius: var(--radius);
+		border-top-right-radius: var(--radius);
 	}
 
 	&:last-of-type button {
-		border-bottom-left-radius: var(--border-radius-base);
-		border-bottom-right-radius: var(--border-radius-base);
+		border-bottom-left-radius: var(--radius);
+		border-bottom-right-radius: var(--radius);
 	}
 
 	& button:hover {

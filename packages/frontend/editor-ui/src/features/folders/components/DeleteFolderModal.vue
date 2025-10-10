@@ -239,23 +239,23 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 
 <style lang="scss" module>
 .content {
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing--2xs);
 	> * {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 	}
 }
 .innerContent {
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 .optionInput {
-	padding-left: var(--spacing-l);
+	padding-left: var(--spacing--lg);
 }
 
 .folder-select-item {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 </style>

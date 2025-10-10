@@ -87,12 +87,12 @@ function onMissingNodeLearnMoreLinkClick() {
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 }
 
 .warningIcon {
 	color: var(--color--text--tint-2);
-	font-size: var(--font-size-2xl);
+	font-size: var(--font-size--2xl);
 }
 
 .descriptionContainer {

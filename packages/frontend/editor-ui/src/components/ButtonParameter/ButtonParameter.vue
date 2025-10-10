@@ -276,22 +276,22 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 }
 
 .input {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 }
 
 .input textarea {
-	font-size: var(--font-size-2xs);
-	padding-bottom: var(--spacing-2xl);
+	font-size: var(--font-size--2xs);
+	padding-bottom: var(--spacing--2xl);
 	font-family: var(--font-family);
 	resize: none;
 	margin: 0;
 }
 
 .intro {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	padding: var(--spacing-2xs) 0 0;
+	padding: var(--spacing--2xs) 0 0;
 }
 .inputContainer {
 	position: relative;
@@ -300,18 +300,18 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	display: flex;
 	justify-content: space-between;
 	position: absolute;
-	padding-bottom: var(--spacing-2xs);
-	padding-top: var(--spacing-2xs);
+	padding-bottom: var(--spacing--2xs);
+	padding-top: var(--spacing--2xs);
 	bottom: 2px;
-	left: var(--spacing-xs);
-	right: var(--spacing-xs);
-	gap: var(--spacing-2xs);
+	left: var(--spacing--xs);
+	right: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	align-items: end;
 	z-index: 1;
 	background-color: var(--color--foreground--tint-2);
 
 	* {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 		line-height: 1;
 	}
 }
@@ -320,7 +320,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	flex-shrink: 0;
 }
 .controls {
-	padding: var(--spacing-2xs) 0;
+	padding: var(--spacing--2xs) 0;
 	display: flex;
 	justify-content: flex-end;
 }

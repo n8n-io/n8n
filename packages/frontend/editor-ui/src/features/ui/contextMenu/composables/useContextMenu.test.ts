@@ -1,5 +1,5 @@
 import type { INodeUi } from '@/Interface';
-import { useContextMenu } from '@/composables/useContextMenu';
+import { useContextMenu } from './useContextMenu';
 import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { faker } from '@faker-js/faker';
 import { createPinia, setActivePinia } from 'pinia';

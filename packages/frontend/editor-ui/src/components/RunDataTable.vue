@@ -768,16 +768,16 @@ watch(
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing-xs);
+	padding-left: var(--spacing--xs);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
-	padding-bottom: var(--spacing-3xl);
+	padding-bottom: var(--spacing--3xl);
 
 	&.compact {
-		padding-left: var(--spacing-2xs);
+		padding-left: var(--spacing--2xs);
 	}
 }
 
@@ -785,14 +785,14 @@ watch(
 	border-collapse: separate;
 	text-align: left;
 	width: calc(100%);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text);
 
 	th {
 		background-color: var(--color--background);
-		border-top: var(--border-base);
-		border-bottom: var(--border-base);
-		border-left: var(--border-base);
+		border-top: var(--border);
+		border-bottom: var(--border);
+		border-left: var(--border);
 		position: sticky;
 		top: 0;
 		color: var(--color--text--shade-1);
@@ -809,9 +809,9 @@ watch(
 
 	td {
 		vertical-align: top;
-		padding: var(--spacing-4xs) var(--spacing-3xs);
-		border-bottom: var(--border-base);
-		border-left: var(--border-base);
+		padding: var(--spacing--4xs) var(--spacing--3xs);
+		border-bottom: var(--border);
+		border-left: var(--border);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
 		vertical-align: top;
@@ -842,7 +842,7 @@ watch(
 
 	th:last-child,
 	td:last-child {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 
 	.hasCollapsingColumn & {
@@ -882,7 +882,7 @@ th.isCollapsingColumn + th {
 }
 
 .nodeClass {
-	margin-bottom: var(--spacing-5xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .emptyCell {
@@ -892,7 +892,7 @@ th.isCollapsingColumn + th {
 .header {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-4xs) var(--spacing-3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
 
 	span {
 		white-space: nowrap;
@@ -939,19 +939,19 @@ th.isCollapsingColumn + th {
 .dataKey {
 	color: var(--color--text--shade-1);
 	line-height: 1.7;
-	font-weight: var(--font-weight-bold);
-	border-radius: var(--border-radius-base);
-	padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
-	margin-right: var(--spacing-5xs);
+	font-weight: var(--font-weight--bold);
+	border-radius: var(--radius);
+	padding: 0 var(--spacing--5xs) 0 var(--spacing--5xs);
+	margin-right: var(--spacing--5xs);
 }
 
 .value {
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 }
 
 .nestedValue {
 	composes: value;
-	margin-left: var(--spacing-4xs);
+	margin-left: var(--spacing--4xs);
 }
 
 .mappable {
@@ -988,8 +988,8 @@ th.isCollapsingColumn + th {
 
 	.compact & {
 		padding: 0;
-		min-width: var(--spacing-2xs);
-		max-width: var(--spacing-2xs);
+		min-width: var(--spacing--2xs);
+		max-width: var(--spacing--2xs);
 	}
 }
 
@@ -1005,11 +1005,11 @@ th.isCollapsingColumn + th {
 }
 
 .executionLinkCell {
-	padding: var(--spacing-3xs) !important;
+	padding: var(--spacing--3xs) !important;
 }
 
 .executionLinkRowHeader {
-	width: var(--spacing-m);
+	width: var(--spacing--md);
 }
 
 .collapseColumnButton {
@@ -1018,7 +1018,7 @@ th.isCollapsingColumn + th {
 	}
 
 	opacity: 0;
-	margin-block: calc(-2 * var(--spacing-2xs));
+	margin-block: calc(-2 * var(--spacing--2xs));
 
 	.isCollapsingColumn &,
 	th.isHoveredColumn &,

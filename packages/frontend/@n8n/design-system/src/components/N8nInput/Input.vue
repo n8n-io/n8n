@@ -100,7 +100,7 @@ defineExpose({ focus, blur, select });
 
 <style lang="scss" module>
 .xlarge {
-	--input-font-size: var(--font-size-m);
+	--input-font-size: var(--font-size--md);
 	input {
 		height: 48px;
 	}

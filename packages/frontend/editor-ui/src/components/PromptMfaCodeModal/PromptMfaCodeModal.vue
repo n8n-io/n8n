@@ -92,6 +92,6 @@ function onFormReady(isReady: boolean) {
 
 <style lang="scss" module>
 .formContainer {
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 }
 </style>

@@ -234,7 +234,7 @@ function handleCopyClick(commandData: { command: string }) {
 	z-index: 10;
 	top: 0;
 	right: 0;
-	padding-right: var(--spacing-s);
+	padding-right: var(--spacing--sm);
 	opacity: 0;
 	transition: opacity 0.3s ease;
 }

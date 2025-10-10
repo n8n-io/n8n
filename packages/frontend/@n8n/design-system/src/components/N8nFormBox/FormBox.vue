@@ -88,19 +88,19 @@ const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 .heading {
 	display: flex;
 	justify-content: center;
-	margin-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing--xl);
 }
 
 .container {
 	background-color: var(--color--background--light-3);
-	padding: var(--spacing-l);
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
+	padding: var(--spacing--lg);
+	border: var(--border);
+	border-radius: var(--radius--lg);
 	box-shadow: 0 4px 16px rgba(99, 77, 255, 0.06);
 }
 
 .inputsContainer {
-	margin-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing--xl);
 }
 
 .actionContainer {
@@ -110,7 +110,7 @@ const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 
 .buttonsContainer {
 	composes: actionContainer;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .secondaryButtonContainer {
@@ -120,6 +120,6 @@ const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 }
 
 .withLabel {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 </style>

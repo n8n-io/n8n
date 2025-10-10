@@ -6,6 +6,7 @@ import {
 	createTestTaskData,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
+import type { IWorkflowDb } from '@/Interface';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -120,6 +121,98 @@ describe('useWorkflowState', () => {
 			workflowState.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
 
 			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+		});
+	});
+	describe('setNodeValue()', () => {
+		it('should update a node', () => {
+			const nodeName = 'Edit Fields';
+			workflowsStore.addNode({
+				parameters: {},
+				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				name: nodeName,
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+
+			workflowState.setNodeValue({ name: 'Edit Fields', key: 'executeOnce', value: true });
+
+			expect(workflowsStore.workflow.nodes[0].executeOnce).toBe(true);
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
+				expect.any(Number),
+			);
+		});
+	});
+
+	describe('setNodePositionById', () => {
+		it('should NOT update parametersLastUpdatedAt', () => {
+			const nodeName = 'Edit Fields';
+			const nodeId = '554c7ff4-7ee2-407c-8931-e34234c5056a';
+			workflowsStore.addNode({
+				parameters: {},
+				id: nodeId,
+				name: nodeName,
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+
+			workflowState.setNodePositionById(nodeId, [0, 0]);
+
+			expect(workflowsStore.workflow.nodes[0].position).toStrictEqual([0, 0]);
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+		});
+	});
+	describe('updateNodeAtIndex', () => {
+		it.each([
+			{
+				description: 'should update node at given index with provided data',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Updated Node' }],
+				expectedResult: true,
+			},
+			{
+				description: 'should not update node if index is invalid',
+				nodeIndex: -1,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should return false if node data is unchanged',
+				nodeIndex: 0,
+				nodeData: { name: 'Original Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should update multiple properties of a node',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node', type: 'newType' },
+				initialNodes: [{ name: 'Original Node', type: 'oldType' }],
+				expectedNodes: [{ name: 'Updated Node', type: 'newType' }],
+				expectedResult: true,
+			},
+		])('$description', ({ nodeIndex, nodeData, initialNodes, expectedNodes, expectedResult }) => {
+			workflowsStore.workflow.nodes = initialNodes as unknown as IWorkflowDb['nodes'];
+
+			const result = workflowState.updateNodeAtIndex(nodeIndex, nodeData);
+
+			expect(result).toBe(expectedResult);
+			expect(workflowsStore.workflow.nodes).toEqual(expectedNodes);
+		});
+
+		it('should throw error if out of bounds', () => {
+			workflowsStore.workflow.nodes = [];
+			expect(() => workflowState.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
 		});
 	});
 });

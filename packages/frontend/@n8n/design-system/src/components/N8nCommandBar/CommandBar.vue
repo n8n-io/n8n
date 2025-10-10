@@ -392,10 +392,10 @@ onUnmounted(() => {
 }
 
 .noResults {
-	padding: var(--spacing-l);
+	padding: var(--spacing--lg);
 	text-align: center;
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 
 .contextContainer {

@@ -60,6 +60,7 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 type Props = {
 	modalName: string;
@@ -74,6 +75,7 @@ const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 
@@ -1040,7 +1042,7 @@ async function onAuthTypeChanged(type: string): Promise<void> {
 		uiStore.activeCredentialType = credentialsForType.name;
 		resetCredentialData();
 		// Update current node auth type so credentials dropdown can be displayed properly
-		updateNodeAuthType(ndvStore.activeNode, type);
+		updateNodeAuthType(workflowState, ndvStore.activeNode, type);
 		// Also update credential name but only if the default name is still used
 		if (hasUnsavedChanges.value && !hasUserSpecifiedName.value) {
 			const newDefaultName = await credentialsStore.getNewCredentialName({
@@ -1205,11 +1207,11 @@ const { width } = useElementSize(credNameRef);
 
 	:global(.el-dialog__header) {
 		padding-bottom: 0;
-		border-bottom: var(--border-base);
+		border-bottom: var(--border);
 	}
 
 	:global(.el-dialog__body) {
-		padding-top: var(--spacing-l);
+		padding-top: var(--spacing--lg);
 		position: relative;
 	}
 }
@@ -1224,13 +1226,13 @@ const { width } = useElementSize(credNameRef);
 	display: flex;
 	width: 100%;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .sidebar {
 	max-width: 170px;
 	min-width: 170px;
-	margin-right: var(--spacing-l);
+	margin-right: var(--spacing--lg);
 	flex-grow: 1;
 
 	ul {
@@ -1252,24 +1254,24 @@ const { width } = useElementSize(credNameRef);
 	align-items: center;
 	flex-direction: row;
 	flex-grow: 1;
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 }
 
 .credActions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-right: var(--spacing-xl);
-	margin-bottom: var(--spacing-l);
+	margin-right: var(--spacing--xl);
+	margin-bottom: var(--spacing--lg);
 
 	> * {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 
 .credIcon {
 	display: flex;
 	align-items: center;
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
 }
 </style>

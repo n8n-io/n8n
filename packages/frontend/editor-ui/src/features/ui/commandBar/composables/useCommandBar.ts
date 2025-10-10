@@ -14,7 +14,7 @@ import { useProjectNavigationCommands } from './useProjectNavigationCommands';
 import { useExecutionCommands } from './useExecutionCommands';
 import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
-import type { CommandGroup } from './types';
+import type { CommandGroup } from '../commandBar.types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/dataTable/constants';

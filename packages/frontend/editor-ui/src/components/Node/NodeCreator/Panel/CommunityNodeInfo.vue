@@ -178,7 +178,7 @@ onMounted(async () => {
 <style lang="scss" module>
 .container {
 	width: 100%;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	padding-top: 0;
 	margin-top: 0;
 	display: flex;
@@ -187,43 +187,43 @@ onMounted(async () => {
 
 .nodeIcon {
 	--node-icon-size: 36px;
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing--sm);
 }
 
 .description {
-	margin: var(--spacing-m) 0;
+	margin: var(--spacing--md) 0;
 }
 .separator {
-	height: var(--border-width-base);
+	height: var(--border-width);
 	background: var(--color--foreground);
-	margin-bottom: var(--spacing-m);
+	margin-bottom: var(--spacing--md);
 }
 .info {
 	display: flex;
 	align-items: center;
 	justify-content: left;
-	gap: var(--spacing-m);
-	margin-bottom: var(--spacing-m);
+	gap: var(--spacing--md);
+	margin-bottom: var(--spacing--md);
 	flex-wrap: wrap;
 }
 .info div {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .tooltipIcon {
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	width: 12px;
 }
 
 .contactOwnerHint {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color--foreground);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs);
+	border: var(--border-width) solid var(--color--foreground);
 	border-radius: 0.25em;
 }
 </style>

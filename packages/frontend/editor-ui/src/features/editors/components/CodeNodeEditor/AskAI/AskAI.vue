@@ -359,7 +359,7 @@ onMounted(() => {
 	border-radius: 0 !important;
 }
 .input textarea {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
 	resize: none;
 
@@ -379,17 +379,17 @@ onMounted(() => {
 	}
 }
 .intro {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	padding: var(--spacing-2xs) var(--spacing-xs) 0;
+	padding: var(--spacing--2xs) var(--spacing--xs) 0;
 }
 .loader {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 .inputContainer {
 	position: relative;
@@ -397,7 +397,7 @@ onMounted(() => {
 .help {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	text-decoration: underline;
 	margin-left: auto;
 	color: #909399;
@@ -406,12 +406,12 @@ onMounted(() => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	background-color: var(--color--foreground--tint-2);
-	border-top: 1px solid var(--border-color-base);
+	border-top: 1px solid var(--border-color);
 
 	* {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 		line-height: 1;
 	}
 }
@@ -419,9 +419,9 @@ onMounted(() => {
 	color: var(--color--text--tint-1);
 }
 .controls {
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
-	border-top: 1px solid var(--border-color-base);
+	border-top: 1px solid var(--border-color);
 }
 </style>

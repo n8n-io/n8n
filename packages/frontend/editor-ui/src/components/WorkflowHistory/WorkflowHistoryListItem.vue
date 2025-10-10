@@ -135,22 +135,22 @@ onMounted(() => {
 	position: relative;
 	align-items: center;
 	justify-content: space-between;
-	border-left: 2px var(--border-style-base) transparent;
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border-left: 2px var(--border-style) transparent;
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 
 	p {
 		display: grid;
-		padding: var(--spacing-s);
+		padding: var(--spacing--sm);
 		cursor: pointer;
 		flex: 1 1 auto;
 
 		time {
-			padding: 0 0 var(--spacing-5xs);
+			padding: 0 0 var(--spacing--5xs);
 			color: var(--color--text--shade-1);
-			font-size: var(--font-size-s);
-			font-weight: var(--font-weight-bold);
+			font-size: var(--font-size--sm);
+			font-weight: var(--font-weight--bold);
 		}
 
 		span,
@@ -160,8 +160,8 @@ onMounted(() => {
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
-			margin-top: calc(var(--spacing-4xs) * -1);
-			font-size: var(--font-size-2xs);
+			margin-top: calc(var(--spacing--4xs) * -1);
+			font-size: var(--font-size--2xs);
 		}
 	}
 
@@ -188,6 +188,6 @@ onMounted(() => {
 
 .actions {
 	display: block;
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 }
 </style>

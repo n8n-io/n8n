@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
+import ContextMenu from '@/features/ui/contextMenu/components/ContextMenu.vue';
+import type { ContextMenuTarget } from '@/features/ui/contextMenu/composables/useContextMenu';
+import { useContextMenu } from '@/features/ui/contextMenu/composables/useContextMenu';
 import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
-import type { ContextMenuTarget } from '@/composables/useContextMenu';
-import { useContextMenu } from '@/composables/useContextMenu';
 import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
@@ -58,7 +58,7 @@ import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
 
 const $style = useCssModule();
 

@@ -64,7 +64,7 @@ const handleMouseLeave = () => {
 <style lang="scss" module>
 .item {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 	height: 40px;
 	padding: 0 var(--spacing-2xs);
@@ -85,8 +85,8 @@ const handleMouseLeave = () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing-l);
-	height: var(--spacing-l);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 	flex-shrink: 0;
 }
 
@@ -116,7 +116,7 @@ const handleMouseLeave = () => {
 .meta {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 }
 </style>
