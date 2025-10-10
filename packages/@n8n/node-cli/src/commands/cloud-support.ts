@@ -50,7 +50,9 @@ export default class CloudSupport extends Command {
 		log.success(`Enabled strict mode in ${picocolors.cyan('package.json')}`);
 
 		const lintCommand = await suggestLintCommand();
-		outro(`Cloud support enabled. Run "${lintCommand}" to check compliance.`);
+		outro(
+			`Cloud support enabled. Run "${lintCommand}" to check compliance - your node must pass linting to be eligible for n8n Cloud publishing.`,
+		);
 	}
 
 	private async disableCloudSupport(workingDir: string): Promise<void> {
@@ -140,7 +142,7 @@ export default configWithoutCloudSupport;
 				log.success(`✅ Cloud support is ${picocolors.green('ENABLED')}
   • Strict mode: ${picocolors.green('enabled')}
   • ESLint config: ${picocolors.green('using default config')}
-  • Status: ${picocolors.green('eligible')} for n8n Cloud verification`);
+  • Status: ${picocolors.green('eligible')} for n8n Cloud verification ${picocolors.dim('(if lint passes)')}`);
 			} else {
 				log.warning(`⚠️  Cloud support is ${picocolors.yellow('DISABLED')}
   • Strict mode: ${isStrictMode ? picocolors.green('enabled') : picocolors.red('disabled')}
@@ -150,12 +152,14 @@ export default configWithoutCloudSupport;
 
 			const enableCommand = await suggestCloudSupportCommand('enable');
 			const disableCommand = await suggestCloudSupportCommand('disable');
+			const lintCommand = await suggestLintCommand();
 
 			log.info(`Available commands:
   • ${enableCommand}  - Enable cloud support
-  • ${disableCommand} - Disable cloud support`);
+  • ${disableCommand} - Disable cloud support
+  • ${lintCommand} - Check compliance for cloud publishing`);
 
-			outro('Use the commands above to change cloud support settings');
+			outro('Use the commands above to change cloud support settings or check compliance');
 		} catch (error) {
 			log.error('Failed to read package.json or determine cloud support status');
 			outro('Make sure you are in the root directory of your node package');
