@@ -20,6 +20,7 @@ export function shouldIncludeModel(modelId: string, isCustomAPI: boolean): boole
 		modelId.startsWith('dall-e') ||
 		modelId.startsWith('text-embedding') ||
 		modelId.startsWith('tts') ||
+		modelId.includes('-tts') ||
 		modelId.startsWith('whisper') ||
 		modelId.startsWith('omni-moderation') ||
 		modelId.startsWith('sora') ||
