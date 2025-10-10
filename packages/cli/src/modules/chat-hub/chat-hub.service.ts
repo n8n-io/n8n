@@ -343,7 +343,7 @@ export class ChatHubService {
 			{
 				parameters: {
 					sessionIdType: 'customKey',
-					sessionKey: "={{ $('When chat message received').item.json.chatInput }}",
+					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
 				},
 				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 				typeVersion: 1.3,
