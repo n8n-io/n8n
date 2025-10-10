@@ -2898,6 +2898,7 @@
 	"variables.row.usage.copiedToClipboard": "Copied to clipboard",
 	"variables.row.usage.copyToClipboard": "Copy to clipboard",
 	"variables.search.placeholder": "Search variables...",
+	"variables.delete.successful.message": "Variable {variableName} deleted",
 	"variables.errors.save": "Error while saving variable",
 	"variables.errors.delete": "Error while deleting variable",
 	"variables.modals.deleteConfirm.title": "Delete variable",
