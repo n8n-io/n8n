@@ -53,10 +53,10 @@ function handleStop() {
 
 <style lang="scss" module>
 .sendButton {
-	--button-border-radius: var(--border-radius-large);
+	--button-border-radius: var(--radius--lg);
 }
 
 .stopButton {
-	--button-border-radius: var(--border-radius-large);
+	--button-border-radius: var(--radius--lg);
 }
 </style>

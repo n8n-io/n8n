@@ -1,6 +1,6 @@
 import CanvasNodeStickyNote from './CanvasNodeStickyNote.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide } from '@/features/canvas/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';

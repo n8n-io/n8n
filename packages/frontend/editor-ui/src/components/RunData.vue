@@ -91,6 +91,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );
@@ -231,6 +232,7 @@ const dataContainerRef = ref<HTMLDivElement>();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
@@ -1344,7 +1346,7 @@ function enableNode() {
 			},
 		};
 
-		workflowsStore.updateNodeProperties(updateInformation);
+		workflowState.updateNodeProperties(updateInformation);
 	}
 }
 
@@ -1965,17 +1967,17 @@ defineExpose({ enterEditMode });
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing-xl) var(--ndv-spacing);
+	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing--xl) var(--ndv-spacing);
 	text-align: center;
 
 	> * {
 		max-width: 316px;
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
 .container {
-	--ndv-spacing: var(--spacing-s);
+	--ndv-spacing: var(--spacing--sm);
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -1996,7 +1998,7 @@ defineExpose({ enterEditMode });
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--ndv-spacing);
-	padding: var(--ndv-spacing) var(--spacing-3xs) 0 var(--ndv-spacing);
+	padding: var(--ndv-spacing) var(--spacing--3xs) 0 var(--ndv-spacing);
 	position: relative;
 	overflow-x: auto;
 	overflow-y: hidden;
@@ -2005,13 +2007,13 @@ defineExpose({ enterEditMode });
 	container-type: inline-size;
 
 	.compact & {
-		margin-bottom: var(--spacing-4xs);
-		padding: var(--spacing-2xs);
+		margin-bottom: var(--spacing--4xs);
+		padding: var(--spacing--2xs);
 		margin-bottom: 0;
 		flex-shrink: 0;
 		flex-grow: 0;
 		min-height: auto;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 	}
 
 	> *:first-child {
@@ -2029,20 +2031,20 @@ defineExpose({ enterEditMode });
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding: 0 var(--ndv-spacing) var(--spacing-3xl) var(--ndv-spacing);
+	padding: 0 var(--ndv-spacing) var(--spacing--3xl) var(--ndv-spacing);
 	right: 0;
 	overflow-y: auto;
-	line-height: var(--font-line-height-xloose);
+	line-height: var(--line-height--xl);
 	word-break: normal;
 	height: 100%;
 
 	.compact & {
-		padding: 0 var(--spacing-2xs);
+		padding: 0 var(--spacing--2xs);
 	}
 }
 
 .inlineError {
-	line-height: var(--font-line-height-xloose);
+	line-height: var(--line-height--xl);
 	padding-left: var(--ndv-spacing);
 	padding-right: var(--ndv-spacing);
 	padding-bottom: var(--ndv-spacing);
@@ -2057,10 +2059,10 @@ defineExpose({ enterEditMode });
 	padding-bottom: var(--ndv-spacing);
 
 	.compact & {
-		padding-left: var(--spacing-2xs);
-		padding-right: var(--spacing-2xs);
-		padding-bottom: var(--spacing-2xs);
-		font-size: var(--font-size-2xs);
+		padding-left: var(--spacing--2xs);
+		padding-right: var(--spacing--2xs);
+		padding-bottom: var(--spacing--2xs);
+		font-size: var(--font-size--2xs);
 	}
 }
 
@@ -2075,7 +2077,7 @@ defineExpose({ enterEditMode });
 .itemsCount {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	padding-left: var(--ndv-spacing);
 	padding-right: var(--ndv-spacing);
 	padding-bottom: var(--ndv-spacing);
@@ -2083,7 +2085,7 @@ defineExpose({ enterEditMode });
 }
 
 .ndv-v2 .itemsCount {
-	padding-left: var(--spacing-xs);
+	padding-left: var(--spacing--xs);
 }
 
 .inputSelect {
@@ -2099,16 +2101,16 @@ defineExpose({ enterEditMode });
 	padding-left: var(--ndv-spacing);
 	padding-right: var(--ndv-spacing);
 	margin-bottom: var(--ndv-spacing);
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	:global(.el-input--suffix .el-input__inner) {
-		padding-right: var(--spacing-l);
+		padding-right: var(--spacing--lg);
 	}
 }
 
 .runSelectorInner {
 	display: flex;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	align-items: center;
 }
 
@@ -2125,7 +2127,7 @@ defineExpose({ enterEditMode });
 	justify-content: flex-end;
 	align-items: center;
 	flex-grow: 1;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 
 	.compact & {
 		/* let title text alone decide the height */
@@ -2212,12 +2214,12 @@ defineExpose({ enterEditMode });
 }
 
 .hintCallout {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 	margin-left: var(--ndv-spacing);
 	margin-right: var(--ndv-spacing);
 
 	.compact & {
-		margin: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+		margin: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
 	}
 }
 
@@ -2239,7 +2241,7 @@ defineExpose({ enterEditMode });
 .multipleIcons {
 	flex-direction: column;
 	align-items: flex-start;
-	gap: var(--spacing-2xs, 8px);
+	gap: var(--spacing--2xs, 8px);
 }
 
 .multipleIcons .iconStack {
@@ -2250,15 +2252,15 @@ defineExpose({ enterEditMode });
 .iconStack {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs, 4px);
+	gap: var(--spacing--4xs, 4px);
 	flex-shrink: 0;
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
 }
 
 .icon {
 	color: var(--color-callout-info-icon);
 	line-height: 1;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .executingMessage {
@@ -2281,7 +2283,7 @@ defineExpose({ enterEditMode });
 
 .ndv-v2,
 .compact {
-	--ndv-spacing: var(--spacing-2xs);
+	--ndv-spacing: var(--spacing--2xs);
 }
 </style>
 
@@ -2297,9 +2299,9 @@ defineExpose({ enterEditMode });
 :deep(.highlight) {
 	background-color: #f7dc55;
 	color: black;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	padding: 0 1px;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	font-style: normal;
 }
 </style>

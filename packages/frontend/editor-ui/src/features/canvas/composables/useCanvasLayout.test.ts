@@ -1,6 +1,6 @@
 import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
 import { computed, ref } from 'vue';
-import { createCanvasGraphEdge, createCanvasGraphNode } from '@/__tests__/data';
+import { createCanvasGraphEdge, createCanvasGraphNode } from '@/features/canvas/__tests__/utils';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/constants';

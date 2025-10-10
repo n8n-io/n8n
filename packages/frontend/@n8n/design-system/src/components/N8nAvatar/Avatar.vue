@@ -79,8 +79,8 @@ const getSize = (size: string): number => sizes[size];
 
 .initials {
 	position: absolute;
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 	color: var(--color-avatar-font);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;
@@ -91,8 +91,8 @@ const getSize = (size: string): number => sizes[size];
 }
 
 .xsmall {
-	height: var(--spacing-m);
-	width: var(--spacing-m);
+	height: var(--spacing--md);
+	width: var(--spacing--md);
 }
 
 .small {

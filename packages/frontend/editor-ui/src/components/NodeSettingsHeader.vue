@@ -63,11 +63,11 @@ const emit = defineEmits<{
 	align-items: center;
 	min-height: 40px;
 
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 .execute {
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing--sm);
 }
 
 .tabs {
@@ -75,6 +75,6 @@ const emit = defineEmits<{
 }
 
 .tabs :global(#communityNode) {
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing--2xs);
 }
 </style>

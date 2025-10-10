@@ -119,13 +119,13 @@ onMounted(() => {
 }
 
 .description {
-	font-size: var(--font-size-s);
-	margin: var(--spacing-s) 0;
+	font-size: var(--font-size--sm);
+	margin: var(--spacing--sm) 0;
 }
 
 .footer {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
 }
 </style>

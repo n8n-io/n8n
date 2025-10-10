@@ -64,6 +64,6 @@ onMounted(() => {
 	height: 100%;
 	width: 100%;
 	max-width: 1440px;
-	padding: 0 var(--spacing-2xl);
+	padding: 0 var(--spacing--2xl);
 }
 </style>
