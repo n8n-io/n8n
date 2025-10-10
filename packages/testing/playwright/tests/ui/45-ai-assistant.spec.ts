@@ -37,6 +37,8 @@ test.describe('AI Assistant::disabled', () => {
 		setupRequirements,
 	}) => {
 		await setupRequirements(aiDisabledRequirements);
+		await n8n.page.goto('/workflow/new');
+		await expect(n8n.canvas.canvasPane()).toBeVisible();
 		await expect(n8n.aiAssistant.getAskAssistantFloatingButton()).toHaveCount(0);
 	});
 });
