@@ -8,12 +8,15 @@ import type {
 	IExecutionsStopData,
 	INewWorkflowData,
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import {
+	type INodeIssueData,
+	type INodeIssueObjectProperty,
 	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
@@ -31,6 +34,15 @@ import { useWorkflowStateStore } from '@/stores/workflowState.store';
 import { isObject } from '@/utils/objectUtils';
 import findLast from 'lodash/findLast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import isEqual from 'lodash/isEqual';
+import pick from 'lodash/pick';
+import { createEventBus } from '@n8n/utils/event-bus';
+
+export type WorkflowStateBusEvents = {
+	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
+};
+
+export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
@@ -224,6 +236,26 @@ export function useWorkflowState() {
 	// Node modification
 	////
 
+	/**
+	 * @returns `true` if the object was changed
+	 */
+	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
+		if (nodeIndex !== -1) {
+			const node = ws.workflow.nodes[nodeIndex];
+			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
+			const changed = !isEqual(existingData, nodeData);
+
+			if (changed) {
+				Object.assign(node, nodeData);
+				ws.workflow.nodes[nodeIndex] = node;
+				ws.workflowObject.setNodes(ws.workflow.nodes);
+			}
+
+			return changed;
+		}
+		return false;
+	}
+
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
 		// Find the node that should be updated
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
@@ -243,7 +275,7 @@ export function useWorkflowState() {
 				? { ...parameters, ...updateInformation.value }
 				: updateInformation.value;
 
-		const changed = ws.updateNodeAtIndex(nodeIndex, {
+		const changed = updateNodeAtIndex(nodeIndex, {
 			parameters: newParameters as INodeParameters,
 		});
 
@@ -275,6 +307,95 @@ export function useWorkflowState() {
 		}
 	}
 
+	function setNodeValue(updateInformation: IUpdateInformation): void {
+		// Find the node that should be updated
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
+			return node.name === updateInformation.name;
+		});
+
+		if (nodeIndex === -1 || !updateInformation.key) {
+			throw new Error(
+				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
+			);
+		}
+
+		const changed = updateNodeAtIndex(nodeIndex, {
+			[updateInformation.key]: updateInformation.value,
+		});
+
+		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
+
+		const excludeKeys = ['position', 'notes', 'notesInFlow'];
+
+		if (changed && !excludeKeys.includes(updateInformation.key)) {
+			ws.nodeMetadata[ws.workflow.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+		}
+	}
+
+	function setNodePositionById(id: string, position: INodeUi['position']): void {
+		const node = ws.workflow.nodes.find((n) => n.id === id);
+		if (!node) return;
+
+		setNodeValue({ name: node.name, key: 'position', value: position });
+	}
+
+	function updateNodeProperties(
+		this: WorkflowState,
+		updateInformation: INodeUpdatePropertiesInformation,
+	): void {
+		// Find the node that should be updated
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
+			return node.name === updateInformation.name;
+		});
+
+		if (nodeIndex !== -1) {
+			for (const key of Object.keys(updateInformation.properties)) {
+				const typedKey = key as keyof INodeUpdatePropertiesInformation['properties'];
+				const property = updateInformation.properties[typedKey];
+
+				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
+
+				if (changed) {
+					uiStore.stateIsDirty = true;
+				}
+			}
+		}
+
+		workflowStateEventBus.emit('updateNodeProperties', [this, updateInformation]);
+	}
+
+	function setNodeIssue(nodeIssueData: INodeIssueData): void {
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
+			return node.name === nodeIssueData.node;
+		});
+		if (nodeIndex === -1) {
+			return;
+		}
+
+		const node = ws.workflow.nodes[nodeIndex];
+
+		if (nodeIssueData.value === null) {
+			// Remove the value if one exists
+			if (node.issues?.[nodeIssueData.type] === undefined) {
+				// No values for type exist so nothing has to get removed
+				return;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { [nodeIssueData.type]: _removedNodeIssue, ...remainingNodeIssues } = node.issues;
+			updateNodeAtIndex(nodeIndex, {
+				issues: remainingNodeIssues,
+			});
+		} else {
+			updateNodeAtIndex(nodeIndex, {
+				issues: {
+					...node.issues,
+					[nodeIssueData.type]: nodeIssueData.value as INodeIssueObjectProperty,
+				},
+			});
+		}
+	}
+
 	return {
 		// Workflow editing state
 		resetState,
@@ -296,6 +417,11 @@ export function useWorkflowState() {
 		// Node modification
 		setNodeParameters,
 		setLastNodeParameters,
+		setNodeValue,
+		setNodePositionById,
+		setNodeIssue,
+		updateNodeAtIndex,
+		updateNodeProperties,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,

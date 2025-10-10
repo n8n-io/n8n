@@ -44,10 +44,10 @@ defineProps<Props>();
 <style lang="scss" module>
 .creatorOpenTemplate {
 	--action-arrow-color: var(--color--text--tint-1);
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
-	margin-bottom: var(--spacing-xs);
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
+	margin-bottom: var(--spacing--xs);
 }
 .compact {
 	margin-left: 0;

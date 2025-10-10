@@ -412,7 +412,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: newValue,
 		};
 
-		workflowsStore.setNodeValue(updateInformation);
+		workflowState.setNodeValue(updateInformation);
 	}
 };
 
@@ -468,7 +468,7 @@ const onNodeExecute = () => {
 
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
-	workflowsStore.updateNodeProperties(updateInformation);
+	workflowState.updateNodeProperties(updateInformation);
 
 	const node = workflowsStore.getNodeByName(updateInformation.name);
 
@@ -751,7 +751,7 @@ function handleSelectAction(params: INodeParameters) {
 					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 					data-test-id="update-available"
 					:package-name="packageName"
-					style="margin-top: var(--spacing-s)"
+					style="margin-top: var(--spacing--sm)"
 					source="node settings"
 				/>
 				<ParameterInputList
@@ -824,11 +824,11 @@ function handleSelectAction(params: INodeParameters) {
 	a {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
-		margin-top: var(--spacing-xl);
+		gap: var(--spacing--4xs);
+		margin-top: var(--spacing--xl);
 
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--bold);
 		color: var(--color--text--tint-1);
 	}
 }
@@ -844,18 +844,18 @@ function handleSelectAction(params: INodeParameters) {
 	width: 100%;
 
 	.no-parameters {
-		margin-top: var(--spacing-xs);
+		margin-top: var(--spacing--xs);
 	}
 
 	.header-side-menu {
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
-		font-size: var(--font-size-l);
+		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
+		font-size: var(--font-size--lg);
 		display: flex;
 		justify-content: space-between;
 
 		.node-name {
-			padding-top: var(--spacing-5xs);
-			margin-right: var(--spacing-s);
+			padding-top: var(--spacing--5xs);
+			margin-right: var(--spacing--sm);
 		}
 	}
 
@@ -863,27 +863,27 @@ function handleSelectAction(params: INodeParameters) {
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
-		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
+		padding: 0 var(--spacing--md) var(--spacing--lg) var(--spacing--md);
 		flex-grow: 1;
 
 		&.ndv-v2 {
-			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
+			padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
 		}
 	}
 
 	&.embedded .node-parameters-wrapper {
-		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing--xs) var(--spacing--xs) var(--spacing--xs);
 
 		&:has(.action-tab) {
-			padding: 0 0 var(--spacing-xs) 0;
+			padding: 0 0 var(--spacing--xs) 0;
 		}
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing--4xs) var(--spacing--xs) var(--spacing--xs);
 
 		&:has(.action-tab) {
-			padding: 0 0 var(--spacing-xs) 0;
+			padding: 0 0 var(--spacing--xs) 0;
 		}
 
 		@supports not (selector(::-webkit-scrollbar)) {
@@ -891,12 +891,12 @@ function handleSelectAction(params: INodeParameters) {
 		}
 		@supports selector(::-webkit-scrollbar) {
 			&::-webkit-scrollbar {
-				width: var(--spacing-2xs);
+				width: var(--spacing--2xs);
 			}
 			&::-webkit-scrollbar-thumb {
-				border-radius: var(--spacing-2xs);
+				border-radius: var(--spacing--2xs);
 				background: var(--color--foreground--shade-1);
-				border: var(--spacing-5xs) solid var(--color--background--light-3);
+				border: var(--spacing--5xs) solid var(--color--background--light-3);
 			}
 		}
 	}
@@ -943,10 +943,10 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .node-version {
-	border-top: var(--border-base);
-	font-size: var(--font-size-xs);
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
+	border-top: var(--border);
+	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--xs) 0 var(--spacing--2xs) 0;
 	color: var(--color--text--tint-1);
 }
 

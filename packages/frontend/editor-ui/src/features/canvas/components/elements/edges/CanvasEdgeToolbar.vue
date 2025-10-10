@@ -64,9 +64,9 @@ function onDelete() {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	pointer-events: all;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	transform: scale(var(--canvas-zoom-compensation-factor, 1));
 }
 </style>

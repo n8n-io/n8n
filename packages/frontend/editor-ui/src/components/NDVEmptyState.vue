@@ -26,21 +26,21 @@ defineSlots<{
 	flex-flow: column;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 
 	line-height: 2;
 	color: var(--color--text);
 }
 
 .title {
-	font-size: var(--font-size-m);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
 	margin: 0;
 }
 
 .description {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	margin: 0;
 	text-align: center;
 	max-width: 240px;

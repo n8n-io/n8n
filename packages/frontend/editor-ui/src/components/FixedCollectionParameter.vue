@@ -377,7 +377,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 <style scoped lang="scss">
 .fixed-collection-parameter {
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 
 	.icon-button {
 		display: flex;
@@ -413,7 +413,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 }
 
 .fixed-collection-parameter-property {
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 	margin-bottom: 0;
 }
 
@@ -423,15 +423,15 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 .parameter-item {
 	position: relative;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
 			.default-top-padding {
-				top: calc(1.2 * var(--spacing-s));
+				top: calc(1.2 * var(--spacing--sm));
 			}
 			.extra-top-padding {
-				top: calc(2.2 * var(--spacing-s));
+				top: calc(2.2 * var(--spacing--sm));
 			}
 		}
 	}
@@ -440,10 +440,10 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 .parameter-item:first-of-type {
 	.parameter-item-wrapper {
 		.default-top-padding {
-			top: var(--spacing-3xs);
+			top: var(--spacing--3xs);
 		}
 		.extra-top-padding {
-			top: var(--spacing-l);
+			top: var(--spacing--lg);
 		}
 	}
 }
@@ -453,12 +453,12 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 }
 
 .no-items-exist {
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 }
 .ghost,
 .dragging {
-	border-radius: var(--border-radius-base);
-	padding-right: var(--spacing-xs);
+	border-radius: var(--radius);
+	padding-right: var(--spacing--xs);
 }
 .ghost {
 	background-color: var(--color--background);

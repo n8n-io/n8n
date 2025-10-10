@@ -47,7 +47,7 @@ function toggle() {
 .header {
 	cursor: pointer;
 	display: flex;
-	padding-top: var(--spacing-s);
+	padding-top: var(--spacing--sm);
 	align-items: center;
 
 	.headerText {
@@ -56,15 +56,15 @@ function toggle() {
 }
 
 .expanded {
-	padding: var(--spacing-s) 0 0 0;
+	padding: var(--spacing--sm) 0 0 0;
 }
 
 .description {
 	display: flex;
-	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
 
 	b {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 </style>
