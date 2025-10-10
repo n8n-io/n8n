@@ -298,4 +298,83 @@ describe('SourceControlPullModal', () => {
 		const listItems = getAllByTestId('pull-modal-item');
 		expect(listItems.length).toBeGreaterThan(0);
 	});
+
+	it('should display projects in the otherFiles section', () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'project-1',
+				name: 'Team Project 1',
+				type: 'project',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: '/projects/project-1.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+				owner: {
+					type: 'team',
+					projectId: 'project-1',
+					projectName: 'Team Project 1',
+				},
+			},
+		];
+
+		const { getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		expect(getByText(/Projects \(1\)/)).toBeInTheDocument();
+	});
+
+	it('should show correct project count in summary', () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'project-1',
+				name: 'Team Project 1',
+				type: 'project',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: '/projects/project-1.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+				owner: {
+					type: 'team',
+					projectId: 'project-1',
+					projectName: 'Team Project 1',
+				},
+			},
+			{
+				id: 'project-2',
+				name: 'Team Project 2',
+				type: 'project',
+				status: 'modified',
+				location: 'remote',
+				conflict: true,
+				file: '/projects/project-2.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+				owner: {
+					type: 'team',
+					projectId: 'project-2',
+					projectName: 'Team Project 2',
+				},
+			},
+		];
+
+		const { getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		expect(getByText(/Projects \(2\)/)).toBeInTheDocument();
+	});
 });
