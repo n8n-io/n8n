@@ -7,7 +7,7 @@ import type {
 	WorkflowVersionId,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
+import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
@@ -136,7 +136,7 @@ const onAction = ({
 }
 
 .card {
-	padding: var(--spacing-s) var(--spacing-l) 0 var(--spacing-xl);
+	padding: var(--spacing--sm) var(--spacing--lg) 0 var(--spacing--xl);
 	border: 0;
 	align-items: start;
 
@@ -152,25 +152,25 @@ const onAction = ({
 			cursor: default;
 
 			&:first-child {
-				padding-top: var(--spacing-3xs);
-				padding-bottom: var(--spacing-4xs);
+				padding-top: var(--spacing--3xs);
+				padding-bottom: var(--spacing--4xs);
 				* {
 					margin-top: auto;
-					font-size: var(--font-size-m);
+					font-size: var(--font-size--md);
 				}
 			}
 
 			&:last-child {
-				padding-top: var(--spacing-3xs);
+				padding-top: var(--spacing--3xs);
 
 				* {
-					font-size: var(--font-size-2xs);
+					font-size: var(--font-size--2xs);
 				}
 			}
 
 			.label {
 				color: var(--color--text--tint-1);
-				padding-right: var(--spacing-4xs);
+				padding-right: var(--spacing--4xs);
 			}
 
 			* {
@@ -180,7 +180,7 @@ const onAction = ({
 				overflow: hidden;
 				text-overflow: unset;
 				padding: 0;
-				font-size: var(--font-size-s);
+				font-size: var(--font-size--sm);
 			}
 		}
 	}

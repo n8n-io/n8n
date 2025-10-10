@@ -126,7 +126,7 @@ const onInputScroll = (event: WheelEvent) => {
 <style lang="scss" module>
 .sticky {
 	position: absolute;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 
 	background-color: var(--color-sticky-background);
 	border: 1px solid var(--color-sticky-border);
@@ -149,7 +149,7 @@ const onInputScroll = (event: WheelEvent) => {
 	width: 100%;
 	height: 100%;
 	position: absolute;
-	padding: var(--spacing-2xs) var(--spacing-xs) 0;
+	padding: var(--spacing--2xs) var(--spacing--xs) 0;
 	overflow: hidden;
 
 	&::after {
@@ -159,12 +159,12 @@ const onInputScroll = (event: WheelEvent) => {
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 	}
 }
 
 .footer {
-	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	padding: var(--spacing--5xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	display: flex;
 	justify-content: flex-end;
 }
@@ -202,8 +202,8 @@ const onInputScroll = (event: WheelEvent) => {
 
 <style lang="scss">
 .sticky-textarea {
-	height: calc(100% - var(--spacing-l));
-	padding: var(--spacing-2xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	height: calc(100% - var(--spacing--lg));
+	padding: var(--spacing--2xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	cursor: default;
 
 	.el-textarea {
@@ -217,6 +217,6 @@ const onInputScroll = (event: WheelEvent) => {
 }
 
 .full-height {
-	height: calc(100% - var(--spacing-2xs));
+	height: calc(100% - var(--spacing--2xs));
 }
 </style>

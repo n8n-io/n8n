@@ -174,7 +174,7 @@ defineExpose({
 	width: min-content;
 	margin: auto;
 	transform-origin: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	transition: transform 0.2s ease-in-out;
 
 	&.inputSub,
@@ -206,10 +206,10 @@ defineExpose({
 	}
 }
 .connectedNode {
-	border: var(--border-base);
+	border: var(--border);
 	background-color: var(--color-node-background);
 	border-radius: 100%;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	cursor: pointer;
 	pointer-events: all;
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
@@ -231,7 +231,7 @@ defineExpose({
 
 	.outputMain &,
 	.inputMain & {
-		border-radius: var(--border-radius-large);
+		border-radius: var(--radius--lg);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -260,7 +260,7 @@ defineExpose({
 
 	// V2 styles override
 	.v2 & {
-		padding: var(--spacing-xs);
+		padding: var(--spacing--xs);
 
 		&::after {
 			display: none;

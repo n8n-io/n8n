@@ -10,11 +10,11 @@
 	white-space: nowrap;
 	cursor: pointer;
 
-	border: var(--border-width-base) var.$button-border-color var(--border-style-base)
+	border: var(--border-width) var.$button-border-color var(--border-style)
 		string.unquote($important);
 	color: var.$button-font-color string.unquote($important);
 	background-color: var.$button-background-color string.unquote($important);
-	font-weight: var(--font-weight-medium) string.unquote($important);
+	font-weight: var(--font-weight--medium) string.unquote($important);
 	border-radius: var.$button-border-radius string.unquote($important);
 	padding: var.$button-padding-vertical var.$button-padding-horizontal string.unquote($important);
 	font-size: var.$button-font-size string.unquote($important);
@@ -30,7 +30,7 @@
 		width 0s,
 		height 0s;
 
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	@include utils.utils-user-select(none);
 

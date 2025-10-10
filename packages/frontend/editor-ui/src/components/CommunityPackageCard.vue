@@ -173,9 +173,9 @@ watch(
 <style lang="scss" module>
 .cardContainer {
 	display: flex;
-	padding: var(--spacing-s);
-	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
-	border-radius: var(--border-radius-large);
+	padding: var(--spacing--sm);
+	border: var(--border-width) var(--border-style) var(--color-info-tint-1);
+	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }
 
@@ -222,16 +222,16 @@ watch(
 
 .cardSubtitle {
 	margin-top: 2px;
-	padding-right: var(--spacing-m);
+	padding-right: var(--spacing--md);
 }
 
 .cardControlsContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .cardActions {
-	padding-left: var(--spacing-3xs);
+	padding-left: var(--spacing--3xs);
 }
 </style>

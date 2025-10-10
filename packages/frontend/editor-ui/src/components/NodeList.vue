@@ -64,10 +64,10 @@ const countNodesToBeSliced = (nodes: ITemplatesNode[]): number => {
 	display: block;
 }
 .sm {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 }
 .md {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 .button {
 	top: 0;
@@ -77,19 +77,19 @@ const countNodesToBeSliced = (nodes: ITemplatesNode[]): number => {
 	align-items: center;
 	background: var(--color--background--light-2);
 	border: 1px var(--color--foreground) solid;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	font-size: 10px;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
 }
 .buttonSm {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 	width: 20px;
 	min-width: 20px;
 	height: 20px;
 }
 .buttonMd {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 	width: 24px;
 	min-width: 24px;
 	height: 24px;

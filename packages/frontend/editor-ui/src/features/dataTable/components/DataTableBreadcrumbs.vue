@@ -144,18 +144,18 @@ watch(
 
 .data-table-actions {
 	position: relative;
-	top: var(--spacing-5xs);
+	top: var(--spacing--5xs);
 }
 
 .separator {
-	font-size: var(--font-size-xl);
+	font-size: var(--font-size--xl);
 	color: var(--color--foreground);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
 .breadcrumb-current {
 	color: $custom-font-dark;
-	font-size: var(--font-size-s);
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 </style>

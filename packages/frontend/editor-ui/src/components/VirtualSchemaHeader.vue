@@ -69,7 +69,7 @@ const emit = defineEmits<{
 
 <style lang="scss" scoped>
 .schema-header-wrapper {
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing--2xs);
 }
 .schema-header {
 	display: flex;
@@ -77,8 +77,8 @@ const emit = defineEmits<{
 	cursor: pointer;
 }
 .toggle {
-	padding-left: var(--spacing-5xs);
-	padding-right: var(--spacing-3xs);
+	padding-left: var(--spacing--5xs);
+	padding-right: var(--spacing--3xs);
 	height: 30px;
 	display: flex;
 	justify-content: center;
@@ -96,11 +96,11 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 	border: 1px solid var(--color--foreground--tint-1);
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	background-color: var(--color--background--light-3);
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 
 .icon-trigger {
@@ -108,34 +108,34 @@ const emit = defineEmits<{
 }
 
 .title {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 }
 
 .info {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 
 .trigger-icon {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 	color: var(--color--primary);
 }
 
 .extra-info {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	margin-left: auto;
 	white-space: nowrap;
 }
 
 .notice {
-	margin-left: var(--spacing-2xl);
-	margin-top: var(--spacing-2xs);
-	padding-bottom: var(--spacing-2xs);
+	margin-left: var(--spacing--2xl);
+	margin-top: var(--spacing--2xs);
+	padding-bottom: var(--spacing--2xs);
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
 }
 </style>

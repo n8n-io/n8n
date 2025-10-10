@@ -12,9 +12,9 @@ import type {
 	WorkflowHistory,
 	WorkflowVersion,
 } from '@n8n/rest-api-client/api/workflowHistory';
-import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
-import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
-import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import WorkflowHistoryList from '../components/WorkflowHistoryList.vue';
+import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
+import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
@@ -394,8 +394,8 @@ watchEffect(async () => {
 	grid-area: header;
 	display: flex;
 	align-items: center;
-	padding: 0 var(--spacing-l);
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	padding: 0 var(--spacing--lg);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .corner {
@@ -403,10 +403,10 @@ watchEffect(async () => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 var(--spacing-3xs) 0 var(--spacing-s);
+	padding: 0 var(--spacing--3xs) 0 var(--spacing--sm);
 	background-color: var(--color--background--light-2er);
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color--foreground);
-	border-left: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .contentComponentWrapper {
@@ -425,7 +425,7 @@ watchEffect(async () => {
 		top: 0;
 		bottom: 0;
 		left: 0;
-		width: var(--border-width-base);
+		width: var(--border-width);
 		background-color: var(--color--foreground);
 	}
 }

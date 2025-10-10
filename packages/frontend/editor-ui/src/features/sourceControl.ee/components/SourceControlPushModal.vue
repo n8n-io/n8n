@@ -977,13 +977,13 @@ onMounted(async () => {
 }
 
 .filtersApplied {
-	border-top: var(--border-base);
+	border-top: var(--border);
 }
 
 .scroller {
 	max-height: 100%;
 	scrollbar-color: var(--color--foreground) transparent;
-	outline: var(--border-base);
+	outline: var(--border);
 
 	:global(.scrollerItem) {
 		&:last-child {
@@ -998,7 +998,7 @@ onMounted(async () => {
 	align-items: center;
 	padding: 10px 16px;
 	margin: 0;
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 
 	.listItemName {
 		line-clamp: 2;
@@ -1042,7 +1042,7 @@ onMounted(async () => {
 	}
 
 	:global(.el-dialog__header) {
-		padding-bottom: var(--spacing-xs);
+		padding-bottom: var(--spacing--xs);
 	}
 }
 
@@ -1051,13 +1051,13 @@ onMounted(async () => {
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
-	border: var(--border-base);
+	border: var(--border);
 	border-top-right-radius: 8px;
 	border-bottom-right-radius: 8px;
 }
 
 .tableHeader {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 	display: flex;
 	flex-direction: column;
 }
@@ -1067,8 +1067,8 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: 4px;
 	width: 165px;
-	padding: var(--spacing-2xs);
-	border: var(--border-base);
+	padding: var(--spacing--2xs);
+	border: var(--border);
 	border-right: 0;
 	border-top-left-radius: 8px;
 	border-bottom-left-radius: 8px;
@@ -1078,7 +1078,7 @@ onMounted(async () => {
 	color: var(--color--text);
 	background-color: transparent;
 	border: 1px solid transparent;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	cursor: pointer;
 	border-radius: 4px;
 	text-align: left;
