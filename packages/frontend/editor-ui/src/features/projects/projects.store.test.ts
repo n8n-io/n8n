@@ -12,7 +12,7 @@ vi.mock('vue-router', () => ({
 	useRoute: () => reactive({ params: {}, query: {}, path: '' }),
 }));
 
-vi.mock('@/api/projects.api', () => ({
+vi.mock('./projects.api', () => ({
 	updateProject: vi.fn(),
 	getProject: vi.fn(),
 	addProjectMembers: vi.fn(),
