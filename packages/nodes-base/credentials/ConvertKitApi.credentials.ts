@@ -6,6 +6,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { getUrl } from './common/http';
 
 export class ConvertKitApi implements ICredentialType {
 	name = 'convertKitApi';
@@ -27,8 +28,9 @@ export class ConvertKitApi implements ICredentialType {
 	];
 
 	async authenticate(credentials: ICredentialDataDecryptedObject, options: IHttpRequestOptions) {
+		const url = getUrl(options);
 		// it's a webhook so include the api secret on the body
-		if (options.url.includes('/automations/hooks')) {
+		if (url?.includes('/automations/hooks')) {
 			options.body = options.body || {};
 			if (typeof options.body === 'object') {
 				(options.body as IDataObject).api_secret = credentials.apiSecret as string;
@@ -44,7 +46,7 @@ export class ConvertKitApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			url: '=https://api.convertkit.com/v3/account',
+			url: 'https://api.convertkit.com/v3/account',
 		},
 	};
 }
