@@ -1,10 +1,10 @@
 <script lang="ts" setup>
+import SettingsSidebar from '@/components/SettingsSidebar.vue';
+import { VIEWS } from '@/constants';
+import { isRouteLocationRaw } from '@/utils/typeGuards';
 import { onMounted, ref } from 'vue';
 import type { HistoryState } from 'vue-router';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
-import SettingsSidebar from '@/components/SettingsSidebar.vue';
-import { isRouteLocationRaw } from '@/utils/typeGuards';
 
 const router = useRouter();
 
@@ -58,6 +58,7 @@ onMounted(() => {
 	height: 100%;
 	overflow: auto;
 	background-color: var(--color--background--light-2);
+	position: relative;
 }
 
 .content {
