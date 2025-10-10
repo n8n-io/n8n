@@ -14,8 +14,9 @@ const meta = {
 // Reserved vocabulary from proposal.md
 const PROPERTY_VOCABULARY = new Set([
 	'color',
-	'text-color',
-	'background',
+	'color-text',
+	'color-background',
+	'color-foreground',
 	'border-color',
 	'border-top-color',
 	'border-bottom-color',
@@ -28,6 +29,7 @@ const PROPERTY_VOCABULARY = new Set([
 	'radius',
 	'shadow',
 	'spacing',
+	'padding',
 	'font-size',
 	'font-weight',
 	'font-family',
@@ -224,8 +226,10 @@ function validateCssVariable(variable: string): ValidationResult {
 				FONT_WEIGHT_VALUES.has(valueGroup) ||
 				// Allow color shades like "primary-500", "shade-50", "tint-50"
 				/^[a-z]+-\d+$/.test(valueGroup) ||
-				// Allow descriptive names (4+ chars) - these are likely intentional semantic names
-				valueGroup.length >= 4;
+				// Allow descriptive names (3+ chars) - these are likely intentional semantic names
+				valueGroup.length >= 3 ||
+				// Support hsl css variables
+				['h', 's', 'l'].includes(valueGroup);
 
 			if (!isValidValue) {
 				return {
