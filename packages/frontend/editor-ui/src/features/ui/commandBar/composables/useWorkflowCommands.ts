@@ -25,11 +25,11 @@ import {
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useWorkflowActivate } from '../useWorkflowActivate';
-import type { CommandGroup, CommandBarItem } from './types';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/event-bus';
-import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',

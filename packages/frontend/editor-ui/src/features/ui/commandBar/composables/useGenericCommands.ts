@@ -6,7 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY, VIEWS, ABOUT_MODAL_KEY } from '@/constants';
 import { EXTERNAL_LINKS } from '@/constants/externalLinks';
 import { useBugReporting } from '@/composables/useBugReporting';
-import type { CommandGroup, CommandBarItem } from './types';
+import type { CommandGroup, CommandBarItem } from '../types';
 
 const ITEM_ID = {
 	WHATS_NEW: 'whats-new',

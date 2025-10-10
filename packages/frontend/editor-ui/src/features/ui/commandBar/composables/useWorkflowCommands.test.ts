@@ -19,7 +19,7 @@ vi.mock('@/composables/useCanvasOperations');
 vi.mock('@/composables/useWorkflowHelpers');
 vi.mock('@/composables/useTelemetry');
 vi.mock('@/composables/useWorkflowSaving');
-vi.mock('../useWorkflowActivate');
+vi.mock('@/composables/useWorkflowActivate');
 vi.mock('@/event-bus/canvas');
 vi.mock('@/event-bus');
 vi.mock('vue-router', () => ({
@@ -59,7 +59,7 @@ vi.mock('@/composables/useWorkflowSaving', () => ({
 }));
 
 const updateWorkflowActivationMock = vi.fn();
-vi.mock('../useWorkflowActivate', () => ({
+vi.mock('@/composables/useWorkflowActivate', () => ({
 	useWorkflowActivate: () => ({
 		updateWorkflowActivation: updateWorkflowActivationMock,
 	}),

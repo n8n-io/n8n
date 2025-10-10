@@ -22,7 +22,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useBuilderStore } from '@/features/assistant/builder.store';
 import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
-import { useCommandBar } from '@/composables/useCommandBar';
+import { useCommandBar } from '@/features/ui/commandBar/composables/useCommandBar';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 

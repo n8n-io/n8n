@@ -5,9 +5,9 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { CommandBarItem } from './types';
+import type { CommandBarItem } from '../types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	CREATE_PROJECT: 'create-project',

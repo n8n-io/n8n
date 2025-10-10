@@ -32,7 +32,7 @@ import { useRoute } from 'vue-router';
 import { useStyles } from './composables/useStyles';
 import { useExposeCssVar } from '@/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
-import { useCommandBar } from './composables/useCommandBar';
+import { useCommandBar } from '@/features/ui/commandBar/composables/useCommandBar';
 import { hasPermission } from './utils/rbac/permissions';
 
 const route = useRoute();

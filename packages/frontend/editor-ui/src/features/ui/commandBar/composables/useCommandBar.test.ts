@@ -61,35 +61,35 @@ const changeSpy = vi.fn();
 const navSpy = vi.fn();
 const nodeInitSpy = vi.fn();
 
-vi.mock('./commandBar/useNodeCommands', () => ({
+vi.mock('./useNodeCommands', () => ({
 	useNodeCommands: () =>
 		mkGroup('node', {
 			handlers: { onCommandBarChange: changeSpy, onCommandBarNavigateTo: navSpy },
 			initialize: nodeInitSpy,
 		}),
 }));
-vi.mock('./commandBar/useWorkflowCommands', () => ({
+vi.mock('./useWorkflowCommands', () => ({
 	useWorkflowCommands: () => mkGroup('wf', { loading: true }),
 }));
-vi.mock('./commandBar/useWorkflowNavigationCommands', () => ({
+vi.mock('./useWorkflowNavigationCommands', () => ({
 	useWorkflowNavigationCommands: () => mkGroup('wfn'),
 }));
-vi.mock('./commandBar/useDataTableNavigationCommands', () => ({
+vi.mock('./useDataTableNavigationCommands', () => ({
 	useDataTableNavigationCommands: () => mkGroup('dt'),
 }));
-vi.mock('./commandBar/useCredentialNavigationCommands', () => ({
+vi.mock('./useCredentialNavigationCommands', () => ({
 	useCredentialNavigationCommands: () => mkGroup('cred'),
 }));
-vi.mock('./commandBar/useExecutionNavigationCommands', () => ({
+vi.mock('./useExecutionNavigationCommands', () => ({
 	useExecutionNavigationCommands: () => mkGroup('execnav'),
 }));
-vi.mock('./commandBar/useProjectNavigationCommands', () => ({
+vi.mock('./useProjectNavigationCommands', () => ({
 	useProjectNavigationCommands: () => mkGroup('proj'),
 }));
-vi.mock('./commandBar/useExecutionCommands', () => ({
+vi.mock('./useExecutionCommands', () => ({
 	useExecutionCommands: () => mkGroup('execcmd'),
 }));
-vi.mock('./commandBar/useGenericCommands', () => ({
+vi.mock('./useGenericCommands', () => ({
 	useGenericCommands: () => mkGroup('gen'),
 }));
 

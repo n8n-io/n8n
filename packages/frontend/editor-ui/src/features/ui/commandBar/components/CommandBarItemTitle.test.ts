@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 
 vi.mock('@/components/Projects/ProjectIcon.vue', () => ({
 	default: {

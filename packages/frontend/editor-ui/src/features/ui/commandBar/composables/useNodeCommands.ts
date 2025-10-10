@@ -7,12 +7,12 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { canvasEventBus } from '@/event-bus/canvas';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
-import type { CommandGroup } from './types';
+import type { CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/components/NodeIcon.vue';
-import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',

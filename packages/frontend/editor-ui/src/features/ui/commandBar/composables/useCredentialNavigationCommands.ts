@@ -7,11 +7,11 @@ import type { ICredentialsResponse } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { CommandBarItem } from './types';
+import type { CommandBarItem } from '../types';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {

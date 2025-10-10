@@ -5,11 +5,11 @@ import debounce from 'lodash/debounce';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
-import type { CommandBarItem } from './types';
+import type { CommandBarItem } from '../types';
 import type { DataTable } from '@/features/dataTable/dataTable.types';
 import { N8nIcon } from '@n8n/design-system';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {

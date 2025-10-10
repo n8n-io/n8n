@@ -12,7 +12,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { executionRetryMessage } from '@/utils/executionUtils';
 import type { ExecutionSummary, AnnotationVote } from 'n8n-workflow';
-import type { CommandGroup, CommandBarItem } from './types';
+import type { CommandGroup, CommandBarItem } from '../types';
 
 const ITEM_ID = {
 	DELETE_EXECUTION: 'delete-execution',

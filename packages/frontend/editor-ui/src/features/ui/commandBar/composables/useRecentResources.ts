@@ -1,6 +1,6 @@
 import { computed, type Component } from 'vue';
 import type { RouteLocationNormalized } from 'vue-router';
-import type { CommandBarItem } from './types';
+import type { CommandBarItem } from '../types';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
