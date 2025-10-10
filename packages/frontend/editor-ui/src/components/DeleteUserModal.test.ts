@@ -3,7 +3,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import DeleteUserModal from './DeleteUserModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { getDropdownItems } from '@/__tests__/utils';
-import { createProjectListItem } from '@/__tests__/data/projects';
+import { createProjectListItem } from '@/features/projects/__tests__/utils';
 import { DELETE_USER_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { ProjectTypes } from '@/features/projects/projects.types';

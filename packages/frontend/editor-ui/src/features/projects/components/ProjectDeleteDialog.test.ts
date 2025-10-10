@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectDeleteDialog from './ProjectDeleteDialog.vue';
-import { createTestProject } from '@/__tests__/data/projects';
+import { createTestProject } from '../__tests__/utils';
 
 const renderComponent = createComponentRenderer(ProjectDeleteDialog, {
 	pinia: createTestingPinia(),

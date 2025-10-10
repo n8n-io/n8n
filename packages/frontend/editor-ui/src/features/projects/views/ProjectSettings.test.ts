@@ -15,7 +15,7 @@ import { useProjectsStore } from '../projects.store';
 import { VIEWS } from '@/constants';
 import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
-import { createProjectListItem } from '@/__tests__/data/projects';
+import { createProjectListItem } from '../__tests__/utils';
 import { createUser } from '@/__tests__/data/users';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -64,7 +64,7 @@ vi.mock('vue-router', async () => {
 });
 
 // Stub child components to simplify event-driven testing
-vi.mock('./ProjectMembersTable.vue', () => ({
+vi.mock('../components/ProjectMembersTable.vue', () => ({
 	default: defineComponent({
 		name: 'ProjectMembersTableStub',
 		props: {

@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestProject } from '@/__tests__/data/projects';
+import { createTestProject } from '@/features/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import CredentialsView from '@/views/CredentialsView.vue';

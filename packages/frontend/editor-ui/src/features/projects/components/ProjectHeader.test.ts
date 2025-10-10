@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { createTestProject } from '@/__tests__/data/projects';
+import { createTestProject } from '../__tests__/utils';
 import * as router from 'vue-router';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import ProjectHeader from './ProjectHeader.vue';

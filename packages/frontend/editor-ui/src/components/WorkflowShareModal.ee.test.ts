@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { useRouter } from 'vue-router';
 import type { FrontendSettings } from '@n8n/api-types';
-import { createProjectListItem } from '@/__tests__/data/projects';
+import { createProjectListItem } from '@/features/projects/__tests__/utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';

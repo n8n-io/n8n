@@ -2,7 +2,7 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { createProjectListItem } from '@/__tests__/data/projects';
+import { createProjectListItem } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@/stores/settings.store';

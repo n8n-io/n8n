@@ -21,7 +21,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
-vi.mock('@/api/projects.api');
+vi.mock('@/features/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
 vi.mock('@/features/sourceControl.ee/sourceControl.api');
 vi.mock('@/composables/useGlobalEntityCreation', () => ({

@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
-import { createProjectListItem } from '@/__tests__/data/projects';
+import { createProjectListItem } from '../__tests__/utils';
 import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';

@@ -3,7 +3,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor, screen, within } from '@testing-library/vue';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
+import {
+	createProjectListItem,
+	createProjectSharingData,
+} from '@/features/projects/__tests__/utils';
 import {
 	getDropdownItems,
 	getSelectedDropdownValue,

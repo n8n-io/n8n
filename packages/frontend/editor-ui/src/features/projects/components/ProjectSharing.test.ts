@@ -2,7 +2,7 @@ import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
-import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
+import { createProjectListItem, createProjectSharingData } from '../__tests__/utils';
 import ProjectSharing from './ProjectSharing.vue';
 import type { AllRolesMap } from '@n8n/permissions';
 
