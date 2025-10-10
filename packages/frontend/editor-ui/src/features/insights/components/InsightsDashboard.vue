@@ -238,7 +238,7 @@ onBeforeMount(async () => {
 .insightsContainer {
 	width: 100%;
 	max-width: var(--content-container-width);
-	padding: var(--spacing-l) var(--spacing-2xl);
+	padding: var(--spacing--lg) var(--spacing--2xl);
 	margin: 0 auto;
 }
 
@@ -252,8 +252,8 @@ onBeforeMount(async () => {
 }
 
 .insightsContent {
-	padding: var(--spacing-l) 0;
-	border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	padding: var(--spacing--lg) 0;
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-top: 0;
 	border-bottom-left-radius: 6px;
 	border-bottom-right-radius: 6px;
@@ -268,13 +268,13 @@ onBeforeMount(async () => {
 .insightsChartWrapper {
 	position: relative;
 	height: 292px;
-	padding: 0 var(--spacing-l);
+	padding: 0 var(--spacing--lg);
 	z-index: 1;
 }
 
 .insightsTableWrapper {
 	position: relative;
-	padding: var(--spacing-l) var(--spacing-l) 0;
+	padding: var(--spacing--lg) var(--spacing--lg) 0;
 	z-index: 1;
 }
 

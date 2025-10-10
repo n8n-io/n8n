@@ -164,8 +164,8 @@ const handleIgnoreClick = (actionId: string) => {
 .popoverContent {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
-	padding: var(--spacing-m) var(--spacing-s);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--md) var(--spacing--sm);
 }
 
 .actionItem {
@@ -174,7 +174,7 @@ const handleIgnoreClick = (actionId: string) => {
 	transition:
 		opacity 0.3s ease,
 		filter 0.3s ease;
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 
 	&.ignoring {
 		opacity: 0.5;
@@ -204,15 +204,15 @@ const handleIgnoreClick = (actionId: string) => {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 
 .checkboxContainer {
 	padding-top: 1px;
-	padding-right: var(--spacing-xs);
+	padding-right: var(--spacing--xs);
 }
 
 .ignoreAllContainer {
-	padding-left: var(--spacing-5xs);
+	padding-left: var(--spacing--5xs);
 }
 </style>

@@ -15,8 +15,8 @@ import { DUPLICATE_MODAL_KEY, EXECUTE_WORKFLOW_NODE_TYPE, VIEWS } from '@/consta
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useWorkflowActivate } from '../useWorkflowActivate';
-import type { CommandGroup, CommandBarItem } from './types';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import type { CommandGroup, CommandBarItem } from '../commandBar.types';
 import uniqBy from 'lodash/uniqBy';
 
 export function useWorkflowCommands(): CommandGroup {

@@ -165,8 +165,8 @@ defineExpose({
 
 	& hr {
 		border-top: none;
-		border-bottom: var(--border-base);
-		margin-block: var(--spacing-4xs);
+		border-bottom: var(--border);
+		margin-block: var(--spacing--4xs);
 	}
 }
 
@@ -197,7 +197,7 @@ defineExpose({
 
 	:global(.el-menu--popup) {
 		border: 1px solid var(--color--foreground);
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item.is-disabled) {
@@ -212,7 +212,7 @@ defineExpose({
 }
 
 .submenu__icon {
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 	color: var(--color--text);
 }
 </style>

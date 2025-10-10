@@ -43,27 +43,27 @@ const { t } = useI18n();
 .error {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	border: 1px solid var(--color--foreground);
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	background-color: var(--color--background--light-3);
 }
 
 .errorIcon {
-	margin-right: var(--spacing-5xs);
+	margin-right: var(--spacing--5xs);
 	color: var(--color--danger);
 }
 
 .errorText {
 	color: var(--color--danger);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	line-height: var(--font-line-height-tight);
 	word-break: break-word;
 	flex-grow: 1;
 }
 
 .retryButton {
-	margin-top: var(--spacing-3xs);
+	margin-top: var(--spacing--3xs);
 }
 </style>

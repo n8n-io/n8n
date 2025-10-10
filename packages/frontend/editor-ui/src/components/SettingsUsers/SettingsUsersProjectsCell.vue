@@ -61,11 +61,11 @@ const projects = computed(() => ({
 
 .comma {
 	flex-shrink: 0;
-	padding: 0 var(--spacing-5xs);
+	padding: 0 var(--spacing--5xs);
 }
 
 .projectList {
-	padding: 0 var(--spacing-s);
+	padding: 0 var(--spacing--sm);
 
 	li {
 		list-style: disc outside;

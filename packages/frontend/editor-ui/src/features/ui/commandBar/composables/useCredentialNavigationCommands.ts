@@ -7,7 +7,7 @@ import type { ICredentialsResponse } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { CommandGroup, CommandBarItem } from './types';
+import type { CommandGroup, CommandBarItem } from '../commandBar.types';
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',

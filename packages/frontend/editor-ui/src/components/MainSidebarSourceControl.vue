@@ -149,17 +149,17 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--lg);
 	background: var(--color--background--light-2);
-	border-top: var(--border-width-base) var(--border-style-base) var(--color--foreground);
-	font-size: var(--font-size-2xs);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	font-size: var(--font-size--2xs);
 
 	&.isConnected {
-		padding-left: var(--spacing-m);
-		border-left: var(--spacing-3xs) var(--border-style-base) var(--color--foreground);
+		padding-left: var(--spacing--md);
+		border-left: var(--spacing--3xs) var(--border-style) var(--color--foreground);
 
 		&.collapsed {
-			padding-left: var(--spacing-xs);
+			padding-left: var(--spacing--xs);
 		}
 	}
 
@@ -168,7 +168,7 @@ function pullWorkfolder() {
 	}
 
 	button {
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size--3xs);
 	}
 }
 
@@ -179,8 +179,8 @@ function pullWorkfolder() {
 
 .collapsed {
 	text-align: center;
-	padding-left: var(--spacing-s);
-	padding-right: var(--spacing-s);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--sm);
 
 	.connected {
 		> span {

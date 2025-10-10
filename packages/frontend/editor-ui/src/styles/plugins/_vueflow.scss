@@ -9,30 +9,30 @@
 	z-index: 1;
 
 	&.top {
-		height: var(--spacing-s);
-		border-top-width: var(--spacing-s);
+		height: var(--spacing--sm);
+		border-top-width: var(--spacing--sm);
 	}
 
 	&.right {
-		width: var(--spacing-s);
-		border-right-width: var(--spacing-s);
+		width: var(--spacing--sm);
+		border-right-width: var(--spacing--sm);
 	}
 
 	&.bottom {
-		height: var(--spacing-s);
-		border-bottom-width: var(--spacing-s);
+		height: var(--spacing--sm);
+		border-bottom-width: var(--spacing--sm);
 	}
 
 	&.left {
-		width: var(--spacing-s);
-		border-left-width: var(--spacing-s);
+		width: var(--spacing--sm);
+		border-left-width: var(--spacing--sm);
 	}
 }
 
 .vue-flow__resize-control.handle {
 	background-color: transparent;
-	width: var(--spacing-s);
-	height: var(--spacing-s);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	border: 0;
 	border-radius: 0;
 	z-index: 1;
@@ -45,9 +45,9 @@
 .vue-flow__minimap {
 	height: 120px;
 	overflow: hidden;
-	margin-bottom: calc(48px + 2 * var(--spacing-xs));
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
+	margin-bottom: calc(48px + 2 * var(--spacing--xs));
+	border: var(--border);
+	border-radius: var(--radius);
 	background: var(--color--background--light-2);
 
 	.minimap-node-default {
@@ -98,9 +98,9 @@
 
 .vue-flow__nodesselection-rect {
 	box-sizing: content-box;
-	margin-top: calc(-1 * var(--spacing-2xs));
-	margin-left: calc(-1 * var(--spacing-2xs));
-	padding: var(--spacing-2xs);
+	margin-top: calc(-1 * var(--spacing--2xs));
+	margin-left: calc(-1 * var(--spacing--2xs));
+	padding: var(--spacing--2xs);
 }
 
 /**
@@ -117,14 +117,14 @@
  */
 
 .vue-flow__controls {
-	margin: var(--spacing-s);
+	margin: var(--spacing--sm);
 
 	@include mixins.breakpoint('xs-only') {
-		max-width: calc(100% - 3 * var(--spacing-s) - var(--spacing-2xs));
+		max-width: calc(100% - 3 * var(--spacing--sm) - var(--spacing--2xs));
 		overflow: auto;
 		margin-left: 0;
 		margin-right: 0;
-		padding-left: var(--spacing-s);
-		padding-right: var(--spacing-s);
+		padding-left: var(--spacing--sm);
+		padding-right: var(--spacing--sm);
 	}
 }
