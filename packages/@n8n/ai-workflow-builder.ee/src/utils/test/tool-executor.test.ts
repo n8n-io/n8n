@@ -50,6 +50,7 @@ describe('tool-executor', () => {
 			workflowContext: {},
 			previousSummary: 'EMPTY',
 			next: '',
+			currentAgent: '',
 		});
 
 		// Helper to create mock tool

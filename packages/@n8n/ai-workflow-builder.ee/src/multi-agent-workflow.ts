@@ -14,6 +14,14 @@ import {
 } from './agents';
 import { processOperations } from './utils/operations-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
+import { prepareMessagesWithContext } from './utils/workflow-context-builder';
+import {
+	filterMessagesForSupervisor,
+	filterMessagesForDiscovery,
+	filterMessagesForBuilder,
+	filterMessagesForConfigurator,
+	filterMessagesForResponder,
+} from './utils/message-filter';
 import { WorkflowState } from './workflow-state';
 
 export interface MultiAgentWorkflowConfig {
@@ -73,11 +81,32 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 * Decides which specialist agent should work next
 	 */
 	const callSupervisor = async (state: typeof WorkflowState.State) => {
+		logger?.debug('[Supervisor] Called', {
+			messageCount: state.messages.length,
+			currentAgent: state.currentAgent,
+		});
+
 		const supervisor = supervisorAgent.getAgent();
 
-		// Invoke supervisor with current state
+		// Filter messages to remove tool execution details
+		const filteredMessages = filterMessagesForSupervisor(state.messages);
+
+		logger?.debug('[Supervisor] Filtered messages', {
+			originalCount: state.messages.length,
+			filteredCount: filteredMessages.length,
+		});
+
+		// Prepare messages with trimmed workflow context and cache control
+		const messagesWithContext = prepareMessagesWithContext(filteredMessages, state);
+
+		logger?.debug('[Supervisor] About to invoke with context', {
+			messageCount: messagesWithContext.length,
+			lastMessageType: messagesWithContext[messagesWithContext.length - 1]?.constructor.name,
+		});
+
+		// Invoke supervisor with filtered context
 		const routing = (await supervisor.invoke({
-			messages: state.messages,
+			messages: messagesWithContext,
 		})) as SupervisorRouting;
 
 		logger?.debug('Supervisor routing decision', routing);
@@ -104,8 +133,12 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 */
 	const callResponder = async (state: typeof WorkflowState.State) => {
 		const agent = responderAgent.getAgent();
+
+		// Filter messages for conversational context only
+		const filteredMessages = filterMessagesForResponder(state.messages);
+
 		const response = await agent.invoke({
-			messages: state.messages,
+			messages: filteredMessages,
 		});
 
 		return { messages: [response] };
@@ -116,12 +149,39 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 * Searches for and analyzes nodes
 	 */
 	const callDiscovery = async (state: typeof WorkflowState.State) => {
-		const agent = discoveryAgent.getAgent();
-		const response = await agent.invoke({
-			messages: state.messages,
+		logger?.debug('[Discovery] Called', {
+			messageCount: state.messages.length,
+			currentAgent: state.currentAgent,
+			isReturningAfterTools: state.currentAgent === 'discovery',
 		});
 
-		return { messages: [response] };
+		const agent = discoveryAgent.getAgent();
+
+		// Only filter if this is a NEW call from supervisor
+		// If returning after tool execution, use full history to preserve tool call/result pairs
+		const messagesToUse =
+			state.currentAgent === 'discovery'
+				? state.messages // Already executing, don't filter (preserve tool pairs)
+				: filterMessagesForDiscovery(state.messages); // New call, filter to prevent contamination
+
+		logger?.debug('[Discovery] Message strategy', {
+			originalCount: state.messages.length,
+			finalCount: messagesToUse.length,
+			filtered: state.currentAgent !== 'discovery',
+		});
+
+		const response = await agent.invoke({
+			messages: messagesToUse,
+		});
+
+		logger?.debug('[Discovery] Response received', {
+			hasToolCalls: response.tool_calls?.length ?? 0,
+			hasContent: !!response.content,
+			content: typeof response.content === 'string' ? response.content.substring(0, 100) : '',
+		});
+
+		// Mark this agent as currently executing (for tool result routing)
+		return { messages: [response], currentAgent: 'discovery' };
 	};
 
 	/**
@@ -130,11 +190,23 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 */
 	const callBuilder = async (state: typeof WorkflowState.State) => {
 		const agent = builderAgent.getAgent();
+
+		// Only filter if this is a NEW call from supervisor
+		// If returning after tool execution, use full history to preserve tool call/result pairs
+		const messagesToUse =
+			state.currentAgent === 'builder'
+				? state.messages // Already executing, don't filter
+				: filterMessagesForBuilder(state.messages); // New call, filter
+
+		// Prepare messages with workflow structure context and cache control
+		const messagesWithContext = prepareMessagesWithContext(messagesToUse, state);
+
 		const response = await agent.invoke({
-			messages: state.messages,
+			messages: messagesWithContext,
 		});
 
-		return { messages: [response] };
+		// Mark this agent as currently executing (for tool result routing)
+		return { messages: [response], currentAgent: 'builder' };
 	};
 
 	/**
@@ -142,13 +214,53 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 * Sets node parameters
 	 */
 	const callConfigurator = async (state: typeof WorkflowState.State) => {
+		console.log('[Configurator] Called', {
+			messageCount: state.messages.length,
+			currentAgent: state.currentAgent,
+			isReturning: state.currentAgent === 'configurator',
+			nodeCount: state.workflowJSON.nodes.length,
+			nodeNames: state.workflowJSON.nodes.map((n) => n.name),
+		});
+
 		const agent = configuratorAgent.getAgent();
+
+		// Only filter if this is a NEW call from supervisor
+		// If returning after tool execution, use full history to preserve tool call/result pairs
+		const messagesToUse =
+			state.currentAgent === 'configurator'
+				? state.messages // Already executing, don't filter
+				: filterMessagesForConfigurator(state.messages); // New call, filter
+
+		console.log('[Configurator] Message filtering', {
+			originalCount: state.messages.length,
+			filteredCount: messagesToUse.length,
+			filtered: state.currentAgent !== 'configurator',
+		});
+
+		// Prepare messages with FULL workflow context and cache control
+		const messagesWithContext = prepareMessagesWithContext(messagesToUse, state);
+
+		console.log('[Configurator] Context prepared', {
+			messageCount: messagesWithContext.length,
+			lastMessageHasWorkflowContext: messagesWithContext[messagesWithContext.length - 1]?.content
+				?.toString()
+				.includes('<current_workflow_json>'),
+		});
+
 		const response = await agent.invoke({
-			messages: state.messages,
+			messages: messagesWithContext,
 			instanceUrl: instanceUrl ?? '',
 		});
 
-		return { messages: [response] };
+		console.log('[Configurator] Response received', {
+			hasToolCalls: response.tool_calls?.length ?? 0,
+			hasContent: !!response.content,
+			contentPreview:
+				typeof response.content === 'string' ? response.content.substring(0, 150) : '[array]',
+		});
+
+		// Mark this agent as currently executing (for tool result routing)
+		return { messages: [response], currentAgent: 'configurator' };
 	};
 
 	/**
@@ -164,15 +276,43 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 	 */
 	const shouldExecuteTools = (state: typeof WorkflowState.State) => {
 		const lastMessage = state.messages[state.messages.length - 1];
-		if (
+		const hasToolCalls =
 			lastMessage &&
 			'tool_calls' in lastMessage &&
 			Array.isArray(lastMessage.tool_calls) &&
-			lastMessage.tool_calls.length > 0
-		) {
-			return 'tools';
-		}
-		return 'supervisor';
+			lastMessage.tool_calls.length > 0;
+
+		const decision = hasToolCalls ? 'tools' : 'supervisor';
+
+		logger?.debug('[shouldExecuteTools] Decision', {
+			currentAgent: state.currentAgent,
+			decision,
+			hasToolCalls,
+			lastMessageType: lastMessage?.constructor.name,
+		});
+
+		return decision;
+	};
+
+	/**
+	 * Route after process_operations: back to the agent that called tools, or supervisor
+	 */
+	const routeAfterOperations = (state: typeof WorkflowState.State) => {
+		// Return to the agent that called the tools so it can see results and respond
+		const currentAgent = state.currentAgent;
+
+		let destination = 'supervisor';
+		if (currentAgent === 'discovery') destination = 'discovery';
+		if (currentAgent === 'builder') destination = 'builder';
+		if (currentAgent === 'configurator') destination = 'configurator';
+
+		logger?.debug('[routeAfterOperations] Routing', {
+			currentAgent,
+			destination,
+			nodeCount: state.workflowJSON.nodes.length,
+		});
+
+		return destination;
 	};
 
 	/**
@@ -182,12 +322,20 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		// Get routing decision from state
 		const next = state.next as string | undefined;
 
+		let destination = next ?? 'discovery';
 		if (next === 'FINISH') {
-			return 'responder';
+			destination = 'responder';
 		}
 
-		// Route to appropriate agent
-		return next ?? 'discovery'; // Default to discovery if unclear
+		logger?.debug('[routeFromSupervisor] Routing', {
+			supervisorDecision: next,
+			destination,
+			currentAgent: state.currentAgent,
+			nodeCount: state.workflowJSON.nodes.length,
+			lastMessageType: state.messages[state.messages.length - 1]?.constructor.name,
+		});
+
+		return destination;
 	};
 
 	// Build the graph
@@ -221,9 +369,14 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		.addConditionalEdges('builder', shouldExecuteTools)
 		.addConditionalEdges('configurator', shouldExecuteTools)
 
-		// Flow: Tools → Process Operations → Supervisor
+		// Flow: Tools → Process Operations → Back to agent (to see results) or Supervisor
 		.addEdge('tools', 'process_operations')
-		.addEdge('process_operations', 'supervisor');
+		.addConditionalEdges('process_operations', routeAfterOperations, {
+			discovery: 'discovery',
+			builder: 'builder',
+			configurator: 'configurator',
+			supervisor: 'supervisor',
+		});
 
 	return workflow;
 }

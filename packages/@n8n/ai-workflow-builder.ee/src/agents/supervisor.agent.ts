@@ -75,13 +75,23 @@ CRITICAL RULES:
 
 CONTEXT YOU HAVE:
 - User's request and conversation history
-- Current workflow state (node count and structure)
-- Outputs from previous agents
+- Current workflow state (node count, structure, connections)
+- Outputs from previous agents (their final conclusions only)
+
+CRITICAL DETECTION RULES:
+- If workflow has NO nodes AND no agent has responded yet → discovery
+- If the last agent response says it found/discovered nodes → builder
+- If workflow has nodes but NO connections → builder
+- If workflow has nodes AND connections but last agent was builder → configurator
+- If the last agent was configurator AND provided setup/completion → FINISH
+- If user asks conversational question → responder
+
+NEVER route to the same agent twice in a row unless it explicitly failed or requested retry.
 
 YOUR RESPONSE:
 Provide:
-- reasoning: Brief explanation of why you chose this agent
-- next: The agent to call next ("discovery" | "builder" | "configurator" | "FINISH")
+- reasoning: Brief explanation of why you chose this agent (reference workflow state and last agent)
+- next: The agent to call next ("responder" | "discovery" | "builder" | "configurator" | "FINISH")
 - instructions: Specific guidance for the next agent (optional)`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([

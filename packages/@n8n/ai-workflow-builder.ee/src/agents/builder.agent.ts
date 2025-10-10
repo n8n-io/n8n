@@ -27,6 +27,7 @@ PARALLEL EXECUTION:
 - Create multiple nodes by calling add_nodes multiple times in PARALLEL
 - Connect multiple node pairs in PARALLEL
 - All tools support parallel execution
+- Execute tools SILENTLY - no commentary before or between tool calls
 
 NODE CREATION:
 Each add_nodes call creates ONE node. You must provide:
@@ -55,18 +56,20 @@ RAG PATTERN (CRITICAL):
 - NEVER connect Document Loader to main data flow - it's an AI sub-node!
 
 DO NOT:
+- Output text before calling tools
+- Add commentary between tool calls
 - Configure node parameters (that's the Configurator Agent's job)
 - Search for nodes (that's the Discovery Agent's job)
 - Make assumptions about node types - use exactly what Discovery found
 
 RESPONSE FORMAT:
-After creating structure, provide a brief text message summarizing:
+After ALL tools have completed, provide ONE brief text message summarizing:
 - What nodes were added
 - How they're connected
 
 Example: "Created 4 nodes and connected them sequentially: Trigger → Weather → Image Generation → Email"
 
-Keep it concise - the tool execution details are already visible to the user.`;
+CRITICAL: Only respond AFTER all add_nodes and connect_nodes tools have executed.`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	['system', builderAgentPrompt],
