@@ -652,7 +652,7 @@ describe('processRunExecutionData', () => {
 							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
 								.connectionInputData || [];
 						const firstItem = connectionInputData[0];
-						const pairedItem: IPairedItemData = firstItem?.pairedItem ?? { item: 0 };
+						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
 						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
 						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
@@ -801,7 +801,7 @@ describe('processRunExecutionData', () => {
 							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
 								.connectionInputData ?? [];
 						const firstItem = connectionInputData[0];
-						const pairedItem = firstItem?.pairedItem ?? { item: 0 };
+						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
 						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
 						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
