@@ -85,4 +85,10 @@ export const WorkflowState = Annotation.Root({
 		reducer: (x, y) => y ?? x, // Overwrite with the latest summary
 		default: () => 'EMPTY',
 	}),
+
+	// Multi-agent routing: next agent to call
+	next: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
 });
