@@ -5,6 +5,7 @@ type NodeMap = {
 	file: 'upload' | 'deleteFile' | 'list';
 	image: 'generate' | 'analyze';
 	text: 'message' | 'classify';
+	conversation: 'create' | 'get' | 'update' | 'remove';
 };
 
 export type OpenAiType = AllEntities<NodeMap>;

@@ -44,9 +44,11 @@ export type ChatResponseRequest = Omit<
 	'input'
 > & {
 	max_tool_calls?: number;
-	conversation?: {
-		id: string;
-	};
+	conversation?:
+		| string
+		| {
+				id: string;
+		  };
 	input: ResponseInputItem[];
 	top_logprobs?: number;
 	tools?: ChatTool[];

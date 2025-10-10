@@ -6,11 +6,12 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { configureNodeInputs } from '../helpers/description';
 import { listSearch, loadOptions } from '../methods';
 import { router } from './actions/router';
-import { configureNodeInputs } from '../helpers/description';
 
 import * as audio from './actions/audio';
+import * as conversation from './actions/conversation';
 import * as file from './actions/file';
 import * as image from './actions/image';
 import * as text from './actions/text';
@@ -57,6 +58,10 @@ export class OpenAiV2 implements INodeType {
 							name: 'File',
 							value: 'file',
 						},
+						{
+							name: 'Conversation',
+							value: 'conversation',
+						},
 					],
 					default: 'text',
 				},
@@ -64,6 +69,7 @@ export class OpenAiV2 implements INodeType {
 				...file.description,
 				...image.description,
 				...text.description,
+				...conversation.description,
 			],
 		};
 	}

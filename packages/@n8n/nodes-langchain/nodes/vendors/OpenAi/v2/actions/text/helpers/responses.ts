@@ -22,15 +22,18 @@ const removeEmptyProperties = <T>(rest: { [key: string]: any }): T => {
 		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {}) as unknown as T;
 };
 
-async function formatInput(this: IExecuteFunctions, i: number, messages: IDataObject[]) {
+export async function formatInputMessages(
+	this: IExecuteFunctions,
+	i: number,
+	messages: IDataObject[],
+) {
 	return await Promise.all(
 		messages.map<Promise<ChatInputItem>>(async (message) => {
 			const role = message.role as ChatInputItem['role'];
 			let content: ChatContent = [];
-			if (message.type === 'text') {
+			if (message.type === 'text' || !message.type) {
 				content = [{ type: 'input_text', text: message.content as string }];
-			}
-			if (message.type === 'image') {
+			} else if (message.type === 'image') {
 				const detail = (message.imageDetail as ResponseInputImage['detail']) || ('auto' as const);
 
 				if (message.imageType === 'base64') {
@@ -56,8 +59,7 @@ async function formatInput(this: IExecuteFunctions, i: number, messages: IDataOb
 						},
 					];
 				}
-			}
-			if (message.type === 'file') {
+			} else if (message.type === 'file') {
 				content = [
 					{
 						type: 'input_file',
@@ -88,7 +90,7 @@ export async function createRequest(
 ): Promise<ChatResponseRequest> {
 	const body: ChatResponseRequest = {
 		model,
-		input: await formatInput.call(this, i, messages),
+		input: await formatInputMessages.call(this, i, messages),
 		parallel_tool_calls: get(options, 'parallelToolCalls', true) as boolean,
 		store: get(options, 'store', true) as boolean,
 		instructions: options.instructions as string,
@@ -109,9 +111,7 @@ export async function createRequest(
 	}
 
 	if (options.conversationId) {
-		body.conversation = {
-			id: options.conversationId as string,
-		};
+		body.conversation = options.conversationId as string;
 	}
 
 	if (Array.isArray(options.include) && options.include?.length) {

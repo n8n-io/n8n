@@ -11,6 +11,7 @@ import * as image from './image';
 import type { OpenAiType } from './node.type';
 import * as text from './text';
 import { getCustomErrorMessage } from '../../helpers/error-handling';
+import * as conversation from './conversation';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
@@ -37,6 +38,9 @@ export async function router(this: IExecuteFunctions) {
 			break;
 		case 'text':
 			execute = text[openAiTypeData.operation].execute;
+			break;
+		case 'conversation':
+			execute = conversation[openAiTypeData.operation].execute;
 			break;
 		default:
 			throw new NodeOperationError(
