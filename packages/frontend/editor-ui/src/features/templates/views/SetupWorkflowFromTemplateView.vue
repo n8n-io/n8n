@@ -170,25 +170,25 @@ onMounted(async () => {
 }
 
 .notice {
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 }
 
 .appCredentialsContainer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xl);
+	gap: var(--spacing--2xl);
 }
 
 .appCredential:not(:last-of-type) {
-	padding-bottom: var(--spacing-2xl);
-	border-bottom: 1px solid var(--color-foreground-light);
+	padding-bottom: var(--spacing--2xl);
+	border-bottom: 1px solid var(--color--foreground--tint-1);
 }
 
 .actions {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-top: var(--spacing-3xl);
-	margin-bottom: var(--spacing-3xl);
+	margin-top: var(--spacing--3xl);
+	margin-bottom: var(--spacing--3xl);
 }
 </style>

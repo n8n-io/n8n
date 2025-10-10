@@ -228,13 +228,13 @@ const handleDragEnd = () => {
 
 <style lang="scss" module>
 .header {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-xs);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	margin-bottom: var(--spacing--xs);
 }
 
 .grip {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	cursor: move;
 
 	&.hidden {
@@ -243,18 +243,18 @@ const handleDragEnd = () => {
 }
 
 .contentContainer {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 }
 
 .column {
 	display: flex;
 	gap: 12px;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: 6px 0;
 	align-items: center;
 
 	label {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size--xs);
 		flex-grow: 1;
 	}
 }
@@ -295,10 +295,10 @@ const handleDragEnd = () => {
 }
 
 .hidden {
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 
 	label {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 

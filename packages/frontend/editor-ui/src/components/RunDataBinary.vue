@@ -129,56 +129,56 @@ async function downloadBinaryData(index: number, key: string | number) {
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding: 0 var(--ndv-spacing) var(--spacing-3xl) var(--ndv-spacing);
+	padding: 0 var(--ndv-spacing) var(--spacing--3xl) var(--ndv-spacing);
 	right: 0;
 	overflow-y: auto;
-	line-height: var(--font-line-height-xloose);
+	line-height: var(--line-height--xl);
 	word-break: normal;
 	height: 100%;
 }
 
 .binaryIndex {
 	display: block;
-	padding: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
+	padding: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
 
 	> * {
 		display: inline-block;
 		width: 30px;
 		height: 30px;
 		line-height: 30px;
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 		text-align: center;
-		background-color: var(--color-foreground-xdark);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text-xlight);
+		background-color: var(--color--foreground--shade-2);
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text--tint-3);
 	}
 }
 
 .binaryRow {
 	display: inline-flex;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .binaryCell {
 	display: inline-block;
 	width: 300px;
 	overflow: hidden;
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 	margin-right: var(--ndv-spacing);
 	margin-bottom: var(--ndv-spacing);
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
+	border-radius: var(--radius);
+	border: var(--border);
 	padding: var(--ndv-spacing);
 }
 
 .binaryHeader {
 	color: $color-primary;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	font-size: 1.2em;
-	padding-bottom: var(--spacing-2xs);
-	margin-bottom: var(--spacing-2xs);
-	border-bottom: 1px solid var(--color-text-light);
+	padding-bottom: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
+	border-bottom: 1px solid var(--color--text--tint-1);
 }
 
 .binaryButtonContainer {
@@ -189,7 +189,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 
 	> * {
 		flex-grow: 0;
-		margin-right: var(--spacing-3xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 

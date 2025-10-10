@@ -15,17 +15,17 @@ withDefaults(defineProps<{ text: string; size?: 'small' | 'medium' | 'large' | '
 	-webkit-background-clip: text;
 	background-clip: text;
 	-webkit-text-fill-color: transparent;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .small {
 	font-size: 9px;
-	line-height: var(--spacing-xs);
+	line-height: var(--spacing--xs);
 }
 
 .medium {
-	font-size: var(--spacing-xs);
-	line-height: var(--spacing-s);
+	font-size: var(--spacing--xs);
+	line-height: var(--spacing--sm);
 }
 
 .large {
@@ -34,7 +34,7 @@ withDefaults(defineProps<{ text: string; size?: 'small' | 'medium' | 'large' | '
 }
 
 .xlarge {
-	font-size: var(--spacing-s);
-	line-height: var(--spacing-s);
+	font-size: var(--spacing--sm);
+	line-height: var(--spacing--sm);
 }
 </style>

@@ -16,9 +16,9 @@ import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
-import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
 interface Props {
@@ -224,34 +224,34 @@ function optionSelected(action: string) {
 .assignmentCollection {
 	display: flex;
 	flex-direction: column;
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 }
 
 .content {
 	display: flex;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 	flex-direction: column;
 }
 
 .assignments {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .assignment {
-	padding-left: var(--spacing-l);
+	padding-left: var(--spacing--lg);
 }
 
 .dropAreaWrapper {
 	cursor: pointer;
 
 	&:not(.empty .dropAreaWrapper) {
-		padding-left: var(--spacing-l);
+		padding-left: var(--spacing--lg);
 	}
 
 	&:hover .add {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 
@@ -260,8 +260,8 @@ function optionSelected(action: string) {
 	align-items: center;
 	flex-wrap: wrap;
 	justify-content: center;
-	font-size: var(--font-size-xs);
-	color: var(--color-text-dark);
+	font-size: var(--font-size--xs);
+	color: var(--color--text--shade-1);
 	gap: 1ch;
 	min-height: 24px;
 
@@ -275,23 +275,23 @@ function optionSelected(action: string) {
 }
 
 .or {
-	color: var(--color-text-light);
-	font-size: var(--font-size-2xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
 }
 
 .add {
-	color: var(--color-primary);
-	font-weight: var(--font-weight-bold);
+	color: var(--color--primary);
+	font-weight: var(--font-weight--bold);
 }
 
 .activeField {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	color: var(--color-ndv-droppable-parameter);
 }
 
 .active {
 	.activeField {
-		color: var(--color-success);
+		color: var(--color--success);
 	}
 }
 
@@ -299,7 +299,7 @@ function optionSelected(action: string) {
 	.dropArea {
 		flex-direction: column;
 		align-items: center;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 		min-height: 20vh;
 	}
 
@@ -309,25 +309,25 @@ function optionSelected(action: string) {
 	}
 
 	.content {
-		gap: var(--spacing-s);
+		gap: var(--spacing--sm);
 	}
 }
 
 .icon {
-	font-size: var(--font-size-2xl);
+	font-size: var(--font-size--2xl);
 }
 .ghost,
 .dragging {
-	border-radius: var(--border-radius-base);
-	padding-right: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
+	border-radius: var(--radius);
+	padding-right: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
 }
 .ghost {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	opacity: 0.7;
 }
 </style>

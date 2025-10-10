@@ -88,7 +88,7 @@ const closeModal = () => {
 	justify-content: flex-end;
 
 	button {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>

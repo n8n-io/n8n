@@ -285,16 +285,16 @@ onMounted(async () => {
 <style module lang="scss">
 .descriptionContainer {
 	display: flex;
-	margin: var(--spacing-s) 0;
+	margin: var(--spacing--sm) 0;
 	flex-direction: column;
 }
 
 .descriptionIcon {
 	align-self: center;
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 }
 
 .descriptionText {
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 }
 </style>
