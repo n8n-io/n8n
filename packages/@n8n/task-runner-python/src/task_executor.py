@@ -28,6 +28,7 @@ from src.constants import (
     ERROR_EXTERNAL_DISALLOWED,
 )
 from typing import Any, Set
+from dataclasses import dataclass
 
 from multiprocessing.context import ForkServerProcess
 from multiprocessing import shared_memory
@@ -40,6 +41,15 @@ MAX_PRINT_ARGS_ALLOWED = 100
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
 
+@dataclass
+class SecurityConfig:
+    """Configuration for security restrictions on code execution."""
+
+    stdlib_allow: Set[str]
+    external_allow: Set[str]
+    builtins_deny: set[str]
+
+
 class TaskExecutor:
     """Responsible for executing Python code tasks in isolated subprocesses."""
 
@@ -48,9 +58,7 @@ class TaskExecutor:
         code: str,
         node_mode: NodeMode,
         items: Items,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
+        security_config: SecurityConfig,
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -67,9 +75,7 @@ class TaskExecutor:
                 code,
                 items,
                 queue,
-                stdlib_allow,
-                external_allow,
-                builtins_deny,
+                security_config,
             ),
         )
 
@@ -168,15 +174,13 @@ class TaskExecutor:
         raw_code: str,
         items: Items,
         queue: multiprocessing.Queue,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
+        security_config: SecurityConfig,
     ):
         """Execute a Python code task in all-items mode."""
 
         os.environ.clear()
 
-        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
+        TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
@@ -186,9 +190,7 @@ class TaskExecutor:
             compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
             globals = {
-                "__builtins__": TaskExecutor._filter_builtins(
-                    builtins_deny, stdlib_allow, external_allow
-                ),
+                "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
@@ -206,15 +208,13 @@ class TaskExecutor:
         raw_code: str,
         items: Items,
         queue: multiprocessing.Queue,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
+        security_config: SecurityConfig,
     ):
         """Execute a Python code task in per-item mode."""
 
         os.environ.clear()
 
-        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
+        TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
@@ -226,9 +226,7 @@ class TaskExecutor:
             result = []
             for index, item in enumerate(items):
                 globals = {
-                    "__builtins__": TaskExecutor._filter_builtins(
-                        builtins_deny, stdlib_allow, external_allow
-                    ),
+                    "__builtins__": TaskExecutor._filter_builtins(security_config),
                     "_item": item,
                     "print": TaskExecutor._create_custom_print(print_args),
                 }
@@ -371,24 +369,24 @@ class TaskExecutor:
     # ========== security ==========
 
     @staticmethod
-    def _filter_builtins(
-        builtins_deny: set[str], stdlib_allow: Set[str], external_allow: Set[str]
-    ):
+    def _filter_builtins(security_config: SecurityConfig):
         """Get __builtins__ with denied ones removed."""
 
-        if len(builtins_deny) == 0:
+        if len(security_config.builtins_deny) == 0:
             filtered = dict(__builtins__)
         else:
-            filtered = {k: v for k, v in __builtins__.items() if k not in builtins_deny}
+            filtered = {
+                k: v
+                for k, v in __builtins__.items()
+                if k not in security_config.builtins_deny
+            }
 
-        filtered["__import__"] = TaskExecutor._create_safe_import(
-            stdlib_allow, external_allow
-        )
+        filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
 
         return filtered
 
     @staticmethod
-    def _sanitize_sys_modules(stdlib_allow: Set[str], external_allow: Set[str]):
+    def _sanitize_sys_modules(security_config: SecurityConfig):
         safe_modules = {
             "builtins",
             "__main__",
@@ -399,19 +397,19 @@ class TaskExecutor:
             "importlib.machinery",
         }
 
-        if "*" in stdlib_allow:
+        if "*" in security_config.stdlib_allow:
             safe_modules.update(sys.stdlib_module_names)
         else:
-            safe_modules.update(stdlib_allow)
+            safe_modules.update(security_config.stdlib_allow)
 
-        if "*" in external_allow:
+        if "*" in security_config.external_allow:
             safe_modules.update(
                 name
                 for name in sys.modules.keys()
                 if name not in sys.stdlib_module_names
             )
         else:
-            safe_modules.update(external_allow)
+            safe_modules.update(security_config.external_allow)
 
         # keep modules marked as safe and submodules of those
         modules_to_remove = [
@@ -425,7 +423,7 @@ class TaskExecutor:
             del sys.modules[module_name]
 
     @staticmethod
-    def _create_safe_import(stdlib_allow: Set[str], external_allow: Set[str]):
+    def _create_safe_import(security_config: SecurityConfig):
         original_import = __builtins__["__import__"]
 
         def safe_import(name, *args, **kwargs):
@@ -433,16 +431,20 @@ class TaskExecutor:
             is_stdlib = module_name in sys.stdlib_module_names
             is_external = not is_stdlib
             stdlib_allowed_str = (
-                ", ".join(sorted(stdlib_allow)) if stdlib_allow else "none"
+                ", ".join(sorted(security_config.stdlib_allow))
+                if security_config.stdlib_allow
+                else "none"
             )
             external_allowed_str = (
-                ", ".join(sorted(external_allow)) if external_allow else "none"
+                ", ".join(sorted(security_config.external_allow))
+                if security_config.external_allow
+                else "none"
             )
 
             if (
                 is_stdlib
-                and "*" not in stdlib_allow
-                and module_name not in stdlib_allow
+                and "*" not in security_config.stdlib_allow
+                and module_name not in security_config.stdlib_allow
             ):
                 raise SecurityViolationError(
                     message="Security violation detected",
@@ -453,8 +455,8 @@ class TaskExecutor:
 
             if (
                 is_external
-                and "*" not in external_allow
-                and module_name not in external_allow
+                and "*" not in security_config.external_allow
+                and module_name not in security_config.external_allow
             ):
                 raise SecurityViolationError(
                     message="Security violation detected",

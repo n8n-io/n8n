@@ -52,7 +52,7 @@ from src.message_types import (
 )
 from src.message_serde import MessageSerde
 from src.task_state import TaskState, TaskStatus
-from src.task_executor import TaskExecutor
+from src.task_executor import TaskExecutor, SecurityConfig
 from src.task_analyzer import TaskAnalyzer
 
 
@@ -293,13 +293,17 @@ class TaskRunner:
 
             self.analyzer.validate(task_settings.code)
 
+            security_config = SecurityConfig(
+                stdlib_allow=self.config.stdlib_allow,
+                external_allow=self.config.external_allow,
+                builtins_deny=self.config.builtins_deny,
+            )
+
             process, queue = self.executor.create_process(
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
-                stdlib_allow=self.config.stdlib_allow,
-                external_allow=self.config.external_allow,
-                builtins_deny=self.config.builtins_deny,
+                security_config=security_config,
             )
 
             task_state.process = process
