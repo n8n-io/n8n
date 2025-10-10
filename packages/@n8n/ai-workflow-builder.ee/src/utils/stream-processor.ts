@@ -30,82 +30,96 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 ];
 
 /**
+ * Multi-agent graph nodes that should emit messages to frontend
+ */
+const AGENT_NODES_TO_EMIT = [
+	'agent', // V1 single agent (backward compatibility)
+	'responder', // Conversational responses
+	'configurator', // Final configuration responses
+	'discovery', // Optional: show discovery progress
+	'builder', // Optional: show building progress
+];
+
+/**
+ * Multi-agent graph nodes to skip (internal coordination)
+ */
+const NODES_TO_SKIP = [
+	'supervisor', // Internal routing decisions
+	'tools', // Tool execution handled via custom events
+	'cleanup_dangling_tool_calls', // Internal cleanup
+	'create_workflow_name', // Internal workflow naming
+	'auto_compact_messages', // Internal state management
+];
+
+/**
+ * Extract message content from a node update
+ */
+function extractMessageContent(
+	messages: Array<{ content: string | Array<{ type: string; text: string }> }>,
+): string | null {
+	if (messages.length === 0) return null;
+
+	const lastMessage = messages[messages.length - 1];
+	if (!lastMessage.content) return null;
+
+	// Handle array content (multi-part messages)
+	if (Array.isArray(lastMessage.content)) {
+		const textContent = lastMessage.content
+			.filter((c) => c.type === 'text')
+			.map((c) => c.text)
+			.join('\n');
+		return textContent || null;
+	}
+
+	return lastMessage.content;
+}
+
+/**
  * Process a single chunk from the LangGraph stream
  */
 // eslint-disable-next-line complexity
 export function processStreamChunk(streamMode: string, chunk: unknown): StreamOutput | null {
 	if (streamMode === 'updates') {
-		// Handle agent message updates
-		const agentChunk = chunk as {
-			agent?: { messages?: Array<{ content: string | Array<{ type: string; text: string }> }> };
-			compact_messages?: {
+		const nodeUpdate = chunk as Record<string, unknown>;
+
+		// Handle special nodes first (backward compatibility)
+		if (nodeUpdate.delete_messages) {
+			const deleteUpdate = nodeUpdate.delete_messages as {
 				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
 			};
-			delete_messages?: {
+			if ((deleteUpdate?.messages ?? []).length > 0) {
+				const messageChunk: AgentMessageChunk = {
+					role: 'assistant',
+					type: 'message',
+					text: 'Deleted, refresh?',
+				};
+				return { messages: [messageChunk] };
+			}
+		}
+
+		if (nodeUpdate.compact_messages) {
+			const compactUpdate = nodeUpdate.compact_messages as {
 				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
 			};
-			process_operations?: {
-				workflowJSON?: unknown;
-				workflowOperations?: unknown;
-			};
-		};
-
-		if ((agentChunk?.delete_messages?.messages ?? []).length > 0) {
-			const messageChunk: AgentMessageChunk = {
-				role: 'assistant',
-				type: 'message',
-				text: 'Deleted, refresh?',
-			};
-
-			return { messages: [messageChunk] };
-		}
-
-		if ((agentChunk?.compact_messages?.messages ?? []).length > 0) {
-			const lastMessage =
-				agentChunk.compact_messages!.messages![agentChunk.compact_messages!.messages!.length - 1];
-
-			const messageChunk: AgentMessageChunk = {
-				role: 'assistant',
-				type: 'message',
-				text: lastMessage.content as string,
-			};
-
-			return { messages: [messageChunk] };
-		}
-
-		if ((agentChunk?.agent?.messages ?? []).length > 0) {
-			const lastMessage = agentChunk.agent!.messages![agentChunk.agent!.messages!.length - 1];
-			if (lastMessage.content) {
-				let content: string;
-
-				// Handle array content (multi-part messages)
-				if (Array.isArray(lastMessage.content)) {
-					content = lastMessage.content
-						.filter((c) => c.type === 'text')
-						.map((b) => b.text)
-						.join('\n');
-				} else {
-					content = lastMessage.content;
-				}
-
+			if ((compactUpdate?.messages ?? []).length > 0) {
+				const content = extractMessageContent(compactUpdate.messages!);
 				if (content) {
 					const messageChunk: AgentMessageChunk = {
 						role: 'assistant',
 						type: 'message',
 						text: content,
 					};
-
 					return { messages: [messageChunk] };
 				}
-
-				return null;
 			}
 		}
 
 		// Handle process_operations updates - emit workflow update after operations are processed
-		if (agentChunk?.process_operations) {
-			// Check if operations were processed (indicated by cleared operations array)
-			const update = agentChunk.process_operations;
+		if (nodeUpdate.process_operations) {
+			const update = nodeUpdate.process_operations as {
+				workflowJSON?: unknown;
+				workflowOperations?: unknown;
+			};
 			if (update.workflowJSON && update.workflowOperations !== undefined) {
 				// Create workflow update chunk
 				const workflowUpdateChunk: WorkflowUpdateChunk = {
@@ -113,8 +127,34 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 					type: 'workflow-updated',
 					codeSnippet: JSON.stringify(update.workflowJSON, null, 2),
 				};
-
 				return { messages: [workflowUpdateChunk] };
+			}
+		}
+
+		// Generic handler for any agent node (including multi-agent nodes)
+		for (const [nodeName, update] of Object.entries(nodeUpdate)) {
+			// Skip nodes that shouldn't emit
+			if (NODES_TO_SKIP.includes(nodeName)) {
+				continue;
+			}
+
+			// Check if this node should emit messages
+			if (AGENT_NODES_TO_EMIT.includes(nodeName)) {
+				const agentUpdate = update as {
+					messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
+				};
+
+				if ((agentUpdate?.messages ?? []).length > 0) {
+					const content = extractMessageContent(agentUpdate.messages!);
+					if (content) {
+						const messageChunk: AgentMessageChunk = {
+							role: 'assistant',
+							type: 'message',
+							text: content,
+						};
+						return { messages: [messageChunk] };
+					}
+				}
 			}
 		}
 	} else if (streamMode === 'custom') {
