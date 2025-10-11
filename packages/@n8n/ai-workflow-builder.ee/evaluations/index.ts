@@ -20,7 +20,13 @@ async function main(): Promise<void> {
 		: undefined;
 
 	if (useLangsmith) {
-		await runLangsmithEvaluation();
+		// Parse command line arguments for a number of repetitions
+		const repetitionsArg = process.argv.includes('--repetitions')
+			? parseInt(process.argv[process.argv.indexOf('--repetitions') + 1], 10)
+			: 1;
+		const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
+
+		await runLangsmithEvaluation(repetitions);
 	} else {
 		await runCliEvaluation(testCaseId);
 	}
