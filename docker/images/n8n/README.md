@@ -121,7 +121,7 @@ docker run -it --rm \
  docker.n8n.io/n8nio/n8n
 ```
 
-A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n-hosting/blob/main/docker-compose/withPostgres/README.md).
+A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n-hosting/blob/main/docker-compose/withPostgres/).
 
 ## Passing sensitive data using files
 
