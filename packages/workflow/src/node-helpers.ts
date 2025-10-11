@@ -319,7 +319,7 @@ const checkConditions = (
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue);
+					return (propertyValue as string) && (propertyValue as string).includes(targetValue);
 				}
 				if (key === 'startsWith') {
 					return (propertyValue as string).startsWith(targetValue);
