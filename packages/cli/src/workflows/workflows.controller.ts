@@ -166,7 +166,6 @@ export class WorkflowsController {
 						project.id,
 						transactionManager,
 					);
-					// @ts-ignore CAT-957
 					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
 				} catch {}
 			}

@@ -44,7 +44,6 @@ export class McpServerApiKeyService {
 			label: API_KEY_LABEL,
 		});
 
-		// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 		await manager.insert(ApiKey, apiKeyEntity);
 
 		return await manager.findOneByOrFail(ApiKey, { apiKey });

@@ -10,14 +10,14 @@ import {
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
-import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { TestRun } from './test-run.ee';
-import type { IWorkflowDb } from './types-db';
+import type { ISimplifiedPinData, IWorkflowDb } from './types-db';
 import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
@@ -112,16 +112,4 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@OneToMany('TestRun', 'workflow')
 	testRuns: TestRun[];
-}
-
-/**
- * Simplified to prevent excessively deep type instantiation error from
- * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
- */
-export interface ISimplifiedPinData {
-	[nodeName: string]: Array<{
-		json: IDataObject;
-		binary?: IBinaryKeyData;
-		pairedItem?: IPairedItemData | IPairedItemData[] | number;
-	}>;
 }

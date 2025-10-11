@@ -78,7 +78,6 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 				dataTableId,
 			});
 
-			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTableColumn, column);
 
 			await this.ddlService.addColumn(dataTableId, column, em.connection.options.type, em);
