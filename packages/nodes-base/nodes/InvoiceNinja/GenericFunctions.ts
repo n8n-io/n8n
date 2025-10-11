@@ -60,7 +60,7 @@ export async function invoiceNinjaApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri;
@@ -72,7 +72,7 @@ export async function invoiceNinjaApiRequestAllItems(
 		if (next) {
 			uri = next;
 		}
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.meta?.pagination?.links?.next);
 
 	return returnData;

@@ -60,7 +60,7 @@ export async function baserowApiRequestAllItems(
 	body: IDataObject,
 	qs: IDataObject = {},
 ): Promise<IDataObject[]> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 
 	qs.page = 1;
@@ -71,7 +71,7 @@ export async function baserowApiRequestAllItems(
 
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
-		returnData.push(...(responseData.results as IDataObject[]));
+		returnData = returnData.concat(responseData.results as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

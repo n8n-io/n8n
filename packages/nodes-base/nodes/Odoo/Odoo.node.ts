@@ -287,7 +287,7 @@ export class Odoo implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let items = this.getInputData();
 		items = deepCopy(items);
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const resource = this.getNodeParameter('resource', 0);
@@ -739,7 +739,7 @@ export class Odoo implements INodeType {
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -747,7 +747,7 @@ export class Odoo implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 
 					continue;
 				}

@@ -19,14 +19,14 @@ export class N8nJsonLoader {
 	) {}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
-		const docs: Document[] = [];
+		let docs: Document[] = [];
 
 		if (!items) return [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const processedDocuments = await this.processItem(items[itemIndex], itemIndex);
 
-			docs.push(...processedDocuments);
+			docs = docs.concat(processedDocuments);
 		}
 
 		return docs;

@@ -64,7 +64,7 @@ export async function unleashedApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 	let pageNumber = 1;
 
@@ -72,7 +72,7 @@ export async function unleashedApiRequestAllItems(
 
 	do {
 		responseData = await unleashedApiRequest.call(this, method, endpoint, body, query, pageNumber);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		pageNumber++;
 	} while (
 		(responseData.Pagination.PageNumber as number) <

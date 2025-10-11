@@ -57,7 +57,7 @@ export async function travisciApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -68,7 +68,7 @@ export async function travisciApiRequestAllItems(
 			const parsedPath = new URLSearchParams(path);
 			query = Object.fromEntries(parsedPath);
 		}
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData['@pagination'].is_last !== true);
 	return returnData;
 }

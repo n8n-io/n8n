@@ -150,12 +150,12 @@ export async function copperApiRequestAllItems(
 	let responseData;
 	qs.page_size = 200;
 	let totalItems = 0;
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	do {
 		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
 		totalItems = responseData.headers['x-pw-total'];
-		returnData.push(...(responseData.body as IDataObject[]));
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 	} while (totalItems > returnData.length);
 
 	return returnData;

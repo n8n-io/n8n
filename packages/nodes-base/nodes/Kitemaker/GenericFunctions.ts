@@ -55,13 +55,13 @@ export async function kitemakerRequestAllItems(
 	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const limit = this.getNodeParameter('limit', 0, 0);
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 
 	do {
 		responseData = await kitemakerRequest.call(this, body);
 		body.variables.cursor = responseData.data[group].cursor;
-		returnData.push(...(responseData.data[group][items] as IDataObject[]));
+		returnData = returnData.concat(responseData.data[group][items] as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

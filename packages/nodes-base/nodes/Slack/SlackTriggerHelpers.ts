@@ -1,7 +1,6 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import type { IHttpRequestOptions, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { createHmac, timingSafeEqual } from 'crypto';
 
 import { slackApiRequest } from './V2/GenericFunctions';
 

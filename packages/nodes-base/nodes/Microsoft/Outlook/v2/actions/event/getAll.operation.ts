@@ -84,7 +84,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, index: number) {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject[] = [];
 	const qs = {} as IDataObject;
 
 	const returnAll = this.getNodeParameter('returnAll', index);
@@ -144,14 +144,14 @@ export async function execute(this: IExecuteFunctions, index: number) {
 				undefined,
 				qs,
 			);
-			responseData.push(...response);
+			responseData = responseData.concat(response);
 		} else {
 			qs.$top = limit - responseData.length;
 
 			if (qs.$top <= 0) break;
 
 			const response = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
-			responseData.push(...response.value);
+			responseData = responseData.concat(response.value);
 		}
 	}
 

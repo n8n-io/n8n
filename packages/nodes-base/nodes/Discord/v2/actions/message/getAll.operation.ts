@@ -46,7 +46,7 @@ export async function execute(
 	_guildId: string,
 	userGuilds: IDataObject[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 	const simplifyResponse = createSimplifyFunction([
 		'id',
@@ -93,7 +93,7 @@ export async function execute(
 					);
 					if (!responseData?.length) break;
 					qs.before = responseData[responseData.length - 1].id;
-					response.push(...responseData);
+					response = response.concat(responseData);
 				} while (responseData.length);
 			}
 
@@ -108,12 +108,12 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
-				returnData.push(...prepareErrorData.call(this, err, i));
+				returnData = returnData.concat(prepareErrorData.call(this, err, i));
 				continue;
 			}
 

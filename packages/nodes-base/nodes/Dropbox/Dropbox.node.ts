@@ -693,7 +693,7 @@ export class Dropbox implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -920,7 +920,7 @@ export class Dropbox implements INodeType {
 						this.helpers.returnJsonArray(data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} else if (resource === 'file' && operation === 'download') {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
@@ -978,7 +978,7 @@ export class Dropbox implements INodeType {
 							this.helpers.returnJsonArray(newItem),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
@@ -995,13 +995,13 @@ export class Dropbox implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} else {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

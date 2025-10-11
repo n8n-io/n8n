@@ -133,7 +133,7 @@ export class DiscordV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions) {
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
@@ -287,7 +287,7 @@ export class DiscordV1 implements INodeType {
 				this.helpers.returnJsonArray({ success: true }),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 
 		return [returnData];

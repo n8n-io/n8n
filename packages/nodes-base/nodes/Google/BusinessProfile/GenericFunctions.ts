@@ -123,7 +123,7 @@ export async function handlePagination(
 	this: IExecutePaginationFunctions,
 	resultOptions: DeclarativeRestApiSettings.ResultOptions,
 ): Promise<INodeExecutionData[]> {
-	const aggregatedResult: IDataObject[] = [];
+	let aggregatedResult: IDataObject[] = [];
 	let nextPageToken: string | undefined;
 	const returnAll = this.getNodeParameter('returnAll') as boolean;
 	let limit = 100;
@@ -144,7 +144,7 @@ export async function handlePagination(
 			for (const prop of possibleRootProperties) {
 				if (page.json[prop]) {
 					const currentData = page.json[prop] as IDataObject[];
-					aggregatedResult.push(...currentData);
+					aggregatedResult = aggregatedResult.concat(currentData);
 				}
 			}
 

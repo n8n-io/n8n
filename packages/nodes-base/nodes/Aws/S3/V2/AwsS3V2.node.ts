@@ -82,7 +82,7 @@ export class AwsS3V2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -152,7 +152,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 
 					// https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
@@ -172,7 +172,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
@@ -203,7 +203,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -278,7 +278,7 @@ export class AwsS3V2 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 				}
 				if (resource === 'folder') {
@@ -323,7 +323,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 					if (operation === 'delete') {
@@ -409,7 +409,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -475,7 +475,7 @@ export class AwsS3V2 implements INodeType {
 								this.helpers.returnJsonArray(responseData),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						}
 					}
 				}
@@ -591,7 +591,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 					if (operation === 'download') {
@@ -694,7 +694,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -762,7 +762,7 @@ export class AwsS3V2 implements INodeType {
 								this.helpers.returnJsonArray(responseData),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						}
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
@@ -1022,7 +1022,7 @@ export class AwsS3V2 implements INodeType {
 								this.helpers.returnJsonArray(responseData ?? { success: true }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 
@@ -1049,7 +1049,7 @@ export class AwsS3V2 implements INodeType {
 								this.helpers.returnJsonArray({ success: true }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						}
 					}
 				}
@@ -1059,7 +1059,7 @@ export class AwsS3V2 implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} else {
 					throw error;
 				}

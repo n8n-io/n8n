@@ -62,7 +62,7 @@ export async function bitlyApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
@@ -70,7 +70,7 @@ export async function bitlyApiRequestAllItems(
 
 	do {
 		responseData = await bitlyApiRequest.call(this, method, resource, body, query, uri);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		if (responseData.pagination?.next) {
 			uri = responseData.pagination.next;
 		}

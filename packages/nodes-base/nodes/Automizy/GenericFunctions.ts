@@ -55,7 +55,7 @@ export async function automizyApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.limit = 100;
@@ -63,7 +63,7 @@ export async function automizyApiRequestAllItems(
 	do {
 		responseData = await automizyApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.pageCount !== responseData.page);
 
 	return returnData;

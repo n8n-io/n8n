@@ -1325,7 +1325,7 @@ export class Gitlab implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		// let _credentials;
 
@@ -1765,7 +1765,7 @@ export class Gitlab implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -1777,7 +1777,7 @@ export class Gitlab implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionErrorData);
+						returnData = returnData.concat(executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
 					}

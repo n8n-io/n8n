@@ -56,7 +56,7 @@ export async function codaApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -67,7 +67,7 @@ export async function codaApiRequestAllItems(
 	do {
 		responseData = await codaApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.nextPageLink;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageLink !== undefined && responseData.nextPageLink !== '');
 
 	return returnData;

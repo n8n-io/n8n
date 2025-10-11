@@ -74,7 +74,7 @@ export async function googleApiRequestAllItems(
 	uri?: string,
 ) {
 	const propertyType = this.getNodeParameter('propertyType', 0, 'universal') as string;
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -103,7 +103,7 @@ export async function googleApiRequestAllItems(
 			} else {
 				body.pageToken = responseData.nextPageToken;
 			}
-			returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+			returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		} while (
 			(responseData.nextPageToken !== undefined && responseData.nextPageToken !== '') ||
 			responseData[propertyName]?.[0].nextPageToken !== undefined

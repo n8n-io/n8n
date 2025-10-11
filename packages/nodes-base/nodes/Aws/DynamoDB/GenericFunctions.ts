@@ -74,7 +74,7 @@ export async function awsApiRequestAllItems(
 	body?: IRequestBody,
 	headers?: object,
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -84,7 +84,7 @@ export async function awsApiRequestAllItems(
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}
-		returnData.push(...(responseData.Items as IDataObject[]));
+		returnData = returnData.concat(responseData.Items as IDataObject[]);
 	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;

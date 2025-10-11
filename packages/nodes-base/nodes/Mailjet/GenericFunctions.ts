@@ -61,7 +61,7 @@ export async function mailjetApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -72,7 +72,7 @@ export async function mailjetApiRequestAllItems(
 		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, undefined, {
 			resolveWithFullResponse: true,
 		});
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 		query.Offset = query.Offset + query.Limit;
 	} while (responseData.length !== 0);
 	return returnData;

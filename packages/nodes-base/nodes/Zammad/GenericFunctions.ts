@@ -90,7 +90,7 @@ export async function zammadApiRequestAllItems(
 ) {
 	// https://docs.zammad.org/en/latest/api/intro.html#pagination
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	qs.per_page = 20;
@@ -98,7 +98,7 @@ export async function zammadApiRequestAllItems(
 
 	do {
 		responseData = await zammadApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...(responseData as IDataObject[]));
+		returnData = returnData.concat(responseData as IDataObject[]);
 
 		if (limit && returnData.length > limit) {
 			return returnData.slice(0, limit);

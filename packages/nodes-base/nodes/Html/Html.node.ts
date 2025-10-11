@@ -475,7 +475,7 @@ export class Html implements INodeType {
 		}
 
 		let item: INodeExecutionData;
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				if (operation === 'generateHtmlTemplate') {
@@ -499,7 +499,7 @@ export class Html implements INodeType {
 						},
 					);
 
-					returnData.push(...result);
+					returnData = returnData.concat(result);
 				} else if (operation === 'extractHtmlContent') {
 					// ----------------------------------
 					//         extractHtmlContent

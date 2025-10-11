@@ -99,7 +99,7 @@ export async function payPalApiRequestAllItems(
 	query?: IDataObject,
 	uri?: string,
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -108,7 +108,7 @@ export async function payPalApiRequestAllItems(
 	do {
 		responseData = await payPalApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = getNext(responseData.links as IDataObject[]);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (getNext(responseData.links as IDataObject[]) !== undefined);
 
 	return returnData;

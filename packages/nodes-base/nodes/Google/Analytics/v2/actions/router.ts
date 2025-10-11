@@ -7,7 +7,7 @@ import * as userActivity from './userActivity/UserActivity.resource';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const resource = this.getNodeParameter<GoogleAnalytics>('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0);
 
@@ -34,14 +34,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 			}
 
-			returnData.push(...responseData);
+			returnData = returnData.concat(responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 			throw error;

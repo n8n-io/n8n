@@ -46,7 +46,7 @@ export async function sendGridApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -55,7 +55,7 @@ export async function sendGridApiRequestAllItems(
 	do {
 		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri); // possible bug, as function does not have uri parameter
 		uri = responseData._metadata.next;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		const limit = query.limit as number | undefined;
 		if (limit && returnData.length >= limit) {
 			return returnData;

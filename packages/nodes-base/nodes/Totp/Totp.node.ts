@@ -122,7 +122,7 @@ export class Totp implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const operation = this.getNodeParameter('operation', 0);
 		const credentials = await this.getCredentials<{ label: string; secret: string }>('totpApi');
@@ -164,7 +164,7 @@ export class Totp implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 		}
 

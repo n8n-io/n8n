@@ -84,7 +84,7 @@ export class AgileCrm implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -631,7 +631,7 @@ export class AgileCrm implements INodeType {
 			}
 
 			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				returnData = returnData.concat(responseData as IDataObject[]);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}

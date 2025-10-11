@@ -53,14 +53,14 @@ export async function salesmateApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.pageNo = 1;
 	query.rows = 25;
 	do {
 		responseData = await salesmateApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName].data as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName].data as IDataObject[]);
 		query.pageNo++;
 	} while (
 		responseData[propertyName].totalPages !== undefined &&

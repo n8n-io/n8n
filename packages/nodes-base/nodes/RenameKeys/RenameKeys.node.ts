@@ -163,7 +163,7 @@ export class RenameKeys implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
 		let newItem: INodeExecutionData;
@@ -252,7 +252,7 @@ export class RenameKeys implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: itemIndex } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 				throw error;

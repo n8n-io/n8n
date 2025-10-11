@@ -76,7 +76,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, items: INodeExecutionData[]) {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	let fileSelector;
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -132,7 +132,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					},
 				});
 			}
-			returnData.push(...newItems);
+			returnData = returnData.concat(newItems);
 		} catch (error) {
 			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
 				filePath: fileSelector,

@@ -9,7 +9,7 @@ import type { GoogleDriveType } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const resource = this.getNodeParameter<GoogleDriveType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
@@ -23,16 +23,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		try {
 			switch (googleDrive.resource) {
 				case 'drive':
-					returnData.push(...(await drive[googleDrive.operation].execute.call(this, i)));
+					returnData = returnData.concat(await drive[googleDrive.operation].execute.call(this, i));
 					break;
 				case 'file':
-					returnData.push(...(await file[googleDrive.operation].execute.call(this, i, items[i])));
+					returnData = returnData.concat(
+						await file[googleDrive.operation].execute.call(this, i, items[i]),
+					);
 					break;
 				case 'fileFolder':
-					returnData.push(...(await fileFolder[googleDrive.operation].execute.call(this, i)));
+					returnData = returnData.concat(
+						await fileFolder[googleDrive.operation].execute.call(this, i),
+					);
 					break;
 				case 'folder':
-					returnData.push(...(await folder[googleDrive.operation].execute.call(this, i)));
+					returnData = returnData.concat(await folder[googleDrive.operation].execute.call(this, i));
 					break;
 				default:
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);

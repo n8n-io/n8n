@@ -129,7 +129,7 @@ export async function setableApiRequestAllItems(
 	query.start = 0;
 	query.limit = segment;
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -143,7 +143,7 @@ export async function setableApiRequestAllItems(
 			query,
 		)) as unknown as IRow[];
 		//@ts-ignore
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		query.start = +query.start + segment;
 	} while (responseData && responseData.length > segment - 1);
 
@@ -235,14 +235,14 @@ export function columnNamesGlob(
 	columnNames: string[],
 	dtableColumns: TDtableMetadataColumns,
 ): string[] {
-	const buffer: string[] = [];
+	let buffer: string[] = [];
 	const names: string[] = dtableColumns.map((c) => c.name).filter(nonInternalPredicate);
 	columnNames.forEach((columnName) => {
 		if (columnName !== '*') {
 			buffer.push(columnName);
 			return;
 		}
-		buffer.push(...names);
+		buffer = buffer.concat(names);
 	});
 	return buffer.filter(uniquePredicate);
 }

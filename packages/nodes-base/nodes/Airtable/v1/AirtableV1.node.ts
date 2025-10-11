@@ -571,7 +571,7 @@ export class AirtableV1 implements INodeType {
 			);
 		}
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const operation = this.getNodeParameter('operation', 0);
@@ -647,7 +647,7 @@ export class AirtableV1 implements INodeType {
 							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 						// empty rows
 						rows.length = 0;
 					}
@@ -690,7 +690,7 @@ export class AirtableV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 						// empty rows
 						rows.length = 0;
 					}
@@ -731,7 +731,7 @@ export class AirtableV1 implements INodeType {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				returnData.push.apply(returnData, responseData.records as INodeExecutionData[]);
+				returnData = returnData.concat(responseData.records as INodeExecutionData[]);
 
 				if (downloadAttachments === true) {
 					const downloadFieldNames = (
@@ -789,7 +789,7 @@ export class AirtableV1 implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
@@ -873,7 +873,7 @@ export class AirtableV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 
 						// empty rows
 						rows.length = 0;

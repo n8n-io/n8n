@@ -62,14 +62,14 @@ export async function disqusApiRequestAllItems(
 	body: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
 		qs.cursor = responseData.cursor.id;
-		returnData.push.apply(returnData, responseData.response as IDataObject[]);
+		returnData = returnData.concat(responseData.response as IDataObject[]);
 	} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
 	return returnData;
 }

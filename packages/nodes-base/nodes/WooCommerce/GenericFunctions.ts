@@ -49,7 +49,7 @@ export async function woocommerceApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
@@ -63,7 +63,7 @@ export async function woocommerceApiRequestAllItems(
 		if (nextLink) {
 			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
 		}
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 
 	return returnData;

@@ -65,7 +65,7 @@ export class Elasticsearch implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'document' | 'index';
 		const operation = this.getNodeParameter('operation', 0);
@@ -382,7 +382,7 @@ export class Elasticsearch implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 			if (Object.keys(bulkBody).length >= 50) {
 				responseData = (await elasticsearchBulkApiRequest.call(this, bulkBody)) as IDataObject[];
@@ -394,8 +394,8 @@ export class Elasticsearch implements INodeType {
 						const description = errorData.reason as string;
 						const itemIndex = parseInt(Object.keys(bulkBody)[j]);
 						if (this.continueOnFail()) {
-							returnData.push(
-								...this.helpers.constructExecutionMetaData(
+							returnData = returnData.concat(
+								this.helpers.constructExecutionMetaData(
 									this.helpers.returnJsonArray({ error: message, message: itemData.error }),
 									{ itemData: { item: itemIndex } },
 								),
@@ -413,7 +413,7 @@ export class Elasticsearch implements INodeType {
 						this.helpers.returnJsonArray(itemData),
 						{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 				bulkBody = {};
 			}
@@ -428,8 +428,8 @@ export class Elasticsearch implements INodeType {
 					const description = errorData.reason as string;
 					const itemIndex = parseInt(Object.keys(bulkBody)[j]);
 					if (this.continueOnFail()) {
-						returnData.push(
-							...this.helpers.constructExecutionMetaData(
+						returnData = returnData.concat(
+							this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: message, message: itemData.error }),
 								{ itemData: { item: itemIndex } },
 							),
@@ -447,7 +447,7 @@ export class Elasticsearch implements INodeType {
 					this.helpers.returnJsonArray(itemData),
 					{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 		}
 		return [returnData];

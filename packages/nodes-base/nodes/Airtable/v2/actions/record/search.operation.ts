@@ -150,7 +150,7 @@ export async function execute(
 	base: string,
 	table: string,
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const nodeVersion = this.getNode().typeVersion;
 
 	const endpoint = `${base}/${table}`;
@@ -210,7 +210,7 @@ export async function execute(
 					options.downloadFields as string[],
 					fallbackPairedItems || [{ item: i }],
 				);
-				returnData.push(...itemWithAttachments);
+				returnData = returnData.concat(itemWithAttachments);
 				continue;
 			}
 
@@ -226,7 +226,7 @@ export async function execute(
 				itemData,
 			});
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error }, pairedItem: { item: i } });

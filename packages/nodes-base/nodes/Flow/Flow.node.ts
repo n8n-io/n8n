@@ -57,7 +57,7 @@ export class Flow implements INodeType {
 		const credentials = await this.getCredentials('flowApi');
 
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -267,7 +267,7 @@ export class Flow implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 		return [returnData];
 	}

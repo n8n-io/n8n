@@ -127,7 +127,7 @@ export class Automizy implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -367,7 +367,7 @@ export class Automizy implements INodeType {
 			}
 		}
 
-		returnData.push(...(responseData as NodeExecutionWithMetadata[]));
+		returnData = returnData.concat(responseData as NodeExecutionWithMetadata[]);
 
 		return [returnData];
 	}

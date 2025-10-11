@@ -47,7 +47,7 @@ export async function mondayComApiRequestAllItems(
 	propertyName: string,
 	body: any = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	body.variables.limit = 50;
@@ -55,7 +55,7 @@ export async function mondayComApiRequestAllItems(
 
 	do {
 		responseData = await mondayComApiRequest.call(this, body);
-		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
+		returnData = returnData.concat(get(responseData, propertyName) as IDataObject[]);
 		body.variables.page++;
 	} while (get(responseData, propertyName).length > 0);
 	return returnData;
@@ -67,13 +67,13 @@ export async function mondayComApiPaginatedRequest(
 	fieldsToReturn: string,
 	body: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	const initialResponse = await mondayComApiRequest.call(this, body);
 	const data = get(initialResponse, itemsPath) as IDataObject;
 
 	if (data) {
-		returnData.push.apply(returnData, data.items as IDataObject[]);
+		returnData = returnData.concat(data.items as IDataObject[]);
 
 		let cursor: null | string = data.cursor as string;
 
@@ -88,7 +88,7 @@ export async function mondayComApiPaginatedRequest(
 			).data as { next_items_page: { cursor: string; items: IDataObject[] } };
 
 			if (responseData && responseData.next_items_page) {
-				returnData.push.apply(returnData, responseData.next_items_page.items);
+				returnData = returnData.concat(responseData.next_items_page.items);
 				cursor = responseData.next_items_page.cursor;
 			} else {
 				cursor = null;

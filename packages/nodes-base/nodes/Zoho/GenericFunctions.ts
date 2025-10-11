@@ -93,7 +93,7 @@ export async function zohoApiRequestAllItems(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	qs.per_page = 200;
@@ -102,7 +102,7 @@ export async function zohoApiRequestAllItems(
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs);
 		if (Array.isArray(responseData) && !responseData.length) return returnData;
-		returnData.push(...(responseData.data as IDataObject[]));
+		returnData = returnData.concat(responseData.data as IDataObject[]);
 		qs.page++;
 	} while (responseData.info.more_records !== undefined && responseData.info.more_records === true);
 

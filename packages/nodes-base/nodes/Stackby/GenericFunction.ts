@@ -69,13 +69,13 @@ export async function apiRequestAllItems(
 
 	query.offset = 0;
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData as IDataObject[]);
+		returnData = returnData.concat(responseData as IDataObject[]);
 		query.offset += query.maxrecord;
 	} while (responseData.length !== 0);
 

@@ -22,7 +22,7 @@ export function prepareOutput(
 	responseData: ExcelResponse,
 	config: PrepareOutputConfig,
 ) {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const { rawData, keyRow, firstDataRow, columnsRow, updatedRows } = {
 		keyRow: 0,
@@ -61,7 +61,7 @@ export function prepareOutput(
 				itemData: { item: rowIndex },
 			});
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 	} else {
 		const itemData = generatePairedItemData(this.getInputData().length);
@@ -70,7 +70,7 @@ export function prepareOutput(
 			{ itemData },
 		);
 
-		returnData.push(...executionData);
+		returnData = returnData.concat(executionData);
 	}
 
 	return returnData;

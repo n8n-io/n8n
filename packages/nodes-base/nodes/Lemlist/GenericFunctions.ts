@@ -52,7 +52,7 @@ export async function lemlistApiRequestAllItems(
 	endpoint: string,
 	qs: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -63,14 +63,14 @@ export async function lemlistApiRequestAllItems(
 		qs.page = 1;
 		do {
 			responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-			returnData.push(...(responseData as IDataObject[]));
+			returnData = returnData.concat(responseData as IDataObject[]);
 			qs.page++;
 		} while (responseData.totalPage && qs.page < responseData.totalPage);
 		return returnData;
 	} else {
 		do {
 			responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-			returnData.push(...(responseData as IDataObject[]));
+			returnData = returnData.concat(responseData as IDataObject[]);
 			qs.offset += qs.limit;
 		} while (responseData.length !== 0);
 		return returnData;

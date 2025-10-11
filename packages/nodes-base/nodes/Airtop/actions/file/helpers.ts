@@ -20,7 +20,7 @@ export async function requestAllFiles(
 	let hasMore = true;
 	let currentOffset = 0;
 	const limit = 100;
-	const files: IAirtopResponseWithFiles['data']['files'] = [];
+	let files: IAirtopResponseWithFiles['data']['files'] = [];
 	let responseData: IAirtopResponseWithFiles;
 
 	while (hasMore) {
@@ -34,7 +34,7 @@ export async function requestAllFiles(
 		)) as IAirtopResponseWithFiles;
 		// add files to the array
 		if (responseData.data?.files && Array.isArray(responseData.data?.files)) {
-			files.push(...responseData.data.files);
+			files = files.concat(responseData.data.files);
 		}
 		// check if there are more files
 		hasMore = Boolean(responseData.data?.pagination?.hasMore);

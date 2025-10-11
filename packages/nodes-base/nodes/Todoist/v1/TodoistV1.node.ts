@@ -697,7 +697,7 @@ export class TodoistV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		const service = new TodoistService();
 		let responseData;
@@ -709,7 +709,7 @@ export class TodoistV1 implements INodeType {
 					responseData = await service.execute(this, operation, i);
 				}
 				if (Array.isArray(responseData?.data)) {
-					returnData.push.apply(returnData, responseData?.data as IDataObject[]);
+					returnData = returnData.concat(responseData?.data as IDataObject[]);
 				} else {
 					if (responseData?.hasOwnProperty('success')) {
 						returnData.push({ success: responseData.success });

@@ -172,7 +172,7 @@ export class Kitemaker implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		// https://github.com/kitemakerhq/docs/blob/main/kitemaker.graphql
 
@@ -323,7 +323,7 @@ export class Kitemaker implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 
 		return [returnData];

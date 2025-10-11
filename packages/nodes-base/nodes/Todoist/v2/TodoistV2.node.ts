@@ -1920,7 +1920,7 @@ export class TodoistV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const service = new TodoistService();
 		let responseData;
@@ -1983,20 +1983,20 @@ export class TodoistV2 implements INodeType {
 						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} else {
 					if (responseData?.hasOwnProperty('success')) {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: responseData.success }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData?.data as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 				}
 			} catch (error) {
@@ -2005,7 +2005,7 @@ export class TodoistV2 implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 					continue;
 				}
 				throw error;

@@ -61,7 +61,7 @@ export async function dropboxpiRequestAllItems(
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	const paginationEndpoint: IDataObject = {
 		folder: 'https://api.dropboxapi.com/2/files/list_folder/continue',
@@ -83,7 +83,7 @@ export async function dropboxpiRequestAllItems(
 			endpoint = paginationEndpoint[resource] as string;
 			body = { cursor };
 		}
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.has_more !== false);
 
 	return returnData;

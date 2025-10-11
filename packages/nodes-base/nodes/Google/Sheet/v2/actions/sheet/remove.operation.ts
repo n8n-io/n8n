@@ -9,7 +9,7 @@ export async function execute(
 	_sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 	for (let i = 0; i < items.length; i++) {
 		const [spreadsheetId, sheetWithinDocument] = sheetName.split('||');
@@ -34,7 +34,7 @@ export async function execute(
 			{ itemData: { item: i } },
 		);
 
-		returnData.push(...executionData);
+		returnData = returnData.concat(executionData);
 	}
 
 	return returnData;

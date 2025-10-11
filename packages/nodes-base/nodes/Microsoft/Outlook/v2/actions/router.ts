@@ -14,7 +14,7 @@ import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configur
 
 export async function router(this: IExecuteFunctions) {
 	const items = this.getInputData();
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const resource = this.getNodeParameter<MicrosoftOutlook>('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0);
@@ -73,14 +73,14 @@ export async function router(this: IExecuteFunctions) {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 			}
 
-			returnData.push(...responseData);
+			returnData = returnData.concat(responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 			//NodeApiError will be missing the itemIndex, add it

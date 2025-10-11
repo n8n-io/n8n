@@ -100,7 +100,7 @@ export async function apiRequestAllItems(
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 
-		returnData.items.push.apply(returnData.items, responseData.items as IDataObject[]);
+		returnData.items = returnData.items.concat(responseData.items as IDataObject[]);
 	} while (responseData.page_count !== undefined && responseData.page_count > query.page);
 
 	return returnData;

@@ -82,7 +82,7 @@ export class Mailcheck implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
 
@@ -106,7 +106,7 @@ export class Mailcheck implements INodeType {
 				throw error;
 			}
 			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				returnData = returnData.concat(responseData as IDataObject[]);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}

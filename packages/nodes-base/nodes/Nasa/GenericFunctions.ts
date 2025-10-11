@@ -45,7 +45,7 @@ export async function nasaApiRequestAllItems(
 	resource: string,
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -56,7 +56,7 @@ export async function nasaApiRequestAllItems(
 	do {
 		responseData = await nasaApiRequest.call(this, method, resource, query, {}, uri);
 		uri = responseData.links.next;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.links.next !== undefined);
 
 	return returnData;

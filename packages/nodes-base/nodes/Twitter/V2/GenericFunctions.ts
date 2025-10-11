@@ -64,7 +64,7 @@ export async function twitterApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -73,7 +73,7 @@ export async function twitterApiRequestAllItems(
 	do {
 		responseData = await twitterApiRequest.call(this, method, endpoint, body, query, true);
 		query.next_token = responseData.meta.next_token as string;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.meta.next_token);
 
 	return returnData;

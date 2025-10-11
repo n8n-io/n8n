@@ -67,7 +67,7 @@ export async function bubbleApiRequestAllItems(
 	body: IDataObject,
 	qs: IDataObject,
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	qs.limit = 100;
@@ -75,7 +75,7 @@ export async function bubbleApiRequestAllItems(
 	do {
 		responseData = await bubbleApiRequest.call(this, method, endpoint, body, qs);
 		qs.cursor += qs.limit;
-		returnData.push.apply(returnData, responseData.response.results as IDataObject[]);
+		returnData = returnData.concat(responseData.response.results as IDataObject[]);
 	} while (responseData.response.remaining !== 0);
 
 	return returnData;

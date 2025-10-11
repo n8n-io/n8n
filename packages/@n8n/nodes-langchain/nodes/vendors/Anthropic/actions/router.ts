@@ -8,7 +8,7 @@ import * as prompt from './prompt';
 import * as text from './text';
 
 export async function router(this: IExecuteFunctions) {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const items = this.getInputData();
 	const resource = this.getNodeParameter('resource', 0);
@@ -46,7 +46,7 @@ export async function router(this: IExecuteFunctions) {
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const responseData = await execute.call(this, i);
-			returnData.push(...responseData);
+			returnData = returnData.concat(responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });

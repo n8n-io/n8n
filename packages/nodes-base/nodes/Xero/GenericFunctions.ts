@@ -54,7 +54,7 @@ export async function xeroApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
@@ -62,7 +62,7 @@ export async function xeroApiRequestAllItems(
 	do {
 		responseData = await xeroApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData[propertyName].length !== 0);
 
 	return returnData;

@@ -47,7 +47,7 @@ export async function cloudflareApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
@@ -55,7 +55,7 @@ export async function cloudflareApiRequestAllItems(
 	do {
 		responseData = await cloudflareApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.result_info.total_pages !== responseData.result_info.page);
 	return returnData;
 }

@@ -51,7 +51,7 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 	const requiredFields = ['title', 'description', 'type', 'source', 'sourceRef'];
 	const excludeFields = ['addTags', 'removeTags', 'lastSyncDate'];
 
-	const fields: ResourceMapperField[] = alertCommonFields
+	let fields: ResourceMapperField[] = alertCommonFields
 		.filter((entry) => !excludeFields.includes(entry.id))
 		.map((entry) => {
 			const type = entry.type as FieldType;
@@ -78,7 +78,7 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 		});
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields = fields.concat(customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,
@@ -117,7 +117,7 @@ export async function getAlertUpdateFields(
 			return field;
 		});
 
-	const fields: ResourceMapperField[] = [
+	let fields: ResourceMapperField[] = [
 		{
 			displayName: 'ID',
 			id: 'id',
@@ -131,7 +131,7 @@ export async function getAlertUpdateFields(
 	];
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields = fields.concat(customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,
@@ -148,7 +148,7 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 	const requiredFields = ['title', 'description'];
 	const excludeCreateFields = ['impactStatus', 'taskRule', 'addTags', 'removeTags'];
 
-	const fields: ResourceMapperField[] = caseCommonFields
+	let fields: ResourceMapperField[] = caseCommonFields
 		.filter((entry) => !excludeCreateFields.includes(entry.id))
 		.map((entry) => {
 			const type = entry.type as FieldType;
@@ -179,7 +179,7 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 		});
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields = fields.concat(customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,
@@ -224,7 +224,7 @@ export async function getCaseUpdateFields(
 			return field;
 		});
 
-	const fields: ResourceMapperField[] = [
+	let fields: ResourceMapperField[] = [
 		{
 			displayName: 'ID',
 			id: 'id',
@@ -238,7 +238,7 @@ export async function getCaseUpdateFields(
 	];
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields = fields.concat(customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,

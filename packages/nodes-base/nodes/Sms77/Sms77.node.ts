@@ -228,7 +228,7 @@ export class Sms77 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 
 		for (let i = 0; i < this.getInputData().length; i++) {
 			const resource = this.getNodeParameter('resource', i);
@@ -266,7 +266,7 @@ export class Sms77 implements INodeType {
 				}
 
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				} else if (responseData !== undefined) {
 					returnData.push(responseData as IDataObject);
 				}

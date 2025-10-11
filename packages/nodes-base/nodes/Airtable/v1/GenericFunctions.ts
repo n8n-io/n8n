@@ -81,13 +81,13 @@ export async function apiRequestAllItems(
 	}
 	query.pageSize = 100;
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.records as IDataObject[]);
+		returnData = returnData.concat(responseData.records as IDataObject[]);
 
 		query.offset = responseData.offset;
 	} while (responseData.offset !== undefined);

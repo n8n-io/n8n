@@ -69,7 +69,7 @@ export async function zendeskApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -78,7 +78,7 @@ export async function zendeskApiRequestAllItems(
 	do {
 		responseData = await zendeskApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.next_page;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length) {
 			return returnData;

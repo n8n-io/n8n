@@ -372,14 +372,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const ids: string[] = [];
+				let ids: string[] = [];
 
 				if (objectType === 'survey' && event !== 'survey_created') {
 					const surveyIds = this.getNodeParameter('surveyIds') as string[];
-					ids.push.apply(ids, surveyIds);
+					ids = ids.concat(surveyIds);
 				} else if (objectType === 'collector') {
 					const collectorIds = this.getNodeParameter('collectorIds') as string[];
-					ids.push.apply(ids, collectorIds);
+					ids = ids.concat(collectorIds);
 				}
 
 				for (const webhook of responseData) {
@@ -408,14 +408,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				const objectType = this.getNodeParameter('objectType') as string;
 				const endpoint = '/webhooks';
-				const ids: string[] = [];
+				let ids: string[] = [];
 
 				if (objectType === 'survey' && event !== 'survey_created') {
 					const surveyIds = this.getNodeParameter('surveyIds') as string[];
-					ids.push.apply(ids, surveyIds);
+					ids = ids.concat(surveyIds);
 				} else if (objectType === 'collector') {
 					const collectorIds = this.getNodeParameter('collectorIds') as string[];
-					ids.push.apply(ids, collectorIds);
+					ids = ids.concat(collectorIds);
 				}
 
 				const body: IDataObject = {
@@ -529,7 +529,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						responseData = await surveyMonkeyApiRequest.call(this, 'GET', endpoint);
 						const surveyId = responseData.survey_id;
 
-						const questions: IQuestion[] = [];
+						let questions: IQuestion[] = [];
 						const answers = new Map<string, IAnswer[]>();
 
 						const { pages } = await surveyMonkeyApiRequest.call(
@@ -539,7 +539,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						);
 
 						for (const page of pages) {
-							questions.push.apply(questions, page.questions as IQuestion[]);
+							questions = questions.concat(page.questions as IQuestion[]);
 						}
 
 						for (const page of responseData.pages as IDataObject[]) {

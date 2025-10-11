@@ -73,7 +73,7 @@ export async function linearApiRequestAllItems(
 	body: any = {},
 	limit?: number,
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	body.variables.first = limit && limit < 50 ? limit : 50;
@@ -87,7 +87,7 @@ export async function linearApiRequestAllItems(
 	do {
 		responseData = await linearApiRequest.call(this, body);
 		const nodes = get(responseData, nodesPath) as IDataObject[];
-		returnData.push(...nodes);
+		returnData = returnData.concat(nodes);
 		body.variables.after = get(responseData, endCursorPath);
 		if (limit && returnData.length >= limit) {
 			return returnData;

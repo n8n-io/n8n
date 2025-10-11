@@ -47,7 +47,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	guildId: string,
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const after = this.getNodeParameter('after', 0);
@@ -90,7 +90,7 @@ export async function execute(
 				);
 				if (!responseData?.length) break;
 				qs.after = responseData[responseData.length - 1].user.id;
-				response.push(...responseData);
+				response = response.concat(responseData);
 			} while (responseData.length);
 		}
 
@@ -107,12 +107,12 @@ export async function execute(
 			{ itemData: { item: 0 } },
 		);
 
-		returnData.push(...executionData);
+		returnData = returnData.concat(executionData);
 	} catch (error) {
 		const err = parseDiscordError.call(this, error);
 
 		if (this.continueOnFail()) {
-			returnData.push(...prepareErrorData.call(this, err, 0));
+			returnData = returnData.concat(prepareErrorData.call(this, err, 0));
 		}
 
 		throw err;

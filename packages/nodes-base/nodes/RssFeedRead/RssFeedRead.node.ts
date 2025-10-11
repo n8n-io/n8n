@@ -75,7 +75,7 @@ export class RssFeedRead implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const nodeVersion = this.getNode().typeVersion;
 		const items = this.getInputData();
 
@@ -158,7 +158,7 @@ export class RssFeedRead implements INodeType {
 						itemData,
 					});
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
