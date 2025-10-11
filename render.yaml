@@ -1,17 +1,1 @@
-services:
-  - type: web
-    name: n8n
-    env: node
-    plan: free
-    buildCommand: yarn install
-    startCommand: yarn start
-    branch: main
-    envVars:
-      - key: N8N_ENCRYPTION_KEY
-        value: mySuperSecretKey123
-      - key: N8N_BASIC_AUTH_ACTIVE
-        value: "true"
-      - key: N8N_BASIC_AUTH_USER
-        value: admin
-      - key: N8N_BASIC_AUTH_PASSWORD
-        value: password123
+branch: master
