@@ -6,64 +6,27 @@ import type {
 	DataTableRow,
 } from '@/features/dataTable/dataTable.types';
 import { AgGridVue } from 'ag-grid-vue3';
-import type { GetRowIdParams, GridReadyEvent } from 'ag-grid-community';
-import {
-	ModuleRegistry,
-	ClientSideRowModelModule,
-	TextEditorModule,
-	LargeTextEditorModule,
-	ColumnAutoSizeModule,
-	CheckboxEditorModule,
-	NumberEditorModule,
-	RowSelectionModule,
-	RenderApiModule,
-	DateEditorModule,
-	ClientSideRowModelApiModule,
-	ValidationModule,
-	UndoRedoEditModule,
-	CellStyleModule,
-	ScrollApiModule,
-	PinnedRowModule,
-	ColumnApiModule,
-	TextFilterModule,
-	NumberFilterModule,
-	DateFilterModule,
-	EventApiModule,
-} from 'ag-grid-community';
+import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataTable/components/dataGrid/n8nTheme';
+import { registerAgGridModulesOnce } from '@/features/dataTable/components/dataGrid/registerAgGridModulesOnce';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
-import { DATA_TABLE_HEADER_HEIGHT, DATA_TABLE_ROW_HEIGHT } from '@/features/dataTable/constants';
+import {
+	DATA_TABLE_HEADER_HEIGHT,
+	DATA_TABLE_ROW_HEIGHT,
+	DEFAULT_ID_COLUMN_NAME,
+	ADD_ROW_ROW_ID,
+} from '@/features/dataTable/constants';
 import { useDataTablePagination } from '@/features/dataTable/composables/useDataTablePagination';
-import { useDataTableGridBase } from '@/features/dataTable/composables/useDataTableGridBase';
+import { useAgGrid } from '@/features/dataTable/composables/useAgGrid';
+import { useDataTableColumns } from '@/features/dataTable/composables/useDataTableColumns';
 import { useDataTableSelection } from '@/features/dataTable/composables/useDataTableSelection';
 import { useDataTableOperations } from '@/features/dataTable/composables/useDataTableOperations';
 import { useDataTableColumnFilters } from '@/features/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
+import { GRID_FILTER_CONFIG } from '@/features/dataTable/utils/filterMappings';
 
 import { ElPagination } from 'element-plus';
-// Register only the modules we actually use
-ModuleRegistry.registerModules([
-	ValidationModule, // This module allows us to see AG Grid errors in browser console
-	ClientSideRowModelModule,
-	TextEditorModule,
-	LargeTextEditorModule,
-	ColumnAutoSizeModule,
-	CheckboxEditorModule,
-	NumberEditorModule,
-	RowSelectionModule,
-	RenderApiModule,
-	DateEditorModule,
-	ClientSideRowModelApiModule,
-	UndoRedoEditModule,
-	CellStyleModule,
-	PinnedRowModule,
-	ScrollApiModule,
-	ColumnApiModule,
-	TextFilterModule,
-	NumberFilterModule,
-	DateFilterModule,
-	EventApiModule,
-]);
+registerAgGridModulesOnce();
 
 type Props = {
 	dataTable: DataTable;
@@ -78,20 +41,26 @@ const emit = defineEmits<{
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
 const i18n = useI18n();
-
-const dataTableGridBase = useDataTableGridBase({
-	gridContainerRef,
-	onDeleteColumn: onDeleteColumnFunction,
-	onAddRowClick: onAddRowClickFunction,
-	onAddColumn: onAddColumnFunction,
-});
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
-	gridApi: dataTableGridBase.gridApi,
-	colDefs: dataTableGridBase.colDefs,
-	setGridData: dataTableGridBase.setGridData,
+const agGrid = useAgGrid<DataTableRow>({
+	gridContainerRef,
+	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
+	pinnedBottomRowId: ADD_ROW_ROW_ID,
+	defaultColDef: GRID_FILTER_CONFIG.defaultColDef,
+});
+
+const dataTableColumns = useDataTableColumns({
+	onDeleteColumn: onDeleteColumnFunction,
+	onAddRowClick: onAddRowClickFunction,
+	onAddColumn: onAddColumnFunction,
+	isTextEditorOpen: agGrid.isTextEditorOpen,
+});
+
+const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
+	gridApi: agGrid.gridApi,
+	colDefs: dataTableColumns.colDefs,
 });
 
 const {
@@ -106,32 +75,32 @@ const {
 } = useDataTablePagination({ onChange: fetchDataTableRowsFunction });
 
 const selection = useDataTableSelection({
-	gridApi: dataTableGridBase.gridApi,
+	gridApi: agGrid.gridApi,
 });
 
 const dataTableOperations = useDataTableOperations({
-	colDefs: dataTableGridBase.colDefs,
+	colDefs: dataTableColumns.colDefs,
 	rowData,
-	deleteGridColumn: dataTableGridBase.deleteColumn,
-	setGridData: dataTableGridBase.setGridData,
-	insertGridColumnAtIndex: dataTableGridBase.insertColumnAtIndex,
+	deleteGridColumn: dataTableColumns.deleteColumn,
+	setGridData: agGrid.setGridData,
+	insertGridColumnAtIndex: dataTableColumns.insertColumnAtIndex,
 	dataTableId: props.dataTable.id,
 	projectId: props.dataTable.projectId,
-	addGridColumn: dataTableGridBase.addColumn,
-	moveGridColumn: dataTableGridBase.moveColumn,
-	gridApi: dataTableGridBase.gridApi,
+	addGridColumn: dataTableColumns.addColumn,
+	moveGridColumn: dataTableColumns.moveColumn,
+	gridApi: agGrid.gridApi,
 	totalItems,
 	setTotalItems,
 	ensureItemOnPage,
-	focusFirstEditableCell: dataTableGridBase.focusFirstEditableCell,
+	focusFirstEditableCell: agGrid.focusFirstEditableCell,
 	toggleSave: emit.bind(null, 'toggleSave'),
 	currentPage,
 	pageSize,
-	currentSortBy: dataTableGridBase.currentSortBy,
-	currentSortOrder: dataTableGridBase.currentSortOrder,
+	currentSortBy: agGrid.currentSortBy,
+	currentSortOrder: agGrid.currentSortOrder,
 	handleClearSelection: selection.handleClearSelection,
 	selectedRowIds: selection.selectedRowIds,
-	handleCopyFocusedCell: dataTableGridBase.handleCopyFocusedCell,
+	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
 });
 
@@ -152,15 +121,15 @@ async function fetchDataTableRowsFunction() {
 }
 
 const initialize = async (params: GridReadyEvent) => {
-	dataTableGridBase.onGridReady(params);
-	dataTableGridBase.loadColumns(props.dataTable.columns);
+	agGrid.onGridReady(params);
+	dataTableColumns.loadColumns(props.dataTable.columns);
+	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
 	await dataTableOperations.fetchDataTableRows();
-	initializeFilters();
 };
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
 
-watch([dataTableGridBase.currentSortBy, dataTableGridBase.currentSortOrder], async () => {
+watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 	await setCurrentPage(1);
 });
 
@@ -199,12 +168,14 @@ defineExpose({
 				@grid-ready="initialize"
 				@cell-value-changed="dataTableOperations.onCellValueChanged"
 				@column-moved="dataTableOperations.onColumnMoved"
-				@cell-clicked="dataTableGridBase.onCellClicked"
-				@cell-editing-started="dataTableGridBase.onCellEditingStarted"
-				@cell-editing-stopped="dataTableGridBase.onCellEditingStopped"
-				@column-header-clicked="dataTableGridBase.resetLastFocusedCell"
+				@cell-clicked="agGrid.onCellClicked"
+				@cell-editing-started="agGrid.onCellEditingStarted"
+				@cell-editing-stopped="agGrid.onCellEditingStopped"
+				@column-header-clicked="agGrid.resetLastFocusedCell"
 				@selection-changed="selection.onSelectionChanged"
-				@sort-changed="dataTableGridBase.onSortChanged"
+				@sort-changed="
+					(e: SortChangedEvent) => agGrid.onSortChanged(e, dataTableColumns.colDefs.value)
+				"
 				@cell-key-down="dataTableOperations.onCellKeyDown"
 				@filter-changed="onFilterChanged"
 			/>

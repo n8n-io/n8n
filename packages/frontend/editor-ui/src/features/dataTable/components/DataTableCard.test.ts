@@ -3,7 +3,18 @@ import DataTableCard from '@/features/dataTable/components/DataTableCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { DataTableResource } from '@/features/dataTable/types';
 
-vi.mock('vue-router', () => {
+vi.mock('@/features/projects/projects.store');
+
+vi.mock('vue-router', async () => {
+	const { reactive } = await import('vue');
+	const mockRoute = reactive({
+		params: {
+			projectId: '1',
+			id: '1',
+		},
+		query: {},
+	});
+
 	const push = vi.fn();
 	const resolve = vi.fn().mockReturnValue({ href: '/projects/1/datatables/1' });
 	return {
@@ -11,13 +22,7 @@ vi.mock('vue-router', () => {
 			push,
 			resolve,
 		}),
-		useRoute: vi.fn().mockReturnValue({
-			params: {
-				projectId: '1',
-				id: '1',
-			},
-			query: {},
-		}),
+		useRoute: vi.fn(() => mockRoute),
 		RouterLink: vi.fn(),
 	};
 });
