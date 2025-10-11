@@ -43,7 +43,9 @@ export class ControllerRegistry {
 		const router = Router({ mergeParams: true });
 		const basePath = metadata.registerOnRootPath
 			? metadata.basePath
-			: `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`;
+			: `${this.globalConfig.path}/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
+			.replace(/\/+/g, '/')
+			.replace(/\/$/, '');
 		const prefix = basePath.replace(/\/+/g, '/').replace(/\/$/, '');
 		app.use(prefix === '' ? '/' : prefix, router);
 
