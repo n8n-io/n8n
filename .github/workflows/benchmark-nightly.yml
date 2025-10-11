@@ -37,6 +37,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
     environment: benchmarking
 
@@ -112,7 +113,7 @@ jobs:
     name: Notify Cats on failure
     runs-on: ubuntu-latest
     needs: [build]
-    if: failure()
+    if: failure() && github.repository == 'n8n-io/n8n'
     steps:
       - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         with:
