@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	deepCopy,
 	type IDataObject,
@@ -18,6 +18,18 @@ import {
 	PAYLOAD_SIZE_FOR_2_PASSES,
 	SUPPORT_CHAT_TEST_PAYLOAD,
 } from './useAIAssistantHelpers.test.constants';
+
+// Mock for expression extraction tests
+const mockResolveExpression = vi.fn();
+const mockGetNodeParametersWithResolvedExpressions = vi.fn((params) => params);
+
+// Mock useWorkflowHelpers
+vi.mock('@/composables/useWorkflowHelpers', () => ({
+	useWorkflowHelpers: () => ({
+		resolveExpression: mockResolveExpression,
+		getNodeParametersWithResolvedExpressions: mockGetNodeParametersWithResolvedExpressions,
+	}),
+}));
 
 const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
@@ -938,5 +950,399 @@ describe('Trim Payload Size', () => {
 			),
 		).toBe(true);
 		expect(supportPayload.context?.executionData?.runData).toEqual({});
+	});
+});
+
+describe('extractExpressionsFromWorkflow', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		// Create pinia
+		const pinia = createTestingPinia({
+			stubActions: false,
+		});
+		setActivePinia(pinia);
+
+		// Setup mock implementation for resolveExpression
+		mockResolveExpression.mockImplementation((expression: string) => {
+			// Parse the expression and return appropriate mock values
+			if (expression === '={{ "hello world" }}') return 'hello world';
+			if (expression === '={{ 42 }}') return 42;
+			if (expression === '={{ 3.14 }}') return 3.14;
+			if (expression === '={{ true }}') return true;
+			if (expression === '={{ false }}') return false;
+			if (expression === '={{ 10 + 20 }}') return 30;
+			if (expression === '={{ 100 * 2 }}') return 200;
+			if (expression === '={{ 50 / 5 }}') return 10;
+			if (expression === '={{ "Hello" + " " + "World" }}') return 'Hello World';
+			if (expression === '={{ { name: "John", age: 30 } }}') return { name: 'John', age: 30 };
+			if (expression === '={{ [1, 2, 3] }}') return [1, 2, 3];
+			if (expression.includes('x'.repeat(250))) return 'x'.repeat(300);
+			if (expression.includes('$json')) {
+				throw new Error('Cannot read properties of null');
+			}
+			return '<resolved>';
+		});
+
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('Should return empty object for workflow with no nodes', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result).toEqual({});
+	});
+
+	it('Should return empty object for workflow with nodes but no expressions', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						method: 'GET',
+						url: 'https://example.com',
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result).toEqual({});
+	});
+
+	it('Should extract and resolve expressions with nodeType', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						url: '={{ "hello world" }}',
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['HTTP Request']).toBeDefined();
+		expect(result['HTTP Request'][0]).toEqual({
+			expression: '={{ "hello world" }}',
+			resolvedValue: 'hello world',
+			nodeType: 'n8n-nodes-base.httpRequest',
+		});
+	});
+
+	it('Should extract multiple expressions from same node and nested objects', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						url: '={{ $json.url }}',
+						headers: {
+							authorization: '={{ $json.token }}',
+						},
+						documentId: {
+							__rl: true,
+							value: "={{ $('Edit Fields').item.json.document }}",
+							mode: 'id',
+						},
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['HTTP Request']).toBeDefined();
+		expect(result['HTTP Request'].length).toBe(3);
+		const expressions = result['HTTP Request'].map((e) => e.expression);
+		expect(expressions).toContain('={{ $json.url }}');
+		expect(expressions).toContain('={{ $json.token }}');
+		expect(expressions).toContain("={{ $('Edit Fields').item.json.document }}");
+	});
+
+	it('Should extract expressions from arrays', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: '1',
+									name: 'field1',
+									value: '={{ $json.field1 }}',
+									type: 'string',
+								},
+								{
+									id: '2',
+									name: 'field2',
+									value: '={{ $json.field2 }}',
+									type: 'string',
+								},
+							],
+						},
+					},
+					id: 'node1',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Edit Fields']).toBeDefined();
+		expect(result['Edit Fields'].length).toBe(2);
+		expect(result['Edit Fields'][0]).toMatchObject({
+			expression: '={{ $json.field1 }}',
+			nodeType: 'n8n-nodes-base.set',
+		});
+		expect(result['Edit Fields'][1]).toMatchObject({
+			expression: '={{ $json.field2 }}',
+			nodeType: 'n8n-nodes-base.set',
+		});
+		// Both should have resolved values (even if errors)
+		expect(result['Edit Fields'][0].resolvedValue).toBeDefined();
+		expect(result['Edit Fields'][1].resolvedValue).toBeDefined();
+	});
+
+	it('Should trim resolved values longer than 200 characters', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						// Simple long string that should be trimmed
+						value: '={{ "x".repeat(300) }}',
+					},
+					id: 'node1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Test Node']).toBeDefined();
+		expect(result['Test Node'][0].expression).toBe('={{ "x".repeat(300) }}');
+
+		const resolvedValue = result['Test Node'][0].resolvedValue;
+		// Should have a resolved value
+		expect(resolvedValue).toBeDefined();
+		expect(resolvedValue.length).toBeGreaterThan(0);
+
+		// If it's not an error and the value was long enough, it should be truncated
+		if (!resolvedValue.startsWith('Error in expression:') && resolvedValue.length > 200) {
+			expect(resolvedValue).toContain('... [truncated]');
+			expect(resolvedValue.length).toBeLessThanOrEqual(220); // 200 + "... [truncated]"
+		}
+	});
+
+	it('Should handle expression resolution errors gracefully', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						// This expression will cause an error (accessing property of null)
+						value: '={{ $json.nonexistent.nested.property }}',
+					},
+					id: 'node1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Test Node']).toBeDefined();
+		expect(result['Test Node'][0]).toMatchObject({
+			expression: '={{ $json.nonexistent.nested.property }}',
+			nodeType: 'n8n-nodes-base.set',
+		});
+
+		const resolvedValue = result['Test Node'][0].resolvedValue;
+		// Should contain error message
+		expect(resolvedValue).toContain('Error in expression:');
+		// Error message should be trimmed if too long
+		expect(resolvedValue.length).toBeLessThanOrEqual(250);
+	});
+
+	it('Should group expressions by node name', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						url: '={{ $json.url1 }}',
+					},
+					id: 'node1',
+					name: 'HTTP Request 1',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+				{
+					parameters: {
+						url: '={{ $json.url2 }}',
+					},
+					id: 'node2',
+					name: 'HTTP Request 2',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [100, 100],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(Object.keys(result)).toHaveLength(2);
+		expect(result['HTTP Request 1']).toBeDefined();
+		expect(result['HTTP Request 2']).toBeDefined();
+		expect(result['HTTP Request 1'][0].expression).toBe('={{ $json.url1 }}');
+		expect(result['HTTP Request 2'][0].expression).toBe('={{ $json.url2 }}');
+	});
+
+	it('Should not include nodes without expressions in result', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						url: 'https://example.com',
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+				{
+					parameters: {
+						value: '={{ $json.field }}',
+					},
+					id: 'node2',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					position: [100, 100],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(Object.keys(result)).toHaveLength(1);
+		expect(result['HTTP Request']).toBeUndefined();
+		expect(result['Edit Fields']).toBeDefined();
+	});
+
+	it('Should handle nodes without parameters', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {},
+					id: 'node1',
+					name: 'No Op',
+					type: 'n8n-nodes-base.noOp',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result).toEqual({});
+	});
+
+	it('Should resolve different value types correctly (string, number, boolean, object, array)', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						stringVal: '={{ "hello world" }}',
+						numberVal: '={{ 42 }}',
+						boolVal: '={{ true }}',
+						mathVal: '={{ 10 + 20 }}',
+						objVal: '={{ { name: "John", age: 30 } }}',
+						arrayVal: '={{ [1, 2, 3] }}',
+					},
+					id: 'node1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Test Node']).toBeDefined();
+		expect(result['Test Node'].length).toBe(6);
+
+		// Verify all expressions extracted and resolved with correct types
+		const expressionMap = Object.fromEntries(
+			result['Test Node'].map((e) => [e.expression, e.resolvedValue]),
+		);
+		expect(expressionMap['={{ "hello world" }}']).toBe('hello world');
+		expect(expressionMap['={{ 42 }}']).toBe('42');
+		expect(expressionMap['={{ true }}']).toBe('true');
+		expect(expressionMap['={{ 10 + 20 }}']).toBe('30');
+		expect(expressionMap['={{ { name: "John", age: 30 } }}']).toContain('John');
+		expect(expressionMap['={{ [1, 2, 3] }}']).toContain('1');
+	});
+
+	it('Should trim very long resolved values correctly', () => {
+		const longString = 'x'.repeat(250);
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						// Create a long literal string
+						value: `={{ "${longString}" }}`,
+					},
+					id: 'node1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Test Node']).toBeDefined();
+		const resolvedValue = result['Test Node'][0].resolvedValue;
+		// Mock returns a 300 char string, should be trimmed
+		expect(resolvedValue.length).toBeLessThanOrEqual(220); // 200 + "... [truncated]"
+		expect(resolvedValue).toContain('... [truncated]');
+		expect(resolvedValue).toMatch(/^x+\.\.\. \[truncated\]$/);
 	});
 });

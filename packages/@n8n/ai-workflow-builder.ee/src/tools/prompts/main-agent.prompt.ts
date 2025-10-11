@@ -420,6 +420,11 @@ const currentExecutionNodesSchemas = `
 {executionSchema}
 </current_execution_nodes_schemas>`;
 
+const resolvedExpressionsMap = `
+<current_resolved_expressions_map>
+{resolvedExpressions}
+</current_resolved_expressions_map>`;
+
 const previousConversationSummary = `
 <previous_summary>
 {previousSummary}
@@ -441,6 +446,10 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: currentWorkflowJson,
+			},
+			{
+				type: 'text',
+				text: resolvedExpressionsMap,
 			},
 			{
 				type: 'text',
