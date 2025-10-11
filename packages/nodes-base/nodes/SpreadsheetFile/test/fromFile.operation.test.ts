@@ -123,6 +123,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			expect(result).toHaveLength(2);
 			expect(mockExecuteFunctions.helpers.getBinaryStream).toHaveBeenCalledWith(
 				'binary-data-id-123',
+				262144,
 			);
 			expect(mockExecuteFunctions.helpers.binaryToBuffer).toHaveBeenCalledWith(mockStream);
 			expect(xlsxRead).toHaveBeenCalledWith(mockBuffer, { raw: undefined });
@@ -157,7 +158,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			await execute.call(mockExecuteFunctions, items);
 
-			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'string' });
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
 		});
 
 		it('should use specified sheet name', async () => {
@@ -404,6 +405,276 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].json.error).toContain('Stream error');
+		});
+	});
+
+	describe('Binary string conversion', () => {
+		it('should convert buffer to binary string when readAsString is true', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { readAsString: true };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			await execute.call(mockExecuteFunctions, items);
+
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
+			const callArgs = (xlsxRead as jest.Mock).mock.calls[0];
+			const passedData = callArgs[0];
+			const expectedBinaryString = Buffer.from(
+				mockBinaryDataInMemory.data,
+				BINARY_ENCODING,
+			).toString('binary');
+			expect(passedData).toBe(expectedBinaryString);
+		});
+
+		it('should use buffer directly when readAsString is false', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { readAsString: false };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			await execute.call(mockExecuteFunctions, items);
+
+			// Verify that xlsxRead was called with a Buffer (no type specified)
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), { raw: undefined });
+		});
+
+		it('should handle readAsString with filesystem binary data', async () => {
+			const mockStream = new Readable();
+			mockStream.push(Buffer.from('test xlsx content'));
+			mockStream.push(null);
+
+			const mockBuffer = Buffer.from('test xlsx content');
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { readAsString: true };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(mockBinaryDataWithId);
+			mockExecuteFunctions.helpers.getBinaryStream.mockResolvedValue(mockStream);
+			mockExecuteFunctions.helpers.binaryToBuffer.mockResolvedValue(mockBuffer);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			expect(result).toHaveLength(2);
+			expect(mockExecuteFunctions.helpers.getBinaryStream).toHaveBeenCalledWith(
+				'binary-data-id-123',
+				262144,
+			);
+			expect(mockExecuteFunctions.helpers.binaryToBuffer).toHaveBeenCalledWith(mockStream);
+
+			// Verify that xlsxRead was called with binary string
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
+
+			// Verify the string is the result of buffer.toString('binary')
+			const callArgs = (xlsxRead as jest.Mock).mock.calls[0];
+			const passedData = callArgs[0];
+			const expectedBinaryString = mockBuffer.toString('binary');
+			expect(passedData).toBe(expectedBinaryString);
+		});
+
+		it('should combine readAsString with other options correctly', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options')
+					return { readAsString: true, rawData: true, sheetName: 'Sheet2' };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			await execute.call(mockExecuteFunctions, items);
+
+			// Verify that xlsxRead was called with binary string and rawData option
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: true, type: 'binary' });
+
+			// Verify that the correct sheet was used
+			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet2, {});
+		});
+	});
+
+	describe('Special character handling', () => {
+		it('should handle special characters correctly when readAsString is true', async () => {
+			// Mock binary data that contains special characters (e.g., accented characters, emojis)
+			const specialCharBinaryData: IBinaryData = {
+				data: Buffer.from('Special chars: àáâãäåæçèéêë 🚀 ñöü', 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				fileExtension: 'xlsx',
+				fileName: 'special-chars.xlsx',
+			};
+
+			const mockWorkbookWithSpecialChars = {
+				SheetNames: ['Sheet1'],
+				Sheets: {
+					Sheet1: {
+						A1: { t: 's', v: 'Special chars: àáâãäåæçèéêë 🚀 ñöü' },
+						A2: { t: 's', v: 'Café' },
+						A3: { t: 's', v: 'Naïve résumé' },
+					},
+				},
+			};
+
+			const mockSpecialCharData = [
+				{ text: 'Special chars: àáâãäåæçèéêë 🚀 ñöü' },
+				{ text: 'Café' },
+				{ text: 'Naïve résumé' },
+			];
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { readAsString: true };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(specialCharBinaryData);
+			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookWithSpecialChars);
+			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockSpecialCharData);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			// Verify that xlsxRead was called with binary string type for proper character handling
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
+
+			// Verify that special characters are preserved in the output
+			expect(result).toHaveLength(3);
+			expect(result[0].json.text).toBe('Special chars: àáâãäåæçèéêë 🚀 ñöü');
+			expect(result[1].json.text).toBe('Café');
+			expect(result[2].json.text).toBe('Naïve résumé');
+		});
+
+		it('should demonstrate the difference between readAsString true vs false for character encoding', async () => {
+			// Test data with potential encoding issues
+			const encodingTestData: IBinaryData = {
+				data: Buffer.from('Encoding test: café naïve résumé', 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				fileExtension: 'xlsx',
+				fileName: 'encoding-test.xlsx',
+			};
+
+			const mockWorkbookEncoding = {
+				SheetNames: ['Sheet1'],
+				Sheets: {
+					Sheet1: {
+						A1: { t: 's', v: 'Encoding test: café naïve résumé' },
+					},
+				},
+			};
+
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(encodingTestData);
+			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookEncoding);
+			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue([
+				{ text: 'Encoding test: café naïve résumé' },
+			]);
+
+			// Test with readAsString: true
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { readAsString: true };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			await execute.call(mockExecuteFunctions, items);
+
+			// Verify that when readAsString is true, we use binary type for proper character handling
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
+
+			// Reset mocks for second test
+			jest.clearAllMocks();
+			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookEncoding);
+			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue([
+				{ text: 'Encoding test: café naïve résumé' },
+			]);
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(encodingTestData);
+
+			// Test with readAsString: false (default)
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { readAsString: false };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			await execute.call(mockExecuteFunctions, items);
+
+			// Verify that when readAsString is false, we use buffer directly (no type specified)
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), { raw: undefined });
+		});
+
+		it('should handle various international characters when readAsString is enabled', async () => {
+			// Test with various international characters that might cause encoding issues
+			const internationalChars = [
+				'Chinese: 你好世界',
+				'Japanese: こんにちは',
+				'Korean: 안녕하세요',
+				'Arabic: مرحبا',
+				'Russian: Привет',
+				'Greek: Γεια σας',
+				'Hebrew: שלום',
+				'Thai: สวัสดี',
+			];
+
+			const internationalBinaryData: IBinaryData = {
+				data: Buffer.from(internationalChars.join('\n'), 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				fileExtension: 'xlsx',
+				fileName: 'international.xlsx',
+			};
+
+			const mockInternationalWorkbook = {
+				SheetNames: ['Sheet1'],
+				Sheets: {
+					Sheet1: internationalChars.reduce((acc, char, index) => {
+						acc[`A${index + 1}`] = { t: 's', v: char };
+						return acc;
+					}, {} as any),
+				},
+			};
+
+			const mockInternationalData = internationalChars.map((char) => ({ text: char }));
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { readAsString: true };
+				if (paramName === 'fileFormat') return 'xlsx';
+				if (paramName === 'binaryPropertyName') return 'data';
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(internationalBinaryData);
+			(xlsxRead as jest.Mock).mockReturnValue(mockInternationalWorkbook);
+			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockInternationalData);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			// Verify that xlsxRead was called with binary string type
+			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
+
+			// Verify that all international characters are preserved
+			expect(result).toHaveLength(8);
+			internationalChars.forEach((expectedChar, index) => {
+				expect(result[index].json.text).toBe(expectedChar);
+			});
 		});
 	});
 });

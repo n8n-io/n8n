@@ -122,20 +122,24 @@ export async function execute(
 				}
 			} else {
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
-				if (options.readAsString) xlsxOptions.type = 'string';
 
-				const getXlsxBuffer = async () => {
-					if (binaryData.id) {
-						const stream = await this.helpers.getBinaryStream(binaryData.id);
-						const buffer = await this.helpers.binaryToBuffer(stream);
-						return buffer;
-					} else {
-						return Buffer.from(binaryData.data, BINARY_ENCODING);
-					}
-				};
-				const buffer = await getXlsxBuffer();
-				const data = options.readAsString ? buffer.toString() : buffer;
-				const workbook = xlsxRead(data, xlsxOptions);
+				let buffer: Buffer;
+				if (binaryData.id) {
+					const chunkSize = 256 * 1024;
+					const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+					buffer = await this.helpers.binaryToBuffer(stream);
+				} else {
+					buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+				}
+
+				let workbook;
+				if (options.readAsString) {
+					xlsxOptions.type = 'binary';
+					const binaryString = buffer.toString('binary');
+					workbook = xlsxRead(binaryString, xlsxOptions);
+				} else {
+					workbook = xlsxRead(buffer, xlsxOptions);
+				}
 
 				if (workbook.SheetNames.length === 0) {
 					throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', {
