@@ -141,6 +141,7 @@ async function processEventStream(
 	returnIntermediateSteps: boolean = false,
 	memory?: BaseChatMemory,
 	input?: string,
+	enableStreamingToolCalls: boolean = false,
 ): Promise<AgentResult> {
 	const agentResult: AgentResult = {
 		output: '',
@@ -221,14 +222,23 @@ async function processEventStream(
 				break;
 			case 'on_tool_end':
 				// Capture tool execution results and match with action
-				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
+				if (event.data) {
 					const toolData = event.data as { output?: string };
-					// Find the matching intermediate step for this tool call
-					const matchingStep = agentResult.intermediateSteps!.find(
-						(step) => !step.observation && step.action.tool === event.name,
-					);
-					if (matchingStep) {
-						matchingStep.observation = toolData.output || '';
+					const toolContent = { name: event.name, toolData: toolData.output ?? '{}' };
+					// Stream the final tool result
+					if (enableStreamingToolCalls) {
+						ctx.sendChunk('tool', itemIndex, toolContent);
+					}
+
+					// Also add to intermediate steps if needed
+					if (returnIntermediateSteps && agentResult.intermediateSteps!.length > 0) {
+						// Find the matching intermediate step for this tool call
+						const matchingStep = agentResult.intermediateSteps!.find(
+							(step) => !step.observation && step.action.tool === event.name,
+						);
+						if (matchingStep) {
+							matchingStep.observation = toolData.output || '';
+						}
 					}
 				}
 				break;
@@ -386,12 +396,13 @@ export async function toolsAgentExecute(
 			}
 			const outputParser = await getOptionalOutputParser(this, itemIndex);
 			const tools = await getTools(this, outputParser);
-			const options = this.getNodeParameter('options', itemIndex, { enableStreaming: true }) as {
+			const options = this.getNodeParameter('options', itemIndex, { enableStreaming: true, enableStreamingToolCalls: false }) as {
 				systemMessage?: string;
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
 				enableStreaming?: boolean;
+				enableStreamingToolCalls?: boolean;
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -455,6 +466,7 @@ export async function toolsAgentExecute(
 					options.returnIntermediateSteps,
 					memory,
 					input,
+					options.enableStreamingToolCalls
 				);
 
 				// If result contains tool calls, build the request object like the normal flow

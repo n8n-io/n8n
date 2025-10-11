@@ -36,3 +36,11 @@ export const commonOptions: INodeProperties[] = [
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
 ];
+
+export const enableStreamingToolCallsOption: INodeProperties = {
+	displayName: 'Enable Streaming Tool Calls',
+	name: 'enableStreamingToolCalls',
+	type: 'boolean',
+	default: false,
+	description: 'Whether this agent will stream tool calls in real-time as they are generated',
+};

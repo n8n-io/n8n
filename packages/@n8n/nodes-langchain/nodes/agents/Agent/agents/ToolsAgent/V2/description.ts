@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { getBatchingOptionFields } from '@utils/sharedFields';
 
-import { commonOptions } from '../options';
+import { commonOptions, enableStreamingToolCallsOption } from '../options';
 
 const enableStreaminOption: INodeProperties = {
 	displayName: 'Enable Streaming',
@@ -24,7 +24,7 @@ export const getToolsAgentProperties = ({
 		options: [
 			...commonOptions,
 			getBatchingOptionFields(undefined, 1),
-			...(withStreaming ? [enableStreaminOption] : []),
+			...(withStreaming ? [enableStreaminOption, enableStreamingToolCallsOption] : []),
 		],
 		displayOptions: {
 			hide: {

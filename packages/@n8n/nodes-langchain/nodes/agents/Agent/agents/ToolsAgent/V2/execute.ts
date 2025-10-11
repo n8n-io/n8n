@@ -84,6 +84,7 @@ async function processEventStream(
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
 	returnIntermediateSteps: boolean = false,
+	enableStreamingToolCalls: boolean = false,
 ): Promise<{ output: string; intermediateSteps?: any[] }> {
 	const agentResult: { output: string; intermediateSteps?: any[] } = {
 		output: '',
@@ -143,14 +144,23 @@ async function processEventStream(
 				break;
 			case 'on_tool_end':
 				// Capture tool execution results and match with action
-				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
+				if (event.data) {
 					const toolData = event.data as any;
-					// Find the matching intermediate step for this tool call
-					const matchingStep = agentResult.intermediateSteps!.find(
-						(step) => !step.observation && step.action.tool === event.name,
-					);
-					if (matchingStep) {
-						matchingStep.observation = toolData.output;
+					const toolContent = { name: event.name, toolData: toolData.output ?? '{}' };
+					// Stream the final tool result
+					if (enableStreamingToolCalls) {
+						ctx.sendChunk('tool', itemIndex, toolContent);
+					}
+
+					// Also add to intermediate steps if needed
+					if (returnIntermediateSteps && agentResult.intermediateSteps!.length > 0) {
+						// Find the matching intermediate step for this tool call
+						const matchingStep = agentResult.intermediateSteps!.find(
+							(step) => !step.observation && step.action.tool === event.name,
+						);
+						if (matchingStep) {
+							matchingStep.observation = toolData.output ?? '';
+						}
 					}
 				}
 				break;
@@ -227,6 +237,7 @@ export async function toolsAgentExecute(
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				enableStreamingToolCalls?: boolean;
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -288,6 +299,7 @@ export async function toolsAgentExecute(
 					eventStream,
 					itemIndex,
 					options.returnIntermediateSteps,
+					options.enableStreamingToolCalls,
 				);
 			} else {
 				// Handle regular execution
