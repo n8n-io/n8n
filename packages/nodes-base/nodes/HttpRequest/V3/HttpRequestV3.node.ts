@@ -44,6 +44,53 @@ import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
+import { PassThrough } from 'stream';
+
+import { PassThrough, Readable } from 'stream';
+
+async function peekStream(
+	stream: Readable,
+	bytes = 512,
+): Promise<{ peek: Buffer; stream: Readable }> {
+	const passthrough = new PassThrough();
+	let peek = Buffer.alloc(0);
+	let isPeeking = true;
+
+	const peekComplete = new Promise<void>((resolve, reject) => {
+
+		passthrough.on('error', reject);
+		
+		const onData = (chunk: Buffer) => {
+			if (isPeeking) {
+				peek = Buffer.concat([peek, chunk]);
+				if (peek.length >= bytes) {
+					isPeeking = false;
+					passthrough.removeListener('data', onData);
+					resolve();
+				}
+			}
+		};
+		passthrough.on('data', onData);
+		passthrough.on('end', () => {
+			if (isPeeking) {
+				isPeeking = false;
+				resolve();
+			}
+		});
+	});
+
+
+	stream.on('error', (err) => {
+		passthrough.emit('error', err);
+	});
+
+	stream.pipe(passthrough);
+
+	await peekComplete;
+
+	return { peek: peek.slice(0, bytes), stream: passthrough };
+}
+
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
 		return JSON.stringify(data);
@@ -901,32 +948,54 @@ export class HttpRequestV3 implements INodeType {
 					}
 
 					const responseContentType = response.headers['content-type'] ?? '';
-					if (autoDetectResponseFormat) {
+						if (autoDetectResponseFormat) {
+						let hasPeeked = false;
+						let peekedData: { peek: Buffer; stream: Readable } | null = null;
+
 						if (responseContentType.includes('application/json')) {
 							responseFormat = 'json';
-							if (!response.__bodyResolved) {
+						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
+							responseFormat = 'file';
+						} else {
+							peekedData = await peekStream(response.body as Readable, 512);
+							hasPeeked = true;
+
+							const peekString = peekedData.peek.toString('utf-8').trim();
+
+							if (peekString.startsWith('{') || peekString.startsWith('[')) {
+								responseFormat = 'json';
+							} else {
+								// Re-check binary types in case header was misleading. This is a reasonable fallback.
+								responseFormat = 'text';
+							}
+						}
+
+						if (!response.__bodyResolved) {
+							const streamToProcess = hasPeeked ? peekedData!.stream : (response.body as Readable);
+
+							if (responseFormat === 'json') {
 								const neverError = this.getNodeParameter(
 									'options.response.response.neverError',
 									0,
 									false,
 								) as boolean;
 
-								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+								const data = await this.helpers.binaryToString(streamToProcess);
 								response.body = jsonParse(data, {
 									...(neverError
 										? { fallbackValue: {} }
 										: { errorMessage: 'Invalid JSON in response body' }),
 								});
-							}
-						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
-							responseFormat = 'file';
-						} else {
-							responseFormat = 'text';
-							if (!response.__bodyResolved) {
-								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+
+							} else if (responseFormat === 'text') {
+								const data = await this.helpers.binaryToString(streamToProcess);
 								response.body = !data ? undefined : data;
+
+							} else { // responseFormat === 'file'
+								response.body = streamToProcess;
 							}
 						}
+					}
 					}
 					// This is a no-op outside of tool usage
 					const optimizeResponse = configureResponseOptimizer(this, itemIndex);
