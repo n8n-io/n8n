@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -28,10 +29,12 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
+	jsonParse,
 	NodeHelpers,
 	NodeOperationError,
 	UnexpectedError,
 } from 'n8n-workflow';
+import { join, resolve } from 'path';
 
 import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
@@ -212,6 +215,18 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
+	}
+
+	async getN8nVersion() {
+		const fallbackValue = '0.0.0';
+		try {
+			const rootDir = resolve(__dirname, '..', '..', '..', '..', '..');
+			const packageJsonPath = join(rootDir, 'package.json');
+			const packageJson = jsonParse<{ version: string }>(await readFile(packageJsonPath, 'utf8'));
+			return packageJson?.version ?? fallbackValue;
+		} catch {
+			return fallbackValue;
+		}
 	}
 
 	setSignatureValidationRequired() {
