@@ -7,7 +7,7 @@ import SettingsApiView from './SettingsApiView.vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { useApiKeysStore } from '@/stores/apiKeys.store';
+import { useApiKeysStore } from '../apiKeys.store';
 import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 

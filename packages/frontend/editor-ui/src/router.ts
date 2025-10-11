@@ -42,7 +42,7 @@ const SettingsPersonalView = async () => await import('./views/SettingsPersonalV
 const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('./views/SettingsCommunityNodesView.vue');
-const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
+const SettingsApiView = async () => await import('@/features/apiKeys/views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () =>
 	await import('@/features/logStreaming.ee/views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('./views/SetupView.vue');
