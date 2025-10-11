@@ -8,18 +8,18 @@ import {
 	ROLE,
 	type UsersListFilterDto,
 } from '@n8n/api-types';
-import type { UpdateGlobalRolePayload } from '@n8n/rest-api-client/api/users';
+import type {
+	UpdateGlobalRolePayload,
+	IUserResponse,
+	IUser,
+	CurrentUserResponse,
+	IPersonalizationLatestVersion,
+} from '@n8n/rest-api-client/api/users';
 import * as usersApi from '@n8n/rest-api-client/api/users';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { InvitableRoleName } from '@/Interface';
-import type { IUserResponse } from '@n8n/rest-api-client/api/users';
-import type {
-	IUser,
-	CurrentUserResponse,
-	IPersonalizationLatestVersion,
-} from '@n8n/rest-api-client/api/users';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -125,7 +125,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	// Methods
 
 	const addUsers = (newUsers: User[]) => {
-		newUsers.forEach((userResponse) => {
+		for (const userResponse of newUsers) {
 			const prevUser = usersById.value[userResponse.id] || {};
 			const updatedUser = {
 				...prevUser,
@@ -140,11 +140,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 				isPendingUser: _isPendingUser(updatedUser),
 			};
 
-			usersById.value = {
-				...usersById.value,
-				[user.id]: user,
-			};
-		});
+			usersById.value[user.id] = user;
+		}
 	};
 
 	const setCurrentUser = (user: CurrentUserResponse) => {
