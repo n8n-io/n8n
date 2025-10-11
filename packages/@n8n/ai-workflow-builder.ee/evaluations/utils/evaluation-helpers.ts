@@ -55,12 +55,13 @@ export function createAgent(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	tracer?: LangChainTracer,
+	checkpointer?: MemorySaver,
 ): WorkflowBuilderAgent {
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
 		llmSimpleTask: llm,
 		llmComplexTask: llm,
-		checkpointer: new MemorySaver(),
+		checkpointer: checkpointer ?? new MemorySaver(),
 		tracer,
 	});
 }
