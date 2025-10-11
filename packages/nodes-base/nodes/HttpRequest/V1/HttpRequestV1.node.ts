@@ -678,10 +678,12 @@ export class HttpRequestV1 implements INodeType {
 			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
-			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+			const trimmedUrl = url.trim();
+
+			if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+					`Invalid URL: ${trimmedUrl}. URL must start with "http" or "https".`,
 				);
 			}
 
@@ -716,12 +718,12 @@ export class HttpRequestV1 implements INodeType {
 				}
 			};
 
-			if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
-			if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
-			if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
-			if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
-			if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
-			if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
+			if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, trimmedUrl);
+			if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, trimmedUrl);
+			if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, trimmedUrl);
+			if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, trimmedUrl);
+			if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, trimmedUrl);
+			if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, trimmedUrl);
 
 			if (
 				itemIndex > 0 &&
@@ -741,7 +743,7 @@ export class HttpRequestV1 implements INodeType {
 			requestOptions = {
 				headers: {},
 				method: requestMethod,
-				uri: url,
+				uri: trimmedUrl,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
 			} satisfies IRequestOptions;
