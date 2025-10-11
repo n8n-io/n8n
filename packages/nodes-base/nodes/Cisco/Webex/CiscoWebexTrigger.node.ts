@@ -313,7 +313,7 @@ export class CiscoWebexTrigger implements INodeType {
 								'/event': ['created', 'deleted'],
 							},
 						},
-						default: '',
+						default: 'direct',
 						description: 'Limit to a particular room type',
 					},
 					{
@@ -336,7 +336,7 @@ export class CiscoWebexTrigger implements INodeType {
 								'/event': ['created', 'updated'],
 							},
 						},
-						default: '',
+						default: 'direct',
 						description: 'Limit to a particular room type',
 					},
 					// {

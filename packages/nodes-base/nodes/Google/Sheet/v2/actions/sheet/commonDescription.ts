@@ -32,7 +32,7 @@ export const dataLocationOnSheet: INodeProperties = {
 							description: 'Manually specify the data range',
 						},
 					],
-					default: '',
+					default: 'detectAutomatically',
 				},
 				{
 					displayName: 'Read Rows Until',
@@ -180,14 +180,14 @@ export const outputFormatting: INodeProperties = {
 							value: 'FORMULA',
 						},
 					],
-					default: '',
+					default: 'UNFORMATTED_VALUE',
 					description: 'Determines how values should be rendered in the output',
 				},
 				{
 					displayName: 'Date Formatting',
 					name: 'date',
 					type: 'options',
-					default: '',
+					default: 'FORMATTED_STRING',
 					options: [
 						{
 							name: 'Formatted Text',

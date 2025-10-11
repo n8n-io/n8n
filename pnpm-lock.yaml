@@ -57,6 +57,9 @@ catalogs:
     eslint:
       specifier: 9.29.0
       version: 9.29.0
+    eslint-plugin-n8n-nodes-base:
+      specifier: 1.16.4
+      version: 1.16.4
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
@@ -1311,6 +1314,9 @@ importers:
       '@types/temp':
         specifier: ^0.9.1
         version: 0.9.4
+      eslint-plugin-n8n-nodes-base:
+        specifier: 'catalog:'
+        version: 1.16.4(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -3185,8 +3191,8 @@ importers:
         specifier: 'catalog:'
         version: 0.4.14
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.3
-        version: 1.16.3(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
+        specifier: 'catalog:'
+        version: 1.16.4(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -10335,6 +10341,10 @@ packages:
 
   eslint-plugin-n8n-nodes-base@1.16.3:
     resolution: {integrity: sha512-edLX42Vg4B+y0kzkitTVDmHZQrG5/wUZO874N5Z9leBuxt5TG1pqMY4zdr35RlpM4p4REr/T9x+6DpsQSL63WA==}
+    engines: {node: '>=20.15', pnpm: '>=9.6'}
+
+  eslint-plugin-n8n-nodes-base@1.16.4:
+    resolution: {integrity: sha512-tGS53/fdrESy14d//6u76tGbFGem4h3KJutUzeE2It2zErzLN5aEA1x+M4aotz5Tr2t80qiqMdoMGY36tNIoiQ==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
   eslint-plugin-playwright@2.2.2:
@@ -25904,6 +25914,21 @@ snapshots:
       lodash: 4.17.21
 
   eslint-plugin-n8n-nodes-base@1.16.3(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2):
+    dependencies:
+      '@typescript-eslint/utils': 6.21.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
+      camel-case: 4.1.2
+      eslint-plugin-local: 1.0.0
+      indefinite: 2.5.1
+      pascal-case: 3.1.2
+      pluralize: 8.0.0
+      sentence-case: 3.0.4
+      title-case: 3.0.3
+    transitivePeerDependencies:
+      - eslint
+      - supports-color
+      - typescript
+
+  eslint-plugin-n8n-nodes-base@1.16.4(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2):
     dependencies:
       '@typescript-eslint/utils': 6.21.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
       camel-case: 4.1.2

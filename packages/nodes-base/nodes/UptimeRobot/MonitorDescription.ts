@@ -76,7 +76,7 @@ export const monitorFields: INodeProperties[] = [
 		name: 'type',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 5,
 		options: [
 			{
 				name: 'Heartbeat',
@@ -331,7 +331,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'HTTP Auth Type',
 				name: 'http_auth_type',
 				type: 'options',
-				default: '',
+				default: 1,
 				options: [
 					{
 						name: 'HTTP Basic',
@@ -348,7 +348,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'HTTP Method',
 				name: 'http_method',
 				type: 'options',
-				default: '',
+				default: 6,
 				options: [
 					{
 						name: 'DELETE',
@@ -414,7 +414,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: '',
+				default: 0,
 				options: [
 					{
 						name: 'Pause',
@@ -431,7 +431,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'Sub Type',
 				name: 'sub_type',
 				type: 'options',
-				default: '',
+				default: 99,
 				options: [
 					{
 						name: 'Custom Port',

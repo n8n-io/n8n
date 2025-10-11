@@ -68,7 +68,7 @@ export const boardColumnFields: INodeProperties[] = [
 		displayName: 'Column Type',
 		name: 'columnType',
 		type: 'options',
-		default: '',
+		default: 'checkbox',
 		options: [
 			{
 				name: 'Checkbox',

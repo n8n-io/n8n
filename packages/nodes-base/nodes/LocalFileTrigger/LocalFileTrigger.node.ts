@@ -53,7 +53,7 @@ export class LocalFileTrigger implements INodeType {
 					},
 				],
 				required: true,
-				default: '',
+				default: 'file',
 			},
 			{
 				displayName: 'File to Watch',

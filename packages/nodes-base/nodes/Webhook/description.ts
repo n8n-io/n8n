@@ -169,7 +169,7 @@ export const responseModePropertyStreaming: INodeProperties = {
 			description: 'Returns data in real time from streaming enabled nodes',
 		},
 	],
-	default: 'onReceived',
+	default: 'streaming',
 	description: 'When and how to respond to the webhook',
 	displayOptions: {
 		hide: {

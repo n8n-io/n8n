@@ -320,7 +320,7 @@ export const releaseFields: INodeProperties[] = [
 												displayName: 'Type',
 												name: 'type',
 												type: 'options',
-												default: '',
+												default: 'add',
 												description: 'The types of changes that happened in that commit',
 												options: [
 													{
@@ -524,7 +524,7 @@ export const releaseFields: INodeProperties[] = [
 												displayName: 'Type',
 												name: 'type',
 												type: 'options',
-												default: '',
+												default: 'add',
 												description: 'The types of changes that happened in that commit',
 												options: [
 													{

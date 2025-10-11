@@ -72,7 +72,7 @@ export class GoogleDriveTrigger implements INodeType {
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'specificFile',
 				options: [
 					{
 						name: 'Changes to a Specific File',
@@ -235,7 +235,7 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				required: true,
-				default: '',
+				default: 'fileCreated',
 				options: [
 					{
 						name: 'File Created',

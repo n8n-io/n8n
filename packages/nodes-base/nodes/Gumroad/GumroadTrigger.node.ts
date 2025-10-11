@@ -46,7 +46,7 @@ export class GumroadTrigger implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				required: true,
-				default: '',
+				default: 'cancellation',
 				options: [
 					{
 						name: 'Cancellation',

@@ -85,7 +85,7 @@ export const ticketCreateDescription: TicketProperties = [
 						value: 'Remote Support',
 					},
 				],
-				default: '',
+				default: 'Contract Work',
 			},
 			{
 				displayName: 'Status',

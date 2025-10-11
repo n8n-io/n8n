@@ -394,7 +394,7 @@ export const objectFields: INodeProperties[] = [
 											'Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api">link</a>.',
 									},
 								],
-								default: '',
+								default: 'equals',
 							},
 							{
 								displayName: 'Value',

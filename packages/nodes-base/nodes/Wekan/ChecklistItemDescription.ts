@@ -34,7 +34,7 @@ export const checklistItemOperations: INodeProperties[] = [
 				action: 'Update a checklist item',
 			},
 		],
-		default: 'getAll',
+		default: 'delete',
 	},
 ];
 

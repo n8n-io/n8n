@@ -104,7 +104,7 @@ export class MailerLiteTriggerV1 implements INodeType {
 						},
 					],
 					required: true,
-					default: [],
+					default: 'campaign.sent',
 					description: 'The events to listen to',
 				},
 			],

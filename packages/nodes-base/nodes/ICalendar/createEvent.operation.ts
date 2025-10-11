@@ -115,7 +115,7 @@ export const description: INodeProperties[] = [
 						value: 'TENTATIVE',
 					},
 				],
-				default: '',
+				default: 'BUSY',
 				description: 'Used to specify busy status for Microsoft applications, like Outlook',
 			},
 			{

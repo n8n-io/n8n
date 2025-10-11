@@ -6,7 +6,7 @@ export const panelistOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'get',
+		default: 'create',
 		options: [
 			{
 				name: 'Create',

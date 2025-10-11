@@ -130,7 +130,7 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: [],
+				default: 'renderedBody',
 				description:
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
@@ -204,7 +204,7 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: '',
+				default: 'renderedBody',
 				description:
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},

@@ -154,7 +154,7 @@ export const subscriberFields: INodeProperties[] = [
 						value: 'unsubscribed',
 					},
 				],
-				default: '',
+				default: 'active',
 			},
 			{
 				displayName: 'Subscribed At',
@@ -297,7 +297,7 @@ export const subscriberFields: INodeProperties[] = [
 						value: 'unsubscribed',
 					},
 				],
-				default: '',
+				default: 'active',
 			},
 		],
 	},

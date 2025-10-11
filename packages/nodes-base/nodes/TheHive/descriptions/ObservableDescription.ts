@@ -227,7 +227,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'status',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 'Ok',
 		options: [
 			{
 				name: 'Ok',
@@ -386,7 +386,7 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: '',
+				default: 'Ok',
 				options: [
 					{
 						name: 'Ok',
@@ -521,7 +521,7 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'Status',
 				type: 'options',
-				default: '',
+				default: 'Ok',
 				options: [
 					{
 						name: 'Ok',

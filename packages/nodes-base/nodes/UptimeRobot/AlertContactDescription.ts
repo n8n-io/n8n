@@ -70,7 +70,7 @@ export const alertContactFields: INodeProperties[] = [
 		name: 'type',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 4,
 		options: [
 			{
 				name: 'Boxcar',

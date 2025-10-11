@@ -342,7 +342,7 @@ export const coinFields: INodeProperties[] = [
 				resource: ['coin'],
 			},
 		},
-		default: '',
+		default: '1',
 		description: 'Return data for this many days in the past from now',
 	},
 	{
@@ -462,7 +462,7 @@ export const coinFields: INodeProperties[] = [
 						value: 'volume_desc',
 					},
 				],
-				default: '',
+				default: 'gecko_asc',
 				description: 'Sort results by field',
 			},
 			{

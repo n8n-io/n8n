@@ -105,7 +105,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 				resource: ['ecommerceOrder'],
 			},
 		},
-		default: '',
+		default: 'offline',
 	},
 	{
 		displayName: 'Additional Fields',

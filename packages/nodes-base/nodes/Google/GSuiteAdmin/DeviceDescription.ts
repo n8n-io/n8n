@@ -239,7 +239,7 @@ export const deviceFields: INodeProperties[] = [
 								value: 'status',
 							},
 						],
-						default: '',
+						default: 'annotatedLocation',
 						description: 'Field to sort the results by',
 					},
 					{
@@ -256,7 +256,7 @@ export const deviceFields: INodeProperties[] = [
 								value: 'descending',
 							},
 						],
-						default: '',
+						default: 'ascending',
 						description: 'Sort order direction',
 					},
 				],

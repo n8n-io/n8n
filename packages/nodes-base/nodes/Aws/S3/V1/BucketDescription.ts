@@ -94,7 +94,7 @@ export const bucketFields: INodeProperties[] = [
 						value: 'publicReadWrite',
 					},
 				],
-				default: '',
+				default: 'authenticatedRead',
 				description: 'The canned ACL to apply to the bucket',
 			},
 			{
@@ -281,7 +281,7 @@ export const bucketFields: INodeProperties[] = [
 						value: 'url',
 					},
 				],
-				default: '',
+				default: 'url',
 				description: 'Encoding type used by Amazon S3 to encode object keys in the response',
 			},
 			{

@@ -45,7 +45,7 @@ export const starFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description: 'Choose whether to add a star to a message or a file',
-		default: '',
+		default: 'message',
 		placeholder: 'Select...',
 		displayOptions: {
 			show: {

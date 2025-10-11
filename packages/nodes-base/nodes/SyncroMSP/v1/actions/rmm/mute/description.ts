@@ -56,7 +56,7 @@ export const rmmMuteDescription: RmmProperties = [
 				value: 'forever',
 			},
 		],
-		default: '',
+		default: '1-hour',
 		description: 'Length of time to mute alert for',
 	},
 ];

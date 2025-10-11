@@ -72,7 +72,7 @@ export const userListFields: INodeProperties[] = [
 				operation: ['add'],
 			},
 		},
-		default: '',
+		default: 'email',
 		description: 'Identifier to be used',
 	},
 	{
@@ -131,7 +131,7 @@ export const userListFields: INodeProperties[] = [
 				operation: ['remove'],
 			},
 		},
-		default: '',
+		default: 'email',
 		description: 'Identifier to be used',
 	},
 	{

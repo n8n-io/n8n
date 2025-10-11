@@ -183,7 +183,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'compliance',
 					},
 				],
-				default: '',
+				default: 'governance',
 				description: 'The Object Lock mode that you want to apply to this object',
 			},
 			{
@@ -207,7 +207,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'replace',
 					},
 				],
-				default: '',
+				default: 'copy',
 				description:
 					'Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request',
 			},
@@ -233,7 +233,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'aws:kms',
 					},
 				],
-				default: '',
+				default: 'AES256',
 				description:
 					'The server-side encryption algorithm used when storing this object in Amazon S3',
 			},
@@ -321,7 +321,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'replace',
 					},
 				],
-				default: '',
+				default: 'copy',
 				description:
 					'Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request',
 			},
@@ -516,7 +516,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'compliance',
 					},
 				],
-				default: '',
+				default: 'governance',
 				description: 'The Object Lock mode that you want to apply to this object',
 			},
 			{
@@ -555,7 +555,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'aws:kms',
 					},
 				],
-				default: '',
+				default: 'AES256',
 				description:
 					'The server-side encryption algorithm used when storing this object in Amazon S3',
 			},

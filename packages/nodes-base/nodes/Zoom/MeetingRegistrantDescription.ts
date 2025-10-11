@@ -182,7 +182,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 						value: 'No timeframe',
 					},
 				],
-				default: '',
+				default: 'Within a month',
 				description: 'Meeting type',
 			},
 			{
@@ -207,7 +207,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 						value: 'Not Involved',
 					},
 				],
-				default: '',
+				default: 'Decision Maker',
 			},
 			{
 				displayName: 'State',
@@ -358,7 +358,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				action: 'Deny a meeting registrant',
 			},
 		],
-		default: '',
+		default: 'cancel',
 		description: 'Registrant Status',
 	},
 	{

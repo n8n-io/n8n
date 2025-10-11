@@ -138,7 +138,7 @@ export const boardFields: INodeProperties[] = [
 						value: 'wisteria',
 					},
 				],
-				default: '',
+				default: 'belize',
 				description: 'The color of the board',
 			},
 			{

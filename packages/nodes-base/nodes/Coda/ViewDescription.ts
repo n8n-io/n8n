@@ -250,7 +250,7 @@ export const viewFields: INodeProperties[] = [
 				displayName: 'ValueFormat',
 				name: 'valueFormat',
 				type: 'options',
-				default: '',
+				default: 'simple',
 				options: [
 					{
 						name: 'Simple',
@@ -278,7 +278,7 @@ export const viewFields: INodeProperties[] = [
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
-				default: '',
+				default: 'createdAt',
 				options: [
 					{
 						name: 'Created At',

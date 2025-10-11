@@ -244,7 +244,7 @@ export class BoxTrigger implements INodeType {
 						value: 'folder',
 					},
 				],
-				default: '',
+				default: 'file',
 				description: 'The type of item to trigger a webhook',
 			},
 			{

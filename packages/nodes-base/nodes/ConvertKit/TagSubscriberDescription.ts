@@ -31,7 +31,7 @@ export const tagSubscriberOperations: INodeProperties[] = [
 				action: 'Delete a tag from a subscriber',
 			},
 		],
-		default: 'create',
+		default: 'add',
 	},
 ];
 

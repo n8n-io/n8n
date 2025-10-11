@@ -169,7 +169,7 @@ export const clientFields: INodeProperties[] = [
 						value: 'DESCENDING',
 					},
 				],
-				default: '',
+				default: 'ASCENDING',
 			},
 		],
 	},

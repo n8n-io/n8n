@@ -255,7 +255,7 @@ const agentTypeProperty: INodeProperties = {
 				'Specializes in interacting with SQL databases. Ideal for data analysis tasks, generating queries, or extracting insights from structured data.',
 		},
 	],
-	default: '',
+	default: 'toolsAgent',
 };
 
 export class AgentV1 implements INodeType {
