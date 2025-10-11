@@ -1,0 +1,136 @@
+{
+	"name": "Grist Upsert Test (definein)",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-176, 208],
+			"id": "d22e1d98-68a4-4039-9a6a-a4892ef1abcd",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"docId": "test-doc-id",
+				"tableId": "test-table-id",
+				"upsertCriteria": {
+					"properties": [
+						{
+							"fieldId": "Repo",
+							"fieldValue": "={{ $json.Repo }}"
+						}
+					]
+				},
+				"fieldsToSend": {
+					"properties": [
+						{
+							"fieldId": "Description",
+							"fieldValue": "={{ $json.Description }}"
+						},
+						{
+							"fieldId": "Updated_At",
+							"fieldValue": "2025-08-11"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [272, 208],
+			"id": "a33e0633-27af-4e67-be19-f64d0eefd433",
+			"name": "Grist",
+			"credentials": {
+				"gristApi": {
+					"id": "WAqbmboo031Hqq3V",
+					"name": "Grist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { \"Repo\": \"dtinth/automatron\", \"Description\": \"LINE Bot\" },\n  { \"Repo\": \"dtinth/WebMIDICon\", \"Description\": \"MIDI Controller\" },\n  { \"Repo\": \"dtinth/mockapis\", \"Description\": \"Mock API Endpoints\" }\n]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [48, 208],
+			"id": "badf52b2-3bf0-4449-bcfa-71acbc0ea3fb",
+			"name": "Code"
+		}
+	],
+	"pinData": {
+		"Grist": [
+			{
+				"json": {
+					"Repo": "dtinth/automatron",
+					"Description": "LINE Bot"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/WebMIDICon",
+					"Description": "MIDI Controller"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/mockapis",
+					"Description": "Mock API Endpoints"
+				}
+			}
+		],
+		"Code": [
+			{
+				"json": {
+					"Repo": "dtinth/automatron",
+					"Description": "LINE Bot"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/WebMIDICon",
+					"Description": "MIDI Controller"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/mockapis",
+					"Description": "Mock API Endpoints"
+				}
+			}
+		],
+		"When clicking 'Execute workflow'": [
+			{
+				"json": {}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Grist",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
