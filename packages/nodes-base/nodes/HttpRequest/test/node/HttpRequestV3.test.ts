@@ -140,6 +140,105 @@ describe('HttpRequestV3', () => {
 		);
 	});
 
+	describe('Query Parameters Handling', () => {
+		it('should handle duplicate query parameter names by accumulating them into arrays', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendQuery':
+						return true;
+					case 'specifyQuery':
+						return 'keypair';
+					case 'queryParameters.parameters':
+						// Simulate user entering multiple parameters with the same name
+						return [
+							{ name: 'q_organization_keyword_tags[]', value: 'financial' },
+							{ name: 'q_organization_keyword_tags[]', value: 'investment' },
+							{ name: 'category', value: 'business' }, // single parameter for comparison
+							{ name: 'q_organization_keyword_tags[]', value: 'banking' }, // third duplicate
+						];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			// Verify the request was made with proper query parameters
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: {
+						'q_organization_keyword_tags[]': ['financial', 'investment', 'banking'], // Should be an array
+						category: 'business', // Single value should remain a string
+					},
+				}),
+			);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should handle single query parameters normally (backward compatibility)', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendQuery':
+						return true;
+					case 'specifyQuery':
+						return 'keypair';
+					case 'queryParameters.parameters':
+						return [
+							{ name: 'category', value: 'business' },
+							{ name: 'limit', value: '10' },
+						];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			// Verify single parameters are handled as strings (backward compatibility)
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: {
+						category: 'business',
+						limit: '10',
+					},
+				}),
+			);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+		});
+	});
+
 	describe('Authentication Handling', () => {
 		const authenticationTypes = [
 			{

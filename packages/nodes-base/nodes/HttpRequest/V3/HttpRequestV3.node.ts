@@ -408,7 +408,18 @@ export class HttpRequestV3 implements INodeType {
 						};
 						return accumulator;
 					}
-					accumulator[cur.name] = cur.value;
+
+					// Handle duplicate parameter names by accumulating them into arrays
+					if (accumulator[cur.name] === undefined) {
+						// Key doesn't exist yet → just assign
+						accumulator[cur.name] = cur.value;
+					} else if (Array.isArray(accumulator[cur.name])) {
+						// Key exists and is already array → append
+						accumulator[cur.name].push(cur.value);
+					} else {
+						// Key exists but is not array → convert to array
+						accumulator[cur.name] = [accumulator[cur.name], cur.value];
+					}
 					return accumulator;
 				};
 
