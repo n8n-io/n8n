@@ -1324,7 +1324,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('Options', i);
 
 						const body: IDataObject = {
 							name,
@@ -1340,7 +1340,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'enable') {
 						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('option', i);
 
 						const body: IDataObject = {
 							usergroup: userGroupId,
