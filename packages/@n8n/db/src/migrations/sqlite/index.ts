@@ -98,6 +98,7 @@ import { ChangeValueTypesForInsights1759399811000 } from '../common/175939981100
 import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -199,6 +200,7 @@ const sqliteMigrations: Migration[] = [
 	AddProjectIdToVariableTable1758794506893,
 	AddAudienceColumnToApiKeys1758731786132,
 	ChangeValueTypesForInsights1759399811000,
+	CreateChatHubTables1760019379982,
 ];
 
 export { sqliteMigrations };

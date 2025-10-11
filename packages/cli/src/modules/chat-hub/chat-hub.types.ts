@@ -17,3 +17,5 @@ export type ChatMessage = {
 	type: 'user' | 'ai' | 'system';
 	createdAt: Date;
 };
+
+export type MessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
