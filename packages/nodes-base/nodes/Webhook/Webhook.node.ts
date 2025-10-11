@@ -346,7 +346,7 @@ export class Webhook extends Node {
 
 			let fileCount = 0;
 			for (const file of processFiles) {
-				let binaryPropertyName = key;
+				let binaryPropertyName = key || 'data';
 				if (binaryPropertyName.endsWith('[]')) {
 					binaryPropertyName = binaryPropertyName.slice(0, -2);
 				}
