@@ -3,7 +3,6 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 import { Toolkit } from 'langchain/agents';
 import {
 	createResultError,
@@ -13,6 +12,8 @@ import {
 	type Result,
 } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type {
 	McpAuthenticationOption,
@@ -187,7 +188,7 @@ export async function connectMcpClient({
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
-			return createResultError({ type: 'connection', error });
+			return createResultError({ type: 'connection', error: error as Error });
 		}
 	}
 
@@ -202,13 +203,95 @@ export async function connectMcpClient({
 							Accept: 'text/event-stream',
 						},
 					}),
+				// Disable automatic reconnection to prevent bulk reconnection attempts
+				// when the server restarts
+				withCredentials: false,
 			},
 			requestInit: { headers },
 		});
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
-		return createResultError({ type: 'connection', error });
+		return createResultError({ type: 'connection', error: error as Error });
+	}
+}
+
+// Enhanced client wrapper with connection state management
+export class ManagedMcpClient {
+	private client: Client;
+	private isConnected: boolean = false;
+	private isClosing: boolean = false;
+	private connectionClosed: boolean = false;
+	private connectionError: Error | null = null;
+
+	constructor(client: Client) {
+		this.client = client;
+		this.isConnected = true;
+
+		// Set up connection monitoring
+		this.setupConnectionMonitoring();
+	}
+
+	private setupConnectionMonitoring() {
+		// Monitor for connection state changes
+		const originalClose = this.client.close.bind(this.client);
+		this.client.close = async () => {
+			if (this.isClosing) {
+				return;
+			}
+			this.isClosing = true;
+			this.isConnected = false;
+			this.connectionClosed = true;
+			await originalClose();
+		};
+
+		// Set up error handling for connection issues
+		// This helps prevent automatic reconnection attempts when the server is down
+		const originalConnect = this.client.connect.bind(this.client);
+		this.client.connect = async (transport) => {
+			try {
+				await originalConnect(transport);
+				this.connectionError = null;
+			} catch (error) {
+				this.connectionError = error as Error;
+				this.isConnected = false;
+				throw error;
+			}
+		};
+	}
+
+	async close(): Promise<void> {
+		if (this.connectionClosed || this.isClosing) {
+			return;
+		}
+
+		this.isClosing = true;
+		this.isConnected = false;
+
+		try {
+			await this.client.close();
+		} catch (error) {
+			// Ignore errors during cleanup - this is expected when connection is already closed
+		} finally {
+			this.connectionClosed = true;
+		}
+	}
+
+	getClient(): Client {
+		return this.client;
+	}
+
+	isConnectionActive(): boolean {
+		return this.isConnected && !this.connectionClosed && !this.connectionError;
+	}
+
+	getConnectionError(): Error | null {
+		return this.connectionError;
+	}
+
+	// Method to check if we should attempt reconnection
+	shouldReconnect(): boolean {
+		return !this.connectionClosed && !this.isClosing && !this.connectionError;
 	}
 }
 
