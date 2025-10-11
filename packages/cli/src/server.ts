@@ -1,3 +1,5 @@
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
+import type { ICredentialsOverwrite } from '@/interfaces';
 import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -8,20 +10,18 @@ import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import type { ICredentialsOverwrite } from '@/interfaces';
 import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
@@ -479,6 +479,8 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+
+		installGlobalProxyAgent();
 	}
 
 	protected setupPushServer(): void {
