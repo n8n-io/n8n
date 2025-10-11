@@ -426,10 +426,15 @@ export class HttpRequestV3 implements INodeType {
 						if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
 							try {
 								JSON.parse(jsonBodyParameter);
-							} catch {
+							} catch (error) {
 								throw new NodeOperationError(
 									this.getNode(),
-									'JSON parameter needs to be valid JSON',
+									[
+										'JSON parameter needs to be valid JSON.',
+										'The HTTP Request node received a string that is not valid JSON for the request body.',
+										'If you build the JSON using expressions, wrap with JSON.stringify(...) to ensure proper formatting.',
+										`Parse error: ${error.message}`,
+									].join(' '),
 									{
 										itemIndex,
 									},
@@ -492,10 +497,15 @@ export class HttpRequestV3 implements INodeType {
 						// query is specified using JSON
 						try {
 							JSON.parse(jsonQueryParameter);
-						} catch {
+						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'JSON parameter needs to be valid JSON',
+								[
+									'JSON parameter needs to be valid JSON.',
+									'The HTTP Request node received a string that is not valid JSON for the query parameters.',
+									'If you build the JSON using expressions, wrap with JSON.stringify(...) to ensure proper formatting.',
+									`Parse error: ${error.message}`,
+								].join(' '),
 								{
 									itemIndex,
 								},
@@ -515,13 +525,18 @@ export class HttpRequestV3 implements INodeType {
 							parametersToKeyValue,
 						);
 					} else if (specifyHeaders === 'json') {
-						// body is specified using JSON
+						// headers are specified using JSON
 						try {
 							JSON.parse(jsonHeadersParameter);
-						} catch {
+						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'JSON parameter needs to be valid JSON',
+								[
+									'JSON parameter needs to be valid JSON.',
+									'The HTTP Request node received a string that is not valid JSON for the request headers.',
+									'If you build the JSON using expressions, wrap with JSON.stringify(...) to ensure proper formatting.',
+									`Parse error: ${error.message}`,
+								].join(' '),
 								{
 									itemIndex,
 								},
