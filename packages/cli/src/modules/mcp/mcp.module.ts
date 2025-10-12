@@ -12,6 +12,7 @@ export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller');
 		await import('./mcp.settings.controller');
+		await import('./mcp.oauth.controller');
 	}
 
 	/**

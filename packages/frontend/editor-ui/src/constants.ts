@@ -559,6 +559,7 @@ export const enum VIEWS {
 	SIGNIN = 'SigninView',
 	SIGNUP = 'SignupView',
 	SIGNOUT = 'SignoutView',
+	OAUTH_CONSENT = 'OAuthConsentView',
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
