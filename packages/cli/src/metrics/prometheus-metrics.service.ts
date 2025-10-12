@@ -44,6 +44,7 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+			insights: this.globalConfig.endpoints.metrics.includeInsightsMetrics,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -65,6 +66,7 @@ export class PrometheusMetricsService {
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
 		this.initQueueMetrics();
+		this.initInsightsMetrics();
 		this.initActiveWorkflowCountMetric();
 		this.mountMetricsEndpoint(app);
 	}
@@ -294,6 +296,75 @@ export class PrometheusMetricsService {
 			this.gauges.active.set(jobCounts.active);
 			this.counters.completed?.inc(jobCounts.completed);
 			this.counters.failed?.inc(jobCounts.failed);
+		});
+	}
+
+	/**
+	 * Initialize insights metrics gauges and set up event listeners
+	 * to update them when new insights data is calculated
+	 */
+	private initInsightsMetrics() {
+		if (!this.includes.metrics.insights) return;
+
+		// Average runtime in milliseconds
+		this.gauges.insightsAvgRuntime = new promClient.Gauge({
+			name: this.prefix + 'insights_avg_runtime_ms',
+			help: 'Average workflow execution runtime in milliseconds.',
+			labelNames: ['period', 'project_id'],
+		});
+		
+		// Number of failed executions
+		this.gauges.insightsFailures = new promClient.Gauge({
+			name: this.prefix + 'insights_failures',
+			help: 'Number of failed workflow executions.',
+			labelNames: ['period', 'project_id'],
+		});
+		
+		// Failure rate (0-1)
+		this.gauges.insightsFailureRate = new promClient.Gauge({
+			name: this.prefix + 'insights_failure_rate',
+			help: 'Workflow execution failure rate (0-1).',
+			labelNames: ['period', 'project_id'],
+		});
+		
+		// Time saved in minutes
+		this.gauges.insightsTimeSaved = new promClient.Gauge({
+			name: this.prefix + 'insights_time_saved_min',
+			help: 'Time saved by workflow automation in minutes.',
+			labelNames: ['period', 'project_id'],
+		});
+		
+		// Total executions
+		this.gauges.insightsTotalExecutions = new promClient.Gauge({
+			name: this.prefix + 'insights_total_executions',
+			help: 'Total number of workflow executions.',
+			labelNames: ['period', 'project_id'],
+		});
+		
+		// Set up event listener for insights metrics events
+		this.eventBus.on('metrics.eventBus.event', (event) => {
+			if (event.eventName === 'insights-metrics-calculated') {
+				const { metricType, period, value, projectId } = event.payload;
+				const labels = { period, project_id: projectId || 'none' };
+				
+				switch (metricType) {
+					case 'avg_runtime_ms':
+						this.gauges.insightsAvgRuntime.set(labels, value);
+						break;
+					case 'failures':
+						this.gauges.insightsFailures.set(labels, value);
+						break;
+					case 'failure_rate':
+						this.gauges.insightsFailureRate.set(labels, value);
+						break;
+					case 'time_saved_min':
+						this.gauges.insightsTimeSaved.set(labels, value);
+						break;
+					case 'total_executions':
+						this.gauges.insightsTotalExecutions.set(labels, value);
+						break;
+				}
+			}
 		});
 	}
 
