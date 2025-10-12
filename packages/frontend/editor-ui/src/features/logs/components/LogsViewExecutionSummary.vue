@@ -52,7 +52,7 @@ const executionStatusText = computed(() =>
 	align-items: center;
 
 	& > * {
-		padding-inline: var(--spacing-2xs);
+		padding-inline: var(--spacing--2xs);
 		flex-shrink: 1;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -60,7 +60,7 @@ const executionStatusText = computed(() =>
 	}
 
 	& > *:not(:last-child) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 </style>

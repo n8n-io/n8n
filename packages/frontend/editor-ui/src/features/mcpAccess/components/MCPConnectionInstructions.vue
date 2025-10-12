@@ -172,25 +172,25 @@ const apiKeyText = computed(() => {
 
 .instructions-container {
 	:global(.notice) {
-		margin: var(--spacing-s) var(--spacing-l) var(--spacing-m);
+		margin: var(--spacing--sm) var(--spacing--lg) var(--spacing--md);
 	}
 }
 
 .instructions {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xs);
-	padding-left: var(--spacing-l);
-	margin: var(--spacing-s);
+	gap: var(--spacing--xs);
+	padding-left: var(--spacing--lg);
+	margin: var(--spacing--sm);
 
 	li {
-		min-height: var(--spacing-l);
+		min-height: var(--spacing--lg);
 	}
 
 	.item {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 
 		:global(.n8n-loading) div {
 			height: 32px;
@@ -200,31 +200,31 @@ const apiKeyText = computed(() => {
 	}
 
 	.label {
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 		flex: none;
 	}
 
 	.url {
 		display: flex;
 		align-items: stretch;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 		background: var(--color--background--light-3);
-		border: var(--border-base);
-		border-radius: var(--border-radius-base);
-		font-size: var(--font-size-s);
+		border: var(--border);
+		border-radius: var(--radius);
+		font-size: var(--font-size--sm);
 		overflow: hidden;
 
 		code {
 			text-overflow: ellipsis;
 			overflow: hidden;
 			white-space: pre;
-			padding: var(--spacing-2xs) var(--spacing-3xs);
+			padding: var(--spacing--2xs) var(--spacing--3xs);
 		}
 
 		.copy-url-wrapper {
 			display: flex;
 			align-items: center;
-			border-left: var(--border-base);
+			border-left: var(--border);
 		}
 
 		.copy-url-button {
@@ -234,7 +234,7 @@ const apiKeyText = computed(() => {
 
 		@media screen and (max-width: 820px) {
 			word-wrap: break-word;
-			margin-top: var(--spacing-2xs);
+			margin-top: var(--spacing--2xs);
 		}
 	}
 }
@@ -242,13 +242,13 @@ const apiKeyText = computed(() => {
 .connectionString {
 	flex-grow: 1;
 	position: relative;
-	padding: 0 var(--spacing-l);
+	padding: 0 var(--spacing--lg);
 
 	:global(.n8n-markdown) {
 		width: 100%;
 	}
 	code {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size--xs);
 	}
 
 	&:hover {
@@ -260,8 +260,8 @@ const apiKeyText = computed(() => {
 
 .copy-json-button {
 	position: absolute;
-	top: var(--spacing-xl);
-	right: var(--spacing-2xl);
+	top: var(--spacing--xl);
+	right: var(--spacing--2xl);
 	display: none;
 }
 </style>

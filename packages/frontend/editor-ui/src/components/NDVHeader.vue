@@ -69,22 +69,22 @@ function onRename(newNodeName: string) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-4xs);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs);
 	background: var(--color--background--light-3);
 }
 
 .content {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
-	margin-left: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
+	margin-left: var(--spacing--2xs);
 }
 
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .actions button:hover {
@@ -92,18 +92,18 @@ function onRename(newNodeName: string) {
 }
 
 .actions > *:not(:last-child) {
-	border-right: var(--border-base);
-	padding-right: var(--spacing-2xs);
+	border-right: var(--border);
+	padding-right: var(--spacing--2xs);
 }
 
 .title {
 	color: var(--color--text--shade-1);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 
 .docsLabel {
 	display: flex;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .icon {

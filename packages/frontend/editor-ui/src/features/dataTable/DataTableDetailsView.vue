@@ -164,25 +164,25 @@ onMounted(async () => {
 
 .header {
 	display: flex;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 	align-items: center;
 }
 
 .header,
 .header-loading {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 }
 
 .saving {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
-	margin-top: var(--spacing-5xs);
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--5xs);
 }
 
 .actions {
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	margin-left: auto;
 }
 </style>

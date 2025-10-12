@@ -187,7 +187,7 @@ function onEdgeLabelMouseLeave() {
 }
 
 .edgeLabelWrapper {
-	transform: translateY(calc(var(--spacing-xs) * -1));
+	transform: translateY(calc(var(--spacing--xs) * -1));
 	position: absolute;
 
 	--label-translate-y: 0;
@@ -200,7 +200,7 @@ function onEdgeLabelMouseLeave() {
 .edgeLabel {
 	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
 	color: var(--color--text);
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 	background-color: hsla(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),

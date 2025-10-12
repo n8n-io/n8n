@@ -80,13 +80,13 @@ function copy() {
 		overflow-wrap: break-word;
 	}
 
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	background-color: var(--color--background--light-2);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
+	border: var(--border);
+	border-radius: var(--radius);
 	cursor: pointer;
 	position: relative;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 
 	&:hover {
 		--display-copy-button: flex;
@@ -100,14 +100,14 @@ function copy() {
 
 .large {
 	span {
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 		line-height: 1.5;
 	}
 }
 
 .medium {
 	span {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size--xs);
 		line-height: 1;
 	}
 }
@@ -122,11 +122,11 @@ function copy() {
 	position: absolute;
 	top: 0;
 	right: 0;
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	background-color: var(--color--background--light-2);
 	height: 100%;
 	align-items: center;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 
 	span {
 		font-family: unset;
@@ -134,10 +134,10 @@ function copy() {
 }
 
 .hint {
-	margin-top: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
-	font-weight: var(--font-weight-regular);
+	margin-top: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
+	font-weight: var(--font-weight--regular);
 	word-break: normal;
 }
 </style>

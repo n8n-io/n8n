@@ -275,7 +275,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	z-index: 1;
 	opacity: 0.66;
 	border: 2px solid var(--color--foreground--shade-2);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 	display: flex;
 	justify-content: center;

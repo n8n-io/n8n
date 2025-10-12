@@ -215,8 +215,8 @@ const alertBoxClassNames = computed(() => {
 	display: inline-flex;
 	color: inherit;
 	align-items: center;
-	padding-left: var(--spacing-2xs);
-	padding-right: var(--spacing-s);
+	padding-left: var(--spacing--2xs);
+	padding-right: var(--spacing--sm);
 }
 
 .text {
@@ -228,7 +228,7 @@ const alertBoxClassNames = computed(() => {
 .title {
 	font-size: var.$alert-title-font-size;
 	line-height: 18px;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .description {
@@ -242,6 +242,6 @@ const alertBoxClassNames = computed(() => {
 .aside {
 	display: inline-flex;
 	align-items: center;
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 }
 </style>
