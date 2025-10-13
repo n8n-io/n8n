@@ -368,7 +368,6 @@ export = {
 
 				workflow.active = true;
 
-				// Emit workflow-activated event so other modules can react
 				Container.get(EventService).emit('workflow-activated', {
 					user: req.user,
 					workflowId: workflow.id,
@@ -410,7 +409,6 @@ export = {
 
 				workflow.active = false;
 
-				// Emit workflow-deactivated event so other modules can react
 				Container.get(EventService).emit('workflow-deactivated', {
 					user: req.user,
 					workflowId: workflow.id,
