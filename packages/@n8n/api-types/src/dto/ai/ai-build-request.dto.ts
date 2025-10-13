@@ -44,7 +44,7 @@ export class AiBuilderChatRequestDto extends Z.class({
 					z.array(
 						z.object({
 							expression: z.string(),
-							resolvedValue: z.string(),
+							resolvedValue: z.unknown(),
 							nodeType: z.string(),
 						}),
 					),

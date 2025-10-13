@@ -49,7 +49,7 @@ export interface WorkflowBuilderAgentConfig {
 
 export interface ExpressionValue {
 	expression: string;
-	resolvedValue: string;
+	resolvedValue: unknown;
 	nodeType: string;
 }
 

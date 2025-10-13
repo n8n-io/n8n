@@ -33,8 +33,10 @@ export function createBuilderPayload(
 
 		if (options.workflow) {
 			// Extract and include expression values with their resolved values
+			// Pass execution data to only extract from nodes that have executed
 			workflowContext.expressionValues = assistantHelpers.extractExpressionsFromWorkflow(
 				options.workflow,
+				options.executionData,
 			);
 		}
 	}

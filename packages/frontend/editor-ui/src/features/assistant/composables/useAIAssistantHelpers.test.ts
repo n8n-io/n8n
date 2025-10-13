@@ -977,7 +977,19 @@ describe('extractExpressionsFromWorkflow', () => {
 			if (expression === '={{ "Hello" + " " + "World" }}') return 'Hello World';
 			if (expression === '={{ { name: "John", age: 30 } }}') return { name: 'John', age: 30 };
 			if (expression === '={{ [1, 2, 3] }}') return [1, 2, 3];
-			if (expression.includes('x'.repeat(250))) return 'x'.repeat(300);
+			if (expression.includes('={{ "x".repeat(300) }}')) return 'x'.repeat(300);
+			// Embedded expressions
+			if (expression === '=Here is an expression {{ $json.text }} inside a regular string')
+				return 'Here is an expression sample text inside a regular string';
+			if (expression === '=Multiple expressions: {{ $now }} and {{ $json.field }}')
+				return 'Multiple expressions: 2024-01-01 and field value';
+			// For testing execution filtering
+			if (expression === '={{ "executed node" }}') return 'executed node';
+			if (expression === '={{ "not executed" }}') return 'not executed';
+			if (expression === '={{ "node 1" }}') return 'node 1';
+			if (expression === '={{ "node 2" }}') return 'node 2';
+			if (expression === '={{ "executed 1" }}') return 'executed 1';
+			if (expression === '={{ "executed 2" }}') return 'executed 2';
 			if (expression.includes('$json')) {
 				throw new Error('Cannot read properties of null');
 			}
@@ -1310,12 +1322,17 @@ describe('extractExpressionsFromWorkflow', () => {
 		const expressionMap = Object.fromEntries(
 			result['Test Node'].map((e) => [e.expression, e.resolvedValue]),
 		);
+		// String value
 		expect(expressionMap['={{ "hello world" }}']).toBe('hello world');
-		expect(expressionMap['={{ 42 }}']).toBe('42');
-		expect(expressionMap['={{ true }}']).toBe('true');
-		expect(expressionMap['={{ 10 + 20 }}']).toBe('30');
-		expect(expressionMap['={{ { name: "John", age: 30 } }}']).toContain('John');
-		expect(expressionMap['={{ [1, 2, 3] }}']).toContain('1');
+		// Number values
+		expect(expressionMap['={{ 42 }}']).toBe(42);
+		expect(expressionMap['={{ 10 + 20 }}']).toBe(30);
+		// Boolean value
+		expect(expressionMap['={{ true }}']).toBe(true);
+		// Object value (preserved as object)
+		expect(expressionMap['={{ { name: "John", age: 30 } }}']).toEqual({ name: 'John', age: 30 });
+		// Array value (preserved as array)
+		expect(expressionMap['={{ [1, 2, 3] }}']).toEqual([1, 2, 3]);
 	});
 
 	it('Should trim very long resolved values correctly', () => {
@@ -1326,7 +1343,7 @@ describe('extractExpressionsFromWorkflow', () => {
 				{
 					parameters: {
 						// Create a long literal string
-						value: `={{ "${longString}" }}`,
+						value: `={{ "x".repeat(300) }}`,
 					},
 					id: 'node1',
 					name: 'Test Node',
@@ -1344,5 +1361,256 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(resolvedValue.length).toBeLessThanOrEqual(220); // 200 + "... [truncated]"
 		expect(resolvedValue).toContain('... [truncated]');
 		expect(resolvedValue).toMatch(/^x+\.\.\. \[truncated\]$/);
+	});
+
+	it('Should handle expressions embedded in regular strings', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						// Single embedded expression
+						message: '=Here is an expression {{ $json.text }} inside a regular string',
+					},
+					id: 'node1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Test Node']).toBeDefined();
+		expect(result['Test Node'].length).toBe(1);
+		expect(result['Test Node'][0].expression).toBe(
+			'=Here is an expression {{ $json.text }} inside a regular string',
+		);
+		expect(result['Test Node'][0].resolvedValue).toBe(
+			'Here is an expression sample text inside a regular string',
+		);
+	});
+
+	it('Should handle multiple expressions in one string', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						// Multiple embedded expressions
+						message: '=Multiple expressions: {{ $now }} and {{ $json.field }}',
+					},
+					id: 'node1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Test Node']).toBeDefined();
+		expect(result['Test Node'].length).toBe(1);
+		expect(result['Test Node'][0].expression).toBe(
+			'=Multiple expressions: {{ $now }} and {{ $json.field }}',
+		);
+		expect(result['Test Node'][0].resolvedValue).toBe(
+			'Multiple expressions: 2024-01-01 and field value',
+		);
+	});
+
+	it('Should skip static strings without expressions', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						// Static string starting with = but no expressions
+						staticField: '=Static string without expressions',
+						// This should be extracted
+						expressionField: '={{ $json.value }}',
+					},
+					id: 'node1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Test Node']).toBeDefined();
+		// Should only have 1 expression (the expressionField), not the static string
+		expect(result['Test Node'].length).toBe(1);
+		expect(result['Test Node'][0].expression).toBe('={{ $json.value }}');
+		// Verify static string was skipped
+		const expressions = result['Test Node'].map((e) => e.expression);
+		expect(expressions).not.toContain('=Static string without expressions');
+	});
+
+	it('Should only extract expressions from executed nodes when execution data is provided', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						value: '={{ "executed node" }}',
+					},
+					id: 'node1',
+					name: 'Executed Node',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+				{
+					parameters: {
+						value: '={{ "not executed" }}',
+					},
+					id: 'node2',
+					name: 'Not Executed Node',
+					type: 'n8n-nodes-base.set',
+					position: [100, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		// Execution data with only one node executed
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				'Executed Node': [
+					{
+						hints: [],
+						startTime: 1000,
+						executionTime: 10,
+						executionIndex: 0,
+						source: [],
+						executionStatus: 'success',
+						data: { main: [[{ json: {} }]] },
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow, executionData);
+
+		// Should only have expressions from executed node
+		expect(result['Executed Node']).toBeDefined();
+		expect(result['Not Executed Node']).toBeUndefined();
+		expect(Object.keys(result)).toHaveLength(1);
+	});
+
+	it('Should extract from all nodes when no execution data is provided', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						value: '={{ "node 1" }}',
+					},
+					id: 'node1',
+					name: 'Node 1',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+				{
+					parameters: {
+						value: '={{ "node 2" }}',
+					},
+					id: 'node2',
+					name: 'Node 2',
+					type: 'n8n-nodes-base.set',
+					position: [100, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		// No execution data provided
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+
+		// Should extract from both nodes
+		expect(result['Node 1']).toBeDefined();
+		expect(result['Node 2']).toBeDefined();
+		expect(Object.keys(result)).toHaveLength(2);
+	});
+
+	it('Should handle execution data with multiple executed nodes', () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						value: '={{ "executed 1" }}',
+					},
+					id: 'node1',
+					name: 'Executed Node 1',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+				{
+					parameters: {
+						value: '={{ "executed 2" }}',
+					},
+					id: 'node2',
+					name: 'Executed Node 2',
+					type: 'n8n-nodes-base.set',
+					position: [100, 0],
+					typeVersion: 1,
+				},
+				{
+					parameters: {
+						value: '={{ "not executed" }}',
+					},
+					id: 'node3',
+					name: 'Not Executed',
+					type: 'n8n-nodes-base.set',
+					position: [200, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				'Executed Node 1': [
+					{
+						hints: [],
+						startTime: 1000,
+						executionTime: 10,
+						executionIndex: 0,
+						source: [],
+						executionStatus: 'success',
+						data: { main: [[{ json: {} }]] },
+					},
+				],
+				'Executed Node 2': [
+					{
+						hints: [],
+						startTime: 1010,
+						executionTime: 10,
+						executionIndex: 1,
+						source: [],
+						executionStatus: 'success',
+						data: { main: [[{ json: {} }]] },
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow, executionData);
+
+		// Should have expressions from both executed nodes
+		expect(result['Executed Node 1']).toBeDefined();
+		expect(result['Executed Node 2']).toBeDefined();
+		expect(result['Not Executed']).toBeUndefined();
+		expect(Object.keys(result)).toHaveLength(2);
 	});
 });
