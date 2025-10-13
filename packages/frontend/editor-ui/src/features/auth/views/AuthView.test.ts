@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import AuthView from '@/views/AuthView.vue';
+import AuthView from './AuthView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 const renderComponent = createComponentRenderer(AuthView, {
