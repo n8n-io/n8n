@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=22.18.0
 
 # ==============================================================================
 # STAGE 1: Builder for Base Dependencies
