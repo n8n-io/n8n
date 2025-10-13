@@ -6,8 +6,8 @@ export const n8nTheme = themeQuartz.withPart(iconSetAlpine).withParams({
 	rowVerticalPaddingScale: 0.8,
 	sidePanelBorder: true,
 	wrapperBorder: true,
-	headerColumnBorder: { color: 'var(--color-foreground-base)' },
+	headerColumnBorder: { color: 'var(--color--foreground)' },
 	headerColumnBorderHeight: '100%',
-	checkboxUncheckedBackgroundColor: 'var(--color-background-light-base)',
-	checkboxCheckedBackgroundColor: 'var(--color-primary)',
+	checkboxUncheckedBackgroundColor: 'var(--color--background--light-1)',
+	checkboxCheckedBackgroundColor: 'var(--color--primary)',
 });

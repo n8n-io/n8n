@@ -147,7 +147,8 @@ export function validateIconPath(
 	const isFile = iconPath.startsWith('file:');
 	const relativePath = iconPath.replace(/^file:/, '');
 	const isSvg = relativePath.endsWith('.svg');
-	const fullPath = safeJoinPath(baseDir, relativePath);
+	// Should not use safeJoinPath here because iconPath can be outside of the node class folder
+	const fullPath = path.join(baseDir, relativePath);
 	const exists = existsSync(fullPath);
 
 	return {

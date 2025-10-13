@@ -245,37 +245,37 @@ modalBus.on('opened', () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border-bottom: var(--border-base);
-	padding-bottom: var(--spacing-s);
+	border-bottom: var(--border);
+	padding-bottom: var(--spacing--sm);
 }
 
 :global(.el-dialog__header) {
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 
 .column {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .row {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .container {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 }
 
 .article {
-	padding: var(--spacing-s) 0;
+	padding: var(--spacing--sm) 0;
 }
 
 .markdown {
-	margin: var(--spacing-s) 0;
+	margin: var(--spacing--sm) 0;
 
 	p,
 	strong,
@@ -284,11 +284,11 @@ modalBus.on('opened', () => {
 	code,
 	a,
 	li {
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 	}
 
 	hr {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 	}
 }
 </style>

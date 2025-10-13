@@ -5,11 +5,15 @@ import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 
 /**
  * Handles the 'nodeExecuteAfter' event, which happens after a node is executed.
  */
-export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
+export async function nodeExecuteAfter(
+	{ data: pushData }: NodeExecuteAfter,
+	{ workflowState }: { workflowState: WorkflowState },
+) {
 	const workflowsStore = useWorkflowsStore();
 	const assistantStore = useAssistantStore();
 
@@ -47,7 +51,7 @@ export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 	};
 
 	workflowsStore.updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
-	workflowsStore.removeExecutingNode(pushData.nodeName);
+	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);
 }

@@ -13,7 +13,7 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
-import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';
 
 import { ElSwitch } from 'element-plus';
@@ -392,7 +392,7 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 
 	:global(.table-pagination) {
 		display: none;
@@ -400,18 +400,18 @@ onMounted(async () => {
 }
 
 .headingContainer {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 }
 
 .mainToggleContainer {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	justify-content: space-between;
 	flex-shrink: 0;
 
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
+	border-radius: var(--radius);
+	border: var(--border);
 }
 
 .mainToggleInfo {
@@ -441,12 +441,12 @@ onMounted(async () => {
 }
 
 .table-link {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	:global(.n8n-text) {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 
 		.link-icon {
 			display: none;
@@ -464,7 +464,7 @@ onMounted(async () => {
 			gap: 0;
 		}
 		.link-icon {
-			margin-left: var(--spacing-3xs);
+			margin-left: var(--spacing--3xs);
 		}
 	}
 }
@@ -472,6 +472,6 @@ onMounted(async () => {
 .folder-cell {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 </style>

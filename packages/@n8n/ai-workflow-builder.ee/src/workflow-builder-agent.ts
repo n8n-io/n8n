@@ -28,6 +28,7 @@ import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
+import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
 import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
@@ -289,6 +290,24 @@ export class WorkflowBuilderAgent {
 			return {};
 		};
 
+		/**
+		 * Cleans up dangling tool calls from the state
+		 * that might have been left due to unexpected interruptions during tool execution.
+		 */
+		const cleanupDanglingToolCalls = (state: typeof WorkflowState.State) => {
+			const messagesToRemove = cleanupDanglingToolCallMessages(state.messages);
+
+			if (messagesToRemove.length > 0) {
+				this.logger?.warn('Cleaning up dangling tool call messages', {
+					messagesToRemove: messagesToRemove.map((m) => m.id),
+				});
+			}
+
+			return {
+				messages: messagesToRemove,
+			};
+		};
+
 		const workflow = new StateGraph(WorkflowState)
 			.addNode('agent', callModel)
 			.addNode('tools', customToolExecutor)
@@ -297,7 +316,9 @@ export class WorkflowBuilderAgent {
 			.addNode('compact_messages', compactSession)
 			.addNode('auto_compact_messages', compactSession)
 			.addNode('create_workflow_name', createWorkflowName)
-			.addConditionalEdges('__start__', shouldModifyState)
+			.addNode('cleanup_dangling_tool_calls', cleanupDanglingToolCalls)
+			.addEdge('__start__', 'cleanup_dangling_tool_calls')
+			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyState)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')

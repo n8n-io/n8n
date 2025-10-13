@@ -92,7 +92,7 @@ const handleRowClick = (row: TestRunRecord) => {
 .runs {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	flex: 1;
 	overflow: auto;
 	margin-bottom: 20px;

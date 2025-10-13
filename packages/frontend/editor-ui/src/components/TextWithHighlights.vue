@@ -36,7 +36,7 @@ const parts = computed(() => {
 
 <style lang="scss" module>
 :root .content .newLine {
-	font-family: var(--font-family-monospace);
+	font-family: var(--font-family--monospace);
 	color: var(--color-line-break);
 	padding-right: 2px;
 }

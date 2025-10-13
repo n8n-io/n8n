@@ -67,7 +67,7 @@ defineExpose({
 <style lang="scss">
 .data-table-date-filter-wrapper {
 	border: var(--ag-picker-button-border);
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 
 	.el-input__prefix {
 		display: none;
@@ -77,7 +77,7 @@ defineExpose({
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		color: var(--color-foreground-dark);
+		color: var(--color--foreground--shade-1);
 	}
 
 	.el-input__inner {

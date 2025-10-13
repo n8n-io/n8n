@@ -118,13 +118,12 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
 
 RUN addgroup -g 1000 -S runner \
- && adduser  -u 1000 -S -G runner -h /home/runner -D runner \
- && install -d -o runner -g runner /opt/runners
+ && adduser  -u 1000 -S -G runner -h /home/runner -D runner
 
 WORKDIR /home/runner
 
-COPY --from=javascript-runner-builder --chown=runner:runner /app/task-runner-javascript /opt/runners/task-runner-javascript
-COPY --from=python-runner-builder --chown=runner:runner /app/task-runner-python /opt/runners/task-runner-python
+COPY --from=javascript-runner-builder --chown=root:root /app/task-runner-javascript /opt/runners/task-runner-javascript
+COPY --from=python-runner-builder --chown=root:root /app/task-runner-python /opt/runners/task-runner-python
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 

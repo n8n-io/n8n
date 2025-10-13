@@ -113,7 +113,7 @@ function onUseWorkflow(event: MouseEvent, id: number) {
 
 <style lang="scss" module>
 .header {
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing--2xs);
 }
 
 .workflowButton {
