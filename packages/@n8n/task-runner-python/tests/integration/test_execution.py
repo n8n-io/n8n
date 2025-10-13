@@ -263,4 +263,36 @@ async def test_cannot_bypass_import_restrictions_via_builtins_dict(broker, manag
 
     assert error_msg["taskId"] == task_id
     assert "error" in error_msg
-    assert "os" in str(error_msg["error"]["description"]).lower()
+    assert "__import__" in str(error_msg["error"]["description"]).lower()
+
+
+@pytest.mark.asyncio
+async def test_cannot_bypass_import_restrictions_via_builtins_spec_loader(broker, manager):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        sys = __builtins__['__spec__'].loader.load_module('sys')
+        os = sys.meta_path[-1].find_spec("os").loader.load_module('os')
+        return [{"json": {"pid": os.getpid()}}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    error_msg = await wait_for_task_error(broker, task_id)
+
+    assert error_msg["taskId"] == task_id
+    assert "error" in error_msg
+
+@pytest.mark.asyncio
+async def test_cannot_bypass_import_restrictions_via_sys_builtins_spec_leader(broker, manager_with_stdlib_wildcard):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        import sys
+        os = sys.__builtins__['__spec__'].loader.load_module('os')
+        return [{"json": {"pid": os.getpid()}}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+    error_msg = await wait_for_task_error(broker, task_id)
+    
+    assert error_msg["taskId"] == task_id
+    assert "error" in error_msg
