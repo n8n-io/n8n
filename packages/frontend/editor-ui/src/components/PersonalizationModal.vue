@@ -96,6 +96,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { getResourcePermissions } from '@n8n/permissions';
 
+import { N8nButton, N8nFormInputs } from '@n8n/design-system';
 const SURVEY_VERSION = 'v4';
 
 const externalHooks = useExternalHooks();
@@ -648,7 +649,7 @@ const onSubmit = async (values: object) => {
 .container {
 	> div,
 	section > div:not(:last-child) {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 }
 </style>

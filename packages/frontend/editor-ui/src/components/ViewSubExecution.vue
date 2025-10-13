@@ -5,6 +5,7 @@ import type { IRunDataDisplayMode } from '@/Interface';
 import type { ITaskMetadata } from 'n8n-workflow';
 import { computed } from 'vue';
 
+import { N8nIcon } from '@n8n/design-system';
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 const i18n = useI18n();
 
@@ -60,11 +61,11 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 
 <style lang="scss" module>
 .relatedExecutionInfo {
-	font-size: var(--font-size-s);
-	margin-left: var(--spacing-3xs);
+	font-size: var(--font-size--sm);
+	margin-left: var(--spacing--3xs);
 
 	svg {
-		padding-bottom: var(--spacing-5xs);
+		padding-bottom: var(--spacing--5xs);
 	}
 }
 </style>

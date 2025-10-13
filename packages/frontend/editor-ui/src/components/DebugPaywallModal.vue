@@ -2,6 +2,7 @@
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: { title: string; footerButtonAction: () => void };

@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 type Props = {
 	nodes: IConnectedNode[];
 	workflow: Workflow;
@@ -170,26 +171,26 @@ function onInputNodeChange(value: string) {
 	max-width: var(--max-select-width);
 
 	:global(.el-input--suffix .el-input__inner) {
-		padding-left: calc(var(--spacing-l) + var(--spacing-4xs));
-		padding-right: var(--spacing-l);
+		padding-left: calc(var(--spacing--lg) + var(--spacing--4xs));
+		padding-right: var(--spacing--lg);
 	}
 }
 
 .node {
-	--select-option-padding: 0 var(--spacing-s);
+	--select-option-padding: 0 var(--spacing--sm);
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-2xs);
-	gap: var(--spacing-4xs);
+	font-size: var(--font-size--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .icon {
-	padding-right: var(--spacing-4xs);
+	padding-right: var(--spacing--4xs);
 }
 
 .title {
-	color: var(--color-text-dark);
-	font-weight: var(--font-weight-regular);
+	color: var(--color--text--shade-1);
+	font-weight: var(--font-weight--regular);
 	max-width: var(--max-select-width);
 	overflow: hidden;
 	white-space: nowrap;
@@ -197,13 +198,13 @@ function onInputNodeChange(value: string) {
 }
 
 .disabled .title {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .subtitle {
 	margin-left: auto;
-	padding-left: var(--spacing-2xs);
-	color: var(--color-text-light);
-	font-weight: var(--font-weight-regular);
+	padding-left: var(--spacing--2xs);
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--regular);
 }
 </style>

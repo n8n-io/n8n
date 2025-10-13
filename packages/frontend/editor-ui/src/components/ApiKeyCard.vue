@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ApiKey } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 
+import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
 const API_KEY_ITEM_ACTIONS = {
 	EDIT: 'edit',
 	DELETE: 'delete',
@@ -86,7 +87,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
-	padding: 0 0 0 var(--spacing-s);
+	padding: 0 0 0 var(--spacing--sm);
 	align-items: stretch;
 
 	&:hover {
@@ -95,9 +96,9 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	word-break: word-break;
-	padding: var(--spacing-s) 0 0 var(--spacing-s);
+	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
 	width: 200px;
 }
 
@@ -105,7 +106,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .cardActions {
@@ -113,7 +114,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -17,6 +18,18 @@ import type { Placement } from '@floating-ui/core';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
+import { ElDatePicker } from 'element-plus';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nInput,
+	N8nOption,
+	N8nPopover,
+	N8nSelect,
+	N8nTooltip,
+} from '@n8n/design-system';
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	popoverPlacement?: Placement;
@@ -394,9 +407,9 @@ onBeforeMount(() => {
 	label,
 	.label {
 		display: inline-block;
-		font-size: var(--font-size-2xs);
-		margin: var(--spacing-s) 0 var(--spacing-3xs);
-		color: var(--color-text-dark);
+		font-size: var(--font-size--2xs);
+		margin: var(--spacing--sm) 0 var(--spacing--3xs);
+		color: var(--color--text--shade-1);
 	}
 }
 
@@ -404,22 +417,22 @@ onBeforeMount(() => {
 	display: flex;
 	align-items: center;
 	span {
-		margin-right: var(--spacing-3xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 
 .subGroup {
-	padding: 0 0 var(--spacing-xs) var(--spacing-s);
+	padding: 0 0 var(--spacing--xs) var(--spacing--sm);
 
 	label,
 	.label {
-		font-size: var(--font-size-3xs);
-		margin: var(--spacing-4xs) 0 var(--spacing-4xs);
+		font-size: var(--font-size--3xs);
+		margin: var(--spacing--4xs) 0 var(--spacing--4xs);
 	}
 
 	.checkboxWrapper {
-		margin-top: var(--spacing-s);
-		margin-bottom: var(--spacing-2xs);
+		margin-top: var(--spacing--sm);
+		margin-bottom: var(--spacing--2xs);
 
 		label {
 			margin: 0;
@@ -429,24 +442,24 @@ onBeforeMount(() => {
 
 .dates {
 	display: flex;
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-base);
+	border: 1px solid var(--color--foreground);
+	border-radius: var(--radius);
 	white-space: nowrap;
 	align-items: center;
 }
 
 .divider {
-	padding: 0 var(--spacing-m);
+	padding: 0 var(--spacing--md);
 	line-height: 100%;
 }
 
 .resetBtn {
 	padding: 0;
-	margin: var(--spacing-xs) 0 0;
+	margin: var(--spacing--xs) 0 0;
 }
 
 .tooltipIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .filterButton {
@@ -470,7 +483,7 @@ onBeforeMount(() => {
 	}
 
 	.el-input__prefix {
-		color: var(--color-foreground-dark);
+		color: var(--color--foreground--shade-1);
 	}
 
 	&:last-of-type {
@@ -493,7 +506,7 @@ onBeforeMount(() => {
 		margin-right: 3px;
 		border-left-width: 6px;
 		border-top-width: 0;
-		border-bottom-color: var(--border-color-light);
+		border-bottom-color: var(--border-color--light);
 		border-right-color: transparent;
 
 		&::after {
@@ -503,7 +516,7 @@ onBeforeMount(() => {
 			margin-left: -6px;
 			border-left-width: 6px;
 			border-top-width: 0;
-			border-bottom-color: var(--color-foreground-xlight);
+			border-bottom-color: var(--color--foreground--tint-2);
 			border-right-color: transparent;
 		}
 	}

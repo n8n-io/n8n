@@ -5,7 +5,7 @@ import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { reactive, ref } from 'vue';

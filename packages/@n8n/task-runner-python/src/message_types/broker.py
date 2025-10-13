@@ -43,7 +43,6 @@ class TaskSettings:
     workflow_id: str
     node_name: str
     node_id: str
-    can_log: bool
 
 
 @dataclass

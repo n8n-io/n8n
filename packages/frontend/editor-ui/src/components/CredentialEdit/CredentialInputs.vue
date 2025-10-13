@@ -8,6 +8,7 @@ import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 import { computed } from 'vue';
 
+import { N8nNotice } from '@n8n/design-system';
 type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
@@ -63,7 +64,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 <style lang="scss" module>
 .container {
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 	}
 }
 </style>

@@ -10,6 +10,7 @@ import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 let interval: NodeJS.Timeout;
 
 const orchestrationStore = useOrchestrationStore();
@@ -110,9 +111,9 @@ onBeforeUnmount(() => {
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	word-break: break-word;
-	padding: var(--spacing-s) 0 0 var(--spacing-s);
+	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
 }
 
 .stale {
@@ -123,7 +124,7 @@ onBeforeUnmount(() => {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .cardActions {
@@ -132,7 +133,7 @@ onBeforeUnmount(() => {
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 </style>

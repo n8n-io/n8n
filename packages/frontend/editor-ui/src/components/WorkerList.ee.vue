@@ -11,6 +11,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/composables/useTelemetry';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 
+import { N8nHeading, N8nSpinner } from '@n8n/design-system';
+import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 withDefaults(
 	defineProps<{
 		autoRefreshEnabled?: boolean;
@@ -90,16 +92,16 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .card {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .tableLoader {
 	width: 100%;
 	height: 48px;
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 </style>

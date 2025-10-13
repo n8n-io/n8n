@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AnnotationVote } from 'n8n-workflow';
 
+import { N8nIconButton } from '@n8n/design-system';
 defineProps<{
 	vote: AnnotationVote | null;
 }>();
@@ -41,19 +42,19 @@ const onVoteClick = (vote: AnnotationVote) => {
 	flex-direction: row;
 
 	.icon {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 
 		&:not(.up):not(.down):hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 
 	.up {
-		color: var(--color-success);
+		color: var(--color--success);
 	}
 
 	.down {
-		color: var(--color-danger);
+		color: var(--color--danger);
 	}
 }
 </style>

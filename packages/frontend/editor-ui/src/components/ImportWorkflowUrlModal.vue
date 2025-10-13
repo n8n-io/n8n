@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { nodeViewEventBus } from '@/event-bus';
 import { VALID_WORKFLOW_IMPORT_URL_REGEX, IMPORT_WORKFLOW_URL_MODAL_KEY } from '@/constants';
 
+import { N8nButton, N8nInput } from '@n8n/design-system';
 const i18n = useI18n();
 const uiStore = useUIStore();
 
@@ -81,15 +83,15 @@ const focusInput = async () => {
 
 <style lang="scss" module>
 .error-text {
-	color: var(--color-danger);
-	font-size: var(--font-size-2xs);
-	margin-top: var(--spacing-2xs);
-	height: var(--spacing-s);
+	color: var(--color--danger);
+	font-size: var(--font-size--2xs);
+	margin-top: var(--spacing--2xs);
+	height: var(--spacing--sm);
 	visibility: hidden;
 }
 .footer {
 	> * {
-		margin-left: var(--spacing-3xs);
+		margin-left: var(--spacing--3xs);
 	}
 }
 .noScrollbar {

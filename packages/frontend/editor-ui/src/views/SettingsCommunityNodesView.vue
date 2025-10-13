@@ -19,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 
+import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
@@ -198,9 +199,9 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .container {
 	height: 100%;
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing--2xs);
 	> * {
-		margin-bottom: var(--spacing-2xl);
+		margin-bottom: var(--spacing--2xl);
 	}
 }
 
@@ -211,7 +212,7 @@ onBeforeUnmount(() => {
 
 .loadingContainer {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .actionBoxContainer {
@@ -221,6 +222,6 @@ onBeforeUnmount(() => {
 .cardsContainer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 </style>

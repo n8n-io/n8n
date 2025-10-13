@@ -26,10 +26,10 @@ import {
 	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 	SampleTemplates,
-} from '@/utils/templates/workflowSamples';
+} from '@/features/templates/utils/workflowSamples';
 import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 export function useCalloutHelpers() {
 	const route = useRoute();

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ElTable } from 'element-plus';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
 import { onMounted, ref, watch } from 'vue';
-import { N8nInput } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 
+import { ElTable, ElTableColumn } from 'element-plus';
+import { N8nButton, N8nIconButton, N8nInput } from '@n8n/design-system';
 interface Props {
 	rows: ITagRow[];
 	isLoading: boolean;

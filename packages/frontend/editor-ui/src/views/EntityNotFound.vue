@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 defineProps<{
 	entityType: 'credential' | 'workflow';
 }>();
@@ -62,6 +62,6 @@ const locale = useI18n();
 
 .entity-card {
 	max-width: 400px;
-	padding: var(--spacing-xl);
+	padding: var(--spacing--xl);
 }
 </style>

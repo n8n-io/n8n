@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
+import { N8nButton, N8nInput } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	isActive: boolean;
@@ -204,13 +205,13 @@ onMounted(async () => {
 <style lang="scss" module>
 .content {
 	> *:not(:last-child) {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 }
 
 .footer {
 	> * {
-		margin-left: var(--spacing-3xs);
+		margin-left: var(--spacing--3xs);
 	}
 }
 </style>

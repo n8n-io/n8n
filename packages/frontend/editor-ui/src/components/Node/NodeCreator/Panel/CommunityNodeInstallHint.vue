@@ -2,8 +2,7 @@
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 
-import { N8nText, N8nIcon } from '@n8n/design-system';
-
+import { N8nIcon, N8nText } from '@n8n/design-system';
 export interface Props {
 	hint: string;
 }
@@ -24,11 +23,11 @@ defineProps<Props>();
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
-	margin: var(--spacing-xs);
+	gap: var(--spacing--sm);
+	margin: var(--spacing--xs);
 	margin-top: 0;
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color-foreground-base);
+	padding: var(--spacing--xs);
+	border: var(--border-width) solid var(--color--foreground);
 	border-radius: 0.25em;
 	pointer-events: none;
 	cursor: default;

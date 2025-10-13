@@ -14,7 +14,7 @@ const props = defineProps<ChartProps>();
 
 const i18n = useI18n();
 
-const colorPrimary = useCssVar('--color-primary', document.body);
+const colorPrimary = useCssVar('--color--primary', document.body);
 const chartOptions = computed(() =>
 	generateBarChartOptions({
 		plugins: {

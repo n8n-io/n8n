@@ -9,13 +9,23 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
-import N8nInfoTip from '@n8n/design-system/components/N8nInfoTip';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
+import { ElDialog } from 'element-plus';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nHeading,
+	N8nInfoTip,
+	N8nInput,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
@@ -287,7 +297,7 @@ const openCommunityRegisterModal = () => {
 }
 
 .actionBox {
-	margin: var(--spacing-2xl) 0 0;
+	margin: var(--spacing--2xl) 0 0;
 }
 
 .spacedFlex {
@@ -299,7 +309,7 @@ const openCommunityRegisterModal = () => {
 .title {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-2xl) 0 var(--spacing-m);
+	padding: var(--spacing--2xl) 0 var(--spacing--md);
 }
 
 .quota {
@@ -307,33 +317,33 @@ const openCommunityRegisterModal = () => {
 	justify-content: space-between;
 	align-items: center;
 	height: 54px;
-	padding: 0 var(--spacing-s);
-	margin: 0 0 var(--spacing-xs);
-	background: var(--color-background-xlight);
-	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-foreground-base);
+	padding: 0 var(--spacing--sm);
+	margin: 0 0 var(--spacing--xs);
+	background: var(--color--background--light-3);
+	border-radius: var(--radius--lg);
+	border: 1px solid var(--color--foreground);
 	white-space: nowrap;
 
 	.count {
 		text-transform: lowercase;
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 	}
 }
 
 .buttons {
 	display: flex;
 	justify-content: flex-end;
-	padding: var(--spacing-xl) 0 0;
+	padding: var(--spacing--xl) 0 0;
 
 	button {
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing--xs);
 
 		a {
 			display: inline-block;
 			color: inherit;
 			text-decoration: none;
-			padding: var(--spacing-xs) var(--spacing-m);
-			margin: calc(var(--spacing-xs) * -1) calc(var(--spacing-m) * -1);
+			padding: var(--spacing--xs) var(--spacing--md);
+			margin: calc(var(--spacing--xs) * -1) calc(var(--spacing--md) * -1);
 		}
 	}
 }
@@ -350,29 +360,29 @@ const openCommunityRegisterModal = () => {
 	height: 10px;
 	width: 100%;
 	max-width: 260px;
-	margin: 0 var(--spacing-m);
+	margin: 0 var(--spacing--md);
 	border-radius: 10px;
-	background: var(--color-background-base);
+	background: var(--color--background);
 }
 
 .chartBar {
 	float: left;
 	height: 100%;
 	max-width: 100%;
-	background: var(--color-secondary);
+	background: var(--color--secondary);
 	border-radius: 10px;
 	transition: width 0.2s $ease-out-expo;
 }
 
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
-	padding: 0 0 0 var(--spacing-4xs);
+	padding: 0 0 0 var(--spacing--4xs);
 }
 
 .titleTooltip {
 	display: flex;
 	align-items: center;
-	margin: 0 0 0 var(--spacing-2xs);
+	margin: 0 0 0 var(--spacing--2xs);
 }
 </style>
 
@@ -388,7 +398,7 @@ div[class*='info'] > span > span:last-child {
 
 			.el-dialog__footer {
 				button {
-					margin-left: var(--spacing-xs);
+					margin-left: var(--spacing--xs);
 				}
 			}
 		}

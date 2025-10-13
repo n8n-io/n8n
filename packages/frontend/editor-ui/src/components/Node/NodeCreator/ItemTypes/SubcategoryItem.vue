@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
+import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
 export interface Props {
 	item: SubcategoryItemProps;
 }
@@ -30,7 +31,6 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 				:name="item.icon"
 				:circle="false"
 				:show-tooltip="false"
-				:use-updated-icons="true"
 				v-bind="item.iconProps"
 			/>
 		</template>
@@ -39,7 +39,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 
 <style lang="scss" module>
 .subCategory {
-	--action-arrow-color: var(--color-text-light);
+	--action-arrow-color: var(--color--text--tint-1);
 	margin-left: 15px;
 	margin-right: 12px;
 }

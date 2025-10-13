@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import Logo from '@/components/Logo/Logo.vue';
-import SSOLogin from '@/components/SSOLogin.vue';
+import { N8nLogo } from '@n8n/design-system';
+import SSOLogin from '@/features/sso/components/SSOLogin.vue';
 import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { EmailOrLdapLoginIdAndPassword } from './SigninView.vue';
 
+import { N8nFormBox, N8nText } from '@n8n/design-system';
 withDefaults(
 	defineProps<{
 		form: IFormBoxConfig;
@@ -43,7 +44,7 @@ const {
 
 <template>
 	<div :class="$style.container">
-		<Logo location="authView" :release-channel="releaseChannel" />
+		<N8nLogo size="large" :release-channel="releaseChannel" />
 		<div v-if="subtitle" :class="$style.textContainer">
 			<N8nText size="large">{{ subtitle }}</N8nText>
 		</div>
@@ -64,14 +65,14 @@ const {
 
 <style lang="scss" module>
 body {
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .container {
 	display: flex;
 	align-items: center;
 	flex-direction: column;
-	padding-top: var(--spacing-2xl);
+	padding-top: var(--spacing--2xl);
 
 	> * {
 		width: 352px;
@@ -83,6 +84,6 @@ body {
 }
 
 .formContainer {
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 }
 </style>

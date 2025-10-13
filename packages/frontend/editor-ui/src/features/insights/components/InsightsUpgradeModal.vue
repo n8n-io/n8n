@@ -2,10 +2,10 @@
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nText } from '@n8n/design-system';
-import { ElDialog } from 'element-plus';
 import { computed } from 'vue';
 
+import { N8nButton, N8nText } from '@n8n/design-system';
+import { ElDialog } from 'element-plus';
 const model = defineModel<boolean>();
 const i18n = useI18n();
 
@@ -59,12 +59,12 @@ const perks = computed(() =>
 	list-style: none;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 
 	> li {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 	}
 }
 </style>

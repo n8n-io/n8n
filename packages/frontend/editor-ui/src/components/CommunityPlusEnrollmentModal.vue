@@ -2,7 +2,6 @@
 import { ref } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { Validatable, IValidator } from '@n8n/design-system';
-import { N8nFormInput } from '@n8n/design-system';
 import { VALID_EMAIL_REGEX, COMMUNITY_PLUS_DOCS_URL } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
@@ -11,6 +10,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUsersStore } from '@/stores/users.store';
 
+import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data?: {
@@ -174,27 +174,27 @@ const confirm = async () => {
 
 <style lang="scss" module>
 .notice {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 }
 
 .features {
-	padding: var(--spacing-s) var(--spacing-l) 0;
+	padding: var(--spacing--sm) var(--spacing--lg) 0;
 	list-style: none;
 
 	li {
 		display: flex;
-		padding: 0 var(--spacing-s) var(--spacing-m) 0;
+		padding: 0 var(--spacing--sm) var(--spacing--md) 0;
 
 		i {
 			display: inline-block;
-			margin: var(--spacing-5xs) var(--spacing-xs) 0 0;
+			margin: var(--spacing--5xs) var(--spacing--xs) 0 0;
 			font-style: normal;
-			font-size: var(--font-size-s);
+			font-size: var(--font-size--sm);
 		}
 
 		strong {
 			display: block;
-			margin-bottom: var(--spacing-4xs);
+			margin-bottom: var(--spacing--4xs);
 		}
 	}
 }

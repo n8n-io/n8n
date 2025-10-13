@@ -15,9 +15,24 @@ import {
 import type { IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { useToast } from '@/composables/useToast';
+import {
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 import { computed } from 'vue';
 
 vi.mock('@/composables/useToast');
+
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
+
+let workflowState: WorkflowState;
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -28,13 +43,16 @@ describe(useLogsExecutionData, () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
 	});
 
 	describe('isEnabled', () => {
 		beforeEach(() => {
-			workflowsStore.setWorkflowExecutionData(
+			workflowState.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
 					data: { resultData: { runData: { n0: [createTestTaskData()] } } },
 					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
@@ -43,14 +61,14 @@ describe(useLogsExecutionData, () => {
 		});
 
 		it('should not calculate entries isEnabled is false', async () => {
-			const { entries } = useLogsExecutionData(computed(() => false));
+			const { entries } = useLogsExecutionData({ isEnabled: computed(() => false) });
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(0);
 		});
 
 		it('should calculate entries if isEnabled is true', async () => {
-			const { entries } = useLogsExecutionData(computed(() => true));
+			const { entries } = useLogsExecutionData({ isEnabled: computed(() => true) });
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(1);
@@ -61,7 +79,7 @@ describe(useLogsExecutionData, () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
-			workflowsStore.setWorkflowExecutionData(
+			workflowState.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
 					id: 'e0',
 					workflowData: createTestWorkflow({
@@ -102,7 +120,7 @@ describe(useLogsExecutionData, () => {
 				}),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
+			const { loadSubExecution, entries } = useLogsExecutionData();
 
 			await waitFor(() => expect(entries.value).toHaveLength(2));
 			expect(entries.value[1].children).toHaveLength(0);
@@ -133,7 +151,7 @@ describe(useLogsExecutionData, () => {
 				new Error('test execution fetch fail'),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
+			const { loadSubExecution, entries } = useLogsExecutionData();
 
 			await waitFor(() => expect(entries.value).toHaveLength(2));
 			await loadSubExecution(entries.value[1]);

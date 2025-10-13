@@ -2,7 +2,17 @@
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { RELEASE_NOTES_URL, VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { useVersionsStore } from '@/stores/versions.store';
+import { computed, nextTick, ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import Modal from '@/components/Modal.vue';
+
 import {
+	N8nButton,
 	N8nCallout,
 	N8nHeading,
 	N8nIcon,
@@ -11,14 +21,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { useVersionsStore } from '@/stores/versions.store';
-import { computed, nextTick, ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
-
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -243,37 +245,37 @@ modalBus.on('opened', () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border-bottom: var(--border-base);
-	padding-bottom: var(--spacing-s);
+	border-bottom: var(--border);
+	padding-bottom: var(--spacing--sm);
 }
 
 :global(.el-dialog__header) {
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 
 .column {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .row {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .container {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 }
 
 .article {
-	padding: var(--spacing-s) 0;
+	padding: var(--spacing--sm) 0;
 }
 
 .markdown {
-	margin: var(--spacing-s) 0;
+	margin: var(--spacing--sm) 0;
 
 	p,
 	strong,
@@ -282,11 +284,11 @@ modalBus.on('opened', () => {
 	code,
 	a,
 	li {
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 	}
 
 	hr {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 	}
 }
 </style>

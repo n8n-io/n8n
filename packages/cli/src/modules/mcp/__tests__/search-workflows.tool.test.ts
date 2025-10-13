@@ -6,6 +6,7 @@ import { createWorkflow } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 describe('search-workflows MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -16,7 +17,7 @@ describe('search-workflows MCP tool', () => {
 				createWorkflow({
 					id: 'wrap-1',
 					name: 'Wrapper',
-					nodes: [{ name: 'Start', type: 'n8n-nodes-base.start' } as INode],
+					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
 			];
 
@@ -40,13 +41,15 @@ describe('search-workflows MCP tool', () => {
 				createWorkflow({
 					id: 'a',
 					name: 'Alpha',
-					nodes: [{ name: 'Start', type: 'n8n-nodes-base.start' } as INode],
+					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
 				createWorkflow({
 					id: 'b',
 					name: 'Beta',
 					active: true,
-					nodes: [{ name: 'Cron', type: 'n8n-nodes-base.cron' } as INode],
+					nodes: [
+						{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
+					],
 				}),
 			];
 
@@ -64,7 +67,7 @@ describe('search-workflows MCP tool', () => {
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
-					nodes: [{ name: 'Start', type: 'n8n-nodes-base.start' }],
+					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE }],
 				},
 				{
 					id: 'b',
@@ -73,7 +76,7 @@ describe('search-workflows MCP tool', () => {
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
-					nodes: [{ name: 'Cron', type: 'n8n-nodes-base.cron' }],
+					nodes: [{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE }],
 				},
 			]);
 		});

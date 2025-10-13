@@ -1,0 +1,25 @@
+@use './common/var';
+
+@font-face {
+	font-family: InterVariable;
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('#{var.$font-path}/InterVariable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: InterVariable;
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('#{var.$font-path}/InterVariable-Italic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: CommitMono;
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('#{var.$font-path}/CommitMonoVariable.woff2') format('woff2');
+}
