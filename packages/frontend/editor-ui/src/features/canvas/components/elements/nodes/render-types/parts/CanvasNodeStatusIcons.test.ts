@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
+import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
