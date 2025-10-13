@@ -37,4 +37,8 @@ export class NodesConfig {
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/** Whether to enable aws assume role credentials. */
+	@Env('N8N_AWS_ASSUME_ROLE_CREDENTIALS_ENABLED')
+	awsAssumeRoleCredentialsEnabled: boolean = false;
 }

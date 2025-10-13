@@ -252,7 +252,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		region,
 	} as unknown as Request;
 
-	return { signOpts, endpoint };
+	return { signOpts, url: endpoint.origin + path };
 }
 
 /**

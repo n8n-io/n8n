@@ -16,6 +16,7 @@ import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -39,13 +40,9 @@ export class AwsS3V2 implements INodeType {
 			usableAsTool: true,
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
-			credentials: [
-				{
-					name: 'aws',
-					required: true,
-				},
-			],
+			credentials: awsNodeCredentials,
 			properties: [
+				awsNodeAuthOptions,
 				{
 					displayName: 'Resource',
 					name: 'resource',

@@ -15,6 +15,9 @@ import {
 	awsGetSignInOptionsAndUpdateRequest,
 } from './common/aws/utils';
 
+import { NodesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
 export class AwsAssumeRole implements ICredentialType {
 	name = 'awsAssumeRole';
 
@@ -25,6 +28,13 @@ export class AwsAssumeRole implements ICredentialType {
 	icon = { light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' } as const;
 
 	properties: INodeProperties[] = [
+		{
+			displayName:
+				'This credentials is disabled by default and must be explicitly enabled by setting <code>N8N_AWS_ASSUME_ROLE_CREDENTIALS_ENABLED</code> environment variable to "true", please see the <a href="https://docs.n8n.io/integrations/credentials/awsassumerole/">documentation</a> for more information.',
+			name: 'test',
+			type: 'notice',
+			default: '',
+		},
 		awsRegionProperty,
 		{
 			displayName: 'Role ARN',
@@ -133,6 +143,11 @@ export class AwsAssumeRole implements ICredentialType {
 		decryptedCredentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
+		if (!Container.get(NodesConfig).awsAssumeRoleCredentialsEnabled) {
+			throw new ApplicationError(
+				'AWS Assume Role credentials are not enabled, contact your administrator.',
+			);
+		}
 		const credentials = decryptedCredentials as AwsAssunmeRoleCredentialsType;
 		const service = requestOptions.qs?.service as string;
 		const path = (requestOptions.qs?.path as string) ?? '';
@@ -171,7 +186,7 @@ export class AwsAssumeRole implements ICredentialType {
 			);
 		}
 
-		const { signOpts, endpoint } = awsGetSignInOptionsAndUpdateRequest(
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
 			requestOptions,
 			finalCredentials,
 			path,
@@ -189,7 +204,7 @@ export class AwsAssumeRole implements ICredentialType {
 			...requestOptions,
 			headers: signOpts.headers,
 			method,
-			url: endpoint.origin + path,
+			url,
 			body: signOpts.body,
 			qs: undefined, // override since it's already in the url
 		};

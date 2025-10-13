@@ -75,7 +75,7 @@ export class Aws implements ICredentialType {
 			delete requestOptions.qs._region;
 		}
 
-		const { signOpts, endpoint } = awsGetSignInOptionsAndUpdateRequest(
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
 			requestOptions,
 			credentials,
 			path,
@@ -101,7 +101,7 @@ export class Aws implements ICredentialType {
 			...requestOptions,
 			headers: signOpts.headers,
 			method,
-			url: endpoint.origin + path,
+			url,
 			body: signOpts.body,
 			qs: undefined, // override since it's already in the url
 		};
