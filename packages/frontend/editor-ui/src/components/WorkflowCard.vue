@@ -468,15 +468,11 @@ function moveResource() {
 
 const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
 	emit('workflow:active-toggle', value);
-	// If workflow is deactivated, also remove it's MCP access
-	if (!value.active && props.isMcpEnabled) {
-		await handleMCPAccessAfterDeactivation();
-	}
-};
+	// Show notification if MCP access was removed due to deactivation
+	if (!value.active && props.isMcpEnabled && isAvailableInMCP.value) {
+		// Reset the local MCP toggle status to null to use props data
+		mcpToggleStatus.value = null;
 
-const handleMCPAccessAfterDeactivation = async () => {
-	if (isAvailableInMCP.value) {
-		await toggleMCPAccess(false);
 		toast.showToast({
 			title: locale.baseText('mcp.workflowDeactivated.title'),
 			message: locale.baseText('mcp.workflowDeactivated.message'),

@@ -27,7 +27,6 @@ import type { FolderShortInfo } from '@/features/folders/folders.types';
 
 import { N8nIcon } from '@n8n/design-system';
 import { useToast } from '@/composables/useToast';
-import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
@@ -39,7 +38,6 @@ const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
-const mcpStore = useMCPStore();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
@@ -250,18 +248,18 @@ function hideGithubButton() {
 }
 
 async function onWorkflowDeactivated() {
-	// Disable MCP access when workflow is deactivated
 	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
 		try {
-			await mcpStore.toggleWorkflowMcpAccess(workflow.value.id, false);
+			// Fetch the updated workflow to get the latest settings after backend processing
+			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value.id);
+			workflowsStore.setWorkflow(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
 				message: locale.baseText('mcp.workflowDeactivated.message'),
 				type: 'info',
 			});
 		} catch (error) {
-			toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
-			return;
+			toast.showError(error, locale.baseText('workflowSettings.showError.fetchSettings.title'));
 		}
 	}
 }
