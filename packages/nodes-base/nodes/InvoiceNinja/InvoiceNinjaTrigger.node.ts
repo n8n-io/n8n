@@ -111,7 +111,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 						value: 'create_vendor',
 					},
 				],
-				default: '',
+				default: 'create_client',
 				required: true,
 			},
 		],

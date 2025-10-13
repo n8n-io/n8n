@@ -59,7 +59,7 @@ export const pipelineFields: INodeProperties[] = [
 				resource: ['pipeline'],
 			},
 		},
-		default: '',
+		default: 'bitbucket',
 		description: 'Source control system',
 	},
 	{

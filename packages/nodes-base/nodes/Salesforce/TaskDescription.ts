@@ -311,14 +311,14 @@ export const taskFields: INodeProperties[] = [
 						value: 'December',
 					},
 				],
-				default: '',
+				default: 'January',
 				description: 'The month of the year in which the task repeats',
 			},
 			{
 				displayName: 'Recurrence Regenerated Type',
 				name: 'recurrenceRegeneratedType',
 				type: 'options',
-				default: '',
+				default: 'RecurrenceRegenerateAfterDueDate',
 				options: [
 					{
 						name: 'After Due Date',
@@ -665,7 +665,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'December',
 					},
 				],
-				default: '',
+				default: 'January',
 				description: 'The month of the year in which the task repeats',
 			},
 			{
@@ -680,7 +680,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Recurrence Regenerated Type',
 				name: 'recurrenceRegeneratedType',
 				type: 'options',
-				default: '',
+				default: 'RecurrenceRegenerateAfterDueDate',
 				options: [
 					{
 						name: 'After Due Date',

@@ -154,7 +154,7 @@ export class Medium implements INodeType {
 			{
 				displayName: 'Content Format',
 				name: 'contentFormat',
-				default: '',
+				default: 'html',
 				required: true,
 				displayOptions: {
 					show: {
@@ -313,7 +313,7 @@ export class Medium implements INodeType {
 						action: 'Get many publications',
 					},
 				],
-				default: 'publication',
+				default: 'getAll',
 			},
 			// ----------------------------------
 			//         publication:getAll

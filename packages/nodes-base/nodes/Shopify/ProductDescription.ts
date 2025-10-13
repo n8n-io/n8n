@@ -242,7 +242,7 @@ export const productFields: INodeProperties[] = [
 				displayName: 'Published Scope',
 				name: 'published_scope',
 				type: 'options',
-				default: '',
+				default: 'global',
 				options: [
 					{
 						name: 'Global',
@@ -466,7 +466,7 @@ export const productFields: INodeProperties[] = [
 				displayName: 'Published Scope',
 				name: 'published_scope',
 				type: 'options',
-				default: '',
+				default: 'global',
 				options: [
 					{
 						name: 'Global',

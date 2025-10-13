@@ -63,7 +63,7 @@ export const commentFields: INodeProperties[] = [
 				value: 'view',
 			},
 		],
-		default: '',
+		default: 'list',
 		displayOptions: {
 			show: {
 				resource: ['comment'],
@@ -164,7 +164,7 @@ export const commentFields: INodeProperties[] = [
 				value: 'view',
 			},
 		],
-		default: '',
+		default: 'list',
 		displayOptions: {
 			show: {
 				resource: ['comment'],

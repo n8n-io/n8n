@@ -87,7 +87,7 @@ export class ShopifyTrigger implements INodeType {
 				displayName: 'Trigger On',
 				name: 'topic',
 				type: 'options',
-				default: '',
+				default: 'app/uninstalled',
 				options: [
 					{
 						name: 'App Uninstalled',

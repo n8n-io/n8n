@@ -217,7 +217,7 @@ export const userFields: INodeProperties[] = [
 						value: 'admin',
 					},
 				],
-				default: '',
+				default: 'end-user',
 				description: "The user's role",
 			},
 			{
@@ -268,7 +268,7 @@ export const userFields: INodeProperties[] = [
 						value: 'requested',
 					},
 				],
-				default: '',
+				default: 'organization',
 				description: 'Specifies which tickets the user has access to',
 			},
 			{
@@ -481,7 +481,7 @@ export const userFields: INodeProperties[] = [
 						value: 'admin',
 					},
 				],
-				default: '',
+				default: 'end-user',
 				description: "The user's role",
 			},
 			{
@@ -532,7 +532,7 @@ export const userFields: INodeProperties[] = [
 						value: 'requested',
 					},
 				],
-				default: '',
+				default: 'organization',
 				description: 'Specifies which tickets the user has access to',
 			},
 			{

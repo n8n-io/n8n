@@ -157,7 +157,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Stats Period',
 				name: 'statsPeriod',
 				type: 'options',
-				default: '',
+				default: '14d',
 				description: 'Time period of stats',
 				options: [
 					{
@@ -253,7 +253,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: '',
+				default: 'ignored',
 				description: 'The new status for the issue',
 				options: [
 					{

@@ -44,7 +44,7 @@ export class CopperTrigger implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				required: true,
-				default: '',
+				default: 'company',
 				options: [
 					{
 						name: 'Company',
@@ -78,7 +78,7 @@ export class CopperTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'delete',
 				options: [
 					{
 						name: 'Delete',

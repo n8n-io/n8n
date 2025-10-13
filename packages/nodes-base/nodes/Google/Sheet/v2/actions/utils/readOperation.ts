@@ -56,7 +56,7 @@ export async function readSheet(
 		data,
 		headerRow: keyRowIndex,
 		firstDataRow: dataStartRowIndex,
-	} = prepareSheetData(sheetData, dataLocationOnSheetOptions as RangeDetectionOptions);
+	} = prepareSheetData(sheetData, dataLocationOnSheetOptions);
 
 	let responseData = [];
 

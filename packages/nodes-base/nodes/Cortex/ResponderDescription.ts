@@ -258,7 +258,7 @@ export const responderFields: INodeProperties[] = [
 										displayName: 'Data Type',
 										name: 'dataType',
 										type: 'options',
-										default: '',
+										default: 'domain',
 										options: [
 											{
 												name: 'Domain',
@@ -516,7 +516,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'DataType',
 						name: 'dataType',
 						type: 'options',
-						default: '',
+						default: 'domain',
 						options: [
 							{
 								name: 'Domain',
@@ -600,7 +600,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						default: '',
+						default: 'Ok',
 						options: [
 							{
 								name: 'Ok',
@@ -751,7 +751,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'status',
 						type: 'options',
 						required: true,
-						default: '',
+						default: 'Ok',
 						options: [
 							{
 								name: 'Ok',

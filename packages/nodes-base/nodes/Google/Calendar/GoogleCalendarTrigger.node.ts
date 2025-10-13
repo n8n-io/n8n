@@ -83,7 +83,7 @@ export class GoogleCalendarTrigger implements INodeType {
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'eventCancelled',
 				options: [
 					{
 						name: 'Event Cancelled',

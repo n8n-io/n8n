@@ -563,7 +563,7 @@ export class Spotify implements INodeType {
 						action: 'Search tracks by keyword',
 					},
 				],
-				default: 'track',
+				default: 'get',
 			},
 			{
 				displayName: 'Track ID',

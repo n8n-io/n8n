@@ -25,7 +25,7 @@ export const workbookOperations: INodeProperties[] = [
 				action: 'Get many workbooks',
 			},
 		],
-		default: 'create',
+		default: 'addWorksheet',
 	},
 ];
 

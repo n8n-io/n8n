@@ -59,7 +59,7 @@ export class NetlifyTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'deployBuilding',
 				options: [
 					{
 						name: 'Deploy Building',

@@ -382,7 +382,7 @@ export const permissionsOptions: INodeProperties = {
 							value: 'writer',
 						},
 					],
-					default: '',
+					default: 'commenter',
 				},
 				{
 					displayName: 'Type',
@@ -406,7 +406,7 @@ export const permissionsOptions: INodeProperties = {
 							value: 'anyone',
 						},
 					],
-					default: '',
+					default: 'user',
 					description:
 						'The scope of the permission. A permission with type=user applies to a specific user whereas a permission with type=domain applies to everyone in a specific domain.',
 				},

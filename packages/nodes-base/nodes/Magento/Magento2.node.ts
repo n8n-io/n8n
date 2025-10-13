@@ -169,7 +169,6 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
-					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === false && attribute.frontend_label !== '') {
 						returnData.push({
 							name: attribute.frontend_label as string,
@@ -190,7 +189,6 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
-					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === true && attribute.frontend_label !== null) {
 						returnData.push({
 							name: attribute.frontend_label as string,

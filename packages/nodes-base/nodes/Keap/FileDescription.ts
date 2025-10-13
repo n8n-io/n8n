@@ -92,7 +92,7 @@ export const fileFields: INodeProperties[] = [
 				resource: ['file'],
 			},
 		},
-		default: '',
+		default: 'company',
 	},
 	{
 		displayName: 'Contact ID',
@@ -318,7 +318,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'webform',
 					},
 				],
-				default: '',
+				default: 'application',
 				description: 'Filter based on the type of file',
 			},
 			{

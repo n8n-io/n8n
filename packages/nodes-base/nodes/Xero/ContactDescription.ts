@@ -125,7 +125,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'STREET',
 									},
 								],
-								default: '',
+								default: 'POBOX',
 							},
 							{
 								displayName: 'Line 1',
@@ -209,7 +209,7 @@ export const contactFields: INodeProperties[] = [
 						description: 'The Contact is the subject of a GDPR erasure request',
 					},
 				],
-				default: '',
+				default: 'ACTIVE',
 				description: 'Current status of a contact - see contact status types',
 			},
 			{
@@ -276,7 +276,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'FAX',
 									},
 								],
-								default: '',
+								default: 'DEFAULT',
 							},
 							{
 								displayName: 'Number',
@@ -473,7 +473,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'DESC',
 					},
 				],
-				default: '',
+				default: 'ASC',
 			},
 			{
 				displayName: 'Where',
@@ -568,7 +568,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'STREET',
 									},
 								],
-								default: '',
+								default: 'POBOX',
 							},
 							{
 								displayName: 'Line 1',
@@ -652,7 +652,7 @@ export const contactFields: INodeProperties[] = [
 						description: 'The Contact is the subject of a GDPR erasure request',
 					},
 				],
-				default: '',
+				default: 'ACTIVE',
 				description: 'Current status of a contact - see contact status types',
 			},
 			{
@@ -726,7 +726,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'FAX',
 									},
 								],
-								default: '',
+								default: 'DEFAULT',
 							},
 							{
 								displayName: 'Number',

@@ -79,7 +79,7 @@ export const threadFields: INodeProperties[] = [
 				value: 'reply',
 			},
 		],
-		default: '',
+		default: 'chat',
 	},
 	{
 		displayName: 'Text',

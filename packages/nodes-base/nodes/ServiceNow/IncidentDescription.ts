@@ -171,7 +171,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'walk-in',
 					},
 				],
-				default: '',
+				default: 'email',
 			},
 			{
 				displayName: 'Description',
@@ -562,7 +562,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'walk-in',
 					},
 				],
-				default: '',
+				default: 'email',
 			},
 			{
 				displayName: 'Description',

@@ -59,7 +59,7 @@ export class WiseTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'balanceCredit',
 				options: [
 					{
 						name: 'Balance Credit',

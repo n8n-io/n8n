@@ -438,7 +438,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				default: '',
+				default: 'NoImpact',
 				options: [
 					{
 						name: 'No Impact',
@@ -477,7 +477,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				default: '',
+				default: 'Duplicated',
 				options: [
 					{
 						value: 'Duplicated',
@@ -697,7 +697,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				default: '',
+				default: 'NoImpact',
 				options: [
 					{
 						name: 'No Impact',
@@ -723,7 +723,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				default: '',
+				default: 'Duplicated',
 				options: [
 					{
 						value: 'Duplicated',

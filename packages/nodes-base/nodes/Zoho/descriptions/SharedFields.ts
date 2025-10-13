@@ -401,7 +401,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					typeOptions: {
 						loadOptionsMethod,
 					},
-					default: [],
+					default: '',
 					description: 'Field to sort records by',
 				},
 				{

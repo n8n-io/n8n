@@ -631,7 +631,7 @@ export const meetingFields: INodeProperties[] = [
 						value: 'scheduled',
 					},
 				],
-				default: '',
+				default: 'active',
 				description: 'Meeting state for the meeting objects being requested',
 			},
 			{

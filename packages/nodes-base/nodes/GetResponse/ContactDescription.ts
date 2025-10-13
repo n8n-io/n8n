@@ -434,7 +434,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 				description: 'Search contacts by origin',
-				default: '',
+				default: 'api',
 			},
 			{
 				displayName: 'Sort By',
@@ -458,7 +458,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'email',
 					},
 				],
-				default: '',
+				default: 'campaignId',
 			},
 			{
 				displayName: 'Sort Order',
@@ -474,7 +474,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'DESC',
 					},
 				],
-				default: '',
+				default: 'ASC',
 			},
 		],
 	},
