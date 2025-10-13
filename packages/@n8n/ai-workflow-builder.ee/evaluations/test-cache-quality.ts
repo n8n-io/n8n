@@ -9,6 +9,7 @@
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { MemorySaver } from '@langchain/langgraph';
 import Table from 'cli-table3';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -26,7 +27,6 @@ import {
 } from './utils/cache-analyzer.js';
 import { CacheLogger } from './utils/cache-logger.js';
 import { createAgent } from './utils/evaluation-helpers.js';
-import { MemorySaver } from '@langchain/langgraph';
 
 interface CacheTestConfig {
 	iterations: number;

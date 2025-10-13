@@ -1,8 +1,29 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import { promises as fs } from 'fs';
 import path from 'path';
 import pc from 'picocolors';
 
 import type { MessageCacheStats } from '../types/test-result';
+
+interface UsageMetadata {
+	input_tokens?: number;
+	output_tokens?: number;
+	cache_creation_input_tokens?: number;
+	cache_read_input_tokens?: number;
+}
+
+interface MessageWithMetadata {
+	response_metadata?: {
+		usage?: UsageMetadata;
+	};
+	constructor?: {
+		name?: string;
+	};
+	_getType?: () => string;
+	name?: string;
+	tool_call_id?: string;
+	tool_calls?: Array<{ name: string }>;
+}
 
 /**
  * Logger for detailed per-message cache statistics
@@ -128,42 +149,61 @@ export class CacheLogger {
 }
 
 /**
+ * Determines message type and tool name from a message
+ */
+function determineMessageType(message: MessageWithMetadata): {
+	messageType: MessageCacheStats['messageType'];
+	toolName: string | undefined;
+} {
+	let messageType: MessageCacheStats['messageType'] = 'user';
+	let toolName: string | undefined;
+
+	const constructorName = message.constructor?.name;
+	const messageTypeStr = message._getType?.();
+
+	// Check for tool calls first
+	if (message.tool_calls && message.tool_calls.length > 0) {
+		return {
+			messageType: 'tool_call',
+			toolName: message.tool_calls[0].name,
+		};
+	}
+
+	// Determine based on constructor or type
+	if (constructorName === 'AIMessage' || messageTypeStr === 'ai') {
+		messageType = 'assistant';
+	} else if (constructorName === 'HumanMessage' || messageTypeStr === 'human') {
+		messageType = 'user';
+	} else if (constructorName === 'ToolMessage' || messageTypeStr === 'tool') {
+		messageType = 'tool_response';
+		toolName = message.name ?? message.tool_call_id;
+	}
+
+	return { messageType, toolName };
+}
+
+/**
  * Extract per-message cache statistics from message history
  */
-export function extractPerMessageCacheStats(messages: any[]): MessageCacheStats[] {
+export function extractPerMessageCacheStats(
+	messages: BaseMessage[] | MessageWithMetadata[],
+): MessageCacheStats[] {
 	const stats: MessageCacheStats[] = [];
 
 	for (let i = 0; i < messages.length; i++) {
-		const message = messages[i];
+		const message = messages[i] as MessageWithMetadata;
 		const usage = message.response_metadata?.usage;
 
 		if (!usage) {
 			continue;
 		}
 
-		// Determine message type
-		let messageType: MessageCacheStats['messageType'] = 'user';
-		let toolName: string | undefined;
+		const { messageType, toolName } = determineMessageType(message);
 
-		if (message.constructor?.name === 'AIMessage' || message._getType?.() === 'ai') {
-			messageType = 'assistant';
-		} else if (message.constructor?.name === 'HumanMessage' || message._getType?.() === 'human') {
-			messageType = 'user';
-		} else if (message.constructor?.name === 'ToolMessage' || message._getType?.() === 'tool') {
-			messageType = 'tool_response';
-			toolName = message.name || message.tool_call_id;
-		}
-
-		// Check if this message includes tool calls
-		if (message.tool_calls && message.tool_calls.length > 0) {
-			messageType = 'tool_call';
-			toolName = message.tool_calls[0].name;
-		}
-
-		const inputTokens = usage.input_tokens || 0;
-		const outputTokens = usage.output_tokens || 0;
-		const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-		const cacheReadTokens = usage.cache_read_input_tokens || 0;
+		const inputTokens = usage.input_tokens ?? 0;
+		const outputTokens = usage.output_tokens ?? 0;
+		const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+		const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
 
 		const totalInputTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
 		const cacheHitRate = totalInputTokens > 0 ? cacheReadTokens / totalInputTokens : 0;
