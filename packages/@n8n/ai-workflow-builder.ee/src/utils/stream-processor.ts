@@ -181,17 +181,79 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 
 /**
  * Create a stream processor that yields formatted chunks
+ *
+ * Handles both regular graph events and subgraph events (when subgraphs: true is enabled).
+ * When subgraphs are enabled, events come as: [namespace, chunk] where namespace is array
  */
 export async function* createStreamProcessor(
-	stream: AsyncGenerator<[string, unknown], void, unknown>,
+	stream: AsyncGenerator<any, void, unknown>,
 ): AsyncGenerator<StreamOutput> {
-	for await (const [streamMode, chunk] of stream) {
-		const output = processStreamChunk(streamMode, chunk);
+	let eventCount = 0;
+	for await (const event of stream) {
+		eventCount++;
 
-		if (output) {
-			yield output;
+		console.log(`[Stream] Event #${eventCount}`, {
+			isArray: Array.isArray(event),
+			length: Array.isArray(event) ? event.length : 'N/A',
+			firstElemIsArray: Array.isArray(event) && Array.isArray(event[0]),
+			firstElemType: Array.isArray(event) ? typeof event[0] : 'N/A',
+			elements: Array.isArray(event)
+				? event.map((e, i) => ({
+						index: i,
+						type: typeof e,
+						isArray: Array.isArray(e),
+						value: Array.isArray(e) ? `array[${e.length}]` : String(e).substring(0, 50),
+					}))
+				: 'N/A',
+		});
+
+		// Subgraph events: flat 3-element array [namespace, streamMode, data]
+		if (Array.isArray(event) && event.length === 3 && Array.isArray(event[0])) {
+			const [namespace, streamMode, data] = event;
+			const namespaceStr = namespace.join('/') || 'parent';
+
+			console.log('[Stream] Processing subgraph event', {
+				namespace: namespaceStr,
+				streamMode,
+				dataKeys: typeof data === 'object' && data ? Object.keys(data) : 'N/A',
+			});
+
+			const output = processStreamChunk(streamMode, data);
+
+			console.log('[Stream] Subgraph output', {
+				hasOutput: !!output,
+				outputKeys: output ? Object.keys(output) : 'none',
+			});
+
+			if (output) {
+				yield output;
+			}
+		} else if (Array.isArray(event) && event.length === 2) {
+			// Regular parent event: [streamMode, chunk]
+			const [streamMode, chunk] = event;
+
+			console.log('[Stream] Detected parent event', {
+				streamMode,
+				streamModeType: typeof streamMode,
+				streamModeLength: typeof streamMode === 'string' ? streamMode.length : 'N/A',
+			});
+
+			// Make sure it's a valid stream mode string
+			if (typeof streamMode === 'string' && streamMode.length > 1) {
+				const output = processStreamChunk(streamMode, chunk);
+
+				console.log('[Stream] Parent output', {
+					hasOutput: !!output,
+					outputKeys: output ? Object.keys(output) : 'none',
+				});
+
+				if (output) {
+					yield output;
+				}
+			}
 		}
 	}
+	console.log(`[Stream] Finished processing ${eventCount} events`);
 }
 
 /**

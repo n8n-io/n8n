@@ -472,10 +472,12 @@ export class WorkflowBuilderAgent {
 		};
 		const streamConfig = {
 			...threadConfig,
-			streamMode: ['updates', 'custom'],
+			streamMode: ['updates', 'custom'] as const,
 			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
+			// Enable subgraph streaming for multi-agent subgraph architecture
+			subgraphs: this.useSubgraphs,
 		};
 
 		return { agent, threadConfig, streamConfig };

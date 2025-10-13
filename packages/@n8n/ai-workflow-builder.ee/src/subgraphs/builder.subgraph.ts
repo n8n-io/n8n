@@ -88,6 +88,7 @@ export function createBuilderSubgraph(config: BuilderSubgraphConfig) {
 		console.log('[Builder Agent] Called in subgraph', {
 			messageCount: state.messages.length,
 			nodeCount: state.workflowJSON.nodes.length,
+			iteration: state.iterationCount,
 		});
 
 		const agent = builderAgent.getAgent();
@@ -97,7 +98,7 @@ export function createBuilderSubgraph(config: BuilderSubgraphConfig) {
 			state.messages.length === 0
 				? [
 						new HumanMessage({
-							content: `Build workflow for: ${state.userRequest}\n\nCurrent workflow: ${JSON.stringify(state.workflowJSON, null, 2)}`,
+							content: `Build workflow for: ${state.userRequest}\n\nCurrent workflow has ${state.workflowJSON.nodes.length} nodes: ${state.workflowJSON.nodes.map((n) => n.name).join(', ') || 'none'}`,
 						}),
 					]
 				: state.messages;
@@ -108,6 +109,7 @@ export function createBuilderSubgraph(config: BuilderSubgraphConfig) {
 
 		console.log('[Builder Agent] Response', {
 			hasToolCalls: response.tool_calls?.length ?? 0,
+			hasContent: !!response.content,
 		});
 
 		return { messages: [response] };

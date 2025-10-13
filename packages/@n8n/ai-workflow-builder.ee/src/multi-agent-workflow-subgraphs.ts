@@ -50,6 +50,12 @@ export const ParentGraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
 	}),
+
+	// Discovery results to pass to builder
+	discoveryResults: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
 });
 
 export interface MultiAgentSubgraphConfig {
@@ -148,16 +154,20 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			summary: result.summary || '[No summary]',
 		});
 
-		// Add discovery summary to parent conversation
-		const summaryMessage =
-			result.summary ||
-			result.messages[result.messages.length - 1]?.content ||
-			'Discovery complete';
+		// Extract discovery summary
+		const summary =
+			result.summary || result.messages[result.messages.length - 1]?.content?.toString() || '';
+
+		console.log('[Discovery] Extracted summary', {
+			summaryLength: summary.length,
+			summaryPreview: summary.substring(0, 200),
+		});
 
 		return {
+			discoveryResults: summary, // Store for builder
 			messages: [
 				new HumanMessage({
-					content: `Discovery found: ${summaryMessage}`,
+					content: `Discovery: ${summary}`,
 				}),
 			],
 		};
@@ -174,21 +184,49 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		const userMessage = state.messages.find((m) => m instanceof HumanMessage);
 		const userRequest = userMessage?.content?.toString() || '';
 
+		// Pass discovery results to builder so it knows what to build
+		const builderRequest = state.discoveryResults
+			? `${userRequest}\n\nDiscovery found: ${state.discoveryResults}`
+			: userRequest;
+
+		console.log('[Builder] Input', {
+			hasDiscoveryResults: !!state.discoveryResults,
+			requestPreview: builderRequest.substring(0, 200),
+		});
+
 		const result = await builderSubgraph.invoke({
-			userRequest,
+			userRequest: builderRequest,
 			workflowJSON: state.workflowJSON,
 		});
 
+		// Extract builder's actual summary (last message without tool calls)
+		const builderSummary = result.messages
+			.slice()
+			.reverse()
+			.find(
+				(m) =>
+					m.content &&
+					(!('tool_calls' in m) || !m.tool_calls || (m.tool_calls as any[]).length === 0),
+			);
+
+		const summary =
+			typeof builderSummary?.content === 'string'
+				? builderSummary.content
+				: `Created ${result.workflowJSON.nodes.length} nodes: ${result.workflowJSON.nodes.map((n) => n.name).join(', ')}`;
+
 		console.log('[Builder Subgraph] Completed', {
-			nodeCount: result.workflowJSON.nodes.length,
+			inputNodeCount: state.workflowJSON.nodes.length,
+			outputNodeCount: result.workflowJSON.nodes.length,
+			nodeNames: result.workflowJSON.nodes.map((n) => n.name),
+			summary: summary.substring(0, 150),
 		});
 
-		// Update parent workflow
+		// Update parent workflow with subgraph result
 		return {
 			workflowJSON: result.workflowJSON,
 			messages: [
 				new HumanMessage({
-					content: `Builder created ${result.workflowJSON.nodes.length} nodes`,
+					content: `Builder completed: ${summary}`,
 				}),
 			],
 		};
