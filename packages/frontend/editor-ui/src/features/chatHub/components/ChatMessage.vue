@@ -5,8 +5,27 @@ import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
+import ChatMessageActions from './ChatMessageActions.vue';
 
 const { message, compact } = defineProps<{ message: ChatMessage; compact: boolean }>();
+
+const emit = defineEmits<{
+	copy: [message: ChatMessage];
+	edit: [message: ChatMessage];
+	regenerate: [message: ChatMessage];
+}>();
+
+function handleCopy() {
+	emit('copy', message);
+}
+
+function handleEdit() {
+	emit('edit', message);
+}
+
+function handleRegenerate() {
+	emit('regenerate', message);
+}
 
 function messageText(msg: ChatMessage) {
 	return msg.type === 'message' ? msg.text : `**Error:** ${msg.content}`;
@@ -47,12 +66,21 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		<div :class="$style.avatar">
 			<N8nIcon :icon="message.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
 		</div>
-		<div :class="$style.chatMessage">
-			<VueMarkdown
-				:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-				:source="messageText(message)"
-				:options="markdownOptions"
-				:plugins="[linksNewTabPlugin]"
+		<div :class="$style.content">
+			<div :class="$style.chatMessage">
+				<VueMarkdown
+					:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
+					:source="messageText(message)"
+					:options="markdownOptions"
+					:plugins="[linksNewTabPlugin]"
+				/>
+			</div>
+			<ChatMessageActions
+				:role="message.role"
+				:class="$style.actions"
+				@copy="handleCopy"
+				@edit="handleEdit"
+				@regenerate="handleRegenerate"
 			/>
 		</div>
 	</div>
@@ -80,6 +108,11 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		position: static;
 		margin-bottom: var(--spacing--xs);
 	}
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
 }
 
 .chatMessage {
@@ -121,5 +154,9 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 			border-radius: var(--chat--border-radius);
 		}
 	}
+}
+
+.actions {
+	margin-top: var(--spacing--2xs);
 }
 </style>
