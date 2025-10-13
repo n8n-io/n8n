@@ -101,6 +101,7 @@ import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/175690
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
 import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
+import { CreateWorkflowDependencyTable1760314000000 } from './1760314000000-CreateWorkflowDependencyTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -207,4 +208,5 @@ export const postgresMigrations: Migration[] = [
 	AddAudienceColumnToApiKeys1758731786132,
 	ChangeValueTypesForInsights1759399811000,
 	CreateChatHubTables1760019379982,
+	CreateWorkflowDependencyTable1760314000000,
 ];
