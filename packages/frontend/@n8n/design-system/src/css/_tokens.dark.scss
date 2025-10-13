@@ -1,52 +1,35 @@
 @use 'sass:math';
 
-/**
- * CSS Variable Naming Migration with Backwards Compatibility
- *
- * We are migrating from single-dash format (--color-primary-shade-1) to a new
- * double-dash format (--color--primary--shade-1) to align with design system guidelines.
- *
- * To maintain backwards compatibility during this transition, we use CSS variable fallbacks:
- * --color--primary: var(--color-primary, var(--p--color--primary-320))
- *
- * This ensures:
- * 1. New code using --color--primary--* works correctly
- * 2. Legacy code using --color-primary-* continues to work
- * 3. External integrations and custom CSS won't break
- * 4. Gradual migration path without breaking changes
- *
- */
-
 @mixin theme {
 	// Primary tokens
-	--color--danger: var(--color-danger, var(--p--color--alt-h-310));
+	--color--danger: var(--p--color--alt-h-310);
 
 	// Text
-	--color--text--shade-1: var(--color-text-dark, var(--p--color--gray-040));
-	--color--text: var(--color-text-base, var(--p--color--gray-200));
-	--color--text--tint-1: var(--color-text-light, var(--p--color--gray-320));
-	--color--text--tint-2: var(--color-text-lighter, var(--p--color--gray-740));
-	--color--text--tint-3: var(--color-text-xlight, var(--p--color--gray-820));
-	--color--text--danger: var(--color-text-danger, var(--p--color--alt-c-330));
+	--color--text--shade-1: var(--p--color--gray-040);
+	--color--text: var(--p--color--gray-200);
+	--color--text--tint-1: var(--p--color--gray-320);
+	--color--text--tint-2: var(--p--color--gray-740);
+	--color--text--tint-3: var(--p--color--gray-820);
+	--color--text--danger: var(--p--color--alt-c-330);
 
 	// Foreground
-	--color--foreground--shade-2: var(--color-foreground-xdark, var(--p--color--gray-200));
-	--color--foreground--shade-1: var(--color-foreground-dark, var(--p--color--gray-420));
-	--color--foreground: var(--color-foreground-base, var(--p--color--gray-670));
-	--color--foreground--tint-1: var(--color-foreground-light, var(--p--color--gray-740));
-	--color--foreground--tint-2: var(--color-foreground-xlight, var(--p--color--gray-820));
+	--color--foreground--shade-2: var(--p--color--gray-200);
+	--color--foreground--shade-1: var(--p--color--gray-420);
+	--color--foreground: var(--p--color--gray-670);
+	--color--foreground--tint-1: var(--p--color--gray-740);
+	--color--foreground--tint-2: var(--p--color--gray-820);
 
 	// Background
-	--color--background--shade-2: var(--color-background-dark, var(--p--color--gray-070));
-	--color--background--shade-1: var(--color-background-medium, var(--p--color--gray-540));
-	--color--background: var(--color-background-base, var(--p--color--gray-670));
-	--color--background--light-1: var(--color-background-light-base, var(--p--color--gray-780));
-	--color--background--light-2: var(--color-background-light, var(--p--color--gray-820));
-	--color--background--light-3: var(--color-background-xlight, var(--p--color--gray-740));
+	--color--background--shade-2: var(--p--color--gray-070);
+	--color--background--shade-1: var(--p--color--gray-540);
+	--color--background: var(--p--color--gray-670);
+	--color--background--light-1: var(--p--color--gray-780);
+	--color--background--light-2: var(--p--color--gray-820);
+	--color--background--light-3: var(--p--color--gray-740);
 
-	--shadow: var(--box-shadow-base, 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1));
-	--shadow--dark: var(--box-shadow-dark, 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2));
-	--shadow--light: var(--box-shadow-light, 0 2px 12px 0 rgba(0, 0, 0, 0.2));
+	--shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
+	--shadow--dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
+	--shadow--light: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
 
 	// Secondary tokens
 
@@ -522,9 +505,9 @@
 	// Various
 	--color-info-tint-1: var(--p--color--gray-420);
 	--color-info-tint-2: var(--p--color--gray-740);
-	--border-color: var(--border-color-base, var(--color--foreground));
-	--border-color--light: var(--border-color-light, var(--color--foreground--tint-1));
-	--border: var(--border-base, var(--border-width) var(--border-style) var(--color--foreground));
+	--border-color: var(--color--foreground);
+	--border-color--light: var(--color--foreground--tint-1);
+	--border: var(--border-width) var(--border-style) var(--color--foreground);
 	--node-type-supplemental-label-color-l: 100%;
 	--node-type-supplemental-label-color: hsl(
 		var(--node-type-supplemental-label-color-h),
