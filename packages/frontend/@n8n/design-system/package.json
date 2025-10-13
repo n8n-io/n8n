@@ -19,8 +19,12 @@
     "format:check": "biome ci .  && prettier --check . --ignore-path ../../../../.prettierignore",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
-    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter \"$(pwd)/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js\"",
-    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter $(pwd)/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js"
+    "lint:styles": "run-script-os",
+    "lint:styles:default": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter \"$(pwd)/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js\"",
+    "lint:styles:windows": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter \"%cd%/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js\"",
+    "lint:styles:fix": "run-script-os",
+    "lint:styles:fix:default": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter $(pwd)/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js",
+    "lint:styles:fix:windows": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter \"%cd%/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js\""
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -47,7 +51,8 @@
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "vue-tsc": "catalog:frontend",
-    "@vue/test-utils": "catalog:frontend"
+    "@vue/test-utils": "catalog:frontend",
+    "run-script-os": "catalog:"
   },
   "dependencies": {
     "@n8n/composables": "workspace:*",
