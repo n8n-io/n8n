@@ -1105,7 +1105,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(8ac6ecc2064042e5620199e694862b5d)
+        version: 0.3.50(90a6aa8f17697e0046031fe5da1489d1)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1168,7 +1168,7 @@ importers:
         version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 'catalog:'
-        version: 0.3.20-13(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))
+        version: 0.3.20-13(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1260,8 +1260,8 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0
       redis:
-        specifier: 4.6.12
-        version: 4.6.12
+        specifier: 4.6.14
+        version: 4.6.14
       sanitize-html:
         specifier: 2.12.1
         version: 2.12.1
@@ -6355,10 +6355,6 @@ packages:
     resolution: {integrity: sha512-HG2DFjYKbpNmVXsa0keLHp/3leGJz1mjh09f2RLGGLQZzSHpkmZWuwJbAvo3QcRY8p80m5+ZdXZdYOSBLlp7Cg==}
     peerDependencies:
       '@redis/client': ^1.0.0
-
-  '@redis/client@1.5.13':
-    resolution: {integrity: sha512-epkUM9D0Sdmt93/8Ozk43PNjLi36RZzG+d/T1Gdu5AI8jvghonTeLYV69WVWdilvFo+PYxbP0TZ0saMvr6nscQ==}
-    engines: {node: '>=14'}
 
   '@redis/client@1.5.16':
     resolution: {integrity: sha512-X1a3xQ5kEMvTib5fBrHKh6Y+pXbeKXqziYuxOUo1ojQNECg4M5Etd1qqyhMap+lFUOAh8S7UYevgJHOm4A+NOg==}
@@ -14535,9 +14531,6 @@ packages:
     resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
     engines: {node: '>=4'}
 
-  redis@4.6.12:
-    resolution: {integrity: sha512-41Xuuko6P4uH4VPe5nE3BqXHB7a9lkFL0J29AlxKaIfD6eWO8VO/5PDF9ad2oS+mswMsfFxaM5DlE3tnXT+P8Q==}
-
   redis@4.6.14:
     resolution: {integrity: sha512-GrNg/e33HtsQwNXL7kJT+iNFPSwE1IPmd7wzV3j4f2z0EYxZfZE7FVTmUysgAtqQQtg5NXF5SNLR9OdO/UHOfw==}
 
@@ -19713,14 +19706,14 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.1
+      '@types/node': 20.19.11
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.8.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.5.0
-      jest-config: 29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2))
+      jest-config: 29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2))
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
       jest-regex-util: 29.4.3
@@ -19748,14 +19741,14 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.1
+      '@types/node': 20.19.11
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.8.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.5.0
-      jest-config: 29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))
+      jest-config: 29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
       jest-regex-util: 29.4.3
@@ -19780,7 +19773,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       jest-mock: 29.6.2
 
   '@jest/expect-utils@29.6.2':
@@ -19798,7 +19791,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.1
       '@sinonjs/fake-timers': 10.0.2
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       jest-message-util: 29.6.2
       jest-mock: 29.6.2
       jest-util: 29.6.2
@@ -19894,7 +19887,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.4
       '@types/istanbul-reports': 3.0.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       '@types/yargs': 17.0.19
       chalk: 4.1.2
 
@@ -19980,7 +19973,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(8ac6ecc2064042e5620199e694862b5d)':
+  '@langchain/community@0.3.50(90a6aa8f17697e0046031fe5da1489d1)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.54.2)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -20040,7 +20033,7 @@ snapshots:
       pdf-parse: 1.1.1
       pg: 8.12.0
       playwright: 1.54.2
-      redis: 4.6.12
+      redis: 4.6.14
       weaviate-client: 3.6.2(encoding@0.1.13)
       web-auth-library: 1.0.3
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -20373,36 +20366,6 @@ snapshots:
       ast-types: 0.16.1
       esprima-next: 5.8.4
       recast: 0.22.0
-
-  '@n8n/typeorm@0.3.20-13(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))':
-    dependencies:
-      '@n8n/p-retry': 6.2.0-2
-      '@sqltools/formatter': 1.2.5
-      app-root-path: 3.1.0
-      async-mutex: 0.5.0
-      buffer: 6.0.3
-      chalk: 4.1.2
-      dayjs: 1.11.10
-      debug: 4.4.1(supports-color@8.1.1)
-      dotenv: 16.6.1
-      glob: 10.4.5
-      mkdirp: 2.1.3
-      reflect-metadata: 0.2.2
-      sha.js: 2.4.12
-      tarn: 3.0.2
-      tslib: 2.8.1
-      uuid: 9.0.1
-      yargs: 17.7.2
-    optionalDependencies:
-      '@sentry/node': 9.42.1
-      ioredis: 5.3.2
-      mysql2: 3.15.0
-      pg: 8.12.0
-      redis: 4.6.12
-      sqlite3: 5.1.7
-      ts-node: 10.9.2(@types/node@20.19.11)(typescript@5.9.2)
-    transitivePeerDependencies:
-      - supports-color
 
   '@n8n/typeorm@0.3.20-13(@sentry/node@9.42.1)(ioredis@5.3.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))':
     dependencies:
@@ -20981,19 +20944,9 @@ snapshots:
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
-  '@redis/bloom@1.2.0(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
-
   '@redis/bloom@1.2.0(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
-
-  '@redis/client@1.5.13':
-    dependencies:
-      cluster-key-slot: 1.1.2
-      generic-pool: 3.9.0
-      yallist: 4.0.0
 
   '@redis/client@1.5.16':
     dependencies:
@@ -21001,33 +20954,17 @@ snapshots:
       generic-pool: 3.9.0
       yallist: 4.0.0
 
-  '@redis/graph@1.1.1(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
-
   '@redis/graph@1.1.1(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
-
-  '@redis/json@1.0.6(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
 
   '@redis/json@1.0.6(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
 
-  '@redis/search@1.1.6(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
-
   '@redis/search@1.1.6(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
-
-  '@redis/time-series@1.0.5(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
 
   '@redis/time-series@1.0.5(@redis/client@1.5.16)':
     dependencies:
@@ -22365,7 +22302,7 @@ snapshots:
 
   '@types/jsdom@20.0.1':
     dependencies:
-      '@types/node': 20.19.1
+      '@types/node': 20.19.11
       '@types/tough-cookie': 4.0.2
       parse5: 7.1.2
 
@@ -22637,7 +22574,7 @@ snapshots:
 
   '@types/through@0.0.30':
     dependencies:
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
 
   '@types/tough-cookie@4.0.2': {}
 
@@ -27842,7 +27779,7 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  jest-config@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2)):
+  jest-config@29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2)):
     dependencies:
       '@babel/core': 7.26.10
       '@jest/test-sequencer': 29.6.2
@@ -27867,39 +27804,8 @@ snapshots:
       slash: 3.0.0
       strip-json-comments: 3.1.1
     optionalDependencies:
-      '@types/node': 20.19.1
+      '@types/node': 20.19.11
       ts-node: 10.9.2(@types/node@20.17.57)(typescript@5.9.2)
-    transitivePeerDependencies:
-      - babel-plugin-macros
-      - supports-color
-
-  jest-config@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2)):
-    dependencies:
-      '@babel/core': 7.26.10
-      '@jest/test-sequencer': 29.6.2
-      '@jest/types': 29.6.1
-      babel-jest: 29.6.2(@babel/core@7.26.10)
-      chalk: 4.1.2
-      ci-info: 3.8.0
-      deepmerge: 4.3.1
-      glob: 7.2.3
-      graceful-fs: 4.2.11
-      jest-circus: 29.6.2
-      jest-environment-node: 29.6.2
-      jest-get-type: 29.4.3
-      jest-regex-util: 29.4.3
-      jest-resolve: 29.6.2
-      jest-runner: 29.6.2
-      jest-util: 29.6.2
-      jest-validate: 29.6.2
-      micromatch: 4.0.8
-      parse-json: 5.2.0
-      pretty-format: 29.7.0
-      slash: 3.0.0
-      strip-json-comments: 3.1.1
-    optionalDependencies:
-      '@types/node': 20.19.1
-      ts-node: 10.9.2(@types/node@20.19.11)(typescript@5.9.2)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -28179,7 +28085,7 @@ snapshots:
   jest-util@29.5.0:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.1
+      '@types/node': 20.19.11
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -28188,7 +28094,7 @@ snapshots:
   jest-util@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -31186,15 +31092,6 @@ snapshots:
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
-
-  redis@4.6.12:
-    dependencies:
-      '@redis/bloom': 1.2.0(@redis/client@1.5.13)
-      '@redis/client': 1.5.13
-      '@redis/graph': 1.1.1(@redis/client@1.5.13)
-      '@redis/json': 1.0.6(@redis/client@1.5.13)
-      '@redis/search': 1.1.6(@redis/client@1.5.13)
-      '@redis/time-series': 1.0.5(@redis/client@1.5.13)
 
   redis@4.6.14:
     dependencies:
