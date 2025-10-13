@@ -680,6 +680,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		invalid: INodeCredentialsDetails;
 		type: string;
 	}) {
+		debugger;
 		workflow.value.nodes.forEach((node: INodeUi) => {
 			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
 			if (!nodeCredentials?.[data.type]) {
@@ -707,6 +708,47 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				(node.credentials as INodeCredentials)[data.type] = data.credentials;
 			}
 		});
+	}
+
+	// Assign credential to all nodes that support it but don't have it set
+	function assignCredentialToMatchingNodes(data: {
+		credentials: INodeCredentialsDetails;
+		type: string;
+		currentNodeName: string;
+	}): number {
+		let updatedNodesCount = 0;
+
+		workflow.value.nodes.forEach((node: INodeUi) => {
+			// Skip the current node (it was just set)
+			if (node.name === data.currentNodeName) {
+				return;
+			}
+
+			// Skip if node already has credential set
+			if (node.credentials && Object.keys(node.credentials).length > 0) {
+				return;
+			}
+
+			// Get node type to check if it supports this credential
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (!nodeType?.credentials) {
+				return;
+			}
+
+			// Check if this node type supports the credential type
+			const supportsCredential = nodeType.credentials.some((cred) => cred.name === data.type);
+			if (!supportsCredential) {
+				return;
+			}
+
+			// Assign the same credential to the node
+			node.credentials ??= {} satisfies INodeCredentials;
+			node.credentials[data.type] = data.credentials;
+
+			updatedNodesCount++;
+		});
+
+		return updatedNodesCount;
 	}
 
 	function setWorkflows(workflows: IWorkflowDb[]) {
@@ -1771,6 +1813,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setUsedCredentials,
 		setWorkflowVersionId,
 		replaceInvalidWorkflowCredentials,
+		assignCredentialToMatchingNodes,
 		setWorkflows,
 		deleteWorkflow,
 		archiveWorkflow,
