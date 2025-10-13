@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
-import { createCanvasProvide } from '@/__tests__/data';
+import { createCanvasProvide } from '@/features/canvas/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 
 const DEFAULT_PROPS = {

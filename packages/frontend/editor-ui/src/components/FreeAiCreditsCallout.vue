@@ -4,7 +4,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, ref } from 'vue';

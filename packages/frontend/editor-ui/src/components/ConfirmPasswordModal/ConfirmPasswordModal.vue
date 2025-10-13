@@ -87,6 +87,6 @@ onMounted(() => {
 </template>
 <style lang="scss" module>
 .description {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 </style>

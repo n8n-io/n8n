@@ -227,10 +227,10 @@ defineExpose({
 .parameterInput {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .hovering {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 </style>

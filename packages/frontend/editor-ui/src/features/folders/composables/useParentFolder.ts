@@ -1,5 +1,5 @@
 import { useFoldersStore } from '../folders.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function useParentFolder() {

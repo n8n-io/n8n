@@ -1,4 +1,5 @@
-export type { ChatHubConversationModel } from '@n8n/api-types';
+import { chatHubProviderSchema } from '@n8n/api-types';
+import { z } from 'zod';
 
 export interface UserMessage {
 	id: string;
@@ -53,4 +54,13 @@ export interface NodeStreamingState {
 	chunks: string[];
 	isActive: boolean;
 	startTime: number;
+}
+
+export const credentialsMapSchema = z.record(chatHubProviderSchema, z.string().or(z.null()));
+
+export type CredentialsMap = z.infer<typeof credentialsMapSchema>;
+
+export interface GroupedConversations {
+	group: string;
+	sessions: Array<{ id: string; label: string }>;
 }

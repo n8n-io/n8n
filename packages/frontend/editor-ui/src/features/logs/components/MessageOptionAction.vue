@@ -28,15 +28,15 @@ const onClick = () => {
 .container {
 	display: inline-flex;
 	align-items: center;
-	margin: 0 var(--spacing-4xs);
+	margin: 0 var(--spacing--4xs);
 }
 
 .icon {
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 	cursor: pointer;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 </style>

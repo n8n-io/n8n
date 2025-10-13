@@ -123,7 +123,7 @@ async function handleClickExecute() {
 	}
 
 	& button {
-		margin-right: var(--spacing-s);
+		margin-right: var(--spacing--sm);
 		opacity: 0;
 		translate: -12px 0;
 		transition:
@@ -140,15 +140,15 @@ async function handleClickExecute() {
 	}
 
 	&.isExperimentalNdvActive {
-		height: var(--spacing-2xl);
+		height: var(--spacing--2xl);
 	}
 }
 
 .bolt {
 	position: absolute;
 	right: 0;
-	color: var(--color-primary);
-	padding: var(--spacing-s);
+	color: var(--color--primary);
+	padding: var(--spacing--sm);
 	opacity: 1;
 	translate: 0 0;
 	transition:

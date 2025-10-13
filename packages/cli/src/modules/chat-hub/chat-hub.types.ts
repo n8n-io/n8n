@@ -1,3 +1,4 @@
+import type { ChatHubConversationModel } from '@n8n/api-types';
 import type { INodeCredentials } from 'n8n-workflow';
 
 export interface ChatPayloadWithCredentials {
@@ -6,7 +7,13 @@ export interface ChatPayloadWithCredentials {
 	messageId: string;
 	sessionId: string;
 	replyId: string;
-	provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi';
-	model: string;
+	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 }
+
+export type ChatMessage = {
+	id: string;
+	message: string;
+	type: 'user' | 'ai' | 'system';
+	createdAt: Date;
+};
