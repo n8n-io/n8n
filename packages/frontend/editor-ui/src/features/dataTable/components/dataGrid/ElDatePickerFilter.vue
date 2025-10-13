@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import type { IDateParams } from 'ag-grid-community';
 import { useDatePickerCommon } from '@/features/dataTable/composables/useDatePickerCommon';
-
 import { ElDatePicker } from 'element-plus';
+
 const props = defineProps<{
-	params: IDateParams;
+	onChange: () => void;
 }>();
 
 const {
@@ -19,12 +18,12 @@ const {
 	getDate,
 	setDate,
 } = useDatePickerCommon({
-	onCommit: () => props.params.onDateChanged(),
+	onCommit: () => props.onChange(),
 	onCancel: () => {
 		dateValue.value = null;
-		props.params.onDateChanged();
+		props.onChange();
 	},
-	onChange: () => props.params.onDateChanged(),
+	onChange: () => props.onChange(),
 });
 
 const dateValueComputed = computed({
@@ -66,6 +65,7 @@ defineExpose({
 
 <style lang="scss">
 .data-table-date-filter-wrapper {
+	width: 100%;
 	border: var(--ag-picker-button-border);
 	border-radius: var(--radius);
 

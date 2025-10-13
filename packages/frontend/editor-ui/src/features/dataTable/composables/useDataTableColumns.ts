@@ -16,6 +16,7 @@ import ColumnHeader from '@/features/dataTable/components/dataGrid/ColumnHeader.
 import ElDatePickerCellEditor from '@/features/dataTable/components/dataGrid/ElDatePickerCellEditor.vue';
 import ElDatePickerFilter from '@/features/dataTable/components/dataGrid/ElDatePickerFilter.vue';
 import JsonCellEditor from '@/features/dataTable/components/dataGrid/JsonCellEditor.vue';
+import ColumnFilter from '@/features/dataTable/components/dataGrid/ColumnFilter.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/dataTable/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataTable/components/dataGrid/AddRowButton.vue';
@@ -57,7 +58,8 @@ export const useDataTableColumns = ({
 		const columnDef: ColDef = {
 			colId: col.id,
 			field: col.name,
-			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
+			// Use custom filter component for all non-excluded columns
+			filter: GRID_FILTER_CONFIG.excludedColumns.includes(col.id) ? false : ColumnFilter,
 			headerName: col.name,
 			sortable: true,
 			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,

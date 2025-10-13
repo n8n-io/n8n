@@ -148,77 +148,70 @@ export const numberValueFormatter = (
 const createNullFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'null',
 	displayName: i18n.baseText('dataTable.filters.isNull'),
-	predicate: () => true,
-	numberOfInputs: 0,
 });
 
 const createNotNullFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'notNull',
 	displayName: i18n.baseText('dataTable.filters.isNotNull'),
-	predicate: () => true,
-	numberOfInputs: 0,
 });
 
 const createIsEmptyFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'isEmpty',
 	displayName: i18n.baseText('dataTable.filters.isEmpty'),
-	predicate: () => true,
-	numberOfInputs: 0,
 });
 
 const createIsNotEmptyFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'notEmpty',
 	displayName: i18n.baseText('dataTable.filters.isNotEmpty'),
-	predicate: () => true,
-	numberOfInputs: 0,
 });
 
 const createBetweenFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'between',
 	displayName: i18n.baseText('dataTable.filters.between'),
-	predicate: () => true,
-	numberOfInputs: 2,
 });
 
 const createGreaterThanFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'greaterThan',
 	displayName: i18n.baseText('dataTable.filters.greaterThan'),
-	predicate: () => true,
-	numberOfInputs: 1,
 });
 
 const createGreaterThanOrEqualFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'greaterThanOrEqual',
 	displayName: i18n.baseText('dataTable.filters.greaterThanOrEqual'),
-	predicate: () => true,
-	numberOfInputs: 1,
 });
 
 const createLessThanFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'lessThan',
 	displayName: i18n.baseText('dataTable.filters.lessThan'),
-	predicate: () => true,
-	numberOfInputs: 1,
 });
 
 const createLessThanOrEqualFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'lessThanOrEqual',
 	displayName: i18n.baseText('dataTable.filters.lessThanOrEqual'),
-	predicate: () => true,
-	numberOfInputs: 1,
 });
 
 const createInRangeFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'inRange',
 	displayName: i18n.baseText('dataTable.filters.between'),
-	predicate: () => true,
-	numberOfInputs: 2,
+});
+
+const createEqualsFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'equals',
+	displayName: i18n.baseText('dataTable.filters.equals'),
+});
+
+const createNotEqualFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'notEqual',
+	displayName: i18n.baseText('dataTable.filters.notEqual'),
 });
 
 export const getStringColumnFilterOptions = (i18n: I18nClass) => [
-	'contains',
-	'equals',
-	'notEqual',
+	{
+		displayKey: 'contains',
+		displayName: i18n.baseText('dataTable.filters.contains'),
+	},
+	createEqualsFilterOption(i18n),
+	createNotEqualFilterOption(i18n),
 	createIsEmptyFilterOption(i18n),
 	createIsNotEmptyFilterOption(i18n),
 	createNullFilterOption(i18n),
@@ -226,8 +219,8 @@ export const getStringColumnFilterOptions = (i18n: I18nClass) => [
 ];
 
 export const getDateColumnFilterOptions = (i18n: I18nClass) => [
-	'equals',
-	'notEqual',
+	createEqualsFilterOption(i18n),
+	createNotEqualFilterOption(i18n),
 	createLessThanFilterOption(i18n),
 	createLessThanOrEqualFilterOption(i18n),
 	createGreaterThanFilterOption(i18n),
@@ -238,8 +231,8 @@ export const getDateColumnFilterOptions = (i18n: I18nClass) => [
 ];
 
 export const getNumberColumnFilterOptions = (i18n: I18nClass) => [
-	'equals',
-	'notEqual',
+	createEqualsFilterOption(i18n),
+	createNotEqualFilterOption(i18n),
 	createLessThanFilterOption(i18n),
 	createLessThanOrEqualFilterOption(i18n),
 	createGreaterThanFilterOption(i18n),
@@ -250,18 +243,17 @@ export const getNumberColumnFilterOptions = (i18n: I18nClass) => [
 ];
 
 export const getBooleanColumnFilterOptions = (i18n: I18nClass) => [
-	'empty',
+	{
+		displayKey: 'empty',
+		displayName: i18n.baseText('dataTable.filters.empty'),
+	},
 	{
 		displayKey: 'true',
 		displayName: i18n.baseText('dataTable.filters.true'),
-		numberOfInputs: 0,
-		predicate: () => true,
 	},
 	{
 		displayKey: 'false',
 		displayName: i18n.baseText('dataTable.filters.false'),
-		numberOfInputs: 0,
-		predicate: () => true,
 	},
 	createNullFilterOption(i18n),
 	createNotNullFilterOption(i18n),

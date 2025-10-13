@@ -369,26 +369,6 @@ defineExpose({
 	:global(.ag-row-last) {
 		border-bottom-color: var(--ag-border-color);
 	}
-
-	:global(.ag-filter-body-wrapper) {
-		min-width: 200px;
-	}
-
-	// we should make this look like the text button as we can't use the component directly
-	:global(.ag-filter-apply-panel) {
-		padding-top: 0;
-
-		:global(.ag-filter-apply-panel-button) {
-			background: transparent;
-			border: none;
-			padding: 0;
-
-			&:hover {
-				color: var(--color--primary);
-				background: transparent;
-			}
-		}
-	}
 }
 
 .grid-container {
