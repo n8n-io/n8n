@@ -102,7 +102,7 @@ const commonChildRouteExtensions = {
 			name: VIEWS.FOLDERS,
 		},
 		{
-			name: VIEWS.VARIABLES,
+			name: VIEWS.HOME_VARIABLES,
 		},
 	],
 	projects: [

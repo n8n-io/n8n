@@ -591,6 +591,7 @@ export const enum VIEWS {
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
 	PROJECTS_VARIABLES = 'ProjectsVariables',
+	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
 	INSIGHTS = 'Insights',

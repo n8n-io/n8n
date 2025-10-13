@@ -88,7 +88,7 @@ const getRouteConfigs = () => {
 		workflows: { name: VIEWS.WORKFLOWS },
 		credentials: { name: VIEWS.CREDENTIALS },
 		executions: { name: VIEWS.EXECUTIONS },
-		variables: { name: VIEWS.VARIABLES },
+		variables: { name: VIEWS.HOME_VARIABLES },
 	};
 };
 
