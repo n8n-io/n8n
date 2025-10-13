@@ -7,7 +7,7 @@ export class MySql implements ICredentialType {
 
 	displayName = 'MySQL';
 
-	documentationUrl = 'mySql';
+	documentationUrl = 'mysql';
 
 	properties: INodeProperties[] = [
 		{

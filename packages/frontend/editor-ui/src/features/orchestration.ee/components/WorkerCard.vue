@@ -2,11 +2,11 @@
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import type { WorkerStatus } from '@n8n/api-types';
 
-import { useOrchestrationStore } from '@/stores/orchestration.store';
-import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerUtils';
-import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
-import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
-import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
+import { useOrchestrationStore } from '../orchestration.store';
+import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../orchestration.utils';
+import WorkerJobAccordion from './WorkerJobAccordion.vue';
+import WorkerNetAccordion from './WorkerNetAccordion.vue';
+import WorkerChartsAccordion from './WorkerChartsAccordion.vue';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useI18n } from '@n8n/i18n';
 
