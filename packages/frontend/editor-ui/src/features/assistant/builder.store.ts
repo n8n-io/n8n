@@ -19,7 +19,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
+import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
 import { generateMessageId, createBuilderPayload } from '@/helpers/builderHelpers';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -45,6 +45,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
+	const hasMessages = ref<boolean>(false);
 
 	// Store dependencies
 	const chatPanelStateStore = useChatPanelStateStore();
@@ -541,6 +542,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
+	async function fetchSessionsMetadata() {
+		const workflowId = workflowsStore.workflowId;
+		if (!workflowId) {
+			hasMessages.value = false;
+			return;
+		}
+
+		try {
+			const response = await getSessionsMetadata(rootStore.restApiContext, workflowId);
+			hasMessages.value = response.hasMessages;
+		} catch (error) {
+			console.error('Failed to fetch sessions metadata:', error);
+			hasMessages.value = false;
+		}
+	}
+
 	// Public API
 	return {
 		// State
@@ -562,6 +579,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		hasMessages: computed(() => hasMessages.value),
 
 		// Methods
 		stopStreaming,
@@ -573,5 +591,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchBuilderCredits,
 		updateBuilderCredits,
 		getRunningTools,
+		fetchSessionsMetadata,
 	};
 });

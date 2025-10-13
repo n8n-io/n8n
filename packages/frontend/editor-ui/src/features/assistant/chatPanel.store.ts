@@ -156,10 +156,19 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	watch(
 		() => route?.name,
 		(newRoute) => {
-			if (!chatPanelStateStore.isOpen || !newRoute) {
+			if (!newRoute) {
 				return;
 			}
 			const builderStore = useBuilderStore();
+
+			// Fetch metadata when entering any builder-enabled view
+			if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)) {
+				void builderStore.fetchSessionsMetadata();
+			}
+
+			if (!chatPanelStateStore.isOpen) {
+				return;
+			}
 
 			const enabledViews =
 				chatPanelStateStore.activeMode === 'assistant'
