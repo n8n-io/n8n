@@ -1,12 +1,13 @@
-import { Annotation, StateGraph, END, isCommand } from '@langchain/langgraph';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage, ToolMessage, AIMessage, isAIMessage } from '@langchain/core/messages';
+import { Annotation, StateGraph, END, isCommand } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { ConfiguratorAgent } from '../agents/configurator.agent';
-import { processOperations } from '../utils/operations-processor';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import { processOperations } from '../utils/operations-processor';
 import type { ChatPayload } from '../workflow-builder-agent';
 
 /**
@@ -64,7 +65,7 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 
 interface ConfiguratorSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
-	llm: any;
+	llm: BaseChatModel;
 	logger?: Logger;
 	instanceUrl?: string;
 }
