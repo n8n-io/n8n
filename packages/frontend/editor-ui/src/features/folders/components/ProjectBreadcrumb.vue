@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { type Project, ProjectTypes } from '@/types/projects.types';
+import { type Project, ProjectTypes } from '@/features/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
-import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
 type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;

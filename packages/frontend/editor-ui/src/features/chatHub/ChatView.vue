@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, useTemplateRef } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import hljs from 'highlight.js/lib/core';
 
@@ -33,16 +34,24 @@ import {
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
 } from '@/constants';
-import { SUGGESTIONS } from '@/features/chatHub/constants';
-import { findOneFromModelsResponse, modelsResponseContains } from '@/features/chatHub/chat.utils';
+import { CHAT_CONVERSATION_VIEW, CHAT_VIEW, SUGGESTIONS } from '@/features/chatHub/constants';
+import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
+import { useToast } from '@/composables/useToast';
 
+const router = useRouter();
+const route = useRoute();
 const chatStore = useChatStore();
 const userStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
+const toast = useToast();
 
+const inputRef = useTemplateRef('inputRef');
 const message = ref('');
-const sessionId = ref(uuidv4());
+const sessionId = computed<string>(() =>
+	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
+);
+const isNewSession = computed(() => sessionId.value !== route.params.id);
 const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
@@ -102,7 +111,8 @@ const mergedCredentials = computed(() => ({
 	...selectedCredentials.value,
 }));
 
-const hasMessages = computed(() => chatStore.chatMessages.length > 0);
+const chatMessages = computed(() => chatStore.messagesBySession[sessionId.value] ?? []);
+const hasMessages = computed(() => chatMessages.value.length > 0);
 const inputPlaceholder = computed(() => {
 	if (!selectedModel.value) {
 		return 'Select a model';
@@ -114,6 +124,14 @@ const inputPlaceholder = computed(() => {
 });
 
 const scrollOnNewMessage = ref(true);
+
+const credentialsName = computed(() =>
+	selectedModel.value
+		? credentialsStore.getCredentialById(
+				mergedCredentials.value[selectedModel.value.provider] ?? '',
+			)?.name
+		: undefined,
+);
 
 function getScrollViewport(): HTMLElement | null {
 	const root = scrollAreaRef.value?.$el as HTMLElement | undefined;
@@ -131,7 +149,7 @@ function scrollToBottom() {
 }
 
 watch(
-	() => chatStore.chatMessages,
+	chatMessages,
 	async (messages) => {
 		// Check if the last message is user and scroll to bottom of the chat
 		if (scrollOnNewMessage.value && messages.length > 0) {
@@ -153,9 +171,26 @@ watch(
 		const models = await chatStore.fetchChatModels(credentials);
 		const selected = selectedModel.value;
 
-		if (selected === null || !modelsResponseContains(models, selected)) {
+		if (selected === null) {
 			selectedModel.value = findOneFromModelsResponse(models) ?? null;
 		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	[sessionId, isNewSession],
+	async ([id, isNew]) => {
+		if (!isNew && !chatStore.messagesBySession[id]) {
+			try {
+				await chatStore.fetchMessages(id);
+			} catch (error) {
+				toast.showError(error, 'Error fetching a conversation');
+				await router.push({ name: CHAT_VIEW });
+			}
+		}
+
+		inputRef.value?.focus();
 	},
 	{ immediate: true },
 );
@@ -203,7 +238,7 @@ function onSubmit() {
 		return;
 	}
 
-	chatStore.askAI(message.value, sessionId.value, selectedModel.value, {
+	chatStore.askAI(sessionId.value, message.value, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -211,6 +246,10 @@ function onSubmit() {
 	});
 
 	message.value = '';
+
+	if (isNewSession.value) {
+		void router.push({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId.value } });
+	}
 }
 
 function onSuggestionClick(s: Suggestion) {
@@ -254,6 +293,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 			:models="chatStore.models ?? null"
 			:selected-model="selectedModel"
 			:disabled="chatStore.isResponding"
+			:credentials-name="credentialsName"
 			@change="onModelChange"
 			@configure="onConfigure"
 		/>
@@ -315,7 +355,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 						>
 							<div ref="messagesRef" :class="$style.thread" role="log" aria-live="polite">
 								<div
-									v-for="m in chatStore.chatMessages"
+									v-for="m in chatMessages"
 									:key="m.id"
 									:class="[
 										$style.message,
@@ -364,11 +404,13 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 				<form :class="$style.prompt" @submit.prevent="onSubmit">
 					<div :class="$style.inputWrap">
 						<input
+							ref="inputRef"
 							v-model="message"
 							:class="$style.input"
 							type="text"
 							:placeholder="inputPlaceholder"
 							autocomplete="off"
+							autofocus
 							:disabled="chatStore.isResponding"
 						/>
 
@@ -680,8 +722,8 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 .modelSelector {
 	position: absolute;
-	top: var(--spacing--sm);
-	left: var(--spacing--sm);
+	top: var(--spacing-xs);
+	left: var(--spacing-xs);
 	z-index: 100;
 }
 </style>
