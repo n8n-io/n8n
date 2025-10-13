@@ -7,7 +7,24 @@ export function getDockerImageFromEnv(defaultImage = 'n8nio/n8n:local') {
 		return defaultImage;
 	}
 
-	const imageWithTag = configuredImage.includes(':') ? configuredImage : `n8n:${configuredImage}`;
+	const hasImageOrg = configuredImage.includes('/');
+	const hasImageTag = configuredImage.includes(':');
 
-	return imageWithTag.includes('/') ? imageWithTag : `n8nio/${imageWithTag}`;
+	// Full image reference with org and tag (e.g., "n8nio/n8n:beta")
+	if (hasImageOrg && hasImageTag) {
+		return configuredImage;
+	}
+
+	// Image with org but no tag (e.g., "n8nio/n8n")
+	if (hasImageOrg) {
+		return configuredImage;
+	}
+
+	// Image with tag provided (e.g., "n8n:beta")
+	if (hasImageTag) {
+		return `n8nio/${configuredImage}`;
+	}
+
+	// Only tag name (e.g., "beta", "1.0.0")
+	return `n8nio/n8n:${configuredImage}`;
 }
