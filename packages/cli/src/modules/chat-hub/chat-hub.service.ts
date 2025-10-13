@@ -45,6 +45,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { ChatHubMessage } from './chat-hub-message.entity';
 
 @Service()
 export class ChatHubService {
@@ -566,7 +567,9 @@ export class ChatHubService {
 		}));
 	}
 
-	// eslint-disable-next-line complexity
+	/**
+	 * Get a single conversation with messages and ready to render timeline of latest messages
+	 * */
 	async getConversation(userId: string, sessionId: string): Promise<ChatHubConversationResponse> {
 		const session = await this.sessionRepository.getOneById(sessionId, userId);
 		if (!session) {
@@ -575,7 +578,41 @@ export class ChatHubService {
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 
-		const messagesGraph: Record<string, ChatHubMessageDto> = {};
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
+			this.buildMessagesGraph(messages);
+		const byTurn: Record<ChatMessageId, ChatMessageId[]> = this.groupMessagesByTurn(messagesGraph);
+
+		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
+		const turnRootIds = messages.filter((r) => r.turnId && r.turnId === r.id).map((r) => r.id);
+
+		const turns: ChatHubMessageTurnDto[] = this.buildTurns(byTurn, messagesGraph);
+
+		return {
+			session: {
+				id: session.id,
+				title: session.title,
+				ownerId: session.ownerId,
+				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+				credentialId: session.credentialId,
+				provider: session.provider,
+				model: session.model,
+				workflowId: session.workflowId,
+				createdAt: session.createdAt.toISOString(),
+				updatedAt: session.updatedAt.toISOString(),
+			},
+			graph: {
+				messages: messagesGraph,
+				rootIds,
+				turnRootIds,
+			},
+			timeline: {
+				turns,
+			},
+		};
+	}
+
+	private buildMessagesGraph(messages: ChatHubMessage[]) {
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
 		for (const message of messages) {
 			messagesGraph[message.id] = {
 				id: message.id,
@@ -635,64 +672,70 @@ export class ChatHubService {
 			node.retryIds.sort(sortByRunThenTime);
 			node.revisionIds.sort(sortByRunThenTime);
 		}
+		return messagesGraph;
+	}
 
-		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
-		const turnRootIds = messages.filter((r) => r.turnId && r.turnId === r.id).map((r) => r.id);
-
+	private groupMessagesByTurn(messages: Record<ChatMessageId, ChatHubMessageDto>) {
 		const byTurn: Record<ChatMessageId, ChatMessageId[]> = {};
-		for (const id of Object.keys(messagesGraph)) {
-			const node = messagesGraph[id];
+		for (const id of Object.keys(messages)) {
+			const message = messages[id];
 			const t =
-				node.turnId ??
-				(node.previousMessageId
-					? (messagesGraph[node.previousMessageId].turnId ?? node.id)
-					: node.id);
+				message.turnId ??
+				(message.previousMessageId
+					? (messages[message.previousMessageId].turnId ?? message.id)
+					: message.id);
 
 			byTurn[t] ??= [];
 			byTurn[t].push(id);
 		}
+		return byTurn;
+	}
 
+	private buildTurns(
+		byTurn: Record<ChatMessageId, ChatMessageId[]>,
+		messages: Record<ChatMessageId, ChatHubMessageDto>,
+	) {
 		const turns: ChatHubMessageTurnDto[] = [];
 		for (const turnRootId of Object.keys(byTurn)) {
-			const root = messagesGraph[turnRootId];
+			const root = messages[turnRootId];
 
-			const messages: string[] = [];
-			const branches: Record<string, string[]> = {};
+			const messageIds: ChatMessageId[] = [];
+			const branches: Record<ChatMessageId, ChatMessageId[]> = {};
 
 			// Walk down the main reply chain, choosing the latest runIndex among retries at each step
-			let cursor: ChatHubMessageDto | undefined = root;
-			while (cursor) {
-				messages.push(cursor.id);
+			let current: ChatHubMessageDto | undefined = root;
+			while (current) {
+				messageIds.push(current.id);
 
-				const retries = cursor.retryIds.filter((id) => messagesGraph[id].state === 'active');
+				const retries = current.retryIds.filter((id) => messages[id].state === 'active');
 				if (retries.length > 0) {
-					const latestRun = Math.max(...retries.map((id) => messagesGraph[id].runIndex ?? 0));
-					const canonical = retries.find((id) => messagesGraph[id].runIndex === latestRun)!;
+					const latestRun = Math.max(...retries.map((id) => messages[id].runIndex ?? 0));
+					const canonical = retries.find((id) => messages[id].runIndex === latestRun)!;
 
-					branches[cursor.id] = retries.filter((id) => id !== canonical);
+					branches[current.id] = retries.filter((id) => id !== canonical);
 				}
 
 				// Pick the latest runIndex among responses
-				const [nextId]: ChatMessageId[] = cursor.responseIds
-					.filter((id) => messagesGraph[id].state === 'active')
-					.sort((a, b) => (messagesGraph[b].runIndex ?? 0) - (messagesGraph[a].runIndex ?? 0));
+				const [nextId]: ChatMessageId[] = current.responseIds
+					.filter((id) => messages[id].state === 'active')
+					.sort((a, b) => (messages[b].runIndex ?? 0) - (messages[a].runIndex ?? 0));
 
 				if (!nextId) break;
 
-				cursor = messagesGraph[nextId];
+				current = messages[nextId];
 			}
 
 			turns.push({
 				id: turnRootId,
 				rootMessageId: root.id,
-				messages,
+				messages: messageIds,
 				branches,
 			});
 		}
 
 		const sortByTime = (first: ChatHubMessageTurnDto, second: ChatHubMessageTurnDto) => {
-			const a = messagesGraph[first.rootMessageId];
-			const b = messagesGraph[second.rootMessageId];
+			const a = messages[first.rootMessageId];
+			const b = messages[second.rootMessageId];
 
 			if (a.createdAt !== b.createdAt) {
 				return a.createdAt < b.createdAt ? -1 : 1;
@@ -703,31 +746,6 @@ export class ChatHubService {
 
 		turns.sort(sortByTime);
 
-		const dto: ChatHubConversationResponse = {
-			session: {
-				id: session.id,
-				title: session.title,
-				ownerId: session.ownerId,
-				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
-				credentialId: session.credentialId,
-				provider: session.provider,
-				model: session.model,
-				workflowId: session.workflowId,
-				createdAt: session.createdAt.toISOString(),
-				updatedAt: session.updatedAt.toISOString(),
-			},
-
-			graph: {
-				messages: messagesGraph,
-				rootIds,
-				turnRootIds,
-			},
-
-			timeline: {
-				turns,
-			},
-		};
-
-		return dto;
+		return turns;
 	}
 }
