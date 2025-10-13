@@ -24,6 +24,7 @@ import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	INodeCredentials,
 	OperationalError,
 	type IConnections,
 	type INode,
@@ -297,9 +298,31 @@ export class ChatHubService {
 		return undefined;
 	}
 
+	private getCredentialId(provider: ChatHubProvider, credentials: INodeCredentials): string | null {
+		switch (provider) {
+			case 'openai':
+				return credentials['openAiApi'].id;
+			case 'anthropic':
+				return credentials['anthropicApi'].id;
+			case 'google':
+				return credentials['googlePalmApi'].id;
+			default:
+				return null;
+		}
+	}
+
 	async respondMessage(res: Response, user: User, payload: ChatPayloadWithCredentials) {
 		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
 		const turnId = payload.messageId;
+
+		const usedModel = {
+			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+			provider: payload.model.provider,
+			model: payload.model.model,
+			workflowId: payload.model.workflowId,
+		};
+
+		// TODO: we're now providing both replyId and messageId from the frontend, but we shouldn't.
 
 		// TODO: Handle session ID conflicts better (different user, same ID)
 		let session: ChatHubSession;
@@ -310,10 +333,7 @@ export class ChatHubService {
 				id: payload.sessionId,
 				ownerId: user.id,
 				title: 'New Chat',
-				provider: payload.model.provider,
-				model: payload.model.model,
-				workflowId: payload.model.workflowId ?? null,
-				credentialId: payload.credentials?.[payload.model.provider]?.id ?? null,
+				...usedModel,
 			});
 		}
 
@@ -321,11 +341,12 @@ export class ChatHubService {
 			id: payload.messageId,
 			sessionId: payload.sessionId,
 			type: 'human',
-			name: 'You',
-			content: payload.message,
+			name: user.firstName || 'User',
 			state: 'active',
+			content: payload.message,
 			turnId,
 			previousMessageId: payload.previousMessageId ?? null,
+			...usedModel,
 		});
 
 		/* eslint-disable @typescript-eslint/naming-convention */
@@ -495,6 +516,7 @@ export class ChatHubService {
 				turnId,
 				executionId: parseInt(execution.id, 10),
 				previousMessageId: payload.messageId,
+				...usedModel,
 			});
 		}
 	}

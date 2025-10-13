@@ -2,7 +2,7 @@ import {
 	chatHubProviderSchema,
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
-	type ChatHubConversation,
+	type ChatHubSesssionDto,
 } from '@n8n/api-types';
 import type { GroupedConversations } from './chat.types';
 
@@ -40,8 +40,8 @@ export function getRelativeDate(dateString: string): string {
 	}
 }
 
-export function groupConversationsByDate(sessions: ChatHubConversation[]): GroupedConversations[] {
-	const groups = new Map<string, ChatHubConversation[]>();
+export function groupConversationsByDate(sessions: ChatHubSesssionDto[]): GroupedConversations[] {
+	const groups = new Map<string, ChatHubSesssionDto[]>();
 
 	// Group sessions by relative date
 	sessions.forEach((session) => {
