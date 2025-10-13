@@ -54,14 +54,17 @@ export function buildWorkflowContextForAgent(state: typeof WorkflowState.State):
 		'</current_execution_nodes_schemas>',
 	];
 
-	// Add discovery context if available (helps supervisor avoid re-running discovery)
+	// Add discovery context if available (helps supervisor track iterations)
 	if (state.discoveryContext) {
 		sections.push(
 			'',
-			'<discovery_results>',
-			`Discovery completed at: ${new Date(state.discoveryContext.timestamp).toISOString()}`,
-			`Found ${state.discoveryContext.foundNodes.length} relevant nodes`,
-			'</discovery_results>',
+			'<discovery_status>',
+			`Discovery call count: ${state.discoveryContext.callCount} / 5 (max)`,
+			`Last run: ${new Date(state.discoveryContext.lastRun).toISOString()}`,
+			state.discoveryContext.callCount >= 5
+				? 'WARNING: Discovery limit reached - use your search_nodes tool instead'
+				: '',
+			'</discovery_status>',
 		);
 	}
 
@@ -102,6 +105,14 @@ export function prepareMessagesWithContext(
 
 	// Apply full cache optimization (mutates messages in place)
 	const userToolIndices = findUserToolMessageIndices(messages);
+
+	console.log('[prepareMessagesWithContext] Cache control', {
+		userToolIndicesCount: userToolIndices.length,
+		userToolIndices,
+		messageTypes: messages.map((m) => m.constructor.name),
+		willInjectContext: userToolIndices.length > 0,
+	});
+
 	cleanStaleWorkflowContext(messages, userToolIndices);
 	applyCacheControlMarkers(messages, userToolIndices, workflowContext);
 

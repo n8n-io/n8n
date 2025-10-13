@@ -191,6 +191,7 @@ export class AiWorkflowBuilderService {
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			enableMultiAgent: true,
+			useSubgraphs: true,
 			tracer: tracingClient
 				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,

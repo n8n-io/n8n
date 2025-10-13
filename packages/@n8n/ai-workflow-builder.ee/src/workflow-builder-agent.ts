@@ -24,6 +24,7 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { createMultiAgentWorkflow } from './multi-agent-workflow';
+import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
@@ -57,6 +58,12 @@ export interface WorkflowBuilderAgentConfig {
 	 * When false, uses the legacy single-agent architecture
 	 */
 	enableMultiAgent?: boolean;
+	/**
+	 * Use subgraph-based multi-agent architecture (experimental)
+	 * When true, uses isolated subgraphs for each specialist agent
+	 * Requires enableMultiAgent to be true
+	 */
+	useSubgraphs?: boolean;
 }
 
 export interface ChatPayload {
@@ -85,6 +92,7 @@ export class WorkflowBuilderAgent {
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
 	private enableMultiAgent: boolean;
+	private useSubgraphs: boolean;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -98,6 +106,7 @@ export class WorkflowBuilderAgent {
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
 		this.enableMultiAgent = config.enableMultiAgent ?? false;
+		this.useSubgraphs = config.useSubgraphs ?? false;
 	}
 
 	private getBuilderTools(): BuilderTool[] {
@@ -114,6 +123,17 @@ export class WorkflowBuilderAgent {
 	 * Uses supervisor pattern with specialized agents
 	 */
 	private createMultiAgentGraph() {
+		if (this.useSubgraphs) {
+			this.logger?.debug('Using multi-agent subgraph architecture');
+			return createMultiAgentWorkflowWithSubgraphs({
+				parsedNodeTypes: this.parsedNodeTypes,
+				llmSimpleTask: this.llmSimpleTask,
+				llmComplexTask: this.llmComplexTask,
+				logger: this.logger,
+				instanceUrl: this.instanceUrl,
+			});
+		}
+
 		return createMultiAgentWorkflow({
 			parsedNodeTypes: this.parsedNodeTypes,
 			llmSimpleTask: this.llmSimpleTask,
