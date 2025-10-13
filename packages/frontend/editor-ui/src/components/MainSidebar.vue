@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
@@ -42,7 +41,6 @@ import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUserHelpers } from '@/composables/useUserHelpers';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
@@ -75,8 +73,6 @@ const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const route = useRoute();
-const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
@@ -85,7 +81,6 @@ const calloutHelpers = useCalloutHelpers();
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
 });
-useUserHelpers(router, route);
 
 // Template refs
 const user = ref<Element | null>(null);
