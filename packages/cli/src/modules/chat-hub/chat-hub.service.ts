@@ -74,29 +74,29 @@ export class ChatHubService {
 					return [provider, { models: [] }];
 				}
 
+				// Ensure the user has the permission to read the credential
+				await this.credentialsService.getOne(user, credentialId, false);
+
+				const credentials = await this.credentialsHelper.getDecrypted(
+					additionalData,
+					{
+						id: credentialId,
+						name: PROVIDER_CREDENTIAL_TYPE_MAP[provider],
+					},
+					PROVIDER_CREDENTIAL_TYPE_MAP[provider],
+					'internal',
+					undefined,
+					true,
+				);
+
+				// Extract API key from credentials based on provider
+				const apiKey = this.extractApiKey(provider, credentials);
+
+				if (!apiKey) {
+					return [provider, { models: [] }];
+				}
+
 				try {
-					// Ensure the user has the permission to read the credential
-					await this.credentialsService.getOne(user, credentialId, false);
-
-					const credentials = await this.credentialsHelper.getDecrypted(
-						additionalData,
-						{
-							id: credentialId,
-							name: PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-						},
-						PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-						'internal',
-						undefined,
-						true,
-					);
-
-					// Extract API key from credentials based on provider
-					const apiKey = this.extractApiKey(provider, credentials);
-
-					if (!apiKey) {
-						return [provider, { models: [] }];
-					}
-
 					return [provider, await this.fetchModelsForProvider(provider, apiKey)];
 				} catch {
 					return [

@@ -35,9 +35,11 @@ import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
+import { useUsersStore } from '@/stores/users.store';
 
 const router = useRouter();
 const route = useRoute();
+const usersStore = useUsersStore();
 const chatStore = useChatStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
@@ -53,7 +55,7 @@ const messagesRef = ref<HTMLDivElement | null>(null);
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
 const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
-	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
 	{
 		writeDefaults: false,
@@ -72,7 +74,7 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 );
 
 const selectedCredentials = useLocalStorage<CredentialsMap>(
-	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
+	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(usersStore.currentUserId ?? 'anonymous'),
 	{},
 	{
 		writeDefaults: false,
