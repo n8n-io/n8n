@@ -39,7 +39,7 @@ export const getBadgeIconUrl = (
 
 function getNodeIconColor(nodeType: IconNodeType) {
 	if ('iconColor' in nodeType && nodeType.iconColor) {
-		return `var(--color-node-icon-${nodeType.iconColor})`;
+		return `var(--node--icon--color--${nodeType.iconColor})`;
 	}
 	return nodeType?.defaults?.color?.toString();
 }
