@@ -153,7 +153,7 @@ onMounted(async () => {
 }
 
 .notFound {
-	padding-top: var(--spacing-xl);
+	padding-top: var(--spacing--xl);
 }
 
 .title {
@@ -167,8 +167,8 @@ onMounted(async () => {
 .image {
 	width: 100%;
 	height: 500px;
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
+	border: var(--border);
+	border-radius: var(--radius--lg);
 	overflow: hidden;
 
 	img {
@@ -177,7 +177,7 @@ onMounted(async () => {
 }
 
 .content {
-	padding: var(--spacing-2xl) 0;
+	padding: var(--spacing--2xl) 0;
 	display: flex;
 	justify-content: space-between;
 
@@ -188,8 +188,8 @@ onMounted(async () => {
 
 .markdown {
 	width: calc(100% - 180px);
-	padding-right: var(--spacing-2xl);
-	margin-bottom: var(--spacing-l);
+	padding-right: var(--spacing--2xl);
+	margin-bottom: var(--spacing--lg);
 
 	@media (max-width: $breakpoint-xs) {
 		width: 100%;

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '../folders.constants';
-import { ProjectTypes, type Project } from '@/types/projects.types';
+import { ProjectTypes, type Project } from '@/features/projects/projects.types';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { UserAction, FolderResource } from '@/Interface';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/features/projects/projects.utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '../folders.store';
 import { type IUser } from 'n8n-workflow';
 import TimeAgo from '@/components/TimeAgo.vue';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 
 import {
 	N8nActionToggle,
@@ -260,10 +260,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 }
 
 .folder-icon {
-	width: var(--spacing-xl);
-	height: var(--spacing-xl);
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	flex-shrink: 0;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	align-content: center;
 	text-align: center;
 }
@@ -272,8 +272,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-xs);
-	margin-bottom: var(--spacing-5xs);
+	padding-right: var(--spacing--xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .card-footer {
@@ -284,7 +284,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	& + & {
 		&::before {
 			content: '|';
-			margin: 0 var(--spacing-4xs);
+			margin: 0 var(--spacing--4xs);
 		}
 	}
 }
@@ -294,13 +294,13 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		padding-right: 0;
 	}
 	:global(.n8n-breadcrumbs) {
-		padding-left: var(--spacing-5xs);
+		padding-left: var(--spacing--5xs);
 	}
 }
 
 .card-actions {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 @include mixins.breakpoint('sm-and-down') {
@@ -309,7 +309,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 		:global(.n8n-card-append) {
 			width: 100%;
-			margin-top: var(--spacing-3xs);
+			margin-top: var(--spacing--3xs);
 			padding-left: 40px;
 		}
 		.card-actions {

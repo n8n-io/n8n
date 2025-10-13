@@ -65,14 +65,14 @@ const {
 
 <style lang="scss" module>
 body {
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .container {
 	display: flex;
 	align-items: center;
 	flex-direction: column;
-	padding-top: var(--spacing-2xl);
+	padding-top: var(--spacing--2xl);
 
 	> * {
 		width: 352px;
@@ -84,6 +84,6 @@ body {
 }
 
 .formContainer {
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 }
 </style>

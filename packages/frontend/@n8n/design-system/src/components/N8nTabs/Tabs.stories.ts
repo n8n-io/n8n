@@ -9,7 +9,7 @@ export default {
 	component: N8nTabs,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-xlight' },
+		backgrounds: { default: '--color--background--light-3' },
 	},
 };
 

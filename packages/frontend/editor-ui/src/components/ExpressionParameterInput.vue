@@ -18,7 +18,7 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { CanvasKey } from '@/constants';
-import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useIsInExperimentalNdv } from '@/features/canvas/experimental/composables/useIsInExperimentalNdv';
 import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
 import { N8nButton } from '@n8n/design-system';
@@ -280,17 +280,15 @@ defineExpose({ focus, select });
 	background-color: var(--color-code-background);
 	padding: 3px;
 	line-height: 9px;
-	border: var(--input-border-color, var(--border-color-base))
-		var(--input-border-style, var(--border-style-base))
-		var(--input-border-width, var(--border-width-base));
+	border: var(--input-border-color, var(--border-color))
+		var(--input-border-style, var(--border-style)) var(--input-border-width, var(--border-width));
 	cursor: pointer;
 	border-radius: 0;
-	border-top-left-radius: var(--border-radius-base);
+	border-top-left-radius: var(--radius);
 
 	&:hover {
-		border: var(--input-border-color, var(--border-color-base))
-			var(--input-border-style, var(--border-style-base))
-			var(--input-border-width, var(--border-width-base));
+		border: var(--input-border-color, var(--border-color))
+			var(--input-border-style, var(--border-style)) var(--input-border-width, var(--border-width));
 	}
 
 	svg {
@@ -301,16 +299,16 @@ defineExpose({ focus, select });
 }
 
 .focused > .prepend-section {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-left-radius: 0;
 }
 
 .focused :global(.cm-editor) {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 }
 
 .focused > .expression-editor-modal-opener {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-right-radius: 0;
 	background-color: var(--color-code-background);
 }
@@ -326,9 +324,9 @@ defineExpose({ focus, select });
 }
 
 .activeDrop {
-	--input-border-color: var(--color-success);
-	--input-border-right-color: var(--color-success);
-	--input-background-color: var(--color-foreground-xlight);
+	--input-border-color: var(--color--success);
+	--input-border-right-color: var(--color--success);
+	--input-background-color: var(--color--foreground--tint-2);
 	--input-border-style: solid;
 
 	:global(.cm-editor) {

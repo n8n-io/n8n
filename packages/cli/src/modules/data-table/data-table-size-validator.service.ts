@@ -2,6 +2,8 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataTableSizeStatus, DataTablesSizeData } from 'n8n-workflow';
 
+import { Telemetry } from '@/telemetry';
+
 import { DataTableValidationError } from './errors/data-table-validation.error';
 
 @Service()
@@ -10,7 +12,10 @@ export class DataTableSizeValidator {
 	private cachedSizeData: DataTablesSizeData | undefined;
 	private pendingCheck: Promise<DataTablesSizeData> | null = null;
 
-	constructor(private readonly globalConfig: GlobalConfig) {}
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly telemetry: Telemetry,
+	) {}
 
 	private shouldRefresh(now: Date): boolean {
 		if (
@@ -53,6 +58,11 @@ export class DataTableSizeValidator {
 	): Promise<void> {
 		const size = await this.getCachedSizeData(fetchSizeFn, now);
 		if (size.totalBytes >= this.globalConfig.dataTable.maxSize) {
+			this.telemetry.track('User hit data table storage limit', {
+				total_bytes: size.totalBytes,
+				max_bytes: this.globalConfig.dataTable.maxSize,
+			});
+
 			throw new DataTableValidationError(
 				`Data table size limit exceeded: ${this.toMb(size.totalBytes)}MB used, limit is ${this.toMb(this.globalConfig.dataTable.maxSize)}MB`,
 			);
@@ -60,9 +70,13 @@ export class DataTableSizeValidator {
 	}
 
 	sizeToState(sizeBytes: number): DataTableSizeStatus {
+		const warningThreshold =
+			this.globalConfig.dataTable.warningThreshold ??
+			Math.floor(0.8 * this.globalConfig.dataTable.maxSize);
+
 		if (sizeBytes >= this.globalConfig.dataTable.maxSize) {
 			return 'error';
-		} else if (sizeBytes >= this.globalConfig.dataTable.warningThreshold) {
+		} else if (sizeBytes >= warningThreshold) {
 			return 'warn';
 		}
 		return 'ok';

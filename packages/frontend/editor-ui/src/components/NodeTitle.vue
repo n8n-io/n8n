@@ -65,11 +65,11 @@ const { width } = useElementSize(wrapperRef);
 
 <style lang="scss" module>
 .container {
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight--medium);
 	display: flex;
-	font-size: var(--font-size-m);
-	margin-right: var(--spacing-s);
-	color: var(--color-text-dark);
+	font-size: var(--font-size--md);
+	margin-right: var(--spacing--sm);
+	color: var(--color--text--shade-1);
 	width: 100%;
 }
 
@@ -80,6 +80,6 @@ const { width } = useElementSize(wrapperRef);
 
 .iconWrapper {
 	display: inline-flex;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 </style>

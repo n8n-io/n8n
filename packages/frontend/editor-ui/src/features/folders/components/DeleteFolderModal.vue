@@ -7,8 +7,8 @@ import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '../folders.store';
 import { useRoute } from 'vue-router';
-import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import type { ChangeLocationSearchResult } from '../folders.types';
 
 import { ElRadio } from 'element-plus';
@@ -239,23 +239,23 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 
 <style lang="scss" module>
 .content {
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing--2xs);
 	> * {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 	}
 }
 .innerContent {
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 .optionInput {
-	padding-left: var(--spacing-l);
+	padding-left: var(--spacing--lg);
 }
 
 .folder-select-item {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 </style>

@@ -3,11 +3,11 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
-	type WorkflowEntity,
-	type IWorkflowDb,
 	type CredentialsRepository,
+	type IWorkflowDb,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
+	type WorkflowEntity,
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
@@ -16,10 +16,10 @@ import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	type INode,
 	type INodesGraphResult,
-	NodeApiError,
-	TelemetryHelpers,
 	type IRun,
 	type IWorkflowBase,
+	NodeApiError,
+	TelemetryHelpers,
 } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';

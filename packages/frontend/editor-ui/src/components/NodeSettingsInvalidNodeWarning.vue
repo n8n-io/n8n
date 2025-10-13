@@ -160,12 +160,12 @@ watch(isNodeDefined, () => {
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 }
 
 .warningIcon {
-	color: var(--color-text-lighter);
-	font-size: var(--font-size-2xl);
+	color: var(--color--text--tint-2);
+	font-size: var(--font-size--2xl);
 }
 
 .descriptionContainer {

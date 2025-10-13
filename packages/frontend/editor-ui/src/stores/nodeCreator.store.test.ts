@@ -8,14 +8,14 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/constants';
 import type { ActionsRecord, INodeCreateElement, INodeUi, SimplifiedNodeType } from '@/Interface';
-import { CanvasConnectionMode } from '@/types';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
+import { parseCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from './ndv.store';
 import { useNodeCreatorStore } from './nodeCreator.store';
 import { useNodeTypesStore } from './nodeTypes.store';
@@ -44,7 +44,26 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/utils/canvasUtils', () => {
+// Mock the workflows store so that getNodeById returns a dummy node.
+vi.mock('@/stores/workflows.store', () => {
+	return {
+		useWorkflowsStore: () => ({
+			getNodeById: vi.fn((id?: string) => {
+				return id ? { id, name: 'Test Node' } : null;
+			}),
+			workflowTriggerNodes: [],
+			workflowId: 'dummy-workflow-id',
+			workflowObject: {
+				getNode: vi.fn(() => ({
+					type: 'n8n-node.example',
+					typeVersion: 1,
+				})),
+			},
+		}),
+	};
+});
+
+vi.mock('@/features/canvas/canvas.utils', () => {
 	return {
 		parseCanvasConnectionHandleString: vi.fn(),
 	};

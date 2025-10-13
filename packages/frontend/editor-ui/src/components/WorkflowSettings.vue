@@ -20,7 +20,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -929,10 +929,10 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 .workflow-settings {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	:global(.el-row) {
 		display: flex;
@@ -940,7 +940,7 @@ onBeforeUnmount(() => {
 	}
 
 	:global(.el-switch) {
-		padding: var(--spacing-m) 0;
+		padding: var(--spacing--md) 0;
 	}
 }
 
@@ -949,7 +949,7 @@ onBeforeUnmount(() => {
 	& label {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
+		gap: var(--spacing--4xs);
 	}
 
 	svg {
@@ -966,7 +966,7 @@ onBeforeUnmount(() => {
 }
 
 .timeout-input {
-	margin-left: var(--spacing-3xs);
+	margin-left: var(--spacing--3xs);
 }
 
 .time-saved {
@@ -974,11 +974,11 @@ onBeforeUnmount(() => {
 	align-items: center;
 
 	:global(.el-input) {
-		width: var(--spacing-3xl);
+		width: var(--spacing--3xl);
 	}
 
 	span {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>
