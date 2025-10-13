@@ -68,7 +68,7 @@ const onUserActionToggle = (action: string) => {
 				<div :class="$style.userAreaInner">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
+						<div :class="{ ['clickable']: isCollapsed }">
 							<N8nAvatar
 								:first-name="usersStore.currentUser?.firstName"
 								:last-name="usersStore.currentUser?.lastName"
@@ -138,5 +138,10 @@ const onUserActionToggle = (action: string) => {
 	display: flex;
 	align-items: center;
 	width: 100%;
+}
+
+.popover {
+	padding: var(--spacing--xs);
+	min-width: 200px;
 }
 </style>
