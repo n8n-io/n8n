@@ -3,28 +3,26 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
+import { EventRelay } from '@/events/relays/event-relay';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 /**
  * Event relay for MCP module to handle workflow events
  */
 @Service()
-export class McpEventRelay {
+export class McpEventRelay extends EventRelay {
 	constructor(
-		private readonly eventService: EventService,
+		eventService: EventService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly logger: Logger,
-	) {}
-
-	init() {
-		this.setupEventHandlers();
+	) {
+		super(eventService);
 	}
 
-	private setupEventHandlers() {
-		this.eventService.on(
-			'workflow-deactivated',
-			async (event) => await this.onWorkflowDeactivated(event),
-		);
+	init() {
+		this.setupListeners({
+			'workflow-deactivated': async (event) => await this.onWorkflowDeactivated(event),
+		});
 	}
 
 	/**
