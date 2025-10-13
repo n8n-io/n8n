@@ -1161,3 +1161,9 @@ export interface LlmTokenUsageData {
 	totalTokens: number;
 	isEstimate: boolean;
 }
+
+export interface WorkflowValidationIssue {
+	node: string;
+	type: string;
+	value: string | string[];
+}
