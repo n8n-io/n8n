@@ -15,7 +15,7 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';

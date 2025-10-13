@@ -10,7 +10,7 @@ import WorkflowSelectorParameterInput, {
 } from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const { onDocumentVisible } = vi.hoisted(() => ({

@@ -347,7 +347,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .executionDetails {
 	position: absolute;
-	padding: var(--spacing-m);
+	padding: var(--spacing--md);
 	width: 100%;
 	display: flex;
 	justify-content: space-between;
@@ -368,13 +368,13 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 .executionDetailsLeft {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 }
 
 .executionTitle {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .voteButtons {
@@ -391,16 +391,16 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .running,
 .spinner {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 .waiting {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 .success {
-	color: var(--color-success);
+	color: var(--color--success);
 }
 .error {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .newInfo,
@@ -408,27 +408,27 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	margin-top: var(--spacing-4xl);
+	margin-top: var(--spacing--4xl);
 }
 
 .newMessage,
 .runningMessage {
 	width: 240px;
-	margin-top: var(--spacing-l);
+	margin-top: var(--spacing--lg);
 	text-align: center;
 }
 
 .debugLink {
 	a > span {
 		display: block;
-		padding: var(--button-padding-vertical, var(--spacing-xs))
-			var(--button-padding-horizontal, var(--spacing-m));
+		padding: var(--button-padding-vertical, var(--spacing--xs))
+			var(--button-padding-horizontal, var(--spacing--md));
 	}
 }
 
 .actions {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .highlightDataButton {
@@ -441,7 +441,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 }
 
 .highlightDataButtonOpen {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	background-color: var(--color-button-secondary-hover-background);
 	border-color: var(--color-button-secondary-hover-active-focus-border);
 }

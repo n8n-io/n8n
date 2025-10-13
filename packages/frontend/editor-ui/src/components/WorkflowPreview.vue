@@ -5,7 +5,7 @@ import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 import { N8nLoading, N8nSpinner } from '@n8n/design-system';
 const props = withDefaults(
@@ -281,7 +281,7 @@ watch(
 }
 
 .spinner {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	position: absolute;
 	top: 50% !important;
 	-ms-transform: translateY(-50%);

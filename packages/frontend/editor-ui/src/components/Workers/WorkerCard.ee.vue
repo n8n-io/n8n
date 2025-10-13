@@ -111,9 +111,9 @@ onBeforeUnmount(() => {
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	word-break: break-word;
-	padding: var(--spacing-s) 0 0 var(--spacing-s);
+	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
 }
 
 .stale {
@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .cardActions {
@@ -133,7 +133,7 @@ onBeforeUnmount(() => {
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 </style>

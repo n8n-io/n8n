@@ -99,6 +99,7 @@ import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-Crea
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
+import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -203,4 +204,5 @@ export const postgresMigrations: Migration[] = [
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
 	AddProjectIdToVariableTable1758794506893,
 	AddAudienceColumnToApiKeys1758731786132,
+	ChangeValueTypesForInsights1759399811000,
 ];
