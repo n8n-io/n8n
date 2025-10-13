@@ -140,6 +140,7 @@ BLOCKED_ATTRIBUTES = {
     "__func__",
     "__wrapped__",
     "__annotations__",
+    "__spec__",
 }
 
 # errors
