@@ -14,7 +14,7 @@ files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name
 #files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
 
 file_count=$(echo "$files" | wc -l | xargs)
-echo "Found $file_count files to process test $files"
+echo "Found $file_count files to process"
 echo ""
 echo "Starting token replacements..."
 echo ""
