@@ -1,3 +1,4 @@
+import { CreateWorkflowDependencyTable1760314000000 } from './1760314000000-CreateWorkflowDependencyTable';
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
@@ -101,7 +102,6 @@ import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/175
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
 import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
-import { CreateWorkflowDependencyTable1760314000000 } from './1760314000000-CreateWorkflowDependencyTable';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 
