@@ -2,23 +2,19 @@
 import ModalDrawer from '@/components/ModalDrawer.vue';
 import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/constants';
 import ChatSidebarContent from '@/features/chatHub/components/ChatSidebarContent.vue';
+import { MOBILE_MEDIA_QUERY } from '@/features/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
-import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useMediaQuery } from '@vueuse/core';
 import { onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const uiStore = useUIStore();
-const { isMobileDevice } = useDeviceSupport();
+const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const route = useRoute();
 
-// Close drawer when navigation happens on mobile devices
 watch(
 	() => route.fullPath,
-	() => {
-		if (isMobileDevice) {
-			uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY);
-		}
-	},
+	() => uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY),
 );
 
 onBeforeUnmount(() => {
@@ -30,17 +26,17 @@ onBeforeUnmount(() => {
 	<ModalDrawer
 		v-if="isMobileDevice"
 		direction="ltr"
-		width="min(300px, 80vw)"
+		width="min(240px, 80vw)"
 		:name="CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY"
 		:class="$style.drawer"
 		:close-on-click-modal="true"
 		:show-close="false"
 	>
 		<template #content>
-			<ChatSidebarContent />
+			<ChatSidebarContent :class="$style.inDrawer" :is-mobile-device="isMobileDevice" />
 		</template>
 	</ModalDrawer>
-	<ChatSidebarContent v-else :class="$style.static" />
+	<ChatSidebarContent v-else :class="$style.static" :is-mobile-device="isMobileDevice" />
 </template>
 
 <style lang="scss" module>
@@ -50,11 +46,15 @@ onBeforeUnmount(() => {
 	}
 }
 
+.inDrawer,
+.static {
+	height: 100%;
+}
+
 .static {
 	width: 200px;
-	height: 100%;
 	background-color: var(--color--background--light-3);
-	border-right: var(--border-base);
+	border-right: var(--border);
 	position: relative;
 	overflow: auto;
 }

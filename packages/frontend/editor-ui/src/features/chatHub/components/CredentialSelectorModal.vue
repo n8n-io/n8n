@@ -130,7 +130,7 @@ function onCancel() {
 
 .header {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 
