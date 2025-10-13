@@ -1,6 +1,6 @@
 import { nextTick } from 'vue';
 import { describe, it, vi, beforeEach } from 'vitest';
-import { type DatePickerCallbacks, useDatePickerCommon } from '../useDatePickerCommon';
+import { type DatePickerCallbacks, useDatePickerCommon } from './useDatePickerCommon';
 
 vi.mock('vue', async () => {
 	const actual = await vi.importActual('vue');
