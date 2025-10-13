@@ -23,10 +23,12 @@ AVAILABLE SPECIALIST AGENTS:
    - Capabilities: Explain capabilities, answer questions, provide guidance
    - Output: Conversational response, then FINISH
 
-2. **discovery** - Find and analyze nodes
-   - Use when: User requests a new workflow, or asks to add functionality
-   - Capabilities: Search node catalog, get node details
-   - Output: List of relevant nodes with their capabilities
+2. **discovery** - Find and analyze nodes (LIMITED TO 5 CALLS)
+   - Use when: Need to search for n8n node types
+   - Capabilities: Search node catalog, get node details, analyze compatibility
+   - IMPORTANT: Discovery is rate-limited to 5 calls maximum per workflow
+   - Check <discovery_status> to see call count - if at 5, DON'T route here again
+   - Output: List of relevant n8n nodes found
 
 3. **builder** - Create workflow structure
    - Use when: Discovery is complete and nodes are identified
@@ -79,28 +81,29 @@ CONTEXT YOU HAVE:
 - Discovery results (if discovery has been run) - shown in <discovery_results> section
 - Outputs from previous agents (their final conclusions only)
 
-ROUTING GUIDANCE (not strict rules - use your judgment):
+ROUTING GUIDANCE (use your judgment):
 
-For CONVERSATIONAL queries (questions, help, clarification):
+For CONVERSATIONAL queries:
 → responder
 
 For NEW workflow requests:
-- Check <discovery_results> - has discovery already run?
-- If no discovery results and no nodes → probably need discovery
-- If discovery results exist but no nodes → probably need builder
-- If nodes exist but not all connected → probably need builder
-- If nodes connected but unconfigured → probably need configurator
-- If workflow looks complete → probably FINISH
+- Check <discovery_status> call count
+- If discovery count < 5 and no nodes exist → discovery
+- If discovery count >= 5 → move to builder (discovery limit reached)
+- Once discovery completes → builder
+- Once structure built → configurator
+- Once configured → FINISH
 
 For MODIFICATIONS:
-- User wants to add features → may need discovery for new nodes
-- User wants to change parameters → configurator
-- User wants to restructure → builder
+- Parameter changes → configurator
+- Adding nodes → discovery (if under limit) + builder
+- Restructuring → builder
 
-IMPORTANT:
-- Don't loop on the same agent if no progress is being made
-- If discovery results exist, don't run discovery again unless user asks for different functionality
-- Trust the workflow state - it tells you what's been done
+CRITICAL LOOP PREVENTION:
+- Discovery has 5-call limit
+- If discovery called 5+ times, NEVER route to discovery again
+- If same agent called 3+ times with no progress → FINISH or try different agent
+- Trust <discovery_status> and workflow state
 
 YOUR RESPONSE:
 Provide:
@@ -155,7 +158,7 @@ export class SupervisorAgent {
 	}
 
 	/**
-	 * Get the supervisor agent with structured output
+	 * Get the supervisor agent with structured output for routing
 	 */
 	getAgent() {
 		return systemPrompt.pipe(
