@@ -9,12 +9,12 @@
     "typecheck": "tsc --noEmit",
     "copy-nodes-json": "node ../../nodes-base/scripts/copy-nodes-json.js .",
     "copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
-    "build": "tsdown --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
+    "build": "tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint nodes credentials utils --quiet",
     "lint:fix": "eslint nodes credentials utils --fix",
-    "watch": "tsdown --watch nodes --watch credentials --watch utils --watch types --tsconfig tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
+    "watch": "tsup --watch nodes --watch credentials --watch utils --watch types --tsconfig tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
     "test": "jest",
     "test:dev": "jest --watch"
   },
@@ -161,7 +161,7 @@
     "fast-glob": "catalog:",
     "jest-mock-extended": "^3.0.4",
     "n8n-core": "workspace:*",
-    "tsdown": "catalog:"
+    "tsup": "^8.5.0"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",

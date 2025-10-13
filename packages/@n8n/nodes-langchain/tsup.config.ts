@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsdown';
+import { defineConfig } from 'tsup';
 
 export default defineConfig({
 	entry: ['{credentials,nodes,test,types,utils}/**/*.ts', '!**/*.d.ts', '!**/*.test.ts'],
