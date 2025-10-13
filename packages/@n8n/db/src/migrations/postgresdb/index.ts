@@ -46,6 +46,7 @@ import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixEx
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { CreateWorkflowDependencyTable1760314000000 } from './1760314000000-CreateWorkflowDependencyTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -101,7 +102,6 @@ import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/175690
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
 import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
-import { CreateWorkflowDependencyTable1760314000000 } from './1760314000000-CreateWorkflowDependencyTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
