@@ -19,8 +19,12 @@ export class CreateChatHubTables1760019379982 implements ReversibleMigration {
 				column('lastMessageAt').timestampTimezone(),
 
 				column('credentialId').varchar(36),
-				column('provider').varchar(16), // 'openai', 'anthropic', 'google', 'n8n'
-				column('model').varchar(64), // 'gpt-4' ...
+				column('provider')
+					.varchar(16)
+					.comment('ChatHubProvider enum: "openai", "anthropic", "google", "n8n"'),
+				column('model')
+					.varchar(64)
+					.comment('Model name used at the respective Model node, ie. "gpt-4"'),
 				column('workflowId').varchar(36),
 			)
 			.withForeignKey('ownerId', {
@@ -47,14 +51,25 @@ export class CreateChatHubTables1760019379982 implements ReversibleMigration {
 				column('revisionOfMessageId').uuid,
 				column('turnId').uuid,
 				column('retryOfMessageId').uuid,
-				column('type').varchar(16).notNull, // 'human', 'ai', 'system', 'tool', 'generic'
+				column('type')
+					.varchar(16)
+					.notNull.comment('ChatHubMessageType enum: "human", "ai", "system", "tool", "generic"'),
 				column('name').varchar(128).notNull,
-				column('state').varchar(16).default("'active'").notNull, // 'active', 'superseded', 'hidden', 'deleted'
+				column('state')
+					.varchar(16)
+					.default("'active'")
+					.notNull.comment('ChatHubMessageState enum: "active", "superseded", "hidden", "deleted"'),
 				column('content').text.notNull,
-				column('provider').varchar(16), // 'openai', 'anthropic', 'google', 'n8n'
-				column('model').varchar(64), // 'gpt-4' ...
+				column('provider')
+					.varchar(16)
+					.comment('ChatHubProvider enum: "openai", "anthropic", "google", "n8n"'),
+				column('model')
+					.varchar(64)
+					.comment('Model name used at the respective Model node, ie. "gpt-4"'),
 				column('workflowId').varchar(36),
-				column('runIndex').int.notNull.default(0), // the nth time this message has generated/retried this turn
+				column('runIndex')
+					.int.notNull.default(0)
+					.comment('The nth attempt this message has been generated/retried this turn'),
 				column('executionId').int,
 			)
 			.withForeignKey('sessionId', {

@@ -48,7 +48,7 @@ export class ChatHubSession extends WithTimestampsAndStringId {
 	/**
 	 * The selected credential to use by default with the selected LLM provider (if applicable).
 	 */
-	@ManyToOne('CredentialsEntity', { onDelete: 'SET NULL' })
+	@ManyToOne('CredentialsEntity', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'credentialId' })
 	credential?: CredentialsEntity | null;
 
@@ -73,7 +73,7 @@ export class ChatHubSession extends WithTimestampsAndStringId {
 	/**
 	 * Custom n8n agent workflow to use (if applicable)
 	 */
-	@ManyToOne('WorkflowEntity', { onDelete: 'SET NULL' })
+	@ManyToOne('WorkflowEntity', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'workflowId' })
 	workflow?: WorkflowEntity | null;
 
