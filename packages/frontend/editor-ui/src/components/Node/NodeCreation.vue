@@ -19,8 +19,9 @@ import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useAssistantStore } from '@/stores/assistant.store';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
@@ -42,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
+	close: [];
 }>();
 
 const uiStore = useUIStore();
@@ -50,6 +52,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -78,6 +81,7 @@ function closeNodeCreator(hasAddedNodes = false) {
 	if (props.createNodeActive) {
 		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
 	}
+	emit('close');
 }
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
@@ -99,11 +103,11 @@ function toggleFocusPanel() {
 
 async function onAskAssistantButtonClick() {
 	if (builderStore.isAIBuilderEnabled) {
-		await builderStore.toggleChat();
+		await chatPanelStore.toggle({ mode: 'builder' });
 	} else {
-		assistantStore.toggleChat();
+		await chatPanelStore.toggle({ mode: 'assistant' });
 	}
-	if (builderStore.isAssistantOpen || assistantStore.isAssistantOpen) {
+	if (chatPanelStore.isOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',
@@ -190,8 +194,8 @@ async function onAskAssistantButtonClick() {
 	right: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-s);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
 	pointer-events: all !important;
 }
 

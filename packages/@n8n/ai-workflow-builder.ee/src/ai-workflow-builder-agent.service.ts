@@ -148,7 +148,10 @@ export class AiWorkflowBuilderService {
 			})
 			.filter(
 				(nodeType): nodeType is INodeTypeDescription =>
-					nodeType !== undefined && nodeType.hidden !== true,
+					// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
+					// See more details in DataTable.node.ts#L29
+					nodeType !== undefined &&
+					(nodeType.hidden !== true || nodeType.name === 'n8n-nodes-base.dataTable'),
 			)
 			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
 				// If the node type is a tool, we need to find the corresponding non-tool node type

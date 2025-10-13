@@ -6,6 +6,21 @@ export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
+export {
+	chatHubConversationModelSchema,
+	type ChatHubConversationModel,
+	chatHubProviderSchema,
+	type ChatHubProvider,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatModelsRequestSchema,
+	type ChatModelsRequest,
+	type ChatModelsResponse,
+	ChatHubSendMessageRequest,
+	type ChatHubConversationsResponse,
+	type ChatHubMessagesResponse,
+	type ChatHubConversation,
+	type ChatHubMessage,
+} from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
@@ -50,17 +65,17 @@ export {
 } from './schemas/user.schema';
 
 export {
-	DATA_STORE_COLUMN_REGEX,
-	DATA_STORE_COLUMN_MAX_LENGTH,
-	DATA_STORE_COLUMN_ERROR_MESSAGE,
-	type DataStore,
-	type DataStoreColumn,
-	type DataStoreCreateColumnSchema,
-	type DataStoreListFilter,
-	type DataStoreListOptions,
+	DATA_TABLE_COLUMN_REGEX,
+	DATA_TABLE_COLUMN_MAX_LENGTH,
+	DATA_TABLE_COLUMN_ERROR_MESSAGE,
+	type DataTable,
+	type DataTableColumn,
+	type DataTableCreateColumnSchema,
+	type DataTableListFilter,
+	type DataTableListOptions,
 	dateTimeSchema,
-	dataStoreColumnNameSchema,
-} from './schemas/data-store.schema';
+	dataTableColumnNameSchema,
+} from './schemas/data-table.schema';
 
 export type {
 	DataTableFilter,

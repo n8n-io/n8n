@@ -16,18 +16,18 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { useProjectsStore } from '@/stores/projects.store';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/features/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { WorkflowResource } from '@/Interface';
+import type { UserAction, WorkflowResource } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { type ProjectSharingData, ProjectTypes } from '@/features/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { useFoldersStore } from '@/stores/folders.store';
+import { useFoldersStore } from '@/features/folders/folders.store';
 
 import {
 	N8nActionToggle,
@@ -39,6 +39,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -101,6 +102,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
+const mcpStore = useMCPStore();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
@@ -150,7 +152,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 });
 
 const actions = computed(() => {
-	const items = [
+	const items: Array<UserAction<IUser>> = [
 		{
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
@@ -210,11 +212,13 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+				disabled: !props.data.active,
 			});
 		} else {
 			items.push({
 				label: locale.baseText('workflows.item.enableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
+				disabled: !props.data.active,
 			});
 		}
 	}
@@ -331,7 +335,7 @@ async function onAction(action: string) {
 
 async function toggleMCPAccess(enabled: boolean) {
 	try {
-		await workflowsStore.updateWorkflowSetting(props.data.id, 'availableInMCP', enabled);
+		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
 		mcpToggleStatus.value = enabled;
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
@@ -615,47 +619,47 @@ const tags = computed(
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	word-break: break-word;
-	padding: var(--spacing-s) 0 0 var(--spacing-s);
+	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
 
 	span {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .cardHeadingArchived {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .cardDescription {
-	min-height: var(--spacing-xl);
+	min-height: var(--spacing--xl);
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
-	gap: var(--spacing-2xs);
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	gap: var(--spacing--2xs);
 }
 
 .cardTags {
 	display: inline-block;
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing--4xs);
 }
 
 .cardActions {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 
 .cardBadge {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 }
 
 .cardBadge.with-breadcrumbs {
@@ -663,14 +667,14 @@ const tags = computed(
 		padding-right: 0;
 	}
 	:global(.n8n-breadcrumbs) {
-		padding-left: var(--spacing-5xs);
+		padding-left: var(--spacing--5xs);
 	}
 }
 
 .cardArchived {
-	background-color: var(--color-background-light);
-	border-color: var(--color-foreground-light);
-	color: var(--color-text-base);
+	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground--tint-1);
+	color: var(--color--text);
 }
 
 .description-cell--mcp {
@@ -678,13 +682,13 @@ const tags = computed(
 	align-items: center;
 
 	&:hover {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 }
 
 @include mixins.breakpoint('sm-and-down') {
 	.cardLink {
-		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
 
 		flex-direction: column;
@@ -692,7 +696,7 @@ const tags = computed(
 
 	.cardActions {
 		width: 100%;
-		padding: 0 var(--spacing-s) var(--spacing-s);
+		padding: 0 var(--spacing--sm) var(--spacing--sm);
 		justify-content: end;
 	}
 

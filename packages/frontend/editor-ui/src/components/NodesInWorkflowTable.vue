@@ -4,10 +4,10 @@ import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import type { RouteLocationRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { WorkflowResource } from '@/Interface';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';
-import { ResourceType } from '@/utils/projects.utils';
-import { useProjectsStore } from '@/stores/projects.store';
+import { ResourceType } from '@/features/projects/projects.utils';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 import { N8nDataTableServer, N8nText } from '@n8n/design-system';
 type WorkflowData = WorkflowResource[];
@@ -76,7 +76,7 @@ const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 		>
 			<template #[`item.name`]="{ item }">
 				<RouterLink :to="getWorkflowLink(item.id)" target="_blank">
-					<N8nText class="ellipsis" style="color: var(--color-text-base)">{{ item.name }}</N8nText>
+					<N8nText class="ellipsis" style="color: var(--color--text)">{{ item.name }}</N8nText>
 				</RouterLink>
 			</template>
 			<template #[`item.homeProject.name`]="{ item }">
@@ -109,17 +109,17 @@ const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 
 .status {
 	border-style: solid;
-	border-width: var(--border-width-base);
-	padding: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
+	border-width: var(--border-width);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
 }
 
 .active {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .inactive {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .ellipsis {

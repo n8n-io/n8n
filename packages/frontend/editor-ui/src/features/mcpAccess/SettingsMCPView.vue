@@ -13,7 +13,8 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
-import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
+import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';
 
 import { ElSwitch } from 'element-plus';
 import {
@@ -38,6 +39,7 @@ const rootStore = useRootStore();
 
 const workflowsLoading = ref(false);
 const mcpStatusLoading = ref(false);
+const mcpKeyLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
@@ -96,6 +98,8 @@ const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
 	},
 ]);
 
+const apiKey = computed(() => mcpStore.currentUserMCPKey);
+
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
@@ -126,7 +130,7 @@ const fetchAvailableWorkflows = async () => {
 		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
 		availableWorkflows.value = workflows;
 	} catch (error) {
-		toast.showError(error, 'Error fetching workflows');
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 	} finally {
 		workflowsLoading.value = false;
 	}
@@ -139,6 +143,7 @@ const onUpdateMCPEnabled = async (value: string | number | boolean) => {
 		const updated = await mcpStore.setMcpAccessEnabled(boolValue);
 		if (updated) {
 			await fetchAvailableWorkflows();
+			await fetchApiKey();
 		} else {
 			workflowsLoading.value = false;
 		}
@@ -165,9 +170,39 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 	}
 };
 
+const fetchApiKey = async () => {
+	try {
+		mcpKeyLoading.value = true;
+		await mcpStore.getOrCreateApiKey();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.apiKey'));
+	} finally {
+		setTimeout(() => {
+			mcpKeyLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
+const rotateKey = async () => {
+	try {
+		mcpKeyLoading.value = true;
+		await mcpStore.generateNewApiKey();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
+	} finally {
+		setTimeout(() => {
+			mcpKeyLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
-	if (mcpStore.mcpAccessEnabled) await fetchAvailableWorkflows();
+	if (!mcpStore.mcpAccessEnabled) {
+		return;
+	}
+	await fetchAvailableWorkflows();
+	await fetchApiKey();
 });
 </script>
 <template>
@@ -208,7 +243,13 @@ onMounted(async () => {
 				<N8nHeading size="medium" :bold="true">
 					{{ i18n.baseText('settings.mcp.connection.info.heading') }}
 				</N8nHeading>
-				<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
+				<MCPConnectionInstructions
+					v-if="apiKey"
+					:loading-api-key="mcpKeyLoading"
+					:base-url="rootStore.urlBaseEditor"
+					:api-key="apiKey"
+					@rotate-key="rotateKey"
+				/>
 			</div>
 			<div :class="$style['workflow-list-container']" data-test-id="mcp-workflow-list">
 				<div v-if="workflowsLoading">
@@ -351,7 +392,7 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 
 	:global(.table-pagination) {
 		display: none;
@@ -359,18 +400,18 @@ onMounted(async () => {
 }
 
 .headingContainer {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 }
 
 .mainToggleContainer {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	justify-content: space-between;
 	flex-shrink: 0;
 
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
+	border-radius: var(--radius);
+	border: var(--border);
 }
 
 .mainToggleInfo {
@@ -400,12 +441,12 @@ onMounted(async () => {
 }
 
 .table-link {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	:global(.n8n-text) {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 
 		.link-icon {
 			display: none;
@@ -423,7 +464,7 @@ onMounted(async () => {
 			gap: 0;
 		}
 		.link-icon {
-			margin-left: var(--spacing-3xs);
+			margin-left: var(--spacing--3xs);
 		}
 	}
 }
@@ -431,6 +472,6 @@ onMounted(async () => {
 .folder-cell {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 </style>

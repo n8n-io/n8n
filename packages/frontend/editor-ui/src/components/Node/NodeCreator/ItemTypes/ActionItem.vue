@@ -122,19 +122,19 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 
 <style lang="scss" module>
 .action {
-	--node-creator-name-size: var(--font-size-2xs);
+	--node-creator-name-size: var(--font-size--2xs);
 	--node-creator-name-weight: var(--font-weight-normal);
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
 	--node-icon-size: 20px;
-	--node-icon-margin-right: var(--spacing-xs);
+	--node-icon-margin-right: var(--spacing--xs);
 
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
-	padding: var(--spacing-2xs) 0;
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--sm);
+	padding: var(--spacing--2xs) 0;
 }
 .nodeIcon {
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
 }
 
 .draggable {
@@ -143,9 +143,9 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 	position: fixed;
 	z-index: 1;
 	opacity: 0.66;
-	border: 2px solid var(--color-foreground-xdark);
-	border-radius: var(--border-radius-large);
-	background-color: var(--color-background-xlight);
+	border: 2px solid var(--color--foreground--shade-2);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 	display: flex;
 	justify-content: center;
 	align-items: center;

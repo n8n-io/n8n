@@ -13,10 +13,10 @@ beforeEach(() => {
 
 describe('variablesCompletions', () => {
 	test('should return completions for $vars prefix', () => {
-		environmentsStore.variables = [
+		vi.spyOn(environmentsStore, 'scopedVariables', 'get').mockReturnValue([
 			{ key: 'VAR1', value: 'Value1', id: '1' },
 			{ key: 'VAR2', value: 'Value2', id: '2' },
-		];
+		]);
 
 		const state = EditorState.create({ doc: '$vars.', selection: { anchor: 6 } });
 		const context = new CompletionContext(state, 6, true);
@@ -39,7 +39,13 @@ describe('variablesCompletions', () => {
 	});
 
 	test('should escape special characters in matcher', () => {
-		environmentsStore.variables = [{ key: 'VAR1', value: 'Value1', id: '1' }];
+		vi.spyOn(environmentsStore, 'scopedVariables', 'get').mockReturnValue([
+			{
+				key: 'VAR1',
+				value: 'Value1',
+				id: '1',
+			},
+		]);
 
 		const state = EditorState.create({ doc: '$vars.', selection: { anchor: 6 } });
 		const context = new CompletionContext(state, 6, true);
@@ -49,7 +55,13 @@ describe('variablesCompletions', () => {
 	});
 
 	test('should return completions for custom matcher', () => {
-		environmentsStore.variables = [{ key: 'VAR1', value: 'Value1', id: '1' }];
+		vi.spyOn(environmentsStore, 'scopedVariables', 'get').mockReturnValue([
+			{
+				key: 'VAR1',
+				value: 'Value1',
+				id: '1',
+			},
+		]);
 
 		const state = EditorState.create({ doc: '$custom.', selection: { anchor: 8 } });
 		const context = new CompletionContext(state, 8, true);

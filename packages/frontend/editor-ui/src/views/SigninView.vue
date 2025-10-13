@@ -11,7 +11,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore } from '@/features/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';

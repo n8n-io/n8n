@@ -261,7 +261,12 @@ export class VariablesService {
 		await this.variablesRepository.update(id, {
 			key: variable.key,
 			value: variable.value,
-			project: variable.projectId ? { id: variable.projectId } : null,
+			// Only update the project if it was explicitly set in the update
+			// If project id is undefined, keep the existing
+			// If project id is null, move to global (no project)
+			...(typeof variable.projectId !== 'undefined'
+				? { project: variable.projectId ? { id: variable.projectId } : null }
+				: {}),
 		});
 		await this.updateCache();
 		return (await this.getCached(id))!;
