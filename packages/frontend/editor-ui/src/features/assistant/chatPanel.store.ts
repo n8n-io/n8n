@@ -56,10 +56,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 
-		// Open the panel immediately
 		chatPanelStateStore.isOpen = true;
 
-		// Handle mode-specific initialization in the background
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
 			builderStore.chatMessages = [];
