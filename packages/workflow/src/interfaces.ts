@@ -2472,6 +2472,7 @@ export interface ITaskMetadata {
 		actions: SubNodeExecutionDataAction[];
 		metadata: object;
 	};
+	preserveSourceOverwrite?: boolean;
 }
 
 /** The data that gets returned when a node execution starts */

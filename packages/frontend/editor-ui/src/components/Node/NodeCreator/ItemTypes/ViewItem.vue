@@ -19,13 +19,7 @@ defineProps<Props>();
 		:show-action-arrow="true"
 	>
 		<template #icon>
-			<N8nNodeIcon
-				type="icon"
-				:name="view.icon"
-				:circle="false"
-				:show-tooltip="false"
-				:use-updated-icons="true"
-			/>
+			<N8nNodeIcon type="icon" :name="view.icon" :circle="false" :show-tooltip="false" />
 		</template>
 	</N8nNodeCreatorNode>
 </template>
