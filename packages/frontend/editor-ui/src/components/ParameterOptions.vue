@@ -221,7 +221,7 @@ $container-height: 22px;
 }
 
 .loader {
-	padding-bottom: var(--spacing-4xs);
+	padding-bottom: var(--spacing--4xs);
 
 	& > span {
 		line-height: 1em;

@@ -144,8 +144,8 @@ const commonClasses = computed(() => [
 .status {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-5xs);
-	font-weight: var(--font-weight-bold);
+	gap: var(--spacing--5xs);
+	font-weight: var(--font-weight--bold);
 }
 
 .runData {
@@ -180,7 +180,7 @@ const commonClasses = computed(() => [
 	&.spinnerScrim {
 		z-index: 10;
 		background-color: rgba(255, 255, 255, 0.82);
-		border-radius: var(--border-radius-large);
+		border-radius: var(--radius--lg);
 	}
 }
 
@@ -190,7 +190,7 @@ const commonClasses = computed(() => [
 }
 
 .count {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 
 .warning {

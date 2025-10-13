@@ -175,7 +175,7 @@ function onTidyUp() {
 <style lang="scss">
 .vue-flow__controls {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 	box-shadow: none;
 }
 </style>

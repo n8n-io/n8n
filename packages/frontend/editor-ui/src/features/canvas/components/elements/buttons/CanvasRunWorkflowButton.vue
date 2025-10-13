@@ -158,9 +158,9 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .button {
 	.split & {
-		height: var(--spacing-2xl);
+		height: var(--spacing--2xl);
 
-		padding-inline-start: var(--spacing-xs);
+		padding-inline-start: var(--spacing--xs);
 		padding-block: 0;
 		border-top-right-radius: 0;
 		border-bottom-right-radius: 0;
@@ -190,7 +190,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 .menuItem {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .menuItem.disabled .menuIcon {
@@ -201,10 +201,10 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start !important;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 }
 
 .subText {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 </style>

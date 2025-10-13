@@ -10,7 +10,8 @@ export class Column {
 		| 'timestamptz'
 		| 'timestamp'
 		| 'uuid'
-		| 'double';
+		| 'double'
+		| 'bigint';
 
 	private isGenerated = false;
 
@@ -37,6 +38,11 @@ export class Column {
 
 	get int() {
 		this.type = 'int';
+		return this;
+	}
+
+	get bigint() {
+		this.type = 'bigint';
 		return this;
 	}
 
@@ -176,6 +182,8 @@ export class Column {
 			} else if (isSqlite) {
 				options.type = 'real';
 			}
+		} else if (type === 'bigint') {
+			options.type = 'bigint';
 		}
 
 		if (

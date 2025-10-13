@@ -116,7 +116,7 @@ function onEdit(id: string) {
 		<div :class="$style.header">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
-				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color--text--tint-1)' }">
+				<span :style="{ fontSize: 'var(--font-size--sm)', color: 'var(--color--text--tint-1)' }">
 					({{ i18n.baseText('generic.beta') }})
 				</span>
 			</N8nHeading>
@@ -222,7 +222,7 @@ function onEdit(id: string) {
 	display: flex;
 	align-items: center;
 	white-space: nowrap;
-	margin-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing--xl);
 
 	*:first-child {
 		flex-grow: 1;
@@ -234,31 +234,31 @@ function onEdit(id: string) {
 }
 
 .destinationItem {
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .delete {
 	position: absolute;
 	display: inline-block;
-	top: var(--spacing-s);
-	right: var(--spacing-s);
+	top: var(--spacing--sm);
+	right: var(--spacing--sm);
 }
 
 .topHint {
 	margin-top: none;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 	color: var(--color--text--tint-1);
 
 	span {
-		font-size: var(--font-size-s);
-		line-height: var(--font-line-height-loose);
-		font-weight: var(--font-weight-regular);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+		font-weight: var(--font-weight--regular);
 	}
 }
 
 .BottomHint {
-	margin-bottom: var(--spacing-s);
-	margin-top: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
+	margin-top: var(--spacing--sm);
 }
 
 .apiKeysContainer {

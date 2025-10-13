@@ -191,7 +191,7 @@ function onFocusNode() {
 
 <style lang="scss" module>
 .canvasNodeToolbar {
-	padding-bottom: var(--spacing-xs);
+	padding-bottom: var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
@@ -200,9 +200,9 @@ function onFocusNode() {
 	&.isExperimentalNdvActive {
 		justify-content: space-between;
 		align-items: center;
-		padding-bottom: var(--spacing-3xs);
+		padding-bottom: var(--spacing--3xs);
 		zoom: var(--canvas-zoom-compensation-factor, 1);
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -211,7 +211,7 @@ function onFocusNode() {
 	align-items: center;
 	justify-content: center;
 	background-color: var(--color-canvas-background);
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 
 	:global(.button) {
 		--button-font-color: var(--color--text--tint-1);
@@ -223,6 +223,6 @@ function onFocusNode() {
 }
 
 .statusIcons {
-	margin-inline-end: var(--spacing-3xs);
+	margin-inline-end: var(--spacing--3xs);
 }
 </style>

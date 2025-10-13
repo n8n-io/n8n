@@ -10,7 +10,7 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockInstance } from 'vitest';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { ResourceMapperTypeOptions } from 'n8n-workflow';
 import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 

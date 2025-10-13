@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
@@ -60,6 +60,11 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+import {
+	injectWorkflowState,
+	type WorkflowStateBusEvents,
+	workflowStateEventBus,
+} from '@/composables/useWorkflowState';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -83,6 +88,7 @@ const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -160,21 +166,23 @@ const canManageLogStreaming = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } }),
 );
 
+function onUpdateNodeProperties(event: WorkflowStateBusEvents['updateNodeProperties']) {
+	const updateInformation = event[1];
+	if (updateInformation.name === destination.id) {
+		if ('credentials' in updateInformation.properties) {
+			unchanged.value = false;
+			nodeParameters.value.credentials = updateInformation.properties
+				.credentials as NodeParameterValueType;
+		}
+	}
+}
+
 onMounted(() => {
 	setupNode(Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), destination));
-	workflowsStore.$onAction(({ name, args }) => {
-		if (name === 'updateNodeProperties') {
-			for (const arg of args) {
-				if (arg.name === destination.id) {
-					if ('credentials' in arg.properties) {
-						unchanged.value = false;
-						nodeParameters.value.credentials = arg.properties.credentials as NodeParameterValueType;
-					}
-				}
-			}
-		}
-	});
+	workflowStateEventBus.on('updateNodeProperties', onUpdateNodeProperties);
 });
+
+onUnmounted(() => workflowStateEventBus.off('updateNodeProperties', onUpdateNodeProperties));
 
 function onInput() {
 	unchanged.value = false;
@@ -259,7 +267,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	nodeParameters.value = deepCopy(nodeParametersCopy);
-	workflowsStore.updateNodeProperties({
+	workflowState.updateNodeProperties({
 		name: node.value.name,
 		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
@@ -580,7 +588,7 @@ const { width } = useElementSize(defNameRef);
 	padding-top: 1em;
 	max-width: 170px;
 	min-width: 170px;
-	margin-right: var(--spacing-l);
+	margin-right: var(--spacing--lg);
 	flex-grow: 1;
 
 	ul {
@@ -590,7 +598,7 @@ const { width } = useElementSize(defNameRef);
 
 .cardTitle {
 	font-size: 14px;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .header {
@@ -613,19 +621,19 @@ const { width } = useElementSize(defNameRef);
 	display: flex;
 	width: 100%;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
-	margin-bottom: var(--spacing-l);
+	gap: var(--spacing--4xs);
+	margin-bottom: var(--spacing--lg);
 }
 
 .destinationActions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-right: var(--spacing-xl);
-	margin-bottom: var(--spacing-l);
+	margin-right: var(--spacing--xl);
+	margin-bottom: var(--spacing--lg);
 
 	> * {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>

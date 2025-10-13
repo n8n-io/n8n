@@ -16,7 +16,7 @@
 }
 .text-light {
 	color: var(--color--text--tint-2);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 
 // Dialog
@@ -29,7 +29,7 @@
 }
 
 .el-dialog {
-	border: var(--border-base);
+	border: var(--border);
 	box-shadow: 0 6px 16px rgb(68 28 23 / 6%);
 	border-radius: 8px;
 
@@ -53,7 +53,7 @@
 			width: 50px;
 			.el-dialog__close {
 				color: var(--color--foreground--tint-2);
-				font-weight: var(--font-weight-regular);
+				font-weight: var(--font-weight--regular);
 			}
 			.el-dialog__close:hover {
 				transform: scale(1.2);
@@ -82,8 +82,8 @@
 		color: var(--color--text--shade-1);
 	}
 	.el-message-box-icon {
-		width: var(--spacing-l);
-		height: var(--spacing-l);
+		width: var(--spacing--lg);
+		height: var(--spacing--lg);
 		&--warning {
 			color: var(--color--warning);
 		}
@@ -122,12 +122,12 @@
 	outline: none;
 }
 .el-tabs__item.is-active {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .el-tabs__content {
 	border: 1px solid var(--color--foreground);
-	border-radius: 0 var(--border-radius-base) var(--border-radius-base);
+	border-radius: 0 var(--radius) var(--radius);
 }
 .el-tabs__header {
 	border-bottom: 0 !important;
@@ -137,11 +137,11 @@
 	overflow: hidden;
 }
 .el-tabs__item {
-	padding: var(--spacing-5xs) var(--spacing-2xs) !important;
+	padding: var(--spacing--5xs) var(--spacing--2xs) !important;
 	height: auto;
-	line-height: var(--font-line-height-xloose);
-	font-weight: var(--font-weight-regular);
-	font-size: var(--font-size-2xs);
+	line-height: var(--line-height--xl);
+	font-weight: var(--font-weight--regular);
+	font-size: var(--font-size--2xs);
 
 	&:not([aria-selected='true']) {
 		background-color: var(--color--background);
@@ -178,32 +178,32 @@
 	margin-bottom: var(--toast-bottom-offset, 0);
 
 	&.whats-new-notification {
-		bottom: var(--spacing-xs) !important;
-		left: var(--spacing-s) !important;
+		bottom: var(--spacing--xs) !important;
+		left: var(--spacing--sm) !important;
 		width: 300px;
-		padding: var(--spacing-xs);
-		border: var(--border-base);
+		padding: var(--spacing--xs);
+		border: var(--border);
 
 		.el-notification__group {
 			margin-left: 0;
-			margin-right: var(--spacing-l);
+			margin-right: var(--spacing--lg);
 		}
 
 		.el-notification__title {
 			color: var(--color-callout-info-font);
 			font-family: var(--font-family);
-			font-size: var(--font-size-s);
+			font-size: var(--font-size--sm);
 			font-style: normal;
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 			line-height: 1.4;
 		}
 
 		.el-notification__content {
 			color: var(--color-callout-info-font);
 			font-family: var(--font-family);
-			font-size: var(--font-size-s);
+			font-size: var(--font-size--sm);
 			font-style: normal;
-			font-weight: var(--font-weight-regular);
+			font-weight: var(--font-weight--regular);
 			line-height: 1.4;
 			margin-top: 0;
 		}
@@ -211,7 +211,7 @@
 		.el-notification__closeBtn {
 			height: 100%;
 			top: 0;
-			right: var(--spacing-xs);
+			right: var(--spacing--xs);
 		}
 	}
 }
@@ -226,7 +226,7 @@
 .tags-container {
 	.el-select-tags-wrapper .el-tag {
 		font-size: 12px;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 		display: flex;
 		align-items: center;
 
@@ -237,7 +237,7 @@
 		.el-tag__close {
 			max-height: 15px;
 			max-width: 15px;
-			margin-left: var(--spacing-4xs);
+			margin-left: var(--spacing--4xs);
 
 			&:hover {
 				background-color: var(--color--background--light-2) !important;
@@ -274,7 +274,7 @@
 		&:hover,
 		&:focus {
 			padding-left: 35px;
-			border-radius: var(--border-radius-base);
+			border-radius: var(--radius);
 			color: var(--color--text--shade-1);
 			background-color: var(--color--background);
 			border-color: var(--color--foreground);

@@ -61,8 +61,8 @@ const onSSOLogin = async () => {
 	span {
 		position: relative;
 		display: inline-block;
-		margin: var(--spacing-2xs) auto;
-		padding: var(--spacing-l);
+		margin: var(--spacing--2xs) auto;
+		padding: var(--spacing--lg);
 		background: var(--color--background--light-3);
 	}
 }

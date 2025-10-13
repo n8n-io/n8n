@@ -48,11 +48,11 @@ const props = withDefaults(defineProps<Props>(), {
 .container {
 	display: flex;
 	align-items: stretch;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	background: var(--color--background--light-3);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
-	font-size: var(--font-size-s);
+	border: var(--border);
+	border-radius: var(--radius);
+	font-size: var(--font-size--sm);
 	overflow: hidden;
 
 	button {
@@ -65,12 +65,12 @@ const props = withDefaults(defineProps<Props>(), {
 	}
 
 	button + button {
-		border-left: var(--border-base);
+		border-left: var(--border);
 	}
 
 	@media screen and (max-width: 820px) {
 		word-wrap: break-word;
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing--2xs);
 	}
 }
 
@@ -78,13 +78,13 @@ code {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	white-space: pre;
-	padding: var(--spacing-2xs) var(--spacing-3xs);
+	padding: var(--spacing--2xs) var(--spacing--3xs);
 }
 
 .copy-button-wrapper {
 	display: flex;
 	align-items: center;
-	border-left: var(--border-base);
+	border-left: var(--border);
 }
 
 .copy-button {
