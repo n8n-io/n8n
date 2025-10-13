@@ -6,14 +6,14 @@ import {
 	fetchChatModelsApi,
 	sendText,
 	fetchConversationsApi as fetchSessionsApi,
-	fetchConversationMessagesApi as fetchMessagesApi,
+	fetchSingleConversationApi as fetchMessagesApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	ChatHubConversationModel,
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
-	ChatHubConversation,
+	ChatHubSesssionDto,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -23,7 +23,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const isResponding = ref(false);
 	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
-	const sessions = ref<ChatHubConversation[]>([]);
+	const sessions = ref<ChatHubSesssionDto[]>([]);
 
 	const getLastMessage = (sessionId: string) => {
 		const msgs = messagesBySession.value[sessionId];
@@ -45,16 +45,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchMessages(sessionId: string) {
-		const messages = await fetchMessagesApi(rootStore.restApiContext, sessionId);
+		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
+		const { messages, activeThread } = conversation;
 
 		messagesBySession.value = {
 			...messagesBySession.value,
-			[sessionId]: messages.map((msg) => ({
-				id: msg.id,
-				role: msg.role,
+			[sessionId]: activeThread.map((id) => ({
+				id: messages[id].id,
+				role: messages[id].type === 'ai' ? 'assistant' : 'user',
 				type: 'message' as const,
-				text: msg.content,
-				key: msg.id,
+				text: messages[id].content,
+				key: messages[id].id,
 			})),
 		};
 	}

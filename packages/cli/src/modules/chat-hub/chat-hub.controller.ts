@@ -84,7 +84,7 @@ export class ChatHubController {
 		return await this.chatService.getConversations(req.user.id);
 	}
 
-	@Get('/conversations/:id/messages')
+	@Get('/conversations/:id')
 	@GlobalScope('chatHub:message')
 	async getConversationMessages(
 		req: AuthenticatedRequest<{ id: string }>,
