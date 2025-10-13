@@ -171,6 +171,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const messageId = uuidv4();
+		const replyId = uuidv4();
 		const previousMessageId = getLastMessage(sessionId)?.id ?? null;
 
 		addUserMessage(sessionId, message, messageId);
@@ -181,11 +182,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model,
 				messageId,
 				sessionId,
+				replyId,
 				message,
 				credentials,
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, messageId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
 			onStreamDone,
 			onStreamError,
 		);

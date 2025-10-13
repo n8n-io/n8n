@@ -103,8 +103,8 @@ export class ChatHubMessage extends WithTimestampsAndStringId {
 	/**
 	 * Root message of a conversation turn (Human message + AI responses)
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	turnId: string | null;
+	@Column({ type: 'varchar', length: 36 })
+	turnId: string;
 
 	/**
 	 * Message that began the turn, probably from the human/user.

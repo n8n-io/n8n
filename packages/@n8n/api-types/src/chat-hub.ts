@@ -49,6 +49,7 @@ export type ChatModelsResponse = Record<
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
 	previousMessageId: z.string().uuid().nullable(),
@@ -104,25 +105,14 @@ export interface ChatHubMessageDto {
 	revisionIds: ChatMessageId[];
 }
 
-export interface ChatHubMessageTurnDto {
-	id: ChatMessageId;
-	rootMessageId: ChatMessageId;
-	messages: ChatMessageId[];
-	branches: Record<string, ChatMessageId[]>;
-}
-
 export type ChatHubConversationsResponse = ChatHubSesssionDto[];
 
 export interface ChatHubConversationResponse {
 	session: ChatHubSesssionDto;
 
-	graph?: {
+	conversation: {
 		messages: Record<string, ChatHubMessageDto>;
 		rootIds: string[];
-		turnRootIds: string[];
-	};
-
-	timeline?: {
-		turns: ChatHubMessageTurnDto[];
+		activeThread: string[];
 	};
 }

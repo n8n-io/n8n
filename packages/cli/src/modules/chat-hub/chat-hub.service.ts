@@ -6,7 +6,6 @@ import {
 	type ChatHubConversationResponse,
 	chatHubProviderSchema,
 	ChatHubMessageDto,
-	type ChatHubMessageTurnDto,
 	type ChatMessageId,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -34,18 +33,18 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ChatHubSession } from './chat-hub-session.entity';
-import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+
 import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
 
 @Service()
 export class ChatHubService {
@@ -580,12 +579,10 @@ export class ChatHubService {
 
 		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
 			this.buildMessagesGraph(messages);
-		const byTurn: Record<ChatMessageId, ChatMessageId[]> = this.groupMessagesByTurn(messagesGraph);
 
 		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
-		const turnRootIds = messages.filter((r) => r.turnId && r.turnId === r.id).map((r) => r.id);
 
-		const turns: ChatHubMessageTurnDto[] = this.buildTurns(byTurn, messagesGraph);
+		const activeThread = this.buildActiveThread(messages);
 
 		return {
 			session: {
@@ -600,19 +597,17 @@ export class ChatHubService {
 				createdAt: session.createdAt.toISOString(),
 				updatedAt: session.updatedAt.toISOString(),
 			},
-			graph: {
+			conversation: {
 				messages: messagesGraph,
 				rootIds,
-				turnRootIds,
-			},
-			timeline: {
-				turns,
+				activeThread,
 			},
 		};
 	}
 
 	private buildMessagesGraph(messages: ChatHubMessage[]) {
 		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
+
 		for (const message of messages) {
 			messagesGraph[message.id] = {
 				id: message.id,
@@ -620,19 +615,19 @@ export class ChatHubService {
 				type: message.type,
 				name: message.name,
 				content: message.content,
-				provider: message.provider ?? null,
-				model: message.model ?? null,
-				workflowId: message.workflowId ?? null,
-				executionId: message.executionId ?? null,
+				provider: message.provider,
+				model: message.model,
+				workflowId: message.workflowId,
+				executionId: message.executionId,
 				state: message.state,
 				createdAt: message.createdAt.toISOString(),
 				updatedAt: message.updatedAt.toISOString(),
 
-				previousMessageId: message.previousMessageId ?? null,
-				turnId: message.turnId ?? null,
-				retryOfMessageId: message.retryOfMessageId ?? null,
-				revisionOfMessageId: message.revisionOfMessageId ?? null,
-				runIndex: message.runIndex ?? 0,
+				previousMessageId: message.previousMessageId,
+				turnId: message.turnId,
+				retryOfMessageId: message.retryOfMessageId,
+				revisionOfMessageId: message.revisionOfMessageId,
+				runIndex: message.runIndex,
 
 				responseIds: [],
 				retryIds: [],
@@ -675,77 +670,22 @@ export class ChatHubService {
 		return messagesGraph;
 	}
 
-	private groupMessagesByTurn(messages: Record<ChatMessageId, ChatHubMessageDto>) {
-		const byTurn: Record<ChatMessageId, ChatMessageId[]> = {};
-		for (const id of Object.keys(messages)) {
-			const message = messages[id];
-			const t =
-				message.turnId ??
-				(message.previousMessageId
-					? (messages[message.previousMessageId].turnId ?? message.id)
-					: message.id);
+	private buildActiveThread(messages: ChatHubMessage[]) {
+		const nodes = new Map(messages.map((m) => [m.id, m]));
+		const activeMessages = messages.filter((m) => m.state === 'active');
 
-			byTurn[t] ??= [];
-			byTurn[t].push(id);
-		}
-		return byTurn;
-	}
+		const visited = new Set<string>();
+		const activeThread = [];
+		const latest = activeMessages[activeMessages.length - 1]; // Messages are sorted by createdAt
 
-	private buildTurns(
-		byTurn: Record<ChatMessageId, ChatMessageId[]>,
-		messages: Record<ChatMessageId, ChatHubMessageDto>,
-	) {
-		const turns: ChatHubMessageTurnDto[] = [];
-		for (const turnRootId of Object.keys(byTurn)) {
-			const root = messages[turnRootId];
+		let current = latest ? latest.id : null;
 
-			const messageIds: ChatMessageId[] = [];
-			const branches: Record<ChatMessageId, ChatMessageId[]> = {};
-
-			// Walk down the main reply chain, choosing the latest runIndex among retries at each step
-			let current: ChatHubMessageDto | undefined = root;
-			while (current) {
-				messageIds.push(current.id);
-
-				const retries = current.retryIds.filter((id) => messages[id].state === 'active');
-				if (retries.length > 0) {
-					const latestRun = Math.max(...retries.map((id) => messages[id].runIndex ?? 0));
-					const canonical = retries.find((id) => messages[id].runIndex === latestRun)!;
-
-					branches[current.id] = retries.filter((id) => id !== canonical);
-				}
-
-				// Pick the latest runIndex among responses
-				const [nextId]: ChatMessageId[] = current.responseIds
-					.filter((id) => messages[id].state === 'active')
-					.sort((a, b) => (messages[b].runIndex ?? 0) - (messages[a].runIndex ?? 0));
-
-				if (!nextId) break;
-
-				current = messages[nextId];
-			}
-
-			turns.push({
-				id: turnRootId,
-				rootMessageId: root.id,
-				messages: messageIds,
-				branches,
-			});
+		while (current && !visited.has(current)) {
+			activeThread.unshift(current);
+			visited.add(current);
+			current = nodes.get(current)?.previousMessageId ?? null;
 		}
 
-		const sortByTime = (first: ChatHubMessageTurnDto, second: ChatHubMessageTurnDto) => {
-			const a = messages[first.rootMessageId];
-			const b = messages[second.rootMessageId];
-
-			if (a.createdAt !== b.createdAt) {
-				return a.createdAt < b.createdAt ? -1 : 1;
-			}
-
-			return first.id < second.id ? -1 : 1;
-		};
-
-		turns.sort(sortByTime);
-
-		return turns;
+		return activeThread;
 	}
 }

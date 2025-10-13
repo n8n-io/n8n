@@ -43,17 +43,12 @@ export class ChatHubController {
 		res.header('Cache-Control', 'no-cache');
 		res.flushHeaders();
 
-		// TODO: Save human message to DB
-
-		const replyId = crypto.randomUUID();
-
 		this.logger.info(`Chat send request received: ${JSON.stringify(payload)}`);
 
 		try {
 			await this.chatService.respondMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
-				replyId,
 			});
 		} catch (executionError: unknown) {
 			assert(executionError instanceof Error);
@@ -70,7 +65,7 @@ export class ChatHubController {
 					JSON.stringify({
 						type: 'error',
 						content: executionError.message,
-						id: replyId,
+						id: payload.replyId,
 					}) + '\n',
 				);
 				res.flush();
