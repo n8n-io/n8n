@@ -93,11 +93,12 @@ import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/utils/nodes/nodeTransforms';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -157,6 +158,7 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -645,7 +647,7 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
-	workflowsStore.updateNodeProperties(updateInformation);
+	workflowState.updateNodeProperties(updateInformation);
 
 	const updateNode = workflowsStore.getNodeByName(updateInformation.name);
 

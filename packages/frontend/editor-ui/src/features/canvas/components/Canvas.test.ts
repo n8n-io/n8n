@@ -4,12 +4,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { CanvasConnection, CanvasNode } from '../canvas.types';
-import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/data';
+import { createCanvasConnection, createCanvasNodeElement } from '@/features/canvas/__tests__/utils';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
 import { SIMULATE_NODE_TYPE } from '@/constants';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object

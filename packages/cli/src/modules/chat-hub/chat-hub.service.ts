@@ -2,6 +2,8 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubProvider,
 	type ChatModelsResponse,
+	type ChatHubConversationsResponse,
+	type ChatHubMessagesResponse,
 	chatHubProviderSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -29,16 +31,19 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatPayloadWithCredentials } from './chat-hub.types';
+import type { ChatPayloadWithCredentials, ChatMessage } from './chat-hub.types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ActiveExecutions } from '@/active-executions';
 
 @Service()
 export class ChatHubService {
+	private sesssions: Map<string, ChatMessage[]>;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
@@ -48,7 +53,10 @@ export class ChatHubService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-	) {}
+		private readonly activeExecutions: ActiveExecutions,
+	) {
+		this.sesssions = new Map<string, ChatMessage[]>();
+	}
 
 	async getModels(
 		user: User,
@@ -286,6 +294,24 @@ export class ChatHubService {
 	}
 
 	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
+		let session = this.sesssions.get(payload.sessionId);
+		if (!session) {
+			session = [];
+			this.sesssions.set(payload.sessionId, session);
+		}
+
+		const chatHistory = session.map((msg) => ({
+			type: msg.type,
+			message: msg.message,
+		}));
+
+		session.push({
+			id: payload.messageId,
+			message: payload.message,
+			type: 'user',
+			createdAt: new Date(),
+		});
+
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
 			{
@@ -303,25 +329,62 @@ export class ChatHubService {
 			},
 			{
 				parameters: {
+					promptType: 'define',
+					text: "={{ $('When chat message received').item.json.chatInput }}",
 					options: {
 						enableStreaming: true,
 					},
 				},
 				type: AGENT_LANGCHAIN_NODE_TYPE,
 				typeVersion: 3,
-				position: [200, 0],
+				position: [600, 0],
 				id: uuidv4(),
 				name: 'AI Agent',
 			},
 			this.createModelNode(payload),
+			{
+				parameters: {
+					sessionIdType: 'customKey',
+					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				typeVersion: 1.3,
+				position: [500, 200],
+				id: uuidv4(),
+				name: 'Memory',
+			},
+			{
+				parameters: {
+					mode: 'insert',
+					messages: {
+						messageValues: chatHistory,
+					},
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryManager',
+				typeVersion: 1.1,
+				position: [200, 0],
+				id: uuidv4(),
+				name: 'Restore Chat Memory',
+			},
 		];
 
 		const connections: IConnections = {
 			'When chat message received': {
+				main: [[{ node: 'Restore Chat Memory', type: 'main', index: 0 }]],
+			},
+			'Restore Chat Memory': {
 				main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
 			},
 			'Chat Model': {
 				ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+			},
+			Memory: {
+				ai_memory: [
+					[
+						{ node: 'AI Agent', type: 'ai_memory', index: 0 },
+						{ node: 'Restore Chat Memory', type: 'ai_memory', index: 0 },
+					],
+				],
 			},
 		};
 
@@ -334,7 +397,7 @@ export class ChatHubService {
 		};
 		/* eslint-enable @typescript-eslint/naming-convention */
 
-		const startNodes: StartNodeData[] = [{ name: 'AI Agent', sourceData: null }];
+		const startNodes: StartNodeData[] = [{ name: 'Restore Chat Memory', sourceData: null }];
 		const triggerToStartFrom: {
 			name: string;
 			data?: ITaskData;
@@ -350,7 +413,7 @@ export class ChatHubService {
 						[
 							{
 								json: {
-									sessionId: payload.sessionId,
+									sessionId: `${payload.sessionId}-${payload.messageId}`,
 									action: 'sendMessage',
 									chatInput: payload.message,
 								},
@@ -375,40 +438,37 @@ export class ChatHubService {
 			true,
 			res,
 		);
-
 		if (!executionId) {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		// TODO: The execution finishes after a while, how do we store the full AI response on the database?
-		// Is there a better way to listen for the execution to finish?
-		const onClose = async () => {
-			this.logger.debug(`Connection closed by client, execution ID: ${executionId}`);
+		const result = await this.activeExecutions.getPostExecutePromise(executionId);
+		if (!result) {
+			throw new OperationalError('There was a problem executing the chat workflow.');
+		}
 
-			// TODO: we could maybe stop executions here if user disconnected early?
-			// if (execution && ['running', 'waiting'].includes(execution.status)) {
-			// 	await this.executionService.stop(executionId, [workflow.id]);
-			// }
+		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+			workflow.id,
+		]);
+		if (!execution) {
+			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
+		}
 
-			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-				workflow.id,
-			]);
-
-			// Persist the assistant message to the database
-			if (execution?.data?.resultData) {
-				// resultData is only available if the execution finished
-				const message = this.getMessage(execution);
-				this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
-			}
-		};
-
-		res.on('close', onClose);
-		res.on('error', onClose);
+		const message = this.getMessage(execution);
+		if (message) {
+			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
+			session.push({
+				id: payload.replyId,
+				message,
+				type: 'ai',
+				createdAt: new Date(),
+			});
+		}
 	}
 
 	private createModelNode(payload: ChatPayloadWithCredentials): INode {
 		const common = {
-			position: [80, 200] as [number, number],
+			position: [600, 200] as [number, number],
 			id: uuidv4(),
 			name: 'Chat Model',
 			credentials: payload.credentials,
@@ -451,5 +511,175 @@ export class ChatHubService {
 					typeVersion: 1.2,
 				};
 		}
+	}
+
+	/**
+	 * Get all conversations for a user
+	 * TODO: Replace with actual database queries
+	 */
+	async getConversations(): Promise<ChatHubConversationsResponse> {
+		// Mock data for now with diverse dates to demonstrate grouping
+		const now = new Date();
+		const today = new Date(now);
+		const yesterday = new Date(now);
+		yesterday.setDate(yesterday.getDate() - 1);
+		const threeDaysAgo = new Date(now);
+		threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+		const twoWeeksAgo = new Date(now);
+		twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+		const twoMonthsAgo = new Date(now);
+		twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+		return [
+			{
+				id: '7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f',
+				title: 'Getting Started with n8n',
+				createdAt: today.toISOString(),
+				updatedAt: today.toISOString(),
+			},
+			{
+				id: '3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c',
+				title: 'Workflow Automation Ideas',
+				createdAt: yesterday.toISOString(),
+				updatedAt: yesterday.toISOString(),
+			},
+			{
+				id: '9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f',
+				title: 'API Integration Help',
+				createdAt: threeDaysAgo.toISOString(),
+				updatedAt: threeDaysAgo.toISOString(),
+			},
+			{
+				id: '5c8a1d3e-4b9f-4e2a-8d6c-7f3a9b2e4c8d',
+				title: 'Database Schema Design',
+				createdAt: twoWeeksAgo.toISOString(),
+				updatedAt: twoWeeksAgo.toISOString(),
+			},
+			{
+				id: '2f6d9a4c-8e1b-4d7a-9c3e-6a8f2b5d4e9c',
+				title: 'Docker Deployment Questions',
+				createdAt: twoMonthsAgo.toISOString(),
+				updatedAt: twoMonthsAgo.toISOString(),
+			},
+		];
+	}
+
+	/**
+	 * Get all messages for a specific conversation
+	 * TODO: Replace with actual database queries
+	 */
+	async getConversationMessages(conversationId: string): Promise<ChatHubMessagesResponse> {
+		// Mock data for now - in a real implementation, we'd query by conversationId
+		this.logger.debug(`Fetching messages for conversation ${conversationId}`);
+
+		// Return different mock data based on conversation ID
+		const mockConversations: Record<string, ChatHubMessagesResponse> = {
+			'7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f': [
+				{
+					id: '650e8400-e29b-41d4-a716-446655440001',
+					conversationId,
+					role: 'user',
+					content: 'How do I create my first workflow in n8n?',
+					createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440002',
+					conversationId,
+					role: 'assistant',
+					content:
+						"To create your first workflow in n8n:\n\n1. Click the '+' button in the top left\n2. Select 'Create New Workflow'\n3. Add nodes by clicking the '+' on the canvas\n4. Configure each node\n5. Connect nodes by dragging from one to another\n6. Test and activate your workflow\n\nWould you like help with a specific type of workflow?",
+					createdAt: new Date('2025-01-08T10:00:30Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440003',
+					conversationId,
+					role: 'user',
+					content:
+						'Yes, I want to automate sending emails when a new row is added to a Google Sheet.',
+					createdAt: new Date('2025-01-08T10:05:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440004',
+					conversationId,
+					role: 'assistant',
+					content:
+						"Perfect! Here's how to set that up:\n\n1. Add a **Google Sheets Trigger** node\n   - Select 'On Row Added'\n   - Connect your Google account\n   - Choose your spreadsheet\n\n2. Add a **Gmail** node\n   - Connect your Gmail account\n   - Set the recipient email\n   - Use expressions to include data from the sheet\n\n3. Activate the workflow\n\nWould you like more details on any of these steps?",
+					createdAt: new Date('2025-01-08T10:05:45Z').toISOString(),
+				},
+			],
+			'3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c': [
+				{
+					id: '650e8400-e29b-41d4-a716-446655440011',
+					conversationId,
+					role: 'user',
+					content: 'What are some creative workflow automation ideas?',
+					createdAt: new Date('2025-01-07T14:30:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440012',
+					conversationId,
+					role: 'assistant',
+					content:
+						'Here are some creative workflow automation ideas:\n\n**Social Media Automation:**\n- Auto-post blog content to multiple platforms\n- Monitor mentions and send notifications\n- Generate reports on engagement metrics\n\n**Business Operations:**\n- Sync data between CRM and accounting software\n- Auto-generate invoices from project completion\n- Send weekly team reports\n\n**Personal Productivity:**\n- Save email attachments to cloud storage\n- Create calendar events from emails\n- Track expenses from receipts\n\nWhich area interests you most?',
+					createdAt: new Date('2025-01-07T14:32:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440013',
+					conversationId,
+					role: 'user',
+					content: 'The social media automation sounds great! How complex is it to set up?',
+					createdAt: new Date('2025-01-07T14:45:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440014',
+					conversationId,
+					role: 'assistant',
+					content:
+						"It's actually quite straightforward! For auto-posting to multiple platforms:\n\n**Difficulty: Beginner-friendly**\n\n1. Use an **RSS** trigger to monitor your blog\n2. Add **Twitter**, **LinkedIn**, and **Facebook** nodes\n3. Format your message with expressions\n4. Add conditions to customize per platform\n\nMost of the work is just connecting your accounts. The actual workflow can be set up in under 30 minutes!\n\nWant me to walk you through the specific nodes you'll need?",
+					createdAt: new Date('2025-01-07T14:47:00Z').toISOString(),
+				},
+			],
+			'9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f': [
+				{
+					id: '650e8400-e29b-41d4-a716-446655440021',
+					conversationId,
+					role: 'user',
+					content: "I'm having trouble integrating with the Stripe API. Any tips?",
+					createdAt: new Date('2025-01-06T09:00:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440022',
+					conversationId,
+					role: 'assistant',
+					content:
+						"I'd be happy to help with Stripe integration! What specific issue are you encountering?\n\n**Common Stripe integration patterns in n8n:**\n\n1. **Webhook-based** (Recommended)\n   - Stripe sends events to n8n\n   - Great for payment notifications\n   - Real-time updates\n\n2. **Polling-based**\n   - Check for new data periodically\n   - Good for reports and syncing\n\n3. **Manual trigger**\n   - Run on-demand operations\n   - Create customers, charges, etc.\n\nWhat's your use case?",
+					createdAt: new Date('2025-01-06T09:02:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440023',
+					conversationId,
+					role: 'user',
+					content:
+						'I want to receive notifications when a payment succeeds and create an invoice in my accounting software.',
+					createdAt: new Date('2025-01-06T09:15:00Z').toISOString(),
+				},
+				{
+					id: '650e8400-e29b-41d4-a716-446655440024',
+					conversationId,
+					role: 'assistant',
+					content:
+						"Perfect use case for webhooks! Here's the setup:\n\n**Step 1: n8n Webhook**\n- Add a Webhook node\n- Set method to POST\n- Copy the webhook URL\n\n**Step 2: Stripe Dashboard**\n- Go to Developers → Webhooks\n- Add endpoint with your n8n URL\n- Select `payment_intent.succeeded` event\n\n**Step 3: Process Payment Data**\n- Add a **Function** node to extract payment details\n- Parse customer, amount, currency\n\n**Step 4: Create Invoice**\n- Add your accounting software node (QuickBooks, Xero, etc.)\n- Map payment data to invoice fields\n\n**Step 5: Send Notification**\n- Add Email/Slack node for confirmation\n\nWant the specific code for the Function node?",
+					createdAt: new Date('2025-01-06T09:18:00Z').toISOString(),
+				},
+			],
+		};
+
+		const messages = mockConversations[conversationId];
+
+		if (messages) {
+			return messages;
+		}
+
+		throw new NotFoundError(`Conversation not found. ID: ${conversationId}`);
 	}
 }

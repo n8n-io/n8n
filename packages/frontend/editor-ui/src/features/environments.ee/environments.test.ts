@@ -3,8 +3,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
 import { useEnvironmentsStore } from './environments.store';
 import type { EnvironmentVariable } from './environments.types';
-import type { Project } from '@/types/projects.types';
-import { useProjectsStore } from '@/stores/projects.store';
+import type { Project } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 describe('environments.store', () => {
 	let server: ReturnType<typeof setupServer>;
