@@ -1055,12 +1055,22 @@ const handleDismissReadyToRunCallout = () => {
 	readyToRunWorkflowsStore.trackDismissCallout();
 };
 
-const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
+const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => {
 	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
 		(w): w is WorkflowListItem => w.id === data.id,
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
+
+	// Fetch the updated workflow to get the latest settings
+	try {
+		const updatedWorkflow = await workflowsStore.fetchWorkflow(data.id);
+		if (updatedWorkflow.settings) {
+			workflow.settings = updatedWorkflow.settings;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching.one'));
+	}
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {

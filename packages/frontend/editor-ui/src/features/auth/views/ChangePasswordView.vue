@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import AuthView from '@/views/AuthView.vue';
+import AuthView from './AuthView.vue';
 
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';

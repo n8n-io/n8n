@@ -18,12 +18,12 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
-import type { MfaModalEvents } from '@/event-bus/mfa';
-import { promptMfaCodeBus } from '@/event-bus/mfa';
+import type { MfaModalEvents } from '../auth.eventBus';
+import { promptMfaCodeBus } from '../auth.eventBus';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/features/sso/sso.store';
-import type { ConfirmPasswordModalEvents } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
-import { confirmPasswordEventBus } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
+import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
+import { confirmPasswordEventBus } from '../auth.eventBus';
 
 import {
 	N8nAvatar,

@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { createPinia } from 'pinia';
 import { waitAllPromises } from '@/__tests__/utils';
-import SettingsPersonalView from '@/views/SettingsPersonalView.vue';
+import SettingsPersonalView from './SettingsPersonalView.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
