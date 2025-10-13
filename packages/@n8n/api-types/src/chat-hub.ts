@@ -79,8 +79,8 @@ export type ChatHubMessage = z.infer<typeof chatHubMessageSchema>;
 export const chatHubConversationSchema = z.object({
 	id: z.string().uuid(),
 	title: z.string(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
 });
 
 export type ChatHubConversation = z.infer<typeof chatHubConversationSchema>;
