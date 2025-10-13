@@ -228,6 +228,14 @@ describe('SettingsSourceControl', () => {
 				['http://github.com/user/repository', false],
 				['https://github.com/user/repository', false],
 				['git@gitlab.com:something.net/n8n.git', true],
+				// Test cases for usernames containing dots
+				['git.user@github.com:user/repository.git', true],
+				['user.name@github.com:user/repository.git', true],
+				['git.user@github.enterprise.com:org-name/repo-name.git', true],
+				['user.name@192.168.1.101:2222:user/repo.git', true],
+				['ssh://git.user@mydomain.example:2224/gitolite-admin', true],
+				['git.user@gitlab.com:something.net/n8n.git', true],
+				['user.name@ssh.dev.azure.com:v3/User/repo/directory', true],
 			])('%s', async (url: string, isValid: boolean) => {
 				await nextTick();
 				const { container, queryByText } = renderComponent({
