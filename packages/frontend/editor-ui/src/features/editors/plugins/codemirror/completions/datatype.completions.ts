@@ -710,7 +710,11 @@ export const variablesOptions = () => {
 	const environmentsStore = useEnvironmentsStore();
 	const variables = environmentsStore.scopedVariables;
 
-	const getDescription = (isGlobal: boolean, isOverridden: boolean, projectName?: string) => {
+	const getDescription = (
+		isGlobal: boolean,
+		isOverridden: boolean,
+		projectName?: string | null,
+	) => {
 		if (isGlobal && isOverridden) {
 			return i18n.baseText('codeNodeEditor.completer.$vars.varName.global.overridden', {
 				interpolate: { projectName: projectName ?? '' },
