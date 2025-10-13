@@ -8,8 +8,8 @@ packages:
 
 minimumReleaseAge: 2880 # 2 days
 minimumReleaseAgeExclude:
-  - '@n8n/typeorm'
-  - '@n8n_io/ai-assistant-sdk'
+  - '@n8n/*'
+  - '@n8n_io/*'
   - eslint-plugin-storybook
 
 catalog:
@@ -32,6 +32,7 @@ catalog:
   callsites: 3.1.0
   chokidar: 4.0.3
   fast-glob: 3.2.12
+  fastest-levenshtein: 1.0.16
   flatted: 3.2.7
   form-data: 4.0.0
   http-proxy-agent: 7.0.2

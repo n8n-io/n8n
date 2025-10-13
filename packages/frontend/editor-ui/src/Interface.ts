@@ -300,6 +300,7 @@ export type VariableResource = BaseResource & {
 	resourceType: 'variable';
 	key?: string;
 	value?: string;
+	project?: { id: string; name: string };
 };
 
 export type CredentialsResource = BaseResource & {
@@ -1159,4 +1160,10 @@ export interface LlmTokenUsageData {
 	promptTokens: number;
 	totalTokens: number;
 	isEstimate: boolean;
+}
+
+export interface WorkflowValidationIssue {
+	node: string;
+	type: string;
+	value: string | string[];
 }
