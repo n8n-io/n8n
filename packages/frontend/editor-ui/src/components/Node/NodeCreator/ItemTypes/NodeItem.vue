@@ -255,7 +255,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 }
 
 .subNodeBackground {
-	background-color: var(--node-type-supplemental-background);
+	background-color: var(--node-type--supplemental--color--background);
 	border-radius: 50%;
 	height: 40px;
 	position: absolute;
