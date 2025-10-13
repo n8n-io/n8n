@@ -297,7 +297,7 @@ onMounted(async () => {
 
 .container > * {
 	overflow: visible;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 	&:last-child {
 		margin-bottom: 0;
 	}
@@ -309,7 +309,7 @@ onMounted(async () => {
 }
 
 .formContainer {
-	padding-bottom: var(--spacing-xl);
+	padding-bottom: var(--spacing--xl);
 }
 
 .qrContainer {
@@ -332,32 +332,32 @@ onMounted(async () => {
 	justify-content: space-between;
 	align-items: normal;
 	align-content: normal;
-	padding-top: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
-	gap: var(--spacing-xs);
-	margin-bottom: var(--spacing-2xs);
+	padding-top: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
+	gap: var(--spacing--xs);
+	margin-bottom: var(--spacing--2xs);
 	overflow-y: auto;
 }
 
 .recoveryCodesContainer span {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
-	line-height: var(--spacing-m);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--spacing--md);
 	color: var(--color-mfa-recovery-code-color);
 }
 
 .form:first-child span {
-	color: var(--color-text-base);
-	font-weight: var(--font-weight-regular);
-	font-size: var(--font-size-s);
+	color: var(--color--text);
+	font-weight: var(--font-weight--regular);
+	font-size: var(--font-size--sm);
 }
 .form input {
 	width: 50%;
 	height: 30px;
 }
 .secret {
-	color: var(--color-primary);
-	font-weight: var(--font-weight-bold);
+	color: var(--color--primary);
+	font-weight: var(--font-weight--bold);
 }
 
 .loseAccessText {
@@ -365,12 +365,12 @@ onMounted(async () => {
 }
 
 .error input {
-	border-color: var(--color-danger);
+	border-color: var(--color--danger);
 }
 
 .error > div > span {
-	color: var(--color-danger);
-	font-size: var(--font-size-2xs);
+	color: var(--color--danger);
+	font-size: var(--font-size--2xs);
 }
 
 .modalFooter {

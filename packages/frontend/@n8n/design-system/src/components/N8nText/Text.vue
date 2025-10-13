@@ -49,36 +49,36 @@ const classes = computed(() => {
 
 <style lang="scss" module>
 .bold {
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight--medium);
 }
 
 .regular {
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 
 .size-xlarge {
-	font-size: var(--font-size-xl);
-	line-height: var(--font-line-height-xloose);
+	font-size: var(--font-size--xl);
+	line-height: var(--line-height--xl);
 }
 
 .size-large {
-	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
 }
 
 .size-medium {
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 }
 
 .size-small {
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
 }
 
 .size-xsmall {
-	font-size: var(--font-size-3xs);
-	line-height: var(--font-line-height-compact);
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--sm);
 }
 
 .compact {
@@ -86,47 +86,47 @@ const classes = computed(() => {
 }
 
 .primary {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .secondary {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 
 .text-dark {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .text-base {
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .text-light {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .text-xlight {
-	color: var(--color-text-xlight);
+	color: var(--color--text--tint-3);
 }
 
 .danger {
-	color: var(--color-text-danger);
+	color: var(--color--text--danger);
 }
 
 .success {
-	color: var(--color-success);
+	color: var(--color--success);
 }
 
 .warning {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 
 .foreground-dark {
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 }
 
 .foreground-xdark {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 }
 
 .align-left {

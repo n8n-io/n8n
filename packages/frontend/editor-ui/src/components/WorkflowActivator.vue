@@ -270,7 +270,7 @@ watch(
 
 <style lang="scss" module>
 .activeStatusText {
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing--2xs);
 	box-sizing: border-box;
 	display: inline-block;
 	text-align: right;
@@ -286,7 +286,7 @@ watch(
 
 .could-not-be-started {
 	display: inline-block;
-	color: var(--color-text-danger);
+	color: var(--color--text--danger);
 	margin-left: 0.5em;
 }
 </style>

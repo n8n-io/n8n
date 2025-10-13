@@ -9,7 +9,7 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
-} from '@/types';
+} from '@/features/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
@@ -508,6 +508,7 @@ export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
 	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
 export const LOCAL_STORAGE_RUN_DATA_WORKER = 'N8N_RUN_DATA_WORKER';
 export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = 'N8N_CHAT_HUB_SELECTED_MODEL';
+export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = 'N8N_CHAT_HUB_CREDENTIALS';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =

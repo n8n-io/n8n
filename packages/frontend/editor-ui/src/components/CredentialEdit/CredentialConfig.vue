@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, watch } from 'vue';
 
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
+import { isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
@@ -406,12 +407,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	flex-grow: 1;
 
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 	}
 }
 
 .googleReconnectLabel {
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 
 .askAssistantButton {
@@ -419,8 +420,8 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	align-items: center;
 
 	> span {
-		margin-left: var(--spacing-3xs);
-		font-size: var(--font-size-s);
+		margin-left: var(--spacing--3xs);
+		font-size: var(--font-size--sm);
 	}
 }
 </style>

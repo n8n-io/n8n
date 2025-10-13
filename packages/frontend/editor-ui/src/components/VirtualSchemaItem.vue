@@ -81,13 +81,13 @@ const emit = defineEmits<{
 <style lang="css" scoped>
 .schema-item {
 	display: flex;
-	margin-left: calc(var(--spacing-l) * v-bind(level));
+	margin-left: calc(var(--spacing--lg) * v-bind(level));
 	align-items: baseline;
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing--2xs);
 }
 
 .toggle-container {
-	min-width: var(--spacing-l);
+	min-width: var(--spacing--lg);
 	min-height: 17px;
 }
 
@@ -96,40 +96,40 @@ const emit = defineEmits<{
 	display: flex;
 	justify-content: center;
 	cursor: pointer;
-	font-size: var(--font-size-s);
-	color: var(--color-text-light);
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
 }
 
 .pill {
 	display: inline-flex;
 	height: 24px;
-	padding: 0 var(--spacing-3xs);
-	border: 1px solid var(--color-foreground-light);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-xlight);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
+	padding: 0 var(--spacing--3xs);
+	border: 1px solid var(--color--foreground--tint-1);
+	border-radius: var(--radius);
+	background-color: var(--color--background--light-3);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
 	max-width: 50%;
 	align-items: center;
 
 	> *:not(:first-child) {
-		margin-left: var(--spacing-3xs);
-		padding-left: var(--spacing-3xs);
-		border-left: 1px solid var(--color-foreground-light);
+		margin-left: var(--spacing--3xs);
+		padding-left: var(--spacing--3xs);
+		border-left: 1px solid var(--color--foreground--tint-1);
 	}
 
 	&.pill--preview {
 		/* Cannot use CSS variable inside data URL, so instead switching based on data-theme and media query */
 		--schema-preview-dashed-border: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' viewBox='0 0 400 400' fill='none' rx='4' ry='4' stroke='%230000002A' stroke-width='2' stroke-dasharray='4%2c 4' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
 		--schema-preview-dashed-border-dark: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' viewBox='0 0 400 400' fill='none' rx='4' ry='4' stroke='%23FFFFFF2A' stroke-width='2' stroke-dasharray='4%2c 4' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		background-color: var(--color-run-data-background);
 		border: none;
-		max-width: calc(100% - var(--spacing-l));
+		max-width: calc(100% - var(--spacing--lg));
 		background-image: var(--schema-preview-dashed-border);
 
 		.title {
-			color: var(--color-text-light);
+			color: var(--color--text--tint-1);
 		}
 	}
 }
@@ -145,13 +145,13 @@ const emit = defineEmits<{
 }
 
 .draggable .pill.pill--highlight {
-	color: var(--color-primary);
-	border-color: var(--color-primary-tint-1);
-	background-color: var(--color-primary-tint-3);
+	color: var(--color--primary);
+	border-color: var(--color--primary--tint-1);
+	background-color: var(--color--primary--tint-3);
 }
 
 .draggable .pill.pill--highlight .type-icon {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .draggable .pill:not(.pill--locked) {
@@ -159,17 +159,17 @@ const emit = defineEmits<{
 }
 
 .draggable .pill:not(.pill--locked):hover {
-	background-color: var(--color-background-light);
-	border-color: var(--color-foreground-base);
+	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground);
 }
 
 .type-icon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .locked-icon {
-	color: var(--color-text-light);
-	margin-left: var(--spacing-2xs);
+	color: var(--color--text--tint-1);
+	margin-left: var(--spacing--2xs);
 }
 
 .title {
@@ -181,8 +181,8 @@ const emit = defineEmits<{
 
 .text {
 	font-weight: var(--font-weight-normal);
-	font-size: var(--font-size-2xs);
-	margin-left: var(--spacing-2xs);
+	font-size: var(--font-size--2xs);
+	margin-left: var(--spacing--2xs);
 	word-break: break-word;
 }
 

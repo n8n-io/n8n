@@ -16,11 +16,11 @@ import {
 	provide,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
+import WorkflowCanvas from '@/features/canvas/components/WorkflowCanvas.vue';
 import FocusPanel from '@/components/FocusPanel.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
-import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
+import CanvasRunWorkflowButton from '@/features/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -47,8 +47,8 @@ import type {
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
 	ViewportBoundaries,
-} from '@/types';
-import { CanvasNodeRenderType } from '@/types';
+} from '@/features/canvas/canvas.types';
+import { CanvasNodeRenderType } from '@/features/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -101,7 +101,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
@@ -110,17 +110,17 @@ import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
-import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
-import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import CanvasStopCurrentExecutionButton from '@/features/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
+import CanvasStopWaitingForWebhookButton from '@/features/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { shouldIgnoreCanvasShortcut } from '@/utils/canvasUtils';
+import { shouldIgnoreCanvasShortcut } from '@/features/canvas/canvas.utils';
 import { getSampleWorkflowByTemplateId } from '@/features/templates/utils/workflowSamples';
-import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/features/assistant/builder.store';
 import { usePostHog } from '@/stores/posthog.store';
@@ -129,14 +129,14 @@ import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
-import { canvasEventBus } from '@/event-bus/canvas';
-import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
+import CanvasChatButton from '@/features/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/features/folders/composables/useParentFolder';
 
@@ -2163,12 +2163,12 @@ onBeforeUnmount(() => {
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-s);
+	bottom: var(--spacing--sm);
 	width: auto;
 
 	@include mixins.breakpoint('sm-only') {
 		left: auto;
-		right: var(--spacing-s);
+		right: var(--spacing--sm);
 		transform: none;
 	}
 
@@ -2201,8 +2201,8 @@ onBeforeUnmount(() => {
 
 .setupCredentialsButtonWrapper {
 	position: absolute;
-	left: var(--spacing-s);
-	top: var(--spacing-s);
+	left: var(--spacing--sm);
+	top: var(--spacing--sm);
 }
 
 .readOnlyEnvironmentNotification {

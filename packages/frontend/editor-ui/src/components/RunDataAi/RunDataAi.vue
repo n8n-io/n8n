@@ -81,11 +81,11 @@ watch(
 	align-items: center;
 	justify-content: center;
 	width: 100%;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .empty {
-	padding: var(--spacing-l);
+	padding: var(--spacing--lg);
 }
 
 .tree {
@@ -103,8 +103,8 @@ watch(
 
 .container {
 	height: 100%;
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 </style>

@@ -25,6 +25,7 @@ import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/types/telemetry';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,
@@ -94,6 +95,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 
 	const activeNode = computed(() => {
 		return workflowsStore.getNodeByName(activeNodeName.value || '');
@@ -371,7 +373,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 				return node.name === activeNode.name;
 			});
 
-			workflowsStore.updateNodeAtIndex(nodeIndex, {
+			workflowState.updateNodeAtIndex(nodeIndex, {
 				issues: {
 					...activeNode.issues,
 					...issues,
