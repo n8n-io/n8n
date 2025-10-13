@@ -103,7 +103,13 @@ import type {
 	NodeConnectionType,
 	INodeParameters,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers, isCommunityPackageName } from 'n8n-workflow';
+import {
+	deepCopy,
+	NodeConnectionTypes,
+	NodeHelpers,
+	TelemetryHelpers,
+	isCommunityPackageName,
+} from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
