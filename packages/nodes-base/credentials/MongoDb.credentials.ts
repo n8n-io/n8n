@@ -5,7 +5,7 @@ export class MongoDb implements ICredentialType {
 
 	displayName = 'MongoDB';
 
-	documentationUrl = 'mongoDb';
+	documentationUrl = 'mongodb';
 
 	properties: INodeProperties[] = [
 		{

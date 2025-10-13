@@ -7,7 +7,7 @@ export class HttpSslAuth implements ICredentialType {
 
 	displayName = 'SSL Certificates';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	icon: Icon = 'node:n8n-nodes-base.httpRequest';
 
