@@ -11,11 +11,7 @@ export class CacheLogger {
 	private logPath: string;
 	private logEntries: string[] = [];
 
-	constructor(
-		private readonly iteration: number,
-		private readonly testCaseId: string,
-		private readonly baseDir: string = 'results/cache-logs',
-	) {
+	constructor(iteration: number, testCaseId: string, baseDir: string = 'results/cache-logs') {
 		const iterationDir = path.join(baseDir, `iteration-${iteration}`);
 		this.logPath = path.join(iterationDir, `${testCaseId}.log`);
 	}

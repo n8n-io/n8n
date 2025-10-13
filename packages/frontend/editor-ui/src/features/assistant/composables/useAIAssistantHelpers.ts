@@ -241,7 +241,7 @@ export const useAIAssistantHelpers = () => {
 		}
 
 		// Map runData, excluding the `data` field from ITaskData
-		for (const key of Object.keys(data.runData || {})) {
+		for (const key of Object.keys(data.runData)) {
 			const taskDataArray = data.runData[key];
 			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
 				const { data: _taskDataContent, ...taskDataWithoutData } = taskData;

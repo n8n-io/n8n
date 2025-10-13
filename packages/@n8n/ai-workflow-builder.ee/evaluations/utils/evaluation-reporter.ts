@@ -33,8 +33,9 @@ export function generateMarkdownReport(
 
 	// Calculate aggregate cache statistics
 	const cacheStats = results
-		.filter((r) => r.cacheStats !== undefined)
-		.map((r) => r.cacheStats as CacheStatistics);
+		.map((r) => r.cacheStats)
+		.filter((r): r is CacheStatistics => r !== undefined);
+
 	const aggregateCache = cacheStats.length > 0 ? aggregateCacheStats(cacheStats) : null;
 
 	let report = `# AI Workflow Builder Evaluation Report
@@ -266,8 +267,8 @@ export function displaySummaryTable(
  */
 export function displayCacheStatistics(results: TestResult[]): void {
 	const cacheStats = results
-		.filter((r) => r.cacheStats !== undefined)
-		.map((r) => r.cacheStats as CacheStatistics);
+		.map((r) => r.cacheStats)
+		.filter((r): r is CacheStatistics => r !== undefined);
 
 	if (cacheStats.length === 0) return;
 
