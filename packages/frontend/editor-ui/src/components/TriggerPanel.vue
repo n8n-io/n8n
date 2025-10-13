@@ -501,7 +501,7 @@ const onNodeExecute = () => {
 
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--xl) var(--spacing--sm);
 	text-align: center;
 	overflow: hidden;
 
@@ -511,15 +511,15 @@ const onNodeExecute = () => {
 }
 
 .header {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
 .action {
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 }
 
 .shake {

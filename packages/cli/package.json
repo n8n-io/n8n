@@ -26,7 +26,7 @@
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --config=jest.config.integration.js --no-coverage",
     "test:mariadb": "N8N_LOG_LEVEL=silent DB_TYPE=mariadb DB_TABLE_PREFIX=test_ jest --config=jest.config.integration.js --no-coverage",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb DB_TABLE_PREFIX=test_ jest --config=jest.config.integration.js --no-coverage --maxWorkers=1",
-    "test:win": "pnpm test:sqlite:win",
+    "test:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=sqlite&& jest",
     "test:dev:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=sqlite&& jest --watch",
     "test:sqlite:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=sqlite&& jest --config=jest.config.integration.js",
     "test:postgres:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=postgresdb&& set DB_POSTGRESDB_SCHEMA=alt_schema&& set DB_TABLE_PREFIX=test_&& jest --config=jest.config.integration.js --no-coverage",

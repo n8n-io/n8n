@@ -1,4 +1,5 @@
 from src.errors import (
+    ConfigurationError,
     TaskCancelledError,
     TaskRuntimeError,
     TaskTimeoutError,
@@ -74,6 +75,7 @@ ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
 IGNORED_ERROR_TYPES = (
+    ConfigurationError,
     TaskRuntimeError,
     TaskCancelledError,
     TaskTimeoutError,
@@ -104,7 +106,8 @@ TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capac
 
 # Security
 BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals"
-ALWAYS_BLOCKED_ATTRIBUTES = {
+BLOCKED_ATTRIBUTES = {
+    # runtime attributes
     "__subclasses__",
     "__globals__",
     "__builtins__",
@@ -128,11 +131,8 @@ ALWAYS_BLOCKED_ATTRIBUTES = {
     "ag_code",
     "__thisclass__",
     "__self_class__",
-}
-# Attributes blocked only in certain contexts:
-# - In attribute chains (e.g., x.__class__.__bases__)
-# - On literals (e.g., "".__class__)
-CONDITIONALLY_BLOCKED_ATTRIBUTES = {
+    # introspection attributes
+    "__base__",
     "__class__",
     "__bases__",
     "__code__",
@@ -151,7 +151,6 @@ CONDITIONALLY_BLOCKED_ATTRIBUTES = {
     "__wrapped__",
     "__annotations__",
 }
-UNSAFE_ATTRIBUTES = ALWAYS_BLOCKED_ATTRIBUTES | CONDITIONALLY_BLOCKED_ATTRIBUTES
 
 # errors
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."

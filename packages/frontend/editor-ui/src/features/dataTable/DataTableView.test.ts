@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { useProjectPages } from '@/composables/useProjectPages';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import DataTableView from '@/features/dataTable/DataTableView.vue';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { STORES } from '@n8n/stores';
@@ -10,9 +10,9 @@ import { createRouter, createWebHistory } from 'vue-router';
 import type { DataTableResource } from '@/features/dataTable/types';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import type { Mock } from 'vitest';
-import { type Project } from '@/types/projects.types';
+import { type Project } from '@/features/projects/projects.types';
 
-vi.mock('@/composables/useProjectPages', () => ({
+vi.mock('@/features/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
 		isSharedSubPage: false,
@@ -182,7 +182,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByTestId('empty-shared-action-box')).toBeInTheDocument();
+			expect(getByTestId('empty-data-table-action-box')).toBeInTheDocument();
 		});
 
 		it('should show description for overview sub page', async () => {
@@ -195,7 +195,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const emptyBox = getByTestId('empty-shared-action-box');
+			const emptyBox = getByTestId('empty-data-table-action-box');
 			expect(emptyBox).toBeInTheDocument();
 		});
 	});

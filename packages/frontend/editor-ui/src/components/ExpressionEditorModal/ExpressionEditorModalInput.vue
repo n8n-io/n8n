@@ -96,11 +96,11 @@ defineExpose({ editor, focus });
 <style lang="scss" module>
 .editor {
 	:global(.cm-content) {
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 		&[aria-readonly='true'] {
-			--disabled-fill: var(--color-background-base);
-			background-color: var(--disabled-fill, var(--color-background-light));
-			color: var(--disabled-color, var(--color-text-base));
+			--disabled-fill: var(--color--background);
+			background-color: var(--disabled-fill, var(--color--background--light-2));
+			color: var(--disabled-color, var(--color--text));
 			cursor: not-allowed;
 		}
 	}

@@ -55,15 +55,15 @@ const onSSOLogin = async () => {
 		left: 0;
 		width: 100%;
 		height: 1px;
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 
 	span {
 		position: relative;
 		display: inline-block;
-		margin: var(--spacing-2xs) auto;
-		padding: var(--spacing-l);
-		background: var(--color-background-xlight);
+		margin: var(--spacing--2xs) auto;
+		padding: var(--spacing--lg);
+		background: var(--color--background--light-3);
 	}
 }
 </style>
