@@ -41,7 +41,6 @@ export class DataTableRepository extends Repository<DataTable> {
 
 			const dataTable = em.create(DataTable, { name, columns, projectId });
 
-			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTable, dataTable);
 			const dataTableId = dataTable.id;
 
@@ -56,7 +55,6 @@ export class DataTableRepository extends Repository<DataTable> {
 			);
 
 			if (columnEntities.length > 0) {
-				// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 				await em.insert(DataTableColumn, columnEntities);
 			}
 

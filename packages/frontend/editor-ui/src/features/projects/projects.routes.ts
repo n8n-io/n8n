@@ -8,6 +8,7 @@ const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
+const ProjectVariables = async () => await import('@/views/ProjectVariables.vue');
 
 const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 	if (!to?.params.projectId) {
@@ -71,6 +72,19 @@ const commonChildRoutes: RouteRecordRaw[] = [
 			},
 		},
 	},
+	{
+		path: 'variables',
+		components: {
+			default: ProjectVariables,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
+		},
+	},
 ];
 
 const commonChildRouteExtensions = {
@@ -87,6 +101,9 @@ const commonChildRouteExtensions = {
 		{
 			name: VIEWS.FOLDERS,
 		},
+		{
+			name: VIEWS.HOME_VARIABLES,
+		},
 	],
 	projects: [
 		{
@@ -100,6 +117,9 @@ const commonChildRouteExtensions = {
 		},
 		{
 			name: VIEWS.PROJECTS_FOLDERS,
+		},
+		{
+			name: VIEWS.PROJECTS_VARIABLES,
 		},
 	],
 };
@@ -211,5 +231,9 @@ export const projectsRoutes: RouteRecordRaw[] = [
 	{
 		path: '/executions',
 		redirect: '/home/executions',
+	},
+	{
+		path: '/variables',
+		redirect: '/home/variables',
 	},
 ];
