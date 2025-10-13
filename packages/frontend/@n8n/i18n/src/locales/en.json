@@ -226,6 +226,7 @@
 	"aiAssistant.builder.executeMessage.executionSuccess": "Workflow executed successfully.",
 	"aiAssistant.builder.executeMessage.executionFailedOnNode": "Workflow execution failed on node \"{nodeName}\": {errorMessage}",
 	"aiAssistant.builder.executeMessage.executionFailed": "Workflow execution failed: {errorMessage}",
+	"aiAssistant.builder.executeMessage.fillParameter": "Update \"{label}\" parameter",
 	"aiAssistant.builder.toast.title": "Send chat message to start the execution",
 	"aiAssistant.builder.toast.description": "Please send a message in the chat panel to start the execution of your workflow",
 	"aiAssistant.assistant": "n8n AI",
