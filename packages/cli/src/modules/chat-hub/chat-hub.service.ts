@@ -545,53 +545,16 @@ export class ChatHubService {
 
 	/**
 	 * Get all conversations for a user
-	 * TODO: Replace with actual database queries
 	 */
-	async getConversations(): Promise<ChatHubConversationsResponse> {
-		// Mock data for now with diverse dates to demonstrate grouping
-		const now = new Date();
-		const today = new Date(now);
-		const yesterday = new Date(now);
-		yesterday.setDate(yesterday.getDate() - 1);
-		const threeDaysAgo = new Date(now);
-		threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-		const twoWeeksAgo = new Date(now);
-		twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-		const twoMonthsAgo = new Date(now);
-		twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+	async getConversations(userId: string): Promise<ChatHubConversationsResponse> {
+		const sessions = await this.sessionRepository.getManyByUserId(userId);
 
-		return [
-			{
-				id: '7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f',
-				title: 'Getting Started with n8n',
-				createdAt: today.toISOString(),
-				updatedAt: today.toISOString(),
-			},
-			{
-				id: '3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c',
-				title: 'Workflow Automation Ideas',
-				createdAt: yesterday.toISOString(),
-				updatedAt: yesterday.toISOString(),
-			},
-			{
-				id: '9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f',
-				title: 'API Integration Help',
-				createdAt: threeDaysAgo.toISOString(),
-				updatedAt: threeDaysAgo.toISOString(),
-			},
-			{
-				id: '5c8a1d3e-4b9f-4e2a-8d6c-7f3a9b2e4c8d',
-				title: 'Database Schema Design',
-				createdAt: twoWeeksAgo.toISOString(),
-				updatedAt: twoWeeksAgo.toISOString(),
-			},
-			{
-				id: '2f6d9a4c-8e1b-4d7a-9c3e-6a8f2b5d4e9c',
-				title: 'Docker Deployment Questions',
-				createdAt: twoMonthsAgo.toISOString(),
-				updatedAt: twoMonthsAgo.toISOString(),
-			},
-		];
+		return sessions.map((session) => ({
+			id: session.id,
+			title: session.title,
+			createdAt: session.createdAt,
+			updatedAt: session.updatedAt,
+		}));
 	}
 
 	/**

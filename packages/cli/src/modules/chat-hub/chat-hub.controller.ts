@@ -21,6 +21,7 @@ export class ChatHubController {
 	) {}
 
 	@Post('/models')
+	@GlobalScope('chatHub:message')
 	async getModels(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -80,14 +81,16 @@ export class ChatHubController {
 	}
 
 	@Get('/conversations')
+	@GlobalScope('chatHub:message')
 	async getConversations(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations();
+		return await this.chatService.getConversations(req.user.id);
 	}
 
 	@Get('/conversations/:id/messages')
+	@GlobalScope('chatHub:message')
 	async getConversationMessages(
 		req: AuthenticatedRequest<{ id: string }>,
 		_res: Response,
