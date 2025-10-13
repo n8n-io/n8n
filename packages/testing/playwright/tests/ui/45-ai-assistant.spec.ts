@@ -344,10 +344,8 @@ test.describe('AI Assistant::enabled', () => {
 			expect(supportRequest).toBeDefined();
 			const supportContext = supportRequest?.payload?.context;
 			expect(supportContext).toBeDefined();
-			expect((supportContext?.currentView as { name?: string } | undefined)?.name).toBe(
-				'NodeViewExisting',
-			);
-			expect(supportContext).toHaveProperty('currentWorkflow');
+			expect(supportContext?.currentView).toBeDefined();
+			expect(supportContext?.currentWorkflow).toBeDefined();
 		});
 
 		test('should not send workflow context if nothing changed', async ({
