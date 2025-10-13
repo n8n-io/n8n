@@ -7,13 +7,13 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import type { RatingFeedback } from '@n8n/design-system/types/assistant';
+import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
-import type { WorkflowSuggestion } from '@n8n/design-system/types/assistant';
+import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 
@@ -71,7 +71,8 @@ const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	// Only show suggestions when no messages in chat yet (blank state)
 	if (builderStore.chatMessages.length === 0) {
-		return WORKFLOW_SUGGESTIONS;
+		// Shuffle the suggestions to show them in random order
+		return shuffle(WORKFLOW_SUGGESTIONS);
 	}
 	return undefined;
 });
