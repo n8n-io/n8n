@@ -37,6 +37,12 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Get many files',
 			},
 			{
+				name: 'Get Presigned URL',
+				value: 'getPresignedUrl',
+				description: 'Generate a presigned URL for temporary access to a file',
+				action: 'Get presigned URL for a file',
+			},
+			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file',
@@ -835,6 +841,85 @@ export const fileFields: INodeProperties[] = [
 				name: 'folderKey',
 				type: 'string',
 				default: '',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                          file:getPresignedUrl                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Bucket Name',
+		name: 'bucketName',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+		description: 'Name of the S3 bucket',
+	},
+	{
+		displayName: 'File Key',
+		name: 'fileKey',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+		description: 'Key (path) of the file in the bucket',
+	},
+	{
+		displayName: 'Expiration Time',
+		name: 'expirationTime',
+		type: 'number',
+		required: true,
+		default: 3600,
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+		description: 'Time in seconds until the presigned URL expires (default: 3600 = 1 hour)',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 604800,
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Response Content Type',
+				name: 'responseContentType',
+				type: 'string',
+				default: '',
+				description: 'Sets the Content-Type header of the response',
+			},
+			{
+				displayName: 'Response Content Disposition',
+				name: 'responseContentDisposition',
+				type: 'string',
+				default: '',
+				description:
+					'Sets the Content-Disposition header of the response (e.g., "attachment; filename=example.pdf")',
 			},
 		],
 	},
