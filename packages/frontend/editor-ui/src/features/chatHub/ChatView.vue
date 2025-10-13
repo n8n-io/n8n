@@ -352,6 +352,7 @@ function onSuggestionClick(s: Suggestion) {
 }
 
 .messageList {
+	width: 100%;
 	max-width: 55rem;
 	min-height: 100vh;
 	align-self: center;
