@@ -3134,6 +3134,7 @@ describe('useCanvasOperations', () => {
 
 	describe('initializeUnknownNodes', () => {
 		it('should initialize nodes', () => {
+			const updateNodeAtIndexSpy = vi.spyOn(workflowState, 'updateNodeAtIndex');
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodes = [
 				createTestNode({ type: 'n8n-nodes-community.testNode1', name: 'testNode1' }),
@@ -3147,9 +3148,9 @@ describe('useCanvasOperations', () => {
 			const { initializeUnknownNodes } = useCanvasOperations();
 			initializeUnknownNodes(workflow.nodes);
 
-			expect(workflowsStore.updateNodeAtIndex).toHaveBeenCalledTimes(2);
-			expect(workflowsStore.updateNodeAtIndex).toHaveBeenNthCalledWith(1, 0, workflow.nodes[0]);
-			expect(workflowsStore.updateNodeAtIndex).toHaveBeenNthCalledWith(2, 1, workflow.nodes[1]);
+			expect(updateNodeAtIndexSpy).toHaveBeenCalledTimes(2);
+			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(1, 0, workflow.nodes[0]);
+			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(2, 1, workflow.nodes[1]);
 		});
 	});
 

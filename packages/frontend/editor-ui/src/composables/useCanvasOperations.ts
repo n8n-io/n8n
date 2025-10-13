@@ -1750,7 +1750,7 @@ export function useCanvasOperations() {
 			const nodeIndex = workflowsStore.workflow.nodes.findIndex((n) => {
 				return n.name === node.name;
 			});
-			workflowsStore.updateNodeAtIndex(nodeIndex, node);
+			workflowState.updateNodeAtIndex(nodeIndex, node);
 		});
 	};
 
