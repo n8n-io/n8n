@@ -1,7 +1,7 @@
 import CanvasNodeTooltip from './CanvasNodeTooltip.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { CanvasNodeDefaultRender } from '../../../../../canvas.types';
-import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide } from '@/features/canvas/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 
 const renderComponent = createComponentRenderer(CanvasNodeTooltip);

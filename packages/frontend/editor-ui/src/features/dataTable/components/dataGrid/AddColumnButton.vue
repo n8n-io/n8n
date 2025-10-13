@@ -171,6 +171,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 									v-model="columnName"
 									:placeholder="i18n.baseText('dataTable.addColumn.nameInput.placeholder')"
 									:maxlength="MAX_COLUMN_NAME_LENGTH"
+									data-test-id="add-column-name-input"
 									@keyup.enter="onAddButtonClicked"
 									@input="onInput"
 								/>
