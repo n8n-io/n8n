@@ -649,7 +649,7 @@ const onSubmit = async (values: object) => {
 .container {
 	> div,
 	section > div:not(:last-child) {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 }
 </style>

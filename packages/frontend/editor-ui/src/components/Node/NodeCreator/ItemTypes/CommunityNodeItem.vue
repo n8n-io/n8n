@@ -32,6 +32,6 @@ const i18n = useI18n();
 
 <style lang="scss" module>
 .marginLeft {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 </style>

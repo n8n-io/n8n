@@ -10,7 +10,6 @@ import {
 import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isJsonKeyObject } from '@/utils/typesUtils';
 import {
 	isResourceLocatorValue,
@@ -23,6 +22,7 @@ import {
 	type ResourceMapperField,
 	type Themed,
 } from 'n8n-workflow';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -360,7 +360,11 @@ export const getCredentialsRelatedFields = (
 	return fields;
 };
 
-export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
+export const updateNodeAuthType = (
+	workflowState: WorkflowState,
+	node: INodeUi | null,
+	type: string,
+) => {
 	if (!node) {
 		return;
 	}
@@ -377,7 +381,7 @@ export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
 					},
 				},
 			};
-			useWorkflowsStore().updateNodeProperties(updateInformation);
+			workflowState.updateNodeProperties(updateInformation);
 		}
 	}
 };

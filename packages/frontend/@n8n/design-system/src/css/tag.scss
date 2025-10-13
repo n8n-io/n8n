@@ -5,7 +5,7 @@
 	border-color: var(--color-callout-info-border);
 	background-color: var(--color-callout-info-background);
 	color: var(--color-callout-info-font);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 
 	@include mixins.when(hit) {
 		border-color: var.$tag-primary-color;

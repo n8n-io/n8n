@@ -65,8 +65,8 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	bottom: 0;
 	left: 0;
 	right: 0;
-	border: 1px solid var(--border-color-base);
-	border-radius: var(--border-radius-base);
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius);
 }
 
 .item {
@@ -94,8 +94,8 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 }
 
 .item:first-of-type {
-	--input-border-top-left-radius: var(--border-radius-base);
-	--input-border-bottom-left-radius: var(--border-radius-base);
+	--input-border-top-left-radius: var(--radius);
+	--input-border-bottom-left-radius: var(--radius);
 	--input-border-top-right-radius: 0;
 	--input-border-bottom-right-radius: 0;
 }
@@ -103,8 +103,8 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .item:last-of-type {
 	--input-border-top-left-radius: 0;
 	--input-border-bottom-left-radius: 0;
-	--input-border-top-right-radius: var(--border-radius-base);
-	--input-border-bottom-right-radius: var(--border-radius-base);
+	--input-border-top-right-radius: var(--radius);
+	--input-border-bottom-right-radius: var(--radius);
 }
 
 .medium:not(.noRightSlot) {
@@ -113,12 +113,12 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	.middle {
 		margin-left: -1px;
 
-		--input-border-top-right-radius: var(--border-radius-base);
+		--input-border-top-right-radius: var(--radius);
 		--input-border-bottom-right-radius: 0;
 	}
 
 	.item:first-of-type {
-		--input-border-top-left-radius: var(--border-radius-base);
+		--input-border-top-left-radius: var(--radius);
 		--input-border-top-right-radius: 0;
 		--input-border-bottom-left-radius: 0;
 	}
@@ -129,8 +129,8 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 		--input-border-top-left-radius: 0;
 		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: var(--border-radius-base);
+		--input-border-bottom-left-radius: var(--radius);
+		--input-border-bottom-right-radius: var(--radius);
 	}
 }
 
@@ -147,8 +147,8 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	}
 
 	.item:first-of-type {
-		--input-border-top-left-radius: var(--border-radius-base);
-		--input-border-top-right-radius: var(--border-radius-base);
+		--input-border-top-left-radius: var(--radius);
+		--input-border-top-right-radius: var(--radius);
 		--input-border-bottom-left-radius: 0;
 		--input-border-bottom-right-radius: 0;
 	}
@@ -160,8 +160,8 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	.item:last-of-type {
 		--input-border-top-left-radius: 0;
 		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: var(--border-radius-base);
+		--input-border-bottom-left-radius: var(--radius);
+		--input-border-bottom-right-radius: var(--radius);
 	}
 }
 </style>
