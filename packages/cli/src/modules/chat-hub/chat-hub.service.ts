@@ -572,16 +572,14 @@ export class ChatHubService {
 	async getConversation(userId: string, sessionId: string): Promise<ChatHubConversationResponse> {
 		const session = await this.sessionRepository.getOneById(sessionId, userId);
 		if (!session) {
-			throw new NotFoundError(`Could not find chat session with ID ${sessionId}`);
+			throw new NotFoundError('Chat session not found');
 		}
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
-
 		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
 			this.buildMessagesGraph(messages);
 
 		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
-
 		const activeThread = this.buildActiveThread(messages);
 
 		return {
@@ -687,5 +685,11 @@ export class ChatHubService {
 		}
 
 		return activeThread;
+	}
+
+	async deleteAllSessions() {
+		const result = await this.sessionRepository.deleteAll();
+
+		return result;
 	}
 }

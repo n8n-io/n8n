@@ -60,4 +60,10 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 			relations: ['messages'],
 		});
 	}
+
+	async deleteAll(trx?: EntityManager) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			return await em.createQueryBuilder().delete().from(ChatHubSession).execute();
+		});
+	}
 }
