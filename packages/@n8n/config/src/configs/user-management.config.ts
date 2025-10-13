@@ -102,6 +102,10 @@ export class UserManagementConfig {
 	@Env('N8N_USER_MANAGEMENT_JWT_DURATION_HOURS')
 	jwtSessionDurationHours: number = 168;
 
+	/** Whether to hide the user invite link for admins */
+	@Env('N8N_HIDE_INVITE_LINK_FOR_ADMINS')
+	hideInviteLinkForAdmins: boolean = false;
+
 	/**
 	 * How long (in hours) before expiration to automatically refresh it.
 	 * - `0` means 25% of `N8N_USER_MANAGEMENT_JWT_DURATION_HOURS`.

@@ -46,6 +46,8 @@ import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { hasGlobalScope } from '@n8n/permissions';
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 @RestController('/users')
 export class UsersController {
@@ -117,7 +119,10 @@ export class UsersController {
 
 		const [users, count] = response;
 
-		const withInviteUrl = hasGlobalScope(req.user, 'user:create');
+		const hideInviteLinkForAdmins =
+			Container.get(GlobalConfig).userManagement.hideInviteLinkForAdmins;
+
+		const withInviteUrl = !hideInviteLinkForAdmins && hasGlobalScope(req.user, 'user:create');
 
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {
