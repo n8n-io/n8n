@@ -14,8 +14,8 @@
 .el-picker-panel__footer {
 	.el-picker-panel__link-btn {
 		&:last-child {
-			background: var(--color-primary);
-			color: var(--color-foreground-xlight);
+			background: var(--color--primary);
+			color: var(--color--foreground--tint-2);
 		}
 	}
 }

@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nNavigationDropdown, N8nIcon, N8nButton } from '@n8n/design-system';
-import type { ChatHubConversationModel } from '../chat.types';
+import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
-import { type ChatHubProvider, chatHubProviderSchema } from '@n8n/api-types';
+import {
+	type ChatHubConversationModel,
+	type ChatHubProvider,
+	chatHubProviderSchema,
+	type ChatModelsResponse,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+} from '@n8n/api-types';
+import { providerDisplayNames } from '@/features/chatHub/constants';
+import CredentialIcon from '@/components/CredentialIcon.vue';
 
 const props = defineProps<{
 	disabled?: boolean;
-	models: ChatHubConversationModel[];
+	models: ChatModelsResponse | null;
 	selectedModel: ChatHubConversationModel | null;
+	credentialsName?: string;
 }>();
 
 const emit = defineEmits<{
@@ -16,21 +24,21 @@ const emit = defineEmits<{
 	configure: [ChatHubProvider];
 }>();
 
-const providerDisplayNames: Record<ChatHubProvider, string> = {
-	openai: 'Open AI',
-	anthropic: 'Anthropic',
-	google: 'Google',
-};
-
 const menu = computed(() =>
 	chatHubProviderSchema.options.map((provider) => {
-		const modelOptions = props.models
-			.filter((model) => model.provider === provider)
-			.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
-				id: `${model.provider}::${model.model}`,
-				title: model.model,
-				disabled: false,
-			}));
+		const models = props.models?.[provider].models ?? [];
+		const error = props.models?.[provider].error;
+
+		const modelOptions =
+			models.length > 0
+				? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
+						id: `${provider}::${model.name}`,
+						title: model.name,
+						disabled: false,
+					}))
+				: error
+					? [{ id: `${provider}::error`, disabled: true, title: error }]
+					: [];
 
 		return {
 			id: provider,
@@ -39,6 +47,7 @@ const menu = computed(() =>
 				...(modelOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
 				{
 					id: `${provider}::configure`,
+					icon: 'settings',
 					title: 'Configure credentials...',
 					disabled: false,
 				},
@@ -57,28 +66,44 @@ function onSelect(id: string) {
 	const [provider, model] = id.split('::');
 	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
 
-	if (model === 'configure' && parsedProvider) {
+	if (!parsedProvider) {
+		return;
+	}
+
+	if (model === 'configure') {
 		emit('configure', parsedProvider);
 		return;
 	}
 
-	const selectedModel = props.models.find((m) => m.provider === provider && m.model === model);
-
-	if (selectedModel) {
-		emit('change', selectedModel);
-	}
+	emit('change', { provider: parsedProvider, model });
 }
 </script>
 
 <template>
-	<N8nNavigationDropdown
-		:menu="menu"
-		:disabled="disabled || models.length === 0"
-		@select="onSelect"
-	>
+	<N8nNavigationDropdown :menu="menu" :disabled="disabled" @select="onSelect">
+		<template #item-icon="{ item }">
+			<CredentialIcon
+				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
+				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubProvider]"
+				:size="16"
+				:class="$style.menuIcon"
+			/>
+		</template>
+
 		<N8nButton :class="$style.dropdownButton" type="secondary">
-			<span>{{ selectedLabel }}</span>
-			<N8nIcon icon="chevron-down" size="small" />
+			<CredentialIcon
+				v-if="selectedModel"
+				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
+				:size="credentialsName ? 20 : 16"
+				:class="$style.icon"
+			/>
+			<div :class="$style.selected">
+				{{ selectedLabel }}
+				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
+					{{ credentialsName }}
+				</N8nText>
+			</div>
+			<N8nIcon icon="chevron-down" size="medium" />
 		</N8nButton>
 	</N8nNavigationDropdown>
 </template>
@@ -87,6 +112,22 @@ function onSelect(id: string) {
 .dropdownButton {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--xs);
+}
+
+.selected {
+	display: flex;
+	flex-direction: column;
+	align-items: start;
+	gap: var(--spacing--4xs);
+}
+
+.icon {
+	flex-shrink: 0;
+	margin-block: -4px;
+}
+
+.menuIcon {
+	flex-shrink: 0;
 }
 </style>

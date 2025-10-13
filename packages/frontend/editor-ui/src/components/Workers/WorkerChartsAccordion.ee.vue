@@ -138,7 +138,7 @@ orchestrationStore.$onAction(({ name, store }) => {
 .accordionItem {
 	display: block !important;
 	text-align: left;
-	margin-bottom: var(--spacing-4xs);
+	margin-bottom: var(--spacing--4xs);
 }
 
 .charts {

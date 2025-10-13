@@ -3,7 +3,7 @@ import type { ITelemetrySettings } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { computed, onMounted, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';

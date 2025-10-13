@@ -683,7 +683,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 }
 
 .mappedNode {
-	padding: 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .titleSection {
@@ -692,12 +692,12 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	align-items: center;
 
 	> * {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 }
 
 .titleSectionV2 {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 .inputModeTab {
 	margin-left: auto;
@@ -706,7 +706,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 250px;
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -714,11 +714,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 300px;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -729,7 +729,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .titleV2 {
 	letter-spacing: 2px;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .executeButton {

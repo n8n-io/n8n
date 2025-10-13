@@ -71,8 +71,7 @@ const activeSettings = computed(() => {
 	<div v-if="activeSettings.length > 0" :class="$style.settingsHint">
 		<div v-for="setting in activeSettings" :key="setting.key" :class="$style.settingItem">
 			<div :class="$style.iconWrapper">
-				<FontAwesomeIcon v-if="setting.icon === 'power'" icon="power" :class="$style.icon" />
-				<N8nIcon v-else :icon="setting.icon" :class="$style.icon" />
+				<N8nIcon :icon="setting.icon" :class="$style.icon" />
 			</div>
 			<N8nText size="small" :class="$style.message">
 				{{ setting.message }}
@@ -84,24 +83,24 @@ const activeSettings = computed(() => {
 <style lang="scss" module>
 .settingsHint {
 	background-color: var(--color-callout-info-background);
-	border-radius: var(--border-radius-base);
-	border: var(--border-width-base) var(--border-style-base);
+	border-radius: var(--radius);
+	border: var(--border-width) var(--border-style);
 	border-color: var(--color-callout-info-border);
 	color: var(--color-callout-info-font);
-	margin-top: var(--spacing-2xs);
-	margin-bottom: var(--spacing-xs);
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
-	padding: var(--spacing-xs);
+	margin-top: var(--spacing--2xs);
+	margin-bottom: var(--spacing--xs);
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--sm);
+	padding: var(--spacing--xs);
 }
 
 .settingItem {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 
 	&:not(:last-child) {
-		margin-bottom: var(--spacing-xs);
+		margin-bottom: var(--spacing--xs);
 	}
 }
 
@@ -114,12 +113,12 @@ const activeSettings = computed(() => {
 
 .icon {
 	color: var(--color-callout-info-icon);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	line-height: 1;
 }
 
 .message {
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 	flex: 1;
 }
 </style>

@@ -13,6 +13,6 @@ const props = defineProps<{
 <style lang="scss">
 .n8n-empty-value {
 	font-style: italic;
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 </style>

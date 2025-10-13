@@ -23,11 +23,11 @@ defineProps<{
 .card {
 	min-width: 235px;
 	height: 140px;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 	cursor: pointer;
 
 	&:last-child {
-		margin-right: var(--spacing-5xs);
+		margin-right: var(--spacing--5xs);
 	}
 
 	&:hover {
@@ -43,9 +43,9 @@ defineProps<{
 	display: -webkit-box;
 	-webkit-line-clamp: 4;
 	-webkit-box-orient: vertical;
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-regular);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
+	font-weight: var(--font-weight--bold);
 	overflow: hidden;
 	white-space: normal;
 }

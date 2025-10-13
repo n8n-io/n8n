@@ -373,14 +373,14 @@ async function handleEnterKey(event: KeyboardEvent) {
 .form {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .expirationSection {
 	display: flex;
 	flex-direction: row;
 	align-items: flex-end;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .footer {

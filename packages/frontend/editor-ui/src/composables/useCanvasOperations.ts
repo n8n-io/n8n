@@ -109,7 +109,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { isPresent } from '@/utils/typesUtils';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/stores/logs.store';
@@ -117,7 +117,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -254,7 +254,7 @@ export function useCanvasOperations() {
 		const oldPosition: XYPosition = [...node.position];
 		const newPosition: XYPosition = [position.x, position.y];
 
-		workflowsStore.setNodePositionById(id, newPosition);
+		workflowState.setNodePositionById(id, newPosition);
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(
@@ -284,7 +284,7 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
-		workflowsStore.setNodeParameters({
+		workflowState.setNodeParameters({
 			name: node.name,
 			value: newParameters,
 		});
@@ -592,7 +592,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		workflowsStore.setNodeParameters(
+		workflowState.setNodeParameters(
 			{
 				name: node.name,
 				value: parameters as NodeParameterValueType,
