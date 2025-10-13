@@ -1,4 +1,7 @@
+# We want to include the THIRD_PARTY_LICENSES.md file in the Docker image,
+# but not other .md files
 **/*.md
+!**/THIRD_PARTY_LICENSES.md
 **/.env
 .cache
 assets
@@ -12,8 +15,8 @@ packages/**/*.test.*
 .github
 !.github/scripts
 *.tsbuildinfo
-packages/cli/dist/**/e2e.*
 docker/compose
 docker/**/Dockerfile
 .vscode
+packages/testing
 cypress
