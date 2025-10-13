@@ -1,4 +1,4 @@
-import { Annotation, StateGraph, END } from '@langchain/langgraph';
+import { Annotation, StateGraph, END, isCommand } from '@langchain/langgraph';
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage, ToolMessage, AIMessage, isAIMessage } from '@langchain/core/messages';
 import type { Logger } from '@n8n/backend-common';
@@ -93,18 +93,30 @@ export function createConfiguratorSubgraph(config: ConfiguratorSubgraphConfig) {
 	 * Agent node - calls configurator agent
 	 */
 	const callAgent = async (state: typeof ConfiguratorSubgraphState.State) => {
-		// On first call, initialize with workflow context
-		if (state.messages.length === 0) {
-			const contextMessage = new HumanMessage({
-				content: `Configure all nodes in this workflow:\n\n${JSON.stringify(state.workflowJSON, null, 2)}`,
-			});
-			return { messages: [contextMessage] };
-		}
+		console.log('[Configurator Agent] Called in subgraph', {
+			messageCount: state.messages.length,
+			nodeCount: state.workflowJSON.nodes.length,
+		});
 
 		const agent = configuratorAgent.getAgent();
+
+		// On first call, create initial message with workflow
+		const messagesToUse =
+			state.messages.length === 0
+				? [
+						new HumanMessage({
+							content: `Configure all nodes in this workflow:\n\n${JSON.stringify(state.workflowJSON, null, 2)}`,
+						}),
+					]
+				: state.messages;
+
 		const response = await agent.invoke({
-			messages: state.messages,
+			messages: messagesToUse,
 			instanceUrl: state.instanceUrl || '',
+		});
+
+		console.log('[Configurator Agent] Response', {
+			hasToolCalls: response.tool_calls?.length ?? 0,
 		});
 
 		return { messages: [response] };
@@ -149,17 +161,19 @@ export function createConfiguratorSubgraph(config: ConfiguratorSubgraphConfig) {
 			}),
 		);
 
-		// Collect messages and operations
+		// Unwrap Command objects and collect messages/operations
 		const messages: BaseMessage[] = [];
 		const operations: WorkflowOperation[] = [];
 
 		for (const result of toolResults) {
-			if (result instanceof ToolMessage || result instanceof AIMessage) {
+			if (isCommand(result)) {
+				// Tool returned Command - extract update
+				const update = result.update as any;
+				if (update?.messages) messages.push(...update.messages);
+				if (update?.workflowOperations) operations.push(...update.workflowOperations);
+			} else if (result instanceof ToolMessage || result instanceof AIMessage) {
+				// Direct message
 				messages.push(result);
-			} else if (result && typeof result === 'object' && 'messages' in result) {
-				const cmdResult = result as any;
-				if (cmdResult.messages) messages.push(...cmdResult.messages);
-				if (cmdResult.workflowOperations) operations.push(...cmdResult.workflowOperations);
 			}
 		}
 
@@ -201,9 +215,7 @@ export function createConfiguratorSubgraph(config: ConfiguratorSubgraphConfig) {
 		.addNode('process_operations', processOperations)
 		.addEdge('__start__', 'agent')
 		// Map 'tools' to tools node, END is handled automatically
-		.addConditionalEdges('agent', shouldContinue, {
-			tools: 'tools',
-		})
+		.addConditionalEdges('agent', shouldContinue)
 		.addEdge('tools', 'process_operations')
 		.addEdge('process_operations', 'agent'); // Loop back
 
