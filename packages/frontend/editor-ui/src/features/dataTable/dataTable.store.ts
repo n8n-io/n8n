@@ -58,7 +58,14 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 		});
-		dataTables.value = response.data;
+		// TODO: drop when the backend supports json columns
+		dataTables.value = response.data.map((dataTable) => ({
+			...dataTable,
+			columns: dataTable.columns.map((column) => ({
+				...column,
+				type: column.name === 'json' ? 'json' : column.type,
+			})),
+		}));
 		totalCount.value = response.count;
 	};
 
@@ -129,7 +136,13 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		});
 		if (response.data.length > 0) {
 			dataTables.value = response.data;
-			return response.data[0];
+			return {
+				...response.data[0],
+				columns: response.data[0].columns.map((column) => ({
+					...column,
+					type: column.name === 'json' ? 'json' : column.type,
+				})),
+			};
 		}
 		return null;
 	};

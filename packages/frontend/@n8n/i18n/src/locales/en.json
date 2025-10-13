@@ -2991,6 +2991,7 @@
 	"dataTable.filters.equals": "Equals",
 	"dataTable.filters.notEqual": "Does not equal",
 	"dataTable.filters.contains": "Contains",
+	"dataTable.filters.path": "Path",
 	"dataTable.addColumn.alreadyExistsDescription": "Column name already exists, choose a different name",
 	"dataTable.addColumn.systemColumnDescription": "This is a system column, choose a different name",
 	"dataTable.addColumn.testingColumnDescription": "This column is used for testing, choose a different name",

@@ -33,6 +33,16 @@ export function processTextFilter(
 	};
 }
 
+export function processJsonFilter(
+	filter: FilterModel[string],
+	colField: string,
+): BackendFilterRecord {
+	return {
+		...processTextFilter(filter, colField),
+		path: filter.path,
+	};
+}
+
 export function processNumberFilter(
 	filter: FilterModel[string],
 	colField: string,

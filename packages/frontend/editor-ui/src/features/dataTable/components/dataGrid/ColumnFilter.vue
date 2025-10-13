@@ -15,15 +15,16 @@ const i18n = useI18n();
 const currentModel = ref<ColumnFilterModel>(null);
 const isActive = ref(false);
 
-const filterType = computed<'text' | 'number' | 'date'>(() => {
+const filterType = computed<'text' | 'number' | 'date' | 'json'>(() => {
 	const t = props.params.colDef.cellDataType;
-	if (t === 'number') return 'number';
+	if (t === 'boolean') return 'text';
 	if (t === 'date') return 'date';
+	if (t === 'json') return 'json';
 	// boolean and others map to text
 	return 'text';
 });
 
-type GridFilterOption = string | { displayKey: string; displayName: string };
+type GridFilterOption = { displayKey: string; displayName: string };
 type FilterOption = { key: string; label: string };
 
 const availableOptions = computed<FilterOption[]>(() => {
@@ -32,9 +33,6 @@ const availableOptions = computed<FilterOption[]>(() => {
 		return [];
 	}
 	return opts.map((o) => {
-		if (typeof o === 'string') {
-			return { key: o, label: o };
-		}
 		return {
 			key: o.displayKey,
 			label: o.displayName,
@@ -47,6 +45,7 @@ const numberOfInputs = computed(() => inferInputsForKey(selectedType.value));
 
 const inputValue = ref<string>('');
 const inputValueTo = ref<string>('');
+const inputPath = ref<string>('');
 
 // Date picker refs and params
 const singleDatePicker = ref<InstanceType<typeof ElDatePickerFilter>>();
@@ -126,7 +125,21 @@ function buildModel(): ColumnFilterModel {
 	}
 
 	if (kind === 'text') {
-		return { filterType: 'text', type, filter: inputValue.value } as ColumnFilterModel;
+		return {
+			filterType: 'text',
+			type,
+			filter: inputValue.value,
+			path: inputPath.value,
+		} as ColumnFilterModel;
+	}
+
+	if (kind === 'json') {
+		return {
+			filterType: 'json',
+			type,
+			filter: inputValue.value,
+			path: inputPath.value,
+		} as ColumnFilterModel;
 	}
 
 	if (kind === 'number') {
@@ -178,6 +191,12 @@ watch([selectedType, inputValue, inputValueTo, filterType], updateModel);
 
 <template>
 	<div class="ag-custom-filter ag-custom-component-popup">
+		<N8nInput
+			v-if="filterType === 'json'"
+			v-model="inputPath"
+			size="small"
+			:placeholder="i18n.baseText('dataTable.filters.path')"
+		/>
 		<N8nSelect
 			v-model="selectedType"
 			size="small"

@@ -9,6 +9,7 @@ import {
 	processTextFilter,
 	processNumberFilter,
 	processDateFilter,
+	processJsonFilter,
 } from '../utils/filterProcessors';
 
 export type UseDataTableColumnFiltersParams = {
@@ -45,6 +46,9 @@ export const useDataTableColumnFilters = ({
 					break;
 				case 'date':
 					allFilters.push(...processDateFilter(filter, colField));
+					break;
+				case 'json':
+					allFilters.push(processJsonFilter(filter, colField));
 					break;
 				default:
 					break;
