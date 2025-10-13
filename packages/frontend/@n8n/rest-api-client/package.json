@@ -21,8 +21,8 @@
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsup",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
@@ -49,7 +49,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
-    "tsup": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

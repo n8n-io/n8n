@@ -29,13 +29,13 @@
   },
   "scripts": {
     "cleanup": "rimraf dist",
-    "dev": "vite",
+    "dev": "tsdown --watch",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter $(pwd)/../../../packages/@n8n/stylelint-config/dist/formatter-summary.js",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter $(pwd)/../../../packages/@n8n/stylelint-config/dist/formatter-summary.js",
     "typecheck": "vue-tsc --noEmit",
-    "build:backend": "tsup",
+    "build:backend": "tsdown",
     "build:frontend": "vite build",
     "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
     "preview": "vite preview"
@@ -52,6 +52,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "tsdown": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vue": "catalog:frontend",
