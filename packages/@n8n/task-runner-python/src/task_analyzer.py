@@ -86,6 +86,25 @@ class SecurityValidator(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Subscript(self, node: ast.Subscript) -> None:
+        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""  
+        
+        is_builtins_access = (
+            # __builtins__['__spec__']
+            (isinstance(node.value, ast.Name) and node.value.id in {"__builtins__", "builtins"})
+            # obj.__builtins__['__spec__']
+            or (isinstance(node.value, ast.Attribute) and node.value.attr in {"__builtins__", "builtins"})
+        )
+        
+        if is_builtins_access and isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+            key = node.slice.value
+            if key in BLOCKED_ATTRIBUTES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=key)
+                )
+        
+        self.generic_visit(node)
+
     # ========== Validation ==========
 
     def _validate_import(self, module_path: str, lineno: int) -> None:
