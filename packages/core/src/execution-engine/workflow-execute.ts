@@ -1565,6 +1565,29 @@ export class WorkflowExecute {
 								}
 
 								return input.map((item, itemIndex) => {
+									// Preserve any existing sourceOverwrite from the pairedItem
+									// for tool executions. Tool calls don't have a main
+									// connection to the agent's input, so the data proxy needs
+									// the sourceOverwrite information to know where to look up
+									// paired items. This is necessary because the workflow data
+									// proxy works on input data which normally scrubs paired
+									// item information before executing the node.
+									const isToolExecution = !!executionData.metadata?.preserveSourceOverwrite;
+									if (
+										isToolExecution &&
+										typeof item.pairedItem === 'object' &&
+										'sourceOverwrite' in item.pairedItem
+									) {
+										return {
+											...item,
+											pairedItem: {
+												item: itemIndex,
+												input: inputIndex || undefined,
+												sourceOverwrite: item.pairedItem.sourceOverwrite,
+											},
+										};
+									}
+
 									return {
 										...item,
 										pairedItem: {

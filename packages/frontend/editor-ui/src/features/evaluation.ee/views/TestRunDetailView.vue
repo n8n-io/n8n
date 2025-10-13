@@ -419,25 +419,25 @@ onMounted(async () => {
 	height: 100%;
 	width: 100%;
 	max-width: var(--content-container-width);
-	padding: var(--spacing-l) 0;
+	padding: var(--spacing--lg) 0;
 }
 
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
-	margin-bottom: var(--spacing-l);
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--lg);
 
 	.timestamp {
 		color: var(--color--text);
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 	}
 }
 
 .backButton {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	padding: 0;
 	border: none;
 	background: none;
@@ -451,16 +451,16 @@ onMounted(async () => {
 }
 
 .headerSeparator {
-	font-size: var(--font-size-xl);
+	font-size: var(--font-size--xl);
 	color: var(--color--text--tint-1);
 }
 
 .summary {
-	margin-bottom: var(--spacing-m);
+	margin-bottom: var(--spacing--md);
 
 	.summaryStats {
 		display: flex;
-		gap: var(--spacing-l);
+		gap: var(--spacing--lg);
 	}
 }
 .stat {
@@ -470,12 +470,12 @@ onMounted(async () => {
 
 .controls {
 	display: flex;
-	gap: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
 }
 
 .downloadButton {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .runsHeader {
@@ -488,7 +488,7 @@ onMounted(async () => {
 
 .runsHeaderButtons {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .loading {
@@ -499,7 +499,7 @@ onMounted(async () => {
 }
 
 .scrollableSummary {
-	border: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: 5px;
 	background-color: var(--color--background--light-3);
 
@@ -517,8 +517,8 @@ onMounted(async () => {
 .summaryCard {
 	height: 100px;
 	box-sizing: border-box;
-	padding: var(--spacing-s);
-	border-right: var(--border-width-base) var(--border-style-base) var(--color--foreground);
+	padding: var(--spacing--sm);
+	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	flex-basis: 169px;
 	flex-shrink: 0;
 	max-width: 170px;
@@ -566,12 +566,12 @@ onMounted(async () => {
 	white-space: normal;
 	word-break: break-word;
 	color: var(--color--text--danger);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	line-height: 1.25;
 }
 
 .deletedExecutionRowIndex {
 	color: var(--color--text);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 </style>

@@ -369,6 +369,6 @@ registerKeyHook('MainViewArrowLeft', {
 
 <style lang="scss" module>
 .items {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 </style>

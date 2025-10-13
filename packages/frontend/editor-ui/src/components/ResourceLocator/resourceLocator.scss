@@ -7,12 +7,12 @@ $--mode-selector-width: 92px;
 	width: $--mode-selector-width;
 
 	input {
-		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
+		border-radius: var(--radius) 0 0 var(--radius);
 		border-right: none;
 		overflow: hidden;
 
 		&:focus {
-			border-right: var(--border-base);
+			border-right: var(--border);
 		}
 
 		&:disabled {
@@ -79,8 +79,8 @@ $--mode-selector-width: 92px;
 		bottom: 0;
 		left: 0;
 		right: var(--input-issues-width);
-		border: 1px solid var(--border-color-base);
-		border-radius: var(--border-radius-base);
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius);
 	}
 
 	.backgroundOverride {
@@ -101,7 +101,7 @@ $--mode-selector-width: 92px;
 
 		.inputContainerInputCorners {
 			input {
-				border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
+				border-radius: 0 var(--radius) var(--radius) 0;
 			}
 		}
 	}
@@ -147,7 +147,7 @@ $--mode-selector-width: 92px;
 .errorContainer,
 .errorDetails {
 	display: flex;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	flex-direction: column;
 }
 
@@ -164,13 +164,13 @@ $--mode-selector-width: 92px;
 }
 
 .credential-link {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .openResourceLink {
 	width: 25px !important;
-	padding-left: var(--spacing-2xs);
-	padding-top: var(--spacing-4xs);
+	padding-left: var(--spacing--2xs);
+	padding-top: var(--spacing--4xs);
 	align-self: flex-start;
 }
 

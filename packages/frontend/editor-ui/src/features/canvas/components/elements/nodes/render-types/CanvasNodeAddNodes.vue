@@ -121,11 +121,11 @@ function onClick() {
 
 .label {
 	width: max-content;
-	font-weight: var(--font-weight-medium);
-	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
+	font-weight: var(--font-weight--medium);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
 	color: var(--color--text--shade-1);
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
 }

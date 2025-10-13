@@ -59,12 +59,12 @@ const perks = computed(() =>
 	list-style: none;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 
 	> li {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 	}
 }
 </style>

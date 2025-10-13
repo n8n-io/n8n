@@ -75,7 +75,7 @@ async function onCloseClick() {
 
 .mainContent {
 	display: flex;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .keepSpace {
@@ -84,6 +84,6 @@ async function onCloseClick() {
 .trailingContent {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 }
 </style>

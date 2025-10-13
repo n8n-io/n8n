@@ -82,7 +82,7 @@ async function onBuildWithAIClick() {
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 }
 
 .option {
@@ -95,7 +95,7 @@ async function onBuildWithAIClick() {
 .button {
 	background: var(--color--foreground--tint-2);
 	border: 2px dashed var(--color--foreground--shade-2);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 	padding: 0;
 
 	min-width: 100px;
@@ -104,7 +104,7 @@ async function onBuildWithAIClick() {
 }
 
 .selectedButtonHighlight {
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 
 	&.highlighted {
 		box-shadow: 0 0 0 7px var(--color-canvas-selected);
@@ -113,11 +113,11 @@ async function onBuildWithAIClick() {
 
 .label {
 	width: max-content;
-	font-weight: var(--font-weight-medium);
-	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
+	font-weight: var(--font-weight--medium);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
 	color: var(--color--text--shade-1);
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 	text-align: center;
 }
 
@@ -126,13 +126,13 @@ async function onBuildWithAIClick() {
 	align-items: center;
 	justify-content: center;
 	height: 100px;
-	margin-bottom: calc(var(--font-line-height-xloose) * 1em + var(--spacing-2xs));
+	margin-bottom: calc(var(--line-height--xl) * 1em + var(--spacing--2xs));
 }
 
 .orText {
-	font-size: var(--font-size-m);
+	font-size: var(--font-size--md);
 	color: var(--color--text);
-	font-weight: var(--font-weight-regular);
-	padding: 0 var(--spacing-xs);
+	font-weight: var(--font-weight--regular);
+	padding: 0 var(--spacing--xs);
 }
 </style>

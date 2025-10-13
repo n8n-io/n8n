@@ -1,12 +1,10 @@
 import { computed, ref, type Ref } from 'vue';
 import type { ColDef, GridApi } from 'ag-grid-community';
-import type { DataTableRow } from '@/features/dataTable/dataTable.types';
 import type {
 	BackendFilter,
 	BackendFilterRecord,
 	FilterModel,
 } from '../types/dataTableFilters.types';
-import { GRID_FILTER_CONFIG, isSpecialColumn } from '../utils/filterMappings';
 import {
 	processTextFilter,
 	processNumberFilter,
@@ -16,33 +14,13 @@ import {
 export type UseDataTableColumnFiltersParams = {
 	gridApi: Ref<GridApi>;
 	colDefs: Ref<ColDef[]>;
-	setGridData: (params: {
-		rowData?: DataTableRow[];
-		colDefs?: ColDef[];
-	}) => void;
 };
 
 export const useDataTableColumnFilters = ({
 	gridApi,
 	colDefs,
-	setGridData,
 }: UseDataTableColumnFiltersParams) => {
 	const currentFilterJSON = ref<string | undefined>(undefined);
-
-	const initializeFilters = () => {
-		gridApi.value.setGridOption('defaultColDef', GRID_FILTER_CONFIG.defaultColDef);
-
-		const updated = colDefs.value.map((def) => {
-			const colId = def.colId ?? def.field;
-			if (!colId) return def;
-			if (isSpecialColumn(colId)) {
-				return { ...def, filter: false };
-			}
-			return def;
-		});
-		colDefs.value = updated;
-		setGridData({ colDefs: updated });
-	};
 
 	function convertAgModelToBackend(model: FilterModel, defs: ColDef[]): BackendFilter | undefined {
 		const allFilters: BackendFilterRecord[] = [];
@@ -86,7 +64,6 @@ export const useDataTableColumnFilters = ({
 	const hasActiveFilters = computed(() => Boolean(currentFilterJSON.value));
 
 	return {
-		initializeFilters,
 		onFilterChanged,
 		currentFilterJSON,
 		hasActiveFilters,

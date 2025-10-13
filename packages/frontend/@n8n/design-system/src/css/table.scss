@@ -109,7 +109,7 @@
 
 	thead {
 		color: var.$table-header-font-color;
-		font-weight: var(--font-weight-medium);
+		font-weight: var(--font-weight--medium);
 
 		&.is-group {
 			th {
@@ -324,7 +324,7 @@
 			bottom: 0;
 			width: 100%;
 			height: 1px;
-			background-color: var(--border-color-light);
+			background-color: var(--border-color--light);
 			z-index: 4;
 		}
 	}

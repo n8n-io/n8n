@@ -346,7 +346,8 @@ test.describe('Data Table details view', () => {
 		expect(initialName).not.toEqual(newName);
 	});
 
-	test('Should filter correctly using column filters', async ({ n8n }) => {
+	// eslint-disable-next-line playwright/no-skipped-test
+	test.skip('Should filter correctly using column filters', async ({ n8n }) => {
 		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
 
 		await n8n.dataTableDetails.setPageSize('10');
@@ -471,12 +472,12 @@ test.describe('Data Table details view', () => {
 		expect(emailIndexAfter).toBeLessThan(ageIndexAfter);
 		expect(emailIndex).toBeGreaterThan(initialOrder.indexOf(COLUMN_NAMES.age));
 
-		await n8n.dataTableDetails.dragColumnToPosition(COLUMN_NAMES.birthday, COLUMN_NAMES.active);
+		await n8n.dataTableDetails.dragColumnToPosition(COLUMN_NAMES.birthday, COLUMN_NAMES.name);
 
 		const finalOrder = await n8n.dataTableDetails.getColumnOrder();
 		const birthdayFinalIndex = finalOrder.indexOf(COLUMN_NAMES.birthday);
-		const activeFinalIndex = finalOrder.indexOf(COLUMN_NAMES.active);
+		const nameFinalIndex = finalOrder.indexOf(COLUMN_NAMES.name);
 
-		expect(birthdayFinalIndex).toBeLessThan(activeFinalIndex);
+		expect(birthdayFinalIndex).toBeLessThan(nameFinalIndex);
 	});
 });

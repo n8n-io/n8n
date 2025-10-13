@@ -13,7 +13,7 @@
 }
 
 @include mixins.b(table-filter) {
-	border: solid 1px var(--border-color-light);
+	border: solid 1px var(--border-color--light);
 	border-radius: 2px;
 	background-color: var.$color-white;
 	box-shadow: var.$dropdown-menu-box-shadow;
@@ -50,7 +50,7 @@
 	}
 
 	@include mixins.e(bottom) {
-		border-top: 1px solid var(--border-color-light);
+		border-top: 1px solid var(--border-color--light);
 		padding: 8px;
 
 		button {

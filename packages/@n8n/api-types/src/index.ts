@@ -16,6 +16,10 @@ export {
 	type ChatModelsRequest,
 	type ChatModelsResponse,
 	ChatHubSendMessageRequest,
+	type ChatHubConversationsResponse,
+	type ChatHubMessagesResponse,
+	type ChatHubConversation,
+	type ChatHubMessage,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';

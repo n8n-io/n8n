@@ -5,7 +5,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
@@ -36,7 +36,7 @@ vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(),
 }));
 
-vi.mock('@/stores/projects.store', () => ({
+vi.mock('@/features/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(),
 }));
 

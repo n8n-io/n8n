@@ -7,7 +7,7 @@ import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import type { WorkflowResource } from '@/Interface';
 import * as vueRouter from 'vue-router';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowsStore } from '@/stores/workflows.store';
