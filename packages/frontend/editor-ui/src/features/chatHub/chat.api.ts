@@ -4,6 +4,8 @@ import type {
 	ChatHubSendMessageRequest,
 	ChatModelsRequest,
 	ChatModelsResponse,
+	ChatHubConversationsResponse,
+	ChatHubMessagesResponse,
 } from '@n8n/api-types';
 import type { StructuredChunk } from './chat.types';
 
@@ -15,13 +17,13 @@ export const fetchChatModelsApi = async (
 	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
-export const sendText = (
+export function sendText(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
 	onMessageUpdated: (data: StructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
-): void => {
+) {
 	void streamRequest<StructuredChunk>(
 		ctx,
 		'/chat/send',
@@ -31,4 +33,19 @@ export const sendText = (
 		onError,
 		'\n',
 	);
+}
+
+export const fetchConversationsApi = async (
+	context: IRestApiContext,
+): Promise<ChatHubConversationsResponse> => {
+	const apiEndpoint = '/chat/conversations';
+	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
+};
+
+export const fetchConversationMessagesApi = async (
+	context: IRestApiContext,
+	conversationId: string,
+): Promise<ChatHubMessagesResponse> => {
+	const apiEndpoint = `/chat/conversations/${conversationId}/messages`;
+	return await makeRestApiRequest<ChatHubMessagesResponse>(context, 'GET', apiEndpoint);
 };

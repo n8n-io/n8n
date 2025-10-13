@@ -5,7 +5,7 @@ export class SurveyMonkeyApi implements ICredentialType {
 
 	displayName = 'SurveyMonkey API';
 
-	documentationUrl = 'surveyMonkey';
+	documentationUrl = 'surveymonkey';
 
 	properties: INodeProperties[] = [
 		{

@@ -9,6 +9,7 @@ name: 'Docker: Build and Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
+  NODE_VERSION: '22.18.0'
 
 on:
   schedule:
@@ -352,7 +353,7 @@ jobs:
           context: .
           file: ./docker/images/n8n/Dockerfile
           build-args: |
-            NODE_VERSION=22
+            NODE_VERSION=${{ env.NODE_VERSION }}
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
@@ -367,7 +368,7 @@ jobs:
           context: .
           file: ./docker/images/runners/Dockerfile
           build-args: |
-            NODE_VERSION=22.19
+            NODE_VERSION=${{ env.NODE_VERSION }}
             PYTHON_VERSION=3.13
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
