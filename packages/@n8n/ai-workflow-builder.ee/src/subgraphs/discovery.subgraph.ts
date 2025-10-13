@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage, ToolMessage, isAIMessage } from '@langchain/core/messages';
-import { Annotation, StateGraph, END } from '@langchain/langgraph';
+import { HumanMessage, ToolMessage, isAIMessage } from '@langchain/core/messages';
+import { Annotation, StateGraph, END, isCommand } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { DiscoveryAgent } from '../agents/discovery.agent';
@@ -65,17 +65,30 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 	 * Agent node - calls discovery agent
 	 */
 	const callAgent = async (state: typeof DiscoverySubgraphState.State) => {
-		// On first call, initialize with user request
-		if (state.messages.length === 0) {
-			const initialMessage = new AIMessage({
-				content: `User request: ${state.userRequest}`,
-			});
-			return { messages: [initialMessage] };
-		}
+		console.log('[Discovery Agent] Called in subgraph', {
+			messageCount: state.messages.length,
+			userRequest: state.userRequest.substring(0, 100),
+		});
 
 		const agent = discoveryAgent.getAgent();
+
+		// On first call, create initial message with user request
+		const messagesToUse =
+			state.messages.length === 0
+				? [
+						new HumanMessage({
+							content: `Find n8n nodes for: ${state.userRequest}`,
+						}),
+					]
+				: state.messages;
+
 		const response = await agent.invoke({
-			messages: state.messages,
+			messages: messagesToUse,
+		});
+
+		console.log('[Discovery Agent] Response', {
+			hasToolCalls: response.tool_calls?.length ?? 0,
+			hasContent: !!response.content,
 		});
 
 		return { messages: [response] };
@@ -122,9 +135,22 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 			}),
 		);
 
-		return {
-			messages: toolResults as BaseMessage[],
-		};
+		// Unwrap Command objects and collect messages
+		const messages: BaseMessage[] = [];
+		for (const result of toolResults) {
+			if (isCommand(result)) {
+				// Tool returned Command - extract messages
+				const update = result.update as any;
+				if (update?.messages) {
+					messages.push(...update.messages);
+				}
+			} else if (result instanceof ToolMessage) {
+				// Direct ToolMessage
+				messages.push(result);
+			}
+		}
+
+		return { messages };
 	};
 
 	/**
@@ -158,9 +184,7 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 		.addNode('tools', executeTools)
 		.addEdge('__start__', 'agent')
 		// Map 'tools' to tools node, END is handled automatically
-		.addConditionalEdges('agent', shouldContinue, {
-			tools: 'tools',
-		})
+		.addConditionalEdges('agent', shouldContinue)
 		.addEdge('tools', 'agent'); // After tools, go back to agent
 
 	return subgraph.compile();
