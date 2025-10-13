@@ -170,16 +170,13 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 				typeof response.content === 'string' ? response.content.substring(0, 100) : '',
 		});
 
-		// Extract discovery results from tool messages to populate state
-		// This helps supervisor make informed routing decisions
-		const discoveryContext =
-			response.tool_calls && response.tool_calls.length === 0
-				? {
-						// Discovery completed - extract from recent tool results
-						foundNodes: [], // TODO: Parse from tool results if needed
-						timestamp: Date.now(),
-					}
-				: state.discoveryContext; // Keep existing if still working
+		// Update discovery context to track iterations and prevent loops
+		const currentCallCount = state.discoveryContext?.callCount ?? 0;
+		const discoveryContext = {
+			callCount: currentCallCount + 1, // Increment call count
+			lastRun: Date.now(),
+			completedSearches: state.discoveryContext?.completedSearches ?? [],
+		};
 
 		// Mark this agent as currently executing (for tool result routing)
 		return {
@@ -245,11 +242,28 @@ export function createMultiAgentWorkflow(config: MultiAgentWorkflowConfig) {
 		// Prepare messages with FULL workflow context and cache control
 		const messagesWithContext = prepareMessagesWithContext(messagesToUse, state);
 
+		const lastMsg = messagesWithContext[messagesWithContext.length - 1];
+		let hasWorkflowContext = false;
+		if (lastMsg?.content) {
+			const content = lastMsg.content;
+			if (typeof content === 'string') {
+				hasWorkflowContext = content.includes('<current_workflow_json>');
+			} else if (Array.isArray(content)) {
+				hasWorkflowContext = content.some(
+					(block) =>
+						typeof block === 'object' &&
+						block !== null &&
+						'text' in block &&
+						typeof block.text === 'string' &&
+						block.text.includes('<current_workflow_json>'),
+				);
+			}
+		}
+
 		console.log('[Configurator] Context prepared', {
 			messageCount: messagesWithContext.length,
-			lastMessageHasWorkflowContext: messagesWithContext[messagesWithContext.length - 1]?.content
-				?.toString()
-				.includes('<current_workflow_json>'),
+			lastMessageHasWorkflowContext: hasWorkflowContext,
+			lastMessageContentType: Array.isArray(lastMsg?.content) ? 'array' : typeof lastMsg?.content,
 		});
 
 		const response = await agent.invoke({

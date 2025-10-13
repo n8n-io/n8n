@@ -98,14 +98,11 @@ export const WorkflowState = Annotation.Root({
 		default: () => '',
 	}),
 
-	// Multi-agent: discovery agent results (helps supervisor make routing decisions)
+	// Multi-agent: discovery agent context (lightweight, tracks iterations)
 	discoveryContext: Annotation<{
-		foundNodes: Array<{
-			type: string;
-			displayName: string;
-			description: string;
-		}>;
-		timestamp: number;
+		callCount: number; // Number of times discovery has been called
+		lastRun: number; // Timestamp of last discovery run
+		completedSearches: string[]; // Keywords/topics that were searched
 	} | null>({
 		reducer: (x, y) => y ?? x,
 		default: () => null,
