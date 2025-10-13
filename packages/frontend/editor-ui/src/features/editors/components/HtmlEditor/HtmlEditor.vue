@@ -292,7 +292,7 @@ defineExpose({
 
 .droppable {
 	:global(.cm-editor) {
-		border-color: var(--color-ndv-droppable-parameter);
+		border-color: var(--ndv--droppable-parameter--color);
 		border-style: dashed;
 		border-width: 1.5px;
 	}

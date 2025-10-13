@@ -69,7 +69,7 @@ function onNewChat() {
 	width: 200px;
 	height: 100%;
 	background-color: var(--color--background--light-3);
-	border-right: var(--border-base);
+	border-right: var(--border);
 	position: relative;
 	overflow: auto;
 }
@@ -78,14 +78,14 @@ function onNewChat() {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing-xs);
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 }
 
 .returnButton {
 	cursor: pointer;
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	align-items: center;
 	flex: 1;
 	&:hover {
@@ -96,8 +96,8 @@ function onNewChat() {
 .items {
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing-3xs);
-	gap: var(--spacing-xs);
+	padding: 0 var(--spacing--3xs);
+	gap: var(--spacing--xs);
 }
 
 .group {
@@ -106,12 +106,12 @@ function onNewChat() {
 }
 
 .groupHeader {
-	padding: 0 var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs);
 }
 
 .loading,
 .empty {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	text-align: center;
 }
 </style>

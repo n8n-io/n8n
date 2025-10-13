@@ -95,7 +95,7 @@ watch(
 
 .emptyIcon {
 	zoom: 2.5;
-	color: var(--color-button-secondary-border);
+	color: var(--button--border-color--secondary);
 }
 
 @container (height < 150px) {

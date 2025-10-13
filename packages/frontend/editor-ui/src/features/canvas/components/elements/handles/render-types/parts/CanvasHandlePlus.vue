@@ -155,16 +155,16 @@ function onClick(event: MouseEvent) {
 
 	&.secondary {
 		.line {
-			stroke: var(--node-type-supplemental-color);
+			stroke: var(--node-type--supplemental--color);
 		}
 
 		.plus {
 			path {
-				fill: var(--node-type-supplemental-color);
+				fill: var(--node-type--supplemental--color);
 			}
 
 			rect {
-				stroke: var(--node-type-supplemental-color);
+				stroke: var(--node-type--supplemental--color);
 			}
 		}
 	}

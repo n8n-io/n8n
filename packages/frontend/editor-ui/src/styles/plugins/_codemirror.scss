@@ -81,12 +81,12 @@
 
 		li[aria-selected] {
 			background-color: var(--color--background);
-			color: var(--color-autocomplete-item-selected);
+			color: var(--autocomplete--item--color--selected);
 		}
 
 		> .cm-section-header {
 			padding: var(--spacing--4xs) var(--spacing--3xs);
-			border-bottom: 1px solid var(--color-autocomplete-section-header-border);
+			border-bottom: 1px solid var(--autocomplete--section-header--border-color);
 			background-color: var(--color--background--light-3);
 			position: sticky;
 			top: 0;
@@ -147,7 +147,7 @@
 
 		.autocomplete-info-example {
 			border-radius: var(--radius);
-			border: 1px solid var(--color-infobox-examples-border-color);
+			border: 1px solid var(--autocomplete--infobox--examples--border-color);
 			color: var(--color--text);
 			margin-top: var(--spacing--xs);
 		}
@@ -183,7 +183,7 @@
 	}
 
 	.autocomplete-info-name {
-		color: var(--color-autocomplete-item-selected);
+		color: var(--autocomplete--item--color--selected);
 	}
 
 	.autocomplete-info-arg {
@@ -248,7 +248,7 @@
 	.autocomplete-info-examples-list {
 		margin: var(--spacing--xs) var(--spacing--xs) 0 var(--spacing--xs);
 		border-radius: var(--radius);
-		border: 1px solid var(--color-infobox-examples-border-color);
+		border: 1px solid var(--autocomplete--infobox--examples--border-color);
 	}
 
 	.autocomplete-info-example {
@@ -278,7 +278,7 @@
 	.autocomplete-info-section-title {
 		margin: var(--spacing--3xs) 0;
 		padding: 0 var(--spacing--xs) var(--spacing--3xs) var(--spacing--xs);
-		border-bottom: 1px solid var(--color-autocomplete-section-header-border);
+		border-bottom: 1px solid var(--autocomplete--section-header--border-color);
 		text-transform: uppercase;
 		color: var(--color--text--shade-1);
 		font-size: var(--font-size--3xs);
@@ -288,25 +288,25 @@
 	// Syntax highlighting
 	.ts-keyword,
 	.ts-punctuation {
-		color: var(--color-code-tags-keyword);
+		color: var(--code-tags--keyword--color);
 	}
 
 	.ts-stringLiteral,
 	.ts-primitive {
-		color: var(--color-code-tags-primitive);
+		color: var(--code-tags--primitive--color);
 	}
 
 	.ts-localName,
 	.ts-parameterName,
 	.ts-methodName {
-		color: var(--color-code-tags-variable);
+		color: var(--code-tags--variable--color);
 	}
 
 	.ts-typeName,
 	.ts-interfaceName,
 	.ts-className,
 	.ts-aliasName {
-		color: var(--color-code-tags-class);
+		color: var(--code-tags--class--color);
 	}
 }
 
@@ -344,19 +344,19 @@
 		border-bottom-left-radius: var(--radius);
 		border-left: var(--border);
 		border-right: none;
-		background-color: var(--color-infobox-background);
+		background-color: var(--autocomplete--infobox--color--background);
 		z-index: 0;
 	}
 
 	&.cm-completionInfo-right {
-		background-color: var(--color-infobox-background);
+		background-color: var(--autocomplete--infobox--color--background);
 		min-width: 200px;
 	}
 }
 
 #cm-tooltip-container .cm-tooltip.cm-cursorInfo,
 #cm-tooltip-container .cm-tooltip-hover {
-	background-color: var(--color-infobox-background);
+	background-color: var(--autocomplete--infobox--color--background);
 	border: var(--border);
 	box-shadow: var(--shadow--light);
 	border-radius: var(--radius);

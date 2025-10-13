@@ -20,7 +20,7 @@ echo "Starting token replacements..."
 echo ""
 
 ## COMMENT OUT PREVIOUS STEPS 1-58 TO SPEED UP - THEY HAVE ALREADY RUN
-: <<'COMMENTED_OUT_BLOCK'
+# : <<'COMMENTED_OUT_BLOCK'
 # Primary color tokens (including HSL components) - process first as most specific
 echo "[1] Replacing primary color tokens..."
 echo "$files" | xargs perl -pi -e 's/--color-primary-shade-1/--color--primary--shade-1/g'
@@ -191,7 +191,7 @@ echo "$files" | xargs perl -pi -e 's/--font-size-m/--font-size--md/g'
 echo "$files" | xargs perl -pi -e 's/--font-size-s/--font-size--sm/g'
 echo "✓ Font size tokens replaced"
 echo ""
-COMMENTED_OUT_BLOCK
+# COMMENTED_OUT_BLOCK
 
 # Canvas tokens
 echo "[17] Replacing canvas tokens..."

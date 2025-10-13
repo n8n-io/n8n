@@ -19,7 +19,7 @@ export function useLoadingService() {
 		loadingService.value = Loading.service({
 			lock: true,
 			text: text || i18n.baseText('genericHelpers.loading'),
-			background: 'var(--color-dialog-overlay-background)',
+			background: 'var(--dialog--overlay--color--background)',
 		}) as unknown as LoadingService;
 	}
 
