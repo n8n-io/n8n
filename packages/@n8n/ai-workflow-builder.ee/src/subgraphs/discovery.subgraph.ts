@@ -1,16 +1,18 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { HumanMessage, ToolMessage, isAIMessage } from '@langchain/core/messages';
-import { Annotation, StateGraph, END, isCommand } from '@langchain/langgraph';
+import { HumanMessage } from '@langchain/core/messages';
+import { Annotation, StateGraph, END } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { DiscoveryAgent } from '../agents/discovery.agent';
+import { executeSubgraphTools } from '../utils/subgraph-helpers';
 
 /**
  * Discovery Subgraph State
  *
- * Isolated from parent graph - only receives user request.
+ * Isolated from parent graph - receives user request and optional supervisor instructions.
  * Internally manages its own message history and tool execution.
+ * Outputs structured node findings with reasoning and relevant context.
  */
 export const DiscoverySubgraphState = Annotation.Root({
 	// Input: What the user wants to build
@@ -19,13 +21,33 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => '',
 	}),
 
+	// Input: Optional instructions from supervisor
+	supervisorInstructions: Annotation<string | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
+	}),
+
 	// Internal: Conversation within this subgraph
 	messages: Annotation<BaseMessage[]>({
 		reducer: (x, y) => x.concat(y),
 		default: () => [],
 	}),
 
-	// Output: Summary of what was found
+	// Output: Found nodes with reasoning
+	nodesFound: Annotation<Array<{ nodeType: INodeTypeDescription; reasoning: string }>>({
+		reducer: (x, y) => y ?? x,
+		default: () => [],
+	}),
+
+	// Output: Relevant context for other agents
+	relevantContext: Annotation<
+		Array<{ context: string; relevancy?: 'configurator' | 'builder' | 'responder' }>
+	>({
+		reducer: (x, y) => y ?? x,
+		default: () => [],
+	}),
+
+	// Output: Human-readable summary
 	summary: Annotation<string>({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
@@ -68,16 +90,17 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 		console.log('[Discovery Agent] Called in subgraph', {
 			messageCount: state.messages.length,
 			userRequest: state.userRequest.substring(0, 100),
+			hasSupervisorInstructions: !!state.supervisorInstructions,
 		});
 
 		const agent = discoveryAgent.getAgent();
 
-		// On first call, create initial message with user request
+		// On first call, create initial message
 		const messagesToUse =
 			state.messages.length === 0
 				? [
 						new HumanMessage({
-							content: `Find n8n nodes for: ${state.userRequest}`,
+							content: state.supervisorInstructions ?? `Find n8n nodes for: ${state.userRequest}`,
 						}),
 					]
 				: state.messages;
@@ -95,62 +118,10 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 	};
 
 	/**
-	 * Tool execution node - simplified for subgraph
+	 * Tool execution node - uses helper for consistent execution
 	 */
 	const executeTools = async (state: typeof DiscoverySubgraphState.State) => {
-		const lastMessage = state.messages[state.messages.length - 1];
-
-		if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls?.length) {
-			return {};
-		}
-
-		// Execute tools in parallel
-		const toolResults = await Promise.all(
-			lastMessage.tool_calls.map(async (toolCall) => {
-				const tool = toolMap.get(toolCall.name);
-				if (!tool) {
-					return new ToolMessage({
-						content: `Tool ${toolCall.name} not found`,
-						tool_call_id: toolCall.id ?? '',
-					});
-				}
-
-				try {
-					const result = await tool.invoke(toolCall.args ?? {}, {
-						toolCall: {
-							id: toolCall.id,
-							name: toolCall.name,
-							args: toolCall.args ?? {},
-						},
-					});
-
-					// Discovery tools return simple messages, not Command objects
-					return result;
-				} catch (error) {
-					return new ToolMessage({
-						content: `Tool failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-						tool_call_id: toolCall.id ?? '',
-					});
-				}
-			}),
-		);
-
-		// Unwrap Command objects and collect messages
-		const messages: BaseMessage[] = [];
-		for (const result of toolResults) {
-			if (isCommand(result)) {
-				// Tool returned Command - extract messages
-				const update = result.update as any;
-				if (update?.messages) {
-					messages.push(...update.messages);
-				}
-			} else if (result instanceof ToolMessage) {
-				// Direct ToolMessage
-				messages.push(result);
-			}
-		}
-
-		return { messages };
+		return await executeSubgraphTools(state, toolMap);
 	};
 
 	/**
@@ -158,7 +129,7 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 	 */
 	const shouldContinue = (state: typeof DiscoverySubgraphState.State) => {
 		// Safety: max 10 iterations
-		if (state.iterationCount >= 10) {
+		if (state.iterationCount >= 30) {
 			console.log('[Discovery Subgraph] Max iterations reached');
 			return END;
 		}

@@ -161,7 +161,7 @@ export class SupervisorAgent {
 	 * Get the supervisor agent with structured output for routing
 	 */
 	getAgent() {
-		return systemPrompt.pipe(
+		return systemPrompt.pipe<SupervisorRouting>(
 			this.llm.withStructuredOutput(supervisorRoutingSchema, {
 				name: 'routing_decision',
 			}),

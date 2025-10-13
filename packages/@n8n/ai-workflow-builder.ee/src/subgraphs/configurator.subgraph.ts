@@ -1,13 +1,14 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { HumanMessage, ToolMessage, AIMessage, isAIMessage } from '@langchain/core/messages';
-import { Annotation, StateGraph, END, isCommand } from '@langchain/langgraph';
+import { HumanMessage } from '@langchain/core/messages';
+import { Annotation, StateGraph, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { ConfiguratorAgent } from '../agents/configurator.agent';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { processOperations } from '../utils/operations-processor';
+import { executeSubgraphTools } from '../utils/subgraph-helpers';
 import type { ChatPayload } from '../workflow-builder-agent';
 
 /**
@@ -124,64 +125,10 @@ export function createConfiguratorSubgraph(config: ConfiguratorSubgraphConfig) {
 	};
 
 	/**
-	 * Tool execution node - simplified for subgraph
+	 * Tool execution node - uses helper for consistent execution
 	 */
 	const executeTools = async (state: typeof ConfiguratorSubgraphState.State) => {
-		const lastMessage = state.messages[state.messages.length - 1];
-
-		if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls?.length) {
-			return {};
-		}
-
-		// Execute tools in parallel
-		const toolResults = await Promise.all(
-			lastMessage.tool_calls.map(async (toolCall) => {
-				const tool = toolMap.get(toolCall.name);
-				if (!tool) {
-					return new ToolMessage({
-						content: `Tool ${toolCall.name} not found`,
-						tool_call_id: toolCall.id ?? '',
-					});
-				}
-
-				try {
-					const result = await tool.invoke(toolCall.args ?? {}, {
-						toolCall: {
-							id: toolCall.id,
-							name: toolCall.name,
-							args: toolCall.args ?? {},
-						},
-					});
-					return result;
-				} catch (error) {
-					return new ToolMessage({
-						content: `Tool failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-						tool_call_id: toolCall.id ?? '',
-					});
-				}
-			}),
-		);
-
-		// Unwrap Command objects and collect messages/operations
-		const messages: BaseMessage[] = [];
-		const operations: WorkflowOperation[] = [];
-
-		for (const result of toolResults) {
-			if (isCommand(result)) {
-				// Tool returned Command - extract update
-				const update = result.update as any;
-				if (update?.messages) messages.push(...update.messages);
-				if (update?.workflowOperations) operations.push(...update.workflowOperations);
-			} else if (result instanceof ToolMessage || result instanceof AIMessage) {
-				// Direct message
-				messages.push(result);
-			}
-		}
-
-		return {
-			messages,
-			workflowOperations: operations.length > 0 ? operations : null,
-		};
+		return await executeSubgraphTools(state, toolMap);
 	};
 
 	/**
