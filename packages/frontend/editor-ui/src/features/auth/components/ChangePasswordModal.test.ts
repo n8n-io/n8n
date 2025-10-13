@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
+import ChangePasswordModal from './ChangePasswordModal.vue';
 import type { createPinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 
