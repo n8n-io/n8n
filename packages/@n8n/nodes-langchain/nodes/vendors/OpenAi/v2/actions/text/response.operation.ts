@@ -706,7 +706,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (!response) return [];
 
 	let toolCalls = response.output.filter((item) => item.type === 'function_call');
-	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
 	while (toolCalls.length) {
 		if (abortSignal?.aborted || (maxToolsIterations > 0 && currentIteration > maxToolsIterations)) {
@@ -714,7 +713,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 
 		for (const item of toolCalls) {
-			if (item.type !== 'function_call' || answeredToolCalls.has(item.call_id)) {
+			if (item.type !== 'function_call') {
 				continue;
 			}
 			body.input.push(item);
@@ -740,8 +739,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				call_id: callId,
 				output: functionResponse,
 			});
-
-			answeredToolCalls.add(callId);
 		}
 
 		response = (await apiRequest.call(this, 'POST', '/responses', {
