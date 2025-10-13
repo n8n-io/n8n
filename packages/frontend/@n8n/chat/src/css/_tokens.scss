@@ -1,7 +1,7 @@
 :root {
 	/* Colors */
 	--chat--color--primary: #e74266;
-	--chat--color--primary--shade-50: #db4061;
+	--chat--color--primary-shade-50: #db4061;
 	--chat--color--primary--shade-100: #cf3c5c;
 	--chat--color--secondary: #20b69e;
 	--chat--color-secondary-shade-50: #1ca08a;
@@ -74,7 +74,7 @@
 	--chat--toggle--height: var(--chat--toggle--size);
 	--chat--toggle--border-radius: 50%;
 	--chat--toggle--background: var(--chat--color--primary);
-	--chat--toggle--hover--background: var(--chat--color--primary--shade-50);
+	--chat--toggle--hover--background: var(--chat--color--primary-shade-50);
 	--chat--toggle--active--background: var(--chat--color--primary--shade-100);
 	--chat--toggle--color: var(--chat--color-white);
 
@@ -98,13 +98,13 @@
 	--chat--button--padding: calc(var(--chat--spacing) * 1 / 2) var(--chat--spacing);
 	--chat--button--border-radius: var(--chat--border-radius);
 	--chat--button--hover--color: var(--chat--color-light);
-	--chat--button--hover--background: var(--chat--color--primary--shade-50);
+	--chat--button--hover--background: var(--chat--color--primary-shade-50);
 	--chat--close--button--color-hover: var(--chat--color--primary);
 
 	/* Send and File Buttons */
 	--chat--input--send--button--background: var(--chat--color-white);
 	--chat--input--send--button--color: var(--chat--color--secondary);
-	--chat--input--send--button--background-hover: var(--chat--color--primary--shade-50);
+	--chat--input--send--button--background-hover: var(--chat--color--primary-shade-50);
 	--chat--input--send--button--color-hover: var(--chat--color-secondary-shade-50);
 	--chat--input--file--button--background: var(--chat--color-white);
 	--chat--input--file--button--color: var(--chat--color--secondary);
