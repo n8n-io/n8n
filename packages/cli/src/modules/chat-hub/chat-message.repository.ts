@@ -32,7 +32,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 	async getManyBySessionId(sessionId: string) {
 		return await this.find({
 			where: { sessionId },
-			order: { createdAt: 'ASC' },
+			order: { createdAt: 'ASC', id: 'DESC' },
 		});
 	}
 }

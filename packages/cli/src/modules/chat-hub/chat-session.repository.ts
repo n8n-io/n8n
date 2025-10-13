@@ -50,7 +50,7 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	async getManyByUserId(userId: string) {
 		return await this.find({
 			where: { ownerId: userId },
-			order: { lastMessageAt: 'DESC' },
+			order: { lastMessageAt: 'DESC', id: 'ASC' },
 		});
 	}
 

@@ -3,8 +3,11 @@ import {
 	type ChatHubProvider,
 	type ChatModelsResponse,
 	type ChatHubConversationsResponse,
-	type ChatHubMessagesResponse,
+	type ChatHubConversationResponse,
 	chatHubProviderSchema,
+	ChatHubMessageDto,
+	type ChatHubMessageTurnDto,
+	type ChatMessageId,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -39,8 +42,8 @@ import { ChatHubSessionRepository } from './chat-session.repository';
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import { getBase } from '@/workflow-execute-additional-data';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 @Service()
@@ -552,127 +555,179 @@ export class ChatHubService {
 		return sessions.map((session) => ({
 			id: session.id,
 			title: session.title,
-			createdAt: session.createdAt,
-			updatedAt: session.updatedAt,
+			ownerId: session.ownerId,
+			lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+			credentialId: session.credentialId,
+			provider: session.provider,
+			model: session.model,
+			workflowId: session.workflowId,
+			createdAt: session.createdAt.toISOString(),
+			updatedAt: session.updatedAt.toISOString(),
 		}));
 	}
 
-	/**
-	 * Get all messages for a specific conversation
-	 * TODO: Replace with actual database queries
-	 */
-	async getConversationMessages(conversationId: string): Promise<ChatHubMessagesResponse> {
-		// Mock data for now - in a real implementation, we'd query by conversationId
-		this.logger.debug(`Fetching messages for conversation ${conversationId}`);
-
-		// Return different mock data based on conversation ID
-		const mockConversations: Record<string, ChatHubMessagesResponse> = {
-			'7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f': [
-				{
-					id: '650e8400-e29b-41d4-a716-446655440001',
-					conversationId,
-					role: 'user',
-					content: 'How do I create my first workflow in n8n?',
-					createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440002',
-					conversationId,
-					role: 'assistant',
-					content:
-						"To create your first workflow in n8n:\n\n1. Click the '+' button in the top left\n2. Select 'Create New Workflow'\n3. Add nodes by clicking the '+' on the canvas\n4. Configure each node\n5. Connect nodes by dragging from one to another\n6. Test and activate your workflow\n\nWould you like help with a specific type of workflow?",
-					createdAt: new Date('2025-01-08T10:00:30Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440003',
-					conversationId,
-					role: 'user',
-					content:
-						'Yes, I want to automate sending emails when a new row is added to a Google Sheet.',
-					createdAt: new Date('2025-01-08T10:05:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440004',
-					conversationId,
-					role: 'assistant',
-					content:
-						"Perfect! Here's how to set that up:\n\n1. Add a **Google Sheets Trigger** node\n   - Select 'On Row Added'\n   - Connect your Google account\n   - Choose your spreadsheet\n\n2. Add a **Gmail** node\n   - Connect your Gmail account\n   - Set the recipient email\n   - Use expressions to include data from the sheet\n\n3. Activate the workflow\n\nWould you like more details on any of these steps?",
-					createdAt: new Date('2025-01-08T10:05:45Z').toISOString(),
-				},
-			],
-			'3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c': [
-				{
-					id: '650e8400-e29b-41d4-a716-446655440011',
-					conversationId,
-					role: 'user',
-					content: 'What are some creative workflow automation ideas?',
-					createdAt: new Date('2025-01-07T14:30:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440012',
-					conversationId,
-					role: 'assistant',
-					content:
-						'Here are some creative workflow automation ideas:\n\n**Social Media Automation:**\n- Auto-post blog content to multiple platforms\n- Monitor mentions and send notifications\n- Generate reports on engagement metrics\n\n**Business Operations:**\n- Sync data between CRM and accounting software\n- Auto-generate invoices from project completion\n- Send weekly team reports\n\n**Personal Productivity:**\n- Save email attachments to cloud storage\n- Create calendar events from emails\n- Track expenses from receipts\n\nWhich area interests you most?',
-					createdAt: new Date('2025-01-07T14:32:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440013',
-					conversationId,
-					role: 'user',
-					content: 'The social media automation sounds great! How complex is it to set up?',
-					createdAt: new Date('2025-01-07T14:45:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440014',
-					conversationId,
-					role: 'assistant',
-					content:
-						"It's actually quite straightforward! For auto-posting to multiple platforms:\n\n**Difficulty: Beginner-friendly**\n\n1. Use an **RSS** trigger to monitor your blog\n2. Add **Twitter**, **LinkedIn**, and **Facebook** nodes\n3. Format your message with expressions\n4. Add conditions to customize per platform\n\nMost of the work is just connecting your accounts. The actual workflow can be set up in under 30 minutes!\n\nWant me to walk you through the specific nodes you'll need?",
-					createdAt: new Date('2025-01-07T14:47:00Z').toISOString(),
-				},
-			],
-			'9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f': [
-				{
-					id: '650e8400-e29b-41d4-a716-446655440021',
-					conversationId,
-					role: 'user',
-					content: "I'm having trouble integrating with the Stripe API. Any tips?",
-					createdAt: new Date('2025-01-06T09:00:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440022',
-					conversationId,
-					role: 'assistant',
-					content:
-						"I'd be happy to help with Stripe integration! What specific issue are you encountering?\n\n**Common Stripe integration patterns in n8n:**\n\n1. **Webhook-based** (Recommended)\n   - Stripe sends events to n8n\n   - Great for payment notifications\n   - Real-time updates\n\n2. **Polling-based**\n   - Check for new data periodically\n   - Good for reports and syncing\n\n3. **Manual trigger**\n   - Run on-demand operations\n   - Create customers, charges, etc.\n\nWhat's your use case?",
-					createdAt: new Date('2025-01-06T09:02:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440023',
-					conversationId,
-					role: 'user',
-					content:
-						'I want to receive notifications when a payment succeeds and create an invoice in my accounting software.',
-					createdAt: new Date('2025-01-06T09:15:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440024',
-					conversationId,
-					role: 'assistant',
-					content:
-						"Perfect use case for webhooks! Here's the setup:\n\n**Step 1: n8n Webhook**\n- Add a Webhook node\n- Set method to POST\n- Copy the webhook URL\n\n**Step 2: Stripe Dashboard**\n- Go to Developers → Webhooks\n- Add endpoint with your n8n URL\n- Select `payment_intent.succeeded` event\n\n**Step 3: Process Payment Data**\n- Add a **Function** node to extract payment details\n- Parse customer, amount, currency\n\n**Step 4: Create Invoice**\n- Add your accounting software node (QuickBooks, Xero, etc.)\n- Map payment data to invoice fields\n\n**Step 5: Send Notification**\n- Add Email/Slack node for confirmation\n\nWant the specific code for the Function node?",
-					createdAt: new Date('2025-01-06T09:18:00Z').toISOString(),
-				},
-			],
-		};
-
-		const messages = mockConversations[conversationId];
-
-		if (messages) {
-			return messages;
+	// eslint-disable-next-line complexity
+	async getConversation(userId: string, sessionId: string): Promise<ChatHubConversationResponse> {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+		if (!session) {
+			throw new NotFoundError(`Could not find chat session with ID ${sessionId}`);
 		}
 
-		throw new NotFoundError(`Conversation not found. ID: ${conversationId}`);
+		const messages = await this.messageRepository.getManyBySessionId(sessionId);
+
+		const messagesGraph: Record<string, ChatHubMessageDto> = {};
+		for (const message of messages) {
+			messagesGraph[message.id] = {
+				id: message.id,
+				sessionId: message.sessionId,
+				type: message.type,
+				name: message.name,
+				content: message.content,
+				provider: message.provider ?? null,
+				model: message.model ?? null,
+				workflowId: message.workflowId ?? null,
+				executionId: message.executionId ?? null,
+				state: message.state,
+				createdAt: message.createdAt.toISOString(),
+				updatedAt: message.updatedAt.toISOString(),
+
+				previousMessageId: message.previousMessageId ?? null,
+				turnId: message.turnId ?? null,
+				retryOfMessageId: message.retryOfMessageId ?? null,
+				revisionOfMessageId: message.revisionOfMessageId ?? null,
+				runIndex: message.runIndex ?? 0,
+
+				responseIds: [],
+				retryIds: [],
+				revisionIds: [],
+			};
+		}
+
+		for (const node of Object.values(messagesGraph)) {
+			if (node.previousMessageId && messagesGraph[node.previousMessageId]) {
+				messagesGraph[node.previousMessageId].responseIds.push(node.id);
+			}
+			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
+				messagesGraph[node.retryOfMessageId].retryIds.push(node.id);
+			}
+			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
+				messagesGraph[node.revisionOfMessageId].revisionIds.push(node.id);
+			}
+		}
+
+		const sortByRunThenTime = (first: ChatMessageId, second: ChatMessageId) => {
+			const a = messagesGraph[first];
+			const b = messagesGraph[second];
+
+			if (a.runIndex !== b.runIndex) {
+				return a.runIndex - b.runIndex;
+			}
+
+			if (a.createdAt !== b.createdAt) {
+				return a.createdAt < b.createdAt ? -1 : 1;
+			}
+
+			return a.id < b.id ? -1 : 1;
+		};
+
+		for (const node of Object.values(messagesGraph)) {
+			node.responseIds.sort(sortByRunThenTime);
+			node.retryIds.sort(sortByRunThenTime);
+			node.revisionIds.sort(sortByRunThenTime);
+		}
+
+		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
+		const turnRootIds = messages.filter((r) => r.turnId && r.turnId === r.id).map((r) => r.id);
+
+		const byTurn: Record<ChatMessageId, ChatMessageId[]> = {};
+		for (const id of Object.keys(messagesGraph)) {
+			const node = messagesGraph[id];
+			const t =
+				node.turnId ??
+				(node.previousMessageId
+					? (messagesGraph[node.previousMessageId].turnId ?? node.id)
+					: node.id);
+
+			byTurn[t] ??= [];
+			byTurn[t].push(id);
+		}
+
+		const turns: ChatHubMessageTurnDto[] = [];
+		for (const turnRootId of Object.keys(byTurn)) {
+			const root = messagesGraph[turnRootId];
+
+			const messages: string[] = [];
+			const branches: Record<string, string[]> = {};
+
+			// Walk down the main reply chain, choosing the latest runIndex among retries at each step
+			let cursor: ChatHubMessageDto | undefined = root;
+			while (cursor) {
+				messages.push(cursor.id);
+
+				const retries = cursor.retryIds.filter((id) => messagesGraph[id].state === 'active');
+				if (retries.length > 0) {
+					const latestRun = Math.max(...retries.map((id) => messagesGraph[id].runIndex ?? 0));
+					const canonical = retries.find((id) => messagesGraph[id].runIndex === latestRun)!;
+
+					branches[cursor.id] = retries.filter((id) => id !== canonical);
+				}
+
+				// Pick the latest runIndex among responses
+				const [nextId]: ChatMessageId[] = cursor.responseIds
+					.filter((id) => messagesGraph[id].state === 'active')
+					.sort((a, b) => (messagesGraph[b].runIndex ?? 0) - (messagesGraph[a].runIndex ?? 0));
+
+				if (!nextId) break;
+
+				cursor = messagesGraph[nextId];
+			}
+
+			turns.push({
+				id: turnRootId,
+				rootMessageId: root.id,
+				messages,
+				branches,
+			});
+		}
+
+		const sortByTime = (first: ChatHubMessageTurnDto, second: ChatHubMessageTurnDto) => {
+			const a = messagesGraph[first.rootMessageId];
+			const b = messagesGraph[second.rootMessageId];
+
+			if (a.createdAt !== b.createdAt) {
+				return a.createdAt < b.createdAt ? -1 : 1;
+			}
+
+			return first.id < second.id ? -1 : 1;
+		};
+
+		turns.sort(sortByTime);
+
+		const dto: ChatHubConversationResponse = {
+			session: {
+				id: session.id,
+				title: session.title,
+				ownerId: session.ownerId,
+				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+				credentialId: session.credentialId,
+				provider: session.provider,
+				model: session.model,
+				workflowId: session.workflowId,
+				createdAt: session.createdAt.toISOString(),
+				updatedAt: session.updatedAt.toISOString(),
+			},
+
+			graph: {
+				messages: messagesGraph,
+				rootIds,
+				turnRootIds,
+			},
+
+			timeline: {
+				turns,
+			},
+		};
+
+		return dto;
 	}
 }

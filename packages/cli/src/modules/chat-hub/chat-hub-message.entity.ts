@@ -1,11 +1,8 @@
-import type { ChatHubProvider } from '@n8n/api-types';
+import type { ChatHubProvider, ChatHubMessageType, ChatHubMessageState } from '@n8n/api-types';
 import { ExecutionEntity, WithTimestampsAndStringId, WorkflowEntity } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, OneToMany, type Relation } from '@n8n/typeorm';
 
 import type { ChatHubSession } from './chat-hub-session.entity';
-import type { ChatHubMessageState } from './chat-hub.types';
-
-export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
 
 @Entity({ name: 'chat_hub_messages' })
 export class ChatHubMessage extends WithTimestampsAndStringId {
