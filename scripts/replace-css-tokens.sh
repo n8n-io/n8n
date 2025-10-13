@@ -14,7 +14,7 @@ files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name
 #files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
 
 file_count=$(echo "$files" | wc -l | xargs)
-echo "Found $file_count files to process test $files"
+echo "Found $file_count files to process"
 echo ""
 echo "Starting token replacements..."
 echo ""
@@ -191,6 +191,7 @@ echo "$files" | xargs perl -pi -e 's/--font-size-m/--font-size--md/g'
 echo "$files" | xargs perl -pi -e 's/--font-size-s/--font-size--sm/g'
 echo "✓ Font size tokens replaced"
 echo ""
+COMMENTED_OUT_BLOCK
 
 # Canvas tokens
 echo "[17] Replacing canvas tokens..."
@@ -749,7 +750,6 @@ echo "$files" | xargs perl -pi -e 's/--grid-row-selected-background/--grid--row-
 echo "$files" | xargs perl -pi -e 's/--grid-cell-editing-border/--grid--cell--border-color--editing/g'
 echo "✓ Grid tokens replaced"
 echo ""
-COMMENTED_OUT_BLOCK
 
 # Primitive color tokens
 echo "[59] Replacing primitive color tokens..."
