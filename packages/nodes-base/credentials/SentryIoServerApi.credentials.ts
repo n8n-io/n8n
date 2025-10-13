@@ -42,7 +42,7 @@ export class SentryIoServerApi implements ICredentialType {
 		request: {
 			method: 'GET',
 			baseURL: '={{$credentials.url}}',
-			url: '/api/0/organizations/',
+			url: 'api/0/organizations/',
 		},
 	};
 }
