@@ -102,9 +102,15 @@ export class UserManagementConfig {
 	@Env('N8N_USER_MANAGEMENT_JWT_DURATION_HOURS')
 	jwtSessionDurationHours: number = 168;
 
-	/** Whether to hide the user invite link for admins */
-	@Env('N8N_HIDE_INVITE_LINK_FOR_ADMINS')
-	hideInviteLinkForAdmins: boolean = false;
+	/**
+	 * Security Control: Invite Link Exposure Prevention
+	 *
+	 * When enabled, prevents exposure of invite URLs in API responses to users
+	 * with 'user:create' permission, mitigating account takeover risks via
+	 * invite link leakage (e.g., compromised admin accounts, network interception).
+	 */
+	@Env('N8N_DISABLE_INVITE_LINK_EXPOSURE')
+	disableInviteLinkExposure: boolean = false;
 
 	/**
 	 * How long (in hours) before expiration to automatically refresh it.

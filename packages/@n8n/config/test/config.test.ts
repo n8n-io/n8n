@@ -109,6 +109,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		userManagement: {
+			disableInviteLinkExposure: false,
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,

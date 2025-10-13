@@ -7,6 +7,7 @@ import {
 	usersListSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import {
 	Project,
@@ -31,6 +32,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -45,9 +47,6 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { hasGlobalScope } from '@n8n/permissions';
-import { GlobalConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 
 @RestController('/users')
 export class UsersController {
@@ -65,6 +64,7 @@ export class UsersController {
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -119,10 +119,9 @@ export class UsersController {
 
 		const [users, count] = response;
 
-		const hideInviteLinkForAdmins =
-			Container.get(GlobalConfig).userManagement.hideInviteLinkForAdmins;
+		const disableInviteLinkExposure = this.globalConfig.userManagement.disableInviteLinkExposure;
 
-		const withInviteUrl = !hideInviteLinkForAdmins && hasGlobalScope(req.user, 'user:create');
+		const withInviteUrl = !disableInviteLinkExposure && hasGlobalScope(req.user, 'user:create');
 
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {
