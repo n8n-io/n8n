@@ -45,7 +45,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import { ProjectTypes } from '@/types/projects.types';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 import {
 	collectParametersByTab,
@@ -65,6 +64,7 @@ import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { ProjectTypes } from '@/features/projects/projects.types';
 
 const props = withDefaults(
 	defineProps<{
