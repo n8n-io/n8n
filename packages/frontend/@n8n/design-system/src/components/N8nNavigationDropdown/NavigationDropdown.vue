@@ -239,7 +239,7 @@ defineExpose({
 .subMenuTitle {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .submenu__icon {
