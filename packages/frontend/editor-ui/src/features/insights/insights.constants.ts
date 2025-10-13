@@ -1,5 +1,4 @@
 import type { InsightsSummaryType } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 
 export const INSIGHT_TYPES = {
@@ -77,16 +76,6 @@ export const TELEMETRY_TIME_RANGE = {
 	quarter: 90,
 	'6months': 180,
 	year: 365,
-};
-
-export const TIME_RANGE_LABELS = {
-	day: useI18n().baseText('insights.lastNHours', { interpolate: { count: 24 } }),
-	week: useI18n().baseText('insights.lastNDays', { interpolate: { count: 7 } }),
-	'2weeks': useI18n().baseText('insights.lastNDays', { interpolate: { count: 14 } }),
-	month: useI18n().baseText('insights.lastNDays', { interpolate: { count: 30 } }),
-	quarter: useI18n().baseText('insights.lastNDays', { interpolate: { count: 90 } }),
-	'6months': useI18n().baseText('insights.months', { interpolate: { count: 6 } }),
-	year: useI18n().baseText('insights.oneYear'),
 };
 
 export const UNLICENSED_TIME_RANGE = 'UNLICENSED_TIME_RANGE' as const;

@@ -33,8 +33,7 @@ export class CredentialsModal extends BasePage {
 		credentialAuthTypeRadioButtons: () =>
 			this.getters.credentialsAuthTypeSelector().find('label.el-radio'),
 		credentialInputs: () => cy.getByTestId('credential-connection-parameter'),
-		menu: () => this.getters.editCredentialModal().get('.menu-container'),
-		menuItem: (name: string) => this.getters.menu().get('.n8n-menu-item').contains(name),
+		menuItem: (name: string) => cy.getByTestId('menu-item').contains(name),
 		usersSelect: () => cy.getByTestId('project-sharing-select').filter(':visible'),
 		testSuccessTag: () => cy.getByTestId('credentials-config-container-test-success'),
 	};
@@ -74,7 +73,9 @@ export class CredentialsModal extends BasePage {
 				.filter(':not([readonly])')
 				.each(($el) => {
 					cy.wrap($el).type('test');
-				});
+				})
+				// wait for text input debounce
+				.wait(300);
 			saveCredential();
 			if (closeModal) {
 				this.getters.closeButton().click();

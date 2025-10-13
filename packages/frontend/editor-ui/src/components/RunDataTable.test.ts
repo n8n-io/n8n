@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import RunDataTable from '@/components/RunDataTable.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { cleanup, fireEvent, waitFor, within } from '@testing-library/vue';
+import type { INodeExecutionData } from 'n8n-workflow';
 import { nextTick } from 'vue';
 
 vi.mock('vue-router', () => {
@@ -61,14 +62,13 @@ describe('RunDataTable.vue', () => {
 	beforeEach(cleanup);
 
 	it('renders empty table correctly', () => {
-		const emptyInputData = [
+		const emptyInputData: INodeExecutionData[] = [
 			{
 				json: {},
 				index: 0,
 				pairedItem: { item: 0 },
 				metadata: { subExecution: { executionId: '123', workflowId: '123abcd' } },
 			},
-			,
 		];
 		const emptyMessage = "This is an item, but it's empty.";
 

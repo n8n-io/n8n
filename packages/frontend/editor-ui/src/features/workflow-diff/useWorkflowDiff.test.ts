@@ -7,10 +7,14 @@ import {
 	mapConnections,
 	useWorkflowDiff,
 } from './useWorkflowDiff';
-import type { CanvasConnection, CanvasNode, ExecutionOutputMap } from '@/types';
+import type {
+	CanvasConnection,
+	CanvasNode,
+	ExecutionOutputMap,
+} from '@/features/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { IConnections } from 'n8n-workflow';
-import { useCanvasMapping } from '@/composables/useCanvasMapping';
+import { useCanvasMapping } from '@/features/canvas/composables/useCanvasMapping';
 
 // Mock modules at top level
 vi.mock('@/stores/workflows.store', () => ({
@@ -32,12 +36,11 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 	}),
 }));
 
-vi.mock('@/composables/useCanvasMapping', () => ({
+vi.mock('@/features/canvas/composables/useCanvasMapping', () => ({
 	useCanvasMapping: vi.fn().mockReturnValue({
 		additionalNodePropertiesById: computed(() => ({})),
 		nodeExecutionRunDataOutputMapById: computed(() => ({})),
 		nodeExecutionWaitingForNextById: computed(() => ({})),
-		nodeIssuesById: computed(() => ({})),
 		nodeHasIssuesById: computed(() => ({})),
 		nodes: computed(() => []),
 		connections: computed(() => []),
@@ -401,7 +404,6 @@ describe('useWorkflowDiff', () => {
 			additionalNodePropertiesById: computed(() => ({}) as Record<string, Partial<CanvasNode>>),
 			nodeExecutionRunDataOutputMapById: computed(() => ({}) as Record<string, ExecutionOutputMap>),
 			nodeExecutionWaitingForNextById: computed(() => ({}) as Record<string, boolean>),
-			nodeIssuesById: computed(() => ({}) as Record<string, string[]>),
 			nodeHasIssuesById: computed(() => ({}) as Record<string, boolean>),
 			nodes: computed(() => nodes as CanvasNode[]),
 			connections: computed(() => connections as CanvasConnection[]),

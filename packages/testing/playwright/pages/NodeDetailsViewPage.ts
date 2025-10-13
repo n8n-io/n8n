@@ -2,12 +2,16 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { RunDataPanel } from './components/RunDataPanel';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { locatorByIndex } from '../utils/index-helper';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
+	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
+	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
 
 	constructor(page: Page) {
 		super(page);
@@ -15,21 +19,38 @@ export class NodeDetailsViewPage extends BasePage {
 		this.editFields = new EditFieldsNode(page);
 	}
 
+	getNodeCredentialsSelect() {
+		return this.page.getByTestId('node-credentials-select');
+	}
+
+	credentialDropdownCreateNewCredential() {
+		return this.page.getByText('Create new credential');
+	}
+
+	getCredentialOptionByText(text: string) {
+		return this.page.getByText(text);
+	}
+
+	getCredentialDropdownOptions() {
+		return this.page.getByRole('option');
+	}
+
+	getCredentialSelect() {
+		return this.page.getByRole('combobox', { name: 'Select Credential' });
+	}
+
 	async clickBackToCanvasButton() {
 		await this.clickByTestId('back-to-canvas');
 	}
 
 	getParameterByLabel(labelName: string) {
-		return this.page.locator('.parameter-item').filter({ hasText: labelName });
+		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
 	}
 
-	/**
-	 * Fill a parameter input field
-	 * @param labelName - The label of the parameter e.g URL
-	 * @param value - The value to fill in the input field e.g https://foo.bar
-	 */
-	async fillParameterInput(labelName: string, value: string) {
-		await this.getParameterByLabel(labelName).getByTestId('parameter-input-field').fill(value);
+	async fillParameterInput(labelName: string, value: string, index?: number) {
+		await locatorByIndex(this.getParameterByLabel(labelName), index)
+			.getByTestId('parameter-input-field')
+			.fill(value);
 	}
 
 	async selectWorkflowResource(createItemText: string, searchText: string = '') {
@@ -48,6 +69,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async close() {
 		await this.clickBackToCanvasButton();
+	}
+
+	async addFixedCollectionItem() {
+		await this.clickByTestId('fixed-collection-add');
 	}
 
 	async execute() {
@@ -70,12 +95,25 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('parameter-expression-preview-value');
 	}
 
-	getEditPinnedDataButton() {
-		return this.page.getByTestId('ndv-edit-pinned-data');
+	getParameterExpressionPreviewOutput() {
+		return this.page.getByTestId('parameter-expression-preview-output');
 	}
 
-	getPinDataButton() {
-		return this.getOutputPanel().getByTestId('ndv-pin-data');
+	getInlineExpressionEditorPreview() {
+		return this.page.getByTestId('inline-expression-editor-output');
+	}
+
+	async activateParameterExpressionEditor(parameterName: string) {
+		const parameterInput = this.getParameterInput(parameterName);
+		await parameterInput.click();
+		await this.page
+			.getByTestId(`${parameterName}-parameter-input-options-container`)
+			.getByTestId('radio-button-expression')
+			.click();
+	}
+
+	getEditPinnedDataButton() {
+		return this.page.getByTestId('ndv-edit-pinned-data');
 	}
 
 	getRunDataPaneHeader() {
@@ -90,38 +128,11 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
 
-	getOutputTableRows() {
-		return this.getOutputTable().locator('tr');
-	}
-
-	getOutputTableHeaders() {
-		return this.getOutputTable().locator('thead th');
-	}
-
-	getOutputTableRow(row: number) {
-		return this.getOutputTableRows().nth(row);
-	}
-
-	getOutputTableCell(row: number, col: number) {
-		return this.getOutputTableRow(row).locator('td').nth(col);
-	}
-
-	/**
-	 * Get a cell from the output table body, this doesn't include the header row
-	 * @param row - The row index
-	 * @param col - The column index
-	 */
-	getOutputTbodyCell(row: number, col: number) {
-		return this.getOutputTable().locator('tbody tr').nth(row).locator('td').nth(col);
-	}
-
-	// Pin data operations
 	async setPinnedData(data: object | string) {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
 
-		// Wait for editor to appear and use broader selector
-		const editor = this.getOutputPanel().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill(pinnedData);
@@ -132,12 +143,11 @@ export class NodeDetailsViewPage extends BasePage {
 	async pastePinnedData(data: object) {
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.getOutputPanel().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill('');
 
-		// Set clipboard data and paste
 		await this.page.evaluate(async (jsonData) => {
 			await navigator.clipboard.writeText(JSON.stringify(jsonData));
 		}, data);
@@ -150,11 +160,18 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.getRunDataPaneHeader().locator('button:visible').filter({ hasText: 'Save' }).click();
 	}
 
-	// Assignment collection methods for advanced tests
 	getAssignmentCollectionAdd(paramName: string) {
 		return this.page
 			.getByTestId(`assignment-collection-${paramName}`)
 			.getByTestId('assignment-collection-drop-area');
+	}
+
+	getAssignmentCollectionDropArea() {
+		return this.page.getByTestId('assignment-collection-drop-area');
+	}
+
+	async clickAssignmentCollectionDropArea() {
+		await this.getAssignmentCollectionDropArea().click();
 	}
 
 	getAssignmentValue(paramName: string) {
@@ -163,7 +180,16 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
-	getInlineExpressionEditorInput() {
+	/**
+	 * Get the inline expression editor input
+	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
+	 * @returns The inline expression editor input
+	 */
+	getInlineExpressionEditorInput(parameterName?: string) {
+		if (parameterName) {
+			const parameterInput = this.getParameterInput(parameterName);
+			return parameterInput.getByTestId('inline-expression-editor-input');
+		}
 		return this.page.getByTestId('inline-expression-editor-input');
 	}
 
@@ -179,120 +205,77 @@ export class NodeDetailsViewPage extends BasePage {
 		return await this.page.request.get(path);
 	}
 
+	getWebhookUrl() {
+		return this.page.locator('.webhook-url').textContent();
+	}
+
 	getVisiblePoppers() {
 		return this.page.locator('.el-popper:visible');
 	}
 
-	async clearExpressionEditor() {
-		const editor = this.getInlineExpressionEditorInput();
+	async clearExpressionEditor(parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await this.page.keyboard.press('ControlOrMeta+A');
 		await this.page.keyboard.press('Delete');
 	}
 
-	async typeInExpressionEditor(text: string) {
-		const editor = this.getInlineExpressionEditorInput();
+	async typeInExpressionEditor(text: string, parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
-		// We have to use type() instead of fill() because the editor is a CodeMirror editor
 		await editor.type(text);
 	}
 
-	/**
-	 * Get parameter input by name (for Code node and similar)
-	 * @param parameterName - The name of the parameter e.g 'jsCode', 'mode'
-	 */
-	getParameterInput(parameterName: string) {
-		return this.page.getByTestId(`parameter-input-${parameterName}`);
+	getParameterInput(parameterName: string, index?: number) {
+		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
 	}
 
-	/**
-	 * Get parameter input field
-	 * @param parameterName - The name of the parameter
-	 */
-	getParameterInputField(parameterName: string) {
-		return this.getParameterInput(parameterName).getByTestId('parameter-input-field');
+	getParameterInputField(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).locator('input');
 	}
 
-	/**
-	 * Select option in parameter dropdown (improved with Playwright best practices)
-	 * @param parameterName - The parameter name
-	 * @param optionText - The text of the option to select
-	 */
-	async selectOptionInParameterDropdown(parameterName: string, optionText: string) {
-		const dropdown = this.getParameterInput(parameterName);
-		await dropdown.click();
-
-		// Wait for dropdown to be visible and select option - following Playwright best practices
-		await this.page.getByRole('option', { name: optionText }).click();
+	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
+		await this.clickParameterDropdown(parameterName, index);
+		await this.selectFromVisibleDropdown(optionText);
 	}
 
-	/**
-	 * Click parameter dropdown by name (test-id based selector)
-	 * @param parameterName - The parameter name e.g 'httpMethod', 'authentication'
-	 */
-	async clickParameterDropdown(parameterName: string): Promise<void> {
-		await this.clickByTestId(`parameter-input-${parameterName}`);
+	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
+		await locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index).click();
 	}
 
-	/**
-	 * Select option from visible dropdown using Playwright role-based selectors
-	 * This follows the pattern used in working n8n tests
-	 * @param optionText - The text of the option to select
-	 */
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
-		// Use Playwright's role-based selector - this is more reliable than CSS selectors
 		await this.page.getByRole('option', { name: optionText }).click();
 	}
 
-	/**
-	 * Fill parameter input field by parameter name
-	 * @param parameterName - The parameter name e.g 'path', 'url'
-	 * @param value - The value to fill
-	 */
-	async fillParameterInputByName(parameterName: string, value: string): Promise<void> {
-		const input = this.getParameterInputField(parameterName);
+	async fillParameterInputByName(parameterName: string, value: string, index = 0): Promise<void> {
+		const input = this.getParameterInputField(parameterName, index);
 		await input.click();
 		await input.fill(value);
 	}
 
-	/**
-	 * Click parameter options expansion (e.g. for Response Code)
-	 */
 	async clickParameterOptions(): Promise<void> {
 		await this.page.locator('.param-options').click();
 	}
 
-	/**
-	 * Get visible Element UI popper (dropdown/popover)
-	 * Ported from Cypress pattern with Playwright selectors
-	 */
-	getVisiblePopper() {
-		return this.page
-			.locator('.el-popper')
-			.filter({ hasNot: this.page.locator('[aria-hidden="true"]') });
+	async addParameterOptionByName(optionName: string): Promise<void> {
+		await this.clickParameterOptions();
+		await this.selectFromVisibleDropdown(optionName);
 	}
 
-	/**
-	 * Wait for parameter dropdown to be visible and ready for interaction
-	 * @param parameterName - The parameter name
-	 */
+	getVisiblePopper() {
+		return this.page.locator('.el-popper:visible');
+	}
+
 	async waitForParameterDropdown(parameterName: string): Promise<void> {
 		const dropdown = this.getParameterInput(parameterName);
 		await dropdown.waitFor({ state: 'visible' });
 		await expect(dropdown).toBeEnabled();
 	}
 
-	/**
-	 * Click on a floating node in the NDV (for switching between connected nodes)
-	 * @param nodeName - The name of the node to click
-	 */
 	async clickFloatingNode(nodeName: string) {
 		await this.page.locator(`[data-test-id="floating-node"][data-node-name="${nodeName}"]`).click();
 	}
 
-	/**
-	 * Execute the previous node (useful for providing input data)
-	 */
 	async executePrevious() {
 		await this.clickByTestId('execute-previous-node');
 	}
@@ -367,7 +350,12 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
 		await this.getParameterInput(parameterName).click();
+
 		await this.page.getByRole('option', { name: optionText }).click();
+	}
+
+	async changeNodeOperation(operationName: string): Promise<void> {
+		await this.setParameterDropdown('operation', operationName);
 	}
 
 	async setParameterInput(parameterName: string, value: string): Promise<void> {
@@ -412,31 +400,21 @@ export class NodeDetailsViewPage extends BasePage {
 			case 'switch':
 				return await this.getSwitchParameterValue(parameterName);
 			default:
-				// Fallback for unknown types
 				return (await this.getParameterInput(parameterName).textContent()) ?? '';
 		}
 	}
 
-	/**
-	 * Get value from a text parameter - simplified approach
-	 */
 	private async getTextParameterValue(parameterName: string): Promise<string> {
 		const parameterContainer = this.getParameterInput(parameterName);
 		const input = parameterContainer.locator('input').first();
 		return await input.inputValue();
 	}
 
-	/**
-	 * Get value from a dropdown parameter
-	 */
 	private async getDropdownParameterValue(parameterName: string): Promise<string> {
 		const selectedOption = this.getParameterInput(parameterName).locator('.el-select__tags-text');
 		return (await selectedOption.textContent()) ?? '';
 	}
 
-	/**
-	 * Get value from a switch parameter
-	 */
 	private async getSwitchParameterValue(parameterName: string): Promise<string> {
 		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
 		const isEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
@@ -452,48 +430,12 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
-	async switchInputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
-		await this.getInputPanel().getByRole('radio', { name: mode }).click();
-	}
-
-	async switchOutputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
-		await this.getOutputPanel().getByRole('radio', { name: mode }).click();
-	}
-
 	getAssignmentCollectionContainer(paramName: string) {
 		return this.page.getByTestId(`assignment-collection-${paramName}`);
 	}
 
-	getJsonDataContainer() {
-		return this.getInputPanel().locator('.json-data');
-	}
-
-	getInputJsonProperty(propertyName: string) {
-		return this.getInputPanel()
-			.locator('.json-data')
-			.locator('span')
-			.filter({ hasText: new RegExp(`^"${propertyName}"$`) })
-			.first();
-	}
-
-	getInputJsonPropertyContaining(text: string) {
-		return this.getInputPanel()
-			.locator('.json-data')
-			.locator('span')
-			.filter({ hasText: `"${text}"` })
-			.first();
-	}
-
-	getInputSchemaItem(text: string) {
-		return this.getInputPanel()
-			.getByTestId('run-data-schema-item')
-			.locator('span')
-			.filter({ hasText: new RegExp(`^${text}$`) })
-			.first();
-	}
-
 	async selectInputNode(nodeName: string) {
-		const inputSelect = this.getInputPanel().getByTestId('ndv-input-select');
+		const inputSelect = this.inputPanel.getNodeInputOptions();
 		await inputSelect.click();
 		await this.page.getByRole('option', { name: nodeName }).click();
 	}
@@ -502,12 +444,8 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getInputPanel().locator('table th').nth(index);
 	}
 
-	getInputTableCell(row: number, col: number) {
-		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
-	}
-
 	getInputTbodyCell(row: number, col: number) {
-		return this.getInputTableCell(row, col);
+		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
@@ -517,8 +455,44 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-name');
 	}
 
+	getResourceMapperFieldsContainer() {
+		return this.page.getByTestId('mapping-fields-container');
+	}
+
+	getResourceMapperParameterInputs() {
+		return this.getResourceMapperFieldsContainer().getByTestId('parameter-input');
+	}
+
+	getResourceMapperSelectColumn() {
+		return this.page.getByTestId('matching-column-select');
+	}
+
+	getResourceMapperColumnsOptionsButton() {
+		return this.page.getByTestId('columns-parameter-input-options-container');
+	}
+
+	getResourceMapperRemoveFieldButton(fieldName: string) {
+		return this.page.getByTestId(`remove-field-button-${fieldName}`);
+	}
+
+	getResourceMapperRemoveAllFieldsOption() {
+		return this.page.getByTestId('action-removeAllFields');
+	}
+
+	async refreshResourceMapperColumns() {
+		const selectColumn = this.getResourceMapperSelectColumn();
+		await selectColumn.hover();
+		await selectColumn.getByTestId('action-toggle').click();
+		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
+		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
+	}
+
 	getAddValueButton() {
 		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
+	}
+
+	getCollectionAddOptionSelect() {
+		return this.getNodeParameters().getByTestId('collection-add-option-select');
 	}
 
 	getParameterSwitch(parameterName: string) {
@@ -533,12 +507,66 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getInlineExpressionEditorInput().locator('.cm-content');
 	}
 
+	getInlineExpressionEditorOutput() {
+		return this.page.getByTestId('inline-expression-editor-output');
+	}
+
+	getInlineExpressionEditorItemInput() {
+		return this.page.getByTestId('inline-expression-editor-item-input').locator('input');
+	}
+
+	getInlineExpressionEditorItemPrevButton() {
+		return this.page.getByTestId('inline-expression-editor-item-prev');
+	}
+
+	getInlineExpressionEditorItemNextButton() {
+		return this.page.getByTestId('inline-expression-editor-item-next');
+	}
+
+	async expressionSelectNextItem() {
+		await this.getInlineExpressionEditorItemNextButton().click();
+	}
+
+	async expressionSelectPrevItem() {
+		await this.getInlineExpressionEditorItemPrevButton().click();
+	}
+
+	async openExpressionEditorModal(parameterName: string) {
+		await this.activateParameterExpressionEditor(parameterName);
+		const parameter = this.getParameterInput(parameterName);
+		await parameter.click();
+		const expander = parameter.getByTestId('expander');
+		await expander.click();
+
+		await this.page.getByTestId('expression-modal-input').waitFor({ state: 'visible' });
+	}
+
+	getExpressionEditorModalInput() {
+		return this.page.getByTestId('expression-modal-input').getByRole('textbox');
+	}
+
+	async fillExpressionEditorModalInput(text: string) {
+		const input = this.getExpressionEditorModalInput();
+		await input.clear();
+		await input.click();
+		await input.fill(text);
+	}
+
+	getExpressionEditorModalOutput() {
+		return this.page.getByTestId('expression-modal-output');
+	}
+
+	async typeIntoParameterInput(parameterName: string, content: string): Promise<void> {
+		const input = this.getParameterInput(parameterName);
+		await input.type(content);
+	}
+
 	getInputTable() {
 		return this.getInputPanel().locator('table');
 	}
 
 	getInputTableCellSpan(row: number, col: number, dataName: string) {
-		return this.getInputTableCell(row, col).locator(`span[data-name="${dataName}"]`).first();
+		return this.getInputTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
 	}
 
 	getAddFieldToSortByButton() {
@@ -548,8 +576,452 @@ export class NodeDetailsViewPage extends BasePage {
 	async toggleCodeMode(switchTo: 'Run Once for Each Item' | 'Run Once for All Items') {
 		await this.getParameterInput('mode').click();
 		await this.page.getByRole('option', { name: switchTo }).click();
-		// This is a workaround to wait for the code editor to reinitialize after the mode switch
 		// eslint-disable-next-line playwright/no-wait-for-timeout
 		await this.page.waitForTimeout(2500);
+	}
+
+	getOutputPagination() {
+		return this.outputPanel.get().getByTestId('ndv-data-pagination');
+	}
+
+	getOutputPaginationPages() {
+		return this.getOutputPagination().locator('.el-pager li.number');
+	}
+
+	async navigateToOutputPage(pageNumber: number): Promise<void> {
+		const pages = this.getOutputPaginationPages();
+		await pages.nth(pageNumber - 1).click();
+	}
+
+	async getCurrentOutputPage(): Promise<number> {
+		const activePage = this.getOutputPagination().locator('.el-pager li.is-active').first();
+		const pageText = await activePage.textContent();
+		return parseInt(pageText ?? '1', 10);
+	}
+
+	async setParameterInputValue(parameterName: string, value: string): Promise<void> {
+		const input = this.getParameterInput(parameterName).locator('input');
+		await input.clear();
+		await input.fill(value);
+	}
+
+	async clickGetBackToCanvas(): Promise<void> {
+		await this.clickBackToCanvasButton();
+	}
+
+	getRunDataInfoCallout() {
+		return this.page.getByTestId('run-data-callout');
+	}
+
+	getOutputPanelTable() {
+		return this.getOutputTable();
+	}
+
+	async checkParameterCheckboxInputByName(name: string): Promise<void> {
+		const checkbox = this.getParameterInput(name).locator('.el-switch.switch-input');
+		await checkbox.click();
+	}
+
+	// Credentials modal helpers
+	async clickCreateNewCredential(eq: number = 0): Promise<void> {
+		await this.page.getByTestId('node-credentials-select').nth(eq).click();
+		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+	}
+
+	// Run selector and linking helpers
+	getInputRunSelector() {
+		return this.page.locator('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
+	}
+
+	getOutputRunSelector() {
+		return this.page.locator('[data-test-id="output-panel"] [data-test-id="run-selector"]');
+	}
+
+	getInputRunSelectorInput() {
+		return this.getInputRunSelector().locator('input');
+	}
+
+	async toggleInputRunLinking(): Promise<void> {
+		await this.getInputPanel().getByTestId('link-run').click();
+	}
+
+	getNodeRunErrorMessage() {
+		return this.page.getByTestId('node-error-message');
+	}
+
+	getNodeRunErrorDescription() {
+		return this.page.getByTestId('node-error-description');
+	}
+
+	async isOutputRunLinkingEnabled() {
+		const linkButton = this.outputPanel.getLinkRun();
+		const classList = await linkButton.getAttribute('class');
+		return classList?.includes('linked') ?? false;
+	}
+
+	async ensureOutputRunLinking(shouldBeLinked: boolean = true) {
+		const isLinked = await this.isOutputRunLinkingEnabled();
+		if (isLinked !== shouldBeLinked) {
+			await this.outputPanel.getLinkRun().click();
+		}
+	}
+
+	async changeInputRunSelector(value: string) {
+		const selector = this.inputPanel.getRunSelector();
+		await selector.click();
+		await this.page.getByRole('option', { name: value }).click();
+	}
+
+	async changeOutputRunSelector(value: string) {
+		const selector = this.outputPanel.getRunSelector();
+		await selector.click();
+		await this.page.getByRole('option', { name: value }).click();
+	}
+
+	async getInputRunSelectorValue() {
+		return await this.inputPanel.getRunSelectorInput().inputValue();
+	}
+
+	async getOutputRunSelectorValue() {
+		return await this.outputPanel.getRunSelectorInput().inputValue();
+	}
+
+	async expandSchemaItem(itemText: string) {
+		const item = this.outputPanel.getSchemaItem(itemText);
+		await item.locator('.toggle').click();
+	}
+
+	getExecuteNodeButton() {
+		return this.page.getByTestId('node-execute-button');
+	}
+
+	getTriggerPanelExecuteButton() {
+		return this.page.getByTestId('trigger-execute-button');
+	}
+
+	async openCodeEditorFullscreen() {
+		await this.page.getByTestId('code-editor-fullscreen-button').click();
+	}
+
+	getCodeEditorFullscreen() {
+		return this.page.getByTestId('code-editor-fullscreen').locator('.cm-content');
+	}
+
+	getCodeEditorDialog() {
+		return this.page.locator('.el-dialog');
+	}
+
+	async closeCodeEditorDialog() {
+		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
+	}
+
+	getWebhookTriggerListening() {
+		return this.page.getByTestId('trigger-listening');
+	}
+
+	getNodeRunSuccessIndicator() {
+		return this.page.getByTestId('node-run-status-success');
+	}
+
+	getNodeRunErrorIndicator() {
+		return this.page.getByTestId('node-run-status-danger');
+	}
+
+	getNodeRunTooltipIndicator() {
+		return this.page.getByTestId('node-run-info');
+	}
+
+	getStaleNodeIndicator() {
+		return this.page.getByTestId('node-run-info-stale');
+	}
+
+	getExecuteStepButton() {
+		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+	}
+
+	async clickExecuteStep() {
+		await this.getExecuteStepButton().click();
+	}
+
+	async openSettings() {
+		await this.page.getByTestId('tab-settings').click();
+	}
+
+	getNodeVersion() {
+		return this.page.getByTestId('node-version');
+	}
+
+	async searchOutputData(searchTerm: string) {
+		const searchInput = this.outputPanel.getSearchInput();
+		await searchInput.click();
+		await searchInput.fill(searchTerm);
+	}
+
+	async searchInputData(searchTerm: string) {
+		const searchInput = this.inputPanel.getSearchInput();
+		await searchInput.click();
+		await searchInput.fill(searchTerm);
+	}
+
+	/**
+	 * Type multiple values into the first available text parameter field
+	 * Useful for testing multiple parameter changes
+	 */
+	async fillFirstAvailableTextParameterMultipleTimes(values: string[]) {
+		const firstTextField = this.getNodeParameters().locator('input[type="text"]').first();
+		await firstTextField.click();
+
+		for (const value of values) {
+			await firstTextField.fill(value);
+		}
+	}
+
+	getFloatingNodeByPosition(position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub') {
+		return this.page.locator(`[data-node-placement="${position}"]`);
+	}
+
+	getNodeNameContainer() {
+		return this.getContainer().getByTestId('node-title-container');
+	}
+
+	async clickFloatingNodeByPosition(
+		position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub',
+	) {
+		// eslint-disable-next-line playwright/no-force-option
+		await this.getFloatingNodeByPosition(position).click({ force: true });
+	}
+
+	async navigateToNextFloatingNodeWithKeyboard() {
+		await this.page.keyboard.press('Shift+Meta+Alt+ArrowRight');
+	}
+
+	async navigateToPreviousFloatingNodeWithKeyboard() {
+		await this.page.keyboard.press('Shift+Meta+Alt+ArrowLeft');
+	}
+
+	async verifyFloatingNodeName(
+		position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub',
+		nodeName: string,
+		index: number = 0,
+	) {
+		const floatingNode = this.getFloatingNodeByPosition(position).nth(index);
+		await expect(floatingNode).toHaveAttribute('data-node-name', nodeName);
+	}
+
+	async getFloatingNodeCount(position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub') {
+		return await this.getFloatingNodeByPosition(position).count();
+	}
+
+	getAddSubNodeButton(connectionType: string, index: number = 0) {
+		return this.page.getByTestId(`add-subnode-${connectionType}-${index}`);
+	}
+
+	getSubNodeConnectionGroup(connectionType: string, index: number = 0) {
+		return this.page.getByTestId(`subnode-connection-group-${connectionType}-${index}`);
+	}
+
+	getFloatingSubNodes(connectionType: string, index: number = 0) {
+		return this.getSubNodeConnectionGroup(connectionType, index).getByTestId('floating-subnode');
+	}
+
+	getNodesWithIssues() {
+		return this.page.locator('[class*="hasIssues"]');
+	}
+
+	async connectAISubNode(connectionType: string, nodeName: string, index: number = 0) {
+		await this.getAddSubNodeButton(connectionType, index).click();
+		await this.page.getByText(nodeName).click();
+		await this.getFloatingNode().click();
+	}
+
+	getFloatingNode() {
+		return this.page.getByTestId('floating-node');
+	}
+
+	async getNodesWithIssuesCount() {
+		return await this.getNodesWithIssues().count();
+	}
+
+	async addItemToFixedCollection(collectionName: string) {
+		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+	}
+
+	async clickParameterItemAction(actionText: string) {
+		await this.page.getByTestId('parameter-item').getByText(actionText).click();
+	}
+
+	getParameterItemWithText(text: string) {
+		return this.page.getByTestId('parameter-item').getByText(text);
+	}
+
+	getParameterInputWithIssues(parameterPath: string) {
+		return this.page.locator(
+			`[data-test-id="parameter-input-field"][title*="${parameterPath}"][title*="has issues"]`,
+		);
+	}
+
+	getResourceLocator(paramName: string) {
+		return this.page.getByTestId(`resource-locator-${paramName}`);
+	}
+
+	getResourceLocatorInput(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-input-container');
+	}
+
+	getResourceLocatorModeSelector(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
+	}
+
+	getResourceLocatorModeSelectorInput(paramName: string) {
+		return this.getResourceLocatorModeSelector(paramName).locator('input');
+	}
+
+	getResourceLocatorErrorMessage(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+	}
+
+	getResourceLocatorAddCredentials(paramName: string) {
+		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+	}
+
+	getResourceLocatorSearch(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-search');
+	}
+
+	getParameterInputIssues() {
+		return this.page.getByTestId('parameter-issues');
+	}
+
+	getResourceLocatorItems() {
+		return this.page.getByTestId('rlc-item');
+	}
+
+	getAddResourceItem() {
+		return this.page.getByTestId('rlc-item-add-resource');
+	}
+
+	getExpressionModeToggle(index: number = 1) {
+		return this.page.getByTestId('radio-button-expression').nth(index);
+	}
+
+	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
+		await this.getResourceLocatorModeSelector(paramName).click();
+		await this.page.getByTestId('mode-id').nth(index).click();
+		const input = this.getResourceLocatorInput(paramName).locator('input');
+		await input.fill(value);
+	}
+
+	async clickNodeCreatorInsertOneButton() {
+		await this.page.getByText('Insert one').click();
+	}
+
+	getInputSelect() {
+		return this.page.getByTestId('ndv-input-select').locator('input');
+	}
+
+	getInputTableRows() {
+		return this.getInputTable().locator('tr');
+	}
+
+	getOutputRunSelectorInput() {
+		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
+	}
+
+	getAiOutputModeToggle() {
+		return this.page.getByTestId('ai-output-mode-select');
+	}
+
+	getCredentialLabel(credentialType: string) {
+		return this.page.getByText(credentialType);
+	}
+
+	getFilterComponent(paramName: string) {
+		return this.page.getByTestId(`filter-${paramName}`);
+	}
+
+	getFilterConditions(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition');
+	}
+
+	getFilterCondition(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition').nth(index);
+	}
+
+	getFilterConditionLeft(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
+	}
+
+	getFilterConditionRight(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-right').nth(index);
+	}
+
+	getFilterConditionOperator(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-operator-select').nth(index);
+	}
+
+	getFilterConditionRemove(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-remove-condition').nth(index);
+	}
+
+	getFilterConditionAdd(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-add-condition');
+	}
+
+	async addFilterCondition(paramName: string) {
+		await this.getFilterConditionAdd(paramName).click();
+	}
+
+	async removeFilterCondition(paramName: string, index: number) {
+		await this.getFilterConditionRemove(paramName, index).click();
+	}
+
+	getWebhookTestEvent() {
+		return this.page.getByText('Listening for test event');
+	}
+
+	getAddOptionDropdown() {
+		return this.page.getByRole('combobox', { name: 'Add option' });
+	}
+
+	/**
+	 * Adds an optional parameter from a collection dropdown
+	 * @param optionDisplayName - The display name of the option to add (e.g., 'Response Code')
+	 * @param parameterName - The parameter name to set after adding (e.g., 'responseCode')
+	 * @param parameterValue - The value to set for the parameter
+	 */
+	async setOptionalParameter(
+		optionDisplayName: string,
+		parameterName: string,
+		parameterValue: string | boolean,
+	): Promise<void> {
+		await this.getAddOptionDropdown().click();
+
+		// Step 2: Select the option by display name
+		await this.page.getByRole('option', { name: optionDisplayName }).click();
+
+		// Step 3: Set the parameter value
+		await this.setupHelper.setParameter(parameterName, parameterValue);
+	}
+
+	async setInvalidExpression({
+		fieldName,
+		invalidExpression,
+	}: {
+		fieldName: string;
+		invalidExpression?: string;
+	}): Promise<void> {
+		await this.activateParameterExpressionEditor(fieldName);
+		const editor = this.getInlineExpressionEditorInput(fieldName);
+		await editor.click();
+		await this.page.keyboard.type(invalidExpression ?? '{{ =()');
+	}
+
+	/**
+	 * Opens a resource locator dropdown for a given parameter
+	 * @param paramName - The parameter name for the resource locator
+	 */
+	async openResourceLocator(paramName: string): Promise<void> {
+		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
+		await this.getResourceLocatorInput(paramName).click();
 	}
 }

@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconSize, CalloutTheme } from '@n8n/design-system/types';
-
+import type { IconSize, CalloutTheme } from '../../types';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
@@ -76,23 +75,23 @@ const getIconSize = computed<IconSize>(() => {
 .callout {
 	display: flex;
 	justify-content: space-between;
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) var(--border-style-base);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--xs);
+	border: var(--border-width) var(--border-style);
 	align-items: center;
-	line-height: var(--font-line-height-xloose);
+	line-height: var(--line-height--xl);
 	border-color: var(--color-callout-info-border);
 	background-color: var(--color-callout-info-background);
 	color: var(--color-callout-info-font);
 
 	&.slim {
-		line-height: var(--font-line-height-xloose);
-		padding: var(--spacing-3xs) var(--spacing-2xs);
+		line-height: var(--line-height--xl);
+		padding: var(--spacing--3xs) var(--spacing--2xs);
 	}
 
 	a {
 		color: var(--color-secondary-link);
-		font-weight: var(--font-weight-medium);
+		font-weight: var(--font-weight--medium);
 		text-decoration-line: underline;
 		text-decoration-style: solid;
 		text-decoration-skip-ink: none;
@@ -103,7 +102,7 @@ const getIconSize = computed<IconSize>(() => {
 }
 
 .round {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 }
 
 .onlyBottomBorder {
@@ -160,12 +159,12 @@ const getIconSize = computed<IconSize>(() => {
 
 .icon {
 	line-height: 1;
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
 }
 
 .secondary {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 	border-color: var(--color-callout-secondary-border);
 	background-color: var(--color-callout-secondary-background);
 	color: var(--color-callout-secondary-font);

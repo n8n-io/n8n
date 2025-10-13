@@ -6,5 +6,4 @@ export class ResourceLocatorRequestDto extends BaseDynamicParametersRequestDto.e
 	methodName: z.string(),
 	filter: z.string().optional(),
 	paginationToken: z.string().optional(),
-	projectId: z.string().optional(),
 }) {}

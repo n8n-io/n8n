@@ -19,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 
+import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
@@ -152,8 +153,8 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.headingContainer">
-			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</n8n-heading>
-			<n8n-button
+			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</N8nHeading>
+			<N8nButton
 				v-if="
 					settingsStore.isUnverifiedPackagesEnabled &&
 					communityNodesStore.getInstalledPackages.length > 0 &&
@@ -175,7 +176,7 @@ onBeforeUnmount(() => {
 			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
 			:class="$style.actionBoxContainer"
 		>
-			<n8n-action-box
+			<N8nActionBox
 				:heading="getEmptyStateTitle"
 				:description="getEmptyStateDescription"
 				:button-text="getEmptyStateButtonText"
@@ -198,9 +199,9 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .container {
 	height: 100%;
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing--2xs);
 	> * {
-		margin-bottom: var(--spacing-2xl);
+		margin-bottom: var(--spacing--2xl);
 	}
 }
 
@@ -211,7 +212,7 @@ onBeforeUnmount(() => {
 
 .loadingContainer {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .actionBoxContainer {
@@ -221,6 +222,6 @@ onBeforeUnmount(() => {
 .cardsContainer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 </style>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { N8nButton } from '@n8n/design-system';
-
 interface Props {
 	selectedCount: number;
 }
@@ -45,15 +44,17 @@ const handleClearSelection = () => {
 			{{ getSelectedText() }}
 		</span>
 		<N8nButton
-			:label="i18n.baseText('generic.delete')"
 			type="tertiary"
 			data-test-id="delete-selected-button"
+			:label="i18n.baseText('generic.delete')"
+			:class="$style.button"
 			@click="handleDeleteSelected"
 		/>
 		<N8nButton
-			:label="getClearSelectionText()"
 			type="tertiary"
 			data-test-id="clear-selection-button"
+			:label="getClearSelectionText()"
+			:class="$style.button"
 			@click="handleClearSelection"
 		/>
 	</div>
@@ -64,18 +65,20 @@ const handleClearSelection = () => {
 	display: flex;
 	align-items: center;
 	position: absolute;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	z-index: 2;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-3xl);
+	bottom: var(--spacing--3xl);
 	background: var(--execution-selector-background);
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	color: var(--execution-selector-text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
+	gap: var(--spacing--2xs);
+}
 
-	button {
-		margin-left: var(--spacing-2xs);
-	}
+.button {
+	display: flex;
+	align-items: center;
 }
 </style>

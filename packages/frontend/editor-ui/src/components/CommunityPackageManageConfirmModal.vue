@@ -11,10 +11,12 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useSettingsStore } from '@/stores/settings.store';
 import semver from 'semver';
-import { N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowResource } from '@/Interface';
+
+import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
+import NodesInWorkflowTable from '@/components/NodesInWorkflowTable.vue';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 
@@ -243,7 +245,7 @@ onMounted(async () => {
 	>
 		<template #content>
 			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
-			<n8n-notice
+			<N8nNotice
 				v-if="!isLatestPackageVerified"
 				data-test-id="communityPackageManageConfirmModal-warning"
 				:content="getModalContent.warning"
@@ -260,7 +262,7 @@ onMounted(async () => {
 			/>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
 				size="large"
 				float="left"
@@ -268,7 +270,7 @@ onMounted(async () => {
 				data-test-id="close-button"
 				@click="onClick"
 			/>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:disabled="loading"
 				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
@@ -283,16 +285,16 @@ onMounted(async () => {
 <style module lang="scss">
 .descriptionContainer {
 	display: flex;
-	margin: var(--spacing-s) 0;
+	margin: var(--spacing--sm) 0;
 	flex-direction: column;
 }
 
 .descriptionIcon {
 	align-self: center;
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 }
 
 .descriptionText {
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 }
 </style>

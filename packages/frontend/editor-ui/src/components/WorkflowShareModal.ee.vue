@@ -2,6 +2,7 @@
 import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -19,10 +20,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@n8n/i18n';
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData, Project } from '@/types/projects.types';
-import { ProjectTypes } from '@/types/projects.types';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData, Project } from '@/features/projects/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
@@ -30,6 +31,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	data: {
 		id: string;
@@ -108,13 +110,20 @@ const workflowRoleTranslations = computed(() => ({
 }));
 
 const workflowRoles = computed(() =>
-	rolesStore.processedWorkflowRoles.map(({ role, scopes, licensed, description }) => ({
-		role,
-		name: workflowRoleTranslations.value[role],
-		scopes,
-		licensed,
-		description,
-	})),
+	rolesStore.processedWorkflowRoles.map(
+		({ slug, scopes, displayName, licensed, description, systemRole, roleType }) => ({
+			slug,
+			displayName:
+				slug in workflowRoleTranslations.value
+					? workflowRoleTranslations.value[slug as keyof typeof workflowRoleTranslations.value]
+					: displayName,
+			scopes,
+			licensed,
+			description,
+			systemRole,
+			roleType,
+		}),
+	),
 );
 
 const trackTelemetry = (eventName: string, data: ITelemetryTrackProperties) => {
@@ -242,16 +251,16 @@ watch(
 	>
 		<template #content>
 			<div v-if="!isSharingEnabled" :class="$style.container">
-				<n8n-text>
+				<N8nText>
 					{{
 						i18n.baseText(
 							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
 						)
 					}}
-				</n8n-text>
+				</N8nText>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip
+				<N8nInfoTip
 					v-if="!workflowPermissions.share && !isHomeTeamProject"
 					:bold="false"
 					class="mb-s"
@@ -261,8 +270,8 @@ watch(
 							interpolate: { workflowOwnerName },
 						})
 					}}
-				</n8n-info-tip>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+				</N8nInfoTip>
+				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<div>
 						<ProjectSharing
 							v-model="sharedWithProjects"
@@ -275,7 +284,7 @@ watch(
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
 						/>
-						<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+						<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
 							<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
 								<template #projectName>
 									{{ workflow.homeProject?.name }}
@@ -293,10 +302,10 @@ watch(
 									</strong>
 								</template>
 							</I18nT>
-						</n8n-info-tip>
+						</N8nInfoTip>
 					</div>
 					<template #fallback>
-						<n8n-text>
+						<N8nText>
 							<I18nT
 								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
@@ -307,32 +316,32 @@ watch(
 							>
 								<template #action />
 							</I18nT>
-						</n8n-text>
+						</N8nText>
 					</template>
-				</enterprise-edition>
+				</EnterpriseEdition>
 			</div>
 		</template>
 
 		<template #footer>
 			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
-				<n8n-button @click="goToUpgrade">
+				<N8nButton @click="goToUpgrade">
 					{{
 						i18n.baseText(uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button)
 					}}
-				</n8n-button>
+				</N8nButton>
 			</div>
-			<enterprise-edition
+			<EnterpriseEdition
 				v-else
 				:features="[EnterpriseEditionFeature.Sharing]"
 				:class="$style.actionButtons"
 			>
-				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
+				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
-				</n8n-text>
-				<n8n-button v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+				</N8nText>
+				<N8nButton v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
 					{{ i18n.baseText('generic.close') }}
-				</n8n-button>
-				<n8n-button
+				</N8nButton>
+				<N8nButton
 					v-else
 					v-show="workflowPermissions.share"
 					:loading="loading"
@@ -341,8 +350,8 @@ watch(
 					@click="onSave"
 				>
 					{{ i18n.baseText('workflows.shareModal.save') }}
-				</n8n-button>
-			</enterprise-edition>
+				</N8nButton>
+			</EnterpriseEdition>
 		</template>
 	</Modal>
 </template>
@@ -381,6 +390,6 @@ watch(
 }
 
 .roleSelectRemoveOption {
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: 1px solid var(--color--foreground);
 }
 </style>

@@ -10,6 +10,9 @@ import {
 
 import { sanitizeCustomCss, sanitizeHtml } from './utils';
 
+const SANDBOX_CSP =
+	'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
+
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
 };
@@ -52,7 +55,7 @@ export const renderFormCompletion = async (
 		formTitle: string;
 		customCss?: string;
 	};
-	const responseText = context.getNodeParameter('responseText', '') as string;
+	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
 	const binary =
 		context.getNodeParameter('respondWith', '') === 'returnBinary'
 			? await binaryResponse(context)
@@ -66,12 +69,13 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
+	res.setHeader('Content-Security-Policy', SANDBOX_CSP);
 	res.render('form-trigger-completion', {
 		title: completionTitle,
 		message: sanitizeHtml(completionMessage),
 		formTitle: title,
 		appendAttribution,
-		responseText: sanitizeHtml(responseText),
+		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,

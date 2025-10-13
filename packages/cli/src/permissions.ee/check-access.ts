@@ -1,10 +1,11 @@
 import type { User } from '@n8n/db';
 import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { hasGlobalScope, rolesWithScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { RoleService } from '@/services/role.service';
 
 /**
  * Check if a user has the required scopes. The check can be:
@@ -47,6 +48,7 @@ export async function userHasScopes(
 	// Find which resource roles are defined to contain the required scopes.
 	// Then find at least one of the above qualifying projects having one of
 	// those resource roles over the resource being checked.
+	const roleService = Container.get(RoleService);
 
 	if (credentialId) {
 		const credentials = await Container.get(SharedCredentialsRepository).findBy({
@@ -56,10 +58,10 @@ export async function userHasScopes(
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
+		const validRoles = await roleService.rolesWithScope('credential', scopes);
+
 		return credentials.some(
-			(c) =>
-				userProjectIds.includes(c.projectId) &&
-				rolesWithScope('credential', scopes).includes(c.role),
+			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
 		);
 	}
 
@@ -72,9 +74,10 @@ export async function userHasScopes(
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
+		const validRoles = await roleService.rolesWithScope('workflow', scopes);
+
 		return workflows.some(
-			(w) =>
-				userProjectIds.includes(w.projectId) && rolesWithScope('workflow', scopes).includes(w.role),
+			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),
 		);
 	}
 

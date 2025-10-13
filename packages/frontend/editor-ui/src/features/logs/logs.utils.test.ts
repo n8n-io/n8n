@@ -1166,7 +1166,9 @@ describe(createLogTree, () => {
 		expect(logs[0].children).toHaveLength(1);
 		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
 	});
+});
 
+describe(processFiles, () => {
 	it('should process files correctly', async () => {
 		const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
 		const result = await processFiles([mockFile]);
@@ -1274,6 +1276,123 @@ describe('extractBotResponse', () => {
 		const executionId = 'test-exec-id';
 		const result = extractBotResponse(resultData, executionId);
 		expect(result).toBeUndefined();
+	});
+
+	it('should extract response from second output branch when first is empty', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[], // First output branch is empty
+								[{ json: { message: 'Response from second branch' } }], // Second branch has response
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Response from second branch',
+			sender: 'bot',
+			id: executionId,
+		});
+	});
+
+	it('should extract response from second branch when first has empty json', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[{ json: {} }], // First branch has empty json object
+								[{ json: { text: 'Response from second branch' } }], // Second branch has response
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Response from second branch',
+			sender: 'bot',
+			id: executionId,
+		});
+	});
+
+	it('should extract response from first available branch when multiple exist', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[], // First branch empty
+								[{ json: {} }], // Second branch has empty object
+								[{ json: { output: 'Response from third branch' } }], // Third branch has response
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Response from third branch',
+			sender: 'bot',
+			id: executionId,
+		});
+	});
+
+	it('should use response from first branch when multiple branches have valid text', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [
+								[{ json: { text: 'First branch response' } }],
+								[{ json: { text: 'Second branch response' } }],
+							],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'First branch response',
+			sender: 'bot',
+			id: executionId,
+		});
 	});
 });
 

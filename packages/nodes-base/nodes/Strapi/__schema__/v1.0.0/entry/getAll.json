@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "content_snippet": {
-            "type": "string"
-        },
         "createdAt": {
             "type": "string"
         },
@@ -13,27 +10,12 @@
         "id": {
             "type": "integer"
         },
-        "iso_date": {
-            "type": "string"
-        },
-        "link": {
-            "type": "string"
-        },
-        "publication_status": {
-            "type": "string"
-        },
         "publishedAt": {
-            "type": "string"
-        },
-        "telegraph_link": {
-            "type": "null"
-        },
-        "title": {
             "type": "string"
         },
         "updatedAt": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

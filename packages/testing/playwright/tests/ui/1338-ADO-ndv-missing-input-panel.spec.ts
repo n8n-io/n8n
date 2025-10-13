@@ -18,7 +18,7 @@ test.describe('ADO-1338-ndv-missing-input-panel', () => {
 		);
 
 		await n8n.canvas.openNode('Discourse1');
-		await expect(n8n.ndv.getInputPanel()).toBeVisible();
-		await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+		await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+		await expect(n8n.ndv.outputPanel.get()).toBeVisible();
 	});
 });

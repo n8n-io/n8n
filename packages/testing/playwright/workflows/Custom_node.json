@@ -1,0 +1,51 @@
+{
+	"properties": [
+		{
+			"displayName": "Test property",
+			"name": "testProp",
+			"type": "string",
+			"required": true,
+			"noDataExpression": false,
+			"default": "Some default"
+		},
+		{
+			"displayName": "Resource",
+			"name": "resource",
+			"type": "options",
+			"noDataExpression": true,
+			"options": [
+				{
+					"name": "option1",
+					"value": "option1"
+				},
+				{
+					"name": "option2",
+					"value": "option2"
+				},
+				{
+					"name": "option3",
+					"value": "option3"
+				},
+				{
+					"name": "option4",
+					"value": "option4"
+				}
+			],
+			"default": "option2"
+		}
+	],
+	"displayName": "E2E Node",
+	"name": "@e2e/n8n-nodes-e2e",
+	"group": ["transform"],
+	"codex": {
+		"categories": ["Custom Category"]
+	},
+	"version": 1,
+	"description": "Demonstrate rendering of node",
+	"defaults": {
+		"name": "E2E Node "
+	},
+	"inputs": ["main"],
+	"outputs": ["main"],
+	"icon": "fa:network-wired"
+}

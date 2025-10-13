@@ -5,7 +5,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
@@ -36,7 +36,7 @@ vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(),
 }));
 
-vi.mock('@/stores/projects.store', () => ({
+vi.mock('@/features/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(),
 }));
 
@@ -182,5 +182,49 @@ describe('FreeAiCreditsCallout', () => {
 		renderComponent(FreeAiCreditsCallout);
 
 		assertUserCannotClaimCredits();
+	});
+
+	describe('credentialTypeName prop (credentials page)', () => {
+		it('should not show claim callout when editing a non-openapi credential', async () => {
+			(useNDVStore as any).mockReturnValue({
+				activeNode: null,
+			});
+
+			renderComponent(FreeAiCreditsCallout, {
+				props: {
+					credentialTypeName: 'googleSheetsOAuth2Api',
+				},
+			});
+
+			assertUserCannotClaimCredits();
+		});
+
+		it('should show claim callout editing openapi credential with no active node', async () => {
+			(useNDVStore as any).mockReturnValue({
+				activeNode: null,
+			});
+
+			renderComponent(FreeAiCreditsCallout, {
+				props: {
+					credentialTypeName: 'openAiApi',
+				},
+			});
+
+			assertUserCanClaimCredits();
+		});
+
+		it('should not show claim callout when credential type is undefined and no valid active node', async () => {
+			(useNDVStore as any).mockReturnValue({
+				activeNode: null,
+			});
+
+			renderComponent(FreeAiCreditsCallout, {
+				props: {
+					credentialTypeName: undefined,
+				},
+			});
+
+			assertUserCannotClaimCredits();
+		});
 	});
 });

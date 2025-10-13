@@ -11,18 +11,18 @@ import { computed, ref } from 'vue';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
 import { useNodeType } from '@/composables/useNodeType';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
 import { isNodePreviewKey, removePreviewToken, shouldShowCommunityNodeDetails } from '../utils';
 
+import { N8nIcon, N8nNodeCreatorNode, N8nTooltip } from '@n8n/design-system';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	subcategory?: string;
@@ -131,6 +131,9 @@ const tag = computed(() => {
 	if (description.value.toLowerCase().includes('deprecated')) {
 		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
 	}
+	if (props.nodeType.name.includes('dataTable')) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.beta'), type: 'info' };
+	}
 	return undefined;
 });
 
@@ -182,7 +185,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<NodeIcon
 				:class="$style.nodeIcon"
 				:node-type="nodeType"
-				color-default="var(--color-foreground-xdark)"
+				color-default="var(--color--foreground--shade-2)"
 			/>
 		</template>
 
@@ -216,7 +219,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						@click="onCommunityNodeTooltipClick"
 					/>
 				</template>
-				<n8n-icon size="small" :class="$style.icon" icon="box" />
+				<N8nIcon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
 		</template>
 		<template #dragContent>
@@ -230,8 +233,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 					:node-type="nodeType"
 					:size="40"
 					:shrink="false"
+					color-default="var(--color--foreground--shade-2)"
 					@click.capture.stop
-					color-default="var(--color-foreground-xdark)"
 				/>
 			</div>
 		</template>
@@ -271,9 +274,9 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	position: fixed;
 	z-index: 1;
 	opacity: 0.66;
-	border: 2px solid var(--color-foreground-xdark);
-	border-radius: var(--border-radius-large);
-	background-color: var(--color-background-xlight);
+	border: 2px solid var(--color--foreground--shade-2);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -286,7 +289,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 .icon {
 	display: inline-flex;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	width: 12px;
 
 	&.official {

@@ -3,8 +3,12 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
+
 import { createParameterUpdaterChain } from '../chains/parameter-updater';
 import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors';
+import type { UpdateNodeParametersOutput } from '../types/tools';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateNodeInWorkflow } from './helpers/state';
@@ -20,9 +24,6 @@ import {
 	updateNodeWithParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
-import type { UpdateNodeParametersOutput } from '../types/tools';
-
-const DISPLAY_TITLE = 'Updating node parameters';
 
 /**
  * Schema for update node parameters input
@@ -81,7 +82,7 @@ async function processParameterUpdates(
 	);
 
 	const newParameters = (await parametersChain.invoke({
-		workflow_json: workflow,
+		workflow_json: trimWorkflowJSON(workflow),
 		execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
 		execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
 		node_id: nodeId,
@@ -113,6 +114,11 @@ async function processParameterUpdates(
 	return fixExpressionPrefixes(newParameters.parameters) as INodeParameters;
 }
 
+export const UPDATING_NODE_PARAMETER_TOOL: BuilderToolBase = {
+	toolName: 'update_node_parameters',
+	displayTitle: 'Updating node parameters',
+};
+
 function getCustomNodeTitle(input: Record<string, unknown>, nodes?: INode[]): string {
 	if ('nodeId' in input && typeof input['nodeId'] === 'string') {
 		const targetNode = nodes?.find((node) => node.id === input.nodeId);
@@ -121,7 +127,7 @@ function getCustomNodeTitle(input: Record<string, unknown>, nodes?: INode[]): st
 		}
 	}
 
-	return DISPLAY_TITLE;
+	return UPDATING_NODE_PARAMETER_TOOL.displayTitle;
 }
 
 /**
@@ -132,10 +138,14 @@ export function createUpdateNodeParametersTool(
 	llm: BaseChatModel,
 	logger?: Logger,
 	instanceUrl?: string,
-) {
+): BuilderTool {
 	const dynamicTool = tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(config, 'update_node_parameters', DISPLAY_TITLE);
+			const reporter = createProgressReporter(
+				config,
+				UPDATING_NODE_PARAMETER_TOOL.toolName,
+				UPDATING_NODE_PARAMETER_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -213,7 +223,7 @@ export function createUpdateNodeParametersTool(
 					const toolError = new ToolExecutionError(
 						`Failed to update node parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
 						{
-							toolName: 'update_node_parameters',
+							toolName: UPDATING_NODE_PARAMETER_TOOL.toolName,
 							cause: error instanceof Error ? error : undefined,
 						},
 					);
@@ -233,7 +243,7 @@ export function createUpdateNodeParametersTool(
 				const toolError = new ToolExecutionError(
 					error instanceof Error ? error.message : 'Unknown error occurred',
 					{
-						toolName: 'update_node_parameters',
+						toolName: UPDATING_NODE_PARAMETER_TOOL.toolName,
 						cause: error instanceof Error ? error : undefined,
 					},
 				);
@@ -242,7 +252,7 @@ export function createUpdateNodeParametersTool(
 			}
 		},
 		{
-			name: 'update_node_parameters',
+			name: UPDATING_NODE_PARAMETER_TOOL.toolName,
 			description:
 				'Update the parameters of an existing node in the workflow based on natural language changes. This tool intelligently modifies only the specified parameters while preserving others. Examples: "Set the URL to https://api.example.com", "Add authentication header", "Change method to POST", "Set the condition to check if status equals success".',
 			schema: updateNodeParametersSchema,
@@ -251,6 +261,6 @@ export function createUpdateNodeParametersTool(
 
 	return {
 		tool: dynamicTool,
-		displayTitle: DISPLAY_TITLE,
+		...UPDATING_NODE_PARAMETER_TOOL,
 	};
 }

@@ -142,4 +142,16 @@ export const basicTestCases: TestCase[] = [
 		prompt:
 			'Create a multi-agent AI workflow where different AI agents collaborate to research a topic, fact-check information, and compile comprehensive reports.',
 	},
+	{
+		id: 'google-sheets-processing',
+		name: 'Process large Google Sheets data',
+		prompt:
+			'Create a workflow that reads all rows from a Google Sheets document with thousands of customer records. For each row, call an external API to get additional customer data, process the response, and update the row with the enriched information. Handle rate limiting and errors gracefully.',
+	},
+	{
+		id: 'extract-from-file',
+		name: 'Extract data from uploaded files',
+		prompt:
+			'Build a workflow that accepts file uploads through an n8n form. When users upload PDF documents, CSV files, or Excel spreadsheets, automatically extract the text content and data from these files. Transform the extracted data into a structured format and save it to a database or send it via email as a summary.',
+	},
 ];

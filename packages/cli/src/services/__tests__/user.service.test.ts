@@ -1,11 +1,16 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { GLOBAL_MEMBER_ROLE, User, UserRepository } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, UserRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
+
+import type { RoleService } from '../role.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -17,8 +22,22 @@ describe('UserService', () => {
 		editorBaseUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
-	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService, mock(), mock());
+	const userRepository = mockInstance(UserRepository, {
+		manager: mock<EntityManager>({
+			transaction: async (cb) =>
+				typeof cb === 'function' ? await cb(mock<EntityManager>()) : await Promise.resolve(),
+		}),
+	});
+	const roleService = mock<RoleService>();
+	const userService = new UserService(
+		mock(),
+		userRepository,
+		mock(),
+		urlService,
+		mock(),
+		mock(),
+		roleService,
+	);
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
@@ -105,6 +124,44 @@ describe('UserService', () => {
 
 			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
 			expect(userRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('inviteUsers', () => {
+		it('should invite users', async () => {
+			const owner = Object.assign(new User(), { id: uuid() });
+			const invitations = [
+				{ email: 'test1@example.com', role: GLOBAL_ADMIN_ROLE.slug },
+				{ email: 'test2@example.com', role: GLOBAL_MEMBER_ROLE.slug },
+				{ email: 'test3@example.com', role: 'custom:role' },
+			];
+
+			roleService.checkRolesExist.mockResolvedValue();
+			userRepository.findManyByEmail.mockResolvedValue([]);
+			userRepository.createUserWithProject.mockImplementation(async (userData) => {
+				return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+			});
+
+			await userService.inviteUsers(owner, invitations);
+
+			expect(userRepository.createUserWithProject).toHaveBeenCalledTimes(3);
+		});
+
+		it('should fail if role do not exist', async () => {
+			const owner = Object.assign(new User(), { id: uuid() });
+			const invitations = [{ email: 'test1@example.com', role: 'nonexistent:role' }];
+
+			roleService.checkRolesExist.mockRejectedValue(
+				new BadRequestError('Role nonexistent:role does not exist'),
+			);
+			userRepository.findManyByEmail.mockResolvedValue([]);
+			userRepository.createUserWithProject.mockImplementation(async (userData) => {
+				return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+			});
+
+			await expect(userService.inviteUsers(owner, invitations)).rejects.toThrowError(
+				'Role nonexistent:role does not exist',
+			);
 		});
 	});
 });

@@ -5,11 +5,14 @@ import type {
 	assignableGlobalRoleSchema,
 	credentialSharingRoleSchema,
 	globalRoleSchema,
-	projectRoleSchema,
+	Role,
+	systemProjectRoleSchema,
 	roleNamespaceSchema,
 	teamRoleSchema,
 	workflowSharingRoleSchema,
+	assignableProjectRoleSchema,
 } from './schemas.ee';
+import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
 import { ALL_API_KEY_SCOPES } from './scope-information';
 
 export type ScopeInformation = {
@@ -57,25 +60,29 @@ export type AssignableGlobalRole = z.infer<typeof assignableGlobalRoleSchema>;
 export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
 export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
-export type ProjectRole = z.infer<typeof projectRoleSchema>;
-export type CustomRole = string;
+export type ProjectRole = z.infer<typeof systemProjectRoleSchema>;
+export type AssignableProjectRole = z.infer<typeof assignableProjectRoleSchema>;
+
+/**
+ * Type guard for assignable project role slugs.
+ *
+ * Custom project roles are supported. We consider any slug that:
+ * - starts with the `project:` prefix, and
+ * - is not the personal owner role
+ * to be an assignable project role.
+ */
+export function isAssignableProjectRoleSlug(slug: string): slug is AssignableProjectRole {
+	return slug.startsWith('project:') && slug !== PROJECT_OWNER_ROLE_SLUG;
+}
 
 /** Union of all possible role types in the system */
 export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
 
-type RoleObject<T extends AllRoleTypes> = {
-	role: T;
-	name: string;
-	description?: string | null;
-	scopes: Scope[];
-	licensed: boolean;
-};
-
 export type AllRolesMap = {
-	global: Array<RoleObject<GlobalRole>>;
-	project: Array<RoleObject<ProjectRole>>;
-	credential: Array<RoleObject<CredentialSharingRole>>;
-	workflow: Array<RoleObject<WorkflowSharingRole>>;
+	global: Role[];
+	project: Role[];
+	credential: Role[];
+	workflow: Role[];
 };
 
 export type DbScope = {

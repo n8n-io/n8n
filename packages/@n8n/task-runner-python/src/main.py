@@ -1,55 +1,73 @@
 import asyncio
 import logging
-import os
 import sys
+import platform
+from typing import Optional
 
-os.environ["WEBSOCKETS_MAX_LOG_SIZE"] = "256"
-
-from src.constants import (
-    DEFAULT_MAX_CONCURRENCY,
-    DEFAULT_TASK_TIMEOUT,
-    ENV_MAX_CONCURRENCY,
-    ENV_MAX_PAYLOAD_SIZE,
-    ENV_TASK_BROKER_URI,
-    ENV_GRANT_TOKEN,
-    DEFAULT_TASK_BROKER_URI,
-    DEFAULT_MAX_PAYLOAD_SIZE,
-    ENV_TASK_TIMEOUT,
-)
+from src.constants import ERROR_WINDOWS_NOT_SUPPORTED
+from src.config.health_check_config import HealthCheckConfig
+from src.config.sentry_config import SentryConfig
+from src.config.task_runner_config import TaskRunnerConfig
+from src.errors import ConfigurationError
 from src.logs import setup_logging
-from src.task_runner import TaskRunner, TaskRunnerOpts
+from src.task_runner import TaskRunner
+from src.shutdown import Shutdown
 
 
 async def main():
     setup_logging()
     logger = logging.getLogger(__name__)
 
-    logger.info("Starting runner...")
+    sentry = None
+    sentry_config = SentryConfig.from_env()
 
-    grant_token = os.getenv(ENV_GRANT_TOKEN, "")
+    if sentry_config.enabled:
+        from src.sentry import setup_sentry
 
-    if not grant_token:
-        logger.error(f"{ENV_GRANT_TOKEN} environment variable is required")
+        sentry = setup_sentry(sentry_config)
+
+    try:
+        health_check_config = HealthCheckConfig.from_env()
+    except ConfigurationError as e:
+        logger.error(f"Invalid health check configuration: {e}")
         sys.exit(1)
 
-    opts = TaskRunnerOpts(
-        grant_token,
-        os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
-        int(os.getenv(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY)),
-        int(os.getenv(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)),
-        int(os.getenv(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT)),
-    )
+    health_check_server: Optional["HealthCheckServer"] = None
+    if health_check_config.enabled:
+        from src.health_check_server import HealthCheckServer
 
-    task_runner = TaskRunner(opts)
+        health_check_server = HealthCheckServer()
+        try:
+            await health_check_server.start(health_check_config)
+        except OSError as e:
+            logger.error(f"Failed to start health check server: {e}")
+            sys.exit(1)
+
+    try:
+        task_runner_config = TaskRunnerConfig.from_env()
+    except ConfigurationError as e:
+        logger.error(str(e))
+        sys.exit(1)
+
+    task_runner = TaskRunner(task_runner_config)
+    logger.info("Starting runner...")
+
+    shutdown = Shutdown(task_runner, health_check_server, sentry)
+    task_runner.on_idle_timeout = shutdown.start_auto_shutdown
 
     try:
         await task_runner.start()
-    except (KeyboardInterrupt, asyncio.CancelledError):
-        logger.info("Shutting down runner...")
-    finally:
-        await task_runner.stop()
-        logger.info("Runner stopped")
+    except Exception:
+        logger.error("Unexpected error", exc_info=True)
+        await shutdown.start_shutdown()
+
+    exit_code = await shutdown.wait_for_shutdown()
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
+    if platform.system() == "Windows":
+        print(ERROR_WINDOWS_NOT_SUPPORTED, file=sys.stderr)
+        sys.exit(1)
+
     asyncio.run(main())

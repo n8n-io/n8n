@@ -29,6 +29,7 @@ import {
 	getMessageContent,
 	getTarget,
 	createSendAndWaitMessageBody,
+	processThreadOptions,
 } from './GenericFunctions';
 import {
 	channelRLC,
@@ -43,7 +44,11 @@ import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -78,6 +83,7 @@ export class SlackV2 implements INodeType {
 					},
 				},
 			],
+			waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 			webhooks: sendAndWaitWebhooksDescription,
 			properties: [
 				{
@@ -835,8 +841,8 @@ export class SlackV2 implements INodeType {
 							}
 						}
 
-						const replyValues = (otherOptions.thread_ts as IDataObject)?.replyValues as IDataObject;
-						Object.assign(body, replyValues);
+						const threadParams = processThreadOptions(otherOptions.thread_ts as IDataObject);
+						Object.assign(body, threadParams);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
 						if (otherOptions.botProfile) {

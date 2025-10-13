@@ -82,12 +82,9 @@
         "$state": {
             "type": "string"
         },
-        "Created_By": {
+        "Account_Name": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -96,17 +93,11 @@
                 }
             }
         },
-        "Created_Time": {
-            "type": "string"
-        },
         "Email_Opt_Out": {
             "type": "boolean"
         },
         "Full_Name": {
             "type": "string"
-        },
-        "Home_Phone": {
-            "type": "null"
         },
         "id": {
             "type": "string"
@@ -116,26 +107,6 @@
         },
         "Locked__s": {
             "type": "boolean"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Other_Phone": {
-            "type": "null"
         },
         "Owner": {
             "type": "object",
@@ -151,15 +122,26 @@
                 }
             }
         },
+        "Tag": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "Unsubscribed_Mode": {
             "type": "null"
         },
         "Unsubscribed_Time": {
             "type": "null"
-        },
-        "Vendor_Name": {
-            "type": "null"
         }
     },
-    "version": 6
+    "version": 8
 }

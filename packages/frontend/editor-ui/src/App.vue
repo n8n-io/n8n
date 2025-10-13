@@ -1,42 +1,63 @@
 <script setup lang="ts">
 import '@/polyfills';
 
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
-import LoadingView from '@/views/LoadingView.vue';
+import AssistantsHub from '@/features/assistant/components/AssistantsHub.vue';
+import AskAssistantFloatingButton from '@/features/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
-import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
-import { loadLanguage } from '@n8n/i18n';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
 import {
 	APP_MODALS_ELEMENT_ID,
 	CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID,
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useAssistantStore } from '@/stores/assistant.store';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
-import { useStyles } from './composables/useStyles';
-import { locale } from '@n8n/design-system';
+import LoadingView from '@/views/LoadingView.vue';
+import { locale, N8nCommandBar } from '@n8n/design-system';
+import { setLanguage } from '@n8n/i18n';
+// Note: no need to import en.json here; default 'en' is handled via setLanguage
+import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useStyles } from './composables/useStyles';
+import { useExposeCssVar } from '@/composables/useExposeCssVar';
+import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
+import { useCommandBar } from '@/features/ui/commandBar/composables/useCommandBar';
+import { hasPermission } from './utils/rbac/permissions';
 
 const route = useRoute();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const ndvStore = useNDVStore();
+
+const {
+	initialize: initializeCommandBar,
+	isEnabled: isCommandBarEnabled,
+	items,
+	onCommandBarChange,
+	onCommandBarNavigateTo,
+} = useCommandBar();
+
+const showCommandBar = computed(
+	() => isCommandBarEnabled.value && hasPermission(['authenticated']),
+);
 
 const { setAppZIndexes } = useStyles();
+const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
 
 // Initialize undo/redo
 useHistoryHelper(route);
@@ -47,15 +68,12 @@ useWorkflowDiffRouting();
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
-const showAssistantFloatingButton = computed(
-	() =>
-		assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.hideAssistantFloatingButton,
-);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
-const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
-const builderSidebarWidth = computed(() => builderStore.chatWidth);
+const chatPanelWidth = computed(() => chatPanelStore.width);
+
+useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
 onMounted(async () => {
 	setAppZIndexes();
@@ -63,6 +81,12 @@ onMounted(async () => {
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
+});
+
+watch(showCommandBar, (newVal) => {
+	if (newVal) {
+		void initializeCommandBar();
+	}
 });
 
 onBeforeUnmount(() => {
@@ -82,8 +106,8 @@ const updateGridWidth = async () => {
 		uiStore.appGridDimensions = { width, height };
 	}
 };
-// As assistant sidebar width changes, recalculate the total width regularly
-watch([assistantSidebarWidth, builderSidebarWidth], async () => {
+// As chat panel width changes, recalculate the total width regularly
+watch(chatPanelWidth, async () => {
 	await updateGridWidth();
 });
 
@@ -95,13 +119,17 @@ watch(route, (r) => {
 
 watch(
 	defaultLocale,
-	(newLocale) => {
-		void loadLanguage(newLocale);
-		void locale.use(newLocale);
+	async (newLocale) => {
+		setLanguage(newLocale);
+
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
+		void locale.use(newLocale);
 	},
 	{ immediate: true },
 );
+
+useExposeCssVar('--toast-bottom-offset', toastBottomOffset);
+useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingButtonBottomOffset);
 </script>
 
 <template>
@@ -140,8 +168,15 @@ watch(
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
 			</div>
+
+			<N8nCommandBar
+				v-if="showCommandBar"
+				:items="items"
+				@input-change="onCommandBarChange"
+				@navigate-to="onCommandBarNavigateTo"
+			/>
 			<Telemetry />
-			<AskAssistantFloatingButton v-if="showAssistantFloatingButton" />
+			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 		</div>
 		<AssistantsHub />
 		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
@@ -175,6 +210,7 @@ watch(
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
 }
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -194,6 +230,7 @@ watch(
 		display: block;
 	}
 }
+
 .contentWrapper {
 	display: flex;
 	grid-area: content;

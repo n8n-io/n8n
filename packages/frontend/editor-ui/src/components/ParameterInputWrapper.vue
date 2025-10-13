@@ -12,14 +12,17 @@ import {
 } from 'n8n-workflow';
 
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
+import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
 
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
+
+import { N8nTooltip } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -125,6 +128,13 @@ const parsedParameterName = computed(() => {
 	return parseResourceMapperFieldName(props.parameter?.name ?? '');
 });
 
+const expectsBinaryData = computed(() => {
+	return (
+		props.parameter.name.includes('binaryPropertyName') ||
+		props.parameter.typeOptions?.binaryDataProperty
+	);
+});
+
 function onFocus() {
 	emit('focus');
 }
@@ -158,39 +168,44 @@ defineExpose({
 
 <template>
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
-		<ParameterInput
-			ref="param"
-			:input-size="inputSize"
-			:parameter="parameter"
-			:model-value="modelValue"
-			:path="path"
-			:is-read-only="isReadOnly"
-			:is-assignment="isAssignment"
-			:droppable="droppable"
-			:active-drop="activeDrop"
-			:force-show-expression="forceShowExpression"
-			:hide-issues="hideIssues"
-			:documentation-url="documentationUrl"
-			:error-highlight="errorHighlight"
-			:is-for-credential="isForCredential"
-			:event-source="eventSource"
-			:expression-evaluated="resolvedExpression"
-			:additional-expression-data="resolvedAdditionalExpressionData"
-			:label="label"
-			:rows="rows"
-			:data-test-id="`parameter-input-${parsedParameterName}`"
-			:event-bus="eventBus"
-			:can-be-overridden="canBeOverridden"
-			@focus="onFocus"
-			@blur="onBlur"
-			@drop="onDrop"
-			@text-input="onTextInput"
-			@update="onValueChanged"
-		>
-			<template #overrideButton>
-				<slot v-if="$slots.overrideButton" name="overrideButton" />
+		<N8nTooltip placement="left" :disabled="!expectsBinaryData">
+			<template #content>
+				{{ BINARY_DATA_ACCESS_TOOLTIP }}
 			</template>
-		</ParameterInput>
+			<ParameterInput
+				ref="param"
+				:input-size="inputSize"
+				:parameter="parameter"
+				:model-value="modelValue"
+				:path="path"
+				:is-read-only="isReadOnly"
+				:is-assignment="isAssignment"
+				:droppable="droppable"
+				:active-drop="activeDrop"
+				:force-show-expression="forceShowExpression"
+				:hide-issues="hideIssues"
+				:documentation-url="documentationUrl"
+				:error-highlight="errorHighlight"
+				:is-for-credential="isForCredential"
+				:event-source="eventSource"
+				:expression-evaluated="resolvedExpression"
+				:additional-expression-data="resolvedAdditionalExpressionData"
+				:label="label"
+				:rows="rows"
+				:data-test-id="`parameter-input-${parsedParameterName}`"
+				:event-bus="eventBus"
+				:can-be-overridden="canBeOverridden"
+				@focus="onFocus"
+				@blur="onBlur"
+				@drop="onDrop"
+				@text-input="onTextInput"
+				@update="onValueChanged"
+			>
+				<template #overrideButton>
+					<slot v-if="$slots.overrideButton" name="overrideButton" />
+				</template>
+			</ParameterInput>
+		</N8nTooltip>
 		<div v-if="!hideHint && (resolvedExpressionString || parameterHint)" :class="$style.hint">
 			<div>
 				<InputHint
@@ -212,10 +227,10 @@ defineExpose({
 .parameterInput {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .hovering {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 </style>

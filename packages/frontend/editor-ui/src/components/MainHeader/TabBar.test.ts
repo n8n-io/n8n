@@ -6,8 +6,8 @@ const renderComponent = createComponentRenderer(TabBar);
 
 describe('TabBar', () => {
 	const items = [
-		{ name: 'Workflow', value: 'workflow' },
-		{ name: 'Executions', value: 'executions' },
+		{ label: 'Workflow', value: 'workflow' },
+		{ label: 'Executions', value: 'executions' },
 	];
 
 	it('should render the correct number of tabs', async () => {

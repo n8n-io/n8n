@@ -14,10 +14,15 @@ export { setupTestEnvironment, createAgent } from './core/environment.js';
 async function main(): Promise<void> {
 	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
 
+	// Parse command line arguments for single test case
+	const testCaseId = process.argv.includes('--test-case')
+		? process.argv[process.argv.indexOf('--test-case') + 1]
+		: undefined;
+
 	if (useLangsmith) {
 		await runLangsmithEvaluation();
 	} else {
-		await runCliEvaluation();
+		await runCliEvaluation(testCaseId);
 	}
 }
 

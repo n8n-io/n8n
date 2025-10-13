@@ -21,10 +21,16 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "a": {
+                        "type": "string"
+                    },
                     "e": {
                         "type": "string"
                     },
                     "t": {
+                        "type": "string"
+                    },
+                    "u": {
                         "type": "string"
                     }
                 }
@@ -117,9 +123,6 @@
         "is_video": {
             "type": "boolean"
         },
-        "likes": {
-            "type": "null"
-        },
         "link_flair_richtext": {
             "type": "array",
             "items": {
@@ -178,59 +181,6 @@
         },
         "pinned": {
             "type": "boolean"
-        },
-        "post_hint": {
-            "type": "string"
-        },
-        "preview": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            },
-                            "resolutions": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "height": {
-                                            "type": "integer"
-                                        },
-                                        "url": {
-                                            "type": "string"
-                                        },
-                                        "width": {
-                                            "type": "integer"
-                                        }
-                                    }
-                                }
-                            },
-                            "source": {
-                                "type": "object",
-                                "properties": {
-                                    "height": {
-                                        "type": "integer"
-                                    },
-                                    "url": {
-                                        "type": "string"
-                                    },
-                                    "width": {
-                                        "type": "integer"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         },
         "quarantine": {
             "type": "boolean"
@@ -298,9 +248,6 @@
         "url": {
             "type": "string"
         },
-        "url_overridden_by_dest": {
-            "type": "string"
-        },
         "view_count": {
             "type": "null"
         },
@@ -308,5 +255,5 @@
             "type": "boolean"
         }
     },
-    "version": 2
+    "version": 4
 }

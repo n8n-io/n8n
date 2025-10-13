@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
 import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
@@ -283,9 +283,9 @@ async function onExecutionRetry(payload: { id: string; loadWorkflow: boolean }) 
 
 async function retryExecution(payload: { id: string; loadWorkflow: boolean }) {
 	try {
-		const retryStatus = await executionsStore.retryExecution(payload.id, payload.loadWorkflow);
+		const retriedExecution = await executionsStore.retryExecution(payload.id, payload.loadWorkflow);
 
-		const retryMessage = executionRetryMessage(retryStatus);
+		const retryMessage = executionRetryMessage(retriedExecution.status);
 
 		if (retryMessage) {
 			toast.showMessage(retryMessage);

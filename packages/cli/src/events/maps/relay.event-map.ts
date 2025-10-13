@@ -88,6 +88,20 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'workflow-activated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
+	'workflow-deactivated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
@@ -202,6 +216,11 @@ export type RelayEventMap = {
 	};
 
 	'user-retrieved-all-executions': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retried-execution': {
 		userId: string;
 		publicApi: boolean;
 	};
@@ -365,6 +384,10 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'execution-cancelled': {
+		executionId: string;
+	};
+
 	// #endregion
 
 	// #region Project
@@ -399,6 +422,7 @@ export type RelayEventMap = {
 		readOnlyInstance: boolean;
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
+		connectionType: 'ssh' | 'https';
 	};
 
 	'source-control-user-started-pull-ui': {

@@ -13,6 +13,7 @@ import type {
 	IExecuteFunctions,
 	IRunData,
 	ITaskData,
+	EngineRequest,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -605,6 +606,35 @@ describe('makeHandleToolInvocation', () => {
 					json: {
 						response:
 							'Error: The Tool attempted to return binary data, which is not supported in Agents',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should handle engine requests and return a warning message', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+		const mockResult: EngineRequest = { actions: [], metadata: {} };
+		execute.mockResolvedValueOnce(mockResult);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+			runExecutionData,
+		);
+		const result = await handleToolInvocation(toolArgs);
+
+		expect(result).toBe(
+			'"Error: The Tool attempted to return an engine request, which is not supported in Agents"',
+		);
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+			[
+				{
+					json: {
+						response:
+							'Error: The Tool attempted to return an engine request, which is not supported in Agents',
 					},
 				},
 			],

@@ -17,14 +17,14 @@ test.describe('Debug mode', () => {
 		DATA_NOT_IMPORTED: "Some execution data wasn't imported",
 	};
 
-	test.beforeEach(async ({ api, n8n }) => {
-		await api.enableFeature('debugInEditor');
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.api.enableFeature('debugInEditor');
 		await n8n.goHome();
 	});
 
 	// Helper function to create basic workflow
 	async function createBasicWorkflow(n8n: n8nPage, url = URLS.FAILING) {
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 		await n8n.canvas.addNode('Manual Trigger');
 		await n8n.canvas.addNode('HTTP Request');
 		await n8n.ndv.fillParameterInput('URL', url);

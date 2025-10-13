@@ -1,20 +1,19 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models.js';
-import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain.js';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { evaluate } from 'langsmith/evaluation';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pc from 'picocolors';
 
-import { createLangsmithEvaluator } from './evaluator.js';
-import type { ChatPayload } from '../../src/workflow-builder-agent.js';
-import type { WorkflowState } from '../../src/workflow-state.js';
-import { setupTestEnvironment, createAgent } from '../core/environment.js';
+import { createLangsmithEvaluator } from './evaluator';
+import type { WorkflowState } from '../../src/workflow-state';
+import { setupTestEnvironment, createAgent } from '../core/environment';
 import {
 	generateRunId,
 	safeExtractUsage,
 	isWorkflowStateValues,
 	extractMessageContent,
-} from '../types/langsmith.js';
-import { formatHeader } from '../utils/evaluation-helpers.js';
+} from '../types/langsmith';
+import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
 
 /**
  * Creates a workflow generation function for Langsmith evaluation
@@ -43,19 +42,9 @@ function createWorkflowGenerator(
 
 		// Create agent for this run
 		const agent = createAgent(parsedNodeTypes, llm, tracer);
-
-		const chatPayload: ChatPayload = {
-			message: messageContent,
-			workflowContext: {
-				currentWorkflow: { id: runId, nodes: [], connections: {} },
-			},
-		};
-
-		// Generate workflow
-		let messageCount = 0;
-		for await (const _output of agent.chat(chatPayload, 'langsmith-eval-user')) {
-			messageCount++;
-		}
+		await consumeGenerator(
+			agent.chat(getChatPayload(messageContent, runId), 'langsmith-eval-user'),
+		);
 
 		// Get generated workflow with validation
 		const state = await agent.getState(runId, 'langsmith-eval-user');
@@ -77,7 +66,7 @@ function createWorkflowGenerator(
 
 		return {
 			workflow: generatedWorkflow,
-			prompt: chatPayload.message,
+			prompt: messageContent,
 			usage,
 		};
 	};
@@ -132,8 +121,8 @@ export async function runLangsmithEvaluation(): Promise<void> {
 		// Create workflow generation function
 		const generateWorkflow = createWorkflowGenerator(parsedNodeTypes, llm, tracer);
 
-		// Create LLM-based evaluator
-		const evaluator = createLangsmithEvaluator(llm);
+		// Create evaluator with both LLM-based and programmatic evaluation
+		const evaluator = createLangsmithEvaluator(llm, parsedNodeTypes);
 
 		// Run Langsmith evaluation
 		const results = await evaluate(generateWorkflow, {

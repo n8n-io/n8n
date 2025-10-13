@@ -32,13 +32,6 @@ describe('ChangeUserRoleInProject', () => {
 				expectedErrorPath: ['role'],
 			},
 			{
-				name: 'invalid role value',
-				request: {
-					role: 'invalid-role',
-				},
-				expectedErrorPath: ['role'],
-			},
-			{
 				name: 'personal owner role',
 				request: { role: PROJECT_OWNER_ROLE_SLUG },
 				expectedErrorPath: ['role'],

@@ -14,6 +14,7 @@ import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nInfoAccordion, N8nLink, N8nTooltip } from '@n8n/design-system';
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
 	saveSuccessfulExecutions: boolean;
@@ -236,11 +237,11 @@ async function onSaveWorkflowClick(): Promise<void> {
 		display: flex;
 		flex-direction: row;
 		justify-content: space-between;
-		padding-block: var(--spacing-2xs);
-		padding-inline: var(--spacing-s);
+		padding-block: var(--spacing--2xs);
+		padding-inline: var(--spacing--sm);
 		width: 100%;
 		user-select: none;
-		color: var(--color-text-base) !important;
+		color: var(--color--text) !important;
 	}
 
 	// Accordion description
@@ -248,7 +249,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		padding: 0 var(--spacing-s) var(--spacing-2xs) !important;
+		padding: 0 var(--spacing--sm) var(--spacing--2xs) !important;
 
 		span {
 			width: 100%;
@@ -258,7 +259,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 	footer {
 		text-align: left;
 		width: 100%;
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 	}
 
 	.disabled a {

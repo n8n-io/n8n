@@ -10,7 +10,7 @@ import type {
 } from '@n8n/db';
 import type {
 	AssignableGlobalRole,
-	CustomRole,
+	AssignableProjectRole,
 	GlobalRole,
 	ProjectRole,
 	Scope,
@@ -235,7 +235,19 @@ export declare namespace LicenseRequest {
 export declare namespace VariablesRequest {
 	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
 
-	type GetAll = AuthenticatedRequest;
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+			projectId?: string;
+			state?: 'empty';
+		}
+	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
@@ -275,7 +287,7 @@ export declare namespace ActiveWorkflowRequest {
 
 export declare namespace ProjectRequest {
 	type GetMyProjectsResponse = Array<
-		Project & { role: ProjectRole | GlobalRole | CustomRole; scopes?: Scope[] }
+		Project & { role: ProjectRole | AssignableProjectRole | GlobalRole; scopes?: Scope[] }
 	>;
 
 	type ProjectRelationResponse = {
@@ -283,7 +295,7 @@ export declare namespace ProjectRequest {
 		email: string;
 		firstName: string;
 		lastName: string;
-		role: ProjectRole | CustomRole;
+		role: ProjectRole | AssignableProjectRole;
 	};
 	type ProjectWithRelations = {
 		id: string;

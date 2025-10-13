@@ -25,8 +25,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
@@ -35,8 +33,6 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
-	DELETE_FOLDER_MODAL_KEY,
-	MOVE_FOLDER_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -46,7 +42,18 @@ import {
 	WORKFLOW_DIFF_MODAL_KEY,
 	PRE_BUILT_AGENTS_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	CONFIRM_PASSWORD_MODAL_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	VARIABLE_MODAL_KEY,
 } from '@/constants';
+import {
+	DELETE_FOLDER_MODAL_KEY,
+	MOVE_FOLDER_MODAL_KEY,
+} from '@/features/folders/folders.constants';
+import {
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+} from '@/features/sourceControl.ee/sourceControl.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
@@ -67,12 +74,14 @@ import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
+import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import identity from 'lodash/identity';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -87,6 +96,7 @@ try {
 type UiStore = ReturnType<typeof useUIStore>;
 
 export const useUIStore = defineStore(STORES.UI, () => {
+	const telemetry = useTelemetry();
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
 	const theme = useLocalStorage<ThemeOption>(LOCAL_STORAGE_THEME, savedTheme, {
@@ -102,6 +112,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				ABOUT_MODAL_KEY,
 				CHAT_EMBED_MODAL_KEY,
 				CHANGE_PASSWORD_MODAL_KEY,
+				CONFIRM_PASSWORD_MODAL_KEY,
 				CONTACT_PROMPT_MODAL_KEY,
 				CREDENTIAL_SELECT_MODAL_KEY,
 				DUPLICATE_MODAL_KEY,
@@ -129,6 +140,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
+				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+				VARIABLE_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -230,7 +243,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', false);
+	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', true);
 	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
@@ -242,6 +255,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const processingExecutionResults = ref<boolean>(false);
+	const isBlankRedirect = ref<boolean>(false);
 
 	/**
 	 * Modules can register their ProjectHeader tabs here
@@ -253,7 +267,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * @example
 	 * uiStore.registerCustomTabs('overview', 'data-table', [
 	 *   {
-	 *     label: 'Data Table',
+	 *     label: 'Data table',
 	 *     value: 'data-table',
 	 *     to: { name: 'data-table' },
 	 *   },
@@ -266,6 +280,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		project: {},
 		shared: {},
 	});
+
+	/**
+	 * Settings sidebar items registry per module.
+	 * Modules can register items and SettingsSidebar will render them
+	 * when the corresponding module is active.
+	 */
+	const registeredSettingsPages = ref<Record<string, IMenuItem[]>>({});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -362,6 +383,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	);
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
+
+	const settingsSidebarItems = computed<IMenuItem[]>(() => {
+		const items: IMenuItem[] = [];
+		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
+			if (settingsStore.isModuleActive(moduleName)) {
+				items.push(...moduleItems.map((item) => ({ ...item, available: true })));
+			}
+		});
+		return items;
+	});
 
 	const isReadOnlyView = computed(() => {
 		return ![
@@ -473,7 +504,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
-	const openCommunityPackageUpdateConfirmModal = (packageName: string) => {
+	const openCommunityPackageUpdateConfirmModal = (packageName: string, source?: string) => {
+		telemetry.track('User clicked to open community node update modal', {
+			source,
+			package_name: packageName,
+		});
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
 		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
@@ -574,6 +609,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
+	const registerSettingsPages = (moduleName: string, items: IMenuItem[]) => {
+		registeredSettingsPages.value[moduleName] = items;
+	};
+
 	/**
 	 * Set whether we are currently in the process of fetching and deserializing
 	 * the full execution data and loading it to the store.
@@ -636,6 +675,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	return {
 		appGridDimensions,
+		settingsSidebarItems,
 		appliedTheme,
 		contextBasedTranslationKeys,
 		isModalActiveById,
@@ -644,6 +684,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		activeActions,
 		headerHeight,
 		stateIsDirty,
+		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
 		bannersHeight,
@@ -690,6 +731,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		initialize,
 		moduleTabs,
 		registerCustomTabs,
+		registerSettingsPages,
 		registerModal,
 		unregisterModal,
 		initializeModalsFromRegistry,

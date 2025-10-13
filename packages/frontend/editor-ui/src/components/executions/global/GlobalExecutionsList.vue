@@ -16,21 +16,23 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionRetryMessage } from '@/utils/executionUtils';
-import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
-import { ElSkeletonItem } from 'element-plus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
 
+import { ElCheckbox, ElSkeletonItem } from 'element-plus';
+import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
 		total?: number;
+		concurrentTotal?: number;
 		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
+		concurrentTotal: 0,
 		estimated: false,
 	},
 );
@@ -76,16 +78,11 @@ const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 
-/**
- * Calculate the number of executions counted towards the production executions concurrency limit.
- * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
- */
-const runningExecutionsCount = computed(() => {
-	return props.executions.filter(
-		(execution) =>
-			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
-	).length;
-});
+// In 'queue' mode concurrency control is applied per worker and returning a global count
+// of concurrent executions would not be meaningful/helpful.
+const showConcurrencyHeader = computed(
+	() => settingsStore.isConcurrencyEnabled && !settingsStore.isQueueModeEnabled,
+);
 
 watch(
 	() => props.executions,
@@ -245,8 +242,8 @@ async function retryOriginalExecution(execution: ExecutionSummary) {
 
 async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 	try {
-		const retryStatus = await executionsStore.retryExecution(execution.id, loadWorkflow);
-		const retryMessage = executionRetryMessage(retryStatus);
+		const retriedExecution = await executionsStore.retryExecution(execution.id, loadWorkflow);
+		const retryMessage = executionRetryMessage(retriedExecution.status);
 
 		if (retryMessage) {
 			toast.showMessage(retryMessage);
@@ -313,8 +310,9 @@ async function deleteExecution(execution: ExecutionSummary) {
 	}
 }
 
-async function onAutoRefreshToggle(value: boolean) {
-	if (value) {
+async function onAutoRefreshToggle(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
+	if (boolValue) {
 		await executionsStore.startAutoRefreshInterval();
 	} else {
 		executionsStore.stopAutoRefreshInterval();
@@ -338,8 +336,8 @@ const goToUpgrade = () => {
 
 			<div style="margin-left: auto">
 				<ConcurrentExecutionsHeader
-					v-if="settingsStore.isConcurrencyEnabled"
-					:running-executions-count="runningExecutionsCount"
+					v-if="showConcurrencyHeader"
+					:running-executions-count="concurrentTotal"
 					:concurrency-cap="settingsStore.concurrency"
 					:is-cloud-deployment="settingsStore.isCloudDeployment"
 					@go-to-upgrade="goToUpgrade"
@@ -466,7 +464,7 @@ const goToUpgrade = () => {
 
 <style module lang="scss">
 .execListWrapper {
-	padding: var(--spacing-l) var(--spacing-2xl);
+	padding: var(--spacing--lg) var(--spacing--2xl);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -484,7 +482,7 @@ const goToUpgrade = () => {
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .execTable {

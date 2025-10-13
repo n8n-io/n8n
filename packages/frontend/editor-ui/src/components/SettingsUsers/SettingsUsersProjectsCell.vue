@@ -3,7 +3,6 @@ import { computed, ref } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
-
 const props = defineProps<{ data: UsersList['items'][number] }>();
 
 const i18n = useI18n();
@@ -62,11 +61,11 @@ const projects = computed(() => ({
 
 .comma {
 	flex-shrink: 0;
-	padding: 0 var(--spacing-5xs);
+	padding: 0 var(--spacing--5xs);
 }
 
 .projectList {
-	padding: 0 var(--spacing-s);
+	padding: 0 var(--spacing--sm);
 
 	li {
 		list-style: disc outside;

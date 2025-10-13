@@ -13,11 +13,12 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nIcon, N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
@@ -78,6 +79,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const {
@@ -323,6 +325,7 @@ function onDragEnd(column: string, src: string, depth = '0') {
 			src_view: 'table',
 			src_element: src,
 			success: false,
+			view_shown: telemetryContext.view_shown,
 			...mappingTelemetry,
 		};
 
@@ -618,7 +621,7 @@ watch(
 											/>
 										</N8nTooltip>
 										<div v-if="mappingEnabled" :class="$style.dragButton">
-											<n8n-icon icon="grip-vertical" />
+											<N8nIcon icon="grip-vertical" />
 										</div>
 									</div>
 								</template>
@@ -644,7 +647,7 @@ watch(
 								</div>
 							</template>
 							<span>
-								<n8n-icon :class="$style['warningTooltip']" icon="triangle-alert" />
+								<N8nIcon :class="$style['warningTooltip']" icon="triangle-alert" />
 								{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</N8nTooltip>
@@ -765,16 +768,16 @@ watch(
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing-xs);
+	padding-left: var(--spacing--xs);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
-	padding-bottom: var(--spacing-3xl);
+	padding-bottom: var(--spacing--3xl);
 
 	&.compact {
-		padding-left: var(--spacing-2xs);
+		padding-left: var(--spacing--2xs);
 	}
 }
 
@@ -782,21 +785,21 @@ watch(
 	border-collapse: separate;
 	text-align: left;
 	width: calc(100%);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
 
 	th {
-		background-color: var(--color-background-base);
-		border-top: var(--border-base);
-		border-bottom: var(--border-base);
-		border-left: var(--border-base);
+		background-color: var(--color--background);
+		border-top: var(--border);
+		border-bottom: var(--border);
+		border-left: var(--border);
 		position: sticky;
 		top: 0;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		z-index: 1;
 
 		.lightHeader & {
-			background-color: var(--color-background-light);
+			background-color: var(--color--background--light-2);
 		}
 
 		&.tableRightMargin {
@@ -806,9 +809,9 @@ watch(
 
 	td {
 		vertical-align: top;
-		padding: var(--spacing-4xs) var(--spacing-3xs);
-		border-bottom: var(--border-base);
-		border-left: var(--border-base);
+		padding: var(--spacing--4xs) var(--spacing--3xs);
+		border-bottom: var(--border);
+		border-left: var(--border);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
 		vertical-align: top;
@@ -839,7 +842,7 @@ watch(
 
 	th:last-child,
 	td:last-child {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 
 	.hasCollapsingColumn & {
@@ -859,27 +862,27 @@ watch(
 }
 
 th.isCollapsingColumn {
-	border-top-color: var(--color-foreground-xdark);
-	border-left-color: var(--color-foreground-xdark);
-	border-right-color: var(--color-foreground-xdark);
+	border-top-color: var(--color--foreground--shade-2);
+	border-left-color: var(--color--foreground--shade-2);
+	border-right-color: var(--color--foreground--shade-2);
 }
 
 td.isCollapsingColumn {
-	border-left-color: var(--color-foreground-xdark);
-	border-right-color: var(--color-foreground-xdark);
+	border-left-color: var(--color--foreground--shade-2);
+	border-right-color: var(--color--foreground--shade-2);
 
 	tr:last-child & {
-		border-bottom-color: var(--color-foreground-xdark);
+		border-bottom-color: var(--color--foreground--shade-2);
 	}
 }
 
 td.isCollapsingColumn + td,
 th.isCollapsingColumn + th {
-	border-left-color: var(--color-foreground-xdark);
+	border-left-color: var(--color--foreground--shade-2);
 }
 
 .nodeClass {
-	margin-bottom: var(--spacing-5xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .emptyCell {
@@ -889,7 +892,7 @@ th.isCollapsingColumn + th {
 .header {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-4xs) var(--spacing-3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
 
 	span {
 		white-space: nowrap;
@@ -902,7 +905,7 @@ th.isCollapsingColumn + th {
 .draggableHeader {
 	&:hover {
 		cursor: grab;
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 
 		.dragButton {
 			opacity: 1;
@@ -911,12 +914,12 @@ th.isCollapsingColumn + th {
 }
 
 .highlight .draggableHeader {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .draggingHeader {
-	color: var(--color-primary);
-	background-color: var(--color-primary-tint-2);
+	color: var(--color--primary);
+	background-color: var(--color--primary--tint-2);
 }
 
 .activeHeader {
@@ -934,21 +937,21 @@ th.isCollapsingColumn + th {
 }
 
 .dataKey {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	line-height: 1.7;
-	font-weight: var(--font-weight-bold);
-	border-radius: var(--border-radius-base);
-	padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
-	margin-right: var(--spacing-5xs);
+	font-weight: var(--font-weight--bold);
+	border-radius: var(--radius);
+	padding: 0 var(--spacing--5xs) 0 var(--spacing--5xs);
+	margin-right: var(--spacing--5xs);
 }
 
 .value {
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 }
 
 .nestedValue {
 	composes: value;
-	margin-left: var(--spacing-4xs);
+	margin-left: var(--spacing--4xs);
 }
 
 .mappable {
@@ -956,7 +959,7 @@ th.isCollapsingColumn + th {
 }
 
 .empty {
-	color: var(--color-danger);
+	color: var(--color--danger);
 	font-style: italic;
 }
 
@@ -969,11 +972,11 @@ th.isCollapsingColumn + th {
 }
 
 .hoveringKey {
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 
 .draggingKey {
-	background-color: var(--color-primary-tint-2);
+	background-color: var(--color--primary--tint-2);
 }
 
 .tableRightMargin {
@@ -985,28 +988,28 @@ th.isCollapsingColumn + th {
 
 	.compact & {
 		padding: 0;
-		min-width: var(--spacing-2xs);
-		max-width: var(--spacing-2xs);
+		min-width: var(--spacing--2xs);
+		max-width: var(--spacing--2xs);
 	}
 }
 
 .hoveringRow {
 	td:first-child:after,
 	td:nth-last-child(2):after {
-		background-color: var(--color-secondary);
+		background-color: var(--color--secondary);
 	}
 }
 
 .warningTooltip {
-	color: var(--color-warning);
+	color: var(--color--warning);
 }
 
 .executionLinkCell {
-	padding: var(--spacing-3xs) !important;
+	padding: var(--spacing--3xs) !important;
 }
 
 .executionLinkRowHeader {
-	width: var(--spacing-m);
+	width: var(--spacing--md);
 }
 
 .collapseColumnButton {
@@ -1015,7 +1018,7 @@ th.isCollapsingColumn + th {
 	}
 
 	opacity: 0;
-	margin-block: calc(-2 * var(--spacing-2xs));
+	margin-block: calc(-2 * var(--spacing--2xs));
 
 	.isCollapsingColumn &,
 	th.isHoveredColumn &,

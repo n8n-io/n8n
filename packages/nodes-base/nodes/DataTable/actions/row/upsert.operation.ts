@@ -7,8 +7,9 @@ import {
 } from 'n8n-workflow';
 
 import { makeAddRow, getAddRow } from '../../common/addRow';
-import { executeSelectMany, getSelectFields } from '../../common/selectMany';
-import { getDataTableProxyExecute } from '../../common/utils';
+import { DRY_RUN } from '../../common/fields';
+import { getSelectFields, getSelectFilter } from '../../common/selectMany';
+import { getDataTableProxyExecute, getDryRunParameter } from '../../common/utils';
 
 export const FIELD: string = 'upsert';
 
@@ -22,42 +23,35 @@ const displayOptions: IDisplayOptions = {
 export const description: INodeProperties[] = [
 	...getSelectFields(displayOptions),
 	makeAddRow(FIELD, displayOptions),
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		options: [DRY_RUN],
+		displayOptions,
+	},
 ];
 
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const dataStoreProxy = await getDataTableProxyExecute(this, index);
-
+	const dataTableProxy = await getDataTableProxyExecute(this, index);
+	const dryRun = getDryRunParameter(this, index);
 	const row = getAddRow(this, index);
+	const filter = await getSelectFilter(this, index);
 
-	const matches = await executeSelectMany(this, index, dataStoreProxy, true);
-
-	// insert
-	if (matches.length === 0) {
-		const result = await dataStoreProxy.insertRows([row]);
-		return result.map((json) => ({ json }));
+	if (filter.filters.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'At least one condition is required');
 	}
 
-	// update
-	const result = [];
-	for (const match of matches) {
-		const updatedRows = await dataStoreProxy.updateRows({
-			data: row,
-			filter: { id: match.json.id },
-		});
-		if (updatedRows.length !== 1) {
-			throw new NodeOperationError(this.getNode(), 'invariant broken');
-		}
-
-		// The input object gets updated in the api call, somehow
-		// And providing this column to the backend causes an unexpected column error
-		// So let's just re-delete the field until we have a more aligned API
-		delete row['updatedAt'];
-
-		result.push(updatedRows[0]);
-	}
+	const result = await dataTableProxy.upsertRow({
+		data: row,
+		filter,
+		dryRun,
+	});
 
 	return result.map((json) => ({ json }));
 }

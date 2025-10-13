@@ -75,7 +75,6 @@ export const WorkflowState = Annotation.Root({
 		reducer: operationsReducer,
 		default: () => [],
 	}),
-	// Whether the user prompt is a workflow prompt.
 	// Latest workflow context
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,

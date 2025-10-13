@@ -11,6 +11,7 @@ const baseNodeParameters = {
 	sessionId: 'test-session-123',
 	windowId: 'win-123',
 	elementDescription: 'the login button',
+	clickType: 'click',
 	additionalFields: {},
 };
 
@@ -55,7 +56,9 @@ describe('Test Airtop, click operation', () => {
 			'/sessions/test-session-123/windows/win-123/click',
 			{
 				elementDescription: 'the login button',
-				configuration: {},
+				configuration: {
+					clickType: 'click',
+				},
 			},
 		);
 
@@ -104,6 +107,7 @@ describe('Test Airtop, click operation', () => {
 					visualAnalysis: {
 						scope: 'viewport',
 					},
+					clickType: 'click',
 				},
 				elementDescription: 'the login button',
 			},
@@ -125,12 +129,53 @@ describe('Test Airtop, click operation', () => {
 			'/sessions/test-session-123/windows/win-123/click',
 			{
 				configuration: {
+					clickType: 'click',
 					waitForNavigationConfig: {
 						waitUntil: 'load',
 					},
 				},
 				waitForNavigation: true,
 				elementDescription: 'the login button',
+			},
+		);
+	});
+
+	it("should execute double click when 'clickType' is 'doubleClick'", async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			clickType: 'doubleClick',
+		};
+
+		await click.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/sessions/test-session-123/windows/win-123/click',
+			{
+				elementDescription: 'the login button',
+				configuration: {
+					clickType: 'doubleClick',
+				},
+			},
+		);
+	});
+
+	it("should execute right click when 'clickType' is 'rightClick'", async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			clickType: 'rightClick',
+		};
+
+		await click.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/sessions/test-session-123/windows/win-123/click',
+			{
+				elementDescription: 'the login button',
+				configuration: {
+					clickType: 'rightClick',
+				},
 			},
 		);
 	});
