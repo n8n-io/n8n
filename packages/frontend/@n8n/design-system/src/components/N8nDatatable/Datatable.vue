@@ -109,6 +109,8 @@ function getThStyle(column: DatatableColumn) {
 			</tbody>
 		</N8nTableBase>
 
+		<slot name="postdata" />
+
 		<div class="pagination">
 			<N8nPagination
 				v-if="totalPages > 1"
