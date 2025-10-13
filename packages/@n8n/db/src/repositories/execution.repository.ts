@@ -448,7 +448,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 
 			if (Object.keys(executionData).length > 0) {
-				// @ts-expect-error Fix typing
 				await this.executionDataRepository.update({ executionId }, executionData);
 			}
 
@@ -463,7 +462,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 
 			if (Object.keys(executionData).length > 0) {
-				// @ts-expect-error Fix typing
 				await tx.update(ExecutionData, { executionId }, executionData);
 			}
 		});
