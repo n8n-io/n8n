@@ -2,7 +2,7 @@
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import CollaborationPane from '@/features/collaboration/components/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import SaveButton from '@/components/SaveButton.vue';
@@ -23,9 +23,9 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/features/projects/projects.utils';
 
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -46,7 +46,7 @@ import type { ActionDropdownItem, IWorkflowDb, IWorkflowToShare } from '@/Interf
 import type { FolderShortInfo } from '@/features/folders/folders.types';
 import { useFoldersStore } from '@/features/folders/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { sanitizeFilename } from '@/utils/fileUtils';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
