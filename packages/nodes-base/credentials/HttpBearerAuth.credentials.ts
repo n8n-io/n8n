@@ -7,7 +7,7 @@ export class HttpBearerAuth implements ICredentialType {
 
 	displayName = 'Bearer Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 

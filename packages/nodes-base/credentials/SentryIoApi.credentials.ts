@@ -10,7 +10,7 @@ export class SentryIoApi implements ICredentialType {
 
 	displayName = 'Sentry.io API';
 
-	documentationUrl = 'sentryIo';
+	documentationUrl = 'sentryio';
 
 	properties: INodeProperties[] = [
 		{
