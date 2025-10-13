@@ -6,6 +6,5 @@
 		"outDir": "dist",
 		"types": ["vitest/globals"]
 	},
-	"include": ["src/**/*.ts"],
-	"exclude": ["**/*.test.ts"]
+	"include": ["src/**/*.ts"]
 }

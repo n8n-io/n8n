@@ -88,6 +88,7 @@ export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
+export const VARIABLE_MODAL_KEY = 'variableModal';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 
@@ -589,6 +590,8 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	PROJECTS_VARIABLES = 'ProjectsVariables',
+	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
 	INSIGHTS = 'Insights',
@@ -834,6 +837,12 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
+export const PROJECT_VARIABLES_EXPERIMENT = {
+	name: '046_project_variables',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
@@ -846,6 +855,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	READY_TO_RUN_V2_EXPERIMENT.name,
 	PERSONALIZED_TEMPLATES_V3.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	PROJECT_VARIABLES_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
