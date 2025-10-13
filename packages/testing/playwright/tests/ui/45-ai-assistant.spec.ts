@@ -243,6 +243,8 @@ test.describe('AI Assistant::enabled', () => {
 		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(2);
 
 		await n8n.aiAssistant.getCloseChatButton().click();
+		// Wait for sidebar to close
+		await expect(n8n.aiAssistant.getAskAssistantChat()).toBeHidden();
 		await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
 		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(2);
 
@@ -368,8 +370,11 @@ test.describe('AI Assistant::enabled', () => {
 			await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
 
 			await n8n.aiAssistant.sendMessage('What is wrong with this workflow?', 'enter-key');
-			await n8n.aiAssistant.sendMessage('And now?', 'enter-key');
+			// Wait for message to be processed
+			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(1);
 
+			await n8n.aiAssistant.sendMessage('And now?', 'enter-key');
+			expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(2);
 			const secondRequest = chatRequests.find((request) => request.payload?.text === 'And now?');
 			const secondContext = secondRequest?.payload?.context;
 			expect(secondContext?.currentWorkflow).toBeUndefined();
@@ -380,6 +385,7 @@ test.describe('AI Assistant::enabled', () => {
 			await n8n.canvas.clickExecuteWorkflowButton();
 
 			await n8n.aiAssistant.sendMessage('What about now?', 'enter-key');
+			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);
 
 			const thirdRequest = chatRequests.find(
 				(request) => request.payload?.text === 'What about now?',
