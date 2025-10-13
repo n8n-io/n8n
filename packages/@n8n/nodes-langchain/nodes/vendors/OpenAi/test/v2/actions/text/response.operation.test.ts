@@ -602,7 +602,16 @@ describe('OpenAI Response Operation', () => {
 				input: [],
 				tools: [{ name: 'test_tool', type: 'function', parameters: {}, strict: false }],
 			});
-			mockApiRequest.mockResolvedValue(mockResponse);
+			mockApiRequest.mockResolvedValueOnce(mockResponse).mockResolvedValueOnce({
+				...mockResponse,
+				output: [
+					{
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'Final response' }],
+					},
+				],
+			});
 
 			await execute.call(mockExecuteFunctions, 0);
 
