@@ -8,7 +8,7 @@ FRONTEND_DIR="./packages/frontend"
 
 # Find all files in frontend folder except _tokens.scss (which is already updated)
 echo "Finding files to process..."
-files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss")
+files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss" ! -path "*/@n8n/chat/**")
 
 # _tokens file only
 #files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
