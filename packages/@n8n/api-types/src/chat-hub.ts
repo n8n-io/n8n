@@ -57,3 +57,42 @@ export class ChatHubSendMessageRequest extends Z.class({
 		}),
 	),
 }) {}
+
+/**
+ * Chat message schema
+ */
+export const chatHubMessageSchema = z.object({
+	id: z.string().uuid(),
+	conversationId: z.string().uuid(),
+	role: z.enum(['user', 'assistant']),
+	content: z.string(),
+	createdAt: z.string().datetime(),
+});
+
+export type ChatHubMessage = z.infer<typeof chatHubMessageSchema>;
+
+/**
+ * Chat conversation schema
+ */
+export const chatHubConversationSchema = z.object({
+	id: z.string().uuid(),
+	title: z.string(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
+});
+
+export type ChatHubConversation = z.infer<typeof chatHubConversationSchema>;
+
+/**
+ * Response schema for GET /conversations
+ */
+export const chatHubConversationsResponseSchema = z.array(chatHubConversationSchema);
+
+export type ChatHubConversationsResponse = z.infer<typeof chatHubConversationsResponseSchema>;
+
+/**
+ * Response schema for GET /conversations/:id/messages
+ */
+export const chatHubMessagesResponseSchema = z.array(chatHubMessageSchema);
+
+export type ChatHubMessagesResponse = z.infer<typeof chatHubMessagesResponseSchema>;

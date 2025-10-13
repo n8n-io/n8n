@@ -68,7 +68,7 @@ const SettingsSourceControl = async () =>
 	await import('@/features/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
 	await import('@/features/externalSecrets/views/SettingsExternalSecrets.vue');
-const WorkerView = async () => await import('./views/WorkerView.vue');
+const WorkerView = async () => await import('@/features/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
