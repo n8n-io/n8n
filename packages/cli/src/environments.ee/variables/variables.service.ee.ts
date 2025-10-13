@@ -271,7 +271,7 @@ export class VariablesService {
 				: {}),
 		});
 		this.eventService.emit('variable-updated', {
-			projectId: variable.projectId ?? undefined,
+			projectId: newProjectId,
 		});
 		await this.updateCache();
 		return (await this.getCached(id))!;
