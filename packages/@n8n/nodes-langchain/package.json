@@ -151,6 +151,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
