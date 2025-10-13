@@ -374,7 +374,7 @@ test.describe('AI Assistant::enabled', () => {
 			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(1);
 
 			await n8n.aiAssistant.sendMessage('And now?', 'enter-key');
-			expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(2);
+			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(2);
 			const secondRequest = chatRequests.find((request) => request.payload?.text === 'And now?');
 			const secondContext = secondRequest?.payload?.context;
 			expect(secondContext?.currentWorkflow).toBeUndefined();
