@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
+import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
@@ -210,7 +211,7 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
+	const dockerImage = getDockerImageFromEnv();
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { CONFIRM_PASSWORD_MODAL_KEY } from '../../constants';
+import { CONFIRM_PASSWORD_MODAL_KEY } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { IFormInputs, IFormInput, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { confirmPasswordEventBus } from './confirm-password.event-bus';
+import { confirmPasswordEventBus } from '../auth.eventBus';
 
 import { N8nButton, N8nFormInputs, N8nText } from '@n8n/design-system';
 const config = ref<IFormInputs | null>(null);
