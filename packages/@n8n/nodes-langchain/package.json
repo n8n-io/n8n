@@ -51,6 +51,7 @@
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
+      "dist/nodes/vendors/Ollama/Ollama.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
       "dist/nodes/agents/Agent/AgentTool.node.js",
