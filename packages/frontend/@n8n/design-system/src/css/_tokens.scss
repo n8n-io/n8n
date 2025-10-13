@@ -1,121 +1,149 @@
 @use 'sass:math';
 
+/**
+ * CSS Variable Naming Migration with Backwards Compatibility
+ *
+ * We are migrating from single-dash format (--color-primary-shade-1) to a new
+ * double-dash format (--color--primary--shade-1) to align with design system guidelines.
+ *
+ * To maintain backwards compatibility during this transition, we use CSS variable fallbacks:
+ * --color--primary: var(--color-primary, var(--p--color--primary-320))
+ *
+ * This ensures:
+ * 1. New code using --color--primary--* works correctly
+ * 2. Legacy code using --color-primary-* continues to work
+ * 3. External integrations and custom CSS won't break
+ * 4. Gradual migration path without breaking changes
+ *
+ */
+
 @mixin theme {
-	--color--primary-h: var(--p--color--primary-h);
-	--color--primary-s: var(--p--color--primary-s);
-	--color--primary-l: var(--p--color--primary-l);
+	--color--primary-h: var(--color-primary-h, var(--p--color--primary-h));
+	--color--primary-s: var(--color-primary-s, var(--p--color--primary-s));
+	--color--primary-l: var(--color-primary-l, var(--p--color--primary-l));
 
 	// Primary tokens
 
 	// Primary
-	--color--primary--shade-1: var(--p--color--primary-420);
-	--color--primary: var(--p--color--primary-320);
-	--color--primary--tint-1: var(--p--color--primary-120);
-	--color--primary--tint-2: var(--p--color--primary-070);
-	--color--primary--tint-3: var(--p--color--primary-030);
+	--color--primary--shade-1: var(--color-primary-shade-1, var(--p--color--primary-420));
+	--color--primary: var(--color-primary, var(--p--color--primary-320));
+	--color--primary--tint-1: var(--color-primary-tint-1, var(--p--color--primary-120));
+	--color--primary--tint-2: var(--color-primary-tint-2, var(--p--color--primary-070));
+	--color--primary--tint-3: var(--color-primary-tint-3, var(--p--color--primary-030));
 
 	// Secondary
-	--color--secondary--shade-1: var(--p--color--secondary-570);
-	--color--secondary: var(--p--color--secondary-470);
-	--color--secondary--tint-1: var(--p--color--secondary-170);
-	--color--secondary--tint-2: var(--p--color--secondary-070);
+	--color--secondary--shade-1: var(--color-secondary-shade-1, var(--p--color--secondary-570));
+	--color--secondary: var(--color-secondary, var(--p--color--secondary-470));
+	--color--secondary--tint-1: var(--color-secondary-tint-1, var(--p--color--secondary-170));
+	--color--secondary--tint-2: var(--color-secondary-tint-3, var(--p--color--secondary-070));
 
 	// Success
-	--color--success--shade-1: var(--p--color--alt-a-700);
-	--color--success: var(--p--color--alt-a-600);
-	--color--success--tint-1: var(--p--color--alt-a-300);
-	--color--success--tint-2: var(--p--color--alt-a-200);
-	--color--success--tint-3: var(--p--color--alt-a-100);
-	--color--success--tint-4: var(--p--color--alt-a-050);
+	--color--success--shade-1: var(--color-success-shade-1, var(--p--color--alt-a-700));
+	--color--success: var(--color-success, var(--p--color--alt-a-600));
+	--color--success--tint-1: var(--color-success-light, var(--p--color--alt-a-300));
+	--color--success--tint-2: var(--color-success-light-2, var(--p--color--alt-a-200));
+	--color--success--tint-3: var(--color-success-tint-1, var(--p--color--alt-a-100));
+	--color--success--tint-4: var(--color-success-tint-2, var(--p--color--alt-a-050));
 
 	// Warning
-	--color--warning--shade-1: var(--p--color--alt-b-530);
-	--color--warning: var(--p--color--alt-b-430);
-	--color--warning--tint-1: var(--p--color--alt-b-180);
-	--color--warning--tint-2: var(--p--color--alt-b-030);
+	--color--warning--shade-1: var(--color-warning-shade-1, var(--p--color--alt-b-530));
+	--color--warning: var(--color-warning, var(--p--color--alt-b-430));
+	--color--warning--tint-1: var(--color-warning-tint-1, var(--p--color--alt-b-180));
+	--color--warning--tint-2: var(--color-warning-tint-2, var(--p--color--alt-b-030));
 
 	// Danger
-	--color--danger--shade-1: var(--p--color--alt-c-580);
-	--color--danger: var(--p--color--alt-c-480);
-	--color--danger--tint-1: var(--p--color--alt-c-330);
-	--color--danger--tint-2: var(--p--color--alt-c-230);
-	--color--danger--tint-3: var(--p--color--alt-c-080);
-	--color--danger--tint-4: var(--p--color--alt-c-030);
+	--color--danger--shade-1: var(--color-danger-shade-1, var(--p--color--alt-c-580));
+	--color--danger: var(--color-danger, var(--p--color--alt-c-480));
+	--color--danger--tint-1: var(--color-danger-light, var(--p--color--alt-c-330));
+	--color--danger--tint-2: var(--color-danger-light-2, var(--p--color--alt-c-230));
+	--color--danger--tint-3: var(--color-danger-tint-1, var(--p--color--alt-c-080));
+	--color--danger--tint-4: var(--color-danger-tint-2, var(--p--color--alt-c-030));
 
 	// Text
-	--color--text--shade-1: var(--p--color--gray-740);
-	--color--text: var(--p--color--gray-540);
-	--color--text--tint-1: var(--p--color--gray-420);
-	--color--text--tint-2: var(--p--color--gray-120);
-	--color--text--tint-3: var(--p--color--white);
-	--color--text--danger: var(--p--color--alt-c-480);
+	--color--text--shade-1: var(--color-text-dark, var(--p--color--gray-740));
+	--color--text: var(--color-text-base, var(--p--color--gray-540));
+	--color--text--tint-1: var(--color-text-light, var(--p--color--gray-420));
+	--color--text--tint-2: var(--color-text-lighter, var(--p--color--gray-120));
+	--color--text--tint-3: var(--color-text-xlight, var(--p--color--white));
+	--color--text--danger: var(--color-text-danger, var(--p--color--alt-c-480));
 
 	// Foreground
-	--color--foreground--shade-2: var(--p--color--gray-490);
-	--color--foreground--shade-1: var(--p--color--gray-200);
-	--color--foreground: var(--p--color--gray-120);
-	--color--foreground--tint-1: var(--p--color--gray-070);
-	--color--foreground--tint-2: var(--p--color--white);
+	--color--foreground--shade-2: var(--color-foreground-xdark, var(--p--color--gray-490));
+	--color--foreground--shade-1: var(--color-foreground-dark, var(--p--color--gray-200));
+	--color--foreground: var(--color-foreground-base, var(--p--color--gray-120));
+	--color--foreground--tint-1: var(--color-foreground-light, var(--p--color--gray-070));
+	--color--foreground--tint-2: var(--color-foreground-xlight, var(--p--color--white));
 
 	// Background
-	--color--background--shade-2: var(--p--color--gray-820);
-	--color--background--shade-1: var(--p--color--gray-120);
-	--color--background: var(--p--color--gray-040);
-	--color--background--light-1: var(--p--color--gray-025);
-	--color--background--light-2: var(--p--color--gray-010);
-	--color--background--light-3: var(--p--color--white);
+	--color--background--shade-2: var(--color-background-dark, var(--p--color--gray-820));
+	--color--background--shade-1: var(--color-background-medium, var(--p--color--gray-120));
+	--color--background: var(--color-background-base, var(--p--color--gray-040));
+	--color--background--light-1: var(--color-background-light-base, var(--p--color--gray-025));
+	--color--background--light-2: var(--color-background-light, var(--p--color--gray-010));
+	--color--background--light-3: var(--color-background-xlight, var(--p--color--white));
 
-	--shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
-	--shadow--dark: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.12);
-	--shadow--light: 0 2px 12px 0 rgba(0, 0, 0, 0.07);
+	--shadow: var(--box-shadow-base, 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04));
+	--shadow--dark: var(
+		--box-shadow-dark,
+		0 2px 4px rgba(0, 0, 0, 0.12),
+		0 0 6px rgba(0, 0, 0, 0.12)
+	);
+	--shadow--light: var(--box-shadow-light, 0 2px 12px 0 rgba(0, 0, 0, 0.07));
 
-	--radius--xl: 12px;
-	--radius--lg: 8px;
-	--radius: 4px;
-	--radius--sm: 2px;
-	--border-color: var(--color--foreground);
-	--border-color--light: var(--color--foreground--tint-1);
+	--radius--xl: var(--border-radius-xlarge, 12px);
+	--radius--lg: var(--border-radius-large, 8px);
+	--radius: var(--border-radius-base, 4px);
+	--radius--sm: var(--border-radius-small, 2px);
+	--border-color: var(--border-color-base, var(--color--foreground));
+	--border-color--light: var(--border-color-light, var(--color--foreground--tint-1));
 
-	--border-style: solid;
-	--border-width: 1px;
-	--border: var(--border-width) var(--border-style) var(--color--foreground);
+	--border-style: var(--border-style-base, solid);
+	--border-width: var(--border-width-base, 1px);
+	--border: var(--border-base, var(--border-width) var(--border-style) var(--color--foreground));
 
-	--font-size--4xs: 0.5rem;
-	--font-size--3xs: 0.625rem;
-	--font-size--2xs: 0.75rem;
-	--font-size--xs: 0.8125rem;
-	--font-size--sm: 0.875rem;
-	--font-size--md: 1rem;
-	--font-size--lg: 1.125rem;
-	--font-size--xl: 1.25rem;
-	--font-size--2xl: 1.75rem;
+	--font-size--4xs: var(--font-size-4xs, 0.5rem);
+	--font-size--3xs: var(--font-size-3xs, 0.625rem);
+	--font-size--2xs: var(--font-size-2xs, 0.75rem);
+	--font-size--xs: var(--font-size-xs, 0.8125rem);
+	--font-size--sm: var(--font-size-s, 0.875rem);
+	--font-size--md: var(--font-size-m, 1rem);
+	--font-size--lg: var(--font-size-l, 1.125rem);
+	--font-size--xl: var(--font-size-xl, 1.25rem);
+	--font-size--2xl: var(--font-size-2xl, 1.75rem);
 
-	--line-height--xs: 1;
-	--line-height--sm: 1.25;
-	--line-height--md: 1.3;
-	--line-height--lg: 1.35;
-	--line-height--xl: 1.5;
+	--line-height--xs: var(--font-line-height-xsmall, 1);
+	--line-height--sm: var(--font-line-height-compact, 1.25);
+	--line-height--md: var(--font-line-height-regular, 1.3);
+	--line-height--lg: var(--font-line-height-loose, 1.35);
+	--line-height--xl: var(--font-line-height-xloose, 1.5);
 
-	--font-weight--regular: 400;
-	--font-weight--medium: 500;
-	--font-weight--bold: 600;
+	--font-weight--regular: var(--font-weight-regular, 400);
+	--font-weight--medium: var(--font-weight-medium, 500);
+	--font-weight--bold: var(--font-weight-bold, 600);
 	--font-family: InterVariable, sans-serif;
-	--font-family--monospace:
-		CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+	--font-family--monospace: var(
+		--font-family-monospace,
+		CommitMono,
+		ui-monospace,
+		Menlo,
+		Consolas,
+		'DejaVu Sans Mono',
+		monospace
+	);
 
-	--spacing--5xs: 0.125rem;
-	--spacing--4xs: 0.25rem;
-	--spacing--3xs: 0.375rem;
-	--spacing--2xs: 0.5rem;
-	--spacing--xs: 0.75rem;
-	--spacing--sm: 1rem;
-	--spacing--md: 1.25rem;
-	--spacing--lg: 1.5rem;
-	--spacing--xl: 2rem;
-	--spacing--2xl: 3rem;
-	--spacing--3xl: 4rem;
-	--spacing--4xl: 8rem;
-	--spacing--5xl: 16rem;
+	--spacing--5xs: var(--spacing-5xs, 0.125rem);
+	--spacing--4xs: var(--spacing-4xs, 0.25rem);
+	--spacing--3xs: var(--spacing-3xs, 0.375rem);
+	--spacing--2xs: var(--spacing-2xs, 0.5rem);
+	--spacing--xs: var(--spacing-xs, 0.75rem);
+	--spacing--sm: var(--spacing-s, 1rem);
+	--spacing--md: var(--spacing-m, 1.25rem);
+	--spacing--lg: var(--spacing-l, 1.5rem);
+	--spacing--xl: var(--spacing-xl, 2rem);
+	--spacing--2xl: var(--spacing-2xl, 3rem);
+	--spacing--3xl: var(--spacing-3xl, 4rem);
+	--spacing--4xl: var(--spacing-4xl, 8rem);
+	--spacing--5xl: var(--spacing-5xl, 16rem);
 
 	// Secondary tokens
 
