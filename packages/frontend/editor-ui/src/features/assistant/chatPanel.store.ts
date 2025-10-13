@@ -56,12 +56,16 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 
-		// Handle mode-specific initialization
+		// Open the panel immediately
+		chatPanelStateStore.isOpen = true;
+
+		// Handle mode-specific initialization in the background
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
 			builderStore.chatMessages = [];
-			await builderStore.fetchBuilderCredits();
-			await builderStore.loadSessions();
+			// Load credits and sessions in the background without blocking panel opening
+			void builderStore.fetchBuilderCredits();
+			void builderStore.loadSessions();
 		} else if (chatPanelStateStore.activeMode === 'assistant') {
 			const assistantStore = useAssistantStore();
 			assistantStore.chatMessages = assistantStore.chatMessages.map((msg) => ({
@@ -69,8 +73,6 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-
-		chatPanelStateStore.isOpen = true;
 		// Update UI grid dimensions when opening
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,
@@ -156,19 +158,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	watch(
 		() => route?.name,
 		(newRoute) => {
-			if (!newRoute) {
+			if (!chatPanelStateStore.isOpen || !newRoute) {
 				return;
 			}
 			const builderStore = useBuilderStore();
-
-			// Fetch metadata when entering any builder-enabled view
-			if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)) {
-				void builderStore.fetchSessionsMetadata();
-			}
-
-			if (!chatPanelStateStore.isOpen) {
-				return;
-			}
 
 			const enabledViews =
 				chatPanelStateStore.activeMode === 'assistant'

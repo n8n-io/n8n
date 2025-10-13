@@ -4,13 +4,14 @@ import {
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
 	EDITABLE_CANVAS_VIEWS,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
@@ -45,7 +46,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
-	const hasMessages = ref<boolean>(false);
+	const hasMessages = ref<boolean | undefined>(undefined);
 
 	// Store dependencies
 	const chatPanelStateStore = useChatPanelStateStore();
@@ -545,7 +546,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function fetchSessionsMetadata() {
 		const workflowId = workflowsStore.workflowId;
 		if (!workflowId) {
-			hasMessages.value = false;
+			hasMessages.value = undefined;
 			return;
 		}
 
@@ -554,9 +555,27 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			hasMessages.value = response.hasMessages;
 		} catch (error) {
 			console.error('Failed to fetch sessions metadata:', error);
-			hasMessages.value = false;
+			hasMessages.value = undefined;
 		}
 	}
+
+	// Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
+	watch(
+		() => workflowsStore.workflowId,
+		(newWorkflowId) => {
+			// Only fetch if we have a valid workflow ID and we're in a builder-enabled view
+			if (
+				newWorkflowId &&
+				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)
+			) {
+				void fetchSessionsMetadata();
+			} else {
+				// Reset hasMessages to undefined when there's no valid workflow
+				hasMessages.value = undefined;
+			}
+		},
+	);
 
 	// Public API
 	return {
