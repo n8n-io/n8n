@@ -837,7 +837,7 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 };
 
 export const PROJECT_VARIABLES_EXPERIMENT = {
-	name: '045_project_variables',
+	name: '046_project_variables',
 	control: 'control',
 	variant: 'variant',
 };
