@@ -3,11 +3,12 @@ import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
 import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY, VIEWS } from '@/constants';
 import { useChatStore } from '@/features/chatHub/chat.store';
 import { groupConversationsByDate } from '@/features/chatHub/chat.utils';
-import { CHAT_CONVERSATION_VIEW, CHAT_VIEW } from '@/features/chatHub/constants';
+import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
-import { N8nIcon, N8nIconButton, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 
 defineProps<{ isMobileDevice: boolean }>();
 
@@ -37,6 +38,16 @@ function onNewChat() {
 	});
 }
 
+function handleRenameSession(sessionId: string) {
+	// TODO: Implement rename functionality
+	console.log('Rename session:', sessionId);
+}
+
+function handleDeleteSession(sessionId: string) {
+	// TODO: Implement delete functionality
+	console.log('Delete session:', sessionId);
+}
+
 onMounted(async () => {
 	await chatStore.fetchSessions();
 });
@@ -64,16 +75,14 @@ onMounted(async () => {
 					<N8nText :class="$style.groupHeader" size="small" bold color="text-light">
 						{{ group.group }}
 					</N8nText>
-					<N8nMenuItem
+					<ChatSessionMenuItem
 						v-for="session in group.sessions"
 						:key="session.id"
+						:session-id="session.id"
+						:label="session.label"
 						:active="currentSessionId === session.id"
-						:item="{
-							id: session.id,
-							icon: 'message-circle',
-							label: session.label,
-							route: { to: { name: CHAT_CONVERSATION_VIEW, params: { id: session.id } } },
-						}"
+						@rename="handleRenameSession"
+						@delete="handleDeleteSession"
 					/>
 				</div>
 			</div>
