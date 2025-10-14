@@ -54,7 +54,7 @@ export class ChatHubController {
 		this.logger.debug(`Chat send request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.sendMessage(res, req.user, {
+			await this.chatService.sendHumanMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
 			});
@@ -96,7 +96,7 @@ export class ChatHubController {
 		this.logger.debug(`Chat retry request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.retryMessage(res, req.user, {
+			await this.chatService.retryAiMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
 			});
@@ -138,14 +138,14 @@ export class ChatHubController {
 		this.logger.debug(`Chat edit request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.editMessage(res, req.user, {
+			await this.chatService.editHumanMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
 			});
 		} catch (executionError: unknown) {
 			assert(executionError instanceof Error);
 
-			this.logger.error('Error in chat retry endpoint', { error: executionError });
+			this.logger.error(`Error in chat retry endpoint: ${executionError}`);
 
 			if (!res.headersSent) {
 				res.status(500).json({

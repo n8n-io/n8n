@@ -64,7 +64,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 
 export class ChatHubRetryMessageRequest extends Z.class({
 	retryId: z.string().uuid(),
-	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
 	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,

@@ -21,6 +21,7 @@ export {
 	ChatHubRetryMessageRequest,
 	ChatHubEditMessageRequest,
 	type ChatMessageId,
+	type ChatSessionId,
 	type ChatHubMessageDto,
 	type ChatHubSessionDto,
 	type ChatHubConversationResponse,

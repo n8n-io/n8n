@@ -1,4 +1,4 @@
-import type { ChatHubConversationModel } from '@n8n/api-types';
+import type { ChatHubConversationModel, ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import type { INodeCredentials } from 'n8n-workflow';
 
 export interface ModelWithCredentials extends ChatHubConversationModel {
@@ -7,23 +7,24 @@ export interface ModelWithCredentials extends ChatHubConversationModel {
 
 export interface BaseMessagePayload {
 	userId: string;
-	messageId: string;
-	sessionId: string;
-	replyId: string;
+	sessionId: ChatSessionId;
+	replyId: ChatMessageId;
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 }
 
 export interface HumanMessagePayload extends BaseMessagePayload {
-	previousMessageId: string | null;
+	messageId: ChatMessageId;
 	message: string;
+	previousMessageId: ChatMessageId | null;
 }
 export interface RetryMessagePayload extends BaseMessagePayload {
-	retryId: string;
+	retryId: ChatMessageId;
 }
 
 export interface EditMessagePayload extends BaseMessagePayload {
-	editId: string;
+	editId: ChatMessageId;
+	messageId: ChatMessageId;
 	message: string;
 }
 
