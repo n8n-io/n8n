@@ -167,7 +167,7 @@ defineExpose({
 
 <style lang="scss" module>
 :global(.el-menu).dropdown {
-	border-bottom: 0;
+	border-bottom: 0 !important;
 	background-color: transparent;
 
 	> :global(.el-sub-menu) {
