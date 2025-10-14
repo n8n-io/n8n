@@ -1,4 +1,4 @@
-import { computed, type Ref, type Component } from 'vue';
+import { computed, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -51,7 +51,7 @@ export function useProjectNavigationCommands(options: {
 		return {
 			id: project.id,
 			title: {
-				component: CommandBarItemTitle as Component,
+				component: CommandBarItemTitle,
 				props: {
 					title,
 					actionText: i18n.baseText('generic.open'),

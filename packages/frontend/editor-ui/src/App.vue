@@ -43,6 +43,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const {
 	initialize: initializeCommandBar,
@@ -178,6 +179,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 				:placeholder="placeholder"
 				:context="context"
 				:is-loading="isCommandBarLoading"
+				:z-index="APP_Z_INDEXES.COMMAND_BAR"
 				@input-change="onCommandBarChange"
 				@navigate-to="onCommandBarNavigateTo"
 			/>

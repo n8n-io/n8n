@@ -1,4 +1,4 @@
-import { type Component, computed } from 'vue';
+import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
@@ -220,7 +220,7 @@ export function useExecutionCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.execution'),
 				handler: handleDebugExecution,
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: isSuccess ? 'copy' : 'bug',
 					},
@@ -235,7 +235,7 @@ export function useExecutionCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.execution'),
 				handler: async () => await handleRetryExecution(true),
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'redo-2',
 					},
@@ -248,7 +248,7 @@ export function useExecutionCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.execution'),
 				handler: async () => await handleRetryExecution(false),
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'redo',
 					},
@@ -263,7 +263,7 @@ export function useExecutionCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.execution'),
 				handler: handleStopExecution,
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'stop',
 					},
@@ -281,7 +281,7 @@ export function useExecutionCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.execution'),
 				handler: async () => await handleVoteClick('up'),
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'thumbs-up',
 					},
@@ -297,7 +297,7 @@ export function useExecutionCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.execution'),
 				handler: async () => await handleVoteClick('down'),
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'thumbs-down',
 					},
@@ -312,7 +312,7 @@ export function useExecutionCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.execution'),
 				handler: handleDeleteExecution,
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'trash-2',
 					},

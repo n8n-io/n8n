@@ -1,4 +1,4 @@
-import { type Component, computed } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
@@ -106,7 +106,7 @@ export function useWorkflowCommands(): CommandGroup {
 					})),
 				],
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'arrow-right',
 					},
@@ -123,7 +123,7 @@ export function useWorkflowCommands(): CommandGroup {
 								{
 									id: ITEM_ID.SAVE_WORKFLOW,
 									title: {
-										component: CommandBarItemTitle as Component,
+										component: CommandBarItemTitle,
 										props: {
 											title: i18n.baseText('commandBar.workflow.save'),
 											shortcut: {
@@ -140,7 +140,7 @@ export function useWorkflowCommands(): CommandGroup {
 										}
 									},
 									icon: {
-										component: N8nIcon as Component,
+										component: N8nIcon,
 										props: {
 											icon: 'save',
 										},
@@ -151,7 +151,7 @@ export function useWorkflowCommands(): CommandGroup {
 					{
 						id: ITEM_ID.TEST_WORKFLOW,
 						title: {
-							component: CommandBarItemTitle as Component,
+							component: CommandBarItemTitle,
 							props: {
 								title: i18n.baseText('commandBar.workflow.test'),
 								shortcut: {
@@ -172,7 +172,7 @@ export function useWorkflowCommands(): CommandGroup {
 							void useRunWorkflow({ router, workflowState }).runEntireWorkflow('main');
 						},
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'flask-conical',
 							},
@@ -181,7 +181,7 @@ export function useWorkflowCommands(): CommandGroup {
 					{
 						id: ITEM_ID.TIDY_UP_WORKFLOW,
 						title: {
-							component: CommandBarItemTitle as Component,
+							component: CommandBarItemTitle,
 							props: {
 								title: i18n.baseText('commandBar.workflow.tidyUp'),
 								shortcut: {
@@ -198,7 +198,7 @@ export function useWorkflowCommands(): CommandGroup {
 							});
 						},
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'wand-sparkles',
 							},
@@ -212,7 +212,7 @@ export function useWorkflowCommands(): CommandGroup {
 							nodeViewEventBus.emit('renameWorkflow');
 						},
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'pencil-alt',
 							},
@@ -226,7 +226,7 @@ export function useWorkflowCommands(): CommandGroup {
 							nodeViewEventBus.emit('addTag');
 						},
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'tags',
 							},
@@ -237,7 +237,7 @@ export function useWorkflowCommands(): CommandGroup {
 		{
 			id: ITEM_ID.SELECT_ALL,
 			title: {
-				component: CommandBarItemTitle as Component,
+				component: CommandBarItemTitle,
 				props: {
 					title: i18n.baseText('commandBar.workflow.selectAll'),
 					shortcut: {
@@ -251,7 +251,7 @@ export function useWorkflowCommands(): CommandGroup {
 				canvasEventBus.emit('nodes:selectAll');
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'list-checks',
 				},
@@ -265,7 +265,7 @@ export function useWorkflowCommands(): CommandGroup {
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'cog',
 				},
@@ -288,7 +288,7 @@ export function useWorkflowCommands(): CommandGroup {
 							});
 						},
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'copy',
 							},
@@ -311,7 +311,7 @@ export function useWorkflowCommands(): CommandGroup {
 							void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
 						},
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'power-off',
 							},
@@ -327,7 +327,7 @@ export function useWorkflowCommands(): CommandGroup {
 							void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
 						},
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'power',
 							},
@@ -369,7 +369,7 @@ export function useWorkflowCommands(): CommandGroup {
 					})),
 				],
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'sign-in-alt',
 					},
@@ -406,7 +406,7 @@ export function useWorkflowCommands(): CommandGroup {
 					saveAs(blob, name + '.json');
 				},
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'download',
 					},
@@ -426,7 +426,7 @@ export function useWorkflowCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.workflow.importFromURL'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'link',
 					},
@@ -440,7 +440,7 @@ export function useWorkflowCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.workflow.importFromFile'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'file-import',
 					},
@@ -466,7 +466,7 @@ export function useWorkflowCommands(): CommandGroup {
 							i18n.baseText('commandBar.workflow.keywords.delete'),
 						],
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'trash',
 							},
@@ -486,7 +486,7 @@ export function useWorkflowCommands(): CommandGroup {
 							i18n.baseText('commandBar.workflow.keywords.restore'),
 						],
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'archive-restore',
 							},
@@ -500,7 +500,7 @@ export function useWorkflowCommands(): CommandGroup {
 						title: i18n.baseText('commandBar.workflow.delete'),
 						section: i18n.baseText('commandBar.sections.workflow'),
 						icon: {
-							component: N8nIcon as Component,
+							component: N8nIcon,
 							props: {
 								icon: 'trash',
 							},

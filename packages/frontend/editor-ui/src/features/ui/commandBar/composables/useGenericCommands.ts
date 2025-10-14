@@ -1,4 +1,4 @@
-import { type Component, computed } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
@@ -38,7 +38,7 @@ export function useGenericCommands(): CommandGroup {
 				uiStore.openModal(WHATS_NEW_MODAL_KEY);
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'bell',
 				},
@@ -56,7 +56,7 @@ export function useGenericCommands(): CommandGroup {
 				void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'package-open',
 				},
@@ -71,7 +71,7 @@ export function useGenericCommands(): CommandGroup {
 				void router.push({ name: VIEWS.VARIABLES });
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'variable',
 				},
@@ -86,7 +86,7 @@ export function useGenericCommands(): CommandGroup {
 				void router.push({ name: VIEWS.INSIGHTS });
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'chart-column-decreasing',
 				},
@@ -101,7 +101,7 @@ export function useGenericCommands(): CommandGroup {
 				window.open(EXTERNAL_LINKS.QUICKSTART_VIDEO, '_blank', 'noreferrer');
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'video',
 				},
@@ -116,7 +116,7 @@ export function useGenericCommands(): CommandGroup {
 				window.open(EXTERNAL_LINKS.DOCUMENTATION, '_blank', 'noreferrer');
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'book',
 				},
@@ -131,7 +131,7 @@ export function useGenericCommands(): CommandGroup {
 				window.open(EXTERNAL_LINKS.FORUM, '_blank', 'noreferrer');
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'users',
 				},
@@ -146,7 +146,7 @@ export function useGenericCommands(): CommandGroup {
 				window.open(EXTERNAL_LINKS.COURSES, '_blank', 'noreferrer');
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'graduation-cap',
 				},
@@ -161,7 +161,7 @@ export function useGenericCommands(): CommandGroup {
 				window.open(getReportingURL(), '_blank', 'noreferrer');
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'bug',
 				},
@@ -176,7 +176,7 @@ export function useGenericCommands(): CommandGroup {
 				uiStore.openModal(ABOUT_MODAL_KEY);
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'info',
 				},
@@ -191,7 +191,7 @@ export function useGenericCommands(): CommandGroup {
 				void router.push({ name: VIEWS.SETTINGS });
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'cog',
 				},
@@ -206,7 +206,7 @@ export function useGenericCommands(): CommandGroup {
 				void router.push({ name: VIEWS.SIGNOUT });
 			},
 			icon: {
-				component: N8nIcon as Component,
+				component: N8nIcon,
 				props: {
 					icon: 'sign-out-alt',
 				},

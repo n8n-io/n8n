@@ -158,7 +158,8 @@ export function useRecentResources() {
 							name: VIEWS.WORKFLOW,
 							params: { name: recentWorkflow.id },
 						});
-						window.location.href = targetRoute.fullPath;
+						void router.push(targetRoute.fullPath);
+						// window.location.href = targetRoute.fullPath;
 					},
 				});
 

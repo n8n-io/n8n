@@ -13,6 +13,7 @@ interface CommandBarProps {
 	context?: string;
 	items: CommandBarItem[];
 	isLoading?: boolean;
+	zIndex?: number;
 }
 
 defineOptions({ name: 'N8nCommandBar' });
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<CommandBarProps>(), {
 	placeholder: 'Type a command...',
 	context: '',
 	isLoading: false,
+	zIndex: 1900,
 });
 
 const emit = defineEmits<{
@@ -27,6 +29,8 @@ const emit = defineEmits<{
 	navigateTo: [parentId: string | null];
 	loadMore: [parentId: string];
 }>();
+
+const NUM_LOADING_ITEMS = 8;
 
 const isOpen = ref(false);
 const inputRef = ref<HTMLInputElement>();
@@ -277,6 +281,7 @@ onUnmounted(() => {
 					v-if="isOpen"
 					ref="commandBarRef"
 					:class="$style.commandBar"
+					:style="{ zIndex }"
 					data-test-id="command-bar"
 				>
 					<div v-if="context" :class="$style.contextContainer">
@@ -290,7 +295,7 @@ onUnmounted(() => {
 						type="text"
 					/>
 					<div v-if="isLoading" :class="$style.loadingContainer">
-						<div v-for="i in 8" :key="i" :class="$style.loadingItem">
+						<div v-for="i in NUM_LOADING_ITEMS" :key="i" :class="$style.loadingItem">
 							<N8nLoading variant="custom" :class="$style.loading" />
 						</div>
 					</div>
@@ -346,7 +351,6 @@ onUnmounted(() => {
 
 	width: 100%;
 	max-width: 700px;
-	z-index: 1000;
 }
 
 .input {

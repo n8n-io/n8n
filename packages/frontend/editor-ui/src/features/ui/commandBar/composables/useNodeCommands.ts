@@ -59,7 +59,7 @@ export function useNodeCommands(options: {
 			return {
 				id: name,
 				title: {
-					component: CommandBarItemTitle as Component,
+					component: CommandBarItemTitle,
 					props: {
 						title: displayName,
 						actionText: i18n.baseText('generic.add'),
@@ -105,7 +105,7 @@ export function useNodeCommands(options: {
 			return {
 				id,
 				title: {
-					component: CommandBarItemTitle as Component,
+					component: CommandBarItemTitle,
 					props: {
 						title: name,
 						actionText: i18n.baseText('generic.open'),
@@ -143,7 +143,7 @@ export function useNodeCommands(options: {
 						{
 							id: ITEM_ID.ADD_NODE,
 							title: {
-								component: CommandBarItemTitle as Component,
+								component: CommandBarItemTitle,
 								props: {
 									title: i18n.baseText('commandBar.nodes.addNode'),
 									shortcut: {
@@ -156,7 +156,7 @@ export function useNodeCommands(options: {
 							placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 							children: [...addNodeCommands.value],
 							icon: {
-								component: N8nIcon as Component,
+								component: N8nIcon,
 								props: {
 									icon: 'plus',
 								},
@@ -172,7 +172,7 @@ export function useNodeCommands(options: {
 				children: [...openNodeCommands.value],
 				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 				icon: {
-					component: N8nIcon as Component,
+					component: N8nIcon,
 					props: {
 						icon: 'columns-3-cog',
 					},
@@ -184,7 +184,7 @@ export function useNodeCommands(options: {
 						{
 							id: ITEM_ID.ADD_STICKY,
 							title: {
-								component: CommandBarItemTitle as Component,
+								component: CommandBarItemTitle,
 								props: {
 									title: i18n.baseText('commandBar.nodes.addStickyNote'),
 									shortcut: {
@@ -198,7 +198,7 @@ export function useNodeCommands(options: {
 								canvasEventBus.emit('create:sticky');
 							},
 							icon: {
-								component: N8nIcon as Component,
+								component: N8nIcon,
 								props: {
 									icon: 'sticky-note',
 								},
