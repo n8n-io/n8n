@@ -203,7 +203,7 @@ onClickOutside(
 }
 .nodeCreator {
 	--node-creator-width: #{$node-creator-width};
-	--node-icon-color: var(--color--text);
+	--node--icon--color: var(--color--text);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
@@ -221,7 +221,7 @@ onClickOutside(
 	left: $sidebar-width;
 	opacity: 0;
 	z-index: 1;
-	background: var(--color-dialog-overlay-background);
+	background: var(--dialog--overlay--color--background);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
 

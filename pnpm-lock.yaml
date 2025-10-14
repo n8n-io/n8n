@@ -102,6 +102,9 @@ catalogs:
     rimraf:
       specifier: 6.0.1
       version: 6.0.1
+    run-script-os:
+      specifier: 1.1.6
+      version: 1.1.6
     simple-git:
       specifier: 3.28.0
       version: 3.28.0
@@ -2051,6 +2054,9 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
+      run-script-os:
+        specifier: 'catalog:'
+        version: 1.1.6
       tsdown:
         specifier: 'catalog:'
         version: 0.15.6(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
@@ -2290,6 +2296,9 @@ importers:
       postcss:
         specifier: ^8.4.38
         version: 8.4.49
+      run-script-os:
+        specifier: 'catalog:'
+        version: 1.1.6
       sass:
         specifier: ^1.71.1
         version: 1.89.2
@@ -2843,6 +2852,9 @@ importers:
       miragejs:
         specifier: ^0.1.48
         version: 0.1.48
+      run-script-os:
+        specifier: 'catalog:'
+        version: 1.1.6
       unplugin-icons:
         specifier: catalog:frontend
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
@@ -26537,7 +26549,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.6
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
       escape-string-regexp: 4.0.0
       eslint-scope: 8.4.0
       eslint-visitor-keys: 4.2.1
@@ -33922,7 +33934,7 @@ snapshots:
       '@antfu/install-pkg': 0.3.3
       '@antfu/utils': 0.7.10
       '@iconify/utils': 2.1.25
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
       kolorist: 1.8.0
       local-pkg: 0.5.0
       unplugin: 1.11.0

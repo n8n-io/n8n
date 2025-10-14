@@ -8,13 +8,13 @@ FRONTEND_DIR="./packages/frontend"
 
 # Find all files in frontend folder except _tokens.scss (which is already updated)
 echo "Finding files to process..."
-files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss")
+files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss" ! -path "*/@n8n/chat/**")
 
 # _tokens file only
 #files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
 
 file_count=$(echo "$files" | wc -l | xargs)
-echo "Found $file_count files to process test $files"
+echo "Found $file_count files to process"
 echo ""
 echo "Starting token replacements..."
 echo ""
@@ -353,7 +353,7 @@ echo "$files" | xargs perl -pi -e 's/--color-code-gutter-foreground/--code--gutt
 echo "$files" | xargs perl -pi -e 's/--color-code-indentation-marker-active/--code--indentation-marker--color--active/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-indentation-marker/--code--indentation-marker--color/g'
 echo "$files" | xargs perl -pi -e 's/--color-code-line-break/--code--line-break--color/g'
-echo "$files" | xargs perl -pi -e 's/--color-line-break/--code--line-break--color/g'
+echo "$files" | xargs perl -pi -e 's/--color-line-break/--line-break--color/g'
 echo "✓ Code editor tokens replaced"
 echo ""
 
@@ -746,6 +746,172 @@ echo "[58] Replacing grid tokens..."
 echo "$files" | xargs perl -pi -e 's/--grid-row-selected-background/--grid--row--color--background--selected/g'
 echo "$files" | xargs perl -pi -e 's/--grid-cell-editing-border/--grid--cell--border-color--editing/g'
 echo "✓ Grid tokens replaced"
+echo ""
+
+# Primitive color tokens
+echo "[59] Replacing primitive color tokens..."
+echo "$files" | xargs perl -pi -e 's/--prim-color-white/--p--color--white/g'
+echo "$files" | xargs perl -pi -e 's/--prim-color-secondary/--color--secondary/g'
+echo "$files" | xargs perl -pi -e 's/--prim-gray-740/--p--color--gray-740/g'
+echo "✓ Primitive color tokens replaced"
+echo ""
+
+# Button generic state tokens (used in Button.scss mixins)
+echo "[60] Replacing button generic state tokens..."
+echo "$files" | xargs perl -pi -e 's/--button-loading-font-color/--button--color--text--loading/g'
+echo "$files" | xargs perl -pi -e 's/--button-loading-border-color/--button--border-color--loading/g'
+echo "$files" | xargs perl -pi -e 's/--button-loading-background-color/--button--color--background--loading/g'
+echo "$files" | xargs perl -pi -e 's/--button-disabled-font-color/--button--color--text--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--button-disabled-border-color/--button--border-color--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--button-disabled-background-color/--button--color--background--disabled/g'
+echo "$files" | xargs perl -pi -e 's/--button-focus-font-color/--button--color--text--focus/g'
+echo "$files" | xargs perl -pi -e 's/--button-focus-border-color/--button--border-color--focus/g'
+echo "$files" | xargs perl -pi -e 's/--button-focus-background-color/--button--color--background--focus/g'
+echo "$files" | xargs perl -pi -e 's/--button-focus-outline-color/--button--outline-color--focus/g'
+echo "$files" | xargs perl -pi -e 's/--button-active-font-color/--button--color--text--active/g'
+echo "$files" | xargs perl -pi -e 's/--button-active-border-color/--button--border-color--active/g'
+echo "$files" | xargs perl -pi -e 's/--button-active-background-color/--button--color--background--active/g'
+echo "$files" | xargs perl -pi -e 's/--button-active-color/--button--color--active/g'
+echo "$files" | xargs perl -pi -e 's/--button-hover-font-color/--button--color--text--hover/g'
+echo "$files" | xargs perl -pi -e 's/--button-hover-border-color/--button--border-color--hover/g'
+echo "$files" | xargs perl -pi -e 's/--button-hover-background-color/--button--color--background--hover/g'
+echo "$files" | xargs perl -pi -e 's/--button-hover-color/--button--color--hover/g'
+echo "$files" | xargs perl -pi -e 's/--button-border-radius/--button--radius/g'
+echo "$files" | xargs perl -pi -e 's/--button-padding-horizontal/--button--padding--horizontal/g'
+echo "$files" | xargs perl -pi -e 's/--button-padding-vertical/--button--padding--vertical/g'
+echo "$files" | xargs perl -pi -e 's/--button-font-size/--button--font-size/g'
+echo "$files" | xargs perl -pi -e 's/--button-font-color/--button--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--button-border-color/--button--border-color/g'
+echo "$files" | xargs perl -pi -e 's/--button-background-color/--button--color--background/g'
+echo "✓ Button generic state tokens replaced"
+echo ""
+
+# Button loading state tokens (for highlight and secondary)
+echo "[61] Replacing button loading state tokens..."
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-loading-font/--button--color--text--highlight--loading/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-loading-border/--button--border-color--highlight--loading/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-highlight-loading-background/--button--color--background--highlight--loading/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-loading-font/--button--color--text--secondary--loading/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-loading-border/--button--border-color--secondary--loading/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-loading-background/--button--color--background--secondary--loading/g'
+echo "✓ Button loading state tokens replaced"
+echo ""
+
+# Chat border tokens
+echo "[62] Replacing chat border tokens..."
+echo "$files" | xargs perl -pi -e 's/--color-lm-chat-bot-border/--lm-chat--bot--border-color/g'
+echo "$files" | xargs perl -pi -e 's/--color-lm-chat-user-border/--lm-chat--user--border-color/g'
+echo "✓ Chat border tokens replaced"
+echo ""
+
+# Select component tokens
+echo "[63] Replacing select component tokens..."
+echo "$files" | xargs perl -pi -e 's/--select-option-padding/--select--option--padding/g'
+echo "$files" | xargs perl -pi -e 's/--select-option-line-height/--select--option--line-height/g'
+echo "✓ Select component tokens replaced"
+echo ""
+
+# Menu component tokens
+echo "[64] Replacing menu component tokens..."
+echo "$files" | xargs perl -pi -e 's/--menu-item-hover-font-color/--menu--item--color--text--hover/g'
+echo "$files" | xargs perl -pi -e 's/--menu-item-hover-fill/--menu--item--color--background--hover/g'
+echo "$files" | xargs perl -pi -e 's/--menu-item-active-font-color/--menu--item--color--text--active/g'
+echo "$files" | xargs perl -pi -e 's/--menu-item-active-background-color/--menu--item--color--background--active/g'
+echo "$files" | xargs perl -pi -e 's/--menu-item-font-color/--menu--item--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--menu-item-border-radius/--menu--item--radius/g'
+echo "$files" | xargs perl -pi -e 's/--menu-item-font-weight/--menu--item--font-weight/g'
+echo "$files" | xargs perl -pi -e 's/--menu-item-height/--menu--item--height/g'
+echo "$files" | xargs perl -pi -e 's/--menu-background-color/--menu--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--menu-font-color/--menu--color--text/g'
+echo "✓ Menu component tokens replaced"
+echo ""
+
+# Input additional tokens
+echo "[65] Replacing input additional tokens..."
+echo "$files" | xargs perl -pi -e 's/--input-border-top-left-radius/--input--radius--top-left/g'
+echo "$files" | xargs perl -pi -e 's/--input-border-bottom-left-radius/--input--radius--bottom-left/g'
+echo "$files" | xargs perl -pi -e 's/--input-border-style/--input--border-style/g'
+echo "$files" | xargs perl -pi -e 's/--input-font-color/--input--color--text/g'
+echo "✓ Input additional tokens replaced"
+echo ""
+
+# Dialog tokens
+echo "[66] Replacing dialog tokens..."
+echo "$files" | xargs perl -pi -e 's/--dialog-close-top/--dialog--close--spacing--top/g'
+echo "✓ Dialog tokens replaced"
+echo ""
+
+# Node creator tokens
+echo "[67] Replacing node creator tokens..."
+echo "$files" | xargs perl -pi -e 's/--node-creator-description-colos/--node-creator--description--color/g'
+echo "$files" | xargs perl -pi -e 's/--node-creator-name-size/--node-creator--name--font-size/g'
+echo "$files" | xargs perl -pi -e 's/--node-creator-name-weight/--node-creator--name--font-weight/g'
+echo "✓ Node creator tokens replaced"
+echo ""
+
+# Node icon tokens (additional)
+echo "[68] Replacing node icon additional tokens..."
+echo "$files" | xargs perl -pi -e 's/--node-icon-size/--node--icon--size/g'
+echo "$files" | xargs perl -pi -e 's/--node-icon-margin-right/--node--icon--margin-right/g'
+echo "$files" | xargs perl -pi -e 's/--node-icon-color/--node--icon--color/g'
+echo "✓ Node icon additional tokens replaced"
+echo ""
+
+# Icon tokens (additional)
+echo "[69] Replacing icon additional tokens..."
+echo "$files" | xargs perl -pi -e 's/--n8n-icon-stroke-width/--icon--stroke-width/g'
+echo "✓ Icon additional tokens replaced"
+echo ""
+
+# Tabs tokens
+echo "[70] Replacing tabs tokens..."
+echo "$files" | xargs perl -pi -e 's/--color-tabs-arrow-buttons/--tabs--arrow-buttons--color/g'
+echo "$files" | xargs perl -pi -e 's/--active-tab-border-width/--tabs--tab--border-width--active/g'
+echo "✓ Tabs tokens replaced"
+echo ""
+
+# Notice tokens (additional)
+echo "[71] Replacing notice additional tokens..."
+echo "$files" | xargs perl -pi -e 's/--notice-margin/--notice--margin/g'
+echo "✓ Notice additional tokens replaced"
+echo ""
+
+# NDV tokens (additional)
+echo "[73] Replacing NDV additional tokens..."
+echo "$files" | xargs perl -pi -e 's/--color-ndv-background/--ndv--color--background/g'
+echo "✓ NDV additional tokens replaced"
+echo ""
+
+# Background node icon badge token
+echo "[74] Replacing background node icon badge token..."
+echo "$files" | xargs perl -pi -e 's/--color-background-node-icon-badge/--node--icon--badge--color--background/g'
+echo "✓ Background node icon badge token replaced"
+echo ""
+
+# Action arrow tokens
+echo "[75] Replacing action arrow tokens..."
+echo "$files" | xargs perl -pi -e 's/--action-arrow-color-hover/--action--arrow--color--hover/g'
+echo "$files" | xargs perl -pi -e 's/--action-arrow-color/--action--arrow--color/g'
+echo "✓ Action arrow tokens replaced"
+echo ""
+
+# Text color dark token
+echo "[76] Replacing text color dark token..."
+echo "$files" | xargs perl -pi -e 's/--text-color-dark/--color--text--shade-1/g'
+echo "✓ Text color dark token replaced"
+echo ""
+
+# Font line height tight token
+echo "[77] Replacing font line height tight token..."
+echo "$files" | xargs perl -pi -e 's/--font-line-height-tight/--line-height--xs/g'
+echo "✓ Font line height tight token replaced"
+echo ""
+
+# Resizer tokens
+echo "[79] Fixing Resizer tokens..."
+echo "$files" | xargs perl -pi -e 's/--resizer--side-offset/--resizer--spacing--side/g'
+echo "$files" | xargs perl -pi -e 's/--resizer--corner-offset/--resizer--spacing--corner/g'
+echo "✓ Resizer tokens fixed"
 echo ""
 
 echo "✓ Token replacements complete!"
