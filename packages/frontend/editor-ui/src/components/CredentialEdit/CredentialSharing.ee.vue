@@ -9,7 +9,7 @@ import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 import { ProjectTypes } from '@/features/projects/projects.types';
 import { splitName } from '@/features/projects/projects.utils';

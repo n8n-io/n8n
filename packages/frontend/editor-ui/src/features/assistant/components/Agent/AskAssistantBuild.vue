@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '../../builder.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';

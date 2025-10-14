@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@n8n/i18n';

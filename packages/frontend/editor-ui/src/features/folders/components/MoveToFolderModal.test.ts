@@ -25,7 +25,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
-import type { EventBus } from '@n8n/utils/dist/event-bus';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();

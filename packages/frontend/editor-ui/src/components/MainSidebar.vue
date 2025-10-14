@@ -34,7 +34,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';

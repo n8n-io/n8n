@@ -1,4 +1,4 @@
-import type { IInviteResponse, InvitableRoleName } from '@/Interface';
+import type { IInviteResponse, InvitableRoleName } from './users.types';
 import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { IDataObject } from 'n8n-workflow';

@@ -35,7 +35,7 @@ import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 const router = useRouter();
 const route = useRoute();

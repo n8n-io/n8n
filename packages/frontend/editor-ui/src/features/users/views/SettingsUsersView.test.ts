@@ -5,16 +5,13 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import {
-	INVITE_USER_MODAL_KEY,
-	DELETE_USER_MODAL_KEY,
-	EnterpriseEditionFeature,
-} from '@/constants';
-import SettingsUsersView from '@/views/SettingsUsersView.vue';
+import { EnterpriseEditionFeature } from '@/constants';
+import { INVITE_USER_MODAL_KEY, DELETE_USER_MODAL_KEY } from '../users.constants';
+import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '../users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/features/sso/sso.store';

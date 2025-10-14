@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import { type UserAction } from '@n8n/design-system';
-import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersActionsCell.vue';
+import SettingsUsersActionsCell from './SettingsUsersActionsCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
