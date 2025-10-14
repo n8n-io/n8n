@@ -75,7 +75,7 @@ function onSelect(id: string) {
 		return;
 	}
 
-	emit('change', { provider: parsedProvider, model });
+	emit('change', { provider: parsedProvider, model, workflowId: null });
 }
 </script>
 

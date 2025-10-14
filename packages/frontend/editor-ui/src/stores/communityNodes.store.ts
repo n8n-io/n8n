@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import { computed, ref } from 'vue';
+import { isAuthenticated } from '@/utils/rbac/checks';
 import type { CommunityPackageMap } from '@/Interface';
 
 const LOADER_DELAY = 300;
@@ -43,6 +44,9 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	};
 
 	const fetchInstalledPackages = async (): Promise<void> => {
+		if (!isAuthenticated()) {
+			return;
+		}
 		const installedPackages = await communityNodesApi.getInstalledCommunityNodes(
 			rootStore.restApiContext,
 		);

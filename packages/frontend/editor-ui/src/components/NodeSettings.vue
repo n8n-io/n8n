@@ -14,7 +14,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL } from '@/constants';
+import { BASE_NODE_SURVEY_URL, VIEWS } from '@/constants';
 
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -45,7 +45,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import { ProjectTypes } from '@/features/projects/projects.types';
+import { getNodeIconSource } from '@/utils/nodeIcon';
 import {
 	collectParametersByTab,
 	collectSettings,
@@ -61,7 +61,11 @@ import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/Communi
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { useRoute } from 'vue-router';
+import { useSettingsStore } from '@/stores/settings.store';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { ProjectTypes } from '@/features/projects/projects.types';
+
 const props = withDefaults(
 	defineProps<{
 		eventBus?: EventBus;
@@ -124,6 +128,7 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const route = useRoute();
 const nodeSettingsParameters = useNodeSettingsParameters();
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
@@ -146,6 +151,9 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
+const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
+const { isPreviewMode } = useSettingsStore();
+const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
 	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
@@ -451,6 +459,8 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
 );
 
+const iconSource = computed(() => getNodeIconSource(nodeType.value ?? node.value?.type));
+
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
 };
@@ -617,7 +627,7 @@ function handleSelectAction(params: INodeParameters) {
 					v-if="node"
 					class="node-name"
 					:model-value="node.name"
-					:node-type="nodeType"
+					:icon-source="iconSource"
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
@@ -643,7 +653,7 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 		</div>
 		<NodeSettingsHeader
-			v-else-if="node"
+			v-else-if="node && nodeValid"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"
@@ -659,7 +669,11 @@ function handleSelectAction(params: INodeParameters) {
 			@tab-changed="onTabSelect"
 		/>
 
-		<NodeSettingsInvalidNodeWarning v-if="node && !nodeValid" :node="node" />
+		<NodeSettingsInvalidNodeWarning
+			v-if="node && !nodeValid"
+			:node="node"
+			:preview-mode="isDemoPreview"
+		/>
 
 		<div
 			v-if="node && nodeValid"
@@ -716,7 +730,7 @@ function handleSelectAction(params: INodeParameters) {
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
-						v-if="!isEmbeddedInCanvas"
+						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
