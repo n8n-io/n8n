@@ -57,6 +57,7 @@ const size = computed((): { height: string; width: string } => {
 	};
 });
 
+// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
 const colorMap: Record<IconColor, string> = {
 	primary: '--color--primary',
 	secondary: '--color--secondary',
