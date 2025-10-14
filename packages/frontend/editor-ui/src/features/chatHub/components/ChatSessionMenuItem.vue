@@ -1,19 +1,25 @@
 <script setup lang="ts">
 import { CHAT_CONVERSATION_VIEW } from '@/features/chatHub/constants';
-import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
-import { computed } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-const { sessionId, label, active } = defineProps<{
+const { sessionId, label, active, isRenaming } = defineProps<{
 	sessionId: string;
 	label: string;
 	active: boolean;
+	isRenaming: boolean;
 }>();
 
 const emit = defineEmits<{
-	rename: [sessionId: string];
+	startRename: [sessionId: string];
+	cancelRename: [];
+	confirmRename: [sessionId: string, newLabel: string];
 	delete: [sessionId: string];
 }>();
+
+const input = useTemplateRef('input');
+const editedLabel = ref(label);
 
 type SessionAction = 'rename' | 'delete';
 
@@ -32,38 +38,83 @@ const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 
 function handleActionSelect(action: SessionAction) {
 	if (action === 'rename') {
-		emit('rename', sessionId);
+		editedLabel.value = label;
+		emit('startRename', sessionId);
 	} else if (action === 'delete') {
 		emit('delete', sessionId);
 	}
 }
+
+function handleBlur() {
+	const trimmed = editedLabel.value.trim();
+
+	if (trimmed && trimmed !== label) {
+		emit('confirmRename', sessionId, trimmed);
+	} else {
+		emit('cancelRename');
+	}
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+	if (e.key === 'Escape') {
+		emit('cancelRename');
+		return;
+	}
+
+	if (e.key === 'Enter') {
+		handleBlur();
+	}
+}
+
+watch(
+	() => isRenaming,
+	async (renaming) => {
+		if (renaming) {
+			editedLabel.value = label;
+			await nextTick();
+			input.value?.focus();
+		} else {
+			editedLabel.value = '';
+		}
+	},
+);
 </script>
 
 <template>
 	<div :class="[$style.menuItem, { [$style.active]: active }]">
-		<RouterLink
-			:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId } }"
-			:class="$style.menuItemLink"
-		>
-			<N8nIcon size="small" icon="message-circle" />
-			<N8nText :class="$style.label">{{ label }}</N8nText>
-		</RouterLink>
-		<N8nActionDropdown
-			:items="dropdownItems"
-			:class="$style.actionDropdown"
-			placement="bottom-start"
-			@select="handleActionSelect"
-			@click.stop
-		>
-			<template #activator>
-				<N8nIconButton
-					icon="ellipsis-vertical"
-					type="tertiary"
-					text
-					:class="$style.actionDropdownTrigger"
-				/>
-			</template>
-		</N8nActionDropdown>
+		<N8nInput
+			v-if="isRenaming"
+			size="small"
+			ref="input"
+			v-model="editedLabel"
+			@blur="handleBlur"
+			@keydown="handleKeyDown"
+		/>
+		<template v-else>
+			<RouterLink
+				:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId } }"
+				:class="$style.menuItemLink"
+			>
+				<N8nIcon size="small" icon="message-circle" />
+				<N8nText :class="$style.label">{{ label }}</N8nText>
+			</RouterLink>
+			<N8nActionDropdown
+				:items="dropdownItems"
+				:class="$style.actionDropdown"
+				placement="bottom-start"
+				@select="handleActionSelect"
+				@click.stop
+			>
+				<template #activator>
+					<N8nIconButton
+						icon="ellipsis-vertical"
+						type="tertiary"
+						text
+						:class="$style.actionDropdownTrigger"
+					/>
+				</template>
+			</N8nActionDropdown>
+		</template>
 	</div>
 </template>
 

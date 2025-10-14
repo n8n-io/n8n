@@ -6,7 +6,7 @@ import { groupConversationsByDate } from '@/features/chatHub/chat.utils';
 import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { N8nIcon, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 
@@ -16,6 +16,7 @@ const route = useRoute();
 const router = useRouter();
 const chatStore = useChatStore();
 const uiStore = useUIStore();
+const renamingSessionId = ref<string>();
 
 const currentSessionId = computed(() =>
 	typeof route.params.id === 'string' ? route.params.id : undefined,
@@ -38,9 +39,17 @@ function onNewChat() {
 	});
 }
 
-function handleRenameSession(sessionId: string) {
-	// TODO: Implement rename functionality
-	console.log('Rename session:', sessionId);
+function handleStartRename(sessionId: string) {
+	renamingSessionId.value = sessionId;
+}
+
+function handleCancelRename() {
+	renamingSessionId.value = undefined;
+}
+
+async function handleConfirmRename(sessionId: string, newLabel: string) {
+	await chatStore.renameSession(sessionId, newLabel);
+	renamingSessionId.value = undefined;
 }
 
 function handleDeleteSession(sessionId: string) {
@@ -81,7 +90,10 @@ onMounted(async () => {
 						:session-id="session.id"
 						:label="session.label"
 						:active="currentSessionId === session.id"
-						@rename="handleRenameSession"
+						:is-renaming="renamingSessionId === session.id"
+						@start-rename="handleStartRename"
+						@cancel-rename="handleCancelRename"
+						@confirm-rename="handleConfirmRename"
 						@delete="handleDeleteSession"
 					/>
 				</div>

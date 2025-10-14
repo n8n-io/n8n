@@ -191,6 +191,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
+	async function renameSession(sessionId: string, name: string) {
+		// Optimistic update
+		sessions.value = sessions.value.map((session) =>
+			session.id === sessionId ? { ...session, title: name } : session,
+		);
+
+		// TODO: call the endpoint
+	}
+
 	return {
 		models,
 		loadingModels,
@@ -202,5 +211,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		addUserMessage,
 		fetchSessions,
 		fetchMessages,
+		renameSession,
 	};
 });
