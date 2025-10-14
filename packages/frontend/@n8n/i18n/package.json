@@ -21,8 +21,8 @@
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsup",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
@@ -47,7 +47,7 @@
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend",
-    "tsup": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
