@@ -1,5 +1,9 @@
 import type { ResourceMapperField } from 'n8n-workflow';
-import { isResourceMapperFieldListStale, parseResourceMapperFieldName } from './nodeTypesUtils';
+import {
+	getThemedValue,
+	isResourceMapperFieldListStale,
+	parseResourceMapperFieldName,
+} from './nodeTypesUtils';
 
 describe('isResourceMapperFieldListStale', () => {
 	const baseField: ResourceMapperField = {
@@ -95,5 +99,23 @@ describe('parseResourceMapperFieldName', () => {
 		{ input: 'fieldName', expected: 'fieldName', desc: 'no value wrapper' },
 	])('should parse $desc', ({ input, expected }) => {
 		expect(parseResourceMapperFieldName(input)).toBe(expected);
+	});
+});
+
+describe('getThemedValue', () => {
+	it('should return the value if it is a string', () => {
+		expect(getThemedValue('test', 'light')).toBe('test');
+	});
+	it('should return the value if it is undefined', () => {
+		expect(getThemedValue(undefined, 'light')).toBe(null);
+	});
+	it('should return the light value if it is an object', () => {
+		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'light')).toBe('test');
+	});
+	it('should return the dark value if it is an object', () => {
+		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'dark')).toBe('test2');
+	});
+	it('should return the value if it is an object', () => {
+		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'light')).toBe('test');
 	});
 });
