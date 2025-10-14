@@ -40,7 +40,7 @@ export class WorkflowDependency extends WithTimestampsAndStringId {
 	/**
 	 * The node ID the dependency is associated with, if applicable.
 	 */
-	@Column({ length: 255, nullable: true })
+	@Column({ type: 'varchar', length: 255, nullable: true })
 	nodeId: string | null;
 
 	/**
