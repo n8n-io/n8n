@@ -25,7 +25,7 @@ export class WorkflowDependency extends WithTimestampsAndStringId {
 	 * The type of the dependency.
 	 * credential | nodeType | webhookPath | workflowCall
 	 */
-	@Column({ length: 16 })
+	@Column({ length: 32 })
 	@Index()
 	dependencyType: DependencyType;
 

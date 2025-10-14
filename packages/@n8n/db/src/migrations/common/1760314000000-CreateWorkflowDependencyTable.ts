@@ -8,9 +8,9 @@ export class CreateWorkflowDependencyTable1760314000000 implements ReversibleMig
 				column('workflowId').varchar(36).notNull,
 				column('workflowVersionId').int.notNull.comment('Version of the workflow'),
 				column('dependencyType')
-					.varchar(16)
+					.varchar(32)
 					.notNull.comment(
-						'Type of dependency: "credential", "nodeType", "webhookPath", or "subWorkflow"',
+						'Type of dependency: "credential", "nodeType", "webhookPath", or "workflowCall"',
 					),
 				column('dependencyId').varchar(255).notNull.comment('ID or name of the dependency'),
 				column('nodeId').varchar(255).comment('Node ID for nodeType dependencies, null otherwise'),
