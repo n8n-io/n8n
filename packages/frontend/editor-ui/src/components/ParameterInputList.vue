@@ -729,7 +729,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	--disabled-fill: var(--color--background);
+	--input--color--background--disabled: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;
