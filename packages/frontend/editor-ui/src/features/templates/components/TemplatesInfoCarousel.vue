@@ -173,7 +173,7 @@ onBeforeMount(() => {
 		left: 27px;
 		background: linear-gradient(
 			270deg,
-			var(--color--background--light-1),
+			color-mix(in srgb, transparent 50%, var(--color--background--light-2)),
 			var(--color--background--light-2)
 		);
 	}
@@ -187,7 +187,7 @@ onBeforeMount(() => {
 		right: 27px;
 		background: linear-gradient(
 			90deg,
-			var(--color--background--light-1),
+			color-mix(in srgb, transparent 50%, var(--color--background--light-2)),
 			var(--color--background--light-2)
 		);
 	}
