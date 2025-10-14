@@ -120,7 +120,8 @@ export async function execute(
 		}
 
 		let query = `UPDATE ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
-		const outputColumns = this.getNodeParameter('options.outputColumns', 0, []) as string[];
+		let outputColumns = this.getNodeParameter('options.outputColumns', 0, []) as string[];
+		if (outputColumns.includes('*')) outputColumns = Object.keys(columnMetaDataObject);
 
 		query = getBindDefsForExecuteMany(
 			this.getNode(),
@@ -152,7 +153,7 @@ export async function execute(
 			}
 			executeManyValues.push(result);
 		}
-		queries.push({ query, executeManyValues });
+		queries.push({ query, executeManyValues, outputColumns });
 	} else {
 		const updateTableSchema = configureTableSchemaUpdater(this.getNode(), schema, table);
 
@@ -233,7 +234,9 @@ export async function execute(
 				query += ` WHERE ${condition}`;
 			}
 
-			const outputColumns = this.getNodeParameter('options.outputColumns', index, []) as string[];
+			let outputColumns = this.getNodeParameter('options.outputColumns', index, []) as string[];
+			if (outputColumns.includes('*')) outputColumns = Object.keys(columnMetaDataObject);
+
 			if (outputColumns.length > 0) {
 				const updatedQuery = getOutBindDefsForExecute(
 					query,
@@ -245,7 +248,7 @@ export async function execute(
 				query = updatedQuery;
 			}
 
-			queries.push({ query, values: bindParams });
+			queries.push({ query, values: bindParams, outputColumns });
 		}
 	}
 

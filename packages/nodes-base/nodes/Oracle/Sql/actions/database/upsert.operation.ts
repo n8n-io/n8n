@@ -69,7 +69,7 @@ const displayOptions = {
 	},
 };
 
-function getQuery(
+function getQueryAndoutputColumns(
 	ctx: IExecuteFunctions,
 	items: INodeExecutionData[],
 	item: IDataObject,
@@ -80,7 +80,7 @@ function getQuery(
 	bindDefs: oracleDBTypes.BindDefinition[] | null,
 	index: number,
 	executeManyValues: any[] | null = null,
-) {
+): [string, string[]] {
 	const columnMetaDataObject: ColumnMap = getColumnMap(tableSchema);
 	const columnsToMatchOn: string[] = ctx.getNodeParameter(
 		'columns.matchingColumns',
@@ -147,7 +147,9 @@ function getQuery(
 			INSERT (${insertColsStr}) VALUES (${insertValsStr})
 			`;
 
-	const outputColumns = ctx.getNodeParameter('options.outputColumns', 0, []) as string[];
+	let outputColumns = ctx.getNodeParameter('options.outputColumns', 0, []) as string[];
+	if (outputColumns.includes('*')) outputColumns = Object.keys(columnMetaDataObject);
+
 	if (outputColumns.length > 0) {
 		query = getOutBindDefsForExecute(
 			query,
@@ -178,7 +180,7 @@ function getQuery(
 			executeManyValues.push(result);
 		}
 	}
-	return query;
+	return [query, outputColumns];
 }
 
 export const description = updateDisplayOptions(displayOptions, properties);
@@ -216,7 +218,7 @@ export async function execute(
 			item = this.getNodeParameter('columns.value', 0) as IDataObject;
 		}
 
-		const query = getQuery(
+		const [query, outputColumns] = getQueryAndoutputColumns(
 			this,
 			items,
 			item,
@@ -230,7 +232,7 @@ export async function execute(
 		);
 
 		nodeOptions.bindDefs = bindDefs;
-		queries.push({ query, executeManyValues });
+		queries.push({ query, executeManyValues, outputColumns });
 	} else {
 		const updateTableSchema = configureTableSchemaUpdater(this.getNode(), schema, table);
 
@@ -254,7 +256,7 @@ export async function execute(
 			}
 
 			const bindParams: oracleDBTypes.BindParameter[] = []; // bindParameters
-			const query = getQuery(
+			const [query, outputColumns] = getQueryAndoutputColumns(
 				this,
 				items,
 				item,
@@ -267,7 +269,7 @@ export async function execute(
 				null,
 			);
 
-			queries.push({ query, values: bindParams });
+			queries.push({ query, values: bindParams, outputColumns });
 		}
 	}
 

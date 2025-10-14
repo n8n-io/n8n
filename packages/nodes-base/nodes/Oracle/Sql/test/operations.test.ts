@@ -102,17 +102,6 @@ const fakeConnection = {
 				CONSTRAINT_TYPES: null,
 			},
 			{
-				COLUMN_NAME: 'SALARY',
-				DATA_TYPE: 'FLOAT',
-				DATA_LENGTH: 22,
-				CHAR_LENGTH: 0,
-				DEFAULT_LENGTH: null,
-				NULLABLE: 'Y',
-				IDENTITY_COLUMN: 'NO',
-				HAS_DEFAULT: 'NO',
-				CONSTRAINT_TYPES: null,
-			},
-			{
 				COLUMN_NAME: 'PICTURE',
 				DATA_TYPE: 'BLOB',
 				DATA_LENGTH: 4000,
@@ -127,6 +116,17 @@ const fakeConnection = {
 				COLUMN_NAME: 'PROFILE',
 				DATA_TYPE: 'RAW',
 				DATA_LENGTH: 2000,
+				CHAR_LENGTH: 0,
+				DEFAULT_LENGTH: null,
+				NULLABLE: 'Y',
+				IDENTITY_COLUMN: 'NO',
+				HAS_DEFAULT: 'NO',
+				CONSTRAINT_TYPES: null,
+			},
+			{
+				COLUMN_NAME: 'SALARY',
+				DATA_TYPE: 'FLOAT',
+				DATA_LENGTH: 22,
 				CHAR_LENGTH: 0,
 				DEFAULT_LENGTH: null,
 				NULLABLE: 'Y',
@@ -386,7 +386,9 @@ VALUES (
 	) {
 		if (
 			integratedTests &&
-			(nodeOptions.outputColumns as any[]).includes('EMBEDDING' as unknown as IDataObject)
+			Array.isArray(nodeOptions.outputColumns) &&
+			((nodeOptions.outputColumns as string[]).includes('EMBEDDING') ||
+				(nodeOptions.outputColumns as string[]).includes('*'))
 		) {
 			if (nodeOptions.stmtBatching === 'single') {
 				expect(runQueries).toHaveBeenCalledWith(queries, inputItems, nodeOptions);
@@ -394,20 +396,44 @@ VALUES (
 				expect(runQueries).toHaveBeenCalledWith(queriesIndependent, inputItems, nodeOptions);
 			}
 			let actualEmbedding, actualID;
-			for (let i = 0, j = 0; i < result.length; ) {
-				const expectedEmbedding = inputItems[j].json.EMBEDDING;
-				if (nodeOptions.stmtBatching === 'single') {
-					actualEmbedding = result[i]?.json?.[0];
-					actualID = result[i + 1]?.json?.[0];
-				} else {
-					actualEmbedding = result[i]?.json;
-					actualID = result[i + 1]?.json;
+			if ((nodeOptions.outputColumns as string[]).includes('*')) {
+				expect(
+					result.map(({ json }) => {
+						const { PICTURE, ...rest } = json; // skip comparing PICTURE column which is LOB
+
+						return {
+							...rest,
+							EMBEDDING: new Float32Array(rest.EMBEDDING as number[]),
+							PROFILE: Buffer.from(rest.PROFILE as Buffer),
+						};
+					}),
+				).toEqual(
+					inputItems.map(({ json }) => {
+						const { PICTURE, ...rest } = json;
+
+						return {
+							...rest,
+							EMBEDDING: new Float32Array(rest.EMBEDDING as number[]),
+							PROFILE: Buffer.from(rest.PROFILE as Buffer),
+						};
+					}),
+				);
+			} else {
+				for (let i = 0, j = 0; i < result.length; ) {
+					const expectedEmbedding = inputItems[j].json.EMBEDDING;
+					if (nodeOptions.stmtBatching === 'single') {
+						actualEmbedding = result[i]?.json?.EMBEDDING;
+						actualID = result[i]?.json?.ID;
+					} else {
+						actualEmbedding = result[i]?.json.EMBEDDING;
+						actualID = result[i]?.json.ID;
+					}
+					expect(actualEmbedding).toEqual(new Float32Array(expectedEmbedding as number[]));
+					const expectedID = inputItems[j].json.ID;
+					expect(actualID).toEqual(expectedID as number);
+					i = i + 2;
+					j = j + 1;
 				}
-				expect(actualEmbedding).toEqual(new Float32Array(expectedEmbedding as number[]));
-				const expectedID = inputItems[j].json.ID;
-				expect(actualID).toEqual(expectedID as number);
-				i = i + 2;
-				j = j + 1;
 			}
 		}
 	}
@@ -477,7 +503,7 @@ VALUES (
 					let index = 0;
 					if (nodeOptions.outputColumns) {
 						// For outputcolumns option, we pass second item index with wrong values.
-						index = 2;
+						index = 1;
 					}
 					expect(result[index].json.message).toMatch(errorPattern);
 					expect(result[index].pairedItem.item).toBe(failedIndex);
@@ -1074,7 +1100,7 @@ VALUES (
 						expect(result).toHaveLength(1);
 						expect(result[0].json.META_DATA).toEqual(expectedResultMetadata);
 					} else {
-						expect(result).toHaveLength(0);
+						expect(result[0].json).toEqual({ success: true });
 					}
 				}
 			},
@@ -1120,24 +1146,7 @@ VALUES (
 
 		const expectedQuery = `INSERT INTO "${CONFIG.user}"."${table}" ("ID","NAME","AGE","SALARY","JOIN_DATE","IS_ACTIVE","META_DATA","EMBEDDING","PICTURE","PROFILE") VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9) RETURNING "EMBEDDING", "ID" INTO :10, :11`;
 
-		const expectedOptions = {
-			stmtBatching: 'single',
-			outputColumns: ['EMBEDDING', 'ID'],
-			bindDefs: [
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_VARCHAR, maxSize: maxEmpName },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_TIMESTAMP },
-				{ type: oracleDBTypes.DB_TYPE_BOOLEAN },
-				{ type: oracleDBTypes.DB_TYPE_JSON },
-				{ type: oracleDBTypes.DB_TYPE_VECTOR },
-				{ type: oracleDBTypes.DB_TYPE_BLOB },
-				{ type: oracleDBTypes.DB_TYPE_RAW, maxSize: 2000 },
-				{ type: oracleDBTypes.DB_TYPE_VECTOR, dir: 3003 },
-				{ type: oracleDBTypes.DB_TYPE_NUMBER, dir: 3003 },
-			],
-		};
+		const expectedQueryAllOuts = `INSERT INTO "${CONFIG.user}"."${table}" ("ID","NAME","AGE","SALARY","JOIN_DATE","IS_ACTIVE","META_DATA","EMBEDDING","PICTURE","PROFILE") VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9) RETURNING "AGE", "EMBEDDING", "ID", "IS_ACTIVE", "JOIN_DATE", "META_DATA", "NAME", "PICTURE", "PROFILE", "SALARY" INTO :10, :11, :12, :13, :14, :15, :16, :17, :18, :19`;
 
 		const expectedValues = baseItems.map((v) => [
 			v.ID,
@@ -1167,16 +1176,47 @@ VALUES (
 			{ type: oracleDBTypes.DB_TYPE_NUMBER, dir: 3003 },
 		]);
 
+		const expectedBindValuesForIndependentAllOutputColumns = baseItems.map((v) => [
+			{ type: oracleDBTypes.NUMBER, val: v.ID },
+			{ type: oracleDBTypes.DB_TYPE_VARCHAR, val: v.NAME },
+			{ type: oracleDBTypes.NUMBER, val: v.AGE },
+			{ type: oracleDBTypes.NUMBER, val: v.SALARY },
+			{ type: oracleDBTypes.DB_TYPE_TIMESTAMP, val: v.JOIN_DATE },
+			{ type: oracleDBTypes.DB_TYPE_BOOLEAN, val: v.IS_ACTIVE },
+			{ type: oracleDBTypes.DB_TYPE_JSON, val: v.META_DATA },
+			{ type: oracleDBTypes.DB_TYPE_VECTOR, val: v.EMBEDDING },
+			{ type: oracleDBTypes.DB_TYPE_BLOB, val: Buffer.from(v.PICTURE) },
+			{ type: oracleDBTypes.DB_TYPE_RAW, val: Buffer.from(v.PROFILE) },
+			{ type: oracleDBTypes.NUMBER, dir: 3003 },
+			{ type: oracleDBTypes.DB_TYPE_VECTOR, dir: 3003 },
+			{ type: oracleDBTypes.DB_TYPE_NUMBER, dir: 3003 },
+			{ type: oracleDBTypes.DB_TYPE_BOOLEAN, dir: 3003 },
+			{ type: oracleDBTypes.DB_TYPE_TIMESTAMP, dir: 3003 },
+			{ type: oracleDBTypes.DB_TYPE_JSON, dir: 3003 },
+			{ type: oracleDBTypes.STRING, dir: 3003, maxSize: 100 },
+			{ type: oracleDBTypes.DB_TYPE_BLOB, dir: 3003 },
+			{ type: oracleDBTypes.DB_TYPE_RAW, dir: 3003, maxSize: 2000 },
+			{ type: oracleDBTypes.NUMBER, dir: 3003 },
+		]);
+
 		beforeAll(function () {
-			queries = [{ query: expectedQuery, executeManyValues: expectedValues }];
+			queries = [
+				{
+					query: expectedQuery,
+					executeManyValues: expectedValues,
+					outputColumns: ['EMBEDDING', 'ID'],
+				},
+			];
 			queriesIndependent = [
 				{
 					query: expectedQuery,
 					values: expectedBindValuesForIndependent[0],
+					outputColumns: ['EMBEDDING', 'ID'],
 				},
 				{
 					query: expectedQuery,
 					values: expectedBindValuesForIndependent[1],
+					outputColumns: ['EMBEDDING', 'ID'],
 				},
 			];
 		});
@@ -1215,6 +1255,97 @@ VALUES (
 			if (originalColumnsValue) {
 				(nodeParameters.columns as any).value = originalColumnsValue;
 			}
+			queriesIndependent = [
+				{
+					query: expectedQuery,
+					values: expectedBindValuesForIndependent[0],
+					outputColumns: ['EMBEDDING', 'ID'],
+				},
+				{
+					query: expectedQuery,
+					values: expectedBindValuesForIndependent[1],
+					outputColumns: ['EMBEDDING', 'ID'],
+				},
+			];
+			queries = [
+				{
+					query: expectedQuery,
+					executeManyValues: expectedValues,
+					outputColumns: ['EMBEDDING', 'ID'],
+				},
+			];
+		});
+
+		it('should insert valid data (defineBelow) with select all outputcolumns independently batch mode', async () => {
+			queriesIndependent[0].outputColumns = [
+				'AGE',
+				'EMBEDDING',
+				'ID',
+				'IS_ACTIVE',
+				'JOIN_DATE',
+				'META_DATA',
+				'NAME',
+				'PICTURE',
+				'PROFILE',
+				'SALARY',
+			];
+			queriesIndependent[1].outputColumns = queriesIndependent[0].outputColumns;
+			queriesIndependent[0].query = expectedQueryAllOuts;
+			queriesIndependent[0].values = expectedBindValuesForIndependentAllOutputColumns[0];
+			queriesIndependent[1].query = expectedQueryAllOuts;
+			queriesIndependent[1].values = expectedBindValuesForIndependentAllOutputColumns[1];
+
+			const selectAlloutputs: IDataObject = {
+				...(nodeParameters.options as Record<string, any>),
+				outputColumns: ['*'],
+				stmtBatching: 'independently',
+			};
+
+			const selectAlloutputsNodeParams: IDataObject = {
+				...(nodeParameters as Record<string, any>),
+				options: selectAlloutputs,
+			};
+
+			await runOperation({
+				items: baseItems,
+				continueOnFailValue: true,
+				nodePars: selectAlloutputsNodeParams,
+				nodeOptions: selectAlloutputs,
+			});
+		});
+
+		it('should insert valid data (defineBelow) with select all outputcolumns in single batch mode', async () => {
+			queries[0].outputColumns = [
+				'AGE',
+				'EMBEDDING',
+				'ID',
+				'IS_ACTIVE',
+				'JOIN_DATE',
+				'META_DATA',
+				'NAME',
+				'PICTURE',
+				'PROFILE',
+				'SALARY',
+			];
+			queries[0].query = expectedQueryAllOuts;
+
+			const selectAlloutputs: IDataObject = {
+				...(nodeParameters.options as Record<string, any>),
+				outputColumns: ['*'],
+				stmtBatching: 'single',
+			};
+
+			const selectAlloutputsNodeParams: IDataObject = {
+				...(nodeParameters as Record<string, any>),
+				options: selectAlloutputs,
+			};
+
+			await runOperation({
+				items: baseItems,
+				continueOnFailValue: true,
+				nodePars: selectAlloutputsNodeParams,
+				nodeOptions: selectAlloutputs,
+			});
 		});
 
 		it('should insert valid data (defineBelow)', async () => {
@@ -1434,22 +1565,6 @@ VALUES (
 		}));
 
 		const expectedQuery = `UPDATE "${CONFIG.user}"."${table}" SET "NAME"=:0,"AGE"=:1,"SALARY"=:2,"JOIN_DATE"=:3,"IS_ACTIVE"=:4,"META_DATA"=:5,"EMBEDDING"=:6 WHERE "ID"=:7 RETURNING "EMBEDDING", "ID" INTO :8, :9`;
-		const expectedOptions = {
-			stmtBatching: 'single',
-			outputColumns: ['EMBEDDING', 'ID'],
-			bindDefs: [
-				{ type: oracleDBTypes.DB_TYPE_VARCHAR, maxSize: maxEmpName },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_TIMESTAMP },
-				{ type: oracleDBTypes.DB_TYPE_BOOLEAN },
-				{ type: oracleDBTypes.DB_TYPE_JSON },
-				{ type: oracleDBTypes.DB_TYPE_VECTOR },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_VECTOR, dir: 3003 },
-				{ type: oracleDBTypes.DB_TYPE_NUMBER, dir: 3003 },
-			],
-		};
 
 		const expectedValues = baseItems.map((v) => [
 			v.NAME,
@@ -1477,15 +1592,23 @@ VALUES (
 
 		beforeAll(function () {
 			// initialize global variables to repective operation values.
-			queries = [{ query: expectedQuery, executeManyValues: expectedValues }];
+			queries = [
+				{
+					query: expectedQuery,
+					executeManyValues: expectedValues,
+					outputColumns: ['EMBEDDING', 'ID'],
+				},
+			];
 			queriesIndependent = [
 				{
 					query: expectedQuery,
 					values: expectedBindValuesForIndependent[0],
+					outputColumns: ['EMBEDDING', 'ID'],
 				},
 				{
 					query: expectedQuery,
 					values: expectedBindValuesForIndependent[1],
+					outputColumns: ['EMBEDDING', 'ID'],
 				},
 			];
 		});
@@ -1793,32 +1916,6 @@ VALUES (
 			INSERT ("ID", "NAME", "AGE", "SALARY", "JOIN_DATE", "IS_ACTIVE", "META_DATA", "EMBEDDING") VALUES (:8, :9, :10, :11, :12, :13, :14, :15)
 			 RETURNING "EMBEDDING", "ID" INTO :16, :17`;
 
-		const expectedOptions = {
-			stmtBatching: 'single',
-			operation: 'upsert',
-			outputColumns: ['EMBEDDING', 'ID'],
-			bindDefs: [
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_VARCHAR, maxSize: maxEmpName },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_TIMESTAMP },
-				{ type: oracleDBTypes.DB_TYPE_BOOLEAN },
-				{ type: oracleDBTypes.DB_TYPE_JSON },
-				{ type: oracleDBTypes.DB_TYPE_VECTOR },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_VARCHAR, maxSize: maxEmpName },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.NUMBER },
-				{ type: oracleDBTypes.DB_TYPE_TIMESTAMP },
-				{ type: oracleDBTypes.DB_TYPE_BOOLEAN },
-				{ type: oracleDBTypes.DB_TYPE_JSON },
-				{ type: oracleDBTypes.DB_TYPE_VECTOR },
-				{ type: oracleDBTypes.DB_TYPE_VECTOR, dir: 3003 },
-				{ type: oracleDBTypes.DB_TYPE_NUMBER, dir: 3003 },
-			],
-		};
-
 		const expectedValues = baseItems.map((v) => [
 			v.ID,
 			v.NAME,
@@ -1900,15 +1997,23 @@ VALUES (
 
 		beforeAll(function () {
 			// initialize global variables to respective operation values.
-			queries = [{ query: expectedQuery, executeManyValues: expectedValues }];
+			queries = [
+				{
+					query: expectedQuery,
+					executeManyValues: expectedValues,
+					outputColumns: ['EMBEDDING', 'ID'],
+				},
+			];
 			queriesIndependent = [
 				{
 					query: expectedQuery,
 					values: expectedBindValuesForIndependent[0],
+					outputColumns: ['EMBEDDING', 'ID'],
 				},
 				{
 					query: expectedQuery,
 					values: expectedBindValuesForIndependent[1],
+					outputColumns: ['EMBEDDING', 'ID'],
 				},
 			];
 		});

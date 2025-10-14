@@ -319,23 +319,53 @@ function parseOracleError(node: INode, error: oracledb.DBError, itemIndex: numbe
 	});
 }
 
+/*
+ * The outbinds returned in result.outBinds will be returned as batch of rows in case
+ * of executeMany and a single row for execute.
+ * This function would return the rows of output columns in an array for both cases.
+ */
+function normalizeOutBinds(
+	outBinds: unknown,
+	stmtBatching: string,
+	outputColumns: string[],
+): Array<Record<string, any>> {
+	if (!Array.isArray(outBinds)) return [];
+
+	const rows: Array<Record<string, any>> = [];
+
+	// executeMany case outBinds-> [ [[col1Row1Val], [col2Row1Val]], [[col1Row2Val], [col2Row2Val]], ...]
+	if (stmtBatching === 'single') {
+		for (const batch of outBinds as any[][]) {
+			rows.push(Object.fromEntries(outputColumns.map((col, i) => [col, batch[i][0]])));
+		}
+		return rows;
+	}
+
+	// execute case outBinds-> [[col1Row1Val], [col2Row1Val]]
+	const row: Record<string, any> = {};
+	for (let i = 0; i < (outBinds as any[]).length; i++) {
+		row[`${outputColumns[i]}`] = outBinds[i][0];
+	}
+	rows.push(row);
+	return rows;
+}
+
 function _getResponseForOutbinds(
 	this: IExecuteFunctions,
 	results: oracledb.Results<unknown> | oracledb.Result<unknown>,
-	returnData: INodeExecutionData[],
+	stmtBatching: string,
+	outputColumns: string[] = [],
+	returnData: INodeExecutionData[] = [],
 ) {
 	if (results.outBinds) {
-		const outBinds = results.outBinds as any[];
-		for (let j = 0; j < outBinds.length; j++) {
-			// DML returning , plsql out binds
-			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(outBinds[j] as IDataObject[]),
-				{
-					itemData: { item: j },
-				},
-			);
+		const normalizedRows = normalizeOutBinds(results.outBinds, stmtBatching, outputColumns);
+
+		for (let j = 0; j < normalizedRows.length; j++) {
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(normalizedRows[j]), {
+				itemData: { item: j },
+			});
 			if (executionData) {
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 		}
 	}
@@ -359,6 +389,7 @@ export function configureQueryRunner(
 ) {
 	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
+		const emptyRowData = { success: true };
 		let execOptions: Partial<oracledb.ExecuteManyOptions & oracledb.ExecuteOptions> = {};
 		const defaultBatching =
 			options.operation === 'insert' ||
@@ -433,13 +464,19 @@ export function configureQueryRunner(
 						returnData.push({ json: { message: error.message }, pairedItem });
 					}
 				} else {
-					_getResponseForOutbinds.call(this, results, returnData);
+					_getResponseForOutbinds.call(
+						this,
+						results,
+						stmtBatching,
+						queries[0].outputColumns,
+						returnData,
+					);
 				}
 
 				if (!returnData.length) {
 					// returning Clause is not given.
 					const pairedItem = generatePairedItemData(queries.length);
-					returnData = [{ json: { success: true }, pairedItem }];
+					returnData = [{ json: emptyRowData, pairedItem }];
 				}
 			} catch (caughtError) {
 				const error = parseOracleError(node, caughtError);
@@ -456,7 +493,7 @@ export function configureQueryRunner(
 			try {
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const { query, values } = queries[i];
+						const { query, values, outputColumns } = queries[i];
 						let transactionResults;
 
 						if (values) {
@@ -472,13 +509,23 @@ export function configureQueryRunner(
 						doesRowExist(query, transactionResults);
 
 						const resultOutBinds: INodeExecutionData[] = [];
-						_getResponseForOutbinds.call(this, transactionResults, resultOutBinds);
+						_getResponseForOutbinds.call(
+							this,
+							transactionResults,
+							stmtBatching,
+							outputColumns,
+							resultOutBinds,
+						);
 						if (!resultOutBinds.length) {
-							const rowData = transactionResults.rows ?? [];
+							let rowData = transactionResults.rows ?? [];
+							if (!rowData.length) {
+								rowData = [emptyRowData];
+							}
 							const executionData = this.helpers.constructExecutionMetaData(
 								wrapData(rowData as IDataObject[]),
 								{ itemData: { item: i } },
 							);
+
 							returnData.push.apply(returnData, executionData);
 						} else {
 							returnData.push.apply(returnData, resultOutBinds);
@@ -503,7 +550,7 @@ export function configureQueryRunner(
 			try {
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const { query, values } = queries[i];
+						const { query, values, outputColumns } = queries[i];
 						let taskResults: oracledb.Result<any>;
 						if (values) {
 							taskResults = await connection.execute(
@@ -518,10 +565,19 @@ export function configureQueryRunner(
 						doesRowExist(query, taskResults);
 
 						const resultOutBinds: INodeExecutionData[] = [];
-						_getResponseForOutbinds.call(this, taskResults, resultOutBinds);
+						_getResponseForOutbinds.call(
+							this,
+							taskResults,
+							stmtBatching,
+							outputColumns,
+							resultOutBinds,
+						);
 						if (!resultOutBinds.length) {
 							// select query or no returning clause in DML
-							const rowData = taskResults.rows ?? [];
+							let rowData = taskResults.rows ?? [];
+							if (!rowData.length) {
+								rowData = [emptyRowData];
+							}
 							const executionData = this.helpers.constructExecutionMetaData(
 								wrapData(rowData as IDataObject[]),
 								{ itemData: { item: i } },

@@ -16,6 +16,7 @@ export type QueryWithValues = {
 	query: string;
 	values?: QueryValue; // For execute
 	executeManyValues?: QueryValue[]; // for executeMany
+	outputColumns?: string[]; // RETURNING INTO columns in sql string
 };
 
 export type WhereClause = { column: string; condition: string; value: any };
