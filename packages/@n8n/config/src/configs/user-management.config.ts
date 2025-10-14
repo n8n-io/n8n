@@ -109,8 +109,8 @@ export class UserManagementConfig {
 	 * with 'user:create' permission, mitigating account takeover risks via
 	 * invite link leakage (e.g., compromised admin accounts, network interception).
 	 */
-	@Env('N8N_DISABLE_INVITE_LINK_EXPOSURE')
-	disableInviteLinkExposure: boolean = false;
+	@Env('N8N_INVITE_LINKS_EMAIL_ONLY')
+	inviteLinksEmailOnly: boolean = false;
 
 	/**
 	 * How long (in hours) before expiration to automatically refresh it.

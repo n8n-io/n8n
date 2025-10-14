@@ -119,9 +119,9 @@ export class UsersController {
 
 		const [users, count] = response;
 
-		const disableInviteLinkExposure = this.globalConfig.userManagement.disableInviteLinkExposure;
+		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
 
-		const withInviteUrl = !disableInviteLinkExposure && hasGlobalScope(req.user, 'user:create');
+		const withInviteUrl = !inviteLinksEmailOnly && hasGlobalScope(req.user, 'user:create');
 
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {

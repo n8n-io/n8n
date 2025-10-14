@@ -106,10 +106,10 @@ describe('UsersController', () => {
 			userRepository.buildUserQuery.mockReturnValue(mockQueryBuilder as any);
 		});
 
-		describe('when disableInviteLinkExposure = false', () => {
+		describe('when inviteLinksEmailOnly = false', () => {
 			beforeEach(() => {
 				globalConfig.userManagement = {
-					disableInviteLinkExposure: false,
+					inviteLinksEmailOnly: false,
 				} as any;
 			});
 
@@ -188,10 +188,10 @@ describe('UsersController', () => {
 			});
 		});
 
-		describe('when disableInviteLinkExposure = true', () => {
+		describe('when inviteLinksEmailOnly = true', () => {
 			beforeEach(() => {
 				globalConfig.userManagement = {
-					disableInviteLinkExposure: true,
+					inviteLinksEmailOnly: true,
 				} as any;
 			});
 
