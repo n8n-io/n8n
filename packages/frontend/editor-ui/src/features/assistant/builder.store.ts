@@ -563,7 +563,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	watch(
 		() => workflowsStore.workflowId,
 		(newWorkflowId) => {
-			// Only fetch if we have a valid workflow ID and we're in a builder-enabled view
+			// Only fetch if we have a valid workflow ID, and we're in a builder-enabled view
 			if (
 				newWorkflowId &&
 				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
@@ -571,8 +571,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			) {
 				void fetchSessionsMetadata();
 			} else {
-				// Reset hasMessages to undefined when there's no valid workflow
-				hasMessages.value = undefined;
+				hasMessages.value = false;
 			}
 		},
 	);

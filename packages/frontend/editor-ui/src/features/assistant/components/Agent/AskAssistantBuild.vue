@@ -69,13 +69,8 @@ const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	// Only show suggestions when hasMessages is false (no messages exist)
-	// Don't show if undefined (still loading) or true (messages exist)
-	if (builderStore.hasMessages === false) {
-		// Shuffle the suggestions to show them in random order
-		return shuffle(WORKFLOW_SUGGESTIONS);
-	}
-	return undefined;
+	// we don't show the suggestions if there are already messages
+	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
 });
 
 async function onUserMessage(content: string) {
