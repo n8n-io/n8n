@@ -193,9 +193,9 @@ function onCancelFeedback() {
 	}
 
 	.ratingButton {
-		--button-hover-background-color: var(--color--foreground--tint-1);
-		--button-hover-font-color: var(--color--text);
-		--button-font-color: var(--color--text);
+		--button--color--background--hover: var(--color--foreground--tint-1);
+		--button--color--text--hover: var(--color--text);
+		--button--color--text: var(--color--text);
 	}
 
 	.feedbackContainer {

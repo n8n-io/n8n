@@ -88,8 +88,8 @@ const onClick = (event: MouseEvent) => {
 .notice {
 	font-size: var(--font-size--2xs);
 	display: flex;
-	color: var(--color-notice-font);
-	margin: var(--notice-margin, var(--spacing--sm) 0);
+	color: var(--notice--color--text);
+	margin: var(--notice--margin, var(--spacing--sm) 0);
 	padding: var(--spacing--2xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;
@@ -104,8 +104,8 @@ const onClick = (event: MouseEvent) => {
 }
 
 .warning {
-	--border-color: var(--color-notice-warning-border);
-	--background-color: var(--color-notice-warning-background);
+	--border-color: var(--notice--border-color--warning);
+	--background-color: var(--notice--color--background--warning);
 }
 
 .danger {
@@ -119,8 +119,8 @@ const onClick = (event: MouseEvent) => {
 }
 
 .info {
-	--border-color: var(--color-info-tint-1);
-	--background-color: var(--color-info-tint-2);
+	--border-color: var(--color--info--tint-1);
+	--background-color: var(--color--info--tint-2);
 }
 
 .expanded {

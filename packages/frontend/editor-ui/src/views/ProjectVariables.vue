@@ -527,27 +527,27 @@ onMounted(() => {
 .optionContent {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .menuItemEmoji {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	line-height: 1;
 }
 
 .globalOption {
 	position: relative;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 	overflow: visible;
 
 	&::after {
 		content: '';
 		position: absolute;
-		bottom: calc(var(--spacing-s) / -2);
-		left: var(--spacing-xs);
-		right: var(--spacing-xs);
+		bottom: calc(var(--spacing--sm) / -2);
+		left: var(--spacing--xs);
+		right: var(--spacing--xs);
 		height: 1px;
-		background-color: var(--color-foreground-base);
+		background-color: var(--color--foreground);
 	}
 }
 </style>
