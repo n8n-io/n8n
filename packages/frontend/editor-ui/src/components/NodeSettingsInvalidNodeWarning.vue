@@ -149,7 +149,7 @@ watch(isNodeDefined, () => {
 <style lang="scss" module>
 .communityNodeActionsContainer {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .nodeIsNotValid {
@@ -171,7 +171,7 @@ watch(isNodeDefined, () => {
 .descriptionContainer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 </style>
