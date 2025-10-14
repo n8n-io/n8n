@@ -1,16 +1,17 @@
 <script lang="ts" setup>
-import type { IAiData, IAiDataContent } from '@/Interface';
+import type { IAiDataContent } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription, NodeConnectionType, NodeError } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useI18n } from '@n8n/i18n';
-import { getConsumedTokens } from '@/components/RunDataAi/utils';
+import { getConsumedTokens } from '@/features/logs/logs.utils';
 import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '../ViewSubExecution.vue';
 import { formatTokenUsageCount } from '@/utils/aiUtils';
+import { getReferencedData } from '@/components/RunDataAi/utils';
+import { type LogEntry } from '@/features/logs/logs.types';
 
 import { N8nInfoTip, N8nTooltip } from '@n8n/design-system';
 interface RunMeta {
@@ -25,22 +26,21 @@ interface RunMeta {
 	};
 }
 const props = defineProps<{
-	inputData: IAiData;
-	contentIndex: number;
+	inputData: LogEntry;
 }>();
 
+const data = computed(() =>
+	props.inputData.runData ? getReferencedData(props.inputData.runData) : undefined,
+);
+
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 
-const consumedTokensSum = computed(() => {
-	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	return getConsumedTokens(outputRun.value);
-});
+const consumedTokensSum = computed(() => getConsumedTokens(outputRun.value?.data ?? []));
 
 function extractRunMeta(run: IAiDataContent) {
-	const uiNode = workflowsStore.getNodeByName(props.inputData.node);
+	const uiNode = props.inputData.node;
 	const nodeType = nodeTypesStore.getNodeType(uiNode?.type ?? '');
 
 	const runMeta: RunMeta = {
@@ -56,7 +56,7 @@ function extractRunMeta(run: IAiDataContent) {
 }
 
 const outputRun = computed(() => {
-	return props.inputData.data.find((r) => r.inOut === 'output');
+	return data.value?.find((r) => r.inOut === 'output');
 });
 
 const runMeta = computed(() => {
@@ -66,15 +66,7 @@ const runMeta = computed(() => {
 	return extractRunMeta(outputRun.value);
 });
 
-const executionRunData = computed(() => {
-	return workflowsStore.getWorkflowExecution?.data?.resultData?.runData;
-});
-
-const outputError = computed(() => {
-	return executionRunData.value?.[props.inputData.node]?.[props.inputData.runIndex]?.error as
-		| NodeError
-		| undefined;
-});
+const outputError = computed(() => props.inputData.runData?.error as NodeError | undefined);
 </script>
 
 <template>
@@ -88,7 +80,7 @@ const outputError = computed(() => {
 			/>
 			<div :class="$style.headerWrap">
 				<p :class="$style.title">
-					{{ inputData.node }}
+					{{ inputData.node.name }}
 				</p>
 				<ul :class="$style.meta">
 					<li v-if="runMeta?.startTimeMs">{{ runMeta?.executionTimeMs }}ms</li>
@@ -125,7 +117,7 @@ const outputError = computed(() => {
 			</div>
 		</header>
 
-		<main v-for="(run, index) in props.inputData.data" :key="index" :class="$style.content">
+		<main v-for="(run, index) in data ?? []" :key="index" :class="$style.content">
 			<AiRunContentBlock
 				:run-data="run"
 				:error="run.inOut === 'output' ? outputError : undefined"
@@ -136,16 +128,16 @@ const outputError = computed(() => {
 
 <style type="scss" module>
 .container {
-	padding: 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 .nodeIcon {
-	margin-top: calc(var(--spacing-3xs) * -1);
+	margin-top: calc(var(--spacing--3xs) * -1);
 }
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
-	margin-bottom: var(--spacing-s);
+	gap: var(--spacing--3xs);
+	margin-bottom: var(--spacing--sm);
 }
 .headerWrap {
 	display: flex;
@@ -154,29 +146,29 @@ const outputError = computed(() => {
 .title {
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-s);
-	gap: var(--spacing-3xs);
-	color: var(--color-text-dark);
+	font-size: var(--font-size--sm);
+	gap: var(--spacing--3xs);
+	color: var(--color--text--shade-1);
 }
 .meta {
 	list-style: none;
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 
 	& > li:not(:last-child) {
-		border-right: 1px solid var(--color-text-base);
-		padding-right: var(--spacing-3xs);
+		border-right: 1px solid var(--color--text);
+		padding-right: var(--spacing--3xs);
 	}
 
 	& > li:not(:first-child) {
-		padding-left: var(--spacing-3xs);
+		padding-left: var(--spacing--3xs);
 	}
 }
 .tokensUsage {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 </style>

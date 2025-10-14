@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -19,9 +19,13 @@ import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
+import { useCommandBar } from '@/features/ui/commandBar/composables/useCommandBar';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+
 type Props = {
 	nodeViewScale: number;
 	createNodeActive?: boolean;
@@ -40,6 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
+	close: [];
 }>();
 
 const uiStore = useUIStore();
@@ -47,6 +52,9 @@ const focusPanelStore = useFocusPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
+const { isEnabled: isCommandBarEnabled } = useCommandBar();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -75,6 +83,7 @@ function closeNodeCreator(hasAddedNodes = false) {
 	if (props.createNodeActive) {
 		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
 	}
+	emit('close');
 }
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
@@ -94,15 +103,34 @@ function toggleFocusPanel() {
 	);
 }
 
-function onAskAssistantButtonClick() {
-	if (!assistantStore.chatWindowOpen)
+async function onAskAssistantButtonClick() {
+	if (builderStore.isAIBuilderEnabled) {
+		await chatPanelStore.toggle({ mode: 'builder' });
+	} else {
+		await chatPanelStore.toggle({ mode: 'assistant' });
+	}
+	if (chatPanelStore.isOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
 		});
+	}
+}
 
-	assistantStore.toggleChatOpen();
+function openCommandBar(event: MouseEvent) {
+	event.stopPropagation();
+
+	void nextTick(() => {
+		const keyboardEvent = new KeyboardEvent('keydown', {
+			key: 'k',
+			code: 'KeyK',
+			metaKey: true,
+			bubbles: true,
+			cancelable: true,
+		});
+		document.dispatchEvent(keyboardEvent);
+	});
 }
 </script>
 
@@ -119,6 +147,20 @@ function onAskAssistantButtonClick() {
 				type="tertiary"
 				data-test-id="node-creator-plus-button"
 				@click="openNodeCreator"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			v-if="isCommandBarEnabled"
+			:label="i18n.baseText('nodeView.openCommandBar')"
+			:shortcut="{ keys: ['k'], metaKey: true }"
+			placement="left"
+		>
+			<N8nIconButton
+				size="large"
+				icon="search"
+				type="tertiary"
+				data-test-id="command-bar-button"
+				@click="openCommandBar"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
@@ -183,8 +225,8 @@ function onAskAssistantButtonClick() {
 	right: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-s);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
 	pointer-events: all !important;
 }
 
@@ -199,6 +241,6 @@ function onAskAssistantButtonClick() {
 }
 
 .activeButton {
-	background-color: var(--button-hover-background-color) !important;
+	background-color: var(--button--color--background--hover) !important;
 }
 </style>

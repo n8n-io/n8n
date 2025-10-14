@@ -275,8 +275,14 @@ function buildSteps(
 
 	if (response) {
 		const responses = response?.actionResponses ?? [];
+
+		if (response.metadata?.previousRequests) {
+			steps.push(...response.metadata.previousRequests);
+		}
+
 		for (const tool of responses) {
 			if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
+
 			const toolInput: IDataObject = {
 				...tool.action.input,
 				id: tool.action.id,
@@ -386,13 +392,17 @@ export async function toolsAgentExecute(
 			}
 			const outputParser = await getOptionalOutputParser(this, itemIndex);
 			const tools = await getTools(this, outputParser);
-			const options = this.getNodeParameter('options', itemIndex, { enableStreaming: true }) as {
+			const options = this.getNodeParameter('options', itemIndex) as {
 				systemMessage?: string;
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
 				enableStreaming?: boolean;
 			};
+
+			if (options.enableStreaming === undefined) {
+				options.enableStreaming = true;
+			}
 
 			// Prepare the prompt messages and prompt template.
 			const messages = await prepareMessages(this, itemIndex, {
@@ -476,16 +486,16 @@ export async function toolsAgentExecute(
 					const memoryVariables = await memory.loadMemoryVariables({});
 					chatHistory = memoryVariables['chat_history'];
 				}
-				const response = await executor.invoke({
+				const modelResponse = await executor.invoke({
 					...invokeParams,
 					chat_history: chatHistory,
 				});
 
-				if ('returnValues' in response) {
+				if ('returnValues' in modelResponse) {
 					// Save conversation to memory including any tool call context
-					if (memory && input && response.returnValues.output) {
+					if (memory && input && modelResponse.returnValues.output) {
 						// If there were tool calls in this conversation, include them in the context
-						let fullOutput = response.returnValues.output as string;
+						let fullOutput = modelResponse.returnValues.output as string;
 
 						if (steps.length > 0) {
 							// Include tool call information in the conversation context
@@ -501,7 +511,7 @@ export async function toolsAgentExecute(
 						await memory.saveContext({ input }, { output: fullOutput });
 					}
 					// Include intermediate steps if requested
-					const result = { ...response.returnValues };
+					const result = { ...modelResponse.returnValues };
 					if (options.returnIntermediateSteps && steps.length > 0) {
 						result.intermediateSteps = steps;
 					}
@@ -509,7 +519,7 @@ export async function toolsAgentExecute(
 				}
 
 				// If response contains tool calls, we need to return this in the right format
-				const actions = createEngineRequests(this, response, itemIndex);
+				const actions = createEngineRequests(this, modelResponse, itemIndex);
 
 				return {
 					actions,

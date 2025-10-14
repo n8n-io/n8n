@@ -16,6 +16,7 @@ import assert from 'node:assert';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Network, Wait } from 'testcontainers';
 
+import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { N8nImagePullPolicy } from './n8n-image-pull-policy';
 import {
@@ -37,7 +38,7 @@ const N8N_E2E_IMAGE = 'n8nio/n8n:local';
 const MOCKSERVER_IMAGE = 'mockserver/mockserver:5.15.0';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
-const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE ?? N8N_E2E_IMAGE;
+const N8N_IMAGE = getDockerImageFromEnv(N8N_E2E_IMAGE);
 
 // Base environment for all n8n instances
 const BASE_ENV: Record<string, string> = {

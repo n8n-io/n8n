@@ -3,9 +3,9 @@ import { fireEvent, screen } from '@testing-library/vue';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
@@ -28,7 +28,7 @@ vi.mock('@/stores/credentials.store', () => ({
 	useCredentialsStore: vi.fn(),
 }));
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/users/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
@@ -36,7 +36,7 @@ vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(),
 }));
 
-vi.mock('@/stores/projects.store', () => ({
+vi.mock('@/features/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(),
 }));
 

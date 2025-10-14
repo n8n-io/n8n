@@ -61,11 +61,11 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 
 <style lang="scss" module>
 .relatedExecutionInfo {
-	font-size: var(--font-size-s);
-	margin-left: var(--spacing-3xs);
+	font-size: var(--font-size--sm);
+	margin-left: var(--spacing--3xs);
 
 	svg {
-		padding-bottom: var(--spacing-5xs);
+		padding-bottom: var(--spacing--5xs);
 	}
 }
 </style>

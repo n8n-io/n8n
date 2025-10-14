@@ -18,13 +18,14 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useMcp } from '@/features/mcpAccess/composables/useMcp';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
@@ -34,6 +35,7 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
+const { isEligibleForMcpAccess } = useMcp();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -96,6 +98,11 @@ const workflowOwnerName = computed(() => {
 	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const isEligibleForMcp = computed(() => {
+	if (!workflow?.value) return false;
+	return isEligibleForMcpAccess(workflow.value);
+});
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -846,7 +853,11 @@ onBeforeUnmount(() => {
 							{{ i18n.baseText('workflowSettings.availableInMCP') }}
 							<N8nTooltip placement="top">
 								<template #content>
-									{{ i18n.baseText('workflowSettings.availableInMCP.tooltip') }}
+									{{
+										isEligibleForMcp
+											? i18n.baseText('workflowSettings.availableInMCP.tooltip')
+											: i18n.baseText('mcp.workflowNotEligable.description')
+									}}
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -854,13 +865,18 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<ElSwitch
-								ref="inputField"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:model-value="workflowSettings.availableInMCP ?? false"
-								data-test-id="workflow-settings-available-in-mcp"
-								@update:model-value="toggleAvailableInMCP"
-							></ElSwitch>
+							<N8nTooltip placement="top" :disabled="isEligibleForMcp">
+								<template #content>
+									{{ i18n.baseText('mcp.workflowNotEligable.description') }}
+								</template>
+								<ElSwitch
+									ref="inputField"
+									:disabled="readOnlyEnv || !workflowPermissions.update || !isEligibleForMcp"
+									:model-value="workflowSettings.availableInMCP ?? false"
+									data-test-id="workflow-settings-available-in-mcp"
+									@update:model-value="toggleAvailableInMCP"
+								></ElSwitch>
+							</N8nTooltip>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -909,10 +925,10 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 .workflow-settings {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	:global(.el-row) {
 		display: flex;
@@ -920,7 +936,7 @@ onBeforeUnmount(() => {
 	}
 
 	:global(.el-switch) {
-		padding: var(--spacing-m) 0;
+		padding: var(--spacing--md) 0;
 	}
 }
 
@@ -929,7 +945,7 @@ onBeforeUnmount(() => {
 	& label {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
+		gap: var(--spacing--4xs);
 	}
 
 	svg {
@@ -946,7 +962,7 @@ onBeforeUnmount(() => {
 }
 
 .timeout-input {
-	margin-left: var(--spacing-3xs);
+	margin-left: var(--spacing--3xs);
 }
 
 .time-saved {
@@ -954,11 +970,11 @@ onBeforeUnmount(() => {
 	align-items: center;
 
 	:global(.el-input) {
-		width: var(--spacing-3xl);
+		width: var(--spacing--3xl);
 	}
 
 	span {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>

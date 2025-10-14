@@ -17,16 +17,14 @@ import type {
 	IExecutionsListResponse,
 	INodeMetadata,
 	INodeUi,
-	INodeUpdatePropertiesInformation,
 	IStartRunData,
-	IUpdateInformation,
 	IUsedCredential,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
-	IExecutionsStopData,
+	WorkflowValidationIssue,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -45,9 +43,6 @@ import type {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeExecutionData,
-	INodeIssueData,
-	INodeIssueObjectProperty,
-	INodeParameters,
 	INodeTypes,
 	IPinData,
 	IRunData,
@@ -60,26 +55,20 @@ import type {
 import {
 	deepCopy,
 	NodeConnectionTypes,
-	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
-import findLast from 'lodash/findLast';
-import isEqual from 'lodash/isEqual';
-import pick from 'lodash/pick';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
-import { isObject } from '@/utils/objectUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
-	clearPopupWindowState,
 	findTriggerNodeToAutoSelect,
 	openFormPopupWindow,
 } from '@/utils/executionUtils';
@@ -89,15 +78,14 @@ import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
-import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
@@ -159,15 +147,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
-
-	const {
-		executingNode,
-		lastAddedExecutingNode,
-		addExecutingNode,
-		removeExecutingNode,
-		isNodeExecuting,
-		clearNodeExecutionQueue,
-	} = useExecutingNode();
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -277,11 +256,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * Get detailed validation issues for all connected, enabled nodes
 	 */
 	const workflowValidationIssues = computed(() => {
-		const issues: Array<{
-			node: string;
-			type: string;
-			value: string | string[];
-		}> = [];
+		const issues: WorkflowValidationIssue[] = [];
 
 		const isStringOrStringArray = (value: unknown): value is string | string[] =>
 			typeof value === 'string' || Array.isArray(value);
@@ -503,7 +478,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			init: async (): Promise<void> => {},
 			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 				const nodeTypeDescription = nodeTypesStore.getNodeType(nodeType, version);
-
 				if (nodeTypeDescription === null) {
 					return undefined;
 				}
@@ -531,13 +505,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// when the workflow replaces the node-parameters.
 	function getNodes(): INodeUi[] {
 		return workflow.value.nodes.map((node) => ({ ...node }));
-	}
-
-	function setNodePositionById(id: string, position: INodeUi['position']): void {
-		const node = workflow.value.nodes.find((n) => n.id === id);
-		if (!node) return;
-
-		setNodeValue({ name: node.name, key: 'position', value: position });
 	}
 
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
@@ -656,18 +623,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function searchWorkflows({
 		projectId,
 		name,
+		nodeTypes,
+		tags,
+		select,
 	}: {
 		projectId?: string;
 		name?: string;
+		nodeTypes?: string[];
+		tags?: string[];
+		select?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			name,
+			nodeTypes,
+			tags,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
+			undefined,
+			select,
 		);
 		return workflows;
 	}
@@ -737,6 +714,47 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				(node.credentials as INodeCredentials)[data.type] = data.credentials;
 			}
 		});
+	}
+
+	// Assign credential to all nodes that support it but don't have it set
+	function assignCredentialToMatchingNodes(data: {
+		credentials: INodeCredentialsDetails;
+		type: string;
+		currentNodeName: string;
+	}): number {
+		let updatedNodesCount = 0;
+
+		workflow.value.nodes.forEach((node: INodeUi) => {
+			// Skip the current node (it was just set)
+			if (node.name === data.currentNodeName) {
+				return;
+			}
+
+			// Skip if node already has credential set
+			if (node.credentials && Object.keys(node.credentials).length > 0) {
+				return;
+			}
+
+			// Get node type to check if it supports this credential
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (!nodeType?.credentials) {
+				return;
+			}
+
+			// Check if this node type supports the credential type
+			const supportsCredential = nodeType.credentials.some((cred) => cred.name === data.type);
+			if (!supportsCredential) {
+				return;
+			}
+
+			// Assign the same credential to the node
+			node.credentials ??= {} satisfies INodeCredentials;
+			node.credentials[data.type] = data.credentials;
+
+			updatedNodesCount++;
+		});
+
+		return updatedNodesCount;
 	}
 
 	function setWorkflows(workflows: IWorkflowDb[]) {
@@ -1246,58 +1264,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
-	/**
-	 * @returns `true` if the object was changed
-	 */
-	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
-		if (nodeIndex !== -1) {
-			const node = workflow.value.nodes[nodeIndex];
-			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
-			const changed = !isEqual(existingData, nodeData);
-
-			if (changed) {
-				Object.assign(node, nodeData);
-				workflow.value.nodes[nodeIndex] = node;
-				workflowObject.value.setNodes(workflow.value.nodes);
-			}
-
-			return changed;
-		}
-		return false;
-	}
-
-	function setNodeIssue(nodeIssueData: INodeIssueData): void {
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === nodeIssueData.node;
-		});
-		if (nodeIndex === -1) {
-			return;
-		}
-
-		const node = workflow.value.nodes[nodeIndex];
-
-		if (nodeIssueData.value === null) {
-			// Remove the value if one exists
-			if (node.issues?.[nodeIssueData.type] === undefined) {
-				// No values for type exist so nothing has to get removed
-				return;
-			}
-
-			const { [nodeIssueData.type]: removedNodeIssue, ...remainingNodeIssues } = node.issues;
-			updateNodeAtIndex(nodeIndex, {
-				issues: remainingNodeIssues,
-			});
-		} else {
-			updateNodeAtIndex(nodeIndex, {
-				issues: {
-					...node.issues,
-					[nodeIssueData.type]: nodeIssueData.value as INodeIssueObjectProperty,
-				},
-			});
-		}
-	}
-
 	function addNode(nodeData: INodeUi): void {
+		// @TODO(ckolb): Reminder to refactor useActions:setAddedNodeActionParameters
+		// which listens to this function being called, when this is moved to workflowState soon
+
 		if (!nodeData.hasOwnProperty('name')) {
 			// All nodes have to have a name
 			// TODO: Check if there is an error or whatever that is supposed to be returned
@@ -1332,102 +1302,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				uiStore.stateIsDirty = true;
 				return;
 			}
-		}
-	}
-
-	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex !== -1) {
-			for (const key of Object.keys(updateInformation.properties)) {
-				const typedKey = key as keyof INodeUpdatePropertiesInformation['properties'];
-				const property = updateInformation.properties[typedKey];
-
-				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
-
-				if (changed) {
-					uiStore.stateIsDirty = true;
-				}
-			}
-		}
-	}
-
-	function setNodeValue(updateInformation: IUpdateInformation): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex === -1 || !updateInformation.key) {
-			throw new Error(
-				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
-			);
-		}
-
-		const changed = updateNodeAtIndex(nodeIndex, {
-			[updateInformation.key]: updateInformation.value,
-		});
-
-		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
-
-		const excludeKeys = ['position', 'notes', 'notesInFlow'];
-
-		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
-		}
-	}
-
-	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex === -1) {
-			throw new Error(
-				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
-			);
-		}
-
-		const node = workflow.value.nodes[nodeIndex];
-
-		const newParameters =
-			!!append && isObject(updateInformation.value)
-				? { ...node.parameters, ...updateInformation.value }
-				: updateInformation.value;
-
-		const changed = updateNodeAtIndex(nodeIndex, {
-			parameters: newParameters as INodeParameters,
-		});
-
-		if (changed) {
-			uiStore.stateIsDirty = true;
-			nodeMetadata.value[node.name].parametersLastUpdatedAt = Date.now();
-		}
-	}
-
-	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
-		const latestNode = findLast(
-			workflow.value.nodes,
-			(node) => node.type === updateInformation.key,
-		) as INodeUi;
-		const nodeType = useNodeTypesStore().getNodeType(latestNode.type);
-		if (!nodeType) return;
-
-		const nodeParams = NodeHelpers.getNodeParameters(
-			nodeType.properties,
-			updateInformation.value as INodeParameters,
-			true,
-			false,
-			latestNode,
-			nodeType,
-		);
-
-		if (latestNode) {
-			setNodeParameters({ value: nodeParams, name: latestNode.name }, true);
 		}
 	}
 
@@ -1830,34 +1704,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		setActiveExecutionId(undefined);
-		clearNodeExecutionQueue();
-		executionWaitingForWebhook.value = false;
-		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
-		workflowExecutionStartedData.value = undefined;
-
-		clearPopupWindowState();
-
-		if (!workflowExecutionData.value) {
-			return;
-		}
-
-		const runData = workflowExecutionData.value.data?.resultData.runData ?? {};
-
-		for (const nodeName in runData) {
-			runData[nodeName] = runData[nodeName].filter(
-				({ executionStatus }) => executionStatus === 'success',
-			);
-		}
-
-		if (stopData) {
-			workflowExecutionData.value.status = stopData.status;
-			workflowExecutionData.value.startedAt = stopData.startedAt;
-			workflowExecutionData.value.stoppedAt = stopData.stoppedAt;
-		}
-	}
-
 	function setSelectedTriggerNodeName(value: string) {
 		selectedTriggerNodeName.value = value;
 	}
@@ -1906,8 +1752,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		previousExecutionId: readonlyPreviousExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
-		executingNode,
-		lastAddedExecutingNode,
 		workflowsById,
 		nodeMetadata,
 		isInDebugMode,
@@ -1955,7 +1799,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPinnedDataLastUpdate,
 		getPinnedDataLastRemovedAt,
 		isNodePristine,
-		isNodeExecuting,
 		getExecutionDataById,
 		getPinDataSize,
 		getNodeTypes,
@@ -1973,11 +1816,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchWorkflowsWithNodesIncluded,
 		resetWorkflow,
 		addNodeExecutionStartedData,
-		addExecutingNode,
-		removeExecutingNode,
 		setUsedCredentials,
 		setWorkflowVersionId,
 		replaceInvalidWorkflowCredentials,
+		assignCredentialToMatchingNodes,
 		setWorkflows,
 		deleteWorkflow,
 		archiveWorkflow,
@@ -2003,14 +1845,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeConnection,
 		removeAllNodeConnection,
 		renameNodeSelectedAndExecution,
-		updateNodeAtIndex,
-		setNodeIssue,
 		addNode,
 		removeNode,
-		updateNodeProperties,
-		setNodeValue,
-		setNodeParameters,
-		setLastNodeParameters,
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,
@@ -2031,13 +1867,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
-		setNodePositionById,
 		removeNodeById,
 		removeNodeConnectionsById,
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
-		markExecutionAsStopped,
 		findNodeByPartialId,
 		getPartialIdForNode,
 		setSelectedTriggerNodeName,

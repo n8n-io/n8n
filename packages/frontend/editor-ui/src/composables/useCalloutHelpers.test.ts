@@ -40,7 +40,7 @@ vi.mock('@/stores/posthog.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/users/users.store', () => ({
 	useUsersStore: () => ({
 		isCalloutDismissed: mocks.isCalloutDismissed,
 		setCalloutDismissed: mocks.setCalloutDismissed,
@@ -67,7 +67,7 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
 }));
 
-vi.mock('@/stores/projects.store', () => ({
+vi.mock('@/features/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		currentProjectId: 'test-project-id',
 	}),

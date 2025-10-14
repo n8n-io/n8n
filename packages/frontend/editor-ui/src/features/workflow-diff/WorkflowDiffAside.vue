@@ -62,8 +62,8 @@ const emit = defineEmits<{
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	border-left: 1px solid var(--color-foreground-base);
-	border-top: 1px solid var(--color-foreground-base);
+	border-left: 1px solid var(--color--foreground);
+	border-top: 1px solid var(--color--foreground);
 }
 
 .nodeTitle {
