@@ -76,7 +76,6 @@ function onCancel() {
 					:model-value="selectedCredentialId"
 					size="large"
 					placeholder="Select credential..."
-					data-test-id="credential-select"
 					@update:model-value="onCredentialSelect"
 				>
 					<N8nOption
