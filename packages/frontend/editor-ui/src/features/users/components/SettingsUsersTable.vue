@@ -4,10 +4,10 @@ import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
-import SettingsUsersProjectsCell from '@/components/SettingsUsers/SettingsUsersProjectsCell.vue';
-import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersActionsCell.vue';
-import SettingsUsersLastActiveCell from '@/components/SettingsUsers/SettingsUsersLastActiveCell.vue';
+import SettingsUsersRoleCell from './SettingsUsersRoleCell.vue';
+import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
+import SettingsUsersActionsCell from './SettingsUsersActionsCell.vue';
+import SettingsUsersLastActiveCell from './SettingsUsersLastActiveCell.vue';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 

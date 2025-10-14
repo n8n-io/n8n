@@ -14,7 +14,7 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	loginCurrentUser,
 }));
 
-vi.mock('@/api/invitation', () => ({
+vi.mock('./invitation.api', () => ({
 	inviteUsers,
 }));
 

@@ -11,7 +11,7 @@ import { VIEWS } from '@/constants';
 import router from '@/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
 import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';

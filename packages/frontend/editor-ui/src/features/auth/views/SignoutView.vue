@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/constants';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useToast } from '@/composables/useToast';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';

@@ -9,7 +9,7 @@ import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 import { ResourceType } from '@/features/projects/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';

@@ -10,25 +10,22 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import {
-	DELETE_USER_MODAL_KEY,
-	EnterpriseEditionFeature,
-	INVITE_USER_MODAL_KEY,
-} from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
+import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import type { InvitableRoleName } from '@/Interface';
+import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '../users.store';
 import { useSSOStore } from '@/features/sso/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
+import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 
 import { ElSwitch } from 'element-plus';

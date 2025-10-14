@@ -13,7 +13,7 @@ import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
