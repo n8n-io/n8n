@@ -64,7 +64,7 @@ import type {
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { IUser, IUserResponse } from '@n8n/rest-api-client/api/users';
 import type {
@@ -300,6 +300,7 @@ export type VariableResource = BaseResource & {
 	resourceType: 'variable';
 	key?: string;
 	value?: string;
+	project?: { id: string; name: string };
 };
 
 export type CredentialsResource = BaseResource & {
@@ -1159,4 +1160,10 @@ export interface LlmTokenUsageData {
 	promptTokens: number;
 	totalTokens: number;
 	isEstimate: boolean;
+}
+
+export interface WorkflowValidationIssue {
+	node: string;
+	type: string;
+	value: string | string[];
 }

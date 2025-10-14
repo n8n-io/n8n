@@ -375,7 +375,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 }
 
 .containerPaddingBottom {
-	padding-bottom: var(--spacing-3xl);
+	padding-bottom: var(--spacing--3xl);
 }
 
 .communityNodeFooter {
@@ -384,31 +384,31 @@ const callouts = computed<INodeCreateElement[]>(() =>
 
 .resetSearch {
 	cursor: pointer;
-	line-height: var(--font-line-height-regular);
-	font-weight: var(--font-weight-regular);
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-2xs) var(--spacing-s) 0;
+	line-height: var(--line-height--md);
+	font-weight: var(--font-weight--regular);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--2xs) var(--spacing--sm) 0;
 	color: var(--color--text);
 
 	i {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 		font-style: normal;
 		text-decoration: underline;
 	}
 }
 .actionsEmpty {
-	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-s);
-	font-weight: var(--font-weight-regular);
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--sm);
+	font-weight: var(--font-weight--regular);
 
 	strong {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 .apiHint {
-	padding: 0 var(--spacing-s) var(--spacing-xl);
-	font-size: var(--font-size-2xs);
+	padding: 0 var(--spacing--sm) var(--spacing--xl);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text);
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 	z-index: 1;
 }
 </style>

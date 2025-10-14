@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.115.0",
+  "version": "1.116.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -143,11 +143,5 @@
     "vitest-mock-extended": "catalog:",
     "vue-tsc": "catalog:frontend",
     "z-vue-scan": "^0.0.35"
-  },
-  "peerDependencies": {
-    "@fortawesome/fontawesome-svg-core": "*",
-    "@fortawesome/free-regular-svg-icons": "*",
-    "@fortawesome/free-solid-svg-icons": "*",
-    "@fortawesome/vue-fontawesome": "*"
   }
 }

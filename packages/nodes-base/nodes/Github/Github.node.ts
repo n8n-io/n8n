@@ -336,7 +336,7 @@ export class Github implements INodeType {
 					},
 					{
 						name: 'Get Issues',
-						value: 'getIssues',
+						value: 'getUserIssues',
 						description: 'Returns the issues assigned to the user',
 						action: "Get a user's issues",
 					},
@@ -564,8 +564,7 @@ export class Github implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-						resource: ['user'],
-						operation: ['invite', 'getIssues'],
+						operation: ['invite', 'getUserIssues'],
 					},
 				},
 			},
@@ -2120,8 +2119,7 @@ export class Github implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: ['user'],
-						operation: ['getIssues'],
+						operation: ['getUserIssues'],
 					},
 				},
 				default: false,
@@ -2133,8 +2131,7 @@ export class Github implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: ['user'],
-						operation: ['getIssues'],
+						operation: ['getUserIssues'],
 						returnAll: [false],
 					},
 				},
@@ -2154,8 +2151,7 @@ export class Github implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: ['user'],
-						operation: ['getIssues'],
+						operation: ['getUserIssues'],
 					},
 				},
 				default: {},
@@ -2316,7 +2312,7 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
-			'user:getIssues',
+			'user:getUserIssues',
 			'release:getAll',
 			'review:getAll',
 			'organization:getRepositories',
@@ -2390,7 +2386,7 @@ export class Github implements INodeType {
 				qs = {};
 
 				let owner = '';
-				if (fullOperation !== 'user:invite' && fullOperation !== 'user:getIssues') {
+				if (fullOperation !== 'user:invite' && fullOperation !== 'user:getUserIssues') {
 					// Request the parameters which almost all operations need
 					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
@@ -2398,7 +2394,7 @@ export class Github implements INodeType {
 				let repository = '';
 				if (
 					fullOperation !== 'user:getRepositories' &&
-					fullOperation !== 'user:getIssues' &&
+					fullOperation !== 'user:getUserIssues' &&
 					fullOperation !== 'user:invite' &&
 					fullOperation !== 'organization:getRepositories'
 				) {
@@ -2792,7 +2788,7 @@ export class Github implements INodeType {
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
-					} else if (operation === 'getIssues') {
+					} else if (operation === 'getUserIssues') {
 						// ----------------------------------
 						//         getIssues
 						// ----------------------------------

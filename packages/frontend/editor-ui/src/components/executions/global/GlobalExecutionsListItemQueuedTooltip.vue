@@ -68,6 +68,6 @@ const i18n = useI18n();
 <style lang="scss" module>
 .link {
 	display: inline-block;
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 }
 </style>

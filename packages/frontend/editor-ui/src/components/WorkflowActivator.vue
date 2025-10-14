@@ -270,7 +270,7 @@ watch(
 
 <style lang="scss" module>
 .activeStatusText {
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing--2xs);
 	box-sizing: border-box;
 	display: inline-block;
 	text-align: right;

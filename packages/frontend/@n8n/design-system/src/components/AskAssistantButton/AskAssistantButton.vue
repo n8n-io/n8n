@@ -53,9 +53,9 @@ function onMouseLeave() {
 
 <style lang="scss" module>
 .button {
-	border: var(--border-base);
+	border: var(--border);
 	background: var(--color--foreground--tint-2);
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -78,12 +78,12 @@ function onMouseLeave() {
 	color: var(--prim-color-white);
 	background: var(--color-assistant-highlight-reverse);
 	border-radius: 50%;
-	width: var(--spacing-s);
-	height: var(--spacing-s);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 }
 
 .text {

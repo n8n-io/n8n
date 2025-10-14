@@ -95,14 +95,14 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 .header {
 	cursor: pointer;
 	display: flex;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	align-items: center;
 	justify-content: flex-start;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .expanded {
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--2xs) var(--spacing--sm);
 }
 
 .accordionItems {
@@ -119,10 +119,10 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 
 .description {
 	display: flex;
-	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
 
 	b {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 </style>

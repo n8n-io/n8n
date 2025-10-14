@@ -199,7 +199,7 @@ function closeDialog() {
 
 <style module lang="scss">
 .container > * {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 	overflow-wrap: break-word;
 }
 </style>

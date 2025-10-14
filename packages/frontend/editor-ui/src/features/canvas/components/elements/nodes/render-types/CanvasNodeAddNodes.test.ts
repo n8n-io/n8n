@@ -1,4 +1,4 @@
-import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide, createCanvasProvide } from '@/features/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { TEMPLATES_URLS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
