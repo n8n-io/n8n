@@ -11,11 +11,13 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ref, nextTick, watch } from 'vue';
 import { useTemplateRef } from 'vue';
+import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 
-const { message, compact, isEditing } = defineProps<{
+const { message, compact, isEditing, isStreaming } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
 	isEditing: boolean;
+	isStreaming: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -142,7 +144,9 @@ watch(
 						:plugins="[linksNewTabPlugin]"
 					/>
 				</div>
+				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
+					v-else
 					:role="message.role"
 					:class="$style.actions"
 					@copy="handleCopy"
@@ -242,5 +246,9 @@ watch(
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+}
+
+.typingIndicator {
+	margin-top: var(--spacing--xs);
 }
 </style>

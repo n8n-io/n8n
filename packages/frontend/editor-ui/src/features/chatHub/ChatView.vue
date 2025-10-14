@@ -3,7 +3,7 @@ import { ref, computed, watch, nextTick, onMounted, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 
-import { N8nIcon, N8nScrollArea, N8nIconButton } from '@n8n/design-system';
+import { N8nScrollArea, N8nIconButton } from '@n8n/design-system';
 import ModelSelector from './components/ModelSelector.vue';
 import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 
@@ -38,7 +38,6 @@ import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
 import { useToast } from '@/composables/useToast';
 import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
-import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
 import { useUsersStore } from '@/stores/users.store';
 
@@ -330,19 +329,11 @@ async function handleUpdateMessage(message: ChatMessageType) {
 					:message="message"
 					:compact="isMobileDevice"
 					:is-editing="editingMessageId === message.id"
+					:is-streaming="chatStore.streamingMessageId === message.id"
 					@start-edit="handleStartEditMessage(message.id)"
 					@cancel-edit="handleCancelEditMessage"
 					@update="handleUpdateMessage"
 				/>
-
-				<div v-if="chatStore.isResponding" :class="[$style.message, $style.assistant]">
-					<div :class="$style.avatar">
-						<N8nIcon icon="sparkles" width="20" height="20" />
-					</div>
-					<div :class="$style.bubble">
-						<ChatTypingIndicator v-if="chatStore.isResponding" />
-					</div>
-				</div>
 			</div>
 
 			<div :class="$style.promptContainer">

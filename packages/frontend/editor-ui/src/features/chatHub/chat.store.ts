@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
@@ -21,9 +21,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const isResponding = ref(false);
+	const streamingMessageId = ref<string>();
 	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
 	const sessions = ref<ChatHubSessionDto[]>([]);
+
+	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
 	const getLastMessage = (sessionId: string) => {
 		const msgs = messagesBySession.value[sessionId];
@@ -108,7 +110,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function onBeginMessage(sessionId: string, messageId: string, nodeId: string, runIndex?: number) {
-		isResponding.value = true;
+		streamingMessageId.value = messageId;
 		addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
@@ -124,7 +126,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		isResponding.value = false;
+		streamingMessageId.value = undefined;
 	}
 
 	function onStreamMessage(sessionId: string, message: StructuredChunk, messageId: string) {
@@ -157,12 +159,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function onStreamDone() {
-		isResponding.value = false;
+		streamingMessageId.value = undefined;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onStreamError(_e: Error) {
-		isResponding.value = false;
+		streamingMessageId.value = undefined;
 	}
 
 	function askAI(
@@ -219,6 +221,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		messagesBySession,
 		isResponding,
+		streamingMessageId,
 		sessions,
 		fetchChatModels,
 		askAI,
