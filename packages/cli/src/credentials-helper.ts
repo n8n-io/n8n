@@ -374,6 +374,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal,
 		);
 
+		console.log(credentialsProperties);
+
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(
 			credentialsProperties,
@@ -383,6 +385,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			null,
 			null,
 		) as ICredentialDataDecryptedObject;
+
+		console.log(decryptedData);
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
 			// The OAuth data gets removed as it is not defined specifically as a parameter

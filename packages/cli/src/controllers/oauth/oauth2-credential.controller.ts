@@ -18,6 +18,81 @@ import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDEN
 import { OAuthRequest } from '@/requests';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+import { Container } from '@n8n/di';
+import { UrlService } from '@/services/url.service';
+import { GlobalConfig } from '@n8n/config';
+import { auth } from '@n8n/client-oauth2/src/utils';
+
+/**
+ * OAuth 2.0 Authorization Server Metadata - Based on actual response
+ */
+
+interface OAuthAuthorizationServerMetadata {
+	/** The authorization server's identifier */
+	issuer: string;
+
+	/** URL of the authorization server's authorization endpoint */
+	authorization_endpoint: string;
+
+	/** URL of the authorization server's token endpoint */
+	token_endpoint: string;
+
+	/** URL of the authorization server's dynamic client registration endpoint */
+	registration_endpoint: string;
+
+	/** Array of OAuth 2.0 response_type values supported */
+	response_types_supported: string[];
+
+	/** Array of OAuth 2.0 response_mode values supported */
+	response_modes_supported: string[];
+
+	/** Array of OAuth 2.0 grant type values supported */
+	grant_types_supported: string[];
+
+	/** Array of client authentication methods supported by the token endpoint */
+	token_endpoint_auth_methods_supported: string[];
+
+	/** URL of the authorization server's OAuth 2.0 revocation endpoint */
+	revocation_endpoint: string;
+
+	/** Array of PKCE code challenge methods supported */
+	code_challenge_methods_supported: string[];
+}
+
+/**
+ * Response types from the actual server
+ */
+export type OAuth2ResponseType = 'code';
+
+/**
+ * Response modes from the actual server
+ */
+export type OAuth2ResponseMode = 'query';
+
+/**
+ * Grant types from the actual server
+ */
+export type OAuth2GrantType = 'authorization_code' | 'refresh_token';
+
+/**
+ * Client authentication methods from the actual server
+ */
+export type OAuth2ClientAuthMethod = 'client_secret_basic' | 'client_secret_post' | 'none';
+
+/**
+ * PKCE code challenge methods from the actual server
+ */
+export type PKCECodeChallengeMethod = 'plain' | 'S256';
+
+/**
+ * Example usage:
+ *
+ * const metadata: OAuthAuthorizationServerMetadata = await fetch('/.well-known/oauth-authorization-server')
+ *   .then(res => res.json());
+ *
+ * // This server supports PKCE with both plain and S256
+ * console.log(metadata.code_challenge_methods_supported); // ["plain", "S256"]
+ */
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -48,6 +123,62 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			additionalData,
 		);
 
+		const toUpdate: ICredentialDataDecryptedObject = {};
+
+		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
+			const serverUrl = new URL(oauthCredentials.serverUrl);
+			const response = await fetch(`${serverUrl.origin}/.well-known/oauth-authorization-server`);
+			const data = (await response.json()) as unknown as OAuthAuthorizationServerMetadata;
+
+			const { authorization_endpoint, token_endpoint, registration_endpoint } = data;
+
+			if (!authorization_endpoint || !token_endpoint || !registration_endpoint) {
+				throw new Error(
+					'The OAuth2 server does not support dynamic client registration. Missing endpoints in metadata.',
+				);
+			}
+
+			oauthCredentials.authUrl = authorization_endpoint;
+			oauthCredentials.accessTokenUrl = token_endpoint;
+			toUpdate.authUrl = authorization_endpoint;
+			toUpdate.accessTokenUrl = token_endpoint;
+
+			const instanceBaseUrl = Container.get(UrlService).getInstanceBaseUrl();
+			const restEndpoint = Container.get(GlobalConfig).endpoints.rest;
+
+			const whatever = await fetch(registration_endpoint, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					redirect_uris: [`${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`],
+					token_endpoint_auth_method: 'none',
+					grant_types: ['authorization_code', 'refresh_token'],
+					response_types: ['code'],
+					client_name: 'n8n',
+					client_uri: 'https://n8n.io/',
+				}),
+			});
+
+			const aja = (await whatever.json()) as unknown as {
+				client_id: string;
+				client_secret?: string;
+			};
+
+			console.log(aja);
+
+			const { client_id } = aja;
+
+			oauthCredentials.clientId = client_id;
+			oauthCredentials.grantType = 'pkce';
+			oauthCredentials.authentication = 'body';
+
+			toUpdate.clientId = client_id;
+			toUpdate.grantType = 'pkce';
+			toUpdate.authentication = 'body';
+		}
+
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const [csrfSecret, state] = this.createCsrfState(
 			credential.id,
@@ -59,13 +190,16 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			state,
 		};
 
+		console.log(oAuthOptions);
+
 		if (oauthCredentials.authQueryParameters) {
 			oAuthOptions.query = qs.parse(oauthCredentials.authQueryParameters);
 		}
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const toUpdate: ICredentialDataDecryptedObject = { csrfSecret };
+		toUpdate.csrfSecret = csrfSecret;
+
 		if (oauthCredentials.grantType === 'pkce') {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -75,16 +209,32 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			};
 			toUpdate.codeVerifier = code_verifier;
 		}
+		console.log(1);
+
+		console.log(credential);
+
+		console.log(toUpdate);
 
 		await this.encryptAndSaveData(credential, toUpdate);
 
+		console.log(1);
+
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
+
+		console.log(oAuthOptions);
+
+		console.log(1);
+
 		const returnUri = oAuthObj.code.getUri();
+
+		console.log(1);
 
 		this.logger.debug('OAuth2 authorization url created for credential', {
 			userId: req.user.id,
 			credentialId: credential.id,
 		});
+
+		console.log(1);
 
 		return returnUri.toString();
 	}
@@ -92,6 +242,8 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	/** Verify and store app code. Generate access tokens and store for respective credential */
 	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
+		console.log('callback');
+
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
@@ -105,9 +257,25 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			const [credential, decryptedDataOriginal, oauthCredentials] =
 				await this.resolveCredential<OAuth2CredentialData>(req);
 
+			if (decryptedDataOriginal.useDynamicClientRegistration) {
+				Object.assign(oauthCredentials, {
+					clientId: decryptedDataOriginal.clientId,
+					authUrl: decryptedDataOriginal.authUrl,
+					accessTokenUrl: decryptedDataOriginal.accessTokenUrl,
+					grantType: decryptedDataOriginal.grantType || 'pkce',
+					authentication: decryptedDataOriginal.authentication || 'body',
+				});
+			}
+
+			console.log('Decrypted data original:', decryptedDataOriginal);
+			console.log('OAuth credentials before conversion:', oauthCredentials);
+
 			let options: Partial<ClientOAuth2Options> = {};
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
+
+			console.log('en el callback endpoint');
+			console.log(oAuthOptions);
 
 			if (oauthCredentials.grantType === 'pkce') {
 				options = {
@@ -147,6 +315,8 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				...oauthToken.data,
 			};
 
+			console.log('OAuth token data to be saved:', oauthTokenData);
+
 			await this.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
 			this.logger.debug('OAuth2 callback successful for credential', {
@@ -155,6 +325,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 			return res.render('oauth-callback');
 		} catch (e) {
+			console.log(e);
 			const error = ensureError(e);
 			return this.renderCallbackError(
 				res,

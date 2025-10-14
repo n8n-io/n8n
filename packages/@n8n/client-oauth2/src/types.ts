@@ -3,6 +3,8 @@ export type Headers = Record<string, string | string[]>;
 export type OAuth2GrantType = 'pkce' | 'authorizationCode' | 'clientCredentials';
 
 export interface OAuth2CredentialData {
+	useDynamicClientRegistration?: boolean;
+	serverUrl?: string;
 	clientId: string;
 	clientSecret?: string;
 	accessTokenUrl: string;

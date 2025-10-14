@@ -72,6 +72,15 @@ export class McpClientTool implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'oAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2Api'],
+					},
+				},
+			},
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
@@ -136,6 +145,10 @@ export class McpClientTool implements INodeType {
 						name: 'None',
 						value: 'none',
 					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2Api',
+					},
 				],
 				default: 'none',
 				description: 'The way to authenticate with your endpoint',
@@ -147,7 +160,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
+						authentication: ['headerAuth', 'bearerAuth', 'oAuth2Api'],
 					},
 				},
 			},

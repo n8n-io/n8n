@@ -235,6 +235,18 @@ export async function getAuthHeaders(
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
 		}
+		case 'oAuth2Api': {
+			const result = await ctx
+				.getCredentials<{ oauthTokenData: { access_token: string } }>('oAuth2Api')
+				.catch(() => null);
+
+			console.log('OAuth2Api credentials result:');
+			console.log(result);
+
+			if (!result) return {};
+
+			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
+		}
 		case 'none':
 		default: {
 			return {};

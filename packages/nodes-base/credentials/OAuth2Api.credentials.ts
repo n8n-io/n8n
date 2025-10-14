@@ -11,9 +11,19 @@ export class OAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'boolean',
+			default: false,
+			required: true,
+		},
+		{
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'options',
+			displayOptions: {
+				show: { useDynamicClientRegistration: [false] },
+			},
 			options: [
 				{
 					name: 'Authorization Code',
@@ -31,12 +41,23 @@ export class OAuth2Api implements ICredentialType {
 			default: 'authorizationCode',
 		},
 		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'string',
+			displayOptions: {
+				show: { useDynamicClientRegistration: [true] },
+			},
+			default: '',
+			required: true,
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'string',
 			displayOptions: {
 				show: {
 					grantType: ['authorizationCode', 'pkce'],
+					useDynamicClientRegistration: [false],
 				},
 			},
 			default: '',
@@ -46,6 +67,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			default: '',
 			required: true,
 		},
@@ -53,6 +79,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			default: '',
 			required: true,
 		},
@@ -60,6 +91,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			typeOptions: {
 				password: true,
 			},
@@ -73,6 +109,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			default: '',
 		},
 		{
@@ -82,6 +123,7 @@ export class OAuth2Api implements ICredentialType {
 			displayOptions: {
 				show: {
 					grantType: ['authorizationCode', 'pkce'],
+					useDynamicClientRegistration: [false],
 				},
 			},
 			default: '',
@@ -93,6 +135,9 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'options',
+			displayOptions: {
+				show: { useDynamicClientRegistration: [false] },
+			},
 			options: [
 				{
 					name: 'Body',
@@ -116,6 +161,7 @@ export class OAuth2Api implements ICredentialType {
 				show: {
 					grantType: ['clientCredentials'],
 					authentication: ['body'],
+					useDynamicClientRegistration: [false],
 				},
 			},
 		},
@@ -131,6 +177,7 @@ export class OAuth2Api implements ICredentialType {
 					grantType: ['clientCredentials'],
 					authentication: ['body'],
 					sendAdditionalBodyProperties: [true],
+					useDynamicClientRegistration: [false],
 				},
 			},
 			default: '',

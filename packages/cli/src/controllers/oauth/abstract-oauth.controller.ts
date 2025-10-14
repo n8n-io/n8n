@@ -149,6 +149,9 @@ export abstract class AbstractOAuthController {
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		credentials.updateData(toUpdate, toDelete);
+
+		console.log('saving credentials');
+		console.log(credentials.getData());
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
