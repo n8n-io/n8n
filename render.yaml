@@ -1,1 +1,21 @@
-branch: master
+services:
+  - type: web
+    name: Futgtg9-n8n
+    env: node
+    plan: free
+    branch: main
+    buildCommand: yarn install
+    startCommand: yarn start
+    envVars:
+      - key: N8N_BASIC_AUTH_ACTIVE
+        value: "true"
+      - key: N8N_BASIC_AUTH_USER
+        value: "admin"
+      - key: N8N_BASIC_AUTH_PASSWORD
+        value: "change-this-password"
+      - key: N8N_ENCRYPTION_KEY
+        value: "my-super-secret-key"
+      - key: N8N_HOST
+        value: "Futgtg9-n8n.onrender.com"
+      - key: N8N_PORT
+        value: "10000"
