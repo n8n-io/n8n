@@ -31,19 +31,20 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatPayloadWithCredentials, ChatMessage } from './chat-hub.types';
+import { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
 
-import { CredentialsHelper } from '@/credentials-helper';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { CredentialsService } from '@/credentials/credentials.service';
 import { ActiveExecutions } from '@/active-executions';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
+import { getBase } from '@/workflow-execute-additional-data';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 @Service()
 export class ChatHubService {
-	private sesssions: Map<string, ChatMessage[]>;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
@@ -54,9 +55,9 @@ export class ChatHubService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeExecutions: ActiveExecutions,
-	) {
-		this.sesssions = new Map<string, ChatMessage[]>();
-	}
+		private readonly sessionRepository: ChatHubSessionRepository,
+		private readonly messageRepository: ChatHubMessageRepository,
+	) {}
 
 	async getModels(
 		user: User,
@@ -293,23 +294,35 @@ export class ChatHubService {
 		return undefined;
 	}
 
-	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
-		let session = this.sesssions.get(payload.sessionId);
-		if (!session) {
-			session = [];
-			this.sesssions.set(payload.sessionId, session);
+	async respondMessage(res: Response, user: User, payload: ChatPayloadWithCredentials) {
+		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
+		const turnId = payload.messageId;
+
+		// TODO: Handle session ID conflicts better (different user, same ID)
+		let session: ChatHubSession;
+		if (existing) {
+			session = existing;
+		} else {
+			session = await this.sessionRepository.createChatSession({
+				id: payload.sessionId,
+				ownerId: user.id,
+				title: 'New Chat',
+				provider: payload.model.provider,
+				model: payload.model.model,
+				workflowId: payload.model.workflowId ?? null,
+				credentialId: payload.credentials?.[payload.model.provider]?.id ?? null,
+			});
 		}
 
-		const chatHistory = session.map((msg) => ({
-			type: msg.type,
-			message: msg.message,
-		}));
-
-		session.push({
+		await this.messageRepository.createChatMessage({
 			id: payload.messageId,
-			message: payload.message,
-			type: 'user',
-			createdAt: new Date(),
+			sessionId: payload.sessionId,
+			type: 'human',
+			name: 'You',
+			content: payload.message,
+			state: 'active',
+			turnId,
+			previousMessageId: payload.previousMessageId ?? null,
 		});
 
 		/* eslint-disable @typescript-eslint/naming-convention */
@@ -357,7 +370,20 @@ export class ChatHubService {
 				parameters: {
 					mode: 'insert',
 					messages: {
-						messageValues: chatHistory,
+						messageValues: session.messages?.map((message) => {
+							const typeMap: Record<string, MessageRecord['type']> = {
+								human: 'user',
+								ai: 'ai',
+								system: 'system',
+							};
+
+							// TODO: Tools ?
+							return {
+								type: typeMap[message.type] || 'system',
+								message: message.content,
+								hideFromUI: false,
+							};
+						}),
 					},
 				},
 				type: '@n8n/n8n-nodes-langchain.memoryManager',
@@ -456,12 +482,16 @@ export class ChatHubService {
 
 		const message = this.getMessage(execution);
 		if (message) {
-			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
-			session.push({
+			await this.messageRepository.createChatMessage({
 				id: payload.replyId,
-				message,
+				sessionId: payload.sessionId,
 				type: 'ai',
-				createdAt: new Date(),
+				name: 'AI',
+				content: message,
+				state: 'active',
+				turnId,
+				executionId: parseInt(execution.id, 10),
+				previousMessageId: payload.messageId,
 			});
 		}
 	}
