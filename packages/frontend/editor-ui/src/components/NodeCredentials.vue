@@ -343,6 +343,24 @@ function onCredentialSelected(
 		});
 	}
 
+	// Auto-assign credential to other matching nodes
+	const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
+		credentials: newSelectedCredentials,
+		type: selectedCredentialsType,
+		currentNodeName: props.node.name,
+	});
+
+	if (updatedNodesCount > 0) {
+		nodeHelpers.updateNodesCredentialsIssues();
+		toast.showMessage({
+			title: i18n.baseText('nodeCredentials.showMessage.title'),
+			message: i18n.baseText('nodeCredentials.autoAssigned.message', {
+				interpolate: { count: String(updatedNodesCount) },
+			}),
+			type: 'success',
+		});
+	}
+
 	// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
 	if (props.showAll && mainNodeAuthField.value) {
 		const nodeCredentialDescription = nodeType.value?.credentials?.find(

@@ -19,8 +19,6 @@ export type ChatMessage = {
 	createdAt: Date;
 };
 
-export type ChatHubMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
-
 // From packages/@n8n/nodes-langchain/nodes/memory/MemoryManager/MemoryManager.node.ts
 export type MessageRole = 'ai' | 'system' | 'user';
 export interface MessageRecord {

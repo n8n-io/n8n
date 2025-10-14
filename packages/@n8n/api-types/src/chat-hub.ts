@@ -49,6 +49,7 @@ export type ChatModelsResponse = Record<
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
 	previousMessageId: z.string().uuid().nullable(),
@@ -60,41 +61,58 @@ export class ChatHubSendMessageRequest extends Z.class({
 	),
 }) {}
 
-/**
- * Chat message schema
- */
-export const chatHubMessageSchema = z.object({
-	id: z.string().uuid(),
-	conversationId: z.string().uuid(),
-	role: z.enum(['user', 'assistant']),
-	content: z.string(),
-	createdAt: z.string().datetime(),
-});
+export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
+export type ChatHubMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
 
-export type ChatHubMessage = z.infer<typeof chatHubMessageSchema>;
+export type ChatSessionId = string; // UUID
+export type ChatMessageId = string; // UUID
 
-/**
- * Chat conversation schema
- */
-export const chatHubConversationSchema = z.object({
-	id: z.string().uuid(),
-	title: z.string(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
-});
+export interface ChatHubSessionDto {
+	id: ChatSessionId;
+	title: string;
+	ownerId: string;
+	lastMessageAt: string | null;
+	credentialId: string | null;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
 
-export type ChatHubConversation = z.infer<typeof chatHubConversationSchema>;
+export interface ChatHubMessageDto {
+	id: ChatMessageId;
+	sessionId: ChatSessionId;
+	type: ChatHubMessageType;
+	name: string;
+	content: string;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	executionId: number | null;
+	state: ChatHubMessageState;
+	createdAt: string;
+	updatedAt: string;
 
-/**
- * Response schema for GET /conversations
- */
-export const chatHubConversationsResponseSchema = z.array(chatHubConversationSchema);
+	previousMessageId: ChatMessageId | null;
+	turnId: ChatMessageId | null;
+	retryOfMessageId: ChatMessageId | null;
+	revisionOfMessageId: ChatMessageId | null;
+	runIndex: number;
 
-export type ChatHubConversationsResponse = z.infer<typeof chatHubConversationsResponseSchema>;
+	responseIds: ChatMessageId[];
+	retryIds: ChatMessageId[];
+	revisionIds: ChatMessageId[];
+}
 
-/**
- * Response schema for GET /conversations/:id/messages
- */
-export const chatHubMessagesResponseSchema = z.array(chatHubMessageSchema);
+export type ChatHubConversationsResponse = ChatHubSessionDto[];
 
-export type ChatHubMessagesResponse = z.infer<typeof chatHubMessagesResponseSchema>;
+export interface ChatHubConversationResponse {
+	session: ChatHubSessionDto;
+
+	conversation: {
+		messages: Record<string, ChatHubMessageDto>;
+		rootIds: string[];
+		activeMessageChain: string[];
+	};
+}

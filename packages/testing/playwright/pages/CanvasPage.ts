@@ -886,10 +886,6 @@ export class CanvasPage extends BasePage {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
 	}
 
-	async hitPaste(): Promise<void> {
-		await this.page.keyboard.press('ControlOrMeta+V');
-	}
-
 	async hitSaveWorkflow(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+s');
 	}

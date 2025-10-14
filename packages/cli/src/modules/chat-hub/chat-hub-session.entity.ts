@@ -1,17 +1,21 @@
 import { ChatHubProvider } from '@n8n/api-types';
+import { WithTimestamps, DateTimeColumn, User, CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import {
-	WithTimestampsAndStringId,
-	DateTimeColumn,
-	User,
-	CredentialsEntity,
-	WorkflowEntity,
-} from '@n8n/db';
-import { Column, Entity, ManyToOne, OneToMany, JoinColumn } from '@n8n/typeorm';
+	Column,
+	Entity,
+	ManyToOne,
+	OneToMany,
+	JoinColumn,
+	PrimaryGeneratedColumn,
+} from '@n8n/typeorm';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
 @Entity({ name: 'chat_hub_sessions' })
-export class ChatHubSession extends WithTimestampsAndStringId {
+export class ChatHubSession extends WithTimestamps {
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
+
 	/**
 	 * The title of the chat session/conversation.
 	 * Auto-generated if not provided by the user after the initial AI responses.
@@ -22,7 +26,7 @@ export class ChatHubSession extends WithTimestampsAndStringId {
 	/**
 	 * ID of the user that owns this chat session.
 	 */
-	@Column({ type: 'varchar', length: 36 })
+	@Column({ type: String })
 	ownerId: string;
 
 	/**
