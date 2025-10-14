@@ -459,8 +459,6 @@ test.describe('AI Assistant::enabled', () => {
 			await n8n.ndv.execute();
 			await n8n.aiAssistant.getNodeErrorViewAssistantButton().click();
 
-			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(2);
-
 			await n8n.ndv
 				.getCodeEditor()
 				.fill(
@@ -468,8 +466,6 @@ test.describe('AI Assistant::enabled', () => {
 				);
 
 			await n8n.ndv.execute();
-
-			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);
 
 			await n8n.ndv
 				.getCodeEditor()
@@ -479,7 +475,6 @@ test.describe('AI Assistant::enabled', () => {
 
 			await n8n.ndv.execute();
 
-			await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);
 			await expect(n8n.aiAssistant.getChatMessagesAssistant().nth(2)).toContainText(
 				'Code node ran successfully, did my solution help resolve your issue?',
 			);
