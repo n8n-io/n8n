@@ -858,7 +858,7 @@ onBeforeUnmount(() => {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-color: var(--color-dialog-overlay-background-dark);
+	background-color: var(--dialog--overlay--color--background--dark);
 }
 
 .dialog {

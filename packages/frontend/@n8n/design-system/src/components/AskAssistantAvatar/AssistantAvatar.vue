@@ -14,7 +14,7 @@ withDefaults(defineProps<{ size?: 'small' | 'mini' }>(), {
 
 <style lang="scss" module>
 .container {
-	background: var(--color-assistant-highlight-gradient);
+	background: var(--assistant--color--highlight-gradient);
 	border-radius: 50%;
 	display: inline-flex;
 	align-items: center;

@@ -212,12 +212,12 @@ defineSlots<{
 
 .customRow {
 	cursor: pointer;
-	--color-table-row-hover-background: var(--color--background);
+	--table--row--color--background--hover: var(--color--background);
 }
 
 .customDisabledRow {
 	cursor: default;
-	--color-table-row-hover-background: var(--color--background--light-2);
+	--table--row--color--background--hover: var(--color--background--light-2);
 }
 
 .customHeaderCell {

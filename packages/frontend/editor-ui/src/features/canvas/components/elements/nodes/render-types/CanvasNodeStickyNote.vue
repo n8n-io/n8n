@@ -133,7 +133,7 @@ onBeforeUnmount(() => {
 	 */
 
 	&.selected {
-		box-shadow: 0 0 0 4px var(--color-canvas-selected);
+		box-shadow: 0 0 0 4px var(--canvas--color--selected);
 	}
 }
 </style>

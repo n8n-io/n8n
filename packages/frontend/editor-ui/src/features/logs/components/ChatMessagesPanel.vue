@@ -378,7 +378,7 @@ async function copySessionId() {
 }
 
 .messagesInput {
-	--input-border-color: var(--border-color);
+	--input--border-color: var(--border-color);
 	--chat--input--border: none;
 
 	--chat--input--border-radius: 0.5rem;
@@ -386,31 +386,31 @@ async function copySessionId() {
 	--chat--input--send--button--color: var(--color--primary);
 	--chat--input--file--button--background: transparent;
 	--chat--input--file--button--color: var(--color--primary);
-	--chat--input--border-active: var(--input-focus-border-color, var(--color--secondary));
+	--chat--input--border-active: var(--input--border-color--focus, var(--color--secondary));
 	--chat--files-spacing: var(--spacing--2xs);
 	--chat--input--background: transparent;
-	--chat--input--file--button--color: var(--color-button-secondary-font);
+	--chat--input--file--button--color: var(--button--color--text--secondary);
 	--chat--input--file--button--color-hover: var(--color--primary);
 
 	padding: var(--spacing--5xs);
 	margin: 0 var(--chat--spacing) var(--chat--spacing);
 	flex-grow: 1;
 	display: flex;
-	background: var(--color-lm-chat-bot-background);
+	background: var(--lm-chat--bot--color--background);
 	border-radius: var(--chat--input--border-radius);
 	transition: border-color 200ms ease-in-out;
-	border: var(--input-border-color, var(--border-color))
-		var(--input-border-style, var(--border-style)) var(--input-border-width, var(--border-width));
+	border: var(--input--border-color, var(--border-color))
+		var(--input--border-style, var(--border-style)) var(--input-border-width, var(--border-width));
 
 	[data-theme='dark'] & {
-		--chat--input--text-color: var(--input-font-color, var(--color--text--shade-1));
+		--chat--input--text-color: var(--input--color--text, var(--color--text--shade-1));
 	}
 	@media (prefers-color-scheme: dark) {
-		--chat--input--text-color: var(--input-font-color, var(--color--text--shade-1));
+		--chat--input--text-color: var(--input--color--text, var(--color--text--shade-1));
 	}
 
 	&:focus-within {
-		--input-border-color: #4538a3;
+		--input--border-color: #4538a3;
 	}
 }
 
