@@ -898,7 +898,7 @@ $main-panel-width: 360px;
 	gap: var(--spacing--3xs);
 
 	span {
-		color: var(--color-ndv-back-font);
+		color: var(--ndv--back--color--text);
 	}
 
 	&:hover {
@@ -917,7 +917,7 @@ $main-panel-width: 360px;
 	position: absolute;
 	bottom: var(--spacing--4xs);
 	left: calc(100% + var(--spacing--sm));
-	color: var(--color-feature-request-font);
+	color: var(--feature-request--color--text);
 	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 

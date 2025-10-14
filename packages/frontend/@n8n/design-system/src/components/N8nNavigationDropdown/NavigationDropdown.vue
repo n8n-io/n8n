@@ -208,12 +208,12 @@ defineExpose({
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
 		color: var(--color--text--shade-1);
-		background-color: var(--color-menu-background);
+		background-color: var(--menu--color--background);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item:not(.is-disabled):hover),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title:not(.is-disabled):hover) {
-		background-color: var(--color-menu-hover-background);
+		background-color: var(--menu--color--background--hover);
 	}
 
 	:global(.el-popper) {

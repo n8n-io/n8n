@@ -1,9 +1,9 @@
 $--mode-selector-width: 92px;
 
 .modeSelector {
-	--input-background-color: initial;
-	--input-font-color: initial;
-	--input-border-color: initial;
+	--input--color--background: initial;
+	--input--color--text: initial;
+	--input--border-color: initial;
 	width: $--mode-selector-width;
 
 	input {
@@ -60,8 +60,8 @@ $--mode-selector-width: 92px;
 		align-items: center;
 		width: 100%;
 
-		--input-border-top-left-radius: 0;
-		--input-border-bottom-left-radius: 0;
+		--input--radius--top-left: 0;
+		--input--radius--bottom-left: 0;
 
 		> div {
 			width: 100%;
@@ -74,7 +74,7 @@ $--mode-selector-width: 92px;
 
 	.background {
 		position: absolute;
-		background-color: var(--color-background-input-triple);
+		background-color: var(--input-triple--color--background);
 		top: 0;
 		bottom: 0;
 		left: 0;
@@ -108,14 +108,14 @@ $--mode-selector-width: 92px;
 }
 
 .droppable {
-	--input-border-color: var(--color--secondary--tint-1);
-	--input-border-style: dashed;
+	--input--border-color: var(--color--secondary--tint-1);
+	--input--border-style: dashed;
 }
 
 .activeDrop {
-	--input-border-color: var(--color--success);
-	--input-background-color: var(--color--success--tint-4);
-	--input-border-style: solid;
+	--input--border-color: var(--color--success);
+	--input--color--background: var(--color--success--tint-4);
+	--input--border-style: solid;
 
 	textarea,
 	input {

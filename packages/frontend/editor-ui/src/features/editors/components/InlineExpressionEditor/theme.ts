@@ -7,8 +7,8 @@ const commonThemeProps = (isReadOnly = false) => ({
 	},
 	'.cm-content': {
 		fontFamily: 'var(--font-family--monospace)',
-		color: 'var(--input-font-color, var(--color--text--shade-1))',
-		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
+		color: 'var(--input--color--text, var(--color--text--shade-1))',
+		caretColor: isReadOnly ? 'transparent' : 'var(--code--caret--color)',
 	},
 	'.cm-line': {
 		padding: '0',
@@ -26,23 +26,23 @@ export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }
 			fontSize: 'var(--font-size--2xs)',
 			padding: '0 0 0 var(--spacing--2xs)',
 			borderWidth: 'var(--border-width)',
-			borderStyle: 'var(--input-border-style, var(--border-style))',
-			borderColor: 'var(--input-border-color, var(--border-color))',
+			borderStyle: 'var(--input--border-style, var(--border-style))',
+			borderColor: 'var(--input--border-color, var(--border-color))',
 			borderRightColor:
-				'var(--input-border-right-color,var(--input-border-color, var(--border-color)))',
+				'var(--input--border-right-color,var(--input--border-color, var(--border-color)))',
 			borderBottomColor:
-				'var(--input-border-bottom-color,var(--input-border-color, var(--border-color)))',
-			borderRadius: 'var(--input-border-radius, var(--radius))',
+				'var(--input--border-bottom-color,var(--input--border-color, var(--border-color)))',
+			borderRadius: 'var(--input--radius, var(--radius))',
 			borderTopLeftRadius: 0,
 			borderTopRightRadius:
-				'var(--input-border-top-right-radius, var(--input-border-radius, var(--radius)))',
+				'var(--input-border-top-right-radius, var(--input--radius, var(--radius)))',
 			borderBottomLeftRadius: 0,
 			borderBottomRightRadius:
-				'var(--input-border-bottom-right-radius, var(--input-border-radius, var(--radius)))',
+				'var(--input-border-bottom-right-radius, var(--input--radius, var(--radius)))',
 			backgroundColor: 'white',
 		},
 		'.cm-cursor, .cm-dropCursor': {
-			borderLeftColor: 'var(--color-code-caret)',
+			borderLeftColor: 'var(--code--caret--color)',
 		},
 		'.cm-scroller': {
 			lineHeight: '1.68',

@@ -53,7 +53,7 @@ const iconName = computed(() => {
 const iconColor = computed(() => {
 	const { iconColor: color } = credentialWithIcon.value ?? {};
 	if (!color) return undefined;
-	return `var(--color-node-icon-${color})`;
+	return `var(--node--icon--color--${color})`;
 });
 
 function getCredentialWithIcon(name: string | null): ICredentialType | null {
@@ -97,6 +97,6 @@ function getCredentialWithIcon(name: string | null): ICredentialType | null {
 
 <style lang="scss" module>
 .icon {
-	--node-icon-color: var(--color--foreground--shade-1);
+	--node--icon--color: var(--color--foreground--shade-1);
 }
 </style>

@@ -21,7 +21,7 @@
 
 // Dialog
 .el-overlay {
-	background-color: var(--color-dialog-overlay-background-dark);
+	background-color: var(--dialog--overlay--color--background--dark);
 }
 
 #app-modals .el-overlay {
@@ -190,7 +190,7 @@
 		}
 
 		.el-notification__title {
-			color: var(--color-callout-info-font);
+			color: var(--callout--color--text--info);
 			font-family: var(--font-family);
 			font-size: var(--font-size--sm);
 			font-style: normal;
@@ -199,7 +199,7 @@
 		}
 
 		.el-notification__content {
-			color: var(--color-callout-info-font);
+			color: var(--callout--color--text--info);
 			font-family: var(--font-family);
 			font-size: var(--font-size--sm);
 			font-style: normal;

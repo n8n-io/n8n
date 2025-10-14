@@ -377,8 +377,8 @@ defineExpose({ isWithinDropdown });
 
 .searchInput {
 	border-bottom: var(--border);
-	--input-border-color: none;
-	--input-font-size: var(--font-size--2xs);
+	--input--border-color: none;
+	--input--font-size: var(--font-size--2xs);
 	width: 100%;
 	z-index: 1;
 }
