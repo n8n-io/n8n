@@ -4,7 +4,7 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { DatatableColumn } from '@n8n/design-system';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -123,6 +123,7 @@ const slots = defineSlots<{
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
+	postdata(): unknown;
 	'add-button'(): unknown;
 	callout(): unknown;
 	filters(props: {
@@ -756,6 +757,10 @@ defineExpose({
 					>
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
+						</template>
+
+						<template #postdata>
+							<slot name="postdata" />
 						</template>
 					</N8nDatatable>
 				</div>

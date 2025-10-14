@@ -191,7 +191,7 @@ function onRetryMenuItemSelect(action: string): void {
 @use '@/styles/variables' as *;
 
 .WorkflowExecutionsCard {
-	--execution-list-item-background: var(--execution-card-background);
+	--execution-list-item-background: var(--execution-card--color--background);
 	--execution-list-item-highlight-background: var(--color--warning--tint-1);
 
 	display: flex;
@@ -209,7 +209,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:hover,
 	&.active {
 		.executionLink {
-			--execution-list-item-background: var(--execution-card-background-hover);
+			--execution-list-item-background: var(--execution-card--color--background--hover);
 		}
 	}
 
@@ -221,7 +221,8 @@ function onRetryMenuItemSelect(action: string): void {
 		}
 		&,
 		& .executionLink {
-			border-left: var(--spacing--4xs) var(--border-style) var(--execution-card-border-running);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--running);
 		}
 		.statusLabel,
 		.spinner {
@@ -232,24 +233,27 @@ function onRetryMenuItemSelect(action: string): void {
 	&.success {
 		&,
 		& .executionLink {
-			border-left: var(--spacing--4xs) var(--border-style) var(--execution-card-border-success);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--success);
 		}
 	}
 
 	&.new {
 		&,
 		& .executionLink {
-			border-left: var(--spacing--4xs) var(--border-style) var(--execution-card-border-waiting);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--waiting);
 		}
 		.statusLabel {
-			color: var(--execution-card-text-waiting);
+			color: var(--execution-card--color--text--waiting);
 		}
 	}
 
 	&.waiting {
 		&,
 		& .executionLink {
-			border-left: var(--spacing--4xs) var(--border-style) var(--execution-card-border-waiting);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--waiting);
 		}
 		.statusLabel {
 			color: var(--color--secondary);
@@ -259,7 +263,8 @@ function onRetryMenuItemSelect(action: string): void {
 	&.error {
 		&,
 		& .executionLink {
-			border-left: var(--spacing--4xs) var(--border-style) var(--execution-card-border-error);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--error);
 		}
 		.statusLabel {
 			color: var(--color--danger);
@@ -269,7 +274,8 @@ function onRetryMenuItemSelect(action: string): void {
 	&.unknown {
 		&,
 		& .executionLink {
-			border-left: var(--spacing--4xs) var(--border-style) var(--execution-card-border-unknown);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--unknown);
 		}
 	}
 

@@ -9,7 +9,7 @@ import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import type { IDataObject } from 'n8n-workflow';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useToast } from '@/composables/useToast';
 import { useDebounce } from '@/composables/useDebounce';

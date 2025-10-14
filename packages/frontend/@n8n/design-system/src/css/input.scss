@@ -43,7 +43,7 @@
 	}
 
 	& .el-input__count {
-		color: var(--color-info);
+		color: var(--color--info);
 		background: var.$color-white;
 		position: absolute;
 		font-size: 12px;
@@ -97,7 +97,7 @@
 		height: 100%;
 		display: inline-flex;
 		align-items: center;
-		color: var(--color-info);
+		color: var(--color--info);
 		font-size: 12px;
 
 		.el-input__count-inner {
@@ -294,7 +294,7 @@
 
 	@include mixins.e((append, prepend)) {
 		background-color: var.$background-color-base;
-		color: var(--color-info);
+		color: var(--color--info);
 		vertical-align: middle;
 		display: table-cell;
 		position: relative;
