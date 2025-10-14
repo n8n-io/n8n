@@ -158,7 +158,8 @@ export async function execute(
 		const columnMetaDataObject: ColumnMap = getColumnMap(tableSchema);
 		const inputColumns = Object.keys(item);
 		let query = `INSERT INTO ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
-		const outputColumns = this.getNodeParameter('options.outputColumns', 0, []) as string[];
+		let outputColumns = this.getNodeParameter('options.outputColumns', 0, []) as string[];
+		if (outputColumns.includes('*')) outputColumns = Object.keys(columnMetaDataObject);
 
 		query = getBindDefsForExecuteMany(
 			this.getNode(),
@@ -182,7 +183,7 @@ export async function execute(
 			executeManyValues.push(newItem);
 		}
 
-		queries.push({ query, executeManyValues });
+		queries.push({ query, executeManyValues, outputColumns });
 	} else {
 		const updateTableSchema = configureTableSchemaUpdater(this.getNode(), schema, table);
 
@@ -210,8 +211,9 @@ export async function execute(
 			const columnMetaDataObject = getColumnMap(tableSchema);
 			const inputColumns = Object.keys(item);
 			let query = `INSERT INTO ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
-			const outputColumns = this.getNodeParameter('options.outputColumns', i, []) as string[];
+			let outputColumns = this.getNodeParameter('options.outputColumns', i, []) as string[];
 			const bindParams: oracleDBTypes.BindParameter[] = [];
+			if (outputColumns.includes('*')) outputColumns = Object.keys(columnMetaDataObject);
 
 			query = getQueryBindParameters(
 				this.getNode(),
@@ -224,7 +226,7 @@ export async function execute(
 				i,
 			);
 
-			queries.push({ query, values: bindParams });
+			queries.push({ query, values: bindParams, outputColumns });
 		}
 	}
 
