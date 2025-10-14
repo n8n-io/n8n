@@ -207,7 +207,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: call the endpoint
 	}
 
-	async function updateChatMessage(sessionId: string, messageId: string, content: string) {
+	async function updateChatMessage(_sessionId: string, _messageId: string, _content: string) {
 		// TODO: call the endpoint
 	}
 
