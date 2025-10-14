@@ -118,7 +118,7 @@ describe('UserService', () => {
 
 			describe('toPublic', () => {
 				it('should include inviteAcceptUrl if requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE });
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
@@ -137,13 +137,16 @@ describe('UserService', () => {
 				});
 
 				it('should not include inviteAcceptUrl if not requested', async () => {
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
 						isPending: true,
 					});
 
-					const result = await userService.toPublic(pendingUser);
+					const result = await userService.toPublic(pendingUser, {
+						inviterId: inviter.id,
+					});
 
 					expect(result.inviteAcceptUrl).toBeUndefined();
 				});
@@ -191,7 +194,7 @@ describe('UserService', () => {
 
 			describe('toPublic', () => {
 				it('should not include inviteAcceptUrl if requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE });
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
@@ -207,13 +210,16 @@ describe('UserService', () => {
 				});
 
 				it('should not include inviteAcceptUrl if not requested', async () => {
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
 						isPending: true,
 					});
 
-					const result = await userService.toPublic(pendingUser);
+					const result = await userService.toPublic(pendingUser, {
+						inviterId: inviter.id,
+					});
 
 					expect(result.inviteAcceptUrl).toBeUndefined();
 				});

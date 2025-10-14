@@ -80,6 +80,10 @@ export class UserService {
 			isOwner: user.role.slug === 'global:owner',
 		};
 
+		if (options?.withInviteUrl && !options?.inviterId) {
+			throw new UnexpectedError('Inviter ID is required to generate invite URL');
+		}
+
 		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
 
 		if (
@@ -88,9 +92,6 @@ export class UserService {
 			options?.inviterId &&
 			publicUser.isPending
 		) {
-			if (options?.withInviteUrl && !options?.inviterId) {
-				throw new UnexpectedError('Inviter ID is required to generate invite URL');
-			}
 			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
