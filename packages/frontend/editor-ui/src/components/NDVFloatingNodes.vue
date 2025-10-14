@@ -207,7 +207,7 @@ defineExpose({
 }
 .connectedNode {
 	border: var(--border);
-	background-color: var(--color-node-background);
+	background-color: var(--node--color--background);
 	border-radius: 100%;
 	padding: var(--spacing--sm);
 	cursor: pointer;

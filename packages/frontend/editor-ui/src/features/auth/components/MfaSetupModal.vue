@@ -316,7 +316,7 @@ onMounted(async () => {
 	text-align: center;
 
 	canvas {
-		border: 4px solid var(--color-qr-code-border);
+		border: 4px solid var(--qr-code--border-color);
 	}
 }
 
@@ -326,7 +326,7 @@ onMounted(async () => {
 .recoveryCodesContainer {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-mfa-recovery-code-background);
+	background-color: var(--mfa--recovery-code--color--background);
 	text-align: center;
 	flex-wrap: nowrap;
 	justify-content: space-between;
@@ -343,7 +343,7 @@ onMounted(async () => {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
 	line-height: var(--spacing--md);
-	color: var(--color-mfa-recovery-code-color);
+	color: var(--mfa--recovery-code--color);
 }
 
 .form:first-child span {
@@ -361,7 +361,7 @@ onMounted(async () => {
 }
 
 .loseAccessText {
-	color: var(--color-mfa-lose-access-text-color);
+	color: var(--mfa--lose-access--color--text);
 }
 
 .error input {

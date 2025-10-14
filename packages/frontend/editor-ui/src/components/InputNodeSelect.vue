@@ -177,7 +177,7 @@ function onInputNodeChange(value: string) {
 }
 
 .node {
-	--select-option-padding: 0 var(--spacing--sm);
+	--select--option--padding: 0 var(--spacing--sm);
 	display: flex;
 	align-items: center;
 	font-size: var(--font-size--2xs);
