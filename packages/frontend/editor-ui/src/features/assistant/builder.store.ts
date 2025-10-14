@@ -4,13 +4,14 @@ import {
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
 	EDITABLE_CANVAS_VIEWS,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
@@ -19,7 +20,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
+import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
 import { generateMessageId, createBuilderPayload } from '@/helpers/builderHelpers';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -45,6 +46,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
+	const hasMessages = ref<boolean>(false);
 
 	// Store dependencies
 	const chatPanelStateStore = useChatPanelStateStore();
@@ -541,6 +543,39 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
+	async function fetchSessionsMetadata() {
+		const workflowId = workflowsStore.workflowId;
+		if (!workflowId) {
+			hasMessages.value = false;
+			return;
+		}
+
+		try {
+			const response = await getSessionsMetadata(rootStore.restApiContext, workflowId);
+			hasMessages.value = response.hasMessages;
+		} catch (error) {
+			console.error('Failed to fetch sessions metadata:', error);
+			hasMessages.value = false;
+		}
+	}
+
+	// Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
+	watch(
+		() => workflowsStore.workflowId,
+		(newWorkflowId) => {
+			// Only fetch if we have a valid workflow ID, and we're in a builder-enabled view
+			if (
+				newWorkflowId &&
+				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)
+			) {
+				void fetchSessionsMetadata();
+			} else {
+				hasMessages.value = false;
+			}
+		},
+	);
+
 	// Public API
 	return {
 		// State
@@ -562,6 +597,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		hasMessages: computed(() => hasMessages.value),
 
 		// Methods
 		stopStreaming,
@@ -573,5 +609,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchBuilderCredits,
 		updateBuilderCredits,
 		getRunningTools,
+		fetchSessionsMetadata,
 	};
 });
