@@ -44,6 +44,7 @@ const PROPERTY_VOCABULARY = new Set([
 	'margin-left',
 	'margin-top',
 	'margin-bottom',
+	'max-height',
 	'max-width',
 	'z',
 	'duration',

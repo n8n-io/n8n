@@ -173,18 +173,8 @@ onBeforeMount(() => {
 		left: 27px;
 		background: linear-gradient(
 			270deg,
-			hsla(
-				var(--color--background--light-2-h),
-				var(--color--background--light-2-s),
-				var(--color--background--light-2-l),
-				50%
-			),
-			hsla(
-				var(--color--background--light-2-h),
-				var(--color--background--light-2-s),
-				var(--color--background--light-2-l),
-				100%
-			)
+			var(--color--background--light-1),
+			var(--color--background--light-2)
 		);
 	}
 }
@@ -197,18 +187,8 @@ onBeforeMount(() => {
 		right: 27px;
 		background: linear-gradient(
 			90deg,
-			hsla(
-				var(--color--background--light-2-h),
-				var(--color--background--light-2-s),
-				var(--color--background--light-2-l),
-				50%
-			),
-			hsla(
-				var(--color--background--light-2-h),
-				var(--color--background--light-2-s),
-				var(--color--background--light-2-l),
-				100%
-			)
+			var(--color--background--light-1),
+			var(--color--background--light-2)
 		);
 	}
 }
