@@ -720,6 +720,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 
+			// Skip if node already has credential set
+			if (node.credentials && Object.keys(node.credentials).length > 0) {
+				return;
+			}
+
 			// Get node type to check if it supports this credential
 			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (!nodeType?.credentials) {
@@ -732,16 +737,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 
-			// Check if node already has this credential type set
-			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
-			if (nodeCredentials?.[data.type]) {
-				// Already has a credential of this type, skip
-				return;
-			}
-
-			// Assign the credential
+			// Assign the same credential to the node
 			node.credentials ??= {} satisfies INodeCredentials;
-			(node.credentials as INodeCredentials)[data.type] = data.credentials;
+			node.credentials[data.type] = data.credentials;
+
 			updatedNodesCount++;
 		});
 
