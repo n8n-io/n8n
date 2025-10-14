@@ -103,7 +103,13 @@ import type {
 	NodeConnectionType,
 	INodeParameters,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import {
+	deepCopy,
+	NodeConnectionTypes,
+	NodeHelpers,
+	TelemetryHelpers,
+	isCommunityPackageName,
+} from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
@@ -671,7 +677,8 @@ export function useCanvasOperations() {
 		version?: INodeUi['typeVersion'],
 	): INodeTypeDescription {
 		return (
-			nodeTypesStore.getNodeType(type, version) ?? {
+			nodeTypesStore.getNodeType(type, version) ??
+			nodeTypesStore.communityNodeType(type)?.nodeDescription ?? {
 				properties: [],
 				displayName: type,
 				name: type,
@@ -1081,7 +1088,6 @@ export function useCanvasOperations() {
 			node,
 			nodeTypeDescription,
 		);
-
 		node.parameters = nodeParameters ?? {};
 	}
 
@@ -1558,6 +1564,19 @@ export function useCanvasOperations() {
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
+		const checkIsNotInstalledCommunityNode = (node: INodeUi) =>
+			isCommunityPackageName(node.type) && !useNodeTypesStore().getIsNodeInstalled(node.type);
+
+		const isSourceNotInstalled = checkIsNotInstalledCommunityNode(sourceNode);
+		const isTargetNotInstalled = checkIsNotInstalledCommunityNode(targetNode);
+
+		const getNodeType = (node: INodeUi) => {
+			return (
+				nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+				nodeTypesStore.communityNodeType(node.type)?.nodeDescription
+			);
+		};
+
 		if (sourceConnection.type !== targetConnection.type) {
 			return false;
 		}
@@ -1566,7 +1585,7 @@ export function useCanvasOperations() {
 			return false;
 		}
 
-		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
+		const sourceNodeType = getNodeType(sourceNode);
 		const sourceWorkflowNode = editableWorkflowObject.value.getNode(sourceNode.name);
 		if (!sourceWorkflowNode) {
 			return false;
@@ -1590,11 +1609,14 @@ export function useCanvasOperations() {
 		const sourceNodeHasOutputConnectionPortOfType =
 			sourceConnection.index < sourceNodeOutputs.length;
 
-		if (!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType) {
+		const isMissingOutputConnection =
+			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
+
+		if (isMissingOutputConnection && !isSourceNotInstalled) {
 			return false;
 		}
 
-		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
+		const targetNodeType = getNodeType(targetNode);
 		const targetWorkflowNode = editableWorkflowObject.value.getNode(targetNode.name);
 		if (!targetWorkflowNode) {
 			return false;
@@ -1636,7 +1658,13 @@ export function useCanvasOperations() {
 
 		const targetNodeHasInputConnectionPortOfType = targetConnection.index < targetNodeInputs.length;
 
-		return targetNodeHasInputConnectionOfType && targetNodeHasInputConnectionPortOfType;
+		const isMissingInputConnection =
+			!targetNodeHasInputConnectionOfType || !targetNodeHasInputConnectionPortOfType;
+		if (isMissingInputConnection && !isTargetNotInstalled) {
+			return false;
+		}
+
+		return true;
 	}
 
 	async function addConnections(
@@ -1697,17 +1725,34 @@ export function useCanvasOperations() {
 
 	function initializeWorkspace(data: IWorkflowDb) {
 		workflowHelpers.initState(data);
-
 		data.nodes.forEach((node) => {
+			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+			const isUnknownNode =
+				!nodeTypesStore.getNodeType(node.type, node.typeVersion) &&
+				!nodeTypesStore.communityNodeType(node.type)?.nodeDescription;
+			nodeHelpers.matchCredentials(node);
+			// skip this step because nodeTypeDescription is missing for unknown nodes
+			if (!isUnknownNode) {
+				resolveNodeParameters(node, nodeTypeDescription);
+				resolveNodeWebhook(node, nodeTypeDescription);
+			}
+		});
+		workflowsStore.setNodes(data.nodes);
+		workflowsStore.setConnections(data.connections);
+	}
+
+	const initializeUnknownNodes = (nodes: INode[]) => {
+		nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			nodeHelpers.matchCredentials(node);
 			resolveNodeParameters(node, nodeTypeDescription);
 			resolveNodeWebhook(node, nodeTypeDescription);
+			const nodeIndex = workflowsStore.workflow.nodes.findIndex((n) => {
+				return n.name === node.name;
+			});
+			workflowState.updateNodeAtIndex(nodeIndex, node);
 		});
-
-		workflowsStore.setNodes(data.nodes);
-		workflowsStore.setConnections(data.connections);
-	}
+	};
 
 	/**
 	 * Import operations
@@ -2573,6 +2618,7 @@ export function useCanvasOperations() {
 		importTemplate,
 		replaceNodeConnections,
 		tryToOpenSubworkflowInNewTab,
+		initializeUnknownNodes,
 		replaceNode,
 		addNodesAndConnections,
 		fitView,

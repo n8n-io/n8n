@@ -1,7 +1,9 @@
 import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
+import { isCommunityPackageName } from 'n8n-workflow';
 import type { CanvasNodeData } from '../canvas.types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '../canvas.types';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
@@ -67,6 +69,14 @@ export function useCanvasNode() {
 
 	const eventBus = computed(() => node?.eventBus.value);
 
+	// verified community nodes are checked by communityNodeType()
+	// unverified community nodes are checked by getNodeType()
+	const isNotInstalledCommunityNode = computed(
+		() =>
+			isCommunityPackageName(data.value.type) &&
+			!useNodeTypesStore().getIsNodeInstalled(data.value.type),
+	);
+
 	return {
 		node,
 		id,
@@ -96,5 +106,6 @@ export function useCanvasNode() {
 		executionRunning,
 		render,
 		eventBus,
+		isNotInstalledCommunityNode,
 	};
 }

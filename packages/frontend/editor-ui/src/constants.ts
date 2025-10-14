@@ -52,7 +52,6 @@ export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
-export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';

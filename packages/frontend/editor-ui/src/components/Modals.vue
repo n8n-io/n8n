@@ -2,7 +2,6 @@
 import {
 	ABOUT_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
-	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -51,9 +50,10 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/apiKeys/apiKeys.constants';
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
-import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
+import ApiKeyCreateOrEditModal from '@/features/apiKeys/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/features/assistant/components/Chat/NewAssistantSessionModal.vue';
 import ChangePasswordModal from '@/features/auth/components/ChangePasswordModal.vue';
 import ConfirmPasswordModal from '@/features/auth/components/ConfirmPasswordModal.vue';
