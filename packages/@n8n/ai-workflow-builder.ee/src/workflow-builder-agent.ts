@@ -23,9 +23,8 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
-import { createMultiAgentWorkflow } from './multi-agent-workflow';
-import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
+import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
@@ -123,18 +122,7 @@ export class WorkflowBuilderAgent {
 	 * Uses supervisor pattern with specialized agents
 	 */
 	private createMultiAgentGraph() {
-		if (this.useSubgraphs) {
-			this.logger?.debug('Using multi-agent subgraph architecture');
-			return createMultiAgentWorkflowWithSubgraphs({
-				parsedNodeTypes: this.parsedNodeTypes,
-				llmSimpleTask: this.llmSimpleTask,
-				llmComplexTask: this.llmComplexTask,
-				logger: this.logger,
-				instanceUrl: this.instanceUrl,
-			});
-		}
-
-		return createMultiAgentWorkflow({
+		return createMultiAgentWorkflowWithSubgraphs({
 			parsedNodeTypes: this.parsedNodeTypes,
 			llmSimpleTask: this.llmSimpleTask,
 			llmComplexTask: this.llmComplexTask,
