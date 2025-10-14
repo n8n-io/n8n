@@ -2,7 +2,7 @@ import {
 	chatHubProviderSchema,
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
-	type ChatHubSesssionDto,
+	type ChatHubSessionDto,
 } from '@n8n/api-types';
 import type { GroupedConversations } from './chat.types';
 
