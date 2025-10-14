@@ -247,6 +247,14 @@ export const useDataTableOperations = ({
 			await dataTableStore.updateRow(dataTableId, projectId, id, {
 				[fieldName]: value,
 			});
+			const updatedRow = await dataTableStore.fetchRowById(dataTableId, projectId, id);
+			if (updatedRow) {
+				const rowIndex = rowData.value.findIndex((row) => row.id === id);
+				if (rowIndex !== -1) {
+					rowData.value[rowIndex] = updatedRow;
+					setGridData({ rowData: rowData.value });
+				}
+			}
 			telemetry.track('User edited data table content', {
 				data_table_id: dataTableId,
 				column_id: colDef.colId,
