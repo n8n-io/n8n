@@ -3,7 +3,6 @@ import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UserService } from '@/services/user.service';
 
 import { UsersController } from '../users.controller';
 
@@ -11,7 +10,6 @@ describe('UsersController', () => {
 	const eventService = mock<EventService>();
 	const userRepository = mock<UserRepository>();
 	const projectService = mock<ProjectService>();
-	const userService = mock<UserService>();
 
 	const controller = new UsersController(
 		mock(),
@@ -20,7 +18,7 @@ describe('UsersController', () => {
 		mock(),
 		userRepository,
 		mock(),
-		userService,
+		mock(),
 		mock(),
 		mock(),
 		mock(),
@@ -31,7 +29,6 @@ describe('UsersController', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
-		jest.clearAllMocks();
 	});
 
 	describe('changeGlobalRole', () => {
