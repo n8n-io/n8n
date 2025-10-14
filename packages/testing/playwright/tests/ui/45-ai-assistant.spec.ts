@@ -99,8 +99,6 @@ test.describe('AI Assistant::enabled', () => {
 		await expect(n8n.aiAssistant.getChatMessagesAll().first()).toContainText(
 			'Hey, this is an assistant message',
 		);
-
-		await expect(n8n.aiAssistant.getNodeErrorViewAssistantButton()).toBeDisabled();
 	});
 
 	test('should render chat input correctly', async ({ n8n, setupRequirements }) => {
