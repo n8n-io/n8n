@@ -1161,7 +1161,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(result['Test Node']).toBeDefined();
 		expect(result['Test Node'][0].expression).toBe('={{ "x".repeat(300) }}');
 
-		const resolvedValue = result['Test Node'][0].resolvedValue;
+		const resolvedValue = result['Test Node'][0].resolvedValue as string;
 		// Should have a resolved value
 		expect(resolvedValue).toBeDefined();
 		expect(resolvedValue.length).toBeGreaterThan(0);
@@ -1198,7 +1198,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			nodeType: 'n8n-nodes-base.set',
 		});
 
-		const resolvedValue = result['Test Node'][0].resolvedValue;
+		const resolvedValue = result['Test Node'][0].resolvedValue as string;
 		// Should contain error message
 		expect(resolvedValue).toContain('Error in expression:');
 		// Error message should be trimmed if too long
@@ -1336,14 +1336,13 @@ describe('extractExpressionsFromWorkflow', () => {
 	});
 
 	it('Should trim very long resolved values correctly', () => {
-		const longString = 'x'.repeat(250);
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
 				{
 					parameters: {
 						// Create a long literal string
-						value: `={{ "x".repeat(300) }}`,
+						value: '={{ "x".repeat(300) }}',
 					},
 					id: 'node1',
 					name: 'Test Node',
@@ -1356,7 +1355,7 @@ describe('extractExpressionsFromWorkflow', () => {
 
 		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
-		const resolvedValue = result['Test Node'][0].resolvedValue;
+		const resolvedValue = result['Test Node'][0].resolvedValue as string;
 		// Mock returns a 300 char string, should be trimmed
 		expect(resolvedValue.length).toBeLessThanOrEqual(220); // 200 + "... [truncated]"
 		expect(resolvedValue).toContain('... [truncated]');
