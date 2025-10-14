@@ -542,14 +542,26 @@ describe('useDataTableOperations', () => {
 			await expect(onCellValueChanged(event)).rejects.toThrow('Expected row id to be a number');
 		});
 
-		it('should update cell value successfully', async () => {
+		it('should fetch and update the row after cell value change', async () => {
 			const updateRowMock = vi.fn().mockResolvedValue(undefined);
+			const updatedRow = { id: 1, name: 'Jane', updatedAt: '2025-10-14T12:00:00Z' };
+			const fetchRowByIdMock = vi.fn().mockResolvedValue(updatedRow);
+
 			vi.mocked(useDataTableStore).mockReturnValue({
 				...dataTableStore,
 				updateRow: updateRowMock,
+				fetchRowById: fetchRowByIdMock,
 			});
 
-			const { onCellValueChanged } = useDataTableOperations(params);
+			const rowData = ref([{ id: 1, name: 'John', updatedAt: '2025-10-14T11:00:00Z' }]);
+			const setGridDataMock = vi.fn();
+
+			const { onCellValueChanged } = useDataTableOperations({
+				...params,
+				rowData,
+				setGridData: setGridDataMock,
+			});
+
 			const event = {
 				data: { id: 1, name: 'Jane' },
 				api: { applyTransaction: vi.fn() },
@@ -559,14 +571,10 @@ describe('useDataTableOperations', () => {
 
 			await onCellValueChanged(event);
 
-			expect(params.toggleSave).toHaveBeenCalledWith(true);
 			expect(updateRowMock).toHaveBeenCalledWith('test', 'test', 1, { name: 'Jane' });
-			expect(telemetryTrackMock).toHaveBeenCalledWith('User edited data table content', {
-				data_table_id: 'test',
-				column_id: 'col1',
-				column_type: 'text',
-			});
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
+			expect(fetchRowByIdMock).toHaveBeenCalledWith('test', 'test', 1);
+			expect(rowData.value[0]).toEqual(updatedRow);
+			expect(setGridDataMock).toHaveBeenCalledWith({ rowData: [updatedRow] });
 		});
 
 		it('should revert cell value when update fails', async () => {
