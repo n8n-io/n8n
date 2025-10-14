@@ -84,13 +84,13 @@ WithDangerColor.args = {
 
 export const WithSize = Template.bind({});
 WithSize.args = {
-	icon: 'star',
+	icon: 'info',
 	size: 'xlarge',
 };
 
 export const WithCustomSize = Template.bind({});
 WithCustomSize.args = {
-	icon: 'heart',
+	icon: 'info',
 	size: 32,
 };
 
@@ -115,23 +115,23 @@ export const AllSizes: StoryFn = (args, { argTypes }) => ({
 	template: `
 		<div style="display: flex; align-items: center; gap: 16px;">
 			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="star" size="xsmall" />
+				<n8n-icon icon="info" size="xsmall" />
 				<span style="font-size: 12px;">xsmall</span>
 			</div>
 			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="star" size="small" />
+				<n8n-icon icon="info" size="small" />
 				<span style="font-size: 12px;">small</span>
 			</div>
 			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="star" size="medium" />
+				<n8n-icon icon="info" size="medium" />
 				<span style="font-size: 12px;">medium</span>
 			</div>
 			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="star" size="large" />
+				<n8n-icon icon="info" size="large" />
 				<span style="font-size: 12px;">large</span>
 			</div>
 			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="star" size="xlarge" />
+				<n8n-icon icon="info" size="xlarge" />
 				<span style="font-size: 12px;">xlarge</span>
 			</div>
 		</div>
