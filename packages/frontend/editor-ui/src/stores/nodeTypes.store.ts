@@ -387,7 +387,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return;
 		}
 		try {
@@ -417,6 +417,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			return null;
 		}
 	};
+
+	const getIsNodeInstalled = computed(() => {
+		return (nodeTypeName: string) => {
+			return (
+				!!getNodeType.value(nodeTypeName) || !!communityNodeType.value(nodeTypeName)?.isInstalled
+			);
+		};
+	});
 
 	// #endregion
 
@@ -452,5 +460,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		setNodeTypes,
 		removeNodeTypes,
 		getCommunityNodeAttributes,
+		getIsNodeInstalled,
 	};
 });

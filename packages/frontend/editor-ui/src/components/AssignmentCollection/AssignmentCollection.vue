@@ -286,7 +286,7 @@ function optionSelected(action: string) {
 
 .activeField {
 	font-weight: var(--font-weight--bold);
-	color: var(--color-ndv-droppable-parameter);
+	color: var(--ndv--droppable-parameter--color);
 }
 
 .active {

@@ -64,7 +64,7 @@ const edgeColor = computed(() => {
 	} else if (status.value === 'pinned') {
 		return 'var(--color--secondary)';
 	} else if (!isMainConnection.value) {
-		return 'var(--node-type-supplemental-color)';
+		return 'var(--node-type--supplemental--color)';
 	} else if (props.selected) {
 		return 'var(--color--background--shade-2)';
 	} else {
@@ -202,9 +202,9 @@ function onEdgeLabelMouseLeave() {
 	color: var(--color--text);
 	font-size: var(--font-size--xs);
 	background-color: hsla(
-		var(--color-canvas-background-h),
-		var(--color-canvas-background-s),
-		var(--color-canvas-background-l),
+		var(--canvas--color--background--h),
+		var(--canvas--color--background--s),
+		var(--canvas--color--background--l),
 		0.85
 	);
 }

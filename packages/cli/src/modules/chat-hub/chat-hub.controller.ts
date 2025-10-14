@@ -49,7 +49,7 @@ export class ChatHubController {
 		this.logger.info(`Chat send request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.askN8n(res, req.user, {
+			await this.chatService.respondMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
 				replyId,

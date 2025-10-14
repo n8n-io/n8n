@@ -341,14 +341,18 @@ When modifying existing nodes:
 <handling_uncertainty>
 When unsure about specific values:
 - Add nodes and connections confidently
-- For uncertain parameters, use update_node_parameters with clear placeholders
+- For uncertain parameters, use update_node_parameters with placeholders formatted exactly as "<__PLACEHOLDER_VALUE__VALUE_LABEL__>"
+- Make VALUE_LABEL descriptive (e.g., "API endpoint URL", "Auth token header") so users know what to supply
 - For tool nodes with dynamic values, use $fromAI expressions instead of placeholders
 - Always mention what needs user to configure in the setup response
 
 Example for regular nodes:
 update_node_parameters({{
   nodeId: "httpRequest1",
-  instructions: ["Set URL to YOUR_API_ENDPOINT", "Add your authentication headers"]
+  instructions: [
+    "Set URL to <__PLACEHOLDER_VALUE__API endpoint URL__>",
+    "Add header Authorization: <__PLACEHOLDER_VALUE__Bearer token__>"
+  ]
 }})
 
 Example for tool nodes:
@@ -401,30 +405,6 @@ ABSOLUTELY FORBIDDEN IN BUILDING MODE:
 </response_patterns>
 `;
 
-const currentWorkflowJson = `
-<current_workflow_json>
-{workflowJSON}
-</current_workflow_json>
-<trimmed_workflow_json_note>
-Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.
-Use get_node_parameter tool to get full details when needed.
-</trimmed_workflow_json_note>`;
-
-const currentExecutionData = `
-<current_simplified_execution_data>
-{executionData}
-</current_simplified_execution_data>`;
-
-const currentExecutionNodesSchemas = `
-<current_execution_nodes_schemas>
-{executionSchema}
-</current_execution_nodes_schemas>`;
-
-const resolvedExpressionsMap = `
-<current_resolved_expressions_map>
-{resolvedExpressions}
-</current_resolved_expressions_map>`;
-
 const previousConversationSummary = `
 <previous_summary>
 {previousSummary}
@@ -437,7 +417,6 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: systemPrompt,
-				cache_control: { type: 'ephemeral' },
 			},
 			{
 				type: 'text',
@@ -445,24 +424,7 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			},
 			{
 				type: 'text',
-				text: currentWorkflowJson,
-			},
-			{
-				type: 'text',
-				text: resolvedExpressionsMap,
-			},
-			{
-				type: 'text',
-				text: currentExecutionData,
-			},
-			{
-				type: 'text',
-				text: currentExecutionNodesSchemas,
-			},
-			{
-				type: 'text',
 				text: responsePatterns,
-				cache_control: { type: 'ephemeral' },
 			},
 			{
 				type: 'text',

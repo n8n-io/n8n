@@ -1,21 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { useViewStacks } from '../composables/useViewStacks';
-import { useUsersStore } from '@/stores/users.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { useToast } from '@/composables/useToast';
-import { i18n } from '@n8n/i18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useInstallNode } from '@/composables/useInstallNode';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import OfficialIcon from 'virtual:icons/mdi/verified';
-
+import { useUsersStore } from '@/stores/users.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';
-
-import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
-
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { i18n } from '@n8n/i18n';
+import OfficialIcon from 'virtual:icons/mdi/verified';
+import { computed } from 'vue';
+import { useViewStacks } from '../composables/useViewStacks';
+import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
+import NodeIcon from '@/components/NodeIcon.vue';
+
 const {
 	activeViewStack,
 	pushViewStack,
@@ -26,11 +21,8 @@ const {
 
 const { communityNodeDetails } = activeViewStack;
 
-const loading = ref(false);
-
-const communityNodesStore = useCommunityNodesStore();
 const nodeCreatorStore = useNodeCreatorStore();
-const toast = useToast();
+const { installNode, loading } = useInstallNode();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
@@ -63,41 +55,17 @@ const updateViewStack = (key: string) => {
 	}
 };
 
-const updateStoresAndViewStack = async (key: string) => {
-	await useNodeTypesStore().getNodeTypes();
-	await useCredentialsStore().fetchCredentialTypes(true);
+const updateStoresAndViewStack = (key: string) => {
 	updateViewStack(key);
 	nodeCreatorStore.removeNodeFromMergedNodes(key);
-};
-
-const getNpmVersion = async (key: string) => {
-	const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(key);
-
-	if (communityNodeAttributes) {
-		return communityNodeAttributes.npmVersion;
-	}
-
-	return undefined;
 };
 
 const onInstall = async () => {
 	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
-
-		try {
-			loading.value = true;
-
-			await communityNodesStore.installPackage(packageName, true, await getNpmVersion(key));
-			await updateStoresAndViewStack(key);
-
-			toast.showMessage({
-				title: i18n.baseText('settings.communityNodes.messages.install.success'),
-				type: 'success',
-			});
-		} catch (error) {
-			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
-		} finally {
-			loading.value = false;
+		const result = await installNode({ type: 'verified', packageName, nodeType: key });
+		if (result.success) {
+			updateStoresAndViewStack(key);
 		}
 	}
 };
@@ -172,7 +140,7 @@ const onInstall = async () => {
 	font-weight: var(--font-weight--bold);
 }
 .nodeIcon {
-	--node-icon-size: 36px;
+	--node--icon--size: 36px;
 	margin-right: var(--spacing--sm);
 }
 

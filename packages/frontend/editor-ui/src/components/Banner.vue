@@ -104,7 +104,7 @@ const onClick = () => {
 
 .dangerMessage {
 	composes: message;
-	color: var(--color-callout-danger-font);
+	color: var(--callout--color--text--danger);
 }
 
 .banner {

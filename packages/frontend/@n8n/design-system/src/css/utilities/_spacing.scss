@@ -8,12 +8,12 @@ $spacing-sides: 'top', 'right', 'bottom', 'left';
 	@each $property in $spacing-properties {
 		@each $side in $spacing-sides {
 			.#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-#{$size} {
-				#{$property}-#{$side}: var(--spacing-#{$size}) !important;
+				#{$property}-#{$side}: var(--spacing--#{$size}) !important;
 			}
 		}
 
 		.#{string.slice($property, 0, 1)}-#{$size} {
-			#{$property}: var(--spacing-#{$size}) !important;
+			#{$property}: var(--spacing--#{$size}) !important;
 		}
 	}
 }

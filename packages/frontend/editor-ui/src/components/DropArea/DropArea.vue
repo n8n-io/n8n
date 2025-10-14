@@ -35,19 +35,19 @@ const onDrop = (value: string) => {
 	box-shadow: inset 0 0 0 1.5px var(--color--background--light-3);
 
 	&:not(.active):hover {
-		border-color: var(--color-ndv-droppable-parameter);
-		background: var(--color-ndv-droppable-parameter-background);
+		border-color: var(--ndv--droppable-parameter--color);
+		background: var(--ndv--droppable-parameter--color--background);
 	}
 }
 
 .droppable {
-	border-color: var(--color-ndv-droppable-parameter);
+	border-color: var(--ndv--droppable-parameter--color);
 	border-width: 1.5px;
-	background: var(--color-ndv-droppable-parameter-background);
+	background: var(--ndv--droppable-parameter--color--background);
 }
 
 .active {
 	border-color: var(--color--success);
-	background: var(--color-ndv-droppable-parameter-active-background);
+	background: var(--ndv--droppable-parameter--color--background--active);
 }
 </style>

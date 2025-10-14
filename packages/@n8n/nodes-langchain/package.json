@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.114.0",
+  "version": "1.115.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -51,6 +51,7 @@
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
+      "dist/nodes/vendors/Ollama/Ollama.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
       "dist/nodes/agents/Agent/AgentTool.node.js",
@@ -151,6 +152,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
