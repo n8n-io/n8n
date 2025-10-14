@@ -1,3 +1,12 @@
+## [1.116.1](https://github.com/n8n-io/n8n/compare/n8n@1.116.0...n8n@1.116.1) (2025-10-14)
+
+
+### Bug Fixes
+
+* **core:** Fix normalization in per-item mode in native Python runner ([#20750](https://github.com/n8n-io/n8n/issues/20750)) ([f3be6c7](https://github.com/n8n-io/n8n/commit/f3be6c720d6e5fd2c3173957110f5885d9bb2fc1))
+
+
+
 # [1.116.0](https://github.com/n8n-io/n8n/compare/n8n@1.115.0...n8n@1.116.0) (2025-10-13)
 
 
