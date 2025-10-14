@@ -103,7 +103,7 @@ export class AIAssistantPage extends BasePage {
 		message: string,
 		method: 'send-message-button' | 'enter-key' = 'send-message-button',
 	) {
-		await this.getChatInput().fill(message);
+		await this.getChatInput().pressSequentially(message, { delay: 20 });
 		if (method === 'enter-key') {
 			await this.getChatInput().press('Shift+Enter');
 		} else {
