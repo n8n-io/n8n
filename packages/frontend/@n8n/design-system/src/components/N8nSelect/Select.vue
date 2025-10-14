@@ -151,7 +151,7 @@ defineExpose({
 
 <style lang="scss" module>
 .xlarge {
-	--input-font-size: var(--font-size--md);
+	--input--font-size: var(--font-size--md);
 	input {
 		height: 48px;
 	}
@@ -180,8 +180,8 @@ defineExpose({
 	align-items: center;
 	padding: 0 var(--spacing--3xs);
 	background-color: var(--color--background--light-2);
-	border-bottom-left-radius: var(--input-border-radius, var(--radius));
-	border-top-left-radius: var(--input-border-radius, var(--radius));
+	border-bottom-left-radius: var(--input--radius, var(--radius));
+	border-top-left-radius: var(--input--radius, var(--radius));
 	color: var(--color--text);
 	white-space: nowrap;
 }

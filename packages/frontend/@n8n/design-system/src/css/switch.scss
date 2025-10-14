@@ -65,7 +65,7 @@
 		border-radius: var.$switch-core-border-radius;
 		box-sizing: border-box;
 		background: var.$switch-off-color;
-		border: 1px solid var(--color-switch-border-color);
+		border: 1px solid var(--switch--border-color);
 		cursor: pointer;
 		transition:
 			border-color 0.1s,

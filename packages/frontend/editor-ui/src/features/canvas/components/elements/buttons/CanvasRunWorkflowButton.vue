@@ -169,7 +169,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .divider {
 	width: 1px;
-	background-color: var(--button-font-color, var(--color-button-primary-font));
+	background-color: var(--button--color--text, var(--button--color--text--primary));
 }
 
 .chevron {
