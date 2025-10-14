@@ -37,6 +37,7 @@ describe('UserService', () => {
 		mock(),
 		mock(),
 		roleService,
+		globalConfig,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -100,6 +101,32 @@ describe('UserService', () => {
 
 			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
 			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
+		});
+	});
+
+	describe('inviteUrl visibility', () => {
+		describe('when inviteLinksEmailOnly = false', () => {
+			describe('toPublic', () => {
+				it('should include inviteAcceptUrl if requested', async () => {});
+				it('should not include inviteAcceptUrl if not requested', async () => {});
+			});
+
+			describe('inviteUsers', () => {
+				it('should include inviteAcceptUrl if email was not sent', async () => {});
+				it('should not include inviteAcceptUrl if email was sent', async () => {});
+			});
+		});
+
+		describe('when inviteLinksEmailOnly = true', () => {
+			describe('toPublic', () => {
+				it('should not include inviteAcceptUrl if requested', async () => {});
+				it('should not include inviteAcceptUrl if not requested', async () => {});
+			});
+
+			describe('inviteUsers', () => {
+				it('should not include inviteAcceptUrl if email was not sent', async () => {});
+				it('should not include inviteAcceptUrl if email was sent', async () => {});
+			});
 		});
 	});
 

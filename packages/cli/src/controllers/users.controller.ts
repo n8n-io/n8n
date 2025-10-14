@@ -7,7 +7,6 @@ import {
 	usersListSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import {
 	Project,
@@ -64,7 +63,6 @@ export class UsersController {
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -119,9 +117,7 @@ export class UsersController {
 
 		const [users, count] = response;
 
-		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
-
-		const withInviteUrl = !inviteLinksEmailOnly && hasGlobalScope(req.user, 'user:create');
+		const withInviteUrl = hasGlobalScope(req.user, 'user:create');
 
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {
