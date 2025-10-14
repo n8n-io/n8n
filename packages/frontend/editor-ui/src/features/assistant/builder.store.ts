@@ -546,7 +546,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function fetchSessionsMetadata() {
 		const workflowId = workflowsStore.workflowId;
 		if (!workflowId) {
-			hasMessages.value = undefined;
+			hasMessages.value = false;
 			return;
 		}
 
@@ -555,7 +555,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			hasMessages.value = response.hasMessages;
 		} catch (error) {
 			console.error('Failed to fetch sessions metadata:', error);
-			hasMessages.value = undefined;
+			hasMessages.value = false;
 		}
 	}
 
