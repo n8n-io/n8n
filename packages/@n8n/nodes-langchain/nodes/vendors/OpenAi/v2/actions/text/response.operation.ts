@@ -774,12 +774,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const returnData: INodeExecutionData[] = [];
 
 	if (simplify) {
-		for (const entry of response.output) {
-			returnData.push({
-				json: entry as unknown as IDataObject,
-				pairedItem: { item: i },
-			});
-		}
+		returnData.push({
+			json: response.output as unknown as IDataObject,
+			pairedItem: { item: i },
+		});
 	} else {
 		returnData.push({ json: response as unknown as IDataObject, pairedItem: { item: i } });
 	}

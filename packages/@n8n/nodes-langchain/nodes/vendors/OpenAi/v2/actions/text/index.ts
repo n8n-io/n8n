@@ -16,7 +16,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create a Model Response',
 				value: 'response',
-				action: 'Create a Model Response',
+				action: 'Create a model response',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
 				description: 'Create a model response with GPT 3, 4, 5, etc. using Responses API',
 			},

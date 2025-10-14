@@ -44,8 +44,6 @@ const properties: INodeProperties[] = [
 		options: [
 			{ name: '720x1280', value: '720x1280' },
 			{ name: '1280x720', value: '1280x720' },
-			{ name: '1024x1792', value: '1024x1792' },
-			{ name: '1792x1024', value: '1792x1024' },
 		],
 	},
 	{
