@@ -3,7 +3,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
 import CollaborationPane from '@/features/collaboration/components/CollaborationPane.vue';
-import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import WorkflowHistoryButton from '@/features/workflowHistory/components/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
