@@ -3,7 +3,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
