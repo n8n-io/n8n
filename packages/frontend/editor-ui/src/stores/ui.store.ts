@@ -32,7 +32,6 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
-	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -44,6 +43,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	VARIABLE_MODAL_KEY,
 } from '@/constants';
 import {
 	DELETE_FOLDER_MODAL_KEY,
@@ -53,6 +53,7 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/apiKeys/apiKeys.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
@@ -140,6 +141,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+				VARIABLE_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {

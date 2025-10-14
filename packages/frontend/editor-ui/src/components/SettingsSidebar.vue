@@ -6,7 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
@@ -15,10 +15,9 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const route = useRoute();
 const i18n = useI18n();
 
-const { canUserAccessRouteByName } = useUserHelpers(router, route);
+const { canUserAccessRouteByName } = useUserHelpers(router);
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();

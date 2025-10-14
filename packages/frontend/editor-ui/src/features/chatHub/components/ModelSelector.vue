@@ -98,7 +98,9 @@ function onSelect(id: string) {
 				:class="$style.icon"
 			/>
 			<div :class="$style.selected">
-				{{ selectedLabel }}
+				<div>
+					{{ selectedLabel }}
+				</div>
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
 					{{ credentialsName }}
 				</N8nText>
@@ -120,6 +122,13 @@ function onSelect(id: string) {
 	flex-direction: column;
 	align-items: start;
 	gap: var(--spacing--4xs);
+	max-width: 200px;
+
+	& > div {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 }
 
 .icon {
