@@ -368,6 +368,14 @@ describe('GlobalConfig', () => {
 				loginEnabled: false,
 				loginLabel: '',
 			},
+			provisioning: {
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesProvisioningFrequency: 'never',
+				scopesName: 'n8n',
+				scopesInstanceRoleClaimName: 'n8n_instance_role',
+				scopesProjectsRolesClaimName: 'n8n_projects',
+			},
 		},
 		redis: {
 			prefix: 'n8n',
