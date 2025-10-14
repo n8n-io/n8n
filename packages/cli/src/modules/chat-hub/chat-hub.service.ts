@@ -44,7 +44,14 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubSession } from './chat-hub-session.entity';
-import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
+import type {
+	HumanMessagePayload,
+	RetryMessagePayload,
+	EditMessagePayload,
+	MessageRecord,
+	BaseMessagePayload,
+	ModelWithCredentials,
+} from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -239,14 +246,31 @@ export class ChatHubService {
 
 	private async createChatWorkflow(
 		user: User,
-		sessionId: string,
-		nodes: INode[],
-		connections: IConnections,
-	) {
+		payload: HumanMessagePayload,
+		session: ChatHubSession,
+	): Promise<{
+		workflowData: IWorkflowBase;
+		startNodes: StartNodeData[];
+		triggerToStartFrom: { name: string; data: ITaskData };
+	}> {
+		const { nodes, connections, startNodes, triggerToStartFrom } = this.prepareChatWorkflow(
+			payload,
+			session,
+		);
+
 		const { manager } = this.projectRepository;
-		const existing = await this.workflowRepository.findOneBy({ id: sessionId });
+		const existing = await this.workflowRepository.findOneBy({ id: session.id });
 		if (existing) {
-			return existing;
+			return {
+				workflowData: {
+					...existing,
+					nodes,
+					connections,
+					versionId: uuidv4(),
+				},
+				startNodes,
+				triggerToStartFrom,
+			};
 		}
 
 		return await manager.transaction(async (trx) => {
@@ -257,8 +281,8 @@ export class ChatHubService {
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
-			newWorkflow.id = sessionId;
-			newWorkflow.name = `Chat ${sessionId}`;
+			newWorkflow.id = session.id;
+			newWorkflow.name = `Chat ${session.id}`;
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
@@ -273,7 +297,16 @@ export class ChatHubService {
 				}),
 			);
 
-			return workflow;
+			return {
+				workflowData: {
+					...workflow,
+					nodes,
+					connections,
+					versionId: uuidv4(),
+				},
+				startNodes,
+				triggerToStartFrom,
+			};
 		});
 	}
 
@@ -297,56 +330,78 @@ export class ChatHubService {
 	}
 
 	private getCredentialId(provider: ChatHubProvider, credentials: INodeCredentials): string | null {
-		switch (provider) {
-			case 'openai':
-				return credentials['openAiApi'].id;
-			case 'anthropic':
-				return credentials['anthropicApi'].id;
-			case 'google':
-				return credentials['googlePalmApi'].id;
-			default:
-				return null;
+		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
+	}
+
+	async sendMessage(res: Response, user: User, payload: HumanMessagePayload) {
+		const turnId = payload.messageId;
+
+		const metadata: ModelWithCredentials = {
+			...payload.model,
+			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+		};
+
+		const session = await this.getChatSession(user, payload, metadata);
+
+		await this.saveHumanMessage(payload, user, turnId, metadata);
+
+		const workflow = await this.createChatWorkflow(user, payload, session);
+
+		await this.executeChatWorkflow(res, user, workflow, payload, turnId, metadata);
+	}
+
+	private async executeChatWorkflow(
+		res: Response,
+		user: User,
+		workflow: {
+			workflowData: IWorkflowBase;
+			startNodes: StartNodeData[];
+			triggerToStartFrom: { name: string; data?: ITaskData };
+		},
+		payload: BaseMessagePayload,
+		turnId: string,
+		metadata: ModelWithCredentials,
+	) {
+		const { workflowData, startNodes, triggerToStartFrom } = workflow;
+
+		this.logger.debug(
+			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
+		);
+
+		const { executionId } = await this.workflowExecutionService.executeManually(
+			{
+				workflowData,
+				startNodes,
+				triggerToStartFrom,
+			},
+			user,
+			undefined,
+			true,
+			res,
+		);
+		if (!executionId) {
+			throw new OperationalError('There was a problem starting the chat execution.');
+		}
+
+		const result = await this.activeExecutions.getPostExecutePromise(executionId);
+		if (!result) {
+			throw new OperationalError('There was a problem executing the chat workflow.');
+		}
+
+		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+			workflowData.id,
+		]);
+		if (!execution) {
+			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
+		}
+		const message = this.getMessage(execution);
+
+		if (message) {
+			await this.saveAiMessage(payload, message, turnId, execution.id, metadata);
 		}
 	}
 
-	async respondMessage(res: Response, user: User, payload: ChatPayloadWithCredentials) {
-		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
-		const turnId = payload.messageId;
-
-		const usedModel = {
-			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
-			provider: payload.model.provider,
-			model: payload.model.model,
-			workflowId: payload.model.workflowId,
-		};
-
-		// TODO: we're now providing both replyId and messageId from the frontend, but we shouldn't.
-
-		// TODO: Handle session ID conflicts better (different user, same ID)
-		let session: ChatHubSession;
-		if (existing) {
-			session = existing;
-		} else {
-			session = await this.sessionRepository.createChatSession({
-				id: payload.sessionId,
-				ownerId: user.id,
-				title: 'New Chat',
-				...usedModel,
-			});
-		}
-
-		await this.messageRepository.createChatMessage({
-			id: payload.messageId,
-			sessionId: payload.sessionId,
-			type: 'human',
-			name: user.firstName || 'User',
-			state: 'active',
-			content: payload.message,
-			turnId,
-			previousMessageId: payload.previousMessageId ?? null,
-			...usedModel,
-		});
-
+	private prepareChatWorkflow(payload: HumanMessagePayload, session: ChatHubSession) {
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
 			{
@@ -436,19 +491,10 @@ export class ChatHubService {
 			},
 		};
 
-		const workflow = await this.createChatWorkflow(user, payload.sessionId, nodes, connections);
-		const workflowData: IWorkflowBase = {
-			...workflow,
-			nodes,
-			connections,
-			versionId: uuidv4(),
-		};
-		/* eslint-enable @typescript-eslint/naming-convention */
-
 		const startNodes: StartNodeData[] = [{ name: 'Restore Chat Memory', sourceData: null }];
 		const triggerToStartFrom: {
 			name: string;
-			data?: ITaskData;
+			data: ITaskData;
 		} = {
 			name: 'When chat message received',
 			data: {
@@ -472,54 +518,79 @@ export class ChatHubService {
 				source: [null],
 			},
 		};
+		/* eslint-enable @typescript-eslint/naming-convention */
 
-		this.logger.debug(`Starting execution of workflow "${workflow.name}" with ID ${workflow.id}`);
-
-		const { executionId } = await this.workflowExecutionService.executeManually(
-			{
-				workflowData,
-				startNodes,
-				triggerToStartFrom,
-			},
-			user,
-			undefined,
-			true,
-			res,
-		);
-		if (!executionId) {
-			throw new OperationalError('There was a problem starting the chat execution.');
-		}
-
-		const result = await this.activeExecutions.getPostExecutePromise(executionId);
-		if (!result) {
-			throw new OperationalError('There was a problem executing the chat workflow.');
-		}
-
-		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-			workflow.id,
-		]);
-		if (!execution) {
-			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
-		}
-
-		const message = this.getMessage(execution);
-		if (message) {
-			await this.messageRepository.createChatMessage({
-				id: payload.replyId,
-				sessionId: payload.sessionId,
-				type: 'ai',
-				name: 'AI',
-				content: message,
-				state: 'active',
-				turnId,
-				executionId: parseInt(execution.id, 10),
-				previousMessageId: payload.messageId,
-				...usedModel,
-			});
-		}
+		return { nodes, connections, startNodes, triggerToStartFrom };
 	}
 
-	private createModelNode(payload: ChatPayloadWithCredentials): INode {
+	private async saveHumanMessage(
+		payload: HumanMessagePayload,
+		user: User,
+		turnId: string,
+		metadata: ModelWithCredentials,
+	) {
+		await this.messageRepository.createChatMessage({
+			id: payload.messageId,
+			sessionId: payload.sessionId,
+			type: 'human',
+			name: user.firstName || 'User',
+			state: 'active',
+			content: payload.message,
+			turnId,
+			previousMessageId: payload.previousMessageId ?? null,
+			...metadata,
+		});
+	}
+
+	private async saveAiMessage(
+		payload: BaseMessagePayload,
+		message: string,
+		turnId: string,
+		executionId: string,
+		metadata: ModelWithCredentials,
+	) {
+		await this.messageRepository.createChatMessage({
+			id: payload.replyId,
+			sessionId: payload.sessionId,
+			type: 'ai',
+			name: 'AI',
+			content: message,
+			state: 'active',
+			turnId,
+			executionId: parseInt(executionId, 10),
+			previousMessageId: payload.messageId,
+			...metadata,
+		});
+	}
+
+	private async getChatSession(
+		user: User,
+		payload: HumanMessagePayload,
+		metadata: ModelWithCredentials,
+		initialize: boolean = true,
+	) {
+		// TODO: Handle session ID conflicts better (different user, same ID)
+
+		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
+		if (existing) {
+			return existing;
+		} else if (!initialize) {
+			throw new NotFoundError('Chat session not found');
+		}
+
+		return await this.sessionRepository.createChatSession({
+			id: payload.sessionId,
+			ownerId: user.id,
+			title: 'New Chat',
+			...metadata,
+		});
+	}
+
+	async retryMessage(res: Response, user: User, payload: RetryMessagePayload) {}
+
+	async editMessage(res: Response, user: User, payload: EditMessagePayload) {}
+
+	private createModelNode(payload: BaseMessagePayload): INode {
 		const common = {
 			position: [600, 200] as [number, number],
 			id: uuidv4(),

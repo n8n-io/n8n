@@ -52,7 +52,39 @@ export class ChatHubSendMessageRequest extends Z.class({
 	replyId: z.string().uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
+	workflowId: z.string().nullable().default(null),
 	previousMessageId: z.string().uuid().nullable(),
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+}) {}
+
+export class ChatHubRetryMessageRequest extends Z.class({
+	retryId: z.string().uuid(),
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
+	model: chatHubConversationModelSchema,
+	workflowId: z.string().nullable().default(null),
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+}) {}
+
+export class ChatHubEditMessageRequest extends Z.class({
+	editId: z.string().uuid(),
+	message: z.string(),
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
+	model: chatHubConversationModelSchema,
+	workflowId: z.string().nullable().default(null),
 	credentials: z.record(
 		z.object({
 			id: z.string(),

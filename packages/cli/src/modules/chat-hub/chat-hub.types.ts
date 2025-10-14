@@ -1,23 +1,31 @@
 import type { ChatHubConversationModel } from '@n8n/api-types';
 import type { INodeCredentials } from 'n8n-workflow';
 
-export interface ChatPayloadWithCredentials {
+export interface ModelWithCredentials extends ChatHubConversationModel {
+	credentialId: string | null;
+}
+
+export interface BaseMessagePayload {
 	userId: string;
-	message: string;
 	messageId: string;
 	sessionId: string;
 	replyId: string;
-	previousMessageId: string | null;
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 }
 
-export type ChatMessage = {
-	id: string;
+export interface HumanMessagePayload extends BaseMessagePayload {
+	previousMessageId: string | null;
 	message: string;
-	type: 'user' | 'ai' | 'system';
-	createdAt: Date;
-};
+}
+export interface RetryMessagePayload extends BaseMessagePayload {
+	retryId: string;
+}
+
+export interface EditMessagePayload extends BaseMessagePayload {
+	editId: string;
+	message: string;
+}
 
 // From packages/@n8n/nodes-langchain/nodes/memory/MemoryManager/MemoryManager.node.ts
 export type MessageRole = 'ai' | 'system' | 'user';
