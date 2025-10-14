@@ -6,17 +6,25 @@ import hljs from 'highlight.js/lib/core';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import ChatMessageActions from './ChatMessageActions.vue';
+import { useClipboard } from '@/composables/useClipboard';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 
 const { message, compact } = defineProps<{ message: ChatMessage; compact: boolean }>();
 
 const emit = defineEmits<{
-	copy: [message: ChatMessage];
 	edit: [message: ChatMessage];
 	regenerate: [message: ChatMessage];
 }>();
 
-function handleCopy() {
-	emit('copy', message);
+const clipboard = useClipboard();
+const toast = useToast();
+const i18n = useI18n();
+
+async function handleCopy() {
+	const text = messageText(message);
+	await clipboard.copy(text);
+	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
 
 function handleEdit() {
