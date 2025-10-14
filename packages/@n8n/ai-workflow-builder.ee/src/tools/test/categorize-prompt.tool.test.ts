@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 import { promptCategorizationChain } from '@/chains/prompt-categorization';
-import { WorkflowTechnique, WorkflowUseCase, type PromptTaxonomy } from '@/types/taxonomy';
+import { workflowTechnique, workflowUseCase, type PromptTaxonomy } from '@/types/taxonomy';
 
 import {
 	parseToolResult,
@@ -46,8 +46,11 @@ describe('CategorizePromptTool', () => {
 	describe('invoke', () => {
 		it('should categorize a scraping prompt', async () => {
 			const mockTaxonomy: PromptTaxonomy = {
-				useCase: WorkflowUseCase.DataProcessing,
-				techniques: [WorkflowTechnique.ScrapingAndResearch, WorkflowTechnique.DataTransformation],
+				useCase: workflowUseCase.DATA_PROCESSING,
+				techniques: [
+					workflowTechnique.SCRAPING_AND_RESEARCH,
+					workflowTechnique.DATA_TRANSFORMATION,
+				],
 				confidence: 0.9,
 			};
 
@@ -85,8 +88,8 @@ describe('CategorizePromptTool', () => {
 
 		it('should categorize a chatbot prompt', async () => {
 			const mockTaxonomy: PromptTaxonomy = {
-				useCase: WorkflowUseCase.CustomerSupport,
-				techniques: [WorkflowTechnique.Chatbot, WorkflowTechnique.Notification],
+				useCase: workflowUseCase.CUSTOMER_SUPPORT,
+				techniques: [workflowTechnique.CHATBOT, workflowTechnique.NOTIFICATION],
 				confidence: 0.85,
 			};
 
@@ -112,7 +115,7 @@ describe('CategorizePromptTool', () => {
 
 		it('should handle categorization without use case', async () => {
 			const mockTaxonomy: PromptTaxonomy = {
-				techniques: [WorkflowTechnique.DataTransformation],
+				techniques: [workflowTechnique.DATA_TRANSFORMATION],
 				confidence: 0.7,
 			};
 
@@ -137,12 +140,12 @@ describe('CategorizePromptTool', () => {
 
 		it('should handle categorization with multiple techniques', async () => {
 			const mockTaxonomy: PromptTaxonomy = {
-				useCase: WorkflowUseCase.MarketingAutomation,
+				useCase: workflowUseCase.MARKETING_AUTOMATION,
 				techniques: [
-					WorkflowTechnique.Scheduling,
-					WorkflowTechnique.ContentGeneration,
-					WorkflowTechnique.Notification,
-					WorkflowTechnique.DataAnalysis,
+					workflowTechnique.SCHEDULING,
+					workflowTechnique.CONTENT_GENERATION,
+					workflowTechnique.NOTIFICATION,
+					workflowTechnique.DATA_ANALYSIS,
 				],
 				confidence: 0.95,
 			};

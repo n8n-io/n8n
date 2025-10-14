@@ -3,8 +3,8 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 
 import {
-	WorkflowTechnique,
-	WorkflowUseCase,
+	workflowTechnique,
+	workflowUseCase,
 	TECHNIQUE_DESCRIPTIONS,
 	USE_CASE_DESCRIPTIONS,
 	type PromptTaxonomy,
@@ -70,11 +70,11 @@ export async function promptCategorizationChain(
 	// Define the schema for structured output
 	const categorizationSchema = z.object({
 		techniques: z
-			.array(z.nativeEnum(WorkflowTechnique))
+			.array(z.nativeEnum(workflowTechnique))
 			.min(1)
 			.describe('One or more workflow techniques identified in the prompt'),
 		useCase: z
-			.nativeEnum(WorkflowUseCase)
+			.nativeEnum(workflowUseCase)
 			.optional()
 			.describe('The primary use case if clearly identifiable'),
 		confidence: z

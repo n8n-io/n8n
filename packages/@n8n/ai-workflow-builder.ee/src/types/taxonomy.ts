@@ -6,65 +6,65 @@
 /**
  * Common workflow building techniques that can be combined in workflows
  */
-export const WorkflowTechnique = {
+export const workflowTechnique = {
 	/** Running an action at a specific time or interval */
-	Scheduling: 'scheduling',
+	SCHEDULING: 'scheduling',
 	/** Receiving chat messages and replying (built-in chat, Telegram, Slack, MS Teams, etc.) */
-	Chatbot: 'chatbot',
+	CHATBOT: 'chatbot',
 	/** Gathering data from users via forms */
-	FormInput: 'form_input',
+	FORM_INPUT: 'form_input',
 	/** Methodically collecting information from websites or APIs to compile structured data */
-	ScrapingAndResearch: 'scraping_and_research',
+	SCRAPING_AND_RESEARCH: 'scraping_and_research',
 	/** Repeatedly checking service/website status and taking action when conditions are met */
-	Monitoring: 'monitoring',
+	MONITORING: 'monitoring',
 	/** Adding extra details to existing data by merging information from other sources */
-	Enrichment: 'enrichment',
+	ENRICHMENT: 'enrichment',
 	/** Classifying data for routing or prioritization */
-	Triage: 'triage',
+	TRIAGE: 'triage',
 	/** Creating text, images, audio, video, etc. */
-	ContentGeneration: 'content_generation',
+	CONTENT_GENERATION: 'content_generation',
 	/** Taking action on content within files (PDFs, Word docs, images) */
-	DocumentProcessing: 'document_processing',
+	DOCUMENT_PROCESSING: 'document_processing',
 	/** Pulling specific information from structured or unstructured inputs */
-	DataExtraction: 'data_extraction',
+	DATA_EXTRACTION: 'data_extraction',
 	/** Examining data to find patterns, trends, anomalies, or insights */
-	DataAnalysis: 'data_analysis',
+	DATA_ANALYSIS: 'data_analysis',
 	/** Cleaning, formatting, or restructuring data (including summarization) */
-	DataTransformation: 'data_transformation',
+	DATA_TRANSFORMATION: 'data_transformation',
 	/** Sending alerts or updates via email, chat, SMS when events occur */
-	Notification: 'notification',
+	NOTIFICATION: 'notification',
 	/** Building or using a centralized information collection (usually vector database for LLM use) */
-	KnowledgeBase: 'knowledge_base',
+	KNOWLEDGE_BASE: 'knowledge_base',
 	/** Pausing for human decision/input before resuming */
-	HumanInTheLoop: 'human_in_the_loop',
+	HUMAN_IN_THE_LOOP: 'human_in_the_loop',
 } as const;
 
-export type WorkflowTechniqueType = (typeof WorkflowTechnique)[keyof typeof WorkflowTechnique];
+export type WorkflowTechniqueType = (typeof workflowTechnique)[keyof typeof workflowTechnique];
 
 /**
  * Common use cases for workflow automation
  * Note: This is a starting point and may need expansion
  */
-export const WorkflowUseCase = {
+export const workflowUseCase = {
 	/** Enriching lead information with additional data */
-	LeadEnrichment: 'lead_enrichment',
+	LEAD_ENRICHMENT: 'lead_enrichment',
 	/** Processing and analyzing customer support tickets */
-	CustomerSupport: 'customer_support',
+	CUSTOMER_SUPPORT: 'customer_support',
 	/** Automating data entry and synchronization */
-	DataSync: 'data_sync',
+	DATA_SYNC: 'data_sync',
 	/** Creating and managing content */
-	ContentManagement: 'content_management',
+	CONTENT_MANAGEMENT: 'content_management',
 	/** Monitoring systems and sending alerts */
-	SystemMonitoring: 'system_monitoring',
+	SYSTEM_MONITORING: 'system_monitoring',
 	/** Processing and routing incoming data */
-	DataProcessing: 'data_processing',
+	DATA_PROCESSING: 'data_processing',
 	/** Automating marketing tasks */
-	MarketingAutomation: 'marketing_automation',
+	MARKETING_AUTOMATION: 'marketing_automation',
 	/** Other use case not fitting standard categories */
-	Other: 'other',
+	OTHER: 'other',
 } as const;
 
-export type WorkflowUseCaseType = (typeof WorkflowUseCase)[keyof typeof WorkflowUseCase];
+export type WorkflowUseCaseType = (typeof workflowUseCase)[keyof typeof workflowUseCase];
 
 /**
  * Result of prompt categorization
@@ -82,43 +82,43 @@ export interface PromptTaxonomy {
  * All available workflow techniques as a human-readable list
  */
 export const TECHNIQUE_DESCRIPTIONS: Record<WorkflowTechniqueType, string> = {
-	[WorkflowTechnique.Scheduling]: 'Running an action at a specific time or interval',
-	[WorkflowTechnique.Chatbot]:
+	[workflowTechnique.SCHEDULING]: 'Running an action at a specific time or interval',
+	[workflowTechnique.CHATBOT]:
 		'Receiving chat messages and replying (built-in chat, Telegram, Slack, MS Teams, etc.)',
-	[WorkflowTechnique.FormInput]: 'Gathering data from users via forms',
-	[WorkflowTechnique.ScrapingAndResearch]:
+	[workflowTechnique.FORM_INPUT]: 'Gathering data from users via forms',
+	[workflowTechnique.SCRAPING_AND_RESEARCH]:
 		'Methodically collecting information from websites or APIs to compile structured data',
-	[WorkflowTechnique.Monitoring]:
+	[workflowTechnique.MONITORING]:
 		'Repeatedly checking service/website status and taking action when conditions are met',
-	[WorkflowTechnique.Enrichment]:
+	[workflowTechnique.ENRICHMENT]:
 		'Adding extra details to existing data by merging information from other sources',
-	[WorkflowTechnique.Triage]: 'Classifying data for routing or prioritization',
-	[WorkflowTechnique.ContentGeneration]: 'Creating text, images, audio, video, etc.',
-	[WorkflowTechnique.DocumentProcessing]:
+	[workflowTechnique.TRIAGE]: 'Classifying data for routing or prioritization',
+	[workflowTechnique.CONTENT_GENERATION]: 'Creating text, images, audio, video, etc.',
+	[workflowTechnique.DOCUMENT_PROCESSING]:
 		'Taking action on content within files (PDFs, Word docs, images)',
-	[WorkflowTechnique.DataExtraction]:
+	[workflowTechnique.DATA_EXTRACTION]:
 		'Pulling specific information from structured or unstructured inputs',
-	[WorkflowTechnique.DataAnalysis]:
+	[workflowTechnique.DATA_ANALYSIS]:
 		'Examining data to find patterns, trends, anomalies, or insights',
-	[WorkflowTechnique.DataTransformation]:
+	[workflowTechnique.DATA_TRANSFORMATION]:
 		'Cleaning, formatting, or restructuring data (including summarization)',
-	[WorkflowTechnique.Notification]:
+	[workflowTechnique.NOTIFICATION]:
 		'Sending alerts or updates via email, chat, SMS when events occur',
-	[WorkflowTechnique.KnowledgeBase]:
+	[workflowTechnique.KNOWLEDGE_BASE]:
 		'Building or using a centralized information collection (usually vector database for LLM use)',
-	[WorkflowTechnique.HumanInTheLoop]: 'Pausing for human decision/input before resuming',
+	[workflowTechnique.HUMAN_IN_THE_LOOP]: 'Pausing for human decision/input before resuming',
 };
 
 /**
  * All available use cases as a human-readable list
  */
 export const USE_CASE_DESCRIPTIONS: Record<WorkflowUseCaseType, string> = {
-	[WorkflowUseCase.LeadEnrichment]: 'Enriching lead information with additional data',
-	[WorkflowUseCase.CustomerSupport]: 'Processing and analyzing customer support tickets',
-	[WorkflowUseCase.DataSync]: 'Automating data entry and synchronization',
-	[WorkflowUseCase.ContentManagement]: 'Creating and managing content',
-	[WorkflowUseCase.SystemMonitoring]: 'Monitoring systems and sending alerts',
-	[WorkflowUseCase.DataProcessing]: 'Processing and routing incoming data',
-	[WorkflowUseCase.MarketingAutomation]: 'Automating marketing tasks',
-	[WorkflowUseCase.Other]: 'Other use case not fitting standard categories',
+	[workflowUseCase.LEAD_ENRICHMENT]: 'Enriching lead information with additional data',
+	[workflowUseCase.CUSTOMER_SUPPORT]: 'Processing and analyzing customer support tickets',
+	[workflowUseCase.DATA_SYNC]: 'Automating data entry and synchronization',
+	[workflowUseCase.CONTENT_MANAGEMENT]: 'Creating and managing content',
+	[workflowUseCase.SYSTEM_MONITORING]: 'Monitoring systems and sending alerts',
+	[workflowUseCase.DATA_PROCESSING]: 'Processing and routing incoming data',
+	[workflowUseCase.MARKETING_AUTOMATION]: 'Automating marketing tasks',
+	[workflowUseCase.OTHER]: 'Other use case not fitting standard categories',
 };
