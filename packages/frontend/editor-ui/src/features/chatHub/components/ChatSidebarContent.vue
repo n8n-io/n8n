@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
-import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY, VIEWS } from '@/constants';
+import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useChatStore } from '@/features/chatHub/chat.store';
 import { groupConversationsByDate } from '@/features/chatHub/chat.utils';
 import { CHAT_VIEW } from '@/features/chatHub/constants';
@@ -10,6 +10,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 
 defineProps<{ isMobileDevice: boolean }>();
 
@@ -18,6 +19,7 @@ const router = useRouter();
 const chatStore = useChatStore();
 const uiStore = useUIStore();
 const toast = useToast();
+const message = useMessage();
 
 const renamingSessionId = ref<string>();
 
@@ -56,6 +58,19 @@ async function handleConfirmRename(sessionId: string, newLabel: string) {
 }
 
 async function handleDeleteSession(sessionId: string) {
+	const confirmed = await message.confirm(
+		'Are you sure you want to delete this conversation?',
+		'Delete conversation',
+		{
+			confirmButtonText: 'Delete',
+			cancelButtonText: 'Cancel',
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
 	await chatStore.deleteSession(sessionId);
 	toast.showMessage({ type: 'success', title: 'Conversation is deleted' });
 }
