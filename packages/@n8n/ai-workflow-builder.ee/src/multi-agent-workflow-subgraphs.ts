@@ -45,6 +45,12 @@ export const ParentGraphState = Annotation.Root({
 		default: () => '',
 	}),
 
+	// Routing: Instructions from supervisor for next agent
+	supervisorInstructions: Annotation<string | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
+	}),
+
 	// Output: Final response to user
 	finalResponse: Annotation<string>({
 		reducer: (x, y) => y ?? x,
@@ -120,6 +126,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 
 		return {
 			nextPhase: routing.next,
+			supervisorInstructions: routing.instructions ?? null,
 		};
 	};
 
@@ -152,7 +159,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 
 		const result = await discoverySubgraph.invoke({
 			userRequest,
-			supervisorInstructions: null, // TODO: Get from supervisor routing
+			supervisorInstructions: state.supervisorInstructions,
 		});
 
 		console.log('[Discovery Subgraph] Completed', {
@@ -189,12 +196,22 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		const userMessage = state.messages.find((m) => m instanceof HumanMessage);
 		const userRequest = userMessage?.content?.toString() || '';
 
-		// Build context from discovery results
+		// Build context from discovery results and supervisor instructions
 		let builderRequest = userRequest;
+		const contextParts: string[] = [];
+
+		// Add supervisor instructions if provided
+		if (state.supervisorInstructions) {
+			contextParts.push(state.supervisorInstructions);
+		} else {
+			contextParts.push(userRequest);
+		}
+
+		// Add discovery results if available
 		if (state.discoveryResults) {
 			const { nodesFound, relevantContext, summary } = state.discoveryResults;
 
-			const contextParts: string[] = [userRequest, '\n\n--- Discovery Results ---'];
+			contextParts.push('\n--- Discovery Results ---');
 
 			if (summary) {
 				contextParts.push(`Summary: ${summary}`);
@@ -214,19 +231,26 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				contextParts.push('\nAdditional context:');
 				builderContext.forEach(({ context }) => contextParts.push(`- ${context}`));
 			}
-
-			builderRequest = contextParts.join('\n');
 		}
+
+		// Add current workflow state
+		contextParts.push(
+			`\n\nCurrent workflow has ${state.workflowJSON.nodes.length} nodes: ${state.workflowJSON.nodes.map((n) => n.name).join(', ') || 'none'}`,
+		);
+
+		builderRequest = contextParts.join('\n');
 
 		console.log('[Builder] Input', {
 			hasDiscoveryResults: !!state.discoveryResults,
 			nodesFoundCount: state.discoveryResults?.nodesFound.length ?? 0,
+			hasSupervisorInstructions: !!state.supervisorInstructions,
 			requestPreview: builderRequest.substring(0, 200),
 		});
 
 		const result = await builderSubgraph.invoke({
 			userRequest: builderRequest,
 			workflowJSON: state.workflowJSON,
+			supervisorInstructions: null, // Already incorporated into builderRequest
 		});
 
 		// Extract builder's actual summary (last message without tool calls)
@@ -270,12 +294,14 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const callConfiguratorSubgraph = async (state: typeof ParentGraphState.State) => {
 		console.log('[Configurator Subgraph] Starting', {
 			nodeCount: state.workflowJSON.nodes.length,
+			hasSupervisorInstructions: !!state.supervisorInstructions,
 		});
 
 		const result = await configuratorSubgraph.invoke({
 			workflowJSON: state.workflowJSON,
 			workflowContext: state.workflowContext,
 			instanceUrl: instanceUrl ?? '',
+			supervisorInstructions: state.supervisorInstructions,
 		});
 
 		console.log('[Configurator Subgraph] Completed');
@@ -325,7 +351,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		.addEdge('responder', END)
 		.addEdge('discovery_subgraph', 'supervisor')
 		.addEdge('builder_subgraph', 'supervisor')
-		.addEdge('configurator_subgraph', END); // Configurator is final
+		.addEdge('configurator_subgraph', 'supervisor');
 
 	return workflow;
 }
