@@ -258,7 +258,7 @@ onMounted(() => {
 		@update:search="onSearchUpdated"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader main-button="credential">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -362,7 +362,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 .type-input {
-	--max-width: 265px;
+	--select--dropdown--max-width: 265px;
 }
 
 .sidebarContainer ul {

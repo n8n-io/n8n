@@ -1,84 +1,162 @@
 @use 'sass:math';
 
+/**
+ * CSS Variable Naming Migration with Backwards Compatibility
+ *
+ * We are migrating from single-dash format (--color-primary-shade-1) to a new
+ * double-dash format (--color--primary--shade-1) to align with design system guidelines.
+ *
+ * To maintain backwards compatibility for users (for example embed customers that customize n8n)
+ * we use CSS variable fallbacks:
+ * --color--primary: var(--color-primary, var(--p--color--primary-320))
+ *
+ * This ensures:
+ * 1. New code using --color--primary--* works correctly
+ * 2. Legacy code using --color-primary-* continues to work
+ * 3. External integrations and custom CSS won't break
+ * 4. Gradual migration path without breaking changes
+ *
+ */
+
 @mixin theme {
-	--color--primary--h: var(--p--color--primary--h);
-	--color--primary--s: var(--p--color--primary--s);
-	--color--primary--l: var(--p--color--primary--l);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary--h: var(--color-primary-h, var(--p--color--primary--h));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary--s: var(--color-primary-s, var(--p--color--primary--s));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary--l: var(--color-primary-l, var(--p--color--primary--l));
 
 	// Primary tokens
 
 	// Primary
-	--color--primary--shade-1: var(--p--color--primary-420);
-	--color--primary: var(--p--color--primary-320);
-	--color--primary--tint-1: var(--p--color--primary-120);
-	--color--primary--tint-2: var(--p--color--primary-070);
-	--color--primary--tint-3: var(--p--color--primary-030);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary--shade-1: var(--color-primary-shade-1, var(--p--color--primary-420));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary: var(--color-primary, var(--p--color--primary-320));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary--tint-1: var(--color-primary-tint-1, var(--p--color--primary-120));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary--tint-2: var(--color-primary-tint-2, var(--p--color--primary-070));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--primary--tint-3: var(--color-primary-tint-3, var(--p--color--primary-030));
 
 	// Secondary
-	--color--secondary--shade-1: var(--p--color--secondary-570);
-	--color--secondary: var(--p--color--secondary-470);
-	--color--secondary--tint-1: var(--p--color--secondary-170);
-	--color--secondary--tint-2: var(--p--color--secondary-070);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--secondary--shade-1: var(--color-secondary-shade-1, var(--p--color--secondary-570));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--secondary: var(--color-secondary, var(--p--color--secondary-470));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--secondary--tint-1: var(--color-secondary-tint-1, var(--p--color--secondary-170));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--secondary--tint-2: var(--color-secondary-tint-3, var(--p--color--secondary-070));
 
 	// Success
-	--color--success--shade-1: var(--p--color--alt-a-700);
-	--color--success: var(--p--color--alt-a-600);
-	--color--success--tint-1: var(--p--color--alt-a-300);
-	--color--success--tint-2: var(--p--color--alt-a-200);
-	--color--success--tint-3: var(--p--color--alt-a-100);
-	--color--success--tint-4: var(--p--color--alt-a-050);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--success--shade-1: var(--color-success-shade-1, var(--p--color--alt-a-700));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--success: var(--color-success, var(--p--color--alt-a-600));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--success--tint-1: var(--color-success-light, var(--p--color--alt-a-300));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--success--tint-2: var(--color-success-light-2, var(--p--color--alt-a-200));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--success--tint-3: var(--color-success-tint-1, var(--p--color--alt-a-100));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--success--tint-4: var(--color-success-tint-2, var(--p--color--alt-a-050));
 
 	// Warning
-	--color--warning--shade-1: var(--p--color--alt-b-530);
-	--color--warning: var(--p--color--alt-b-430);
-	--color--warning--tint-1: var(--p--color--alt-b-180);
-	--color--warning--tint-2: var(--p--color--alt-b-030);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--warning--shade-1: var(--color-warning-shade-1, var(--p--color--alt-b-530));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--warning: var(--color-warning, var(--p--color--alt-b-430));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--warning--tint-1: var(--color-warning-tint-1, var(--p--color--alt-b-180));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--warning--tint-2: var(--color-warning-tint-2, var(--p--color--alt-b-030));
 
 	// Danger
-	--color--danger--shade-1: var(--p--color--alt-c-580);
-	--color--danger: var(--p--color--alt-c-480);
-	--color--danger--tint-1: var(--p--color--alt-c-330);
-	--color--danger--tint-2: var(--p--color--alt-c-230);
-	--color--danger--tint-3: var(--p--color--alt-c-080);
-	--color--danger--tint-4: var(--p--color--alt-c-030);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--danger--shade-1: var(--color-danger-shade-1, var(--p--color--alt-c-580));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--danger: var(--color-danger, var(--p--color--alt-c-480));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--danger--tint-1: var(--color-danger-light, var(--p--color--alt-c-330));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--danger--tint-2: var(--color-danger-light-2, var(--p--color--alt-c-230));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--danger--tint-3: var(--color-danger-tint-1, var(--p--color--alt-c-080));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--danger--tint-4: var(--color-danger-tint-2, var(--p--color--alt-c-030));
 
 	// Text
-	--color--text--shade-1: var(--p--color--gray-740);
-	--color--text: var(--p--color--gray-540);
-	--color--text--tint-1: var(--p--color--gray-420);
-	--color--text--tint-2: var(--p--color--gray-120);
-	--color--text--tint-3: var(--p--color--white);
-	--color--text--danger: var(--p--color--alt-c-480);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--text--shade-1: var(--color-text-dark, var(--p--color--gray-740));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--text: var(--color-text-base, var(--p--color--gray-540));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--text--tint-1: var(--color-text-light, var(--p--color--gray-420));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--text--tint-2: var(--color-text-lighter, var(--p--color--gray-120));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--text--tint-3: var(--color-text-xlight, var(--p--color--white));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--text--danger: var(--color-text-danger, var(--p--color--alt-c-480));
 
 	// Foreground
-	--color--foreground--shade-2: var(--p--color--gray-490);
-	--color--foreground--shade-1: var(--p--color--gray-200);
-	--color--foreground: var(--p--color--gray-120);
-	--color--foreground--tint-1: var(--p--color--gray-070);
-	--color--foreground--tint-2: var(--p--color--white);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--foreground--shade-2: var(--color-foreground-xdark, var(--p--color--gray-490));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--foreground--shade-1: var(--color-foreground-dark, var(--p--color--gray-200));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--foreground: var(--color-foreground-base, var(--p--color--gray-120));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--foreground--tint-1: var(--color-foreground-light, var(--p--color--gray-070));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--foreground--tint-2: var(--color-foreground-xlight, var(--p--color--white));
 
 	// Background
-	--color--background--shade-2: var(--p--color--gray-820);
-	--color--background--shade-1: var(--p--color--gray-120);
-	--color--background: var(--p--color--gray-040);
-	--color--background--light-1: var(--p--color--gray-025);
-	--color--background--light-2: var(--p--color--gray-010);
-	--color--background--light-3: var(--p--color--white);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--background--shade-2: var(--color-background-dark, var(--p--color--gray-820));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--background--shade-1: var(--color-background-medium, var(--p--color--gray-120));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--background: var(--color-background-base, var(--p--color--gray-040));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--background--light-1: var(--color-background-light-base, var(--p--color--gray-025));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--background--light-2: var(--color-background-light, var(--p--color--gray-010));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--color--background--light-3: var(--color-background-xlight, var(--p--color--white));
 
-	--shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
-	--shadow--dark: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.12);
-	--shadow--light: 0 2px 12px 0 rgba(0, 0, 0, 0.07);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--shadow: var(--box-shadow-base, 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04));
+	--shadow--dark: var(
+		/* stylelint-disable-next-line @n8n/css-var-naming */ --box-shadow-dark,
+		0 2px 4px rgba(0, 0, 0, 0.12),
+		0 0 6px rgba(0, 0, 0, 0.12)
+	);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--shadow--light: var(--box-shadow-light, 0 2px 12px 0 rgba(0, 0, 0, 0.07));
 
-	--radius--xl: 12px;
-	--radius--lg: 8px;
-	--radius: 4px;
-	--radius--sm: 2px;
-	--border-color: var(--color--foreground);
-	--border-color--light: var(--color--foreground--tint-1);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--radius--xl: var(--border-radius-xlarge, 12px);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--radius--lg: var(--border-radius-large, 8px);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--radius: var(--border-radius-base, 4px);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--radius--sm: var(--border-radius-small, 2px);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--border-color: var(--border-color-base, var(--color--foreground));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--border-color--light: var(--border-color-light, var(--color--foreground--tint-1));
 
-	--border-style: solid;
-	--border-width: 1px;
-	--border: var(--border-width) var(--border-style) var(--color--foreground);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--border-style: var(--border-style-base, solid);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--border-width: var(--border-width-base, 1px);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	--border: var(--border-base, var(--border-width) var(--border-style) var(--color--foreground));
 
 	--font-size--4xs: 0.5rem;
 	--font-size--3xs: 0.625rem;
@@ -664,6 +742,9 @@
 	/* Ag Grid */
 	--grid--row--color--background--selected: var(--p--color--secondary-070);
 	--grid--cell--border-color--editing: 2px solid var(--color--secondary);
+
+	--color-command-bar-item-hover-background: var(--color--background);
+	--shadow-command-bar: 0 15px 45px 0 hsla(0, 0%, 0%, 0.13), 0 5px 10px 0 hsla(0, 0%, 0%, 0.08);
 }
 
 :root {

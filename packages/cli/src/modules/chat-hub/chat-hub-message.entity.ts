@@ -1,18 +1,26 @@
-import type { ChatHubProvider } from '@n8n/api-types';
-import { ExecutionEntity, WithTimestampsAndStringId, WorkflowEntity } from '@n8n/db';
-import { Column, Entity, ManyToOne, JoinColumn, OneToMany, type Relation } from '@n8n/typeorm';
+import type { ChatHubProvider, ChatHubMessageType, ChatHubMessageState } from '@n8n/api-types';
+import { ExecutionEntity, WithTimestamps, WorkflowEntity } from '@n8n/db';
+import {
+	Column,
+	Entity,
+	ManyToOne,
+	JoinColumn,
+	OneToMany,
+	type Relation,
+	PrimaryGeneratedColumn,
+} from '@n8n/typeorm';
 
 import type { ChatHubSession } from './chat-hub-session.entity';
-import type { ChatHubMessageState } from './chat-hub.types';
-
-export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
 
 @Entity({ name: 'chat_hub_messages' })
-export class ChatHubMessage extends WithTimestampsAndStringId {
+export class ChatHubMessage extends WithTimestamps {
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
+
 	/**
 	 * ID of the chat session/conversation this message belongs to.
 	 */
-	@Column({ type: 'varchar', length: 36 })
+	@Column({ type: String })
 	sessionId: string;
 
 	/**
@@ -84,7 +92,7 @@ export class ChatHubMessage extends WithTimestampsAndStringId {
 	/**
 	 * ID of the previous message this message is a response to, NULL on the initial message.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: String, nullable: true })
 	previousMessageId: string | null;
 
 	/**
@@ -106,8 +114,8 @@ export class ChatHubMessage extends WithTimestampsAndStringId {
 	/**
 	 * Root message of a conversation turn (Human message + AI responses)
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	turnId: string | null;
+	@Column({ type: String })
+	turnId: string;
 
 	/**
 	 * Message that began the turn, probably from the human/user.
@@ -128,7 +136,7 @@ export class ChatHubMessage extends WithTimestampsAndStringId {
 	/**
 	 * ID of the message that this message is a retry of (if applicable).
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: String, nullable: true })
 	retryOfMessageId: string | null;
 
 	/**
@@ -156,7 +164,7 @@ export class ChatHubMessage extends WithTimestampsAndStringId {
 	/**
 	 * ID of the message that this message is a revision/edit of (if applicable).
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: String, nullable: true })
 	revisionOfMessageId: string | null;
 
 	/**
