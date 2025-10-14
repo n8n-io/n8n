@@ -44,11 +44,13 @@ const PROPERTY_VOCABULARY = new Set([
 	'margin-left',
 	'margin-top',
 	'margin-bottom',
+	'max-width',
 	'z',
 	'duration',
 	'easing',
 	'outline-color',
 	'outline-width',
+	'width',
 ]);
 
 // Properties that can be used as standalone single-group variables (without a value)
@@ -83,8 +85,11 @@ const MODES = new Set(['light', 'dark', 'hc', 'rtl', 'print']);
 
 const MEDIA = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
 
+// Ignore issues related to these namespaces
+const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka']);
+
 // Allowed namespaces
-const NAMESPACES = new Set(['n8n', 'chat', 'p']);
+const NAMESPACES = new Set(['n8n', 'p', ...DISABLE_CHECK_FOR_NAMESPACES]);
 
 // Semantic values and scales
 const SEMANTIC_VALUES = new Set([
@@ -128,7 +133,18 @@ interface ValidationResult {
 	reason?: string;
 }
 
+function shouldSkip(variable: string) {
+	const parts = variable.split('-');
+	if (DISABLE_CHECK_FOR_NAMESPACES.has(parts[0])) {
+		return true;
+	}
+}
+
 function validateCssVariable(variable: string): ValidationResult {
+	if (shouldSkip(variable)) {
+		return { valid: true };
+	}
+
 	// Split into groups first (drop first empty element from leading --)
 	const groups = variable.slice(2).split('--');
 

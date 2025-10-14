@@ -362,7 +362,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 .type-input {
-	--max-width: 265px;
+	--select--dropdown--max-width: 265px;
 }
 
 .sidebarContainer ul {
