@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
-import type { Project } from '@/types/projects.types';
+import type { Project } from '@/features/projects/projects.types';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 

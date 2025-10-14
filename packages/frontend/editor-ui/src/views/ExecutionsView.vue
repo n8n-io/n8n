@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { ExecutionFilterType } from '@/Interface';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
-import { useProjectPages } from '@/composables/useProjectPages';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';

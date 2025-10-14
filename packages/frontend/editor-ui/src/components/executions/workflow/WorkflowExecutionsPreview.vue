@@ -421,8 +421,8 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 .debugLink {
 	a > span {
 		display: block;
-		padding: var(--button-padding-vertical, var(--spacing--xs))
-			var(--button-padding-horizontal, var(--spacing--md));
+		padding: var(--button--padding--vertical, var(--spacing--xs))
+			var(--button--padding--horizontal, var(--spacing--md));
 	}
 }
 
@@ -442,8 +442,8 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .highlightDataButtonOpen {
 	color: var(--color--primary);
-	background-color: var(--color-button-secondary-hover-background);
-	border-color: var(--color-button-secondary-hover-active-focus-border);
+	background-color: var(--button--color--background--secondary--hover);
+	border-color: var(--button--border-color--secondary--hover-active-focus);
 }
 
 .badge {

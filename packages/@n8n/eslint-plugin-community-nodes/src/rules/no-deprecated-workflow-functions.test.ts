@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 
 const ruleTester = new RuleTester();
@@ -60,6 +61,16 @@ const response3 = await this.helpers.requestOAuth2.call(this, 'google', options)
 				{
 					messageId: 'deprecatedRequestFunction',
 					data: { functionName: 'request', replacement: 'httpRequest' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'request', replacement: 'httpRequest' },
+							output: `
+const response1 = await this.helpers.httpRequest('https://example.com/1');
+const response2 = await this.helpers.requestWithAuthentication.call(this, 'oauth', options);
+const response3 = await this.helpers.requestOAuth2.call(this, 'google', options);`,
+						},
+					],
 				},
 				{
 					messageId: 'deprecatedRequestFunction',
@@ -67,10 +78,33 @@ const response3 = await this.helpers.requestOAuth2.call(this, 'google', options)
 						functionName: 'requestWithAuthentication',
 						replacement: 'httpRequestWithAuthentication',
 					},
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: {
+								functionName: 'requestWithAuthentication',
+								replacement: 'httpRequestWithAuthentication',
+							},
+							output: `
+const response1 = await this.helpers.request('https://example.com/1');
+const response2 = await this.helpers.httpRequestWithAuthentication.call(this, 'oauth', options);
+const response3 = await this.helpers.requestOAuth2.call(this, 'google', options);`,
+						},
+					],
 				},
 				{
 					messageId: 'deprecatedRequestFunction',
 					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+							output: `
+const response1 = await this.helpers.request('https://example.com/1');
+const response2 = await this.helpers.requestWithAuthentication.call(this, 'oauth', options);
+const response3 = await this.helpers.httpRequestWithAuthentication.call(this, 'google', options);`,
+						},
+					],
 				},
 			],
 		},
@@ -86,14 +120,50 @@ function makeRequest(options: IRequestOptions): Promise<any> {
 				{
 					messageId: 'deprecatedType',
 					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceType',
+							data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
+							output: `
+import { IHttpRequestOptions } from 'n8n-workflow';
+
+function makeRequest(options: IRequestOptions): Promise<any> {
+	return this.helpers.request(options);
+}`,
+						},
+					],
 				},
 				{
 					messageId: 'deprecatedType',
 					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceType',
+							data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
+							output: `
+import { IRequestOptions } from 'n8n-workflow';
+
+function makeRequest(options: IHttpRequestOptions): Promise<any> {
+	return this.helpers.request(options);
+}`,
+						},
+					],
 				},
 				{
 					messageId: 'deprecatedRequestFunction',
 					data: { functionName: 'request', replacement: 'httpRequest' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'request', replacement: 'httpRequest' },
+							output: `
+import { IRequestOptions } from 'n8n-workflow';
+
+function makeRequest(options: IRequestOptions): Promise<any> {
+	return this.helpers.httpRequest(options);
+}`,
+						},
+					],
 				},
 			],
 		},

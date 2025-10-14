@@ -111,7 +111,7 @@ function onClickAdd() {
 
 .label {
 	position: absolute;
-	background: var(--color-canvas-label-background);
+	background: var(--canvas--label--color--background);
 	z-index: 1;
 	max-width: calc(100% - var(--spacing--md) - 24px);
 	white-space: nowrap;

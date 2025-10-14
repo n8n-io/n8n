@@ -4,9 +4,9 @@
 	To minimize bugs related to ongoing work
 **/
 @mixin deprecatedTheme {
-	--color-primary-h: var(--p--color--primary-h);
-	--color-primary-s: var(--p--color--primary-s);
-	--color-primary-l: var(--p--color--primary-l);
+	--color-primary-h: var(--p--color--primary--h);
+	--color-primary-s: var(--p--color--primary--s);
+	--color-primary-l: var(--p--color--primary--l);
 
 	// Primary tokens
 
