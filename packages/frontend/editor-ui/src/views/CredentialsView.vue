@@ -258,7 +258,7 @@ onMounted(() => {
 		@update:search="onSearchUpdated"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader main-button="credential">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
