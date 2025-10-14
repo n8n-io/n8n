@@ -61,7 +61,7 @@
 		cursor: pointer;
 
 		.el-message-box__close {
-			color: var(--color-info);
+			color: var(--color--info);
 		}
 
 		&:focus,
@@ -156,13 +156,13 @@
 		}
 		//
 		& .btn--cancel {
-			--button-active-background-color: var(--color--primary--tint-2);
-			--button-active-color: var(--color--primary);
-			--button-active-border-color: var(--color--primary);
-			--button-hover-background-color: var(--color--primary--tint-3);
-			--button-hover-color: var(--color--primary);
-			--button-hover-border-color: var(--color--primary);
-			--button-focus-outline-color: var(--color--primary--tint-1);
+			--button--color--background--active: var(--color--primary--tint-2);
+			--button--color--active: var(--color--primary);
+			--button--border-color--active: var(--color--primary);
+			--button--color--background--hover: var(--color--primary--tint-3);
+			--button--color--hover: var(--color--primary);
+			--button--border-color--hover: var(--color--primary);
+			--button--outline-color--focus: var(--color--primary--tint-1);
 
 			@include button.button-small();
 			@include button.button-outline;

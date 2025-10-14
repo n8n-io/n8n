@@ -2071,7 +2071,7 @@ defineExpose({ enterEditMode });
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
-	--color-tabs-arrow-buttons: var(--color-run-data-background);
+	--tabs--arrow-buttons--color: var(--run-data--color--background);
 }
 
 .itemsCount {
@@ -2258,7 +2258,7 @@ defineExpose({ enterEditMode });
 }
 
 .icon {
-	color: var(--color-callout-info-icon);
+	color: var(--callout--icon-color--info);
 	line-height: 1;
 	font-size: var(--font-size--xs);
 }

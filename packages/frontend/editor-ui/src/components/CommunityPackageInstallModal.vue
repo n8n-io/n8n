@@ -1,31 +1,38 @@
 <script setup lang="ts">
-import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from '@/components/Modal.vue';
+import { useInstallNode } from '@/composables/useInstallNode';
+import { useTelemetry } from '@/composables/useTelemetry';
 import {
-	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-	NPM_KEYWORD_SEARCH_URL,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+	NPM_KEYWORD_SEARCH_URL,
 } from '@/constants';
-import { useToast } from '@/composables/useToast';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-
+import { createEventBus } from '@n8n/utils/event-bus';
+import { computed, ref } from 'vue';
 import { ElCheckbox } from 'element-plus';
 import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
-const communityNodesStore = useCommunityNodesStore();
 
-const toast = useToast();
+interface ModalData {
+	packageName?: string;
+	disableInput?: boolean;
+	hideSuggestion?: boolean;
+	nodeType?: string;
+}
+
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const { installNode, loading } = useInstallNode();
+const uiStore = useUIStore();
 
 const modalBus = createEventBus();
 
-const loading = ref(false);
-const packageName = ref('');
+const modalData = computed(
+	() => uiStore.modalsById[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]?.data as ModalData | undefined,
+);
+const packageName = ref(modalData.value?.packageName ?? '');
 const userAgreed = ref(false);
 const checkboxWarning = ref(false);
 const infoTextErrorMessage = ref('');
@@ -39,29 +46,23 @@ const onInstallClick = async () => {
 	if (!userAgreed.value) {
 		checkboxWarning.value = true;
 	} else {
-		try {
-			telemetry.track('user started cnr package install', {
-				input_string: packageName.value,
-				source: 'cnr settings page',
-			});
-			infoTextErrorMessage.value = '';
-			loading.value = true;
-			await communityNodesStore.installPackage(packageName.value);
-			await useNodeTypesStore().getNodeTypes();
-			loading.value = false;
+		telemetry.track('user started cnr package install', {
+			input_string: packageName.value,
+			source: 'cnr settings page',
+		});
+
+		infoTextErrorMessage.value = '';
+		const result = await installNode({
+			type: 'unverified',
+			packageName: packageName.value,
+			nodeType: modalData.value?.nodeType,
+		});
+		if (result.error && 'httpStatusCode' in result.error && result.error.httpStatusCode === 400) {
+			infoTextErrorMessage.value = result.error.message;
+		}
+
+		if (result.success) {
 			modalBus.emit('close');
-			toast.showMessage({
-				title: i18n.baseText('settings.communityNodes.messages.install.success'),
-				type: 'success',
-			});
-		} catch (error) {
-			if (error.httpStatusCode && error.httpStatusCode === 400) {
-				infoTextErrorMessage.value = error.message;
-			} else {
-				toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
-			}
-		} finally {
-			loading.value = false;
 		}
 	}
 };
@@ -100,7 +101,7 @@ const onLearnMoreLinkClick = () => {
 		:show-close="!loading"
 	>
 		<template #content>
-			<div :class="[$style.descriptionContainer, 'p-s']">
+			<div v-if="!modalData?.hideSuggestion" :class="[$style.descriptionContainer, 'p-s']">
 				<div>
 					<N8nText>
 						{{ i18n.baseText('settings.communityNodes.installModal.description') }}
@@ -137,7 +138,7 @@ const onLearnMoreLinkClick = () => {
 							i18n.baseText('settings.communityNodes.installModal.packageName.placeholder')
 						"
 						:required="true"
-						:disabled="loading"
+						:disabled="loading || modalData?.disableInput"
 						@blur="onInputBlur"
 					/>
 				</N8nInputLabel>
@@ -187,7 +188,7 @@ const onLearnMoreLinkClick = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border: var(--border-width) var(--border-style) var(--color-info-tint-1);
+	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
 	border-radius: var(--radius);
 	background-color: var(--color--background--light-2);
 

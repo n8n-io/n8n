@@ -64,8 +64,8 @@ const emit = defineEmits<{
 	border: 0;
 	color: var(--color--text);
 	margin-left: auto;
-	--button-hover-background-color: transparent;
-	--button-active-background-color: transparent;
+	--button--color--background--hover: transparent;
+	--button--color--background--active: transparent;
 	background-color: var(--color--foreground);
 }
 

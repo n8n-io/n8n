@@ -205,7 +205,6 @@ export class VariablesService {
 		// Check that variable key is unique (globally or in the project)
 		await this.validateUniqueVariable(variable.key, variable.projectId);
 
-		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(
 			{
 				...variable,
@@ -214,6 +213,9 @@ export class VariablesService {
 			},
 			{ transaction: false },
 		);
+		this.eventService.emit('variable-created', {
+			projectId: variable.projectId,
+		});
 		await this.updateCache();
 		return saveResult;
 	}
@@ -267,6 +269,9 @@ export class VariablesService {
 			...(typeof variable.projectId !== 'undefined'
 				? { project: variable.projectId ? { id: variable.projectId } : null }
 				: {}),
+		});
+		this.eventService.emit('variable-updated', {
+			projectId: newProjectId,
 		});
 		await this.updateCache();
 		return (await this.getCached(id))!;

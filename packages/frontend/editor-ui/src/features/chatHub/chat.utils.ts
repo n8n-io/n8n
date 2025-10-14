@@ -2,7 +2,7 @@ import {
 	chatHubProviderSchema,
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
-	type ChatHubConversation,
+	type ChatHubSessionDto,
 } from '@n8n/api-types';
 import type { GroupedConversations } from './chat.types';
 
@@ -11,7 +11,7 @@ export function findOneFromModelsResponse(
 ): ChatHubConversationModel | undefined {
 	for (const provider of chatHubProviderSchema.options) {
 		if (response[provider].models.length > 0) {
-			return { model: response[provider].models[0].name, provider };
+			return { model: response[provider].models[0].name, provider, workflowId: null };
 		}
 	}
 
@@ -40,8 +40,8 @@ export function getRelativeDate(dateString: string): string {
 	}
 }
 
-export function groupConversationsByDate(sessions: ChatHubConversation[]): GroupedConversations[] {
-	const groups = new Map<string, ChatHubConversation[]>();
+export function groupConversationsByDate(sessions: ChatHubSessionDto[]): GroupedConversations[] {
+	const groups = new Map<string, ChatHubSessionDto[]>();
 
 	// Group sessions by relative date
 	sessions.forEach((session) => {

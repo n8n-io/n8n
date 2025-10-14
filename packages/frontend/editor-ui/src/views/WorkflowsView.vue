@@ -19,12 +19,12 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import {
-	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/components/SuggestedWorkflowCard.vue';
 import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
@@ -56,7 +56,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	type Project,
@@ -1055,12 +1055,22 @@ const handleDismissReadyToRunCallout = () => {
 	readyToRunWorkflowsStore.trackDismissCallout();
 };
 
-const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
+const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => {
 	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
 		(w): w is WorkflowListItem => w.id === data.id,
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
+
+	// Fetch the updated workflow to get the latest settings
+	try {
+		const updatedWorkflow = await workflowsStore.fetchWorkflow(data.id);
+		if (updatedWorkflow.settings) {
+			workflow.settings = updatedWorkflow.settings;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching.one'));
+	}
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -2431,7 +2441,7 @@ const onNameSubmit = async (name: string) => {
 .drop-active {
 	:global(.card) {
 		border-color: var(--color--secondary);
-		background-color: var(--color-callout-secondary-background);
+		background-color: var(--callout--color--background--secondary);
 	}
 }
 

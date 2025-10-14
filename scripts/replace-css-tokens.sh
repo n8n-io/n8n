@@ -8,7 +8,10 @@ FRONTEND_DIR="./packages/frontend"
 
 # Find all files in frontend folder except _tokens.scss (which is already updated)
 echo "Finding files to process..."
-files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.deprecated.scss" ! -path "*/_tokens.dark.deprecated.scss")
+files=$(find "$FRONTEND_DIR" -type f \( -name "*.css" -o -name "*.scss" -o -name "*.vue" -o -name "*.ts" -o -name "*.snap" -o -name "*.test.ts" -o -name "*.js" -o -name "*.md" \) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.vite/*" ! -path "*/_tokens.scss" ! -path "*/_tokens.dark.scss" ! -path "*/@n8n/chat/**")
+
+# _tokens file only
+#files=$(find "$FRONTEND_DIR" -type f \( -name "_tokens.scss" \))
 
 file_count=$(echo "$files" | wc -l | xargs)
 echo "Found $file_count files to process"
@@ -22,9 +25,12 @@ echo "$files" | xargs perl -pi -e 's/--color-primary-shade-1/--color--primary--s
 echo "$files" | xargs perl -pi -e 's/--color-primary-tint-3/--color--primary--tint-3/g'
 echo "$files" | xargs perl -pi -e 's/--color-primary-tint-2/--color--primary--tint-2/g'
 echo "$files" | xargs perl -pi -e 's/--color-primary-tint-1/--color--primary--tint-1/g'
-echo "$files" | xargs perl -pi -e 's/--color-primary-h/--color--primary-h/g'
-echo "$files" | xargs perl -pi -e 's/--color-primary-s/--color--primary-s/g'
-echo "$files" | xargs perl -pi -e 's/--color-primary-l/--color--primary-l/g'
+echo "$files" | xargs perl -pi -e 's/--color--primary-h/--color--primary--h/g'
+echo "$files" | xargs perl -pi -e 's/--color--primary-s/--color--primary--s/g'
+echo "$files" | xargs perl -pi -e 's/--color--primary-l/--color--primary--l/g'
+echo "$files" | xargs perl -pi -e 's/--color-primary-h/--color--primary--h/g'
+echo "$files" | xargs perl -pi -e 's/--color-primary-s/--color--primary--s/g'
+echo "$files" | xargs perl -pi -e 's/--color-primary-l/--color--primary--l/g'
 echo "$files" | xargs perl -pi -e 's/--color-primary(?!-)/--color--primary/g'
 echo "✓ Primary color tokens replaced"
 echo ""
@@ -182,11 +188,6 @@ echo "$files" | xargs perl -pi -e 's/--font-size-l/--font-size--lg/g'
 echo "$files" | xargs perl -pi -e 's/--font-size-m/--font-size--md/g'
 echo "$files" | xargs perl -pi -e 's/--font-size-s/--font-size--sm/g'
 echo "✓ Font size tokens replaced"
-echo ""
-
-echo "[17] Verifying replacements..."
-remaining=$(echo "$files" | xargs grep -l "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | xargs grep "--color-primary\|--color-secondary\|--color-success\|--color-warning\|--color-danger\|--color-text\|--color-foreground\|--color-background" 2>/dev/null | grep -v "\-\-color\-\-" | wc -l | xargs)
-echo "Remaining old tokens found: $remaining"
 echo ""
 
 echo "✓ Token replacements complete!"

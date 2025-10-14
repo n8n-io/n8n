@@ -6,6 +6,7 @@ import type { TextAlign, TextColor, TextSize } from '../../types/text';
 interface TextProps {
 	bold?: boolean;
 	size?: TextSize;
+	// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
 	color?: TextColor;
 	align?: TextAlign;
 	compact?: boolean;

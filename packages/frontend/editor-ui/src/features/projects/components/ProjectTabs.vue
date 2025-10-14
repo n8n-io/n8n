@@ -2,13 +2,17 @@
 import { ref, watch, computed } from 'vue';
 import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { PROJECT_VARIABLES_EXPERIMENT, VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
 import { processDynamicTabs, type DynamicTabOptions } from '@/utils/modules/tabUtils';
+import { usePostHog } from '@/stores/posthog.store';
 
 import { N8nTabs } from '@n8n/design-system';
+import { useProjectsStore } from '../projects.store';
+import { ProjectTypes } from '../projects.types';
+import { useTelemetry } from '@/composables/useTelemetry';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
@@ -25,6 +29,16 @@ const props = withDefaults(defineProps<Props>(), {
 
 const locale = useI18n();
 const route = useRoute();
+const posthogStore = usePostHog();
+const projectStore = useProjectsStore();
+const telemetry = useTelemetry();
+
+const isProjectVariablesEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		PROJECT_VARIABLES_EXPERIMENT.name,
+		PROJECT_VARIABLES_EXPERIMENT.variant,
+	),
+);
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 
@@ -35,6 +49,8 @@ const projectId = computed(() => {
 		? route.params.projectId[0]
 		: route?.params?.projectId;
 });
+
+const isTeamProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Team);
 
 const getRouteConfigs = () => {
 	// For project pages
@@ -52,6 +68,10 @@ const getRouteConfigs = () => {
 				name: VIEWS.PROJECTS_EXECUTIONS,
 				params: { projectId: projectId.value },
 			},
+			variables: {
+				name: VIEWS.PROJECTS_VARIABLES,
+				params: { projectId: projectId.value },
+			},
 		};
 	}
 
@@ -61,6 +81,7 @@ const getRouteConfigs = () => {
 			workflows: { name: VIEWS.SHARED_WORKFLOWS },
 			credentials: { name: VIEWS.SHARED_CREDENTIALS },
 			executions: { name: VIEWS.NOT_FOUND },
+			variables: { name: VIEWS.NOT_FOUND },
 		};
 	}
 
@@ -69,6 +90,7 @@ const getRouteConfigs = () => {
 		workflows: { name: VIEWS.WORKFLOWS },
 		credentials: { name: VIEWS.CREDENTIALS },
 		executions: { name: VIEWS.EXECUTIONS },
+		variables: { name: VIEWS.HOME_VARIABLES },
 	};
 };
 
@@ -95,6 +117,10 @@ const options = computed<Array<TabOptions<string>>>(() => {
 
 	if (props.showExecutions) {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
+	}
+
+	if ((props.pageType === 'overview' || isTeamProject.value) && isProjectVariablesEnabled.value) {
+		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 
 	if (props.additionalTabs?.length) {
@@ -124,6 +150,11 @@ watch(
 );
 
 function onSelectTab(value: string | number) {
+	if (selectedTab.value === 'variables') {
+		telemetry.track('User clicked project variables tab', {
+			project_id: projectId.value,
+		});
+	}
 	selectedTab.value = value as RouteRecordName;
 }
 </script>
