@@ -227,6 +227,7 @@ describe('InsightsService', () => {
 			]);
 		});
 
+		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 		test.skip('mixed period data are summarized correctly', async () => {
 			// ARRANGE
 			const now = DateTime.utc();
