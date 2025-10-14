@@ -164,6 +164,7 @@ onMounted(async () => {
 .group {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .groupHeader {
