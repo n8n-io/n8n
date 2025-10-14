@@ -132,6 +132,7 @@ export function useWorkflowCommands(): CommandGroup {
 											},
 										},
 									},
+									keywords: [i18n.baseText('commandBar.workflow.save')],
 									section: i18n.baseText('commandBar.sections.workflow'),
 									handler: async () => {
 										const saved = await workflowSaving.saveCurrentWorkflow();
@@ -162,6 +163,7 @@ export function useWorkflowCommands(): CommandGroup {
 						},
 						section: i18n.baseText('commandBar.sections.workflow'),
 						keywords: [
+							i18n.baseText('commandBar.workflow.test'),
 							i18n.baseText('commandBar.workflow.keywords.test'),
 							i18n.baseText('commandBar.workflow.keywords.execute'),
 							i18n.baseText('commandBar.workflow.keywords.run'),
@@ -191,6 +193,7 @@ export function useWorkflowCommands(): CommandGroup {
 								},
 							},
 						},
+						keywords: [i18n.baseText('commandBar.workflow.tidyUp')],
 						section: i18n.baseText('commandBar.sections.workflow'),
 						handler: () => {
 							canvasEventBus.emit('tidyUp', {
@@ -247,6 +250,7 @@ export function useWorkflowCommands(): CommandGroup {
 				},
 			},
 			section: i18n.baseText('commandBar.sections.workflow'),
+			keywords: [i18n.baseText('commandBar.workflow.selectAll')],
 			handler: () => {
 				canvasEventBus.emit('nodes:selectAll');
 			},
@@ -461,10 +465,7 @@ export function useWorkflowCommands(): CommandGroup {
 						id: ITEM_ID.ARCHIVE_WORKFLOW,
 						title: i18n.baseText('commandBar.workflow.archive'),
 						section: i18n.baseText('commandBar.sections.workflow'),
-						keywords: [
-							i18n.baseText('commandBar.workflow.keywords.archive'),
-							i18n.baseText('commandBar.workflow.keywords.delete'),
-						],
+						keywords: [i18n.baseText('commandBar.workflow.keywords.delete')],
 						icon: {
 							component: N8nIcon,
 							props: {
@@ -481,10 +482,7 @@ export function useWorkflowCommands(): CommandGroup {
 						id: ITEM_ID.UNARCHIVE_WORKFLOW,
 						title: i18n.baseText('commandBar.workflow.unarchive'),
 						section: i18n.baseText('commandBar.sections.workflow'),
-						keywords: [
-							i18n.baseText('commandBar.workflow.keywords.unarchive'),
-							i18n.baseText('commandBar.workflow.keywords.restore'),
-						],
+						keywords: [i18n.baseText('commandBar.workflow.keywords.restore')],
 						icon: {
 							component: N8nIcon,
 							props: {

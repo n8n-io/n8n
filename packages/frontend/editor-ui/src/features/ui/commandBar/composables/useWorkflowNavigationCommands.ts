@@ -2,7 +2,7 @@ import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';

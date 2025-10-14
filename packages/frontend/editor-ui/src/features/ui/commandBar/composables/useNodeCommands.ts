@@ -65,13 +65,7 @@ export function useNodeCommands(options: {
 						actionText: i18n.baseText('generic.add'),
 					},
 				},
-				keywords: [
-					displayName,
-					i18n.baseText('commandBar.nodes.keywords.insert'),
-					i18n.baseText('commandBar.nodes.keywords.add'),
-					i18n.baseText('commandBar.nodes.keywords.create'),
-					i18n.baseText('commandBar.nodes.keywords.node'),
-				],
+				keywords: [displayName],
 				icon: {
 					component: NodeIcon as Component,
 					props: {
