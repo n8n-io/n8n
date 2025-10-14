@@ -113,6 +113,6 @@ export interface ChatHubConversationResponse {
 	conversation: {
 		messages: Record<string, ChatHubMessageDto>;
 		rootIds: string[];
-		activeThread: string[];
+		activeMessageChain: string[];
 	};
 }

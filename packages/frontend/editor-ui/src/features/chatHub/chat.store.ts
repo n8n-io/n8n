@@ -46,11 +46,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	async function fetchMessages(sessionId: string) {
 		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
-		const { messages, activeThread } = conversation;
+		const { messages, activeMessageChain } = conversation;
 
 		messagesBySession.value = {
 			...messagesBySession.value,
-			[sessionId]: activeThread.map((id) => ({
+			[sessionId]: activeMessageChain.map((id) => ({
 				id: messages[id].id,
 				role: messages[id].type === 'ai' ? 'assistant' : 'user',
 				type: 'message' as const,

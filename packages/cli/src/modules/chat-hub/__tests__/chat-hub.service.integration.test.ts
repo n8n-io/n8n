@@ -169,16 +169,16 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeThread },
+				conversation: { rootIds, messages, activeMessageChain },
 			} = response;
 
 			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(activeThread).toHaveLength(4);
-			expect(activeThread[0]).toBe(msg1.id);
-			expect(activeThread[1]).toBe(msg2.id);
-			expect(activeThread[2]).toBe(msg3.id);
-			expect(activeThread[3]).toBe(msg4.id);
+			expect(activeMessageChain).toHaveLength(4);
+			expect(activeMessageChain[0]).toBe(msg1.id);
+			expect(activeMessageChain[1]).toBe(msg2.id);
+			expect(activeMessageChain[2]).toBe(msg3.id);
+			expect(activeMessageChain[3]).toBe(msg4.id);
 			expect(messages[msg1.id].content).toBe('message 1');
 			expect(messages[msg1.id].type).toBe('human');
 			expect(messages[msg1.id].turnId).toBe(msg1.id);
@@ -275,16 +275,16 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeThread },
+				conversation: { rootIds, messages, activeMessageChain },
 			} = response;
 
 			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(6);
-			expect(activeThread).toHaveLength(4);
-			expect(activeThread[0]).toBe(msg1.id);
-			expect(activeThread[1]).toBe(msg2.id);
-			expect(activeThread[2]).toBe(msg5.id);
-			expect(activeThread[3]).toBe(msg6.id);
+			expect(activeMessageChain).toHaveLength(4);
+			expect(activeMessageChain[0]).toBe(msg1.id);
+			expect(activeMessageChain[1]).toBe(msg2.id);
+			expect(activeMessageChain[2]).toBe(msg5.id);
+			expect(activeMessageChain[3]).toBe(msg6.id);
 			expect(messages[msg1.id].content).toBe('message 1');
 			expect(messages[msg2.id].content).toBe('message 2');
 			expect(messages[msg3.id].content).toBe('message 3a');
@@ -356,14 +356,14 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeThread },
+				conversation: { rootIds, messages, activeMessageChain },
 			} = response;
 
 			expect(rootIds).toEqual([msg1.id, msg3.id]);
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(activeThread).toHaveLength(2);
-			expect(activeThread[0]).toBe(msg3.id);
-			expect(activeThread[1]).toBe(msg4.id);
+			expect(activeMessageChain).toHaveLength(2);
+			expect(activeMessageChain[0]).toBe(msg3.id);
+			expect(activeMessageChain[1]).toBe(msg4.id);
 		});
 
 		it('should get conversation with a retry branch at last message', async () => {
@@ -438,16 +438,16 @@ describe('chatHub', () => {
 			expect(response.session.id).toBe(session.id);
 
 			const {
-				conversation: { rootIds, messages, activeThread },
+				conversation: { rootIds, messages, activeMessageChain },
 			} = response;
 
 			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(5);
-			expect(activeThread).toHaveLength(4);
-			expect(activeThread[0]).toBe(msg1.id);
-			expect(activeThread[1]).toBe(msg2.id);
-			expect(activeThread[2]).toBe(msg3.id);
-			expect(activeThread[3]).toBe(msg5.id);
+			expect(activeMessageChain).toHaveLength(4);
+			expect(activeMessageChain[0]).toBe(msg1.id);
+			expect(activeMessageChain[1]).toBe(msg2.id);
+			expect(activeMessageChain[2]).toBe(msg3.id);
+			expect(activeMessageChain[3]).toBe(msg5.id);
 			expect(messages[msg4.id].revisionIds).toEqual([]);
 			expect(messages[msg4.id].responseIds).toEqual([]);
 			expect(messages[msg4.id].retryIds).toEqual([msg5.id]);
@@ -590,17 +590,17 @@ describe('chatHub', () => {
 			expect(response.session.id).toBe(session.id);
 
 			const {
-				conversation: { rootIds, messages, activeThread },
+				conversation: { rootIds, messages, activeMessageChain },
 			} = response;
 
 			expect(rootIds).toEqual([msg1.id, msg1b.id]);
 			expect(Object.keys(messages)).toHaveLength(10);
 
-			expect(activeThread).toHaveLength(4);
-			expect(activeThread[0]).toBe(msg1.id);
-			expect(activeThread[1]).toBe(msg2r.id);
-			expect(activeThread[2]).toBe(msg3d.id);
-			expect(activeThread[3]).toBe(msg4c.id);
+			expect(activeMessageChain).toHaveLength(4);
+			expect(activeMessageChain[0]).toBe(msg1.id);
+			expect(activeMessageChain[1]).toBe(msg2r.id);
+			expect(activeMessageChain[2]).toBe(msg3d.id);
+			expect(activeMessageChain[3]).toBe(msg4c.id);
 
 			expect(messages[msg1.id].revisionIds).toEqual([msg1b.id]);
 			expect(messages[msg1b.id].responseIds).toEqual([]);

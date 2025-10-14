@@ -602,7 +602,7 @@ export class ChatHubService {
 			this.buildMessagesGraph(messages);
 
 		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
-		const activeThread = this.buildActiveThread(messages);
+		const activeMessageChain = this.buildactiveMessageChain(messages);
 
 		return {
 			session: {
@@ -620,7 +620,7 @@ export class ChatHubService {
 			conversation: {
 				messages: messagesGraph,
 				rootIds,
-				activeThread,
+				activeMessageChain,
 			},
 		};
 	}
@@ -690,23 +690,23 @@ export class ChatHubService {
 		return messagesGraph;
 	}
 
-	private buildActiveThread(messages: ChatHubMessage[]) {
+	private buildactiveMessageChain(messages: ChatHubMessage[]) {
 		const nodes = new Map(messages.map((m) => [m.id, m]));
 		const activeMessages = messages.filter((m) => m.state === 'active');
 
 		const visited = new Set<string>();
-		const activeThread = [];
+		const activeMessageChain = [];
 		const latest = activeMessages[activeMessages.length - 1]; // Messages are sorted by createdAt
 
 		let current = latest ? latest.id : null;
 
 		while (current && !visited.has(current)) {
-			activeThread.unshift(current);
+			activeMessageChain.unshift(current);
 			visited.add(current);
 			current = nodes.get(current)?.previousMessageId ?? null;
 		}
 
-		return activeThread;
+		return activeMessageChain;
 	}
 
 	async deleteAllSessions() {
