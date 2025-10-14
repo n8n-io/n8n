@@ -3,7 +3,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 
-export type DependencyType = 'credential' | 'nodeType' | 'webhookPath' | 'subWorkflow';
+export type DependencyType = 'credential' | 'nodeType' | 'webhookPath' | 'workflowCall';
 
 @Entity()
 export class WorkflowDependency extends WithTimestampsAndStringId {
