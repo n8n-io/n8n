@@ -207,6 +207,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: call the endpoint
 	}
 
+	async function updateChatMessage(sessionId: string, messageId: string, content: string) {
+		// TODO: call the endpoint
+	}
+
 	return {
 		models,
 		loadingModels,
@@ -220,5 +224,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		fetchMessages,
 		renameSession,
 		deleteSession,
+		updateChatMessage,
 	};
 });

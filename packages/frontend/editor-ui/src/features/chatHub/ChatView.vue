@@ -269,9 +269,13 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleUpdateMessage(message: ChatMessageType) {
+async function handleUpdateMessage(message: ChatMessageType) {
+	if (message.type === 'error') {
+		return;
+	}
+
+	await chatStore.updateChatMessage(sessionId.value, message.id, message.text);
 	editingMessageId.value = undefined;
-	// TODO: trigger regenerate
 }
 </script>
 
