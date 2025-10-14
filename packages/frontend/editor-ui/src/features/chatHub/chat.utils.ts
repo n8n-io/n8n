@@ -40,8 +40,8 @@ export function getRelativeDate(dateString: string): string {
 	}
 }
 
-export function groupConversationsByDate(sessions: ChatHubSesssionDto[]): GroupedConversations[] {
-	const groups = new Map<string, ChatHubSesssionDto[]>();
+export function groupConversationsByDate(sessions: ChatHubSessionDto[]): GroupedConversations[] {
+	const groups = new Map<string, ChatHubSessionDto[]>();
 
 	// Group sessions by relative date
 	sessions.forEach((session) => {

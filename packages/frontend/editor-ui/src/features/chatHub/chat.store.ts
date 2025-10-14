@@ -13,7 +13,7 @@ import type {
 	ChatHubConversationModel,
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
-	ChatHubSesssionDto,
+	ChatHubSessionDto,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -23,7 +23,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const isResponding = ref(false);
 	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
-	const sessions = ref<ChatHubSesssionDto[]>([]);
+	const sessions = ref<ChatHubSessionDto[]>([]);
 
 	const getLastMessage = (sessionId: string) => {
 		const msgs = messagesBySession.value[sessionId];

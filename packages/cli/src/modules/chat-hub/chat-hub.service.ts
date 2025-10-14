@@ -602,7 +602,7 @@ export class ChatHubService {
 			this.buildMessagesGraph(messages);
 
 		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
-		const activeMessageChain = this.buildactiveMessageChain(messages);
+		const activeMessageChain = this.buildActiveMessageChain(messages);
 
 		return {
 			session: {
@@ -690,7 +690,7 @@ export class ChatHubService {
 		return messagesGraph;
 	}
 
-	private buildactiveMessageChain(messages: ChatHubMessage[]) {
+	private buildActiveMessageChain(messages: ChatHubMessage[]) {
 		const nodes = new Map(messages.map((m) => [m.id, m]));
 		const activeMessages = messages.filter((m) => m.state === 'active');
 

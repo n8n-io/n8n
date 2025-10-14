@@ -64,11 +64,11 @@ export class ChatHubSendMessageRequest extends Z.class({
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
 export type ChatHubMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
 
-export type ChatSessionid = string; // UUID
+export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
 
-export interface ChatHubSesssionDto {
-	id: ChatSessionid;
+export interface ChatHubSessionDto {
+	id: ChatSessionId;
 	title: string;
 	ownerId: string;
 	lastMessageAt: string | null;
@@ -82,7 +82,7 @@ export interface ChatHubSesssionDto {
 
 export interface ChatHubMessageDto {
 	id: ChatMessageId;
-	sessionId: ChatSessionid;
+	sessionId: ChatSessionId;
 	type: ChatHubMessageType;
 	name: string;
 	content: string;
@@ -105,10 +105,10 @@ export interface ChatHubMessageDto {
 	revisionIds: ChatMessageId[];
 }
 
-export type ChatHubConversationsResponse = ChatHubSesssionDto[];
+export type ChatHubConversationsResponse = ChatHubSessionDto[];
 
 export interface ChatHubConversationResponse {
-	session: ChatHubSesssionDto;
+	session: ChatHubSessionDto;
 
 	conversation: {
 		messages: Record<string, ChatHubMessageDto>;

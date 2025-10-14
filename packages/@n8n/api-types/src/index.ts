@@ -20,7 +20,7 @@ export {
 	ChatHubSendMessageRequest,
 	type ChatMessageId,
 	type ChatHubMessageDto,
-	type ChatHubSesssionDto,
+	type ChatHubSessionDto,
 	type ChatHubConversationResponse,
 	type ChatHubConversationsResponse,
 } from './chat-hub';
