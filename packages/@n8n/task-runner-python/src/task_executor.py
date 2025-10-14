@@ -10,10 +10,11 @@ import logging
 
 from src.errors import (
     TaskCancelledError,
+    TaskKilledError,
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
-    TaskProcessExitError,
+    TaskSubprocessFailedError,
     SecurityViolationError,
 )
 from src.import_validation import validate_module_import
@@ -26,6 +27,7 @@ from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
     SIGTERM_EXIT_CODE,
+    SIGKILL_EXIT_CODE,
 )
 from typing import Any
 
@@ -87,7 +89,7 @@ class TaskExecutor:
                 process.start()
             except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
                 logger.error(f"Failed to start child process: {e}")
-                raise TaskProcessExitError(-1)
+                raise TaskSubprocessFailedError(-1)
 
             process.join(timeout=task_timeout)
 
@@ -98,9 +100,12 @@ class TaskExecutor:
             if process.exitcode == SIGTERM_EXIT_CODE:
                 raise TaskCancelledError()
 
+            if process.exitcode == SIGKILL_EXIT_CODE:
+                raise TaskKilledError()
+
             if process.exitcode != 0:
                 assert process.exitcode is not None
-                raise TaskProcessExitError(process.exitcode)
+                raise TaskSubprocessFailedError(process.exitcode)
 
             try:
                 returned = queue.get_nowait()
