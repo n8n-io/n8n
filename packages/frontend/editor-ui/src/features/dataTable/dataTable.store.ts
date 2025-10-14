@@ -245,6 +245,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 
 		return result;
 	};
+	const fetchRowById = async (dataStoreId: string, projectId: string, rowId: number) => {
+		const response = await getDataTableRowsApi(rootStore.restApiContext, dataStoreId, projectId, {
+			filter: JSON.stringify({
+				type: 'and',
+				filters: [{ columnName: 'id', condition: 'eq', value: rowId }],
+			}),
+			take: 1,
+		});
+		return response.data?.[0] ?? null;
+	};
 
 	return {
 		dataTables,
@@ -267,5 +277,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		insertEmptyRow,
 		updateRow,
 		deleteRows,
+		fetchRowById,
 	};
 });
