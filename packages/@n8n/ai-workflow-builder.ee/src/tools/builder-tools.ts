@@ -5,6 +5,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { createAddNodeTool, getAddNodeToolBase } from './add-node.tool';
+import { CATEGORIZE_PROMPT_TOOL, createCategorizePromptTool } from './categorize-prompt.tool';
 import { CONNECT_NODES_TOOL, createConnectNodesTool } from './connect-nodes.tool';
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import { createNodeDetailsTool, NODE_DETAILS_TOOL } from './node-details.tool';
@@ -28,6 +29,7 @@ export function getBuilderTools({
 	instanceUrl?: string;
 }): BuilderTool[] {
 	return [
+		createCategorizePromptTool(llmComplexTask, logger),
 		createNodeSearchTool(parsedNodeTypes),
 		createNodeDetailsTool(parsedNodeTypes),
 		createAddNodeTool(parsedNodeTypes),
@@ -48,6 +50,7 @@ export function getBuilderToolsForDisplay({
 	nodeTypes,
 }: { nodeTypes: INodeTypeDescription[] }): BuilderToolBase[] {
 	return [
+		CATEGORIZE_PROMPT_TOOL,
 		NODE_SEARCH_TOOL,
 		NODE_DETAILS_TOOL,
 		getAddNodeToolBase(nodeTypes),

@@ -593,6 +593,7 @@ describe('operations-processor', () => {
 			messages: [],
 			workflowContext: {},
 			previousSummary: 'EMPTY',
+			promptTaxonomy: undefined,
 		});
 
 		it('should process operations and clear them', () => {
