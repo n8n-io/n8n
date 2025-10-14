@@ -1,11 +1,11 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useProjectNavigationCommands } from './useProjectNavigationCommands';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { VIEWS } from '@/constants';
-import type { ProjectListItem } from '@/types/projects.types';
+import type { ProjectListItem } from '@/features/projects/projects.types';
 
 const routerPushMock = vi.fn();
 vi.mock('vue-router', () => ({

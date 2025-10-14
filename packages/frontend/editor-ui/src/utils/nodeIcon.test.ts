@@ -151,7 +151,7 @@ describe('util: Node Icon', () => {
 			expect(result).toEqual({
 				type: 'icon',
 				name: 'user',
-				color: 'var(--color-node-icon-blue)',
+				color: 'var(--node--icon--color--blue)',
 			});
 		});
 

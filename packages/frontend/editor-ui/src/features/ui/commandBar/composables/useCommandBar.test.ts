@@ -30,7 +30,7 @@ const loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({ loadNodeTypesIfNotLoaded }),
 }));
-vi.mock('@/stores/projects.store', () => ({
+vi.mock('@/features/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		personalProject: { id: 'p1' },
 		myProjects: [{ id: 'p1', name: 'Personal' }],

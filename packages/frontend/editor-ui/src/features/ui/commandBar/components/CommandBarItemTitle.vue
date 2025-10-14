@@ -2,7 +2,7 @@
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { KeyboardShortcut } from '@n8n/design-system/types/keyboardshortcut';
 import { N8nKeyboardShortcut } from '@n8n/design-system';
-import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
 
 interface Props {
 	title: string;

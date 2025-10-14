@@ -10,7 +10,7 @@ import debounce from 'lodash/debounce';
 import { VIEWS } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { CommandGroup, CommandBarItem } from '../types';
 import { useTagsStore } from '@/stores/tags.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';

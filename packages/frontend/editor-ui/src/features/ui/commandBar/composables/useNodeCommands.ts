@@ -5,7 +5,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import type { CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';

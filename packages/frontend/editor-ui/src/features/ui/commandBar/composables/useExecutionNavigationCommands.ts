@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { CommandGroup, CommandBarItem } from '../types';
 import { VIEWS } from '@/constants';
 import { N8nIcon } from '@n8n/design-system';

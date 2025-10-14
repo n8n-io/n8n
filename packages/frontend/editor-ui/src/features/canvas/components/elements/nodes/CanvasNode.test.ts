@@ -3,7 +3,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
-import { createCanvasNodeData, createCanvasNodeProps, createCanvasProvide } from '@/__tests__/data';
+import {
+	createCanvasNodeData,
+	createCanvasNodeProps,
+	createCanvasProvide,
+} from '@/features/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
 vi.mock('@/stores/nodeTypes.store', () => ({

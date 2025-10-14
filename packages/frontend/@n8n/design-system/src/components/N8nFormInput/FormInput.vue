@@ -288,7 +288,7 @@ defineExpose({ inputRef });
 }
 
 .errorInput {
-	--input-border-color: var(--color--danger);
+	--input--border-color: var(--color--danger);
 }
 
 .multiSelectSmallTags {

@@ -3,13 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as permissionsModule from '@n8n/permissions';
 import { useDataTableNavigationCommands } from './useDataTableNavigationCommands';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { DataTable } from '@/features/dataTable/dataTable.types';
 import { VIEWS } from '@/constants';
-import { createTestProject } from '@/__tests__/data/projects';
+import { createTestProject } from '@/features/projects/__tests__/utils';
 
 const routerPushMock = vi.fn();
 vi.mock('vue-router', () => ({

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 
-vi.mock('@/components/Projects/ProjectIcon.vue', () => ({
+vi.mock('@/features/projects/components/ProjectIcon.vue', () => ({
 	default: {
 		name: 'ProjectIcon',
 		template: '<div data-test-id="project-icon"></div>',

@@ -284,8 +284,8 @@ function onBackButton() {
 	padding: 0;
 }
 .nodeIcon {
-	--node-icon-size: 20px;
-	--node-icon-color: var(--color--text);
+	--node--icon--size: 20px;
+	--node--icon--color: var(--color--text);
 	margin-right: var(--spacing--sm);
 }
 .renderedItems {
@@ -306,7 +306,7 @@ function onBackButton() {
 	background: var(--color--background--light-3);
 	height: 100%;
 	background-color: $node-creator-background-color;
-	--color-background-node-icon-badge: var(--color--background--light-3);
+	--node--icon--badge--color--background: var(--color--background--light-3);
 	width: var(--node-creator-width);
 	display: flex;
 	flex-direction: column;

@@ -3,13 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as permissionsModule from '@n8n/permissions';
 import { useCredentialNavigationCommands } from './useCredentialNavigationCommands';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { ICredentialsResponse } from '@/Interface';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { VIEWS } from '@/constants';
 
 vi.mock('vue-router', () => ({
