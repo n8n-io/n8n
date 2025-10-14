@@ -148,7 +148,8 @@
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
-      "dist/nodes/ModelSelector/ModelSelector.node.js"
+      "dist/nodes/ModelSelector/ModelSelector.node.js",
+      "dist/nodes/GuardRails/GuardRails.node.js"
     ]
   },
   "devDependencies": {
