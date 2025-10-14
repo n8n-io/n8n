@@ -91,28 +91,29 @@ export function buildGetManyFilter(
 	node: INode,
 ): DataTableFilter {
 	const filters = fieldEntries.map((x) => {
+		const columnName = x.keyName.split(' ')[0];
 		switch (x.condition) {
 			case 'isEmpty':
 				return {
-					columnName: x.keyName,
+					columnName,
 					condition: 'eq' as const,
 					value: null,
 				};
 			case 'isNotEmpty':
 				return {
-					columnName: x.keyName,
+					columnName,
 					condition: 'neq' as const,
 					value: null,
 				};
 			case 'isTrue':
 				return {
-					columnName: x.keyName,
+					columnName,
 					condition: 'eq' as const,
 					value: true,
 				};
 			case 'isFalse':
 				return {
-					columnName: x.keyName,
+					columnName,
 					condition: 'eq' as const,
 					value: false,
 				};
@@ -132,7 +133,7 @@ export function buildGetManyFilter(
 					value = parsed;
 				}
 				return {
-					columnName: x.keyName,
+					columnName,
 					condition: x.condition ?? 'eq',
 					value,
 				};

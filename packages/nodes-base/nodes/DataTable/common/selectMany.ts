@@ -94,6 +94,17 @@ export function getSelectFields(
 								},
 							},
 						},
+						{
+							displayName: 'Path',
+							name: 'path',
+							type: 'string',
+							default: '',
+							displayOptions: {
+								hide: {
+									'&keyName': [{ _cnd: { includes: '(json)' } }],
+								},
+							},
+						},
 					],
 				},
 			],
@@ -129,11 +140,12 @@ export async function getSelectFilter(
 			...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
 			...Object.fromEntries(availableColumns.map((col) => [col.name, col.type])),
 		};
+		const columnNames = fields.map((x) => x.keyName.split(' ')[0]);
 
-		const invalidConditions = fields.filter((field) => !allColumnsWithTypes[field.keyName]);
+		const invalidConditions = columnNames.filter((columnName) => !allColumnsWithTypes[columnName]);
 
 		if (invalidConditions.length > 0) {
-			const invalidColumnNames = invalidConditions.map((c) => c.keyName).join(', ');
+			const invalidColumnNames = invalidConditions.map((col) => col).join(', ');
 			throw new NodeOperationError(
 				node,
 				`Filter validation failed: Column(s) "${invalidColumnNames}" do not exist in the selected table. ` +

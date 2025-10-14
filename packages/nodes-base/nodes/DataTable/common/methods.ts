@@ -60,7 +60,7 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	for (const column of columns) {
 		returnData.push({
 			name: `${column.name} (${column.type})`,
-			value: column.name,
+			value: `${column.name} (${column.type})`,
 			type: column.type,
 		});
 	}
