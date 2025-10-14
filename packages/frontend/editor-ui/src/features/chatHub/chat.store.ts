@@ -200,6 +200,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: call the endpoint
 	}
 
+	async function deleteSession(sessionId: string) {
+		// Optimistic update
+		sessions.value = sessions.value.filter((session) => session.id !== sessionId);
+
+		// TODO: call the endpoint
+	}
+
 	return {
 		models,
 		loadingModels,
@@ -212,5 +219,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		fetchSessions,
 		fetchMessages,
 		renameSession,
+		deleteSession,
 	};
 });

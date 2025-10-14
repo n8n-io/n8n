@@ -9,6 +9,7 @@ import { N8nIcon, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-syst
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
+import { useToast } from '@/composables/useToast';
 
 defineProps<{ isMobileDevice: boolean }>();
 
@@ -16,6 +17,8 @@ const route = useRoute();
 const router = useRouter();
 const chatStore = useChatStore();
 const uiStore = useUIStore();
+const toast = useToast();
+
 const renamingSessionId = ref<string>();
 
 const currentSessionId = computed(() =>
@@ -52,9 +55,9 @@ async function handleConfirmRename(sessionId: string, newLabel: string) {
 	renamingSessionId.value = undefined;
 }
 
-function handleDeleteSession(sessionId: string) {
-	// TODO: Implement delete functionality
-	console.log('Delete session:', sessionId);
+async function handleDeleteSession(sessionId: string) {
+	await chatStore.deleteSession(sessionId);
+	toast.showMessage({ type: 'success', title: 'Conversation is deleted' });
 }
 
 onMounted(async () => {
