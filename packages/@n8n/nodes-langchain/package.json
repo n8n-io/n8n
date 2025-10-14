@@ -164,7 +164,7 @@
     "fast-glob": "catalog:",
     "jest-mock-extended": "^3.0.4",
     "n8n-core": "workspace:*",
-    "tsup": "catalog:"
+    "tsup": "^8.5.0"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
