@@ -1,17 +1,14 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
-import Modal from './Modal.vue';
-import type {
-	FormFieldValueUpdate,
-	IFormInputs,
-	IInviteResponse,
-	InvitableRoleName,
-} from '@/Interface';
+import Modal from '@/components/Modal.vue';
+import type { FormFieldValueUpdate, IFormInputs } from '@/Interface';
+import type { IInviteResponse, InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/constants';
+import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '../users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';

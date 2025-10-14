@@ -6,7 +6,7 @@ import { mockedStore } from '@/__tests__/utils';
 import Telemetry from './Telemetry.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 vi.mock('vue-router', () => {

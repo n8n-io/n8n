@@ -6,7 +6,7 @@ import { mockedStore } from '@/__tests__/utils';
 
 import { useInstalledCommunityPackage } from './useInstalledCommunityPackage';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
 import type * as n8nWorkflow from 'n8n-workflow';
 

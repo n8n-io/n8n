@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, within } from '@testing-library/vue';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
-import SettingsUsersProjectsCell from '@/components/SettingsUsers/SettingsUsersProjectsCell.vue';
+import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 // Mock N8nTooltip
