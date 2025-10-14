@@ -228,8 +228,17 @@ class TaskExecutor:
                 if user_output is None:
                     continue
 
-                user_output["pairedItem"] = {"item": index}
-                result.append(user_output)
+                if isinstance(user_output, dict) and "json" in user_output:
+                    json_data = user_output["json"]
+                else:
+                    json_data = user_output
+
+                item = {"json": json_data, "pairedItem": {"item": index}}
+
+                if isinstance(user_output, dict) and "binary" in user_output:
+                    item["binary"] = user_output["binary"]
+
+                result.append(item)
 
             TaskExecutor._put_result(queue, result, print_args)
 
