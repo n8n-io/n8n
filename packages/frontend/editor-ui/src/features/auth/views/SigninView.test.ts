@@ -3,7 +3,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useRouter, useRoute } from 'vue-router';
-import SigninView from '@/views/SigninView.vue';
+import SigninView from './SigninView.vue';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTelemetry } from '@/composables/useTelemetry';
