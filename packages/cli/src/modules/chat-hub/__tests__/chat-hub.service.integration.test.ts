@@ -53,21 +53,25 @@ describe('chatHub', () => {
 
 		it("should list user's own conversations in expected order", async () => {
 			const session1 = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
 			});
 			const session2 = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 2',
 				lastMessageAt: new Date('2025-01-02T00:00:00Z'),
 			});
 			const session3 = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 3',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 			});
 			await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
@@ -83,13 +87,14 @@ describe('chatHub', () => {
 
 	describe('getConversation', () => {
 		it('should fail to get non-existing conversation', async () => {
-			await expect(chatHubService.getConversation(member.id, 'non-existing')).rejects.toThrow(
-				'Chat session not found',
-			);
+			await expect(
+				chatHubService.getConversation(member.id, '00000000-4040-4040-4040-000000000000'),
+			).rejects.toThrow('Chat session not found');
 		});
 
 		it("should fail to get another user's conversation", async () => {
 			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
@@ -101,6 +106,7 @@ describe('chatHub', () => {
 
 		it('should get conversation with no messages', async () => {
 			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
@@ -113,6 +119,7 @@ describe('chatHub', () => {
 
 		it('should get conversation with messages in expected order', async () => {
 			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
@@ -204,6 +211,7 @@ describe('chatHub', () => {
 			];
 
 			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
@@ -305,6 +313,7 @@ describe('chatHub', () => {
 				crypto.randomUUID(),
 			];
 			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
@@ -377,6 +386,7 @@ describe('chatHub', () => {
 			];
 
 			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
@@ -479,6 +489,7 @@ describe('chatHub', () => {
 			];
 
 			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
