@@ -1,5 +1,5 @@
-import { CreateWorkflowDependencyTable1760314000000 } from './1760314000000-CreateWorkflowDependencyTable';
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
+import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
