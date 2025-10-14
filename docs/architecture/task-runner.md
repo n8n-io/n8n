@@ -203,17 +203,17 @@ N8N_RUNNERS_ENABLED=true
 N8N_RUNNERS_MODE=internal
 
 # For external runners
-N8N_RUNNERS_BROKER_URI=ws://localhost:5679
-N8N_RUNNERS_AUTH_TOKEN=your-secure-token
+N8N_RUNNERS_TASK_BROKER_URI=ws://localhost:5679
+N8N_RUNNERS_GRANT_TOKEN=your-secure-token
 
 # Performance settings
 N8N_RUNNERS_MAX_CONCURRENCY=10
 N8N_RUNNERS_TASK_TIMEOUT=300
 
 # JavaScript runner settings
-N8N_RUNNERS_ALLOWED_BUILTIN_MODULES=crypto,util,url
-N8N_RUNNERS_ALLOWED_EXTERNAL_MODULES=lodash,moment
-N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION=false
+NODE_FUNCTION_ALLOW_BUILTIN=crypto,util,url
+NODE_FUNCTION_ALLOW_EXTERNAL=lodash,moment
+N8N_RUNNERS_INSECURE_MODE=false
 ```
 
 ## Security Features
@@ -267,13 +267,13 @@ Only specific helper methods are exposed via RPC:
 ```bash
 N8N_RUNNERS_ENABLED=true
 N8N_RUNNERS_MODE=external
-N8N_RUNNERS_AUTH_TOKEN=secret-token-123
+N8N_RUNNERS_GRANT_TOKEN=secret-token-123
 ```
 
 2. **Start external runner:**
 ```bash
-N8N_RUNNERS_BROKER_URI=ws://n8n-main:5679 \
-N8N_RUNNERS_AUTH_TOKEN=secret-token-123 \
+N8N_RUNNERS_TASK_BROKER_URI=ws://n8n-main:5679 \
+N8N_RUNNERS_GRANT_TOKEN=secret-token-123 \
 N8N_RUNNERS_MAX_CONCURRENCY=5 \
 node packages/@n8n/task-runner/dist/start.js
 ```
@@ -353,7 +353,6 @@ All errors are properly serialized and returned to the workflow executor for app
 ### Health Checks
 Task runners expose health endpoints:
 - `GET /healthz` - Basic health check
-- `GET /metrics` - Prometheus metrics (if enabled)
 
 ### Key Metrics
 - `task_runner_active_tasks` - Currently executing tasks
