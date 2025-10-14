@@ -1,19 +1,38 @@
 @use 'sass:string';
 
+// TODO: Tech debt - class names should be updated to match token names
+// Currently: .p-s, .p-m, .p-l map to --spacing--sm, --spacing--md, --spacing--lg
+// Should be: .p-sm, .p-md, .p-lg
+// This requires updating all usages across the codebase
+
 $spacing-sizes: '5xs', '4xs', '3xs', '2xs', 'xs', 's', 'm', 'l', 'xl', '2xl', '3xl', '4xl', '5xl';
 $spacing-properties: 'margin', 'padding';
 $spacing-sides: 'top', 'right', 'bottom', 'left';
+
+// Map old size names to new token names
+@function get-spacing-token($size) {
+	@if $size == 's' {
+		@return 'sm';
+	} @else if $size == 'm' {
+		@return 'md';
+	} @else if $size == 'l' {
+		@return 'lg';
+	}
+	@return $size;
+}
 
 @each $size in $spacing-sizes {
 	@each $property in $spacing-properties {
 		@each $side in $spacing-sides {
 			.#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-#{$size} {
-				#{$property}-#{$side}: var(--spacing--#{$size}) !important;
+				/* stylelint-disable-next-line @n8n/css-var-naming */
+				#{$property}-#{$side}: var(--spacing--#{get-spacing-token($size)}) !important;
 			}
 		}
 
 		.#{string.slice($property, 0, 1)}-#{$size} {
-			#{$property}: var(--spacing--#{$size}) !important;
+			/* stylelint-disable-next-line @n8n/css-var-naming */
+			#{$property}: var(--spacing--#{get-spacing-token($size)}) !important;
 		}
 	}
 }

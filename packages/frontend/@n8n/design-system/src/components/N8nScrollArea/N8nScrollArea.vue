@@ -200,7 +200,6 @@ defineExpose({
 	overflow: hidden;
 	width: 100%;
 	height: 100%;
-	--scrollbar-size: 10px;
 }
 
 .viewport {

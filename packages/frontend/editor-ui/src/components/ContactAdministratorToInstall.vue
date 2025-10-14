@@ -43,12 +43,12 @@ const classes = computed(() => ({
 .contactOwnerHint {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
-	padding: var(--spacing-xs);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs);
 	border-radius: 0.25em;
 }
 
 .border {
-	border: var(--border-width-base) solid var(--color-foreground-base);
+	border: var(--border-width) solid var(--color--foreground);
 }
 </style>
