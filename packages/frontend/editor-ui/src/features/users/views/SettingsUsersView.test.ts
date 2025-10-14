@@ -20,7 +20,7 @@ import * as permissions from '@/utils/rbac/permissions';
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
 // Mock the SettingsUsersTable component to emit events and render an accessible actions list per user
-vi.mock('@/components/SettingsUsers/SettingsUsersTable.vue', () => ({
+vi.mock('../components/SettingsUsersTable.vue', () => ({
 	default: defineComponent({
 		name: 'SettingsUsersTableStub',
 		props: {
