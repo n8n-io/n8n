@@ -27,7 +27,6 @@ const props = withDefaults(defineProps<CommandBarProps>(), {
 const emit = defineEmits<{
 	inputChange: [value: string];
 	navigateTo: [parentId: string | null];
-	loadMore: [parentId: string];
 }>();
 
 const NUM_LOADING_ITEMS = 8;
@@ -154,18 +153,6 @@ const closeCommandBar = () => {
 	selectedIndex.value = -1;
 	inputValue.value = '';
 	currentParentId.value = null;
-};
-
-const handleScroll = (event: Event) => {
-	if (!(event.target instanceof HTMLElement)) return;
-	const target = event.target;
-	const { scrollTop, scrollHeight, clientHeight } = target;
-
-	if (scrollHeight - scrollTop - clientHeight < 50) {
-		if (currentParent.value?.hasMoreChildren) {
-			emit('loadMore', currentParent.value.id);
-		}
-	}
 };
 
 const navigateToChildren = (item: CommandBarItem) => {
@@ -306,7 +293,7 @@ onUnmounted(() => {
 						:class="$style.scrollArea"
 						data-test-id="command-bar-items-list"
 					>
-						<div ref="itemsListRef" :class="$style.itemsList" @scroll="handleScroll">
+						<div ref="itemsListRef" :class="$style.itemsList">
 							<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
 								<div v-for="item in groupedItems.ungrouped" :key="item.id">
 									<N8nCommandBarItem

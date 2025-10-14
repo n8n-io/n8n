@@ -139,27 +139,5 @@ describe('components', () => {
 				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
 			);
 		});
-
-		it('emits loadMore when scrolled near bottom inside a parent with hasMoreChildren', async () => {
-			const wrapper = render(N8nCommandBar, { props: { items: createSampleItems() } });
-			await openCommandBar();
-
-			await fireEvent.click(screen.getByText('Search nodes'));
-			await waitFor(() => expect(screen.getByText('HTTP Request')).toBeInTheDocument());
-
-			const container = screen.getByTestId('command-bar-items-list');
-
-			Object.defineProperty(container, 'scrollHeight', { value: 1000, configurable: true });
-			Object.defineProperty(container, 'clientHeight', { value: 800, configurable: true });
-			Object.defineProperty(container, 'scrollTop', { value: 960, configurable: true });
-
-			await fireEvent.scroll(container);
-
-			await waitFor(() => {
-				const events = wrapper.emitted('loadMore') ?? [];
-				expect(events.length).toBeGreaterThan(0);
-				expect(events[events.length - 1]).toEqual(['search-nodes']);
-			});
-		});
 	});
 });

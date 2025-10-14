@@ -129,11 +129,10 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nCommandBar,
 	},
 	template:
-		'<n8n-command-bar v-bind="args" @input-change="onInputChange" @navigate-to="onNavigateTo" @load-more="onLoadMore" />',
+		'<n8n-command-bar v-bind="args" @input-change="onInputChange" @navigate-to="onNavigateTo" />',
 	methods: {
 		onInputChange: action('input-change'),
 		onNavigateTo: action('navigate-to'),
-		onLoadMore: action('load-more'),
 	},
 });
 
@@ -181,14 +180,12 @@ export const KeyboardShortcut: StoryFn = () => ({
 				:items="items"
 				@input-change="onInputChange"
 				@navigate-to="onNavigateTo"
-				@load-more="onLoadMore"
 			/>
 		</div>
 	`,
 	methods: {
 		onInputChange: action('input-change'),
 		onNavigateTo: action('navigate-to'),
-		onLoadMore: action('load-more'),
 	},
 });
 
@@ -211,14 +208,12 @@ export const SectionGrouping: StoryFn = () => ({
 				:items="items"
 				@input-change="onInputChange"
 				@navigate-to="onNavigateTo"
-				@load-more="onLoadMore"
 			/>
 		</div>
 	`,
 	methods: {
 		onInputChange: action('input-change'),
 		onNavigateTo: action('navigate-to'),
-		onLoadMore: action('load-more'),
 	},
 });
 
@@ -237,13 +232,11 @@ export const Loading: StoryFn = () => ({
 				:is-loading="true"
 				@input-change="onInputChange"
 				@navigate-to="onNavigateTo"
-				@load-more="onLoadMore"
 			/>
 		</div>
 	`,
 	methods: {
 		onInputChange: action('input-change'),
 		onNavigateTo: action('navigate-to'),
-		onLoadMore: action('load-more'),
 	},
 });
