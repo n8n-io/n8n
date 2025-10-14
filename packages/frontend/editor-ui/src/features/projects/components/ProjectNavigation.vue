@@ -7,7 +7,8 @@ import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem } from '../projects.types';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeMount } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
+import { sourceControlEventBus } from '@/features/sourceControl.ee/sourceControl.eventBus';
 
 import { N8nButton, N8nMenuItem, N8nTooltip, N8nHeading } from '@n8n/design-system';
 
@@ -86,8 +87,22 @@ const activeTabId = computed(() => {
 	);
 });
 
+async function onSourceControlPull() {
+	// Update myProjects for the sidebar display
+	await projectsStore.getMyProjects();
+
+	if (projectsStore.currentProjectId) {
+		await projectsStore.getProject(projectsStore.currentProjectId);
+	}
+}
+
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
+	sourceControlEventBus.on('pull', onSourceControlPull);
+});
+
+onBeforeUnmount(() => {
+	sourceControlEventBus.off('pull', onSourceControlPull);
 });
 </script>
 
