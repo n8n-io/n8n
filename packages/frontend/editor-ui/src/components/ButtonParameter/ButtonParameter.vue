@@ -329,7 +329,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	line-height: 1.2;
 }
 .droppable {
-	border: 1.5px dashed var(--color-ndv-droppable-parameter) !important;
+	border: 1.5px dashed var(--ndv--droppable-parameter--color) !important;
 }
 .activeDrop {
 	border: 1.5px solid var(--color--success) !important;

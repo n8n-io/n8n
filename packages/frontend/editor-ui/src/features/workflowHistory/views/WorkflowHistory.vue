@@ -308,24 +308,31 @@ watchEffect(async () => {
 	if (!versionId.value) {
 		return;
 	}
-	try {
-		activeWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
-			workflowId.value,
-			versionId.value,
-		);
-		sendTelemetry('User selected version');
-	} catch (error) {
-		toast.showError(
-			new Error(`${error.message} "${versionId.value}"&nbsp;`),
-			i18n.baseText('workflowHistory.title'),
-		);
-	}
 
 	try {
-		activeWorkflow.value = await workflowsStore.fetchWorkflow(workflowId.value);
+		// Fetch both in parallel and update atomically to prevent double-render flicker
+		const [workflowVersion, workflow] = await Promise.all([
+			workflowHistoryStore.getWorkflowVersion(workflowId.value, versionId.value),
+			workflowsStore.fetchWorkflow(workflowId.value),
+		]);
+
+		// Single atomic update - prevents double render of workflow preview
+		activeWorkflowVersion.value = workflowVersion;
+		activeWorkflow.value = workflow;
+
+		sendTelemetry('User selected version');
 	} catch (error) {
-		canRender.value = false;
-		toast.showError(error, i18n.baseText('workflowHistory.title'));
+		// Handle workflow version fetch error
+		if (error.message?.includes('version')) {
+			toast.showError(
+				new Error(`${error.message} "${versionId.value}"&nbsp;`),
+				i18n.baseText('workflowHistory.title'),
+			);
+		} else {
+			// Handle workflow fetch error
+			canRender.value = false;
+			toast.showError(error, i18n.baseText('workflowHistory.title'));
+		}
 	}
 });
 </script>

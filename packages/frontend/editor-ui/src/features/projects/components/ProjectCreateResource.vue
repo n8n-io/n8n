@@ -47,7 +47,7 @@ defineExpose({
 	display: inline-flex;
 
 	:global(> .button) {
-		border-right: 1px solid var(--button-font-color, var(--color-button-primary-font));
+		border-right: 1px solid var(--button--color--text, var(--button--color--text--primary));
 
 		&:not(:first-child) {
 			border-radius: 0;

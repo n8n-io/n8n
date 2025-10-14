@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref, useTemplateRef } from 'vue';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
@@ -14,7 +13,6 @@ import {
 	N8nLogo,
 	N8nPopoverReka,
 	N8nScrollArea,
-	N8nAvatar,
 	N8nText,
 	N8nIcon,
 	N8nButton,
@@ -24,6 +22,7 @@ import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	PROJECT_VARIABLES_EXPERIMENT,
 	RELEASE_NOTES_URL,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
@@ -42,7 +41,6 @@ import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUserHelpers } from '@/composables/useUserHelpers';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
@@ -58,6 +56,8 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
+import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
+import { usePostHog } from '@/stores/posthog.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -75,36 +75,22 @@ const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const route = useRoute();
-const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 const calloutHelpers = useCalloutHelpers();
+const posthogStore = usePostHog();
 
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
 });
-useUserHelpers(router, route);
 
 // Template refs
-const user = ref<Element | null>(null);
+const user = useTemplateRef('user');
 
 // Component data
 const basePath = ref('');
 const fullyExpanded = ref(false);
-const userMenuItems = ref<IMenuItem[]>([
-	{
-		id: 'settings',
-		icon: 'settings',
-		label: i18n.baseText('settings'),
-	},
-	{
-		id: 'logout',
-		icon: 'door-open',
-		label: i18n.baseText('auth.signout'),
-	},
-]);
 
 const showWhatsNewNotification = computed(
 	() =>
@@ -112,6 +98,13 @@ const showWhatsNewNotification = computed(
 		versionsStore.whatsNewArticles.some(
 			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
 		),
+);
+
+const isProjectVariablesEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		PROJECT_VARIABLES_EXPERIMENT.name,
+		PROJECT_VARIABLES_EXPERIMENT.variant,
+	),
 );
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
@@ -189,6 +182,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.variables'),
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
+		available: !isProjectVariablesEnabled.value,
 	},
 	{
 		id: 'insights',
@@ -331,9 +325,9 @@ const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 onMounted(async () => {
 	window.addEventListener('resize', onResize);
 	basePath.value = rootStore.baseUrl;
-	if (user.value) {
+	if (user.value?.$el) {
 		void externalHooks.run('mainSidebar.mounted', {
-			userRef: user.value,
+			userRef: user.value.$el,
 		});
 	}
 
@@ -352,23 +346,6 @@ const trackHelpItemClick = (itemType: string) => {
 		type: itemType,
 		workflow_id: workflowsStore.workflowId,
 	});
-};
-
-const onUserActionToggle = (action: string) => {
-	switch (action) {
-		case 'logout':
-			onLogout();
-			break;
-		case 'settings':
-			void router.push({ name: VIEWS.SETTINGS });
-			break;
-		default:
-			break;
-	}
-};
-
-const onLogout = () => {
-	void router.push({ name: VIEWS.SIGNOUT });
 };
 
 const toggleCollapse = () => {
@@ -629,54 +606,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		</N8nScrollArea>
 
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<div v-if="showUserArea">
-			<div ref="user" :class="$style.userArea">
-				<N8nPopoverReka side="right" align="end" :side-offset="16">
-					<template #content>
-						<div :class="$style.popover">
-							<N8nMenuItem
-								v-for="action in userMenuItems"
-								:key="action.id"
-								:item="action"
-								:data-test-id="`user-menu-item-${action.id}`"
-								@click="() => onUserActionToggle(action.id)"
-							/>
-						</div>
-					</template>
-					<template #trigger>
-						<div :class="$style.userAreaInner">
-							<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
-								<!-- This dropdown is only enabled when sidebar is collapsed -->
-								<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-									<N8nAvatar
-										:first-name="usersStore.currentUser?.firstName"
-										:last-name="usersStore.currentUser?.lastName"
-										size="small"
-									/>
-								</div>
-							</div>
-							<div
-								:class="{
-									['ml-2xs']: true,
-									[$style.userName]: true,
-									[$style.expanded]: fullyExpanded,
-								}"
-							>
-								<N8nText size="small" color="text-dark">{{
-									usersStore.currentUser?.fullName
-								}}</N8nText>
-							</div>
-							<div
-								data-test-id="user-menu"
-								:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
-							>
-								<N8nIconButton icon="ellipsis" text square type="tertiary" />
-							</div>
-						</div>
-					</template>
-				</N8nPopoverReka>
-			</div>
-		</div>
+		<MainSidebarUserArea
+			v-if="showUserArea"
+			ref="user"
+			:fully-expanded="fullyExpanded"
+			:is-collapsed="isCollapsed"
+		/>
 
 		<TemplateTooltip />
 	</div>
@@ -760,44 +695,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 .popoverTitle {
 	display: block;
 	margin-bottom: var(--spacing--3xs);
-}
-
-.userArea {
-	display: flex;
-	padding: var(--spacing--xs);
-	align-items: center;
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
-
-	.userName {
-		display: none;
-		overflow: hidden;
-		width: 100px;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-
-		&.expanded {
-			display: initial;
-		}
-
-		span {
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-	}
-
-	.userActions {
-		display: none;
-
-		&.expanded {
-			display: initial;
-		}
-	}
-}
-
-.userAreaInner {
-	display: flex;
-	align-items: center;
-	width: 100%;
 }
 
 @media screen and (max-height: 470px) {

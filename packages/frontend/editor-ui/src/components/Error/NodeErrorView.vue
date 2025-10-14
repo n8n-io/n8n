@@ -891,7 +891,7 @@ async function onAskAssistantClick() {
 		word-wrap: break-word;
 
 		code {
-			color: var(--color-json-string);
+			color: var(--json--string--color);
 			white-space: normal;
 			word-wrap: break-word;
 		}

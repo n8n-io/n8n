@@ -188,7 +188,7 @@ const onLearnMoreLinkClick = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border: var(--border-width) var(--border-style) var(--color-info-tint-1);
+	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
 	border-radius: var(--radius);
 	background-color: var(--color--background--light-2);
 

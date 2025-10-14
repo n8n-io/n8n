@@ -176,7 +176,7 @@ const commonClasses = computed(() => [
 }
 
 .running {
-	color: hsl(var(--color--primary-h), var(--color--primary-s), var(--color--primary-l));
+	color: hsl(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l));
 
 	&.absoluteSpinner {
 		width: 100%;
@@ -185,7 +185,7 @@ const commonClasses = computed(() => [
 		align-items: center;
 		justify-content: center;
 		font-size: 3.75em;
-		color: hsla(var(--color--primary-h), var(--color--primary-s), var(--color--primary-l), 0.7);
+		color: hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.7);
 		position: absolute;
 		left: 0;
 		top: 0;
