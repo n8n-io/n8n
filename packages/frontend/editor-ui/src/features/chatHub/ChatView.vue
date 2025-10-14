@@ -242,7 +242,7 @@ function onSubmit(message: string) {
 		return;
 	}
 
-	chatStore.askAI(sessionId.value, message, selectedModel.value, {
+	chatStore.sendMessage(sessionId.value, message, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -275,6 +275,25 @@ async function handleUpdateMessage(message: ChatMessageType) {
 
 	await chatStore.updateChatMessage(sessionId.value, message.id, message.text);
 	editingMessageId.value = undefined;
+}
+
+async function handleRegenerateMessage(message: ChatMessageType) {
+	if (chatStore.isResponding || message.type === 'error' || !selectedModel.value) {
+		return;
+	}
+
+	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+
+	if (!credentialsId) {
+		return;
+	}
+
+	await chatStore.regenerateMessage(sessionId.value, message.id, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	});
 }
 </script>
 
@@ -333,6 +352,7 @@ async function handleUpdateMessage(message: ChatMessageType) {
 					@start-edit="handleStartEditMessage(message.id)"
 					@cancel-edit="handleCancelEditMessage"
 					@update="handleUpdateMessage"
+					@regenerate="handleRegenerateMessage"
 				/>
 			</div>
 

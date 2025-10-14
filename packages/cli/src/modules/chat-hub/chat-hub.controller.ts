@@ -4,7 +4,7 @@ import {
 	ChatHubConversationsResponse,
 	ChatHubConversationResponse,
 	ChatHubEditMessageRequest,
-	ChatHubRetryMessageRequest,
+	ChatHubRegenerateMessageRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -84,11 +84,11 @@ export class ChatHubController {
 	}
 
 	@GlobalScope('chatHub:message')
-	@Post('/retry')
-	async retryMessage(
+	@Post('/regenerate')
+	async regenerateMessage(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Body payload: ChatHubRetryMessageRequest,
+		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
 		res.writeHead(200, JSONL_STREAM_HEADERS);
 		res.flushHeaders();
@@ -96,7 +96,7 @@ export class ChatHubController {
 		this.logger.debug(`Chat retry request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.retryAiMessage(res, req.user, {
+			await this.chatService.regenerateAiMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
 			});

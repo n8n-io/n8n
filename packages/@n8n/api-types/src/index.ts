@@ -18,7 +18,7 @@ export {
 	type ChatModelsRequest,
 	type ChatModelsResponse,
 	ChatHubSendMessageRequest,
-	ChatHubRetryMessageRequest,
+	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
 	type ChatMessageId,
 	type ChatSessionId,

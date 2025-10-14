@@ -4,7 +4,8 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
-	sendText,
+	sendMessageApi,
+	regenerateMessageApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
 } from './chat.api';
@@ -14,6 +15,8 @@ import type {
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubSessionDto,
+	ChatMessageId,
+	ChatSessionId,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -167,8 +170,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		streamingMessageId.value = undefined;
 	}
 
-	function askAI(
-		sessionId: string,
+	function sendMessage(
+		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
@@ -179,7 +182,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		addUserMessage(sessionId, message, messageId);
 
-		sendText(
+		sendMessageApi(
 			rootStore.restApiContext,
 			{
 				model,
@@ -189,6 +192,33 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 				previousMessageId,
+			},
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
+			onStreamDone,
+			onStreamError,
+		);
+	}
+
+	function regenerateMessage(
+		sessionId: ChatSessionId,
+		retryId: ChatMessageId,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
+	) {
+		const replyId = uuidv4();
+
+		// TODO: remove descendants of the message being retried
+		// or better yet, turn the frontend chat into a graph and
+		// maintain the visible active chain, and this would just switch to that branch.
+
+		regenerateMessageApi(
+			rootStore.restApiContext,
+			{
+				model,
+				sessionId,
+				retryId,
+				replyId,
+				credentials,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
 			onStreamDone,
@@ -224,7 +254,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		streamingMessageId,
 		sessions,
 		fetchChatModels,
-		askAI,
+		sendMessage,
+		regenerateMessage,
 		addUserMessage,
 		fetchSessions,
 		fetchMessages,

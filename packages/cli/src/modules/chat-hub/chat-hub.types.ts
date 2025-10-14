@@ -18,7 +18,7 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	message: string;
 	previousMessageId: ChatMessageId | null;
 }
-export interface RetryMessagePayload extends BaseMessagePayload {
+export interface RegenerateMessagePayload extends BaseMessagePayload {
 	retryId: ChatMessageId;
 }
 

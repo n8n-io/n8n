@@ -48,7 +48,7 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { ChatHubMessage } from './chat-hub-message.entity';
 import type {
 	HumanMessagePayload,
-	RetryMessagePayload,
+	RegenerateMessagePayload,
 	EditMessagePayload,
 	MessageRecord,
 	BaseMessagePayload,
@@ -375,7 +375,7 @@ export class ChatHubService {
 		);
 	}
 
-	async retryAiMessage(res: Response, user: User, payload: RetryMessagePayload) {
+	async regenerateAiMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
 		const { sessionId, retryId, replyId } = payload;
 
 		const selectedModel: ModelWithCredentials = {
