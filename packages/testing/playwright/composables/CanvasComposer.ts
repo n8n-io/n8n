@@ -49,10 +49,10 @@ export class CanvasComposer {
 		nodes: Array<{ credentials?: Record<string, unknown> }>;
 		meta?: Record<string, unknown>;
 	}> {
-		await this.n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.selectAll();
 		await this.n8n.canvas.copyNodes();
-		const workflowJSON = await this.n8n.page.evaluate(() => navigator.clipboard.readText());
+		const workflowJSON = await this.n8n.clipboard.readText();
 		return JSON.parse(workflowJSON);
 	}
 

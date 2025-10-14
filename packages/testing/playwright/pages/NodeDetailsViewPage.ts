@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { RunDataPanel } from './components/RunDataPanel';
+import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
 import { locatorByIndex } from '../utils/index-helper';
@@ -10,6 +11,7 @@ import { locatorByIndex } from '../utils/index-helper';
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
+	readonly clipboard: ClipboardHelper;
 	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
 	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
 
@@ -17,6 +19,7 @@ export class NodeDetailsViewPage extends BasePage {
 		super(page);
 		this.setupHelper = new NodeParameterHelper(this);
 		this.editFields = new EditFieldsNode(page);
+		this.clipboard = new ClipboardHelper(page);
 	}
 
 	getNodeCredentialsSelect() {
@@ -148,10 +151,7 @@ export class NodeDetailsViewPage extends BasePage {
 		await editor.click();
 		await editor.fill('');
 
-		await this.page.evaluate(async (jsonData) => {
-			await navigator.clipboard.writeText(JSON.stringify(jsonData));
-		}, data);
-		await this.page.keyboard.press('ControlOrMeta+V');
+		await this.clipboard.paste(JSON.stringify(data));
 
 		await this.savePinnedData();
 	}
@@ -232,6 +232,11 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputField(parameterName: string, index?: number) {
 		return this.getParameterInput(parameterName, index).locator('input');
+	}
+
+	getParameterEditor(parameterName: string, index?: number) {
+		// CodeMirror editor
+		return this.getParameterInput(parameterName, index).locator('.cm-content');
 	}
 
 	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
