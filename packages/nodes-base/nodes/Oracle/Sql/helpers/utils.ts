@@ -405,12 +405,19 @@ export function configureQueryRunner(
 				if (
 					metaData.dbType &&
 					[
-						oracledb.DB_TYPE_CLOB,
 						oracledb.DB_TYPE_DATE,
 						oracledb.DB_TYPE_TIMESTAMP_TZ,
 						oracledb.DB_TYPE_TIMESTAMP_LTZ,
 					].includes(metaData.dbType as any)
 				) {
+					return {
+						converter: (val: unknown) => {
+							if (!(val instanceof Date)) return val;
+							return val.toISOString();
+						},
+					};
+				}
+				if (metaData.dbType === oracledb.CLOB) {
 					return { type: oracledb.STRING };
 				}
 				if (metaData.dbType === oracledb.DB_TYPE_BLOB) {
