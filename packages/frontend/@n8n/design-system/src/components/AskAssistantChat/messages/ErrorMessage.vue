@@ -58,7 +58,7 @@ const { t } = useI18n();
 .errorText {
 	color: var(--color--danger);
 	font-weight: var(--font-weight--regular);
-	line-height: var(--font-line-height-tight);
+	line-height: var(--line-height--xs);
 	word-break: break-word;
 	flex-grow: 1;
 }

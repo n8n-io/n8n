@@ -1865,9 +1865,9 @@ onUpdated(async () => {
 }
 
 .droppable {
-	--input-border-color: var(--color-ndv-droppable-parameter);
-	--input-border-right-color: var(--color-ndv-droppable-parameter);
-	--input-border-style: dashed;
+	--input--border-color: var(--ndv--droppable-parameter--color);
+	--input--border-right-color: var(--ndv--droppable-parameter--color);
+	--input--border-style: dashed;
 
 	textarea,
 	input,
@@ -1877,10 +1877,10 @@ onUpdated(async () => {
 }
 
 .activeDrop {
-	--input-border-color: var(--color--success);
-	--input-border-right-color: var(--color--success);
-	--input-background-color: var(--color--foreground--tint-2);
-	--input-border-style: solid;
+	--input--border-color: var(--color--success);
+	--input--border-right-color: var(--color--success);
+	--input--color--background: var(--color--foreground--tint-2);
+	--input--border-style: solid;
 
 	textarea,
 	input {
@@ -1890,7 +1890,7 @@ onUpdated(async () => {
 }
 
 .has-issues {
-	--input-border-color: var(--color--danger);
+	--input--border-color: var(--color--danger);
 }
 
 .el-dropdown {
@@ -1943,7 +1943,7 @@ onUpdated(async () => {
 	position: absolute;
 	right: 1px;
 	bottom: 1px;
-	background-color: var(--color-code-background);
+	background-color: var(--code--color--background);
 	padding: 3px;
 	line-height: 9px;
 	border: var(--border);
@@ -1983,7 +1983,7 @@ onUpdated(async () => {
 
 <style lang="css" module>
 .modal {
-	--dialog-close-top: var(--spacing--md);
+	--dialog--close--spacing--top: var(--spacing--md);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
@@ -2001,7 +2001,7 @@ onUpdated(async () => {
 }
 
 .tipVisible {
-	--input-border-bottom-left-radius: 0;
+	--input--radius--bottom-left: 0;
 	--input-border-bottom-right-radius: 0;
 }
 
@@ -2009,7 +2009,7 @@ onUpdated(async () => {
 	position: absolute;
 	z-index: 2;
 	top: 100%;
-	background: var(--color-code-background);
+	background: var(--code--color--background);
 	border: var(--border);
 	border-top: none;
 	width: 100%;

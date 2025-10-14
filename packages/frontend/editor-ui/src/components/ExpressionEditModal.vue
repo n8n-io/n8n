@@ -236,7 +236,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 <style module lang="scss">
 .modal {
-	--dialog-close-top: var(--spacing--md);
+	--dialog--close--spacing--top: var(--spacing--md);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
@@ -331,7 +331,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	position: absolute;
 	right: var(--spacing--sm);
 	top: var(--spacing--sm);
-	color: var(--color-button-secondary-font);
+	color: var(--button--color--text--secondary);
 
 	&:hover,
 	&:active {
