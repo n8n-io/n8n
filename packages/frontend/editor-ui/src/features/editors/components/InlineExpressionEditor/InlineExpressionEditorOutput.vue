@@ -98,40 +98,40 @@ defineExpose({
 .dropdown {
 	display: flex;
 	flex-direction: column;
-	background: var(--color-code-background);
+	background: var(--code--color--background);
 	width: 100%;
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
 	border-bottom-left-radius: 4px;
 	border-bottom-right-radius: 4px;
 
 	:global(.cm-editor) {
-		background-color: var(--color-code-background);
+		background-color: var(--code--color--background);
 	}
 
 	.body {
-		padding: var(--spacing-3xs);
+		padding: var(--spacing--3xs);
 		padding-top: 0;
-		padding-left: var(--spacing-2xs);
-		color: var(--color-text-dark);
+		padding-left: var(--spacing--2xs);
+		color: var(--color--text--shade-1);
 
 		&:first-child {
-			padding-top: var(--spacing-2xs);
+			padding-top: var(--spacing--2xs);
 		}
 	}
 
 	.footer {
-		border-top: var(--border-base);
+		border-top: var(--border);
 	}
 
 	.header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		gap: var(--spacing-2xs);
-		color: var(--color-text-dark);
-		font-weight: var(--font-weight-bold);
-		padding: 0 var(--spacing-2xs);
-		padding-top: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
+		color: var(--color--text--shade-1);
+		font-weight: var(--font-weight--bold);
+		padding: 0 var(--spacing--2xs);
+		padding-top: var(--spacing--2xs);
 	}
 }
 </style>

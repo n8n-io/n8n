@@ -170,6 +170,7 @@ onUnmounted(() => {
 
 		<N8nIconButton
 			v-show="isFilterButtonVisible"
+			data-test-id="data-table-column-header-filter-button"
 			icon="funnel"
 			type="tertiary"
 			text
@@ -206,14 +207,14 @@ onUnmounted(() => {
 
 .data-table-column-header-action-item {
 	justify-content: flex-start;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .data-table-column-header-icon-wrapper {
 	flex: 1;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	min-width: 0;
 }
 
@@ -233,17 +234,17 @@ onUnmounted(() => {
 	flex-shrink: 0;
 
 	.sort-icon-active {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 		line-height: 1;
-		color: var(--color-text-base);
-		font-weight: var(--font-weight-bold);
+		color: var(--color--text);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
 .filter-highlighted {
-	color: var(--color-primary);
+	color: var(--color--primary);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 </style>

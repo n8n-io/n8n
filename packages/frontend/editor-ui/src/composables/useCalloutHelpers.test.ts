@@ -67,7 +67,7 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
 }));
 
-vi.mock('@/stores/projects.store', () => ({
+vi.mock('@/features/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		currentProjectId: 'test-project-id',
 	}),

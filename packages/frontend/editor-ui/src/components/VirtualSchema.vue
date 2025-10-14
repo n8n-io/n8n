@@ -233,7 +233,7 @@ const contextItems = computed(() => {
 				return renderItem;
 			}
 
-			if (isVarsOpen && environmentsStore.variables.length === 0) {
+			if (isVarsOpen && environmentsStore.scopedVariables.length === 0) {
 				const variablesEmptyNotice: RenderNotice = {
 					type: 'notice',
 					id: 'notice-variablesEmpty',
@@ -568,36 +568,36 @@ const onDragEnd = (el: HTMLElement) => {
 	&.no-search-results {
 		display: flex;
 		justify-content: center;
-		padding: var(--spacing-l) 0;
+		padding: var(--spacing--lg) 0;
 	}
 }
 
 .scroller {
 	padding: 0 var(--ndv-spacing);
-	padding-bottom: var(--spacing-2xl);
+	padding-bottom: var(--spacing--2xl);
 
 	.compact & {
-		padding: 0 var(--spacing-2xs);
+		padding: 0 var(--spacing--2xs);
 	}
 }
 
 .icon {
 	display: inline-flex;
-	margin-left: var(--spacing-xl);
-	color: var(--color-text-light);
+	margin-left: var(--spacing--xl);
+	color: var(--color--text--tint-1);
 	margin-bottom: var(--ndv-spacing);
 }
 
 .notice {
-	padding-bottom: var(--spacing-xs);
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
-	margin-left: calc(var(--spacing-l) * var(--schema-level));
+	padding-bottom: var(--spacing--xs);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
+	margin-left: calc(var(--spacing--lg) * var(--schema-level));
 }
 
 .empty-schema {
-	padding-bottom: var(--spacing-xs);
-	margin-left: calc((var(--spacing-xl) * var(--schema-level)));
+	padding-bottom: var(--spacing--xs);
+	margin-left: calc((var(--spacing--xl) * var(--schema-level)));
 }
 </style>

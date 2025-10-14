@@ -62,12 +62,12 @@ function handleEditClick() {
 	list-style: none;
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-3xs) 0;
-	border-bottom: 1px solid var(--color-foreground-light);
+	padding: var(--spacing--3xs) 0;
+	border-bottom: 1px solid var(--color--foreground--tint-1);
 	cursor: pointer;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	&:first-child {
@@ -80,25 +80,25 @@ function handleEditClick() {
 }
 
 .nodeIcon {
-	margin-right: var(--spacing-2xs);
-	margin-top: var(--spacing-4xs);
+	margin-right: var(--spacing--2xs);
+	margin-top: var(--spacing--4xs);
 	flex-shrink: 0;
 	align-self: flex-start;
 }
 
 .nodeName {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	flex-shrink: 0;
 }
 
 .issueMessage {
 	flex: 1;
-	padding-right: var(--spacing-xs);
-	line-height: var(--font-line-height-regular);
+	padding-right: var(--spacing--xs);
+	line-height: var(--line-height--md);
 }
 
 .editButton {
-	--button-border-color: transparent;
+	--button--border-color: transparent;
 	margin-left: auto;
 	flex-shrink: 0;
 	align-self: center;

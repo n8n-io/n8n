@@ -82,14 +82,14 @@ const handleUseTemplate = async () => {
 }
 
 .nodeIcon {
-	padding: var(--spacing-2xs);
-	background-color: var(--color-dialog-background);
-	border-radius: var(--border-radius-large);
+	padding: var(--spacing--2xs);
+	background-color: var(--dialog--color--background);
+	border-radius: var(--radius--lg);
 	z-index: 1;
 	display: flex;
 	flex-direction: column;
 	align-items: end;
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 
 .suggestion {
@@ -115,6 +115,6 @@ const handleUseTemplate = async () => {
 	width: 24px;
 	height: 24px;
 	border-radius: 100%;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 </style>

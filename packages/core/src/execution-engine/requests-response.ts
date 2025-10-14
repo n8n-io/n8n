@@ -31,6 +31,7 @@ function prepareRequestedNodesForExecution(
 	request: EngineRequest,
 	runIndex: number,
 	runData: IRunData,
+	executionData: IExecuteData,
 ) {
 	// 1. collect nodes to be put on the stack
 	const nodesToBeExecuted: NodeToBeExecuted[] = [];
@@ -56,6 +57,10 @@ function prepareRequestedNodesForExecution(
 			index: 0,
 		};
 		const parentNode = currentNode.name;
+		const parentSourceData = executionData.source?.main?.[runIndex];
+		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
+		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
+		const parentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
 		const parentOutputData: INodeExecutionData[][] = [
 			[
 				{
@@ -63,10 +68,18 @@ function prepareRequestedNodesForExecution(
 						...action.input,
 						toolCallId: action.id,
 					},
+					pairedItem: {
+						item: parentRunIndex,
+						input: parentOutputIndex,
+						sourceOverwrite: {
+							previousNode: parentSourceNode,
+							previousNodeOutput: parentOutputIndex,
+							previousNodeRun: parentRunIndex,
+						},
+					},
 				},
 			],
 		];
-		const parentOutputIndex = 0;
 
 		runData[node.name] ||= [];
 		const nodeRunData = runData[node.name];
@@ -88,6 +101,7 @@ function prepareRequestedNodesForExecution(
 			parentOutputData,
 			runIndex,
 			nodeRunIndex,
+			metadata: { preserveSourceOverwrite: true },
 		});
 		subNodeExecutionData.actions.push({
 			action,
@@ -166,6 +180,7 @@ export function handleRequest({
 		request,
 		runIndex,
 		runData,
+		executionData,
 	);
 
 	// 2. create metadata for current node

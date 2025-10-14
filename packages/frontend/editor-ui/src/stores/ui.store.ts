@@ -44,6 +44,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	VARIABLE_MODAL_KEY,
 } from '@/constants';
 import {
 	DELETE_FOLDER_MODAL_KEY,
@@ -77,9 +78,10 @@ import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import identity from 'lodash/identity';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -94,6 +96,7 @@ try {
 type UiStore = ReturnType<typeof useUIStore>;
 
 export const useUIStore = defineStore(STORES.UI, () => {
+	const telemetry = useTelemetry();
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
 	const theme = useLocalStorage<ThemeOption>(LOCAL_STORAGE_THEME, savedTheme, {
@@ -138,6 +141,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+				VARIABLE_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -500,7 +504,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
-	const openCommunityPackageUpdateConfirmModal = (packageName: string) => {
+	const openCommunityPackageUpdateConfirmModal = (packageName: string, source?: string) => {
+		telemetry.track('User clicked to open community node update modal', {
+			source,
+			package_name: packageName,
+		});
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
 		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);

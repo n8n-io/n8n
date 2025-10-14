@@ -131,7 +131,7 @@ defineExpose({
 
 .droppable {
 	:global(.cm-editor) {
-		border-color: var(--color-ndv-droppable-parameter);
+		border-color: var(--ndv--droppable-parameter--color);
 		border-style: dashed;
 		border-width: 1.5px;
 	}
@@ -139,7 +139,7 @@ defineExpose({
 
 .activeDrop {
 	:global(.cm-editor) {
-		border-color: var(--color-success);
+		border-color: var(--color--success);
 		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;

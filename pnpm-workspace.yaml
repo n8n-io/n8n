@@ -8,10 +8,12 @@ packages:
 
 minimumReleaseAge: 2880 # 2 days
 minimumReleaseAgeExclude:
+  - '@n8n/*'
+  - '@n8n_io/*'
   - eslint-plugin-storybook
 
 catalog:
-  '@n8n/typeorm': 0.3.20-12
+  '@n8n/typeorm': 0.3.20-13
   '@n8n_io/ai-assistant-sdk': 1.17.0
   '@langchain/core': 0.3.68
   '@langchain/openai': 0.6.7
@@ -30,6 +32,7 @@ catalog:
   callsites: 3.1.0
   chokidar: 4.0.3
   fast-glob: 3.2.12
+  fastest-levenshtein: 1.0.16
   flatted: 3.2.7
   form-data: 4.0.0
   http-proxy-agent: 7.0.2
@@ -58,6 +61,7 @@ catalog:
   typescript: 5.9.2
   eslint: 9.29.0
   mysql2: 3.15.0
+  run-script-os: 1.1.6
 
 catalogs:
   frontend:

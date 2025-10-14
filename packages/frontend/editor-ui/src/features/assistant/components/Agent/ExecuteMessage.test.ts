@@ -13,7 +13,7 @@ import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useLogsStore } from '@/stores/logs.store';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useBuilderStore } from '../../builder.store';
 
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
@@ -155,6 +155,18 @@ describe('ExecuteMessage', () => {
 		expect(button.disabled).toBe(true);
 	});
 
+	it('disables execution when placeholder values are present', () => {
+		workflowNodes[0].parameters = {
+			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
+		};
+
+		const { getAllByTestId, getByText } = renderExecuteMessage();
+
+		expect(getByText('aiAssistant.builder.executeMessage.description')).toBeInTheDocument();
+		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
+		expect(button.disabled).toBe(true);
+	});
+
 	it('runs workflow and emits completion event when execution finishes', async () => {
 		runWorkflowMock.mockImplementation(async () => {
 			workflowExecutionDataRef.status = 'running';
@@ -284,5 +296,45 @@ describe('ExecuteMessage', () => {
 		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
 
 		expect(button.disabled).toBe(false);
+	});
+
+	it('does not duplicate placeholder issues when node.issues.parameters has string values', () => {
+		// Setup node with placeholder and existing issue as a string (type violation scenario)
+		workflowNodes[0].parameters = {
+			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
+		};
+		workflowNodes[0].issues = {
+			parameters: {
+				url: 'aiAssistant.builder.executeMessage.fillParameter' as unknown as string[],
+			},
+		};
+
+		const { container } = renderExecuteMessage();
+		const issueItems = container.querySelectorAll('li');
+
+		// Should not create duplicate issues when the same message exists in node.issues.parameters
+		// Even when the value is incorrectly a string instead of an array
+		expect(issueItems.length).toBeLessThanOrEqual(1);
+	});
+
+	it('creates placeholder issue when different from existing node issues', () => {
+		// Setup node with placeholder but different existing issue
+		workflowNodes[0].parameters = {
+			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
+		};
+		workflowNodes[0].issues = {
+			parameters: {
+				url: ['Some other validation error'],
+			},
+		};
+
+		const { getAllByTestId, container } = renderExecuteMessage();
+		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
+		const issueItems = container.querySelectorAll('li');
+
+		// Should be disabled and show issues
+		expect(button.disabled).toBe(true);
+		// Should have both the existing issue and the placeholder issue
+		expect(issueItems.length).toBeGreaterThan(0);
 	});
 });

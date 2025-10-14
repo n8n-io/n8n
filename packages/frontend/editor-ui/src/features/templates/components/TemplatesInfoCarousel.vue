@@ -148,8 +148,8 @@ onBeforeMount(() => {
 	height: 37px;
 	position: absolute;
 	top: 35%;
-	border-radius: var(--border-radius-large);
-	border: var(--border-base);
+	border-radius: var(--radius--lg);
+	border: var(--border);
 	background-color: #fbfcfe;
 	cursor: pointer;
 
@@ -161,7 +161,7 @@ onBeforeMount(() => {
 		position: absolute;
 	}
 	svg {
-		color: var(--color-foreground-xdark);
+		color: var(--color--foreground--shade-2);
 	}
 }
 
@@ -174,15 +174,15 @@ onBeforeMount(() => {
 		background: linear-gradient(
 			270deg,
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				50%
 			),
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				100%
 			)
 		);
@@ -198,15 +198,15 @@ onBeforeMount(() => {
 		background: linear-gradient(
 			90deg,
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				50%
 			),
 			hsla(
-				var(--color-background-light-h),
-				var(--color-background-light-s),
-				var(--color-background-light-l),
+				var(--color--background--light-2-h),
+				var(--color--background--light-2-s),
+				var(--color--background--light-2-l),
 				100%
 			)
 		);
@@ -218,7 +218,7 @@ onBeforeMount(() => {
 .agile {
 	&__list {
 		width: 100%;
-		padding-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing--2xs);
 		overflow-x: auto;
 		transition: all 1s ease-in-out;
 	}

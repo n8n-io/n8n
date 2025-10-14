@@ -13,7 +13,7 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
-import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';
 
 import { ElSwitch } from 'element-plus';
@@ -66,14 +66,6 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		title: i18n.baseText('generic.project'),
 		key: 'homeProject',
 		width: 200,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
-		title: i18n.baseText('workflowDetails.active'),
-		key: 'active',
 		disableSort: true,
 		value() {
 			return;
@@ -160,7 +152,7 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 		case 'removeFromMCP':
 			try {
 				await workflowsStore.updateWorkflowSetting(workflow.id, 'availableInMCP', false);
-				await fetchAvailableWorkflows();
+				availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflow.id);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 			}
@@ -366,13 +358,6 @@ onMounted(async () => {
 							</span>
 							<N8nText v-else data-test-id="mcp-workflow-no-project">-</N8nText>
 						</template>
-						<template #[`item.active`]="{ item }">
-							<N8nIcon
-								:icon="item.active ? 'check' : 'x'"
-								:size="16"
-								:color="item.active ? 'success' : 'danger'"
-							/>
-						</template>
 						<template #[`item.actions`]="{ item }">
 							<N8nActionToggle
 								placement="bottom"
@@ -392,7 +377,7 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 
 	:global(.table-pagination) {
 		display: none;
@@ -400,18 +385,18 @@ onMounted(async () => {
 }
 
 .headingContainer {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 }
 
 .mainToggleContainer {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	justify-content: space-between;
 	flex-shrink: 0;
 
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
+	border-radius: var(--radius);
+	border: var(--border);
 }
 
 .mainToggleInfo {
@@ -441,12 +426,12 @@ onMounted(async () => {
 }
 
 .table-link {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	:global(.n8n-text) {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 
 		.link-icon {
 			display: none;
@@ -464,7 +449,7 @@ onMounted(async () => {
 			gap: 0;
 		}
 		.link-icon {
-			margin-left: var(--spacing-3xs);
+			margin-left: var(--spacing--3xs);
 		}
 	}
 }
@@ -472,6 +457,6 @@ onMounted(async () => {
 .folder-cell {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 </style>

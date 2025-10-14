@@ -7,11 +7,11 @@
 @include mixins.b(message-box) {
 	display: inline-block;
 	width: var.$msgbox-width;
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 	vertical-align: middle;
 	background-color: var.$color-white;
 	border-radius: var.$msgbox-border-radius;
-	border: 1px solid var(--border-color-light);
+	border: 1px solid var(--border-color--light);
 	font-size: var.$messagebox-font-size;
 	box-shadow: var.$box-shadow-light;
 	text-align: left;
@@ -38,7 +38,7 @@
 	@include mixins.e(header) {
 		position: relative;
 		padding: var.$msgbox-padding-primary;
-		padding-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing--2xs);
 	}
 
 	@include mixins.e(title) {
@@ -61,19 +61,19 @@
 		cursor: pointer;
 
 		.el-message-box__close {
-			color: var(--color-info);
+			color: var(--color--info);
 		}
 
 		&:focus,
 		&:hover {
 			.el-message-box__close {
-				color: var(--color-primary);
+				color: var(--color--primary);
 			}
 		}
 	}
 
 	@include mixins.e(content) {
-		padding: var(--spacing-2xs) var.$msgbox-padding-primary var(--spacing-s);
+		padding: var(--spacing--2xs) var.$msgbox-padding-primary var(--spacing--sm);
 		color: var.$messagebox-content-color;
 		font-size: var.$messagebox-content-font-size;
 	}
@@ -86,9 +86,9 @@
 		padding-top: 15px;
 
 		& input.invalid {
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 			&:focus {
-				border-color: var(--color-danger);
+				border-color: var(--color--danger);
 			}
 		}
 	}
@@ -131,19 +131,19 @@
 
 		& p {
 			margin: 0;
-			line-height: var(--font-line-height-loose);
+			line-height: var(--line-height--lg);
 		}
 	}
 
 	@include mixins.e(errormsg) {
-		color: var(--color-danger);
+		color: var(--color--danger);
 		font-size: var.$messagebox-error-font-size;
 		min-height: 18px;
 		margin-top: 2px;
 	}
 
 	@include mixins.e(btns) {
-		padding: var(--spacing-s) var(--spacing-s) 0;
+		padding: var(--spacing--sm) var(--spacing--sm) 0;
 		text-align: right;
 
 		& button {
@@ -156,13 +156,13 @@
 		}
 		//
 		& .btn--cancel {
-			--button-active-background-color: var(--color-primary-tint-2);
-			--button-active-color: var(--color-primary);
-			--button-active-border-color: var(--color-primary);
-			--button-hover-background-color: var(--color-primary-tint-3);
-			--button-hover-color: var(--color-primary);
-			--button-hover-border-color: var(--color-primary);
-			--button-focus-outline-color: var(--color-primary-tint-1);
+			--button--color--background--active: var(--color--primary--tint-2);
+			--button--color--active: var(--color--primary);
+			--button--border-color--active: var(--color--primary);
+			--button--color--background--hover: var(--color--primary--tint-3);
+			--button--color--hover: var(--color--primary);
+			--button--border-color--hover: var(--color--primary);
+			--button--outline-color--focus: var(--color--primary--tint-1);
 
 			@include button.button-small();
 			@include button.button-outline;
