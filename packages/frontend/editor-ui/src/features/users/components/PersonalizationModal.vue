@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import { VIEWS } from '@/constants';
 import {
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
@@ -78,15 +79,14 @@ import {
 	REPORTED_SOURCE_EVENT,
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
-	VIEWS,
-	COMMUNITY_PLUS_ENROLLMENT_MODAL,
-} from '@/constants';
+} from '../users.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
 import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '../users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { usePostHog } from '@/stores/posthog.store';

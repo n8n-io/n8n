@@ -94,7 +94,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 vi.mock('@/event-bus', () => ({
 	nodeViewEventBus: {

@@ -42,7 +42,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
 import { getNodeIconSource } from '@/utils/nodeIcon';

@@ -4,7 +4,7 @@ import { screen, within } from '@testing-library/vue';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import { type UserAction } from '@n8n/design-system';
-import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
+import SettingsUsersTable from './SettingsUsersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -18,7 +18,7 @@ vi.mock('@/utils/rbac/permissions', () => ({
 	hasPermission: () => hasPermission(),
 }));
 
-vi.mock('@/components/SettingsUsers/SettingsUsersRoleCell.vue', () => ({
+vi.mock('./SettingsUsersRoleCell.vue', () => ({
 	default: defineComponent({
 		setup(_, { emit }) {
 			addEmitter('settingsUsersRoleCell', emit);
@@ -27,7 +27,7 @@ vi.mock('@/components/SettingsUsers/SettingsUsersRoleCell.vue', () => ({
 	}),
 }));
 
-vi.mock('@/components/SettingsUsers/SettingsUsersActionsCell.vue', () => ({
+vi.mock('./SettingsUsersActionsCell.vue', () => ({
 	default: defineComponent({
 		props: {
 			data: { type: Object, required: true },
