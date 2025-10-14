@@ -1461,7 +1461,6 @@
 	"nodeCredentials.showMessage.message": "Nodes that used credential \"{oldCredentialName}\" have been updated to use \"{newCredentialName}\"",
 	"nodeCredentials.showMessage.title": "Node credential updated",
 	"nodeCredentials.autoAssigned.message": "Added this credential to {count} other node(s)",
-	"nodeCredentials.autoAssigned.title": "Credential auto-assigned",
 	"nodeCredentials.updateCredential": "Update Credential",
 	"nodeErrorView.cause": "Cause",
 	"nodeErrorView.copyToClipboard": "Copy to Clipboard",

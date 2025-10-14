@@ -353,7 +353,7 @@ function onCredentialSelected(
 	if (updatedNodesCount > 0) {
 		nodeHelpers.updateNodesCredentialsIssues();
 		toast.showMessage({
-			title: i18n.baseText('nodeCredentials.autoAssigned.title'),
+			title: i18n.baseText('nodeCredentials.showMessage.title'),
 			message: i18n.baseText('nodeCredentials.autoAssigned.message', {
 				interpolate: { count: String(updatedNodesCount) },
 			}),
