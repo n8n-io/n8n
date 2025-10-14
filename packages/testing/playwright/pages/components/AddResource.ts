@@ -31,7 +31,8 @@ export class AddResource {
 	}
 
 	async folder(): Promise<void> {
-		await this.page.getByTestId('add-resource-folder').click();
+		await this.page.getByTestId('add-resource').click();
+		await this.page.getByTestId('action-folder').click();
 	}
 
 	async dataTable(fromDataTableTab: boolean = true): Promise<void> {
