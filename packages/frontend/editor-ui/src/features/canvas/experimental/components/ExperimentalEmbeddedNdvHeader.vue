@@ -63,15 +63,15 @@ defineSlots<{ actions?: {} }>();
 
 <style lang="scss" module>
 .component {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 .title {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-2xs) var(--spacing-3xs) var(--spacing-2xs) var(--spacing-xs);
-	border-bottom: var(--border-base);
-	gap: var(--spacing-4xs);
+	padding: var(--spacing--2xs) var(--spacing--3xs) var(--spacing--2xs) var(--spacing--xs);
+	border-bottom: var(--border);
+	gap: var(--spacing--4xs);
 	cursor: grab;
 
 	.disabled & {
@@ -83,13 +83,13 @@ defineSlots<{ actions?: {} }>();
 	min-width: 0;
 	flex-grow: 1;
 	flex-shrink: 1;
-	font-weight: var(--font-weight-medium);
-	font-size: var(--font-size-s);
+	font-weight: var(--font-weight--medium);
+	font-size: var(--font-size--sm);
 	overflow: hidden;
 
 	/* Same amount of padding and negative margin for border to not be cut by overflow: hidden */
-	padding: var(--spacing-2xs);
-	margin: calc(-1 * var(--spacing-2xs));
+	padding: var(--spacing--2xs);
+	margin: calc(-1 * var(--spacing--2xs));
 }
 
 .subTitleText {
@@ -98,11 +98,11 @@ defineSlots<{ actions?: {} }>();
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	padding-top: var(--spacing-5xs);
+	padding-top: var(--spacing--5xs);
 }
 
 .tabsContainer {
-	padding-top: var(--spacing-xs);
-	padding-inline: var(--spacing-xs);
+	padding-top: var(--spacing--xs);
+	padding-inline: var(--spacing--xs);
 }
 </style>

@@ -1,28 +1,56 @@
-import CanvasNodeDefault from './CanvasNodeDefault.vue';
-import { createComponentRenderer } from '@/__tests__/render';
-import { NodeConnectionTypes } from 'n8n-workflow';
-import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../../canvas.types';
-import { fireEvent } from '@testing-library/vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
+import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/constants';
+import { createCanvasNodeProvide, createCanvasProvide } from '@/features/canvas/__tests__/utils';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
+import type * as actualVueRouter from 'vue-router';
+import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../../canvas.types';
+import CanvasNodeDefault from './CanvasNodeDefault.vue';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as typeof actualVueRouter),
+		useRoute: vi.fn(),
+	};
+});
+
+const stubs = {
+	NodeIcon: {
+		template:
+			'<node-icon-stub :icon-source="iconSource" :size="size" :shrink="shrink" :disabled="disabled"></node-icon-stub>',
+		props: ['icon-source', 'size', 'shrink', 'disabled'],
+	},
+};
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 	global: {
+		stubs,
 		provide: {
 			...createCanvasProvide(),
 		},
 	},
 });
 
+let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+const mockedUseRoute = vi.mocked(useRoute);
+
 beforeEach(() => {
+	vi.clearAllMocks();
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const workflowsStore = useWorkflowsStore();
+	nodeTypesStore = mockedStore(useNodeTypesStore);
 	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
 	workflowsStore.workflowObject = workflowObject;
+	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 });
 
 describe('CanvasNodeDefault', () => {
@@ -32,6 +60,7 @@ describe('CanvasNodeDefault', () => {
 				provide: {
 					...createCanvasNodeProvide(),
 				},
+				stubs,
 			},
 		});
 
@@ -51,6 +80,7 @@ describe('CanvasNodeDefault', () => {
 			(inputCount, outputCount, expected) => {
 				const { getByText } = renderComponent({
 					global: {
+						stubs,
 						provide: {
 							...createCanvasNodeProvide({
 								data: {
@@ -78,6 +108,7 @@ describe('CanvasNodeDefault', () => {
 		it('should apply selected class when node is selected', () => {
 			const { getByText } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({ selected: true }),
 					},
@@ -89,6 +120,7 @@ describe('CanvasNodeDefault', () => {
 		it('should not apply selected class when node is not selected', () => {
 			const { getByText } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide(),
 					},
@@ -102,6 +134,7 @@ describe('CanvasNodeDefault', () => {
 		it('should apply disabled class when node is disabled', () => {
 			const { getByText } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
@@ -116,9 +149,37 @@ describe('CanvasNodeDefault', () => {
 			expect(getByText('(Deactivated)')).toBeVisible();
 		});
 
+		it('should apply disabled class when node is not installed', () => {
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
+		});
+
+		it('should not apply disabled class when node is not installed and route is demo', () => {
+			mockedUseRoute.mockReturnValue({
+				name: VIEWS.DEMO,
+			} as RouteLocationNormalizedLoadedGeneric);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+
 		it('should not apply disabled class when node is enabled', () => {
 			const { getByText } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide(),
 					},
@@ -130,6 +191,7 @@ describe('CanvasNodeDefault', () => {
 		it('should render strike-through when node is disabled and has node input and output handles', () => {
 			const { container } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
@@ -162,6 +224,7 @@ describe('CanvasNodeDefault', () => {
 		it('should apply waiting class when node is waiting', () => {
 			const { getByText } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({ data: { execution: { running: true, waiting: '123' } } }),
 					},
@@ -175,6 +238,7 @@ describe('CanvasNodeDefault', () => {
 		it('should apply running class when node is running', () => {
 			const { getByText } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
 					},
@@ -188,6 +252,7 @@ describe('CanvasNodeDefault', () => {
 		it('should render configurable node correctly', () => {
 			const { getByTestId } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
@@ -246,6 +311,7 @@ describe('CanvasNodeDefault', () => {
 				(_, nonMainInputs, expected) => {
 					const { getByText } = renderComponent({
 						global: {
+							stubs,
 							provide: {
 								...createCanvasNodeProvide({
 									data: {
@@ -273,6 +339,7 @@ describe('CanvasNodeDefault', () => {
 		it('should render configuration node correctly', () => {
 			const { getByTestId } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
@@ -292,6 +359,7 @@ describe('CanvasNodeDefault', () => {
 		it('should render configurable configuration node correctly', () => {
 			const { getByTestId } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
@@ -313,6 +381,7 @@ describe('CanvasNodeDefault', () => {
 		it('should render trigger node correctly', () => {
 			const { getByTestId } = renderComponent({
 				global: {
+					stubs,
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
@@ -333,6 +402,7 @@ describe('CanvasNodeDefault', () => {
 	it('should emit "activate" on double click', async () => {
 		const { getByText, emitted } = renderComponent({
 			global: {
+				stubs,
 				provide: {
 					...createCanvasNodeProvide(),
 				},

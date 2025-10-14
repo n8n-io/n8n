@@ -10,6 +10,7 @@ import { LogsPanel } from './components/LogsPanel';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
+import { TagsManagerModal } from './components/TagsManagerModal';
 
 export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
@@ -18,6 +19,9 @@ export class CanvasPage extends BasePage {
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 	readonly nodeCreator = new NodeCreator(this.page);
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
+	readonly tagsManagerModal = new TagsManagerModal(
+		this.page.getByRole('dialog').filter({ hasText: 'Manage tags' }),
+	);
 
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
@@ -159,12 +163,15 @@ export class CanvasPage extends BasePage {
 		await this.clickSaveWorkflowButton();
 	}
 
-	getExecuteWorkflowButton(): Locator {
-		return this.page.getByTestId('execute-workflow-button');
+	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
+		const testId = triggerNodeName
+			? `execute-workflow-button-${triggerNodeName}`
+			: 'execute-workflow-button';
+		return this.page.getByTestId(testId);
 	}
 
-	async clickExecuteWorkflowButton(): Promise<void> {
-		await this.page.getByTestId('execute-workflow-button').click();
+	async clickExecuteWorkflowButton(triggerNodeName?: string): Promise<void> {
+		await this.getExecuteWorkflowButton(triggerNodeName).click();
 	}
 
 	async clickDebugInEditorButton(): Promise<void> {
@@ -331,6 +338,66 @@ export class CanvasPage extends BasePage {
 		await this.page.click('body');
 
 		return tags;
+	}
+
+	async clickCreateTagButton(): Promise<void> {
+		await this.page.getByTestId('new-tag-link').click();
+	}
+
+	async clickNthTagPill(index: number): Promise<void> {
+		await this.page.getByTestId('workflow-tags-container').locator('.el-tag').nth(index).click();
+	}
+
+	async clickWorkflowTagsArea(): Promise<void> {
+		await this.page.getByTestId('workflow-tags').click();
+	}
+
+	async clickWorkflowTagsContainer(): Promise<void> {
+		await this.page.getByTestId('workflow-tags-container').click();
+	}
+
+	getTagPills(): Locator {
+		return this.page
+			.getByTestId('workflow-tags-container')
+			.locator('.el-tag:not(.count-container)');
+	}
+
+	getTagsDropdown(): Locator {
+		return this.page.getByTestId('tags-dropdown');
+	}
+
+	async typeInTagInput(text: string): Promise<void> {
+		const input = this.page.getByTestId('workflow-tags-container').locator('input').first();
+		await input.fill(text);
+	}
+
+	async openTagManagerModal(): Promise<void> {
+		await this.clickCreateTagButton();
+		await this.page.getByTestId('tags-dropdown').click();
+		await this.page.locator('.manage-tags').click();
+	}
+
+	async pressEnterToCreateTag(): Promise<void> {
+		const responsePromise = this.waitForRestResponse('/rest/tags', 'POST');
+		await this.page.keyboard.press('Enter');
+		await responsePromise;
+	}
+
+	// Tag dropdown getters
+	getVisibleDropdown(): Locator {
+		return this.page.locator('.el-select-dropdown:visible');
+	}
+
+	getTagItemsInDropdown(): Locator {
+		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag');
+	}
+
+	getTagItemInDropdownByName(name: string): Locator {
+		return this.getVisibleDropdown().locator(`[data-test-id="tag"].tag:has-text("${name}")`);
+	}
+
+	getSelectedTagItems(): Locator {
+		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag.selected');
 	}
 
 	getWorkflowSaveButton(): Locator {
@@ -633,8 +700,12 @@ export class CanvasPage extends BasePage {
 		await this.clickContextMenuAction('execute');
 	}
 
+	clearExecutionDataButton(): Locator {
+		return this.page.getByTestId('clear-execution-data-button');
+	}
+
 	async clearExecutionData(): Promise<void> {
-		await this.page.getByTestId('clear-execution-data-button').click();
+		await this.clearExecutionDataButton().click();
 	}
 
 	getManualChatModal(): Locator {
@@ -791,6 +862,18 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
 	}
 
+	getNodeRunningStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+	}
+
+	stopExecutionWaitingForWebhookButton(): Locator {
+		return this.page.getByTestId('stop-execution-waiting-for-webhook-button');
+	}
+
+	getExecuteWorkflowButtonSpinner(): Locator {
+		return this.getExecuteWorkflowButton().locator('.n8n-spinner');
+	}
+
 	getCanvasPlusButton(): Locator {
 		return this.page.getByTestId('canvas-plus-button');
 	}
@@ -801,10 +884,6 @@ export class CanvasPage extends BasePage {
 
 	async hitRedo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
-	}
-
-	async hitPaste(): Promise<void> {
-		await this.page.keyboard.press('ControlOrMeta+V');
 	}
 
 	async hitSaveWorkflow(): Promise<void> {

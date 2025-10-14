@@ -138,8 +138,8 @@ defineExpose({
 
 .button {
 	cursor: pointer;
-	padding: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
 	display: flex;
 	align-items: center;
 
@@ -172,13 +172,13 @@ li:hover .iconContainer svg {
 .loading-dropdown {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing-xs) 0;
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--xs) 0;
+	gap: var(--spacing--2xs);
 }
 
 .loading {
 	display: flex;
 	width: 100%;
-	min-width: var(--spacing-3xl);
+	min-width: var(--spacing--3xl);
 }
 </style>

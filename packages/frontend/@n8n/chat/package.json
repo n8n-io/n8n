@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.60.0",
+  "version": "0.61.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -12,8 +12,8 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
-    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter ../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js",
-    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter $(pwd)/../../../../packages/@n8n/stylelint-config/dist/formatter-summary.js",
+    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "format": "biome format --write src .storybook && prettier --write src/ --ignore-path ../../../../.prettierignore",
     "format:check": "biome ci src .storybook && prettier --check src/ --ignore-path ../../../../.prettierignore",
     "storybook": "storybook dev -p 6006 --no-open",

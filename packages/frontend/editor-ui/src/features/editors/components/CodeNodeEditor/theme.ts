@@ -13,7 +13,7 @@ import { tags } from '@lezer/highlight';
 
 const BASE_STYLING = {
 	fontSize: '0.8em',
-	fontFamily: 'var(--font-family-monospace)',
+	fontFamily: 'var(--font-family--monospace)',
 	maxHeight: '400px',
 	tooltip: {
 		maxWidth: '250px',
@@ -37,7 +37,7 @@ interface ThemeSettings {
 
 const codeEditorSyntaxHighlighting = syntaxHighlighting(
 	HighlightStyle.define([
-		{ tag: tags.keyword, color: 'var(--color-code-tags-keyword)' },
+		{ tag: tags.keyword, color: 'var(--code-tags--keyword--color)' },
 		{
 			tag: [
 				tags.deleted,
@@ -48,42 +48,42 @@ const codeEditorSyntaxHighlighting = syntaxHighlighting(
 				tags.atom,
 				tags.bool,
 			],
-			color: 'var(--color-code-tags-variable)',
+			color: 'var(--code-tags--variable--color)',
 		},
-		{ tag: [tags.name, tags.propertyName], color: 'var(--color-code-tags-property)' },
+		{ tag: [tags.name, tags.propertyName], color: 'var(--code-tags--property--color)' },
 		{
 			tag: [tags.processingInstruction, tags.string, tags.inserted, tags.special(tags.string)],
-			color: 'var(--color-code-tags-string)',
+			color: 'var(--code-tags--string--color)',
 		},
 		{
 			tag: [tags.function(tags.variableName), tags.labelName],
-			color: 'var(--color-code-tags-function)',
+			color: 'var(--code-tags--function--color)',
 		},
 		{
 			tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)],
-			color: 'var(--color-code-tags-constant)',
+			color: 'var(--code-tags--constant--color)',
 		},
-		{ tag: [tags.className], color: 'var(--color-code-tags-class)' },
+		{ tag: [tags.className], color: 'var(--code-tags--class--color)' },
 		{
 			tag: [tags.number, tags.changed, tags.annotation, tags.modifier, tags.self, tags.namespace],
-			color: 'var(--color-code-tags-primitive)',
+			color: 'var(--code-tags--primitive--color)',
 		},
-		{ tag: [tags.typeName], color: 'var(--color-code-tags-type)' },
-		{ tag: [tags.operator, tags.operatorKeyword], color: 'var(--color-code-tags-keyword)' },
+		{ tag: [tags.typeName], color: 'var(--code-tags--type--color)' },
+		{ tag: [tags.operator, tags.operatorKeyword], color: 'var(--code-tags--keyword--color)' },
 		{
 			tag: [tags.url, tags.escape, tags.regexp, tags.link],
-			color: 'var(--color-code-tags-keyword)',
+			color: 'var(--code-tags--keyword--color)',
 		},
-		{ tag: [tags.meta, tags.comment, tags.lineComment], color: 'var(--color-code-tags-comment)' },
+		{ tag: [tags.meta, tags.comment, tags.lineComment], color: 'var(--code-tags--comment--color)' },
 		{ tag: tags.strong, fontWeight: 'bold' },
 		{ tag: tags.emphasis, fontStyle: 'italic' },
 		{ tag: tags.link, textDecoration: 'underline' },
-		{ tag: tags.heading, fontWeight: 'bold', color: 'var(--color-code-tags-heading)' },
-		{ tag: tags.invalid, color: 'var(--color-code-tags-invalid)' },
+		{ tag: tags.heading, fontWeight: 'bold', color: 'var(--code-tags--heading--color)' },
+		{ tag: tags.invalid, color: 'var(--code-tags--invalid--color)' },
 		{ tag: tags.strikethrough, textDecoration: 'line-through' },
 		{
 			tag: [tags.derefOperator, tags.special(tags.variableName), tags.variableName, tags.separator],
-			color: 'var(--color-code-foreground)',
+			color: 'var(--code--color--foreground)',
 		},
 	]),
 );
@@ -92,29 +92,29 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
-			border: 'var(--border-base)',
-			borderRadius: 'var(--border-radius-base)',
-			backgroundColor: 'var(--color-code-background)',
-			color: 'var(--color-code-foreground)',
+			border: 'var(--border)',
+			borderRadius: 'var(--radius)',
+			backgroundColor: 'var(--code--color--background)',
+			color: 'var(--code--color--foreground)',
 			height: '100%',
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
-			caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
-			lineHeight: 'var(--font-line-height-xloose)',
-			paddingTop: 'var(--spacing-2xs)',
-			paddingBottom: 'var(--spacing-s)',
+			caretColor: isReadOnly ? 'transparent' : 'var(--code--caret--color)',
+			lineHeight: 'var(--line-height--xl)',
+			paddingTop: 'var(--spacing--2xs)',
+			paddingBottom: 'var(--spacing--sm)',
 		},
 		'.cm-cursor, .cm-dropCursor': {
-			borderLeftColor: 'var(--color-code-caret)',
+			borderLeftColor: 'var(--code--caret--color)',
 		},
 		'&.cm-focused > .cm-scroller .cm-selectionLayer > .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
 			{
-				background: 'var(--color-code-selection)',
+				background: 'var(--code--selection--color)',
 			},
 		'&.cm-editor': {
-			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
-			borderColor: 'var(--border-color-base)',
+			...(isReadOnly ? { backgroundColor: 'var(--code--color--background--readonly)' } : {}),
+			borderColor: 'var(--border-color)',
 			overflow: 'hidden',
 		},
 		'&.cm-editor.cm-focused': {
@@ -122,21 +122,21 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			borderColor: 'var(--color--secondary)',
 		},
 		'.cm-activeLine': {
-			backgroundColor: 'var(--color-code-lineHighlight)',
+			backgroundColor: 'var(--code--line-highlight--color)',
 		},
 		'.cm-activeLineGutter': {
-			backgroundColor: 'var(--color-code-lineHighlight)',
+			backgroundColor: 'var(--code--line-highlight--color)',
 		},
 		'.cm-lineNumbers .cm-activeLineGutter': {
-			color: 'var(--color-code-gutter-foreground-active)',
+			color: 'var(--code--gutter--color--foreground--active)',
 		},
 		'.cm-gutters': {
 			backgroundColor: isReadOnly
-				? 'var(--color-code-background-readonly)'
-				: 'var(--color-code-gutter-background)',
-			color: 'var(--color-code-gutter-foreground)',
+				? 'var(--code--color--background--readonly)'
+				: 'var(--code--gutter--color--background)',
+			color: 'var(--code--gutter--color--foreground)',
 			border: '0',
-			borderRadius: 'var(--border-radius-base)',
+			borderRadius: 'var(--radius)',
 		},
 		'.cm-gutterElement': {
 			padding: 0,
@@ -155,10 +155,10 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 					}),
 		},
 		'.cm-lineNumbers .cm-gutterElement': {
-			padding: '0 var(--spacing-5xs) 0 var(--spacing-2xs)',
+			padding: '0 var(--spacing--5xs) 0 var(--spacing--2xs)',
 		},
 		'.cm-gutter,.cm-content': {
-			minHeight: rows && rows !== -1 ? 'auto' : (minHeight ?? 'calc(35vh - var(--spacing-2xl))'),
+			minHeight: rows && rows !== -1 ? 'auto' : (minHeight ?? 'calc(35vh - var(--spacing--2xl))'),
 		},
 		'.cm-foldGutter': {
 			width: '16px',
@@ -183,56 +183,56 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			cursor: BASE_STYLING.diagnosticButton.cursor,
 		},
 		'.cm-diagnostic-error': {
-			backgroundColor: 'var(--color-infobox-background)',
+			backgroundColor: 'var(--autocomplete--infobox--color--background)',
 		},
 		'.cm-diagnosticText': {
-			fontSize: 'var(--font-size-xs)',
+			fontSize: 'var(--font-size--xs)',
 			color: 'var(--color--text)',
 		},
 		'.cm-diagnosticDocs': {
-			fontSize: 'var(--font-size-2xs)',
+			fontSize: 'var(--font-size--2xs)',
 		},
 		'.cm-foldPlaceholder': {
 			color: 'var(--color--text)',
 			backgroundColor: 'var(--color--background)',
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 		},
 		'.cm-lintRange-error': {
 			backgroundImage:
 				"url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='6' height='3'%3e%3cpath d='m0 2.5 l2 -1.5 l1 0 l2 1.5 l1 0' stroke='%23F56565' fill='none' stroke-width='.7'/%3e%3c/svg%3e\") !important", // #F56565 is --color--text--danger
 		},
 		'.cm-selectionMatch': {
-			background: 'var(--color-code-selection-highlight)',
+			background: 'var(--code--selection--color--highlight)',
 		},
 		'.cm-selectionMatch-main': {
-			background: 'var(--color-code-selection-highlight)',
+			background: 'var(--code--selection--color--highlight)',
 		},
 		'.cm-matchingBracket': {
-			background: 'var(--color-code-selection)',
+			background: 'var(--code--selection--color)',
 		},
 		'.cm-completionMatchedText': {
 			textDecoration: 'none',
 			fontWeight: '600',
-			color: 'var(--color-autocomplete-item-selected)',
+			color: 'var(--autocomplete--item--color--selected)',
 		},
 		'.cm-faded > span': {
 			opacity: 0.6,
 		},
 		'.cm-panel.cm-search': {
-			padding: 'var(--spacing-4xs) var(--spacing-2xs)',
+			padding: 'var(--spacing--4xs) var(--spacing--2xs)',
 		},
 		'.cm-panels': {
 			background: 'var(--color--background--light-2)',
 			color: 'var(--color--text)',
 		},
 		'.cm-panels-bottom': {
-			borderTop: 'var(--border-base)',
+			borderTop: 'var(--border)',
 		},
 		'.cm-textfield': {
 			color: 'var(--color--text--shade-1)',
 			background: 'var(--color--foreground--tint-2)',
-			borderRadius: 'var(--border-radius-base)',
-			border: 'var(--border-base)',
+			borderRadius: 'var(--radius)',
+			border: 'var(--border)',
 			fontSize: '90%',
 		},
 		'.cm-textfield:focus': {
@@ -243,11 +243,11 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			color: 'var(--color--text)',
 		},
 		'.cm-panel input[type="checkbox"]': {
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 			outline: 'none',
 		},
 		'.cm-panel input[type="checkbox"]:hover': {
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 			outline: 'none',
 		},
 		'.cm-panel.cm-search label': {
@@ -256,11 +256,11 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 		'.cm-button': {
 			outline: 'none',
-			border: 'var(--border-base)',
+			border: 'var(--border)',
 			color: 'var(--color--text--shade-1)',
 			backgroundColor: 'var(--color--foreground--tint-2)',
 			backgroundImage: 'none',
-			borderRadius: 'var(--border-radius-base)',
+			borderRadius: 'var(--radius)',
 			fontSize: '90%',
 		},
 	}),

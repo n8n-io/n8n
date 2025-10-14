@@ -507,7 +507,7 @@ const table = useVueTable({
 <style lang="scss" scoped>
 .n8n-data-table-server {
 	height: 100%;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 
 	table {
 		width: 100%;
@@ -656,13 +656,13 @@ th.loading-row {
 			display: flex;
 			align-items: center;
 			padding: 0 8px;
-			border-top-left-radius: var(--border-radius-base);
-			border-bottom-left-radius: var(--border-radius-base);
+			border-top-left-radius: var(--radius);
+			border-bottom-left-radius: var(--radius);
 		}
 
 		&__select {
-			--input-border-top-left-radius: 0;
-			--input-border-bottom-left-radius: 0;
+			--input--radius--top-left: 0;
+			--input--radius--bottom-left: 0;
 			width: 70px;
 		}
 	}

@@ -546,32 +546,32 @@ watch(connectionType, () => {
 
 <style lang="scss" module>
 .group {
-	padding: 0 0 var(--spacing-s);
+	padding: 0 0 var(--spacing--sm);
 	width: 100%;
 	display: block;
 
 	hr {
-		margin: 0 0 var(--spacing-xl);
+		margin: 0 0 var(--spacing--xl);
 		border: 1px solid var(--color--foreground--tint-1);
 	}
 
 	label {
 		display: inline-block;
-		padding: 0 0 var(--spacing-2xs);
-		font-size: var(--font-size-s);
+		padding: 0 0 var(--spacing--2xs);
+		font-size: var(--font-size--sm);
 	}
 
 	small {
 		display: inline-block;
-		padding: var(--spacing-2xs) 0 0;
-		font-size: var(--font-size-2xs);
+		padding: var(--spacing--2xs) 0 0;
+		font-size: var(--font-size--2xs);
 		color: var(--color--text--tint-1);
 	}
 }
 
 .readOnly {
 	span {
-		font-size: var(--font-size-s) !important;
+		font-size: var(--font-size--sm) !important;
 	}
 }
 
@@ -583,7 +583,7 @@ watch(connectionType, () => {
 		flex: 1;
 
 		&:last-child {
-			margin-left: var(--spacing-2xs);
+			margin-left: var(--spacing--2xs);
 		}
 	}
 
@@ -593,16 +593,16 @@ watch(connectionType, () => {
 }
 
 .connect {
-	margin: calc(var(--spacing-2xs) * -1) 0 var(--spacing-2xs);
+	margin: calc(var(--spacing--2xs) * -1) 0 var(--spacing--2xs);
 }
 
 .disconnectButton {
-	margin: 0 0 0 var(--spacing-2xs);
+	margin: 0 0 0 var(--spacing--2xs);
 	height: 40px;
 }
 
 .actionBox {
-	margin: var(--spacing-2xl) 0 0;
+	margin: var(--spacing--2xl) 0 0;
 }
 
 .sshInput {
@@ -619,7 +619,7 @@ watch(connectionType, () => {
 	}
 
 	.copyInput {
-		margin: 0 var(--spacing-2xs);
+		margin: 0 var(--spacing--2xs);
 	}
 }
 
@@ -645,7 +645,7 @@ watch(connectionType, () => {
 	button.refreshBranches {
 		height: 36px;
 		width: 36px;
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing--xs);
 	}
 }
 </style>

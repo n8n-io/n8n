@@ -32,6 +32,6 @@ function onImportCurlClicked() {
 .importSection {
 	display: flex;
 	flex-direction: row-reverse;
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 }
 </style>

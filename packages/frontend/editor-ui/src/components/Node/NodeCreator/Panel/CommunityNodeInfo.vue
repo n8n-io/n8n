@@ -6,6 +6,7 @@ import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
+import ContactAdministratorToInstall from '@/components/ContactAdministratorToInstall.vue';
 import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -30,12 +31,6 @@ const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
 const nodeTypesStore = useNodeTypesStore();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
-
-const ownerEmailList = computed(() =>
-	useUsersStore()
-		.allUsers.filter((user) => user.role?.includes('owner'))
-		.map((user) => user.email),
-);
 
 const formatNumber = (number: number) => {
 	if (!number) return null;
@@ -161,24 +156,14 @@ onMounted(async () => {
 				</N8nText>
 			</div>
 		</div>
-		<div v-if="!isOwner && !communityNodeDetails?.installed" :class="$style.contactOwnerHint">
-			<N8nIcon color="text-light" icon="info" size="large" />
-			<N8nText color="text-base" size="medium">
-				<div style="padding-bottom: 8px">
-					{{ i18n.baseText('communityNodeInfo.contact.admin') }}
-				</div>
-				<N8nText v-if="ownerEmailList.length" bold>
-					{{ ownerEmailList.join(', ') }}
-				</N8nText>
-			</N8nText>
-		</div>
+		<ContactAdministratorToInstall v-if="!isOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	width: 100%;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	padding-top: 0;
 	margin-top: 0;
 	display: flex;
@@ -186,44 +171,44 @@ onMounted(async () => {
 }
 
 .nodeIcon {
-	--node-icon-size: 36px;
-	margin-right: var(--spacing-s);
+	--node--icon--size: 36px;
+	margin-right: var(--spacing--sm);
 }
 
 .description {
-	margin: var(--spacing-m) 0;
+	margin: var(--spacing--md) 0;
 }
 .separator {
-	height: var(--border-width-base);
+	height: var(--border-width);
 	background: var(--color--foreground);
-	margin-bottom: var(--spacing-m);
+	margin-bottom: var(--spacing--md);
 }
 .info {
 	display: flex;
 	align-items: center;
 	justify-content: left;
-	gap: var(--spacing-m);
-	margin-bottom: var(--spacing-m);
+	gap: var(--spacing--md);
+	margin-bottom: var(--spacing--md);
 	flex-wrap: wrap;
 }
 .info div {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .tooltipIcon {
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	width: 12px;
 }
 
 .contactOwnerHint {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color--foreground);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs);
+	border: var(--border-width) solid var(--color--foreground);
 	border-radius: 0.25em;
 }
 </style>

@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
+import type { NodeIconSource } from '@/utils/nodeIcon';
+import { N8nInlineTextEdit } from '@n8n/design-system';
 import { useElementSize } from '@vueuse/core';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
-import { N8nInlineTextEdit } from '@n8n/design-system';
 type Props = {
 	modelValue: string;
 	nodeType?: INodeTypeDescription | null;
+	iconSource?: NodeIconSource;
 	readOnly?: boolean;
 };
 
 withDefaults(defineProps<Props>(), {
 	modelValue: '',
 	nodeType: undefined,
+	iconSource: undefined,
 	readOnly: false,
 });
 
@@ -34,7 +37,20 @@ const { width } = useElementSize(wrapperRef);
 <template>
 	<span :class="$style.container" data-test-id="node-title-container">
 		<span :class="$style.iconWrapper">
-			<NodeIcon :node-type="nodeType" :size="18" :show-tooltip="true" tooltip-position="left" />
+			<NodeIcon
+				v-if="!iconSource"
+				:node-type="nodeType"
+				:size="18"
+				:show-tooltip="true"
+				tooltip-position="left"
+			/>
+			<NodeIcon
+				v-else
+				:icon-source="iconSource"
+				:size="18"
+				:show-tooltip="true"
+				tooltip-position="left"
+			/>
 		</span>
 		<div ref="wrapperRef" :class="$style.textWrapper">
 			<N8nInlineTextEdit
@@ -49,10 +65,10 @@ const { width } = useElementSize(wrapperRef);
 
 <style lang="scss" module>
 .container {
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight--medium);
 	display: flex;
-	font-size: var(--font-size-m);
-	margin-right: var(--spacing-s);
+	font-size: var(--font-size--md);
+	margin-right: var(--spacing--sm);
 	color: var(--color--text--shade-1);
 	width: 100%;
 }
@@ -64,6 +80,6 @@ const { width } = useElementSize(wrapperRef);
 
 .iconWrapper {
 	display: inline-flex;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 </style>

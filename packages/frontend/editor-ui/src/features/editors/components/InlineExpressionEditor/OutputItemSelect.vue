@@ -52,7 +52,7 @@ function prevItem() {
 				:min="0"
 				:max="max"
 				:model-value="itemIndex"
-				:style="{ '--input-width': `calc(${inputCharWidth}ch + var(--spacing-s))` }"
+				:style="{ '--input-width': `calc(${inputCharWidth}ch + var(--spacing--sm))` }"
 				@update:model-value="updateItemIndex"
 			></N8nInputNumber>
 			<N8nIconButton
@@ -87,7 +87,7 @@ function prevItem() {
 .item {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .controls {
@@ -96,23 +96,23 @@ function prevItem() {
 }
 
 .controls .input {
-	--input-height: 22px;
-	--input-border-top-left-radius: var(--border-radius-base);
-	--input-border-bottom-left-radius: var(--border-radius-base);
-	--input-border-top-right-radius: var(--border-radius-base);
-	--input-border-bottom-right-radius: var(--border-radius-base);
-	line-height: calc(var(--input-height) - var(--spacing-4xs));
+	--input--height: 22px;
+	--input--radius--top-left: var(--radius);
+	--input--radius--bottom-left: var(--radius);
+	--input-border-top-right-radius: var(--radius);
+	--input-border-bottom-right-radius: var(--radius);
+	line-height: calc(var(--input--height) - var(--spacing--4xs));
 
 	&.hovering {
-		--input-font-color: var(--color--secondary);
+		--input--color--text: var(--color--secondary);
 	}
 
 	:global(.el-input__inner) {
-		height: var(--input-height);
-		min-height: var(--input-height);
-		line-height: var(--input-height);
+		height: var(--input--height);
+		min-height: var(--input--height);
+		line-height: var(--input--height);
 		text-align: center;
-		padding: 0 var(--spacing-4xs);
+		padding: 0 var(--spacing--4xs);
 		max-width: var(--input-width);
 	}
 }

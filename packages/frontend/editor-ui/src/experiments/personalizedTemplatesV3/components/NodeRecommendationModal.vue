@@ -108,23 +108,23 @@ watchEffect(async () => {
 }
 
 .header {
-	border-bottom: 1px solid var(--border-color-base);
-	padding-bottom: var(--spacing-s);
+	border-bottom: 1px solid var(--border-color);
+	padding-bottom: var(--spacing--sm);
 }
 
 .templates {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-	gap: var(--spacing-m);
-	padding: var(--spacing-s) 0;
+	gap: var(--spacing--md);
+	padding: var(--spacing--sm) 0;
 }
 
 .loading {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-l);
+	gap: var(--spacing--xs);
+	padding: var(--spacing--lg);
 	color: var(--color--text--tint-1);
 }
 

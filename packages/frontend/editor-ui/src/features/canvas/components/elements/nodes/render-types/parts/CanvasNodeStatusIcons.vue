@@ -6,6 +6,8 @@ import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { useCanvas } from '@/features/canvas/composables/useCanvas';
+import { useRoute } from 'vue-router';
+import { VIEWS } from '@/constants';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const {
@@ -36,10 +38,13 @@ const {
 	runDataIterations,
 	isDisabled,
 	render,
+	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const route = useRoute();
 const { isExecuting } = useCanvas();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
+const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
 );
@@ -68,6 +73,16 @@ const commonClasses = computed(() => [
 				<N8nIcon icon="clock" :size="size" />
 			</N8nTooltip>
 		</div>
+	</div>
+	<div
+		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-not-installed"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> {{ i18n.baseText('node.install-to-use') }} </template>
+			<N8nIcon icon="hard-drive-download" :size="size" />
+		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="isNodeExecuting"
@@ -144,8 +159,8 @@ const commonClasses = computed(() => [
 .status {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-5xs);
-	font-weight: var(--font-weight-bold);
+	gap: var(--spacing--5xs);
+	font-weight: var(--font-weight--bold);
 }
 
 .runData {
@@ -161,7 +176,7 @@ const commonClasses = computed(() => [
 }
 
 .running {
-	color: hsl(var(--color--primary-h), var(--color--primary-s), var(--color--primary-l));
+	color: hsl(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l));
 
 	&.absoluteSpinner {
 		width: 100%;
@@ -170,7 +185,7 @@ const commonClasses = computed(() => [
 		align-items: center;
 		justify-content: center;
 		font-size: 3.75em;
-		color: hsla(var(--color--primary-h), var(--color--primary-s), var(--color--primary-l), 0.7);
+		color: hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.7);
 		position: absolute;
 		left: 0;
 		top: 0;
@@ -180,7 +195,7 @@ const commonClasses = computed(() => [
 	&.spinnerScrim {
 		z-index: 10;
 		background-color: rgba(255, 255, 255, 0.82);
-		border-radius: var(--border-radius-large);
+		border-radius: var(--radius--lg);
 	}
 }
 
@@ -190,7 +205,7 @@ const commonClasses = computed(() => [
 }
 
 .count {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 
 .warning {

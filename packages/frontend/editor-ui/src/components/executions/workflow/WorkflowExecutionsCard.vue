@@ -191,15 +191,15 @@ function onRetryMenuItemSelect(action: string): void {
 @use '@/styles/variables' as *;
 
 .WorkflowExecutionsCard {
-	--execution-list-item-background: var(--execution-card-background);
+	--execution-list-item-background: var(--execution-card--color--background);
 	--execution-list-item-highlight-background: var(--color--warning--tint-1);
 
 	display: flex;
 	flex-direction: column;
-	padding-right: var(--spacing-m);
+	padding-right: var(--spacing--md);
 
 	&.active {
-		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
+		border-left: var(--spacing--4xs) var(--border-style) transparent !important;
 
 		.executionStatus {
 			color: var(--color--text--shade-1) !important;
@@ -209,7 +209,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:hover,
 	&.active {
 		.executionLink {
-			--execution-list-item-background: var(--execution-card-background-hover);
+			--execution-list-item-background: var(--execution-card--color--background--hover);
 		}
 	}
 
@@ -221,7 +221,8 @@ function onRetryMenuItemSelect(action: string): void {
 		}
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-running);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--running);
 		}
 		.statusLabel,
 		.spinner {
@@ -232,24 +233,27 @@ function onRetryMenuItemSelect(action: string): void {
 	&.success {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-success);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--success);
 		}
 	}
 
 	&.new {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--waiting);
 		}
 		.statusLabel {
-			color: var(--execution-card-text-waiting);
+			color: var(--execution-card--color--text--waiting);
 		}
 	}
 
 	&.waiting {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--waiting);
 		}
 		.statusLabel {
 			color: var(--color--secondary);
@@ -259,7 +263,8 @@ function onRetryMenuItemSelect(action: string): void {
 	&.error {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-error);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--error);
 		}
 		.statusLabel {
 			color: var(--color--danger);
@@ -269,16 +274,17 @@ function onRetryMenuItemSelect(action: string): void {
 	&.unknown {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-unknown);
+			border-left: var(--spacing--4xs) var(--border-style)
+				var(--execution-card--border-color--unknown);
 		}
 	}
 
 	.annotation {
 		display: flex;
 		flex-direction: row;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 		align-items: center;
-		margin: var(--spacing-4xs) 0 0;
+		margin: var(--spacing--4xs) 0 0;
 
 		.ratingIcon {
 			.up {
@@ -298,12 +304,12 @@ function onRetryMenuItemSelect(action: string): void {
 	align-items: center;
 	justify-content: space-between;
 	color: var(--color--text);
-	font-size: var(--font-size-xs);
-	padding: var(--spacing-xs);
-	padding-right: var(--spacing-s);
+	font-size: var(--font-size--xs);
+	padding: var(--spacing--xs);
+	padding-right: var(--spacing--sm);
 	position: relative;
 	left: calc(
-		-1 * var(--spacing-4xs)
+		-1 * var(--spacing--4xs)
 	); // Hide link border under card border so it's not visible when not hovered
 
 	&:active {
@@ -320,7 +326,7 @@ function onRetryMenuItemSelect(action: string): void {
 }
 
 .icon {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 
 	&.retry {
 		svg {
@@ -334,12 +340,12 @@ function onRetryMenuItemSelect(action: string): void {
 	}
 
 	& + & {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 
 .showGap {
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 	.executionLink {
 		border-bottom: 1px solid var(--color--foreground--shade-1);
 	}

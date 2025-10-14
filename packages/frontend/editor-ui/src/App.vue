@@ -32,7 +32,7 @@ import { useRoute } from 'vue-router';
 import { useStyles } from './composables/useStyles';
 import { useExposeCssVar } from '@/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
-import { useCommandBar } from './composables/useCommandBar';
+import { useCommandBar } from '@/features/ui/commandBar/composables/useCommandBar';
 import { hasPermission } from './utils/rbac/permissions';
 
 const route = useRoute();
@@ -43,18 +43,18 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const {
 	initialize: initializeCommandBar,
 	isEnabled: isCommandBarEnabled,
 	items,
+	placeholder,
+	context,
 	onCommandBarChange,
 	onCommandBarNavigateTo,
+	isLoading: isCommandBarLoading,
 } = useCommandBar();
-
-const showCommandBar = computed(
-	() => isCommandBarEnabled.value && hasPermission(['authenticated']),
-);
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -70,6 +70,10 @@ const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
+
+const showCommandBar = computed(
+	() => isCommandBarEnabled.value && hasPermission(['authenticated']) && !isDemoMode.value,
+);
 
 const chatPanelWidth = computed(() => chatPanelStore.width);
 
@@ -172,6 +176,10 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<N8nCommandBar
 				v-if="showCommandBar"
 				:items="items"
+				:placeholder="placeholder"
+				:context="context"
+				:is-loading="isCommandBarLoading"
+				:z-index="APP_Z_INDEXES.COMMAND_BAR"
 				@input-change="onCommandBarChange"
 				@navigate-to="onCommandBarNavigateTo"
 			/>

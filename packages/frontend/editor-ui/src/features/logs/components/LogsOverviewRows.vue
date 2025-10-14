@@ -116,27 +116,27 @@ watch(
 
 <style lang="scss" module>
 .tree {
-	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+	padding: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
 	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
 	scroll-behavior: smooth;
 
 	.container:not(.staticScrollBar) & {
-		scroll-padding-block: var(--spacing-3xs);
+		scroll-padding-block: var(--spacing--3xs);
 
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;
 		}
 
 		@supports selector(::-webkit-scrollbar) {
-			padding-right: var(--spacing-5xs);
+			padding-right: var(--spacing--5xs);
 			scrollbar-gutter: stable;
 
 			&::-webkit-scrollbar {
-				width: var(--spacing-4xs);
+				width: var(--spacing--4xs);
 			}
 
 			&::-webkit-scrollbar-thumb {
-				border-radius: var(--spacing-4xs);
+				border-radius: var(--spacing--4xs);
 				background: var(--color--foreground--shade-1);
 			}
 		}

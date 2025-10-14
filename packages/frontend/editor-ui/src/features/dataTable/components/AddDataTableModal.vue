@@ -89,7 +89,7 @@ const redirectToDataTables = () => {
 						:placeholder="i18n.baseText('dataTable.add.input.name.placeholder')"
 						data-test-id="data-table-name-input"
 						name="dataTableName"
-						@keyup.enter="onSubmit"
+						@keydown.enter="onSubmit"
 					/>
 				</N8nInputLabel>
 			</div>
@@ -115,7 +115,7 @@ const redirectToDataTables = () => {
 
 <style module lang="scss">
 .header {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 }
 
 .content {
@@ -125,8 +125,8 @@ const redirectToDataTables = () => {
 
 .footer {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
-	margin-top: var(--spacing-l);
+	margin-top: var(--spacing--lg);
 }
 </style>

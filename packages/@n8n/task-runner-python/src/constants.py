@@ -43,6 +43,7 @@ EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
 EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
 SIGTERM_EXIT_CODE = -15
+SIGKILL_EXIT_CODE = -9
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -106,7 +107,8 @@ TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capac
 
 # Security
 BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals"
-ALWAYS_BLOCKED_ATTRIBUTES = {
+BLOCKED_ATTRIBUTES = {
+    # runtime attributes
     "__subclasses__",
     "__globals__",
     "__builtins__",
@@ -130,11 +132,8 @@ ALWAYS_BLOCKED_ATTRIBUTES = {
     "ag_code",
     "__thisclass__",
     "__self_class__",
-}
-# Attributes blocked only in certain contexts:
-# - In attribute chains (e.g., x.__class__.__bases__)
-# - On literals (e.g., "".__class__)
-CONDITIONALLY_BLOCKED_ATTRIBUTES = {
+    # introspection attributes
+    "__base__",
     "__class__",
     "__bases__",
     "__code__",
@@ -152,8 +151,8 @@ CONDITIONALLY_BLOCKED_ATTRIBUTES = {
     "__func__",
     "__wrapped__",
     "__annotations__",
+    "__spec__",
 }
-UNSAFE_ATTRIBUTES = ALWAYS_BLOCKED_ATTRIBUTES | CONDITIONALLY_BLOCKED_ATTRIBUTES
 
 # errors
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."

@@ -70,7 +70,7 @@ onMounted(() => {
 }
 
 .logoText {
-	margin-left: var(--spacing-5xs);
+	margin-left: var(--spacing--5xs);
 	path {
 		fill: var(--color--text--shade-1);
 	}
@@ -78,7 +78,7 @@ onMounted(() => {
 
 .large {
 	transform: scale(2);
-	margin-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing--xl);
 
 	.logo,
 	.logoText {
@@ -86,18 +86,18 @@ onMounted(() => {
 	}
 
 	.logoText {
-		margin-left: var(--spacing-xs);
-		margin-right: var(--spacing-3xs);
+		margin-left: var(--spacing--xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 
 .sidebarExpanded .logo {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 }
 
 .sidebarCollapsed .logo {
 	width: 40px;
 	height: 30px;
-	padding: 0 var(--spacing-4xs);
+	padding: 0 var(--spacing--4xs);
 }
 </style>

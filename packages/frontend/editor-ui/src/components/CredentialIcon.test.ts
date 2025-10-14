@@ -13,7 +13,15 @@ describe('CredentialIcon', () => {
 	const renderComponent = createComponentRenderer(CredentialIcon, {
 		pinia: createTestingPinia(),
 		global: {
-			stubs: ['N8nTooltip'],
+			stubs: {
+				N8nTooltip: true,
+				N8nNodeIcon: {
+					template: `
+						<svg v-if="type === 'icon'" class="n8n-icon" :data-icon="name"></svg>
+					`,
+					props: ['type', 'src', 'name', 'color', 'size'],
+				},
+			},
 		},
 	});
 	let pinia: TestingPinia;
@@ -50,16 +58,16 @@ describe('CredentialIcon', () => {
 			}),
 		]);
 
-		const { getByRole } = renderComponent({
+		const { container } = renderComponent({
 			pinia,
 			props: {
 				credentialTypeName: 'test',
 			},
 		});
 
-		const icon = getByRole('img', { hidden: true });
-		expect(icon.tagName).toBe('svg');
-		expect(icon).toHaveClass('fa-clock');
+		const icon = container.querySelector('.n8n-icon');
+		expect(icon).toBeInTheDocument();
+		expect(icon?.getAttribute('data-icon')).toBe('clock');
 	});
 
 	it('shows correct icon when credential has an icon with node: prefix', () => {
