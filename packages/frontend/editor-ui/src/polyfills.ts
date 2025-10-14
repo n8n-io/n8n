@@ -2,6 +2,7 @@ import 'array.prototype.tosorted';
 import { v4 as uuid } from 'uuid';
 
 // Polyfill crypto.randomUUID
-if (!('randomUUID' in crypto)) {
-	Object.defineProperty(crypto, 'randomUUID', { value: uuid });
+const globalCrypto = globalThis.crypto as Crypto | undefined;
+if (globalCrypto && !('randomUUID' in globalCrypto)) {
+	Object.defineProperty(globalCrypto, 'randomUUID', { value: uuid });
 }
