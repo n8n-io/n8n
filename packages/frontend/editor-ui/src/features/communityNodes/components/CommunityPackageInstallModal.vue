@@ -6,9 +6,9 @@ import {
 	NPM_KEYWORD_SEARCH_URL,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
-} from '@/constants';
+} from '../communityNodes.constants';
 import { useToast } from '@/composables/useToast';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from '../communityNodes.store';
 import { ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';

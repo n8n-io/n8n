@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/constants';
+import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '../communityNodes.constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 import { retry } from '@/__tests__/utils';

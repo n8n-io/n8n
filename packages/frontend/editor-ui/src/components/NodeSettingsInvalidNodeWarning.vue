@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/composables/useTelemetry';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
+import { CUSTOM_NODES_DOCS_URL } from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
 import { isCommunityPackageName } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';

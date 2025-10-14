@@ -5,8 +5,6 @@ import {
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
-	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -51,6 +49,10 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
+import {
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+} from '@/features/communityNodes/communityNodes.constants';
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
@@ -58,8 +60,8 @@ import NewAssistantSessionModal from '@/features/assistant/components/Chat/NewAs
 import ChangePasswordModal from '@/features/auth/components/ChangePasswordModal.vue';
 import ConfirmPasswordModal from '@/features/auth/components/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
-import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
-import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
+import CommunityPackageInstallModal from '@/features/communityNodes/components/CommunityPackageInstallModal.vue';
+import CommunityPackageManageConfirmModal from '@/features/communityNodes/components/CommunityPackageManageConfirmModal.vue';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
 import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';

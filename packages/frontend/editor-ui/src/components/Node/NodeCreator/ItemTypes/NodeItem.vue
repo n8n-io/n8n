@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { SimplifiedNodeType } from '@/Interface';
 import {
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
 } from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/communityNodes/communityNodes.constants';
 import { computed, ref } from 'vue';
 
 import NodeIcon from '@/components/NodeIcon.vue';

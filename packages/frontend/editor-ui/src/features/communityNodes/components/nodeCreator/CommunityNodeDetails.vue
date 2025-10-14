@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useViewStacks } from '../composables/useViewStacks';
+import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from '../../communityNodes.store';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -13,7 +13,10 @@ import OfficialIcon from 'virtual:icons/mdi/verified';
 
 import { getNodeIconSource } from '@/utils/nodeIcon';
 
-import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
+import {
+	prepareCommunityNodeDetailsViewStack,
+	removePreviewToken,
+} from '@/components/Node/NodeCreator/utils';
 
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const {

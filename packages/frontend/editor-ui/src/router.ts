@@ -43,7 +43,7 @@ const SettingsPersonalView = async () =>
 	await import('@/features/auth/views/SettingsPersonalView.vue');
 const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
 const SettingsCommunityNodesView = async () =>
-	await import('./views/SettingsCommunityNodesView.vue');
+	await import('@/features/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () =>
 	await import('@/features/logStreaming.ee/views/SettingsLogStreamingView.vue');

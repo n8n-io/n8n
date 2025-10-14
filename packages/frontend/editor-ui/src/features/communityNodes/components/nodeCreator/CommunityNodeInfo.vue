@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useViewStacks } from '../composables/useViewStacks';
+import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
-import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+import { useInstalledCommunityPackage } from '../../composables/useInstalledCommunityPackage';
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
+import CommunityNodeUpdateInfo from './CommunityNodeUpdateInfo.vue';
 
 const { activeViewStack } = useViewStacks();
 
