@@ -39,6 +39,53 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
 
+function resolvePath(
+	ref: string,
+	dbType: DataSourceOptions['type'],
+	value: unknown,
+	path?: string,
+) {
+	if (path) {
+		if (dbType === 'postgres') {
+			const args = [ref, ...path.split('.').map((x) => `'${x}'`)];
+			const head = args.slice(0, -1).join('->');
+			const tail = args[args.length - 1];
+			const base = `${head}->>${tail}`;
+			if (typeof value === 'number') {
+				return `(${base})::numeric`;
+			}
+			if (value instanceof Date) {
+				return `(${base})::timestamp`;
+			}
+			if (typeof value === 'boolean') {
+				return `CAST(${base})::boolean`;
+			}
+
+			// by converting to text by default we end up with `true` for an equals NULL check
+			// both for cases where the key exists and is literally NULL and where it doesn't exist
+			return `(${base})::text`;
+		}
+		if (dbType === 'sqlite') {
+			const base = `json_extract(${ref}, '$.${path}')`;
+			if (typeof value === 'number') {
+				return `CAST(${base} as REAL)`;
+			}
+			if (value instanceof Date) {
+				return `CAST(${base} as DATE)`;
+			}
+			if (typeof value === 'boolean') {
+				return `CAST(${base} as BOOLEAN)`;
+			}
+			if (typeof value === 'string') {
+				return `CAST(${base} AS TEXT)`;
+			}
+			return base;
+		}
+		return;
+	}
+	return ref;
+}
+
 /**
  * Converts filter conditions to SQL WHERE clauses with parameters.
  *
@@ -59,9 +106,14 @@ function getConditionAndParams(
 	columns?: DataTableColumn[],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	const columnRef = tableReference
-		? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
-		: quoteIdentifier(filter.columnName, dbType);
+	const columnRef = resolvePath(
+		tableReference
+			? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
+			: quoteIdentifier(filter.columnName, dbType),
+		dbType,
+		filter.value,
+		filter.path,
+	);
 
 	if (filter.value === null) {
 		switch (filter.condition) {
@@ -74,7 +126,9 @@ function getConditionAndParams(
 
 	// Find the column type to normalize the value consistently
 	const columnInfo = columns?.find((col) => col.name === filter.columnName);
-	const value = columnInfo ? normalizeValue(filter.value, columnInfo?.type, dbType) : filter.value;
+	const value = columnInfo
+		? normalizeValue(filter.value, columnInfo?.type, dbType, filter.path)
+		: filter.value;
 
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {

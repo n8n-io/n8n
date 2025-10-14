@@ -7,8 +7,13 @@ import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataTableColumnJsType, DataTableRowReturn, DataTableRowsReturn } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import type {
+	DataTableColumnJsType,
+	DataTableColumnType,
+	DataTableRowReturn,
+	DataTableRowsReturn,
+} from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -28,6 +33,8 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 				return name.text;
 			case 'date':
 				return name.timestampTimezone();
+			case 'json':
+				return name.json;
 			default:
 				return name.text;
 		}
@@ -60,6 +67,8 @@ function dataTableColumnTypeToSql(
 				return 'TIMESTAMP';
 			}
 			return 'DATETIME';
+		case 'json':
+			return 'JSON';
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -191,10 +200,21 @@ export function normalizeRows(rows: DataTableRowsReturn, columns: DataTableColum
 	];
 
 	const typeMap = new Map([...columns, ...systemColumns].map((col) => [col.name, col.type]));
+	// eslint-disable-next-line complexity
 	return rows.map((row) => {
 		const normalized = { ...row };
 		for (const [key, value] of Object.entries(row)) {
 			const type = typeMap.get(key);
+
+			if (type === 'json') {
+				try {
+					if (typeof value === 'string') {
+						normalized[key] = JSON.parse(value) as never;
+					}
+				} catch (e) {
+					normalized[key] = 'failed to parse';
+				}
+			}
 
 			if (type === 'boolean') {
 				// Convert boolean values to true/false
@@ -243,26 +263,53 @@ function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): 
 
 export function normalizeValue(
 	value: DataTableColumnJsType,
-	columnType: string | undefined,
+	columnType: DataTableColumnType | undefined,
 	dbType?: DataSourceOptions['type'],
+	path?: string,
 ): DataTableColumnJsType {
-	if (columnType !== 'date' || value === null || value === undefined) {
+	if (value === null || value === undefined) {
 		return value;
 	}
 
-	// Convert Date objects to appropriate string format for database parameter binding
-	if (value instanceof Date) {
-		return formatDateForDatabase(value, dbType);
-	}
+	if (columnType === 'date') {
+		// Convert Date objects to appropriate string format for database parameter binding
+		if (value instanceof Date) {
+			return formatDateForDatabase(value, dbType);
+		}
 
-	if (typeof value === 'string') {
-		const date = new Date(value);
-		if (!isNaN(date.getTime())) {
-			// Convert parsed date strings to appropriate format
-			return formatDateForDatabase(date, dbType);
+		if (typeof value === 'string') {
+			const date = new Date(value);
+			if (!isNaN(date.getTime())) {
+				// Convert parsed date strings to appropriate format
+				return formatDateForDatabase(date, dbType);
+			}
 		}
 	}
 
+	if (columnType === 'json') {
+		if (path) {
+			if (value instanceof Date) {
+				return formatDateForDatabase(value, dbType);
+			}
+			return value;
+		} else {
+			// json accepts objects or strings containing objects as input
+			// but expects values with a path for output/get/read operations
+			if (typeof value === 'string') {
+				try {
+					JSON.parse(value);
+					return value;
+				} catch (e) {
+					throw new UserError(`Failed to parse string input '${value}' as object for json column`);
+				}
+			} else if (typeof value !== 'object') {
+				throw new UserError(
+					`Unexpected non-object input '${value}' of type ${typeof value} for json column`,
+				);
+			}
+			return JSON.stringify(value);
+		}
+	}
 	return value;
 }
 

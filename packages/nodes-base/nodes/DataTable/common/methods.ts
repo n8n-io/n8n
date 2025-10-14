@@ -58,9 +58,12 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
+		// From version 1.1 we start encoding the type as metadata on the value here
+		// to support showing the `path` field for json columns
+		const value = this.getNode().typeVersion > 1 ? `${column.name} (${column.type})` : column.name;
 		returnData.push({
 			name: `${column.name} (${column.type})`,
-			value: column.name,
+			value,
 			type: column.type,
 		});
 	}
@@ -72,7 +75,8 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	if (!proxy) {
 		return [];
 	}
-	const keyName = this.getCurrentNodeParameter('&keyName') as string;
+	const rawKeyName = this.getCurrentNodeParameter('&keyName') as string;
+	const keyName = rawKeyName.split(' ')[0];
 
 	const nullConditions: INodePropertyOptions[] = [
 		{ name: 'Is Empty', value: 'isEmpty' },
@@ -123,6 +127,10 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		return [...equalsConditions, ...nullConditions];
 	}
 
+	if (type === 'json') {
+		return allConditions;
+	}
+
 	const conditions: INodePropertyOptions[] = [];
 
 	if (type === 'boolean') {
@@ -156,7 +164,7 @@ export async function getDataTables(this: ILoadOptionsFunctions): Promise<Resour
 	const fields: ResourceMapperField[] = [];
 
 	for (const field of result) {
-		const type = field.type === 'date' ? 'dateTime' : field.type;
+		const type = field.type === 'date' ? 'dateTime' : field.type === 'json' ? 'object' : field.type;
 
 		fields.push({
 			id: field.name,
