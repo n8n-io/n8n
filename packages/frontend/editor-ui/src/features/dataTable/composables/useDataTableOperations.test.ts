@@ -635,6 +635,41 @@ describe('useDataTableOperations', () => {
 			});
 			expect(showErrorMock).toHaveBeenCalledWith(updateError, 'dataTable.updateRow.error');
 		});
+
+		it('should show toast but not revert cell value when fetchRowById fails after update', async () => {
+			const updateRowMock = vi.fn().mockResolvedValue(undefined);
+			const fetchRowByIdMock = vi.fn().mockRejectedValue(new Error('Fetch failed'));
+
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				updateRow: updateRowMock,
+				fetchRowById: fetchRowByIdMock,
+			});
+
+			const rowData = ref([{ id: 1, name: 'John', updatedAt: '2025-10-14T11:00:00Z' }]);
+			const setGridDataMock = vi.fn();
+
+			const { onCellValueChanged } = useDataTableOperations({
+				...params,
+				rowData,
+				setGridData: setGridDataMock,
+			});
+
+			const event = {
+				data: { id: 1, name: 'Jane' },
+				api: { applyTransaction: vi.fn() },
+				oldValue: 'John',
+				colDef: { field: 'name', cellDataType: 'text', colId: 'col1' },
+			} as unknown as CellValueChangedEvent<DataTableRow>;
+
+			await onCellValueChanged(event);
+
+			expect(updateRowMock).toHaveBeenCalledWith('test', 'test', 1, { name: 'Jane' });
+			expect(fetchRowByIdMock).toHaveBeenCalledWith('test', 'test', 1);
+			expect(rowData.value[0].name).toBe('John'); // remains unchanged until fetch succeeds
+			expect(setGridDataMock).not.toHaveBeenCalled(); // grid not updated
+			expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'dataTable.fetchRow.error');
+		});
 	});
 
 	describe('fetchDataTableRows', () => {
