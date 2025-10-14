@@ -135,10 +135,13 @@ interface ValidationResult {
 }
 
 function shouldSkip(variable: string) {
-	const parts = variable.split('-');
+	// Split into groups first (drop first empty element from leading --)
+	const parts = variable.slice(2).split('-');
 	if (DISABLE_CHECK_FOR_NAMESPACES.has(parts[0])) {
 		return true;
 	}
+
+	return false;
 }
 
 function validateCssVariable(variable: string): ValidationResult {
