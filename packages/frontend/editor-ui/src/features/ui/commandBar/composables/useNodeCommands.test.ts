@@ -9,7 +9,7 @@ import { setActivePinia } from 'pinia';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 
 const mockEditableWorkflow = {
 	value: {
@@ -30,7 +30,7 @@ vi.mock('@/composables/useCanvasOperations', () => ({
 	}),
 }));
 
-vi.mock('@/event-bus/canvas', () => ({
+vi.mock('@/features/canvas/canvas.eventBus', () => ({
 	canvasEventBus: {
 		emit: vi.fn(),
 	},

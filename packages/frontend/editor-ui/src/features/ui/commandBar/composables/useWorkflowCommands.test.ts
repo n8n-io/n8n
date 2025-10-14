@@ -6,7 +6,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import { nodeViewEventBus } from '@/event-bus';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
@@ -20,7 +20,7 @@ vi.mock('@/composables/useWorkflowHelpers');
 vi.mock('@/composables/useTelemetry');
 vi.mock('@/composables/useWorkflowSaving');
 vi.mock('@/composables/useWorkflowActivate');
-vi.mock('@/event-bus/canvas');
+vi.mock('@/features/canvas/canvas.eventBus');
 vi.mock('@/event-bus');
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
