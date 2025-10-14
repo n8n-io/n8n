@@ -17,3 +17,5 @@ export type ChatMessage = {
 	type: 'user' | 'ai' | 'system';
 	createdAt: Date;
 };
+
+export type ChatHubMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';

@@ -2,7 +2,7 @@
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import CollaborationPane from '@/features/collaboration/components/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/features/workflowHistory/components/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import SaveButton from '@/components/SaveButton.vue';
@@ -84,6 +84,10 @@ const props = defineProps<{
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
+}>();
+
+const emit = defineEmits<{
+	'workflow:deactivated': [];
 }>();
 
 const $style = useCssModule();
@@ -713,6 +717,12 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		});
 	}
 };
+
+const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
+	if (!value.active) {
+		emit('workflow:deactivated');
+	}
+};
 </script>
 
 <template>
@@ -813,6 +823,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					:workflow-active="active"
 					:workflow-id="id"
 					:workflow-permissions="workflowPermissions"
+					@update:workflow-active="onWorkflowActiveToggle"
 				/>
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">

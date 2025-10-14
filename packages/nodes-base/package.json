@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.113.0",
+  "version": "1.114.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -851,6 +851,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
@@ -899,7 +900,7 @@
     "currency-codes": "2.1.0",
     "eventsource": "2.0.2",
     "fast-glob": "catalog:",
-    "fastest-levenshtein": "^1.0.16",
+    "fastest-levenshtein": "catalog:",
     "fflate": "0.7.4",
     "generate-schema": "2.6.0",
     "get-system-fonts": "2.0.2",
