@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { FormFieldValueUpdate, IFormInputs } from '@/Interface';
-import { IInviteResponse, InvitableRoleName } from '../users.types';
+import type { IInviteResponse, InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/constants';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
