@@ -5,7 +5,7 @@ import type {
 	ChatModelsRequest,
 	ChatModelsResponse,
 	ChatHubConversationsResponse,
-	ChatHubMessagesResponse,
+	ChatHubConversationResponse,
 } from '@n8n/api-types';
 import type { StructuredChunk } from './chat.types';
 
@@ -42,10 +42,10 @@ export const fetchConversationsApi = async (
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
-export const fetchConversationMessagesApi = async (
+export const fetchSingleConversationApi = async (
 	context: IRestApiContext,
 	conversationId: string,
-): Promise<ChatHubMessagesResponse> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}/messages`;
-	return await makeRestApiRequest<ChatHubMessagesResponse>(context, 'GET', apiEndpoint);
+): Promise<ChatHubConversationResponse> => {
+	const apiEndpoint = `/chat/conversations/${conversationId}`;
+	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
 };
