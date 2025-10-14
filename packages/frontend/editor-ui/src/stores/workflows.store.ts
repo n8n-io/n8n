@@ -623,18 +623,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function searchWorkflows({
 		projectId,
 		name,
+		nodeTypes,
+		tags,
+		select,
 	}: {
 		projectId?: string;
 		name?: string;
+		nodeTypes?: string[];
+		tags?: string[];
+		select?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			name,
+			nodeTypes,
+			tags,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
+			undefined,
+			select,
 		);
 		return workflows;
 	}

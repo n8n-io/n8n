@@ -7,32 +7,41 @@ import type { ICredentialsResponse } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { CommandGroup, CommandBarItem } from '../commandBar.types';
+import type { CommandBarItem } from '../types';
+import { VIEWS } from '@/constants';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import CredentialIcon from '@/components/CredentialIcon.vue';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
 	OPEN_CREDENTIAL: 'open-credential',
-};
+} as const;
 
 export function useCredentialNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
-}): CommandGroup {
+}) {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const uiStore = useUIStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const route = useRoute();
 	const router = useRouter();
 
 	const credentialResults = ref<ICredentialsResponse[]>([]);
+	const isLoading = ref(false);
 
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
 	});
+
+	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 	function orderResultByCurrentProjectFirst<T extends ICredentialsResponse>(results: T[]) {
 		const currentProjectId =
@@ -44,7 +53,7 @@ export function useCredentialNavigationCommands(options: {
 		});
 	}
 
-	const fetchCredentials = debounce(async (query: string) => {
+	const fetchCredentialsImpl = async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
 			await credentialsStore.fetchAllCredentials();
@@ -57,38 +66,41 @@ export function useCredentialNavigationCommands(options: {
 			credentialResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
 			credentialResults.value = [];
+		} finally {
+			isLoading.value = false;
 		}
-	}, 300);
+	};
+	const fetchCredentialsDebounced = debounce(fetchCredentialsImpl, 300);
 
-	const getCredentialTitle = (
-		credential: ICredentialsResponse,
-		includeOpenCredentialPrefix: boolean,
-	) => {
-		let prefix = '';
+	const getCredentialProjectSuffix = (credential: ICredentialsResponse) => {
 		if (credential.homeProject && credential.homeProject.type === 'personal') {
-			prefix = includeOpenCredentialPrefix
-				? i18n.baseText('commandBar.credentials.openPrefixPersonal')
-				: i18n.baseText('commandBar.credentials.prefixPersonal');
-		} else {
-			prefix = includeOpenCredentialPrefix
-				? i18n.baseText('commandBar.credentials.openPrefixProject', {
-						interpolate: { projectName: credential.homeProject?.name ?? '' },
-					})
-				: i18n.baseText('commandBar.credentials.prefixProject', {
-						interpolate: { projectName: credential.homeProject?.name ?? '' },
-					});
+			return i18n.baseText('projects.menu.personal');
 		}
-		return prefix + (credential.name || i18n.baseText('commandBar.credentials.unnamed'));
+		return credential.homeProject?.name ?? '';
 	};
 
-	const createCredentialCommand = (
-		credential: ICredentialsResponse,
-		includeOpenCredentialPrefix: boolean,
-	): CommandBarItem => {
+	const createCredentialCommand = (credential: ICredentialsResponse): CommandBarItem => {
+		// Add credential name to keywords since we're using a custom component for the title
+		const keywords = [credential.name];
+
 		return {
 			id: credential.id,
-			title: getCredentialTitle(credential, includeOpenCredentialPrefix),
+			title: {
+				component: CommandBarItemTitle,
+				props: {
+					title: credential.name,
+					suffix: getCredentialProjectSuffix(credential),
+					actionText: i18n.baseText('generic.open'),
+				},
+			},
 			section: i18n.baseText('commandBar.sections.credentials'),
+			keywords,
+			icon: {
+				component: CredentialIcon,
+				props: {
+					credentialTypeName: credential.type,
+				},
+			},
 			handler: () => {
 				uiStore.openExistingCredential(credential.id);
 			},
@@ -96,36 +108,60 @@ export function useCredentialNavigationCommands(options: {
 	};
 
 	const openCredentialCommands = computed<CommandBarItem[]>(() => {
-		return credentialResults.value.map((credential) => createCredentialCommand(credential, false));
+		return credentialResults.value.map((credential) => createCredentialCommand(credential));
 	});
 
 	const rootCredentialItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return credentialResults.value.map((credential) => createCredentialCommand(credential, true));
+		return credentialResults.value.map((credential) => createCredentialCommand(credential));
 	});
 
 	const credentialNavigationCommands = computed<CommandBarItem[]>(() => {
-		return [
-			{
-				id: ITEM_ID.CREATE_CREDENTIAL,
-				title: i18n.baseText('commandBar.credentials.create', {
-					interpolate: { projectName: currentProjectName.value },
-				}),
-				section: i18n.baseText('commandBar.sections.credentials'),
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'plus',
-					},
-				},
-				handler: () => {
-					void router.push({
-						params: { credentialId: 'create' },
-					});
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			getResourcePermissions(homeProject.value?.scopes).credential.create;
+
+		const newCredentialCommand: CommandBarItem = {
+			id: ITEM_ID.CREATE_CREDENTIAL,
+			title: i18n.baseText('commandBar.credentials.create', {
+				interpolate: { projectName: currentProjectName.value },
+			}),
+			section: i18n.baseText('commandBar.sections.credentials'),
+			keywords: [i18n.baseText('credentials.add')],
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'lock',
+					color: 'text-light',
 				},
 			},
+			handler: () => {
+				const currentProjectId =
+					typeof route.params.projectId === 'string'
+						? route.params.projectId
+						: personalProjectId.value;
+
+				const routeName =
+					route.name === VIEWS.SHARED_CREDENTIALS
+						? VIEWS.SHARED_CREDENTIALS
+						: route.name === VIEWS.CREDENTIALS
+							? VIEWS.CREDENTIALS
+							: VIEWS.PROJECTS_CREDENTIALS;
+
+				void router.push({
+					name: routeName,
+					params: {
+						projectId: currentProjectId,
+						credentialId: 'create',
+					},
+				});
+			},
+		};
+
+		return [
+			...(hasCreatePermission ? [newCredentialCommand] : []),
 			{
 				id: ITEM_ID.OPEN_CREDENTIAL,
 				title: i18n.baseText('commandBar.credentials.open'),
@@ -135,7 +171,8 @@ export function useCredentialNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'arrow-right',
+						icon: 'lock',
+						color: 'text-light',
 					},
 				},
 			},
@@ -144,11 +181,13 @@ export function useCredentialNavigationCommands(options: {
 	});
 
 	function onCommandBarChange(query: string) {
-		lastQuery.value = query;
-
 		const trimmed = query.trim();
-		if (trimmed.length > 2 || activeNodeId.value === ITEM_ID.OPEN_CREDENTIAL) {
-			void fetchCredentials(trimmed);
+		const isInCredentialParent = activeNodeId.value === ITEM_ID.OPEN_CREDENTIAL;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+
+		if (isInCredentialParent || isRootWithQuery) {
+			isLoading.value = isInCredentialParent;
+			void fetchCredentialsDebounced(trimmed);
 		}
 	}
 
@@ -156,10 +195,15 @@ export function useCredentialNavigationCommands(options: {
 		activeNodeId.value = to;
 
 		if (to === ITEM_ID.OPEN_CREDENTIAL) {
-			void fetchCredentials('');
+			isLoading.value = true;
+			void fetchCredentialsImpl('');
 		} else if (to === null) {
 			credentialResults.value = [];
 		}
+	}
+
+	async function initialize() {
+		await credentialsStore.fetchCredentialTypes(false);
 	}
 
 	return {
@@ -168,5 +212,7 @@ export function useCredentialNavigationCommands(options: {
 			onCommandBarChange,
 			onCommandBarNavigateTo,
 		},
+		isLoading,
+		initialize,
 	};
 }
