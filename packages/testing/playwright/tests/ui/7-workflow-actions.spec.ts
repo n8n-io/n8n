@@ -208,7 +208,7 @@ test.describe('Workflow Actions', () => {
 
 		await expect(n8n.canvas.nodeCreator.getRoot()).not.toBeAttached();
 
-		await n8n.clipboard.grant('read');
+		await n8n.clipboard.grant();
 
 		await n8n.canvas.selectAll();
 		await n8n.canvas.copyNodes();
