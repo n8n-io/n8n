@@ -1,15 +1,16 @@
 <script lang="ts" setup>
-import ApiKeyScopes from '@/components/ApiKeyScopes.vue';
+import ApiKeyScopes from './ApiKeyScopes.vue';
 import CopyInput from '@/components/CopyInput.vue';
 import Modal from '@/components/Modal.vue';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useApiKeysStore } from '@/stores/apiKeys.store';
+import { useApiKeysStore } from '../apiKeys.store';
 import { useToast } from '@/composables/useToast';
 import type { BaseTextKey } from '@n8n/i18n';
 import { DateTime } from 'luxon';
