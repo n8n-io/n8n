@@ -52,8 +52,8 @@ class ProvisioningConfig {
 	scopesInstanceRoleClaimName: string = 'n8n_instance_role';
 
 	/** The name of the expected claim to be returned for provisioning project <> role mappings */
-	@Env('N8N_SSO_SCOPES_PROJECTS_CLAIM_NAME')
-	scopesProjectsClaimName: string = 'n8n_projects';
+	@Env('N8N_SSO_SCOPES_PROJECTS_ROLES_CLAIM_NAME')
+	scopesProjectsRolesClaimName: string = 'n8n_projects';
 }
 
 @Config

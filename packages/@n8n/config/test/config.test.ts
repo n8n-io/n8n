@@ -373,7 +373,7 @@ describe('GlobalConfig', () => {
 				scopesProvisioningFrequency: 'never',
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
-				scopesProjectsClaimName: 'n8n_projects',
+				scopesProjectsRolesClaimName: 'n8n_projects',
 			},
 		},
 		redis: {
