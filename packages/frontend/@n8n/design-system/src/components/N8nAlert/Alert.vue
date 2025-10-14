@@ -123,11 +123,11 @@ const alertBoxClassNames = computed(() => {
 
 	&.info {
 		&.light {
-			color: var(--color-info);
+			color: var(--color--info);
 
 			&.background {
 				background-color: var.$alert-info-color;
-				border-color: var(--color-info);
+				border-color: var(--color--info);
 			}
 		}
 
@@ -135,17 +135,17 @@ const alertBoxClassNames = computed(() => {
 			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-info);
+				color: var(--color--info);
 			}
 
 			&.background {
-				background-color: var(--color-info);
+				background-color: var(--color--info);
 				border-color: var.$color-white;
 			}
 		}
 
 		.el-alert__description {
-			color: var(--color-info);
+			color: var(--color--info);
 		}
 	}
 

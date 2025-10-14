@@ -2,7 +2,6 @@
 import {
 	ABOUT_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
-	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -51,12 +50,13 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/apiKeys/apiKeys.constants';
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
-import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
+import ApiKeyCreateOrEditModal from '@/features/apiKeys/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/features/assistant/components/Chat/NewAssistantSessionModal.vue';
-import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
-import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
+import ChangePasswordModal from '@/features/auth/components/ChangePasswordModal.vue';
+import ConfirmPasswordModal from '@/features/auth/components/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
@@ -74,7 +74,7 @@ import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/components/InviteUsersModal.vue';
-import MfaSetupModal from '@/components/MfaSetupModal.vue';
+import MfaSetupModal from '@/features/auth/components/MfaSetupModal.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
@@ -95,7 +95,7 @@ import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import PromptMfaCodeModal from '@/features/auth/components/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';

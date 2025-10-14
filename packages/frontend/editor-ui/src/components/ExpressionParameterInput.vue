@@ -249,7 +249,7 @@ defineExpose({ focus, select });
 	flex-grow: 1;
 
 	:global(.cm-editor) {
-		background-color: var(--color-code-background);
+		background-color: var(--code--color--background);
 	}
 
 	.all-sections {
@@ -277,18 +277,18 @@ defineExpose({ focus, select });
 	position: absolute;
 	right: 0;
 	bottom: 0;
-	background-color: var(--color-code-background);
+	background-color: var(--code--color--background);
 	padding: 3px;
 	line-height: 9px;
-	border: var(--input-border-color, var(--border-color))
-		var(--input-border-style, var(--border-style)) var(--input-border-width, var(--border-width));
+	border: var(--input--border-color, var(--border-color))
+		var(--input--border-style, var(--border-style)) var(--input-border-width, var(--border-width));
 	cursor: pointer;
 	border-radius: 0;
 	border-top-left-radius: var(--radius);
 
 	&:hover {
-		border: var(--input-border-color, var(--border-color))
-			var(--input-border-style, var(--border-style)) var(--input-border-width, var(--border-width));
+		border: var(--input--border-color, var(--border-color))
+			var(--input--border-style, var(--border-style)) var(--input-border-width, var(--border-width));
 	}
 
 	svg {
@@ -310,13 +310,13 @@ defineExpose({ focus, select });
 .focused > .expression-editor-modal-opener {
 	border-color: var(--color--secondary);
 	border-bottom-right-radius: 0;
-	background-color: var(--color-code-background);
+	background-color: var(--code--color--background);
 }
 
 .droppable {
-	--input-border-color: var(--color-ndv-droppable-parameter);
-	--input-border-right-color: var(--color-ndv-droppable-parameter);
-	--input-border-style: dashed;
+	--input--border-color: var(--ndv--droppable-parameter--color);
+	--input--border-right-color: var(--ndv--droppable-parameter--color);
+	--input--border-style: dashed;
 
 	:global(.cm-editor) {
 		border-width: 1.5px;
@@ -324,10 +324,10 @@ defineExpose({ focus, select });
 }
 
 .activeDrop {
-	--input-border-color: var(--color--success);
-	--input-border-right-color: var(--color--success);
-	--input-background-color: var(--color--foreground--tint-2);
-	--input-border-style: solid;
+	--input--border-color: var(--color--success);
+	--input--border-right-color: var(--color--success);
+	--input--color--background: var(--color--foreground--tint-2);
+	--input--border-style: solid;
 
 	:global(.cm-editor) {
 		cursor: grabbing !important;

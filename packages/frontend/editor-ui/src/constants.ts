@@ -52,7 +52,6 @@ export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
-export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
@@ -89,6 +88,7 @@ export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
 export const VARIABLE_MODAL_KEY = 'variableModal';
+export const CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY = 'chatHubSideMenuDrawer';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 
@@ -508,8 +508,10 @@ export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
 export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
 	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
 export const LOCAL_STORAGE_RUN_DATA_WORKER = 'N8N_RUN_DATA_WORKER';
-export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = 'N8N_CHAT_HUB_SELECTED_MODEL';
-export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = 'N8N_CHAT_HUB_CREDENTIALS';
+export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_SELECTED_MODEL`;
+export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_CREDENTIALS`;
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =

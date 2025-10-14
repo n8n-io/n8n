@@ -410,7 +410,7 @@ onMounted(async () => {
 	When hovering over link in row, ensure hover background is removed from row
  */
 :global(tr:hover:has(.open-execution-link:hover)) {
-	--color-table-row-hover-background: transparent;
+	--table--row--color--background--hover: transparent;
 }
 </style>
 

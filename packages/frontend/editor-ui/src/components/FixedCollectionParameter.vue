@@ -387,21 +387,21 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 	.controls {
 		:deep(.button) {
 			font-weight: var(--font-weight-normal);
-			--button-font-color: var(--color--text--shade-1);
-			--button-border-color: var(--color--foreground);
-			--button-background-color: var(--color--background);
+			--button--color--text: var(--color--text--shade-1);
+			--button--border-color: var(--color--foreground);
+			--button--color--background: var(--color--background);
 
-			--button-hover-font-color: var(--color--text--shade-1);
-			--button-hover-border-color: var(--color--foreground);
-			--button-hover-background-color: var(--color--background);
+			--button--color--text--hover: var(--color--text--shade-1);
+			--button--border-color--hover: var(--color--foreground);
+			--button--color--background--hover: var(--color--background);
 
-			--button-active-font-color: var(--color--text--shade-1);
-			--button-active-border-color: var(--color--foreground);
-			--button-active-background-color: var(--color--background);
+			--button--color--text--active: var(--color--text--shade-1);
+			--button--border-color--active: var(--color--foreground);
+			--button--color--background--active: var(--color--background);
 
-			--button-focus-font-color: var(--color--text--shade-1);
-			--button-focus-border-color: var(--color--foreground);
-			--button-focus-background-color: var(--color--background);
+			--button--color--text--focus: var(--color--text--shade-1);
+			--button--border-color--focus: var(--color--foreground);
+			--button--color--background--focus: var(--color--background);
 
 			&:active,
 			&.active,

@@ -217,7 +217,7 @@ function handleResizeEnd() {
 	padding-inline-end: var(--spacing--2xs);
 
 	.pressed {
-		background-color: var(--color-button-secondary-focus-outline);
+		background-color: var(--button--outline-color--secondary--focus);
 	}
 }
 

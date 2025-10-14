@@ -66,7 +66,7 @@ function onMouseLeave() {
 	&:hover {
 		border: 0;
 		cursor: pointer;
-		background: var(--color-assistant-highlight-reverse);
+		background: var(--assistant--color--highlight-gradient--reverse);
 
 		> div {
 			background: transparent;
@@ -75,8 +75,8 @@ function onMouseLeave() {
 }
 
 .num {
-	color: var(--prim-color-white);
-	background: var(--color-assistant-highlight-reverse);
+	color: var(--p--color--white);
+	background: var(--assistant--color--highlight-gradient--reverse);
 	border-radius: 50%;
 	width: var(--spacing--sm);
 	height: var(--spacing--sm);

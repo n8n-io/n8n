@@ -455,8 +455,8 @@ defineExpose({
 	&.hasIssues {
 		animation: horizontal-shake 500ms;
 		button {
-			--button-font-color: var(--color--danger);
-			--button-border-color: var(--color--danger);
+			--button--color--text: var(--color--danger);
+			--button--border-color: var(--color--danger);
 		}
 	}
 
@@ -490,7 +490,7 @@ defineExpose({
 }
 .connectedNode {
 	border: var(--border);
-	background-color: var(--color-node-background);
+	background-color: var(--node--color--background);
 	border-radius: 100%;
 	padding: var(--spacing--xs);
 	cursor: pointer;
