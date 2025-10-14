@@ -57,11 +57,25 @@ const size = computed((): { height: string; width: string } => {
 	};
 });
 
+const colorMap: Record<IconColor, string> = {
+	primary: '--color--primary',
+	secondary: '--color--secondary',
+	'text-dark': '--color--text--shade-1',
+	'text-base': '--color--text',
+	'text-light': '--color--text--tint-1',
+	'text-xlight': '--color--text--tint-3',
+	danger: '--color--danger',
+	success: '--color--success',
+	warning: '--color--warning',
+	'foreground-dark': '--color--foreground--shade-1',
+	'foreground-xdark': '--color--foreground--shade-2',
+};
+
 const styles = computed(() => {
 	const stylesToApply: Record<string, string> = {};
 
 	if (props.color) {
-		stylesToApply.color = `var(--color-${props.color})`;
+		stylesToApply.color = `var(${colorMap[props.color]})`;
 	}
 
 	if (props.strokeWidth) {
