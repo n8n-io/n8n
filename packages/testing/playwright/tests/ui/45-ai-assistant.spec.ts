@@ -524,7 +524,7 @@ test.describe('AI Assistant::enabled', () => {
 
 			await n8n.navigate.toCredentials();
 
-			await n8n.credentials.emptyListCreateCredentialButton.click();
+			await n8n.workflows.addResource.credential();
 			await n8n.credentials.selectCredentialType('Notion API');
 
 			const assistantButton = n8n.aiAssistant.getCredentialEditAssistantButton().locator('button');
