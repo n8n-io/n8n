@@ -140,6 +140,143 @@ describe('HttpRequestV3', () => {
 		);
 	});
 
+	describe('Query Parameter Handling', () => {
+		it('should handle array query parameters with brackets notation and falsy values', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendQuery':
+						return true;
+					case 'specifyQuery':
+						return 'keypair';
+					case 'queryParameters.parameters':
+						return [
+							{ name: 'firstName[]', value: 'John' },
+							{ name: 'firstName[]', value: 'Sam' },
+							{ name: 'currentLocation', value: 'Vegas' },
+							{ name: 'hasVehicle', value: false },
+						];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: expect.objectContaining({
+						firstName: ['John', 'Sam'],
+						currentLocation: 'Vegas',
+						hasVehicle: false,
+					}),
+				}),
+			);
+		});
+
+		it('ignores literal [] parameter', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendQuery':
+						return true;
+					case 'specifyQuery':
+						return 'keypair';
+					case 'queryParameters.parameters':
+						return [
+							{ name: '[]', value: 'John' },
+							{ name: '[]', value: 'Sam' },
+						];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: expect.objectContaining({}),
+				}),
+			);
+		});
+
+		it('overwrites duplicate keys when [] is not present', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendQuery':
+						return true;
+					case 'specifyQuery':
+						return 'keypair';
+					case 'queryParameters.parameters':
+						return [
+							{ name: 'userName', value: 'John' },
+							{ name: 'userName', value: 'Zack' },
+						];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: expect.objectContaining({
+						userName: 'Zack',
+					}),
+				}),
+			);
+		});
+	});
+
 	describe('Authentication Handling', () => {
 		const authenticationTypes = [
 			{
