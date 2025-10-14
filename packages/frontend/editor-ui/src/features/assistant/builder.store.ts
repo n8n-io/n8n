@@ -46,7 +46,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
-	const hasMessages = ref<boolean | undefined>(undefined);
+	const hasMessages = ref<boolean>(false);
 
 	// Store dependencies
 	const chatPanelStateStore = useChatPanelStateStore();
