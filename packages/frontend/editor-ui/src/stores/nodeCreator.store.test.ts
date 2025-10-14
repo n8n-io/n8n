@@ -44,25 +44,6 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-// Mock the workflows store so that getNodeById returns a dummy node.
-vi.mock('@/stores/workflows.store', () => {
-	return {
-		useWorkflowsStore: () => ({
-			getNodeById: vi.fn((id?: string) => {
-				return id ? { id, name: 'Test Node' } : null;
-			}),
-			workflowTriggerNodes: [],
-			workflowId: 'dummy-workflow-id',
-			workflowObject: {
-				getNode: vi.fn(() => ({
-					type: 'n8n-node.example',
-					typeVersion: 1,
-				})),
-			},
-		}),
-	};
-});
-
 vi.mock('@/features/canvas/canvas.utils', () => {
 	return {
 		parseCanvasConnectionHandleString: vi.fn(),
