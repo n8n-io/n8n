@@ -20,7 +20,7 @@ export namespace ChatRequest {
 
 	export interface ExpressionValue {
 		expression: string;
-		resolvedValue: unknown;
+		resolvedValue?: unknown;
 		nodeType: string;
 	}
 

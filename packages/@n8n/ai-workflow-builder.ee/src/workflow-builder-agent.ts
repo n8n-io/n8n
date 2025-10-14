@@ -50,7 +50,7 @@ export interface WorkflowBuilderAgentConfig {
 export interface ExpressionValue {
 	expression: string;
 	resolvedValue: unknown;
-	nodeType: string;
+	nodeType?: string;
 }
 
 export interface ChatPayload {
