@@ -204,7 +204,7 @@ N8N_RUNNERS_MODE=internal
 
 # For external runners
 N8N_RUNNERS_TASK_BROKER_URI=ws://localhost:5679
-N8N_RUNNERS_GRANT_TOKEN=your-secure-token
+N8N_RUNNERS_AUTH_TOKEN=your-secure-token
 
 # Performance settings
 N8N_RUNNERS_MAX_CONCURRENCY=10
@@ -267,13 +267,13 @@ Only specific helper methods are exposed via RPC:
 ```bash
 N8N_RUNNERS_ENABLED=true
 N8N_RUNNERS_MODE=external
-N8N_RUNNERS_GRANT_TOKEN=secret-token-123
+N8N_RUNNERS_AUTH_TOKEN=secret-token-123
 ```
 
 2. **Start external runner:**
 ```bash
 N8N_RUNNERS_TASK_BROKER_URI=ws://n8n-main:5679 \
-N8N_RUNNERS_GRANT_TOKEN=secret-token-123 \
+N8N_RUNNERS_AUTH_TOKEN=secret-token-123 \
 N8N_RUNNERS_MAX_CONCURRENCY=5 \
 node packages/@n8n/task-runner/dist/start.js
 ```
