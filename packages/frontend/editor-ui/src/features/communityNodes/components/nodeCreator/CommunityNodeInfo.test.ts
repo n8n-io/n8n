@@ -38,7 +38,7 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/users/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
 		isInstanceOwner: true,
 	})),

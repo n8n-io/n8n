@@ -1,0 +1,42 @@
+├── dataTable
+│   ├── components
+│   │   ├── dataGrid
+│   │   │   ├── AddColumnButton.vue
+│   │   │   ├── AddRowButton.vue
+│   │   │   ├── ColumnHeader.vue
+│   │   │   ├── DataTableTable.vue
+│   │   │   ├── ElDatePickerCellEditor.vue
+│   │   │   ├── ElDatePickerFilter.vue
+│   │   │   ├── n8nTheme.ts
+│   │   │   ├── NullEmptyCellRenderer.vue
+│   │   │   └── registerAgGridModulesOnce.ts
+│   │   ├── AddDataTableModal.vue
+│   │   ├── DataTableActions.vue
+│   │   ├── DataTableBreadcrumbs.vue
+│   │   ├── DataTableCard.vue
+│   │   └── NodeStorageLimitCallout.vue
+│   ├── composables
+│   │   ├── useAgGrid.ts
+│   │   ├── useDataTableColumnFilters.ts
+│   │   ├── useDataTableColumns.ts
+│   │   ├── useDataTableOperations.ts
+│   │   ├── useDataTablePagination.ts
+│   │   ├── useDataTableSelection.ts
+│   │   ├── useDataTableTypes.ts
+│   │   └── useDatePickerCommon.ts
+│   ├── constants.ts
+│   ├── dataTable.api.ts
+│   ├── dataTable.store.ts
+│   ├── dataTable.types.ts
+│   ├── DataTableDetailsView.vue
+│   ├── DataTableView.vue
+│   ├── module.descriptor.ts
+│   ├── typeGuards.test.ts
+│   ├── typeGuards.ts
+│   ├── types.ts
+│   ├── utils
+│   │   ├── columnUtils.ts
+│   │   ├── filterMappings.ts
+│   │   ├── filterProcessors.ts
+│   │   └── typeUtils.ts
+│   └── utils.ts

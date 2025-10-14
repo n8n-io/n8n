@@ -164,7 +164,7 @@
     "fast-glob": "catalog:",
     "jest-mock-extended": "^3.0.4",
     "n8n-core": "workspace:*",
-    "tsup": "catalog:"
+    "tsup": "^8.5.0"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
@@ -192,7 +192,7 @@
     "@langchain/redis": "0.1.1",
     "@langchain/textsplitters": "0.1.0",
     "@langchain/weaviate": "0.2.0",
-    "@modelcontextprotocol/sdk": "1.12.0",
+    "@modelcontextprotocol/sdk": "1.15.1",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",

@@ -197,7 +197,7 @@ export function handleRequest({
 		parentOutputData: executionData.data.main as INodeExecutionData[][],
 		runIndex,
 		nodeRunIndex: runIndex,
-		metadata: { subNodeExecutionData },
+		metadata: { nodeWasResumed: true, subNodeExecutionData },
 	});
 
 	return { nodesToBeExecuted };

@@ -15,7 +15,7 @@ import {
 	OPEN_AI_NODE_TYPE,
 } from '@/constants';
 
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { useActions } from '../composables/useActions';
