@@ -773,6 +773,88 @@ describe('evaluateConnections', () => {
 			);
 		});
 
+		it('should report issue when merge node inputs reuse the same index', () => {
+			const workflow = mock<SimpleWorkflow>({
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Code1',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Code2',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 200],
+					},
+					{
+						id: '3',
+						name: 'Code3',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 400],
+					},
+					{
+						id: '4',
+						name: 'Merge',
+						type: 'n8n-nodes-test.merge',
+						parameters: { numberInputs: 3 },
+						typeVersion: 1,
+						position: [200, 200],
+					},
+				],
+				connections: {
+					Code1: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Code2: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Code3: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			});
+
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description: 'Merge node Merge is missing connections for input(s) 2, 3.',
+				}),
+			);
+		});
+
 		it('should not report issue when merge node has 2 or more input connections', () => {
 			const workflow = mock<SimpleWorkflow>({
 				name: 'Test Workflow',

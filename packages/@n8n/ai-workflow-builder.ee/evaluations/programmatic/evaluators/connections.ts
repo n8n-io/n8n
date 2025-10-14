@@ -1,5 +1,6 @@
 import type {
 	ExpressionString,
+	INodeConnections,
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	NodeConnectionType,
@@ -119,19 +120,17 @@ function resolveNodeInputs(
 }
 
 function getProvidedInputTypes(
-	nodeName: string,
-	connectionsByDestination: ReturnType<typeof mapConnectionsByDestination>,
+	nodeConnections?: INodeConnections,
 ): Map<NodeConnectionType, number> {
 	const providedInputTypes = new Map<NodeConnectionType, number>();
-	const nodeConnections = connectionsByDestination[nodeName] || {};
 
-	// Count connections by type
+	if (!nodeConnections) return providedInputTypes;
+
 	for (const [connectionType, connections] of Object.entries(nodeConnections)) {
 		let totalConnections = 0;
 		for (const connectionSet of connections) {
-			if (connectionSet) {
-				totalConnections += connectionSet.length;
-			}
+			if (!connectionSet) continue;
+			totalConnections += connectionSet.length;
 		}
 		if (totalConnections > 0) {
 			providedInputTypes.set(connectionType as NodeConnectionType, totalConnections);
@@ -188,12 +187,14 @@ function checkUnsupportedConnections(
 
 function checkMergeNodeConnections(
 	nodeInfo: NodeInfo,
-	providedInputTypes: Map<NodeConnectionType, number>,
+	nodeConnections?: INodeConnections,
 ): Violation[] {
 	const issues: Violation[] = [];
 
 	// Check if this is a merge node
 	if (/\.merge$/.test(nodeInfo.node.type)) {
+		const providedInputTypes = getProvidedInputTypes(nodeConnections);
+
 		// Calculate total number of input connections
 		const totalInputConnections = providedInputTypes.get('main') ?? 0;
 
@@ -213,6 +214,26 @@ function checkMergeNodeConnections(
 				type: 'minor',
 				description: `Merge node ${nodeInfo.node.name} has ${totalInputConnections} input connections but is configured to accept ${expectedInputs}.`,
 				pointsDeducted: 10,
+			});
+		}
+
+		const mainConnections = nodeConnections?.main ?? [];
+		const missingIndexes: number[] = [];
+
+		for (let inputIndex = 0; inputIndex < expectedInputs; inputIndex++) {
+			const connectionsForIndex = mainConnections[inputIndex];
+			const hasConnections = Array.isArray(connectionsForIndex) && connectionsForIndex.length > 0;
+
+			if (!hasConnections) {
+				missingIndexes.push(inputIndex + 1);
+			}
+		}
+
+		if (missingIndexes.length > 0) {
+			issues.push({
+				type: 'major',
+				description: `Merge node ${nodeInfo.node.name} is missing connections for input(s) ${missingIndexes.join(', ')}.`,
+				pointsDeducted: 20,
 			});
 		}
 	}
@@ -264,7 +285,8 @@ export function evaluateConnections(
 		}
 
 		// Get provided connections
-		const providedInputTypes = getProvidedInputTypes(node.name, connectionsByDestination);
+		const nodeConnections = connectionsByDestination[node.name];
+		const providedInputTypes = getProvidedInputTypes(nodeConnections);
 
 		// Check for missing required inputs
 		violations.push(...checkMissingRequiredInputs(nodeInfo, providedInputTypes));
@@ -273,7 +295,7 @@ export function evaluateConnections(
 		violations.push(...checkUnsupportedConnections(nodeInfo, providedInputTypes));
 
 		// Check merge node specific requirements
-		violations.push(...checkMergeNodeConnections(nodeInfo, providedInputTypes));
+		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
 	}
 
 	return { violations, score: calcSingleEvaluatorScore({ violations }) };
