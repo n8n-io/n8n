@@ -136,7 +136,7 @@ watchOnce(isVisible, (visible) => {
 	align-items: flex-start !important;
 	justify-content: stretch;
 	border-width: 1px !important;
-	border-radius: var(--border-radius-base) !important;
+	border-radius: var(--radius) !important;
 	overflow: hidden;
 
 	--canvas-node--border-color: var(--color--text--tint-2);
@@ -151,7 +151,7 @@ watchOnce(isVisible, (visible) => {
 		cursor: auto;
 		height: auto;
 		max-height: var(--expanded-max-height);
-		min-height: var(--spacing-3xl);
+		min-height: var(--spacing--3xl);
 
 		:global(.selected) & {
 			max-height: var(--max-height-on-focus);
@@ -159,7 +159,7 @@ watchOnce(isVisible, (visible) => {
 	}
 	&.collapsed {
 		overflow: hidden;
-		height: var(--spacing-2xl);
+		height: var(--spacing--2xl);
 	}
 }
 
@@ -177,11 +177,11 @@ watchOnce(isVisible, (visible) => {
 	width: 100%;
 
 	height: auto;
-	max-height: calc(var(--expanded-max-height) - var(--border-width-base) * 2);
-	min-height: var(--spacing-2xl); // should be multiple of GRID_SIZE
+	max-height: calc(var(--expanded-max-height) - var(--border-width) * 2);
+	min-height: var(--spacing--2xl); // should be multiple of GRID_SIZE
 
 	:global(.selected) & {
-		max-height: calc(var(--max-height-on-focus) - var(--border-width-base) * 2);
+		max-height: calc(var(--max-height-on-focus) - var(--border-width) * 2);
 	}
 }
 
@@ -189,9 +189,9 @@ watchOnce(isVisible, (visible) => {
 	height: 100%;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	background-color: white;
-	padding: var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs) var(--spacing-2xs);
+	padding: var(--spacing--2xs) var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
 	background-color: var(--color--background--light-3);
 	cursor: pointer;
 
@@ -211,7 +211,7 @@ watchOnce(isVisible, (visible) => {
 	flex-grow: 1;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 
 	& > * {
 		white-space: nowrap;

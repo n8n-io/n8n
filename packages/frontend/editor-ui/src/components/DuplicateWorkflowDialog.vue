@@ -205,13 +205,13 @@ onMounted(async () => {
 <style lang="scss" module>
 .content {
 	> *:not(:last-child) {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 }
 
 .footer {
 	> * {
-		margin-left: var(--spacing-3xs);
+		margin-left: var(--spacing--3xs);
 	}
 }
 </style>

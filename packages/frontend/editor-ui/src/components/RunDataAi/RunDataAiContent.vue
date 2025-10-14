@@ -128,16 +128,16 @@ const outputError = computed(() => props.inputData.runData?.error as NodeError |
 
 <style type="scss" module>
 .container {
-	padding: 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 .nodeIcon {
-	margin-top: calc(var(--spacing-3xs) * -1);
+	margin-top: calc(var(--spacing--3xs) * -1);
 }
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
-	margin-bottom: var(--spacing-s);
+	gap: var(--spacing--3xs);
+	margin-bottom: var(--spacing--sm);
 }
 .headerWrap {
 	display: flex;
@@ -146,8 +146,8 @@ const outputError = computed(() => props.inputData.runData?.error as NodeError |
 .title {
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-s);
-	gap: var(--spacing-3xs);
+	font-size: var(--font-size--sm);
+	gap: var(--spacing--3xs);
 	color: var(--color--text--shade-1);
 }
 .meta {
@@ -155,20 +155,20 @@ const outputError = computed(() => props.inputData.runData?.error as NodeError |
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 
 	& > li:not(:last-child) {
 		border-right: 1px solid var(--color--text);
-		padding-right: var(--spacing-3xs);
+		padding-right: var(--spacing--3xs);
 	}
 
 	& > li:not(:first-child) {
-		padding-left: var(--spacing-3xs);
+		padding-left: var(--spacing--3xs);
 	}
 }
 .tokensUsage {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 </style>

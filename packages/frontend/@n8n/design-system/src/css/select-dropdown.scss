@@ -6,7 +6,7 @@
 	position: absolute;
 	z-index: #{var.$index-top + 1};
 	border: var.$select-dropdown-border;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	background-color: var.$select-dropdown-background;
 	box-shadow: var.$select-dropdown-shadow;
 	box-sizing: border-box;
@@ -28,7 +28,7 @@
 				font-family: 'element-icons';
 				content: '\e6da';
 				font-size: 12px;
-				font-weight: var(--font-weight-bold);
+				font-weight: var(--font-weight--bold);
 				-webkit-font-smoothing: antialiased;
 				-moz-osx-font-smoothing: grayscale;
 			}

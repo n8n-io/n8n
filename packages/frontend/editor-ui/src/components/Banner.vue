@@ -97,14 +97,14 @@ const onClick = () => {
 
 .message {
 	white-space: normal;
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 	overflow: hidden;
 	word-break: break-word;
 }
 
 .dangerMessage {
 	composes: message;
-	color: var(--color-callout-danger-font);
+	color: var(--callout--color--text--danger);
 }
 
 .banner {
@@ -121,12 +121,12 @@ const onClick = () => {
 
 .details {
 	composes: message;
-	margin-top: var(--spacing-3xs);
+	margin-top: var(--spacing--3xs);
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .moreDetails {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 </style>

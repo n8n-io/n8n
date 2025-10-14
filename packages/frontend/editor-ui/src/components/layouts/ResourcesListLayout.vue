@@ -123,6 +123,7 @@ const slots = defineSlots<{
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
+	postdata(): unknown;
 	'add-button'(): unknown;
 	callout(): unknown;
 	filters(props: {
@@ -757,6 +758,10 @@ defineExpose({
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
 						</template>
+
+						<template #postdata>
+							<slot name="postdata" />
+						</template>
 					</N8nDatatable>
 				</div>
 
@@ -782,21 +787,21 @@ defineExpose({
 	align-items: center;
 	justify-content: space-between;
 	width: 100%;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .filters {
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr max-content max-content max-content;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	align-items: center;
 	justify-content: end;
 	width: 100%;
 
 	.sort-and-filter {
 		display: flex;
-		gap: var(--spacing-4xs);
+		gap: var(--spacing--4xs);
 		align-items: center;
 	}
 
@@ -831,7 +836,7 @@ defineExpose({
 	flex-direction: column;
 	height: 100%;
 	overflow: auto;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 }
 
 .listItems {
@@ -841,7 +846,7 @@ defineExpose({
 .listPagination {
 	display: flex;
 	justify-content: flex-end;
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 
 	:global(.el-pagination__sizes) {
 		height: 100%;
@@ -854,7 +859,7 @@ defineExpose({
 		}
 
 		:global(.el-input__suffix) {
-			width: var(--spacing-m);
+			width: var(--spacing--md);
 		}
 	}
 }
@@ -868,7 +873,7 @@ defineExpose({
 }
 
 .datatable {
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 </style>
 

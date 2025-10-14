@@ -199,11 +199,11 @@ onClickOutside(
 
 <style module lang="scss">
 :global(strong) {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 .nodeCreator {
 	--node-creator-width: #{$node-creator-width};
-	--node-icon-color: var(--color--text);
+	--node--icon--color: var(--color--text);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
@@ -221,7 +221,7 @@ onClickOutside(
 	left: $sidebar-width;
 	opacity: 0;
 	z-index: 1;
-	background: var(--color-dialog-overlay-background);
+	background: var(--dialog--overlay--color--background);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
 
@@ -233,8 +233,8 @@ onClickOutside(
 .close {
 	position: absolute;
 	z-index: calc(var(--z-index-node-creator) + 1);
-	top: var(--spacing-xs);
-	right: var(--spacing-xs);
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
 	background: transparent;
 	border: 0;
 	display: none;

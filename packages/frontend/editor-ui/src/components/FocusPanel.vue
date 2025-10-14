@@ -707,18 +707,18 @@ function onRenameNode(value: string) {
 		}
 
 		.emptyText {
-			margin: 0 var(--spacing-xl);
+			margin: 0 var(--spacing--xl);
 			display: flex;
 			flex-direction: column;
-			gap: var(--spacing-2xs);
+			gap: var(--spacing--2xs);
 		}
 
 		.focusParameterWrapper {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			gap: var(--spacing-2xs);
-			margin-block: var(--spacing-m);
+			gap: var(--spacing--2xs);
+			margin-block: var(--spacing--md);
 
 			.iconWrapper {
 				position: relative;
@@ -744,17 +744,17 @@ function onRenameNode(value: string) {
 		justify-content: space-between;
 		align-items: center;
 		border-bottom: 1px solid var(--color--foreground);
-		padding: var(--spacing-2xs);
+		padding: var(--spacing--2xs);
 
 		.tabHeaderText {
 			display: flex;
-			gap: var(--spacing-4xs);
+			gap: var(--spacing--4xs);
 			align-items: baseline;
 		}
 
 		.buttonWrapper {
 			display: flex;
-			gap: var(--spacing-2xs);
+			gap: var(--spacing--2xs);
 			align-items: center;
 		}
 	}
@@ -763,8 +763,8 @@ function onRenameNode(value: string) {
 		display: flex;
 		height: 100%;
 		flex-direction: column;
-		gap: var(--spacing-2xs);
-		padding: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
+		padding: var(--spacing--2xs);
 
 		.parameterOptionsWrapper {
 			display: flex;
@@ -783,10 +783,10 @@ function onRenameNode(value: string) {
 				display: flex;
 				height: 100%;
 				width: 100%;
-				font-size: var(--font-size-2xs);
+				font-size: var(--font-size--2xs);
 
 				:global(.cm-editor) {
-					background-color: var(--color-code-background);
+					background-color: var(--code--color--background);
 					width: 100%;
 				}
 			}
@@ -817,8 +817,8 @@ function onRenameNode(value: string) {
 }
 
 .forceHover {
-	color: var(--color-button-secondary-hover-active-focus-font);
-	border-color: var(--color-button-secondary-hover-active-focus-border);
+	color: var(--button--color--text--secondary--hover-active-focus);
+	border-color: var(--button--border-color--secondary--hover-active-focus);
 	background-color: var(--color-button-secondary-hover-active-focus-background);
 }
 </style>

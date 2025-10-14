@@ -59,3 +59,8 @@ export interface NodeStreamingState {
 export const credentialsMapSchema = z.record(chatHubProviderSchema, z.string().or(z.null()));
 
 export type CredentialsMap = z.infer<typeof credentialsMapSchema>;
+
+export interface GroupedConversations {
+	group: string;
+	sessions: Array<{ id: string; label: string }>;
+}

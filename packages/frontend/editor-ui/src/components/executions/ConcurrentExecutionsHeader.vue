@@ -77,6 +77,6 @@ const headerText = computed(() => {
 	flex-direction: column;
 }
 .link {
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 }
 </style>

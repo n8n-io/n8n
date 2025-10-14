@@ -31,10 +31,10 @@ withDefaults(defineProps<Props>(), {
 	display: flex;
 	width: 100%;
 	max-width: var(--content-container-width);
-	padding: var(--spacing-l) var(--spacing-l) 0;
+	padding: var(--spacing--lg) var(--spacing--lg) 0;
 	justify-content: center;
 	@media (min-width: 1200px) {
-		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+		padding: var(--spacing--2xl) var(--spacing--2xl) 0;
 	}
 }
 
@@ -45,10 +45,10 @@ withDefaults(defineProps<Props>(), {
 .header {
 	display: flex;
 	flex-direction: column;
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 }
 
 .goBack {
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 </style>

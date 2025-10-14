@@ -64,17 +64,17 @@ function onDelete() {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	pointer-events: all;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	transform: scale(var(--canvas-zoom-compensation-factor, 1));
 }
 </style>
 
 <style lang="scss">
 @mixin dark-button-styles {
-	--button-background-color: var(--color--background);
-	--button-hover-background-color: var(--color--background--light-2);
+	--button--color--background: var(--color--background);
+	--button--color--background--hover: var(--color--background--light-2);
 }
 
 @media (prefers-color-scheme: dark) {

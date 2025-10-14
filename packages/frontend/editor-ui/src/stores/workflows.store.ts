@@ -17,15 +17,14 @@ import type {
 	IExecutionsListResponse,
 	INodeMetadata,
 	INodeUi,
-	INodeUpdatePropertiesInformation,
 	IStartRunData,
-	IUpdateInformation,
 	IUsedCredential,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
+	WorkflowValidationIssue,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -44,8 +43,6 @@ import type {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeExecutionData,
-	INodeIssueData,
-	INodeIssueObjectProperty,
 	INodeTypes,
 	IPinData,
 	IRunData,
@@ -63,8 +60,6 @@ import {
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
-import isEqual from 'lodash/isEqual';
-import pick from 'lodash/pick';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/api/workflows';
@@ -83,7 +78,7 @@ import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -261,11 +256,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * Get detailed validation issues for all connected, enabled nodes
 	 */
 	const workflowValidationIssues = computed(() => {
-		const issues: Array<{
-			node: string;
-			type: string;
-			value: string | string[];
-		}> = [];
+		const issues: WorkflowValidationIssue[] = [];
 
 		const isStringOrStringArray = (value: unknown): value is string | string[] =>
 			typeof value === 'string' || Array.isArray(value);
@@ -514,13 +505,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// when the workflow replaces the node-parameters.
 	function getNodes(): INodeUi[] {
 		return workflow.value.nodes.map((node) => ({ ...node }));
-	}
-
-	function setNodePositionById(id: string, position: INodeUi['position']): void {
-		const node = workflow.value.nodes.find((n) => n.id === id);
-		if (!node) return;
-
-		setNodeValue({ name: node.name, key: 'position', value: position });
 	}
 
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
@@ -1229,57 +1213,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
-	/**
-	 * @returns `true` if the object was changed
-	 */
-	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
-		if (nodeIndex !== -1) {
-			const node = workflow.value.nodes[nodeIndex];
-			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
-			const changed = !isEqual(existingData, nodeData);
-
-			if (changed) {
-				Object.assign(node, nodeData);
-				workflow.value.nodes[nodeIndex] = node;
-				workflowObject.value.setNodes(workflow.value.nodes);
-			}
-
-			return changed;
-		}
-		return false;
-	}
-
-	function setNodeIssue(nodeIssueData: INodeIssueData): void {
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === nodeIssueData.node;
-		});
-		if (nodeIndex === -1) {
-			return;
-		}
-
-		const node = workflow.value.nodes[nodeIndex];
-
-		if (nodeIssueData.value === null) {
-			// Remove the value if one exists
-			if (node.issues?.[nodeIssueData.type] === undefined) {
-				// No values for type exist so nothing has to get removed
-				return;
-			}
-
-			const { [nodeIssueData.type]: removedNodeIssue, ...remainingNodeIssues } = node.issues;
-			updateNodeAtIndex(nodeIndex, {
-				issues: remainingNodeIssues,
-			});
-		} else {
-			updateNodeAtIndex(nodeIndex, {
-				issues: {
-					...node.issues,
-					[nodeIssueData.type]: nodeIssueData.value as INodeIssueObjectProperty,
-				},
-			});
-		}
-	}
-
 	function addNode(nodeData: INodeUi): void {
 		// @TODO(ckolb): Reminder to refactor useActions:setAddedNodeActionParameters
 		// which listens to this function being called, when this is moved to workflowState soon
@@ -1318,51 +1251,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				uiStore.stateIsDirty = true;
 				return;
 			}
-		}
-	}
-
-	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex !== -1) {
-			for (const key of Object.keys(updateInformation.properties)) {
-				const typedKey = key as keyof INodeUpdatePropertiesInformation['properties'];
-				const property = updateInformation.properties[typedKey];
-
-				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
-
-				if (changed) {
-					uiStore.stateIsDirty = true;
-				}
-			}
-		}
-	}
-
-	function setNodeValue(updateInformation: IUpdateInformation): void {
-		// Find the node that should be updated
-		const nodeIndex = workflow.value.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex === -1 || !updateInformation.key) {
-			throw new Error(
-				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
-			);
-		}
-
-		const changed = updateNodeAtIndex(nodeIndex, {
-			[updateInformation.key]: updateInformation.value,
-		});
-
-		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
-
-		const excludeKeys = ['position', 'notes', 'notesInFlow'];
-
-		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
 		}
 	}
 
@@ -1905,12 +1793,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeConnection,
 		removeAllNodeConnection,
 		renameNodeSelectedAndExecution,
-		updateNodeAtIndex,
-		setNodeIssue,
 		addNode,
 		removeNode,
-		updateNodeProperties,
-		setNodeValue,
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,
@@ -1931,7 +1815,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
-		setNodePositionById,
 		removeNodeById,
 		removeNodeConnectionsById,
 		removeNodeExecutionDataById,

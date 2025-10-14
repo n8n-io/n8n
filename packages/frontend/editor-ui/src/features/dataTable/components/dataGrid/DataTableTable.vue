@@ -6,64 +6,27 @@ import type {
 	DataTableRow,
 } from '@/features/dataTable/dataTable.types';
 import { AgGridVue } from 'ag-grid-vue3';
-import type { GetRowIdParams, GridReadyEvent } from 'ag-grid-community';
-import {
-	ModuleRegistry,
-	ClientSideRowModelModule,
-	TextEditorModule,
-	LargeTextEditorModule,
-	ColumnAutoSizeModule,
-	CheckboxEditorModule,
-	NumberEditorModule,
-	RowSelectionModule,
-	RenderApiModule,
-	DateEditorModule,
-	ClientSideRowModelApiModule,
-	ValidationModule,
-	UndoRedoEditModule,
-	CellStyleModule,
-	ScrollApiModule,
-	PinnedRowModule,
-	ColumnApiModule,
-	TextFilterModule,
-	NumberFilterModule,
-	DateFilterModule,
-	EventApiModule,
-} from 'ag-grid-community';
+import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataTable/components/dataGrid/n8nTheme';
+import { registerAgGridModulesOnce } from '@/features/dataTable/components/dataGrid/registerAgGridModulesOnce';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
-import { DATA_TABLE_HEADER_HEIGHT, DATA_TABLE_ROW_HEIGHT } from '@/features/dataTable/constants';
+import {
+	DATA_TABLE_HEADER_HEIGHT,
+	DATA_TABLE_ROW_HEIGHT,
+	DEFAULT_ID_COLUMN_NAME,
+	ADD_ROW_ROW_ID,
+} from '@/features/dataTable/constants';
 import { useDataTablePagination } from '@/features/dataTable/composables/useDataTablePagination';
-import { useDataTableGridBase } from '@/features/dataTable/composables/useDataTableGridBase';
+import { useAgGrid } from '@/features/dataTable/composables/useAgGrid';
+import { useDataTableColumns } from '@/features/dataTable/composables/useDataTableColumns';
 import { useDataTableSelection } from '@/features/dataTable/composables/useDataTableSelection';
 import { useDataTableOperations } from '@/features/dataTable/composables/useDataTableOperations';
 import { useDataTableColumnFilters } from '@/features/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
+import { GRID_FILTER_CONFIG } from '@/features/dataTable/utils/filterMappings';
 
 import { ElPagination } from 'element-plus';
-// Register only the modules we actually use
-ModuleRegistry.registerModules([
-	ValidationModule, // This module allows us to see AG Grid errors in browser console
-	ClientSideRowModelModule,
-	TextEditorModule,
-	LargeTextEditorModule,
-	ColumnAutoSizeModule,
-	CheckboxEditorModule,
-	NumberEditorModule,
-	RowSelectionModule,
-	RenderApiModule,
-	DateEditorModule,
-	ClientSideRowModelApiModule,
-	UndoRedoEditModule,
-	CellStyleModule,
-	PinnedRowModule,
-	ScrollApiModule,
-	ColumnApiModule,
-	TextFilterModule,
-	NumberFilterModule,
-	DateFilterModule,
-	EventApiModule,
-]);
+registerAgGridModulesOnce();
 
 type Props = {
 	dataTable: DataTable;
@@ -78,20 +41,26 @@ const emit = defineEmits<{
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
 const i18n = useI18n();
-
-const dataTableGridBase = useDataTableGridBase({
-	gridContainerRef,
-	onDeleteColumn: onDeleteColumnFunction,
-	onAddRowClick: onAddRowClickFunction,
-	onAddColumn: onAddColumnFunction,
-});
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
-	gridApi: dataTableGridBase.gridApi,
-	colDefs: dataTableGridBase.colDefs,
-	setGridData: dataTableGridBase.setGridData,
+const agGrid = useAgGrid<DataTableRow>({
+	gridContainerRef,
+	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
+	pinnedBottomRowId: ADD_ROW_ROW_ID,
+	defaultColDef: GRID_FILTER_CONFIG.defaultColDef,
+});
+
+const dataTableColumns = useDataTableColumns({
+	onDeleteColumn: onDeleteColumnFunction,
+	onAddRowClick: onAddRowClickFunction,
+	onAddColumn: onAddColumnFunction,
+	isTextEditorOpen: agGrid.isTextEditorOpen,
+});
+
+const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
+	gridApi: agGrid.gridApi,
+	colDefs: dataTableColumns.colDefs,
 });
 
 const {
@@ -106,32 +75,32 @@ const {
 } = useDataTablePagination({ onChange: fetchDataTableRowsFunction });
 
 const selection = useDataTableSelection({
-	gridApi: dataTableGridBase.gridApi,
+	gridApi: agGrid.gridApi,
 });
 
 const dataTableOperations = useDataTableOperations({
-	colDefs: dataTableGridBase.colDefs,
+	colDefs: dataTableColumns.colDefs,
 	rowData,
-	deleteGridColumn: dataTableGridBase.deleteColumn,
-	setGridData: dataTableGridBase.setGridData,
-	insertGridColumnAtIndex: dataTableGridBase.insertColumnAtIndex,
+	deleteGridColumn: dataTableColumns.deleteColumn,
+	setGridData: agGrid.setGridData,
+	insertGridColumnAtIndex: dataTableColumns.insertColumnAtIndex,
 	dataTableId: props.dataTable.id,
 	projectId: props.dataTable.projectId,
-	addGridColumn: dataTableGridBase.addColumn,
-	moveGridColumn: dataTableGridBase.moveColumn,
-	gridApi: dataTableGridBase.gridApi,
+	addGridColumn: dataTableColumns.addColumn,
+	moveGridColumn: dataTableColumns.moveColumn,
+	gridApi: agGrid.gridApi,
 	totalItems,
 	setTotalItems,
 	ensureItemOnPage,
-	focusFirstEditableCell: dataTableGridBase.focusFirstEditableCell,
+	focusFirstEditableCell: agGrid.focusFirstEditableCell,
 	toggleSave: emit.bind(null, 'toggleSave'),
 	currentPage,
 	pageSize,
-	currentSortBy: dataTableGridBase.currentSortBy,
-	currentSortOrder: dataTableGridBase.currentSortOrder,
+	currentSortBy: agGrid.currentSortBy,
+	currentSortOrder: agGrid.currentSortOrder,
 	handleClearSelection: selection.handleClearSelection,
 	selectedRowIds: selection.selectedRowIds,
-	handleCopyFocusedCell: dataTableGridBase.handleCopyFocusedCell,
+	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
 });
 
@@ -152,15 +121,15 @@ async function fetchDataTableRowsFunction() {
 }
 
 const initialize = async (params: GridReadyEvent) => {
-	dataTableGridBase.onGridReady(params);
-	dataTableGridBase.loadColumns(props.dataTable.columns);
+	agGrid.onGridReady(params);
+	dataTableColumns.loadColumns(props.dataTable.columns);
+	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
 	await dataTableOperations.fetchDataTableRows();
-	initializeFilters();
 };
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
 
-watch([dataTableGridBase.currentSortBy, dataTableGridBase.currentSortOrder], async () => {
+watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 	await setCurrentPage(1);
 });
 
@@ -199,12 +168,14 @@ defineExpose({
 				@grid-ready="initialize"
 				@cell-value-changed="dataTableOperations.onCellValueChanged"
 				@column-moved="dataTableOperations.onColumnMoved"
-				@cell-clicked="dataTableGridBase.onCellClicked"
-				@cell-editing-started="dataTableGridBase.onCellEditingStarted"
-				@cell-editing-stopped="dataTableGridBase.onCellEditingStopped"
-				@column-header-clicked="dataTableGridBase.resetLastFocusedCell"
+				@cell-clicked="agGrid.onCellClicked"
+				@cell-editing-started="agGrid.onCellEditingStarted"
+				@cell-editing-stopped="agGrid.onCellEditingStopped"
+				@column-header-clicked="agGrid.resetLastFocusedCell"
 				@selection-changed="selection.onSelectionChanged"
-				@sort-changed="dataTableGridBase.onSortChanged"
+				@sort-changed="
+					(e: SortChangedEvent) => agGrid.onSortChanged(e, dataTableColumns.colDefs.value)
+				"
 				@cell-key-down="dataTableOperations.onCellKeyDown"
 				@filter-changed="onFilterChanged"
 			/>
@@ -238,22 +209,22 @@ defineExpose({
 	--ag-accent-color: var(--p--color--secondary-470);
 	--ag-row-hover-color: var(--color--background--light-1);
 	--ag-background-color: var(--color--background--light-3);
-	--ag-border-color: var(--border-color-base);
-	--ag-border-radius: var(--border-radius-base);
+	--ag-border-color: var(--border-color);
+	--ag-border-radius: var(--radius);
 	--ag-wrapper-border-radius: 0;
 	--ag-font-family: var(--font-family);
-	--ag-font-size: var(--font-size-xs);
+	--ag-font-size: var(--font-size--xs);
 	--ag-font-color: var(--color--text);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-background-color: var(--color--background--light-1);
-	--ag-header-font-size: var(--font-size-xs);
-	--ag-header-font-weight: var(--font-weight-medium);
+	--ag-header-font-size: var(--font-size--xs);
+	--ag-header-font-weight: var(--font-weight--medium);
 	--ag-header-foreground-color: var(--color--text--shade-1);
-	--ag-cell-horizontal-padding: var(--spacing-2xs);
+	--ag-cell-horizontal-padding: var(--spacing--2xs);
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--p--color--secondary-470);
-	--ag-input-padding-start: var(--spacing-2xs);
+	--ag-input-padding-start: var(--spacing--2xs);
 	--ag-input-background-color: var(--color--text--tint-3);
 	--ag-focus-shadow: none;
 
@@ -263,18 +234,18 @@ defineExpose({
 	}
 
 	:global(.ag-header-cell-resize) {
-		width: var(--spacing-xs);
+		width: var(--spacing--xs);
 		// this is needed so that we compensate for the width
 		right: -7px;
 	}
 
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
 		border: none;
-		padding-left: var(--spacing-l);
+		padding-left: var(--spacing--lg);
 	}
 
 	:global(.ag-header-cell[col-id='ag-Grid-SelectionColumn']) {
-		padding-left: var(--spacing-l);
+		padding-left: var(--spacing--lg);
 		&:after {
 			display: none;
 		}
@@ -308,7 +279,7 @@ defineExpose({
 
 		button {
 			position: relative;
-			left: calc(var(--spacing-4xs) * -1);
+			left: calc(var(--spacing--4xs) * -1);
 		}
 	}
 
@@ -335,10 +306,10 @@ defineExpose({
 		padding: 0;
 
 		textarea {
-			padding-top: var(--spacing-2xs);
+			padding-top: var(--spacing--2xs);
 
 			&:where(:focus-within, :active) {
-				border: var(--grid-cell-editing-border);
+				border: var(--grid--cell--border-color--editing);
 			}
 		}
 	}
@@ -365,7 +336,7 @@ defineExpose({
 	}
 
 	:global(.ag-picker-field-wrapper) {
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 		padding-left: var(--ag-spacing);
 	}
 
@@ -373,7 +344,7 @@ defineExpose({
 		box-shadow: none;
 
 		&:global(.boolean-cell) {
-			border: var(--grid-cell-editing-border) !important;
+			border: var(--grid--cell--border-color--editing) !important;
 
 			&:global(.ag-cell-focus) {
 				background-color: var(--grid-cell-active-background);
@@ -382,12 +353,12 @@ defineExpose({
 	}
 
 	:global(.ag-cell-focus) {
-		background-color: var(--grid-row-selected-background);
+		background-color: var(--grid--row--color--background--selected);
 	}
 
 	&.has-records {
 		:global(.ag-floating-bottom) {
-			border-top: var(--border-width-base) var(--border-style-base) var(--ag-border-color);
+			border-top: var(--border-width) var(--border-style) var(--ag-border-color);
 		}
 	}
 
@@ -426,7 +397,7 @@ defineExpose({
 	width: 100%;
 	min-height: 500px;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	align-items: center;
 }
 
@@ -434,8 +405,8 @@ defineExpose({
 	display: flex;
 	width: 100%;
 	justify-content: flex-end;
-	margin-bottom: var(--spacing-l);
-	padding-right: var(--spacing-xl);
+	margin-bottom: var(--spacing--lg);
+	padding-right: var(--spacing--xl);
 
 	:global(.el-pagination__sizes) {
 		height: 100%;
@@ -448,7 +419,7 @@ defineExpose({
 		}
 
 		:global(.el-input__suffix) {
-			width: var(--spacing-m);
+			width: var(--spacing--md);
 		}
 	}
 

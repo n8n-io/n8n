@@ -118,7 +118,7 @@ const handleUseTemplate = async () => {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 
 .remainingNodes {
@@ -132,7 +132,7 @@ const handleUseTemplate = async () => {
 	-webkit-line-clamp: 2;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	line-height: var(--font-line-height-regular);
+	line-height: var(--line-height--md);
 	color: var(--color--text--tint-1);
 }
 

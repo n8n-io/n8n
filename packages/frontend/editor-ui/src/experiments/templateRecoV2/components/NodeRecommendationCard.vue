@@ -55,7 +55,7 @@ onMounted(async () => {
 }
 
 .nodeIcon {
-	font-size: var(--font-size-2xl);
+	font-size: var(--font-size--2xl);
 }
 
 .emptyStateCardContent {

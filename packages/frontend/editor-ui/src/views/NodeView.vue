@@ -101,7 +101,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
@@ -129,7 +129,7 @@ import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
@@ -2163,12 +2163,12 @@ onBeforeUnmount(() => {
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-s);
+	bottom: var(--spacing--sm);
 	width: auto;
 
 	@include mixins.breakpoint('sm-only') {
 		left: auto;
-		right: var(--spacing-s);
+		right: var(--spacing--sm);
 		transform: none;
 	}
 
@@ -2201,8 +2201,8 @@ onBeforeUnmount(() => {
 
 .setupCredentialsButtonWrapper {
 	position: absolute;
-	left: var(--spacing-s);
-	top: var(--spacing-s);
+	left: var(--spacing--sm);
+	top: var(--spacing--sm);
 }
 
 .readOnlyEnvironmentNotification {
