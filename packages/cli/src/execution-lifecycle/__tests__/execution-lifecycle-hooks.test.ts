@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
-import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataService,
@@ -345,7 +344,14 @@ describe('Execution Lifecycle Hooks', () => {
 					1,
 					{
 						type: 'nodeExecuteAfter',
-						data: { executionId, nodeName, itemCount: 1, data: taskDataWithoutData },
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: taskDataWithoutData,
+						},
 					},
 					pushRef,
 				);
@@ -354,7 +360,14 @@ describe('Execution Lifecycle Hooks', () => {
 					2,
 					{
 						type: 'nodeExecuteAfterData',
-						data: { executionId, nodeName, itemCount: 1, data: mockTaskData },
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: mockTaskData,
+						},
 					},
 					pushRef,
 					true,
@@ -423,7 +436,6 @@ describe('Execution Lifecycle Hooks', () => {
 						type: 'executionFinished',
 						data: {
 							executionId,
-							rawData: stringify(successfulRun.data),
 							status: 'success',
 							workflowId: 'test-workflow-id',
 						},

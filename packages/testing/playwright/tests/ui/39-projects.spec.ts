@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/base';
-import { n8nPage } from '../../pages/n8nPage';
-import type { ApiHelpers } from '../../services/api-helper';
+import type { n8nPage } from '../../pages/n8nPage';
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
@@ -8,23 +7,17 @@ const NOTION_NODE_NAME = 'Notion';
 const NOTION_API_KEY = 'abc123Playwright';
 
 // Example of using API calls in a test
-async function getCredentialsForProject(api: ApiHelpers, projectId?: string) {
+async function getCredentialsForProject(n8n: n8nPage, projectId?: string) {
 	const params = new URLSearchParams({
 		includeScopes: 'true',
 		includeData: 'true',
 		...(projectId && { filter: JSON.stringify({ projectId }) }),
 	});
-	return await api.get('/rest/credentials', params);
+	return await n8n.api.get('/rest/credentials', params);
 }
 
 test.describe('Projects', () => {
-	test.beforeEach(async ({ api, n8n }) => {
-		await api.enableFeature('sharing');
-		await api.enableFeature('folders');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-		await api.setMaxTeamProjectsQuota(-1);
+	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
 	});
 
@@ -35,7 +28,7 @@ test.describe('Projects', () => {
 		await expect(n8n.sideBar.getProjectMenuItems()).toHaveCount(0);
 	});
 
-	test('should filter credentials by project ID', async ({ n8n, api }) => {
+	test('should filter credentials by project ID', async ({ n8n }) => {
 		const { projectName, projectId } = await n8n.projectComposer.createProject();
 		await n8n.projectComposer.addCredentialToProject(
 			projectName,
@@ -44,11 +37,11 @@ test.describe('Projects', () => {
 			NOTION_API_KEY,
 		);
 
-		const credentials = await getCredentialsForProject(api, projectId);
+		const credentials = await getCredentialsForProject(n8n, projectId);
 		expect(credentials).toHaveLength(1);
 
 		const { projectId: project2Id } = await n8n.projectComposer.createProject();
-		const credentials2 = await getCredentialsForProject(api, project2Id);
+		const credentials2 = await getCredentialsForProject(n8n, project2Id);
 		expect(credentials2).toHaveLength(0);
 	});
 
@@ -65,11 +58,9 @@ test.describe('Projects', () => {
 
 		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
-		const subWorkflowPagePromise = n8n.page.waitForEvent('popup');
-
-		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
-
-		const subn8n = new n8nPage(await subWorkflowPagePromise, n8n.api);
+		const subn8n = await n8n.start.fromNewPage(() =>
+			n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`),
+		);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
@@ -88,9 +79,7 @@ test.describe('Projects', () => {
 
 		// Get Workflow Count
 
-		await expect(subn8n.page.locator('[data-test-id="resources-list-item-workflow"]')).toHaveCount(
-			2,
-		);
+		await expect(subn8n.workflows.cards.getWorkflows()).toHaveCount(2);
 
 		// Assert that the sub-workflow is in the list
 		await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
@@ -99,7 +88,7 @@ test.describe('Projects', () => {
 		await subn8n.page.getByRole('link', { name: 'Credentials', exact: true }).click();
 
 		// Assert that the credential is in the list
-		await expect(subn8n.page.locator('[data-test-id="resources-list-item"]')).toHaveCount(1);
+		await expect(subn8n.credentials.cards.getCredentials()).toHaveCount(1);
 		await expect(subn8n.page.getByRole('heading', { name: 'Notion account' })).toBeVisible();
 	});
 
@@ -112,7 +101,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('UI Test Project');
 
 			// Verify basic project settings form elements are visible (inner controls)
 			await expect(n8n.projectSettings.getNameInput()).toBeVisible();
@@ -125,9 +114,11 @@ test.describe('Projects', () => {
 			// Initially should have only the owner (current user)
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 
-			// Verify project settings action buttons are present
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeVisible();
+			// Verify save/cancel buttons are not visible initially (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
+
+			// Delete button should always be visible
 			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
 		});
 
@@ -137,7 +128,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Edit Test Project');
 
 			// Update project name
 			const newName = 'Updated Project Name';
@@ -166,7 +157,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Table Structure Test');
 
 			const table = n8n.projectSettings.getMembersTable();
 
@@ -181,7 +172,7 @@ test.describe('Projects', () => {
 			// Verify owner cannot change their own role
 			const ownerRow = memberRows.first();
 			const roleDropdown = ownerRow.getByTestId('project-member-role-dropdown');
-			await expect(roleDropdown).not.toBeVisible();
+			await expect(roleDropdown).toBeHidden();
 		});
 
 		test('should display role dropdown for members but not for current user @auth:owner', async ({
@@ -192,11 +183,11 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Role Dropdown Test');
 
 			// Current user (owner) should not have a role dropdown
 			const currentUserRow = n8n.page.locator('tbody tr').first();
-			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).not.toBeVisible();
+			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).toBeHidden();
 
 			// The role should be displayed as static text for the current user
 			await expect(currentUserRow.getByText('Admin')).toBeVisible();
@@ -208,7 +199,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Search Test Project');
 
 			// Verify search input is visible
 			const searchInput = n8n.page.getByTestId('project-members-search');
@@ -232,7 +223,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Validation Test');
 
 			// Clear the project name (required field)
 			await n8n.projectSettings.fillProjectName('');
@@ -245,7 +236,7 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.fillProjectName('Valid Project Name');
 
 			// Save button should now be enabled
-			await expect(saveButton).not.toBeDisabled();
+			await expect(saveButton).toBeEnabled();
 		});
 
 		test('should handle unsaved changes state @auth:owner', async ({ n8n }) => {
@@ -254,18 +245,18 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Unsaved Changes Test');
 
-			// Initially, save and cancel buttons should be disabled (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
+			// Initially, save and cancel buttons should not be visible (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 
 			// Make a change to the project name
 			await n8n.projectSettings.fillProjectName('Modified Name');
 
 			// Save and cancel buttons should now be enabled
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeDisabled();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeEnabled();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeEnabled();
 
 			// Unsaved changes message should be visible
 			await expect(n8n.page.getByText('You have unsaved changes')).toBeVisible();
@@ -273,9 +264,9 @@ test.describe('Projects', () => {
 			// Cancel changes
 			await n8n.projectSettings.clickCancelButton();
 
-			// Buttons should be disabled again
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
+			// Buttons should not be visible again (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 		});
 
 		test('should display delete project section with warning @auth:owner', async ({ n8n }) => {
@@ -284,7 +275,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Delete Test Project');
 
 			// Scroll to bottom to see delete section
 			await n8n.page
@@ -308,7 +299,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Persistence Test');
 
 			// Update project details
 			const projectName = 'Persisted Project Name';
@@ -325,7 +316,7 @@ test.describe('Projects', () => {
 
 			// Reload the page
 			await n8n.page.reload();
-			await n8n.page.waitForLoadState('domcontentloaded');
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Persisted Project Name');
 
 			// Verify data persisted
 			await n8n.projectSettings.expectProjectNameValue(projectName);

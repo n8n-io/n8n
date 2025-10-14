@@ -4,6 +4,7 @@ import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
+import { createTestNodeProperties } from '@/__tests__/mocks';
 
 vi.mock('@/composables/useWorkflowHelpers', () => {
 	return { useWorkflowHelpers: vi.fn(() => ({ resolveExpression: vi.fn(() => 'topSecret') })) };
@@ -22,10 +23,10 @@ describe('ParameterInputWrapper.vue', () => {
 				},
 			}),
 			props: {
-				parameter: {
+				parameter: createTestNodeProperties({
 					name: 'test',
 					type: 'string',
-				},
+				}),
 				path: 'params.test',
 				modelValue: '={{ $secrets.infisical.password }}',
 				isForCredential: true,

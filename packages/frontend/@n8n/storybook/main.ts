@@ -4,6 +4,7 @@ export const sharedConfig: StorybookConfig = {
 	stories: ['../src/**/*.stories.ts'],
 	addons: [
 		'storybook-dark-mode',
+		'@storybook/addon-a11y',
 		'@storybook/addon-themes',
 		'@storybook/addon-links',
 		'@chromatic-com/storybook',

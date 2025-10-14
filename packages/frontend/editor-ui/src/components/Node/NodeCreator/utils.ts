@@ -40,7 +40,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { NodeIconSource } from '../../../utils/nodeIcon';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
-import { PrebuiltAgentTemplates, SampleTemplates } from '@/utils/templates/workflowSamples';
+import {
+	PrebuiltAgentTemplates,
+	SampleTemplates,
+} from '@/features/templates/utils/workflowSamples';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -342,6 +345,7 @@ export function getRagStarterCallout(): OpenTemplateElement {
 // Callout without a divider
 export function getPreBuiltAgentsCallout(): ViewCreateElement {
 	return {
+		uuid: uuidv4(),
 		key: PRE_BUILT_AGENTS_COLLECTION,
 		type: 'view',
 		properties: {
@@ -360,6 +364,7 @@ export function getPreBuiltAgentsCallout(): ViewCreateElement {
 // Callout with divider after it
 export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 	return {
+		uuid: uuidv4(),
 		key: PRE_BUILT_AGENTS_COLLECTION,
 		type: 'link',
 		properties: {
@@ -378,6 +383,7 @@ export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 
 export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {
 	return {
+		uuid: 'ai_templates_root',
 		key: 'ai_templates_root',
 		type: 'link',
 		properties: {

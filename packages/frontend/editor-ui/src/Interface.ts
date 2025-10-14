@@ -27,7 +27,6 @@ import type {
 	IRunData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
-	PublicInstalledPackage,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
@@ -37,12 +36,12 @@ import type {
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	INodeExecutionData,
-	INodeProperties,
 	NodeConnectionType,
 	StartNodeData,
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -65,10 +64,14 @@ import type {
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
-import type { ProjectSharingData } from '@/types/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { IUser, IUserResponse } from '@n8n/rest-api-client/api/users';
+import type {
+	BaseFolderItem,
+	FolderListItem,
+	ResourceParentFolder,
+} from '@/features/folders/folders.types';
 
 export * from '@n8n/design-system/types';
 
@@ -189,12 +192,6 @@ export interface IAiDataContent {
 	};
 }
 
-export interface IAiData {
-	data: IAiDataContent[];
-	node: string;
-	runIndex: number;
-}
-
 export interface IStartRunData {
 	workflowData: WorkflowData;
 	startNodes?: StartNodeData[];
@@ -296,12 +293,14 @@ export type WorkflowResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
+	settings?: Partial<IWorkflowSettings>;
 };
 
 export type VariableResource = BaseResource & {
 	resourceType: 'variable';
 	key?: string;
 	value?: string;
+	project?: { id: string; name: string };
 };
 
 export type CredentialsResource = BaseResource & {
@@ -344,59 +343,12 @@ export type SortingAndPaginationUpdates = {
 
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
-	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
+	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
 };
 
-export type FolderShortInfo = {
-	id: string;
-	name: string;
-	parentFolder?: string;
-};
-
-export type BaseFolderItem = BaseResource & {
-	createdAt: string;
-	updatedAt: string;
-	workflowCount: number;
-	subFolderCount: number;
-	parentFolder?: ResourceParentFolder;
-	homeProject?: ProjectSharingData;
-	tags?: ITag[];
-};
-
-export type ResourceParentFolder = {
-	id: string;
-	name: string;
-	parentFolderId: string | null;
-};
-
-export interface FolderListItem extends BaseFolderItem {
-	resource: 'folder';
-}
-
-export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
-	path: string[];
-}
-
-export type FolderPathItem = PathItem & { parentFolder?: string };
-
-export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
-	resource: 'folder' | 'project';
-}
-
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
-
-export type FolderCreateResponse = Omit<
-	FolderListItem,
-	'workflowCount' | 'tags' | 'sharedWithProjects' | 'homeProject'
->;
-
-export type FolderTreeResponseItem = {
-	id: string;
-	name: string;
-	children: FolderTreeResponseItem[];
-};
 
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
@@ -569,6 +521,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	availableInMCP?: boolean;
 }
 
 export interface ITimeoutHMS {
@@ -852,6 +805,7 @@ export type NodeCreatorOpenSource =
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
+	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
@@ -1006,39 +960,11 @@ export type SchemaType =
 
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
-export type UsageState = {
-	loading: boolean;
-	data: {
-		usage: {
-			activeWorkflowTriggers: {
-				limit: number; // -1 for unlimited, from license
-				value: number;
-				warningThreshold: number; // hardcoded value in BE
-			};
-			workflowsHavingEvaluations: {
-				limit: number; // -1 for unlimited, from license
-				value: number;
-			};
-		};
-		license: {
-			planId: string; // community
-			planName: string; // defaults to Community
-		};
-		managementToken?: string;
-	};
-};
-
 export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
-
-export interface EnvironmentVariable {
-	id: string;
-	key: string;
-	value: string;
-}
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -1081,27 +1007,6 @@ export interface CloudPlanState {
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
 
-export interface ExternalSecretsProviderSecret {
-	key: string;
-}
-
-export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
-
-export type ExternalSecretsProviderProperty = INodeProperties;
-
-export type ExternalSecretsProviderState = 'connected' | 'tested' | 'initializing' | 'error';
-
-export interface ExternalSecretsProvider {
-	icon: string;
-	name: string;
-	displayName: string;
-	connected: boolean;
-	connectedAt: string | false;
-	state: ExternalSecretsProviderState;
-	data?: ExternalSecretsProviderData;
-	properties?: ExternalSecretsProviderProperty[];
-}
-
 export type CloudUpdateLinkSourceType =
 	| 'advanced-permissions'
 	| 'canvas-nav'
@@ -1125,7 +1030,9 @@ export type CloudUpdateLinkSourceType =
 	| 'rbac'
 	| 'debug'
 	| 'insights'
-	| 'evaluations';
+	| 'evaluations'
+	| 'ai-builder-sidebar'
+	| 'ai-builder-canvas';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1150,7 +1057,8 @@ export type UTMCampaign =
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
 	| 'upgrade-insights'
-	| 'upgrade-evaluations';
+	| 'upgrade-evaluations'
+	| 'upgrade-builder';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1252,4 +1160,10 @@ export interface LlmTokenUsageData {
 	promptTokens: number;
 	totalTokens: number;
 	isEstimate: boolean;
+}
+
+export interface WorkflowValidationIssue {
+	node: string;
+	type: string;
+	value: string | string[];
 }

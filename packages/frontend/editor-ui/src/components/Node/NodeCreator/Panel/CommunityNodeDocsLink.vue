@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { i18n } from '@n8n/i18n';
 
-import { N8nText, N8nLink } from '@n8n/design-system';
-
+import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 export interface Props {
 	packageName: string;
 }
@@ -34,6 +33,6 @@ const openCommunityNodeDocsPage = () => {
 	display: flex;
 	align-items: center;
 	margin-left: auto;
-	padding-bottom: var(--spacing-5xs);
+	padding-bottom: var(--spacing--5xs);
 }
 </style>

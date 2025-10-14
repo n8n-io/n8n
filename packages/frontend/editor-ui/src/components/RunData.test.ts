@@ -1,5 +1,9 @@
 import { reactive } from 'vue';
-import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestWorkflowObject,
+	defaultNodeDescriptions,
+} from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from '@/components/RunData.vue';
@@ -827,9 +831,9 @@ describe('RunData', () => {
 
 		return createComponentRenderer(RunData, {
 			props: {
-				node: {
+				node: createTestNode({
 					name: 'Test Node',
-				},
+				}),
 				workflowObject: createTestWorkflowObject({
 					id: workflowId,
 					nodes: workflowNodes,
@@ -843,13 +847,13 @@ describe('RunData', () => {
 			},
 		})({
 			props: {
-				node: {
+				node: createTestNode({
 					id: '1',
 					name: 'Test Node',
 					type: SET_NODE_TYPE,
 					position: [0, 0],
 					parameters: {},
-				},
+				}),
 				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
 				paneType,

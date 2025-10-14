@@ -7,6 +7,7 @@ import { DataSource as Connection } from '@n8n/typeorm';
 import { randomString } from 'n8n-workflow';
 
 export const testDbPrefix = 'n8n_test_';
+let isInitialized = false;
 
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
@@ -27,6 +28,8 @@ export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSou
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
+	if (isInitialized) return;
+
 	const globalConfig = Container.get(GlobalConfig);
 	const dbType = globalConfig.database.type;
 	const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
@@ -52,6 +55,8 @@ export async function init() {
 	await dbConnection.migrate();
 
 	await Container.get(AuthRolesService).init();
+
+	isInitialized = true;
 }
 
 export function isReady() {
@@ -66,6 +71,7 @@ export async function terminate() {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.close();
 	dbConnection.connectionState.connected = false;
+	isInitialized = false;
 }
 
 type EntityName =

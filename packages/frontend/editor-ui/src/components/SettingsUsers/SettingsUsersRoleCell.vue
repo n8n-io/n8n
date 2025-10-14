@@ -1,23 +1,23 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
-import { type ActionDropdownItem, N8nActionDropdown, N8nIcon } from '@n8n/design-system';
-
+import { ElRadio } from 'element-plus';
+import { N8nActionDropdown, N8nIcon, N8nText, type ActionDropdownItem } from '@n8n/design-system';
 const props = defineProps<{
 	data: UsersList['items'][number];
 	roles: Record<Role, { label: string; desc: string }>;
-	actions: Array<ActionDropdownItem<Role | 'delete'>>;
+	actions: Array<ActionDropdownItem<Role>>;
 }>();
 
 const emit = defineEmits<{
-	'update:role': [payload: { role: Role | 'delete'; userId: string }];
+	'update:role': [payload: { role: Role; userId: string }];
 }>();
 
 const selectedRole = ref<Role>(props.data.role ?? ROLE.Default);
 const isEditable = computed(() => props.data.role !== ROLE.Owner);
 const roleLabel = computed(() => props.roles[selectedRole.value].label);
 
-const onActionSelect = (role: Role | 'delete') => {
+const onActionSelect = (role: Role) => {
 	emit('update:role', {
 		role,
 		userId: props.data.id,
@@ -41,11 +41,7 @@ const onActionSelect = (role: Role | 'delete') => {
 				</button>
 			</template>
 			<template #menuItem="item">
-				<N8nText v-if="item.id === 'delete'" color="text-dark" :class="$style.removeUser">{{
-					item.label
-				}}</N8nText>
 				<ElRadio
-					v-else
 					:model-value="selectedRole"
 					:label="item.id"
 					@update:model-value="selectedRole = item.id as Role"
@@ -67,7 +63,7 @@ const onActionSelect = (role: Role | 'delete') => {
 .roleLabel {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	background: transparent;
 	padding: 0;
 	border: none;
@@ -78,7 +74,7 @@ const onActionSelect = (role: Role | 'delete') => {
 	max-width: 268px;
 	display: inline-flex;
 	flex-direction: column;
-	padding: var(--spacing-2xs) 0;
+	padding: var(--spacing--2xs) 0;
 
 	span {
 		white-space: normal;
@@ -87,6 +83,6 @@ const onActionSelect = (role: Role | 'delete') => {
 
 .removeUser {
 	display: block;
-	padding: var(--spacing-2xs) var(--spacing-l);
+	padding: var(--spacing--2xs) var(--spacing--lg);
 }
 </style>

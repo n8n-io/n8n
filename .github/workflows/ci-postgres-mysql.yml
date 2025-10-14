@@ -62,7 +62,7 @@ jobs:
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
-      DB_MYSQLDB_POOL_SIZE: 20
+      DB_MYSQLDB_POOL_SIZE: 1
       DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
       DB_MYSQLDB_TIMEOUT: 120000
@@ -91,7 +91,7 @@ jobs:
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
-      DB_MYSQLDB_POOL_SIZE: 30
+      DB_MYSQLDB_POOL_SIZE: 1
       DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
       DB_MYSQLDB_TIMEOUT: 120000
@@ -109,7 +109,8 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 120000
+        # We sleep here due to flakiness with DB tests if we connect to the database too soon
+        run: sleep 2s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres

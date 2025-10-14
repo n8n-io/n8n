@@ -1,10 +1,9 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
-
 import type { IconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';
+import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
 	// component supports both deprecated and updated icon set to support project icons
@@ -66,7 +65,7 @@ const styles = computed(() => {
 	}
 
 	if (props.strokeWidth) {
-		stylesToApply['--n8n-icon-stroke-width'] = `${props.strokeWidth}px`;
+		stylesToApply['--icon--stroke-width'] = `${props.strokeWidth}px`;
 	}
 
 	return stylesToApply;
@@ -98,7 +97,7 @@ const styles = computed(() => {
 .strokeWidth {
 	rect,
 	path {
-		stroke-width: var(--n8n-icon-stroke-width);
+		stroke-width: var(--icon--stroke-width);
 	}
 }
 

@@ -53,9 +53,8 @@ describe('GlobalConfig', () => {
 		ssl_cert: '',
 		editorBaseUrl: '',
 		dataTable: {
-			maxSize: 100 * 1024 * 1024,
-			warningThreshold: 95 * 1024 * 1024,
-			sizeCheckCacheDuration: 5000,
+			maxSize: 50 * 1024 * 1024,
+			sizeCheckCacheDuration: 60000,
 		},
 		database: {
 			logging: {
@@ -105,6 +104,8 @@ describe('GlobalConfig', () => {
 			overwrite: {
 				data: '{}',
 				endpoint: '',
+				endpointAuthToken: '',
+				persistence: false,
 			},
 		},
 		userManagement: {
@@ -307,6 +308,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
+			disableBareRepos: false,
 		},
 		executions: {
 			timeout: -1,
@@ -338,7 +340,7 @@ describe('GlobalConfig', () => {
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
 				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://ph.n8n.io',
+				apiHost: 'https://us.i.posthog.com',
 			},
 		},
 		aiAssistant: {
@@ -346,9 +348,6 @@ describe('GlobalConfig', () => {
 		},
 		tags: {
 			disabled: false,
-		},
-		partialExecutions: {
-			version: 2,
 		},
 		workflowHistory: {
 			enabled: true,

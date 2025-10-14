@@ -27,6 +27,7 @@ import {
 	updateExistingExecution,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
+import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 
 @Service()
 class ModulesHooksRegistry {
@@ -185,11 +186,14 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		const itemCount = data.data?.main?.[0]?.length ?? 0;
+		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
 		const { data: _, ...taskData } = data;
 
 		pushInstance.send(
-			{ type: 'nodeExecuteAfter', data: { executionId, nodeName, itemCount, data: taskData } },
+			{
+				type: 'nodeExecuteAfter',
+				data: { executionId, nodeName, itemCountByConnectionType, data: taskData },
+			},
 			pushRef,
 		);
 
@@ -203,7 +207,7 @@ function hookFunctionsPush(
 		pushInstance.send(
 			{
 				type: 'nodeExecuteAfterData',
-				data: { executionId, nodeName, itemCount, data },
+				data: { executionId, nodeName, itemCountByConnectionType, data },
 			},
 			pushRef,
 			asBinary,
@@ -249,9 +253,8 @@ function hookFunctionsPush(
 		if (status === 'waiting') {
 			pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
 		} else {
-			const rawData = stringify(fullRunData.data);
 			pushInstance.send(
-				{ type: 'executionFinished', data: { executionId, workflowId, status, rawData } },
+				{ type: 'executionFinished', data: { executionId, workflowId, status } },
 				pushRef,
 			);
 		}

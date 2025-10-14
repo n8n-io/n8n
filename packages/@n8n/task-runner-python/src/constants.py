@@ -1,3 +1,12 @@
+from src.errors import (
+    ConfigurationError,
+    TaskCancelledError,
+    TaskRuntimeError,
+    TaskTimeoutError,
+    SecurityViolationError,
+    WebsocketConnectionError,
+)
+
 # Messages
 BROKER_INFO_REQUEST = "broker:inforequest"
 BROKER_RUNNER_REGISTERED = "broker:runnerregistered"
@@ -33,6 +42,7 @@ EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_internal_circular_ref__"
 EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
 EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
+SIGTERM_EXIT_CODE = -15
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -64,11 +74,20 @@ ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
+IGNORED_ERROR_TYPES = (
+    ConfigurationError,
+    TaskRuntimeError,
+    TaskCancelledError,
+    TaskTimeoutError,
+    SecurityViolationError,
+    WebsocketConnectionError,
+    SyntaxError,
+)
 
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
+LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} ({result_size}) for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL = 'Cancelled task {task_id} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL_UNKNOWN = (
     "Received cancel for unknown task: {task_id}. Discarding message."
@@ -86,8 +105,9 @@ TASK_REJECTED_REASON_OFFER_EXPIRED = (
 TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capacity"
 
 # Security
-BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__"
-ALWAYS_BLOCKED_ATTRIBUTES = {
+BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals"
+BLOCKED_ATTRIBUTES = {
+    # runtime attributes
     "__subclasses__",
     "__globals__",
     "__builtins__",
@@ -111,11 +131,8 @@ ALWAYS_BLOCKED_ATTRIBUTES = {
     "ag_code",
     "__thisclass__",
     "__self_class__",
-}
-# Attributes blocked only in certain contexts:
-# - In attribute chains (e.g., x.__class__.__bases__)
-# - On literals (e.g., "".__class__)
-CONDITIONALLY_BLOCKED_ATTRIBUTES = {
+    # introspection attributes
+    "__base__",
     "__class__",
     "__bases__",
     "__code__",
@@ -133,8 +150,8 @@ CONDITIONALLY_BLOCKED_ATTRIBUTES = {
     "__func__",
     "__wrapped__",
     "__annotations__",
+    "__spec__",
 }
-UNSAFE_ATTRIBUTES = ALWAYS_BLOCKED_ATTRIBUTES | CONDITIONALLY_BLOCKED_ATTRIBUTES
 
 # errors
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."
@@ -143,4 +160,8 @@ ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed
 ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
+)
+ERROR_WINDOWS_NOT_SUPPORTED = (
+    "Error: This task runner is not supported on Windows. "
+    "Please use a Unix-like system (Linux or macOS)."
 )

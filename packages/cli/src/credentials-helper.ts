@@ -472,7 +472,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
@@ -498,7 +497,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 

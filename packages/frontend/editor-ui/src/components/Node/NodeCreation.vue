@@ -17,10 +17,13 @@ import type {
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
+
+import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 type Props = {
 	nodeViewScale: number;
@@ -40,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
+	close: [];
 }>();
 
 const uiStore = useUIStore();
@@ -47,6 +51,8 @@ const focusPanelStore = useFocusPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -75,6 +81,7 @@ function closeNodeCreator(hasAddedNodes = false) {
 	if (props.createNodeActive) {
 		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
 	}
+	emit('close');
 }
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
@@ -94,15 +101,19 @@ function toggleFocusPanel() {
 	);
 }
 
-function onAskAssistantButtonClick() {
-	if (!assistantStore.chatWindowOpen)
+async function onAskAssistantButtonClick() {
+	if (builderStore.isAIBuilderEnabled) {
+		await chatPanelStore.toggle({ mode: 'builder' });
+	} else {
+		await chatPanelStore.toggle({ mode: 'assistant' });
+	}
+	if (chatPanelStore.isOpen) {
 		assistantStore.trackUserOpenedAssistant({
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
 		});
-
-	assistantStore.toggleChatOpen();
+	}
 }
 </script>
 
@@ -113,7 +124,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['Tab'] }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				size="large"
 				icon="plus"
 				type="tertiary"
@@ -126,7 +137,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['s'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				size="large"
 				type="tertiary"
 				icon="sticky-note"
@@ -139,7 +150,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				type="tertiary"
 				size="large"
 				icon="panel-right"
@@ -149,9 +160,9 @@ function onAskAssistantButtonClick() {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<n8n-tooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
+		<N8nTooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
-			<n8n-button
+			<N8nButton
 				type="tertiary"
 				size="large"
 				square
@@ -161,11 +172,11 @@ function onAskAssistantButtonClick() {
 			>
 				<template #default>
 					<div>
-						<AssistantIcon size="large" />
+						<N8nAssistantIcon size="large" />
 					</div>
 				</template>
-			</n8n-button>
-		</n8n-tooltip>
+			</N8nButton>
+		</N8nTooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
@@ -183,8 +194,8 @@ function onAskAssistantButtonClick() {
 	right: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-s);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
 	pointer-events: all !important;
 }
 
@@ -199,6 +210,6 @@ function onAskAssistantButtonClick() {
 }
 
 .activeButton {
-	background-color: var(--button-hover-background-color) !important;
+	background-color: var(--button--color--background--hover) !important;
 }
 </style>

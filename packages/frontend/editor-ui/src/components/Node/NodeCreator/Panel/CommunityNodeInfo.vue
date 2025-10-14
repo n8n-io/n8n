@@ -5,9 +5,11 @@ import { useUsersStore } from '@/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
-import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
-import { type ExtendedPublicInstalledPackage, fetchInstalledPackageInfo } from './utils';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
 
 const { activeViewStack } = useViewStacks();
 
@@ -21,7 +23,9 @@ const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
-const installedPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
+const packageName = computed(() => communityNodeDetails?.packageName);
+const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
+	useInstalledCommunityPackage(packageName);
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -42,9 +46,9 @@ async function fetchPackageInfo(packageName: string) {
 	const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(
 		activeViewStack.communityNodeDetails?.key || '',
 	);
-
-	if (communityNodeDetails?.installed) {
-		installedPackage.value = await fetchInstalledPackageInfo(communityNodeDetails.packageName);
+	let packageInfo = installedPackage.value;
+	if (communityNodeDetails?.installed && !packageInfo) {
+		packageInfo = await initInstalledPackage();
 	}
 
 	if (communityNodeAttributes) {
@@ -52,11 +56,11 @@ async function fetchPackageInfo(packageName: string) {
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
 		official.value = communityNodeAttributes.isOfficialNode;
 
-		if (!installedPackage.value) {
+		if (!packageInfo) {
 			verified.value = true;
 		} else {
 			const verifiedVersions = communityNodeAttributes.nodeVersions?.map((v) => v.npmVersion) ?? [];
-			verified.value = verifiedVersions.includes(installedPackage.value.installedVersion);
+			verified.value = verifiedVersions.includes(packageInfo.installedVersion);
 		}
 
 		return;
@@ -112,8 +116,10 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="isOwner && installedPackage?.updateAvailable && !installedPackage.unverifiedUpdate"
+			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 			data-test-id="update-available"
+			:package-name="communityNodeDetails?.packageName"
+			source="node creator panel"
 		/>
 		<div v-else :class="$style.separator"></div>
 		<div :class="$style.info">
@@ -172,7 +178,7 @@ onMounted(async () => {
 <style lang="scss" module>
 .container {
 	width: 100%;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	padding-top: 0;
 	margin-top: 0;
 	display: flex;
@@ -180,44 +186,44 @@ onMounted(async () => {
 }
 
 .nodeIcon {
-	--node-icon-size: 36px;
-	margin-right: var(--spacing-s);
+	--node--icon--size: 36px;
+	margin-right: var(--spacing--sm);
 }
 
 .description {
-	margin: var(--spacing-m) 0;
+	margin: var(--spacing--md) 0;
 }
 .separator {
-	height: var(--border-width-base);
-	background: var(--color-foreground-base);
-	margin-bottom: var(--spacing-m);
+	height: var(--border-width);
+	background: var(--color--foreground);
+	margin-bottom: var(--spacing--md);
 }
 .info {
 	display: flex;
 	align-items: center;
 	justify-content: left;
-	gap: var(--spacing-m);
-	margin-bottom: var(--spacing-m);
+	gap: var(--spacing--md);
+	margin-bottom: var(--spacing--md);
 	flex-wrap: wrap;
 }
 .info div {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .tooltipIcon {
-	color: var(--color-text-light);
-	font-size: var(--font-size-2xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
 	width: 12px;
 }
 
 .contactOwnerHint {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color-foreground-base);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs);
+	border: var(--border-width) solid var(--color--foreground);
 	border-radius: 0.25em;
 }
 </style>

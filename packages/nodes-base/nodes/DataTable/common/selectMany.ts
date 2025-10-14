@@ -1,20 +1,22 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, NodeOperationError } from 'n8n-workflow';
 import type {
 	DataTableFilter,
-	DataStoreRowReturn,
-	IDataStoreProjectService,
+	DataTableRowReturn,
+	IDataTableProjectService,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeProperties,
+	DataTableColumnType,
 } from 'n8n-workflow';
 
 import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
-import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
+import { buildGetManyFilter, isFieldArray, isMatchType, getDataTableProxyExecute } from './utils';
 
 export function getSelectFields(
 	displayOptions: IDisplayOptions,
 	requireCondition = false,
+	skipOperator = false,
 ): INodeProperties[] {
 	return [
 		{
@@ -59,7 +61,7 @@ export function getSelectFields(
 							description:
 								'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
-								loadOptionsDependsOn: [DATA_TABLE_ID_FIELD],
+								loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
 								loadOptionsMethod: 'getDataTableColumns',
 							},
 							default: 'id',
@@ -75,6 +77,11 @@ export function getSelectFields(
 								loadOptionsMethod: 'getConditionsForColumn',
 							},
 							default: 'eq',
+							displayOptions: skipOperator
+								? {
+										show: { '@version': [{ _cnd: { lt: 0 } }] },
+									}
+								: undefined,
 						},
 						{
 							displayName: 'Value',
@@ -95,7 +102,10 @@ export function getSelectFields(
 	];
 }
 
-export function getSelectFilter(ctx: IExecuteFunctions, index: number): DataTableFilter {
+export async function getSelectFilter(
+	ctx: IExecuteFunctions,
+	index: number,
+): Promise<DataTableFilter> {
 	const fields = ctx.getNodeParameter('filters.conditions', index, []);
 	const matchType = ctx.getNodeParameter('matchType', index, ANY_CONDITION);
 	const node = ctx.getNode();
@@ -107,33 +117,60 @@ export function getSelectFilter(ctx: IExecuteFunctions, index: number): DataTabl
 		throw new NodeOperationError(node, 'unexpected fields input');
 	}
 
-	return buildGetManyFilter(fields, matchType);
+	// Validate filter conditions against current table schema
+	let allColumnsWithTypes: Record<string, DataTableColumnType> = DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP;
+
+	if (fields.length > 0) {
+		const dataTableProxy = await getDataTableProxyExecute(ctx, index);
+		const availableColumns = await dataTableProxy.getColumns();
+
+		// Add system columns with their types
+		allColumnsWithTypes = {
+			...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+			...Object.fromEntries(availableColumns.map((col) => [col.name, col.type])),
+		};
+
+		const invalidConditions = fields.filter((field) => !allColumnsWithTypes[field.keyName]);
+
+		if (invalidConditions.length > 0) {
+			const invalidColumnNames = invalidConditions.map((c) => c.keyName).join(', ');
+			throw new NodeOperationError(
+				node,
+				`Filter validation failed: Column(s) "${invalidColumnNames}" do not exist in the selected table. ` +
+					'This often happens when switching between tables with different schemas. ' +
+					'Please update your filter conditions.',
+			);
+		}
+	}
+
+	return buildGetManyFilter(fields, matchType, allColumnsWithTypes, node);
 }
 
 export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
-	dataStoreProxy: IDataStoreProjectService,
+	dataTableProxy: IDataTableProjectService,
 	rejectEmpty = false,
-): Promise<Array<{ json: DataStoreRowReturn }>> {
-	const filter = getSelectFilter(ctx, index);
+	limit?: number,
+): Promise<Array<{ json: DataTableRowReturn }>> {
+	const filter = await getSelectFilter(ctx, index);
 
 	if (rejectEmpty && filter.filters.length === 0) {
 		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
 	}
 
 	const PAGE_SIZE = 1000;
-	const result: Array<{ json: DataStoreRowReturn }> = [];
+	const result: Array<{ json: DataTableRowReturn }> = [];
 
 	const returnAll = ctx.getNodeParameter('returnAll', index, false);
-	const limit = !returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0;
+	limit = limit ?? (!returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0);
 
 	let expectedTotal: number | undefined;
 	let skip = 0;
 	let take = PAGE_SIZE;
 
 	while (true) {
-		const { data, count } = await dataStoreProxy.getManyRowsAndCount({
+		const { data, count } = await dataTableProxy.getManyRowsAndCount({
 			skip,
 			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,

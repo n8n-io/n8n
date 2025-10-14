@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 
-import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
+import { ElCheckbox, ElOption, ElOptionGroup, ElSelect } from 'element-plus';
+import { N8nInputLabel, N8nLink, N8nNotice } from '@n8n/design-system';
 // Define props
 const props = defineProps({
 	modelValue: {
@@ -95,14 +96,14 @@ function goToUpgradeApiKeyScopes() {
 				:append-to="popperContainer"
 			>
 				<template #header>
-					<el-checkbox
+					<ElCheckbox
 						v-model="checkAll"
 						:disabled="!enabled"
 						:class="$style['scopes-checkbox']"
 						:indeterminate="indeterminate"
 					>
 						{{ i18n.baseText('settings.api.scopes.selectAll') }}
-					</el-checkbox>
+					</ElCheckbox>
 				</template>
 
 				<template v-for="(actions, resource) in groupedScopes" :key="resource">
@@ -120,9 +121,9 @@ function goToUpgradeApiKeyScopes() {
 		<N8nNotice v-if="!enabled">
 			<I18nT keypath="settings.api.scopes.upgrade" scope="global">
 				<template #link>
-					<n8n-link size="small" @click="goToUpgradeApiKeyScopes">
+					<N8nLink size="small" @click="goToUpgradeApiKeyScopes">
 						{{ i18n.baseText('generic.upgrade') }}
-					</n8n-link>
+					</N8nLink>
 				</template>
 			</I18nT>
 		</N8nNotice>
@@ -131,51 +132,51 @@ function goToUpgradeApiKeyScopes() {
 
 <style module>
 .api-key-scopes :global(.el-tag) {
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 }
 
 .api-key-scopes :global(.el-tag__close) {
 	color: white;
-	margin-left: var(--spacing-3xs);
-	background-color: var(--color-text-base);
+	margin-left: var(--spacing--3xs);
+	background-color: var(--color--text);
 }
 
 .api-key-scopes :global(.el-checkbox) {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 
 .scopes-dropdown-container :global(.el-select-group__title) {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
-	font-weight: var(--font-weight-bold);
-	border-bottom: var(--spacing-5xs) solid var(--color-text-lighter);
-	padding-left: var(--spacing-xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+	font-weight: var(--font-weight--bold);
+	border-bottom: var(--spacing--5xs) solid var(--color--text--tint-2);
+	padding-left: var(--spacing--xs);
 }
 
 .scopes-dropdown-container :global(.el-select-dropdown__item) {
-	color: var(--color-text-base);
-	font-weight: var(--font-weight-regular);
-	padding-left: var(--spacing-xs);
+	color: var(--color--text);
+	font-weight: var(--font-weight--regular);
+	padding-left: var(--spacing--xs);
 }
 
 .scopes-dropdown-container
 	:global(.el-select-dropdown.is-multiple .el-select-dropdown__item.selected) {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .scopes-dropdown-container :global(.el-select-group__wrap:not(:last-of-type)) {
 	padding: 0;
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 }
 
 .scopes-dropdown-container :global(.el-checkbox) {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 }
 
 .scopes-dropdown-container :global(.el-select-dropdown__header) {
-	margin-top: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
-	border-bottom: var(--spacing-5xs) solid var(--color-text-lighter);
+	margin-top: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
+	border-bottom: var(--spacing--5xs) solid var(--color--text--tint-2);
 }
 
 .scopes-checkbox {

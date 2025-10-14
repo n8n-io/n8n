@@ -1,10 +1,9 @@
-import type { Page } from '@playwright/test';
-
 import { test, expect } from '../../fixtures/base';
+import type { n8nPage } from '../../pages/n8nPage';
 
 test.describe('Security Notifications', () => {
 	async function setupVersionsApiMock(
-		page: Page,
+		n8n: n8nPage,
 		options: {
 			hasSecurityIssue?: boolean;
 			hasSecurityFix?: boolean;
@@ -17,7 +16,7 @@ test.describe('Security Notifications', () => {
 			securityIssueFixVersion = '',
 		} = options;
 
-		await page.route('**/api/versions/**', async (route) => {
+		await n8n.page.route('**/api/versions/**', async (route) => {
 			// Extract current version from URL path
 			const url = route.request().url();
 			const currentVersion = url.split('/').pop() ?? '1.106.1';
@@ -55,8 +54,8 @@ test.describe('Security Notifications', () => {
 		});
 	}
 
-	async function setupApiFailure(page: Page) {
-		await page.route('**/api/versions/**', async (route) => {
+	async function setupApiFailure(n8n: n8nPage) {
+		await n8n.page.route('**/api/versions/**', async (route) => {
 			await route.fulfill({
 				status: 500,
 				contentType: 'application/json',
@@ -82,11 +81,11 @@ test.describe('Security Notifications', () => {
 			});
 		});
 
-		test('should not check for versions if feature is disabled', async ({ page, n8n }) => {
+		test('should not check for versions if feature is disabled', async ({ n8n }) => {
 			// Track whether any API requests are made to versions endpoint
 			let versionsApiCalled = false;
 
-			await page.route('**/api/versions/**', () => {
+			await n8n.page.route('**/api/versions/**', () => {
 				versionsApiCalled = true;
 			});
 
@@ -94,7 +93,7 @@ test.describe('Security Notifications', () => {
 
 			// Wait a moment for any potential API calls or notifications
 			// eslint-disable-next-line playwright/no-networkidle
-			await page.waitForLoadState('networkidle');
+			await n8n.page.waitForLoadState('networkidle');
 
 			// Verify no API request was made to versions endpoint when notifications are disabled
 			expect(versionsApiCalled).toBe(false);
@@ -119,13 +118,12 @@ test.describe('Security Notifications', () => {
 		});
 
 		test('should display security notification with correct messaging and styling', async ({
-			page,
 			n8n,
 		}) => {
-			await setupVersionsApiMock(page, { hasSecurityIssue: true, hasSecurityFix: true });
+			await setupVersionsApiMock(n8n, { hasSecurityIssue: true, hasSecurityFix: true });
 
 			// Reload to trigger version check
-			await page.reload();
+			await n8n.page.reload();
 			await n8n.goHome();
 
 			// Verify security notification appears with default message
@@ -141,7 +139,7 @@ test.describe('Security Notifications', () => {
 			await n8n.notifications.closeNotificationByText('Critical update available');
 
 			// Now test with specific fix version
-			await setupVersionsApiMock(page, {
+			await setupVersionsApiMock(n8n, {
 				hasSecurityIssue: true,
 				hasSecurityFix: true,
 				securityIssueFixVersion: 'useNextPatch',
@@ -159,11 +157,8 @@ test.describe('Security Notifications', () => {
 			await expect(notificationWithFixVersion).toContainText('or higher.');
 		});
 
-		test('should open versions modal when clicking security notification', async ({
-			page,
-			n8n,
-		}) => {
-			await setupVersionsApiMock(page, {
+		test('should open versions modal when clicking security notification', async ({ n8n }) => {
+			await setupVersionsApiMock(n8n, {
 				hasSecurityIssue: true,
 				hasSecurityFix: true,
 				securityIssueFixVersion: 'useNextPatch',
@@ -187,10 +182,9 @@ test.describe('Security Notifications', () => {
 		});
 
 		test('should not display security notification when theres no security issue', async ({
-			page,
 			n8n,
 		}) => {
-			await setupVersionsApiMock(page, { hasSecurityIssue: false });
+			await setupVersionsApiMock(n8n, { hasSecurityIssue: false });
 
 			await n8n.goHome();
 
@@ -199,9 +193,9 @@ test.describe('Security Notifications', () => {
 			await expect(notification).toBeHidden();
 		});
 
-		test('should handle API failure gracefully', async ({ page, n8n }) => {
+		test('should handle API failure gracefully', async ({ n8n }) => {
 			// Enable notifications but mock API failure
-			await setupApiFailure(page);
+			await setupApiFailure(n8n);
 
 			await n8n.goHome();
 

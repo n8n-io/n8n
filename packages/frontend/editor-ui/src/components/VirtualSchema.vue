@@ -19,7 +19,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { N8nText } from '@n8n/design-system';
 import {
 	createResultError,
 	type NodeConnectionType,
@@ -36,7 +35,7 @@ import {
 import MappingPill from './MappingPill.vue';
 
 import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/environments.ee/environments.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
@@ -49,6 +48,7 @@ import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	nodes?: IConnectedNode[];
 	node?: INodeUi | null;
@@ -59,6 +59,7 @@ type Props = {
 	search?: string;
 	compact?: boolean;
 	outputIndex?: number;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -71,6 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	compact: false,
 	outputIndex: undefined,
+	truncateLimit: 600,
 });
 
 const telemetry = useTelemetry();
@@ -210,7 +212,12 @@ const contextItems = computed(() => {
 		return [];
 	}
 
-	const flatSchema = flattenSchema({ schema, depth: 1, isDataEmpty: false });
+	const flatSchema = flattenSchema({
+		schema,
+		depth: 1,
+		isDataEmpty: false,
+		truncateLimit: props.truncateLimit,
+	});
 	const fields: Renders[] = flatSchema.flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
@@ -226,7 +233,7 @@ const contextItems = computed(() => {
 				return renderItem;
 			}
 
-			if (isVarsOpen && environmentsStore.variables.length === 0) {
+			if (isVarsOpen && environmentsStore.scopedVariables.length === 0) {
 				const variablesEmptyNotice: RenderNotice = {
 					type: 'notice',
 					id: 'notice-variablesEmpty',
@@ -334,7 +341,7 @@ const nodeAdditionalInfo = (node: INodeUi) => {
 };
 
 const flattenedNodes = computed(() =>
-	flattenMultipleSchemas(nodesSchemas.value, nodeAdditionalInfo),
+	flattenMultipleSchemas(nodesSchemas.value, nodeAdditionalInfo, props.truncateLimit),
 );
 
 const flattenNodeSchema = computed(() =>
@@ -344,6 +351,7 @@ const flattenNodeSchema = computed(() =>
 				depth: 0,
 				level: -1,
 				isDataEmpty: props.data.length === 0,
+				truncateLimit: props.truncateLimit,
 			})
 		: [],
 );
@@ -439,15 +447,13 @@ const onDragEnd = (el: HTMLElement) => {
 		]"
 	>
 		<NDVEmptyState v-if="noSearchResults" :title="i18n.baseText('ndv.search.noNodeMatch.title')">
-			<template #description>
-				<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
-					<template #link>
-						<a href="#" @click="emit('clear:search')">
-							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
-						</a>
-					</template>
-				</I18nT>
-			</template>
+			<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
+				<template #link>
+					<a href="#" @click.prevent="emit('clear:search')">
+						{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
+					</a>
+				</template>
+			</I18nT>
 		</NDVEmptyState>
 
 		<Draggable
@@ -562,36 +568,36 @@ const onDragEnd = (el: HTMLElement) => {
 	&.no-search-results {
 		display: flex;
 		justify-content: center;
-		padding: var(--spacing-l) 0;
+		padding: var(--spacing--lg) 0;
 	}
 }
 
 .scroller {
 	padding: 0 var(--ndv-spacing);
-	padding-bottom: var(--spacing-2xl);
+	padding-bottom: var(--spacing--2xl);
 
 	.compact & {
-		padding: 0 var(--spacing-2xs);
+		padding: 0 var(--spacing--2xs);
 	}
 }
 
 .icon {
 	display: inline-flex;
-	margin-left: var(--spacing-xl);
-	color: var(--color-text-light);
+	margin-left: var(--spacing--xl);
+	color: var(--color--text--tint-1);
 	margin-bottom: var(--ndv-spacing);
 }
 
 .notice {
-	padding-bottom: var(--spacing-xs);
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
-	margin-left: calc(var(--spacing-l) * var(--schema-level));
+	padding-bottom: var(--spacing--xs);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
+	margin-left: calc(var(--spacing--lg) * var(--schema-level));
 }
 
 .empty-schema {
-	padding-bottom: var(--spacing-xs);
-	margin-left: calc((var(--spacing-xl) * var(--schema-level)));
+	padding-bottom: var(--spacing--xs);
+	margin-left: calc((var(--spacing--xl) * var(--schema-level)));
 }
 </style>

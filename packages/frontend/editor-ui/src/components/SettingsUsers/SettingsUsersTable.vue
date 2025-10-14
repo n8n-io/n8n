@@ -2,12 +2,6 @@
 import { computed, ref } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nUserInfo,
-	N8nDataTableServer,
-	type UserAction,
-	type ActionDropdownItem,
-} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
@@ -17,6 +11,13 @@ import SettingsUsersLastActiveCell from '@/components/SettingsUsers/SettingsUser
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
+import {
+	N8nDataTableServer,
+	N8nText,
+	N8nUserInfo,
+	type ActionDropdownItem,
+	type UserAction,
+} from '@n8n/design-system';
 type Item = UsersList['items'][number];
 
 const i18n = useI18n();
@@ -109,7 +110,7 @@ const roles = computed<Record<Role, { label: string; desc: string }>>(() => ({
 	},
 	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
 }));
-const roleActions = computed<Array<ActionDropdownItem<Role | 'delete'>>>(() => [
+const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 	{
 		id: ROLE.Member,
 		label: i18n.baseText('auth.roles.member'),
@@ -117,11 +118,6 @@ const roleActions = computed<Array<ActionDropdownItem<Role | 'delete'>>>(() => [
 	{
 		id: ROLE.Admin,
 		label: i18n.baseText('auth.roles.admin'),
-	},
-	{
-		id: 'delete',
-		label: i18n.baseText('settings.users.table.row.deleteUser'),
-		divided: true,
 	},
 ]);
 
@@ -138,11 +134,7 @@ const filterActions = (user: UsersList['items'][number]) => {
 };
 
 const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
-	if (role === 'delete') {
-		emit('action', { action: 'delete', userId });
-	} else {
-		emit('update:role', { role: role as Role, userId });
-	}
+	emit('update:role', { role: role as Role, userId });
 };
 </script>
 

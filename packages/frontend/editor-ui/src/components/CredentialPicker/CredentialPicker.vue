@@ -7,6 +7,7 @@ import CredentialsDropdown from './CredentialsDropdown.vue';
 import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
 
+import { N8nButton, N8nIconButton } from '@n8n/design-system';
 const props = defineProps<{
 	appName: string;
 	credentialType: string;
@@ -106,7 +107,7 @@ listenForModalChanges({
 				@new-credential="createNewCredential"
 			/>
 
-			<n8n-icon-button
+			<N8nIconButton
 				icon="pen"
 				type="secondary"
 				:class="{
@@ -119,7 +120,7 @@ listenForModalChanges({
 			/>
 		</div>
 
-		<n8n-button
+		<N8nButton
 			v-else
 			:label="`Create new ${props.appName} credential`"
 			data-test-id="create-credential"
@@ -138,8 +139,8 @@ listenForModalChanges({
 	justify-content: center;
 	align-items: center;
 	min-width: 20px;
-	margin-left: var(--spacing-2xs);
-	font-size: var(--font-size-s);
+	margin-left: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
 }
 
 .invisible {

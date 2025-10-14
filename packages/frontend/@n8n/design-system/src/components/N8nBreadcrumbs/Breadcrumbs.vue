@@ -1,8 +1,7 @@
 <script lang="ts" setup generic="UserType extends IUser">
 import { computed, ref, watch } from 'vue';
 
-import type { IUser, UserAction } from '@n8n/design-system/types';
-
+import type { IUser, UserAction } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nLink from '../N8nLink';
 import N8nLoading from '../N8nLoading';
@@ -264,12 +263,12 @@ const handleTooltipClose = () => {
 
 	&.small {
 		display: inline-flex;
-		padding: var(--spacing-4xs) var(--spacing-3xs);
+		padding: var(--spacing--4xs) var(--spacing--3xs);
 	}
 
 	&.border {
-		border: var(--border-base);
-		border-radius: var(--border-radius-base);
+		border: var(--border);
+		border-radius: var(--radius);
 	}
 }
 
@@ -280,13 +279,13 @@ const handleTooltipClose = () => {
 }
 
 .item {
-	border: var(--border-width-base) var(--border-style-base) transparent;
+	border: var(--border-width) var(--border-style) transparent;
 }
 
 .item.dragging:hover {
-	border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-callout-secondary-background);
+	border: var(--border-width) var(--border-style) var(--color--secondary);
+	border-radius: var(--radius);
+	background-color: var(--callout--color--background--secondary);
 
 	& a {
 		cursor: grabbing;
@@ -301,7 +300,7 @@ const handleTooltipClose = () => {
 }
 
 .item.current span {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 // Make disabled ellipsis look like a normal item
@@ -310,7 +309,7 @@ const handleTooltipClose = () => {
 	.tooltip-ellipsis {
 		cursor: pointer;
 		user-select: none;
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 	&.disabled {
 		.dots,
@@ -319,9 +318,9 @@ const handleTooltipClose = () => {
 		}
 		.dots {
 			cursor: default;
-			color: var(--color-text-base);
+			color: var(--color--text);
 			&:hover {
-				color: var(--color-text-base);
+				color: var(--color--text);
 			}
 		}
 	}
@@ -329,7 +328,7 @@ const handleTooltipClose = () => {
 
 .hidden-items-menu {
 	display: flex;
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .hidden-items-menu-popper {
@@ -340,11 +339,11 @@ const handleTooltipClose = () => {
 
 	&.dragging li:hover {
 		cursor: grabbing;
-		background-color: var(--color-callout-secondary-background);
+		background-color: var(--callout--color--background--secondary);
 	}
 
 	li {
-		max-width: var(--spacing-5xl);
+		max-width: var(--spacing--5xl);
 		display: block;
 		white-space: nowrap;
 		overflow: hidden;
@@ -353,13 +352,13 @@ const handleTooltipClose = () => {
 }
 
 .tooltip-loading {
-	min-width: var(--spacing-3xl);
+	min-width: var(--spacing--3xl);
 	width: 100%;
 
 	:global(.n8n-loading) > div {
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-xs);
+		gap: var(--spacing--xs);
 	}
 
 	:global(.el-skeleton__item) {
@@ -368,92 +367,92 @@ const handleTooltipClose = () => {
 }
 
 .tooltip {
-	padding: var(--spacing-xs) var(--spacing-2xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
 	text-align: center;
 	& > div {
-		color: var(--color-text-lighter);
+		color: var(--color--text--tint-2);
 		span {
-			font-size: var(--font-size-2xs);
+			font-size: var(--font-size--2xs);
 		}
 	}
 
 	.tooltip-loading {
-		min-width: var(--spacing-4xl);
+		min-width: var(--spacing--4xl);
 	}
 }
 
 .dots {
-	padding: 0 var(--spacing-4xs);
-	color: var(--color-text-light);
-	border-radius: var(--border-radius-base);
+	padding: 0 var(--spacing--4xs);
+	color: var(--color--text--tint-1);
+	border-radius: var(--radius);
 
 	&:hover,
 	&:focus {
-		background-color: var(--color-background-base);
-		color: var(--color-primary);
+		background-color: var(--color--background);
+		color: var(--color--primary);
 	}
 }
 
 // Small theme overrides
 .small {
 	.list {
-		gap: var(--spacing-5xs);
+		gap: var(--spacing--5xs);
 	}
 
 	.item {
-		max-width: var(--spacing-3xl);
+		max-width: var(--spacing--3xl);
 	}
 
 	.item,
 	.item * {
-		color: var(--color-text-base);
-		font-size: var(--font-size-2xs);
-		line-height: var(--font-line-height-xsmall);
+		color: var(--color--text);
+		font-size: var(--font-size--2xs);
+		line-height: var(--line-height--xs);
 	}
 
 	.item a:hover * {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 
 	.separator {
-		font-size: var(--font-size-s);
-		color: var(--color-text-base);
+		font-size: var(--font-size--sm);
+		color: var(--color--text);
 	}
 }
 
 // Medium theme overrides
 .medium {
 	li {
-		padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+		padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 	}
 
 	.item,
 	.item * {
-		color: var(--color-text-base);
-		font-size: var(--font-size-s);
-		line-height: var(--font-line-height-xsmall);
+		color: var(--color--text);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--xs);
 	}
 
 	.item {
-		max-width: var(--spacing-5xl);
+		max-width: var(--spacing--5xl);
 	}
 
 	.item:not(.dragging) a:hover * {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 
 	.ellipsis {
 		padding-right: 0;
 		padding-left: 0;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		&:hover {
-			color: var(--color-text-base);
+			color: var(--color--text);
 		}
 	}
 
 	.separator {
-		font-size: var(--font-size-xl);
-		color: var(--color-foreground-base);
+		font-size: var(--font-size--xl);
+		color: var(--color--foreground);
 	}
 }
 </style>

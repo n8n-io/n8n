@@ -14,6 +14,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
+import { ElCheckbox } from 'element-plus';
+import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 const communityNodesStore = useCommunityNodesStore();
 
 const toast = useToast();
@@ -100,15 +102,15 @@ const onLearnMoreLinkClick = () => {
 		<template #content>
 			<div :class="[$style.descriptionContainer, 'p-s']">
 				<div>
-					<n8n-text>
+					<N8nText>
 						{{ i18n.baseText('settings.communityNodes.installModal.description') }}
-					</n8n-text>
+					</N8nText>
 					{{ ' ' }}
-					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
+					<N8nLink :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
 						{{ i18n.baseText('generic.moreInfo') }}
-					</n8n-link>
+					</N8nLink>
 				</div>
-				<n8n-button
+				<N8nButton
 					:label="i18n.baseText('settings.communityNodes.browseButton.label')"
 					icon="external-link"
 					:class="$style.browseButton"
@@ -116,7 +118,7 @@ const onLearnMoreLinkClick = () => {
 				/>
 			</div>
 			<div :class="[$style.formContainer, 'mt-m']">
-				<n8n-input-label
+				<N8nInputLabel
 					:class="$style.labelTooltip"
 					:label="i18n.baseText('settings.communityNodes.installModal.packageName.label')"
 					:tooltip-text="
@@ -125,7 +127,7 @@ const onLearnMoreLinkClick = () => {
 						})
 					"
 				>
-					<n8n-input
+					<N8nInput
 						v-model="packageName"
 						name="packageNameInput"
 						type="text"
@@ -138,7 +140,7 @@ const onLearnMoreLinkClick = () => {
 						:disabled="loading"
 						@blur="onInputBlur"
 					/>
-				</n8n-input-label>
+				</N8nInputLabel>
 				<div :class="[$style.infoText, 'mt-4xs']">
 					<span
 						size="small"
@@ -146,24 +148,24 @@ const onLearnMoreLinkClick = () => {
 						v-text="infoTextErrorMessage"
 					></span>
 				</div>
-				<el-checkbox
+				<ElCheckbox
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
 					data-test-id="user-agreement-checkbox"
 					@update:model-value="onCheckboxChecked"
 				>
-					<n8n-text>
-						{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
+					<N8nText>
+						{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </N8nText
 					><br />
-					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
+					<N8nLink :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
 						i18n.baseText('generic.moreInfo')
-					}}</n8n-link>
-				</el-checkbox>
+					}}</N8nLink>
+				</ElCheckbox>
 			</div>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:disabled="!userAgreed || packageName === '' || loading"
 				:label="
@@ -185,24 +187,24 @@ const onLearnMoreLinkClick = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
+	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
+	border-radius: var(--radius);
+	background-color: var(--color--background--light-2);
 
 	button {
 		& > span {
 			flex-direction: row-reverse;
 			& > span {
-				margin-left: var(--spacing-3xs);
+				margin-left: var(--spacing--3xs);
 			}
 		}
 	}
 }
 
 .formContainer {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-text-base);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text);
 }
 
 .checkbox {
@@ -212,10 +214,10 @@ const onLearnMoreLinkClick = () => {
 }
 
 .error {
-	color: var(--color-danger);
+	color: var(--color--danger);
 
 	span {
-		border-color: var(--color-danger);
+		border-color: var(--color--danger);
 	}
 }
 </style>
@@ -230,7 +232,7 @@ const onLearnMoreLinkClick = () => {
 		line-height: 1.2;
 	}
 	p + p {
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing--2xs);
 	}
 }
 </style>

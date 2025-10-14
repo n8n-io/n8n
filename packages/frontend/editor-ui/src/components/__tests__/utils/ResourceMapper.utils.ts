@@ -1,4 +1,6 @@
+import type { RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import type ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
@@ -88,7 +90,7 @@ export const UPDATED_SCHEMA = [
 	},
 ];
 
-export const DEFAULT_SETUP = {
+export const DEFAULT_SETUP: RenderOptions<typeof ResourceMapper> = {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {

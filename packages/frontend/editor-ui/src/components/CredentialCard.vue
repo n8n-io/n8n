@@ -8,12 +8,13 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { useProjectsStore } from '@/stores/projects.store';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/features/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
 
+import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -129,12 +130,12 @@ function moveResource() {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click.stop="onClick">
+	<N8nCard :class="$style.cardLink" @click.stop="onClick">
 		<template #prepend>
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
-			<n8n-text tag="h2" bold :class="$style.cardHeading">
+			<N8nText tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
 				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('credentials.item.readonly') }}
@@ -142,10 +143,10 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-			</n8n-text>
+			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<n8n-text color="text-light" size="small">
+			<N8nText color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
 					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
@@ -153,7 +154,7 @@ function moveResource() {
 				<span v-show="data"
 					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
-			</n8n-text>
+			</N8nText>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -165,7 +166,7 @@ function moveResource() {
 					:personal-project="projectsStore.personalProject"
 					:show-badge-border="false"
 				/>
-				<n8n-action-toggle
+				<N8nActionToggle
 					data-test-id="credential-card-actions"
 					:actions="actions"
 					theme="dark"
@@ -173,12 +174,12 @@ function moveResource() {
 				/>
 			</div>
 		</template>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .cardLink {
-	--card--padding: 0 0 0 var(--spacing-s);
+	--card--padding: 0 0 0 var(--spacing--sm);
 
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -190,15 +191,15 @@ function moveResource() {
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
-	padding: var(--spacing-s) 0 0;
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--sm) 0 0;
 }
 
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s);
+	padding: 0 0 var(--spacing--sm);
 }
 
 .cardActions {
@@ -207,13 +208,13 @@ function moveResource() {
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 
 @include mixins.breakpoint('sm-and-down') {
 	.cardLink {
-		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
 
 		flex-wrap: wrap;

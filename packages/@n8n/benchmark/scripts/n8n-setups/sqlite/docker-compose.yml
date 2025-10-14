@@ -16,7 +16,10 @@ services:
       - DB_SQLITE_ENABLE_WAL=true
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=internal
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=test
+      - N8N_NATIVE_PYTHON_RUNNER=true
     ports:
       - 5678:5678
     volumes:
@@ -29,6 +32,15 @@ services:
     depends_on:
       mockapi:
         condition: service_started
+
+  runners:
+    image: ghcr.io/n8n-io/runners:${N8N_VERSION:-latest}
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_AUTH_TOKEN=test
+    depends_on:
+      n8n:
+        condition: service_healthy
 
   benchmark:
     image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}

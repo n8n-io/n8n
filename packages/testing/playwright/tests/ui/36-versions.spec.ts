@@ -61,6 +61,7 @@ test.describe('Versions', () => {
 	test('should open updates panel', async ({ n8n, setupRequirements }) => {
 		await setupRequirements(requirements);
 		await n8n.goHome();
+		await n8n.sideBar.expand();
 		await n8n.versions.openWhatsNewMenu();
 		await expect(n8n.versions.getVersionUpdatesPanelOpenButton()).toContainText(
 			'2 versions behind',

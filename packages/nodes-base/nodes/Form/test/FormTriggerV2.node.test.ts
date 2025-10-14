@@ -207,7 +207,10 @@ describe('FormTrigger', () => {
 					],
 				}),
 			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'On form submission node not correctly configured'),
+				new NodeOperationError(
+					mock<INode>(),
+					'Unused Respond to Webhook node found in the workflow',
+				),
 			);
 		});
 	});

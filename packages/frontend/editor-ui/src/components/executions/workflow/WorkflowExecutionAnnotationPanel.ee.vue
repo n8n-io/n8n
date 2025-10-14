@@ -2,11 +2,12 @@
 import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import { ElDropdown } from 'element-plus';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute } from 'vue-router';
 
+import { ElDropdown } from 'element-plus';
+import { N8nBadge, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	execution: ExecutionSummary & {
 		customData?: Record<string, string>;
@@ -62,9 +63,9 @@ function onDropdownVisibleChange(visible: boolean) {
 			data-test-id="execution-preview-ellipsis-button"
 			@blur="onEllipsisButtonBlur"
 		>
-			<n8n-badge v-if="customDataLength > 0" :class="$style.badge" theme="primary">
+			<N8nBadge v-if="customDataLength > 0" :class="$style.badge" theme="primary">
 				{{ customDataLength.toString() }}
-			</n8n-badge>
+			</N8nBadge>
 		</N8nButton>
 		<template #dropdown>
 			<div
@@ -74,9 +75,9 @@ function onDropdownVisibleChange(visible: boolean) {
 			>
 				<div :class="$style.section">
 					<div :class="$style.heading">
-						<n8n-heading tag="h3" size="small" color="text-dark">
+						<N8nHeading tag="h3" size="small" color="text-dark">
 							{{ i18n.baseText('generic.annotationData') }}
-						</n8n-heading>
+						</N8nHeading>
 					</div>
 					<div
 						v-if="execution?.customData && Object.keys(execution?.customData).length > 0"
@@ -87,12 +88,12 @@ function onDropdownVisibleChange(visible: boolean) {
 							:key="attr"
 							:class="$style.customDataEntry"
 						>
-							<n8n-text :class="$style.key" size="small" color="text-base">
+							<N8nText :class="$style.key" size="small" color="text-base">
 								{{ attr }}
-							</n8n-text>
-							<n8n-text :class="$style.value" size="small" color="text-base">
+							</N8nText>
+							<N8nText :class="$style.value" size="small" color="text-base">
 								{{ execution?.customData[attr] }}
-							</n8n-text>
+							</N8nText>
 						</div>
 					</div>
 					<div
@@ -100,9 +101,9 @@ function onDropdownVisibleChange(visible: boolean) {
 						:class="$style.noResultsContainer"
 						data-test-id="execution-annotation-data-empty"
 					>
-						<n8n-text color="text-base" size="small" align="center">
+						<N8nText color="text-base" size="small" align="center">
 							<span v-n8n-html="i18n.baseText('executionAnnotationView.data.notFound')" />
-						</n8n-text>
+						</N8nText>
 					</div>
 				</div>
 			</div>
@@ -121,9 +122,9 @@ function onDropdownVisibleChange(visible: boolean) {
 }
 
 .highlightDataButtonOpen {
-	color: var(--color-primary);
-	background-color: var(--color-button-secondary-hover-background);
-	border-color: var(--color-button-secondary-hover-active-focus-border);
+	color: var(--color--primary);
+	background-color: var(--button--color--background--secondary--hover);
+	border-color: var(--button--border-color--secondary--hover-active-focus);
 }
 
 .badge {
@@ -139,38 +140,38 @@ function onDropdownVisibleChange(visible: boolean) {
 	flex-direction: column;
 	overflow: auto;
 
-	background-color: var(--color-background-xlight);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius);
 }
 
 .section {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 
 	&:not(:last-child) {
-		border-bottom: var(--border-base);
+		border-bottom: var(--border);
 	}
 }
 
 .metadata {
-	padding-top: var(--spacing-s);
+	padding-top: var(--spacing--sm);
 }
 
 .heading {
 	display: flex;
 	justify-content: space-between;
 	align-items: baseline;
-	padding-right: var(--spacing-l);
+	padding-right: var(--spacing--lg);
 }
 
 .controls {
-	padding: var(--spacing-s) 0 var(--spacing-xs);
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-m);
+	padding-right: var(--spacing--md);
 
 	button {
 		display: flex;
@@ -183,17 +184,17 @@ function onDropdownVisibleChange(visible: boolean) {
 	flex-direction: column;
 
 	&:not(:first-of-type) {
-		margin-top: var(--spacing-s);
+		margin-top: var(--spacing--sm);
 	}
 
 	.key {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
 .noResultsContainer {
 	width: 100%;
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 
 .execution-annotation-panel {

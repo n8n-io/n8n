@@ -1,6 +1,5 @@
-import { computed, type ComputedRef, type ShallowRef } from 'vue';
+import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { watch } from 'vue';
 import { useLogsStore } from '@/stores/logs.store';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import { usePopOutWindow } from '@/features/logs/composables/usePopOutWindow';
@@ -58,11 +57,7 @@ export function useLogsPanelLayout(
 	const popOutWindowTitle = computed(() => `Logs - ${workflowName.value}`);
 	const shouldPopOut = computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING);
 
-	const {
-		canPopOut,
-		isPoppedOut,
-		popOutWindow: popOutWindow,
-	} = usePopOutWindow({
+	const { canPopOut, isPoppedOut, popOutWindow } = usePopOutWindow({
 		title: popOutWindowTitle,
 		initialHeight: INITIAL_POPUP_HEIGHT,
 		initialWidth: window.document.body.offsetWidth * 0.8,
@@ -134,6 +129,8 @@ export function useLogsPanelLayout(
 		},
 		{ immediate: true },
 	);
+
+	onBeforeUnmount(() => logsStore.setHeight(0));
 
 	return {
 		height: resizer.size,

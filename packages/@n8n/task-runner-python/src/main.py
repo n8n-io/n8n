@@ -1,11 +1,14 @@
 import asyncio
 import logging
 import sys
+import platform
 from typing import Optional
 
+from src.constants import ERROR_WINDOWS_NOT_SUPPORTED
 from src.config.health_check_config import HealthCheckConfig
 from src.config.sentry_config import SentryConfig
 from src.config.task_runner_config import TaskRunnerConfig
+from src.errors import ConfigurationError
 from src.logs import setup_logging
 from src.task_runner import TaskRunner
 from src.shutdown import Shutdown
@@ -25,7 +28,7 @@ async def main():
 
     try:
         health_check_config = HealthCheckConfig.from_env()
-    except ValueError as e:
+    except ConfigurationError as e:
         logger.error(f"Invalid health check configuration: {e}")
         sys.exit(1)
 
@@ -42,7 +45,7 @@ async def main():
 
     try:
         task_runner_config = TaskRunnerConfig.from_env()
-    except ValueError as e:
+    except ConfigurationError as e:
         logger.error(str(e))
         sys.exit(1)
 
@@ -63,4 +66,8 @@ async def main():
 
 
 if __name__ == "__main__":
+    if platform.system() == "Windows":
+        print(ERROR_WINDOWS_NOT_SUPPORTED, file=sys.stderr)
+        sys.exit(1)
+
     asyncio.run(main())

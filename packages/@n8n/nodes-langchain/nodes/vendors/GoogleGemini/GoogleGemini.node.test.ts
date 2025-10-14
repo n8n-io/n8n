@@ -80,7 +80,7 @@ describe('GoogleGemini Node', () => {
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				'/v1beta/models/gemini-2.5-flash:generateContent',
-				{
+				expect.objectContaining({
 					body: {
 						contents: [
 							{
@@ -105,6 +105,76 @@ describe('GoogleGemini Node', () => {
 						},
 						systemInstruction: {
 							parts: [{ text: 'You are a helpful assistant.' }],
+						},
+					},
+				}),
+			);
+		});
+
+		it('should include thinking options when the thinking budget is specified', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello, world!' }];
+					case 'simplify':
+						return true;
+					case 'jsonOutput':
+						return false;
+					case 'options':
+						return {
+							thinkingBudget: 1024,
+							maxOutputTokens: 100,
+							temperature: 0.5,
+						};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+			apiRequestMock.mockResolvedValue({
+				candidates: [
+					{
+						content: {
+							parts: [{ text: 'Hello with thinking!' }],
+							role: 'model',
+						},
+					},
+				],
+			});
+
+			const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						content: {
+							parts: [{ text: 'Hello with thinking!' }],
+							role: 'model',
+						},
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				'/v1beta/models/gemini-2.5-flash:generateContent',
+				{
+					body: {
+						contents: [
+							{
+								parts: [{ text: 'Hello, world!' }],
+								role: 'user',
+							},
+						],
+						tools: [],
+						generationConfig: {
+							maxOutputTokens: 100,
+							temperature: 0.5,
+							thinkingConfig: {
+								thinkingBudget: 1024,
+							},
 						},
 					},
 				},

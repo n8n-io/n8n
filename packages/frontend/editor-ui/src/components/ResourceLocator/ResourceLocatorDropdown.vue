@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
-import { N8nLoading } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
+import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
@@ -222,7 +222,7 @@ defineExpose({ isWithinDropdown });
 </script>
 
 <template>
-	<n8n-popover
+	<N8nPopover
 		placement="bottom"
 		:width="props.width"
 		:popper-class="$style.popover"
@@ -251,7 +251,7 @@ defineExpose({ isWithinDropdown });
 				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
-					<n8n-icon :class="$style.searchIcon" icon="search" />
+					<N8nIcon :class="$style.searchIcon" icon="search" />
 				</template>
 			</N8nInput>
 		</div>
@@ -293,7 +293,7 @@ defineExpose({ isWithinDropdown });
 			>
 				<div :class="$style.resourceNameContainer">
 					<span :class="$style.addResourceText">{{ props.allowNewResources.label }}</span>
-					<n8n-icon :class="$style.addResourceIcon" icon="plus" />
+					<N8nIcon :class="$style.addResourceIcon" icon="plus" />
 				</div>
 			</div>
 			<div
@@ -319,7 +319,7 @@ defineExpose({ isWithinDropdown });
 					</span>
 				</div>
 				<div :class="$style.urlLink">
-					<n8n-icon
+					<N8nIcon
 						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
 						icon="external-link"
 						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
@@ -336,16 +336,16 @@ defineExpose({ isWithinDropdown });
 		<template #reference>
 			<slot />
 		</template>
-	</n8n-popover>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
 	padding: 0 !important;
-	border: var(--border-base);
+	border: var(--border);
 	display: flex;
-	max-height: calc(var(--content-height) + var(--spacing-xl));
+	max-height: calc(var(--content-height) + var(--spacing--xl));
 	flex-direction: column;
 
 	& ::-webkit-scrollbar {
@@ -354,12 +354,12 @@ defineExpose({ isWithinDropdown });
 
 	& ::-webkit-scrollbar-thumb {
 		border-radius: 12px;
-		background: var(--color-foreground-dark);
+		background: var(--color--foreground--shade-1);
 		border: 3px solid white;
 	}
 
 	& ::-webkit-scrollbar-thumb:hover {
-		background: var(--color-foreground-xdark);
+		background: var(--color--foreground--shade-2);
 	}
 }
 
@@ -376,31 +376,31 @@ defineExpose({ isWithinDropdown });
 }
 
 .searchInput {
-	border-bottom: var(--border-base);
-	--input-border-color: none;
-	--input-font-size: var(--font-size-2xs);
+	border-bottom: var(--border);
+	--input--border-color: none;
+	--input--font-size: var(--font-size--2xs);
 	width: 100%;
 	z-index: 1;
 }
 
 .selected {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 
 .resourceItem {
 	display: flex;
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing--xs);
 	white-space: nowrap;
 	height: 32px;
 	cursor: pointer;
 
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 	}
 }
 
 .loadingItem {
-	padding: 10px var(--spacing-xs);
+	padding: 10px var(--spacing--xs);
 }
 
 .loader {
@@ -413,15 +413,15 @@ defineExpose({ isWithinDropdown });
 }
 
 .hovering {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 }
 
 .searchRequired {
 	height: 50px;
 	margin-top: 40px;
-	padding-left: var(--spacing-xs);
-	font-size: var(--font-size-xs);
-	color: var(--color-text-base);
+	padding-left: var(--spacing--xs);
+	font-size: var(--font-size--xs);
+	color: var(--color--text);
 	display: flex;
 	align-items: center;
 }
@@ -429,34 +429,39 @@ defineExpose({ isWithinDropdown });
 .urlLink {
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-3xs);
-	color: var(--color-text-base);
-	margin-left: var(--spacing-2xs);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text);
+	margin-left: var(--spacing--2xs);
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
 .resourceNameContainer {
-	font-size: var(--font-size-2xs);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: inline-block;
+	display: flex;
+	align-items: center;
+	font-size: var(--font-size--2xs);
+	min-width: 0;
 	align-self: center;
 }
 
+.resourceNameContainer > :first-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .searchIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .addResourceText {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .addResourceIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 }
 </style>

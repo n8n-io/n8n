@@ -15,7 +15,10 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	async clickSaveButton() {
-		await this.clickButtonByName('Save');
+		await Promise.all([
+			this.waitForRestResponse(/\/rest\/projects\/[^/]+$/, 'PATCH'),
+			this.clickButtonByName('Save'),
+		]);
 	}
 
 	async clickCancelButton() {
@@ -48,6 +51,10 @@ export class ProjectSettingsPage extends BasePage {
 	async expectSearchInputValue(expectedValue: string) {
 		const searchInput = this.page.getByTestId('project-members-search').locator('input');
 		await expect(searchInput).toHaveValue(expectedValue);
+	}
+
+	getTitle() {
+		return this.page.getByTestId('project-name');
 	}
 
 	// Robust value assertions on inner form controls

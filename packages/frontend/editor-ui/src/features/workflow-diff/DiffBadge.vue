@@ -21,11 +21,11 @@ const label = computed(() => {
 const backgroundColor = computed(() => {
 	switch (props.type) {
 		case NodeDiffStatus.Added:
-			return 'var(--color-node-icon-green)';
+			return 'var(--node--icon--color--green)';
 		case NodeDiffStatus.Deleted:
-			return 'var(--color-node-icon-red)';
+			return 'var(--node--icon--color--red)';
 		case NodeDiffStatus.Modified:
-			return 'var(--color-node-icon-orange)';
+			return 'var(--node--icon--color--orange)';
 		default:
 			return '';
 	}
@@ -44,8 +44,8 @@ const backgroundColor = computed(() => {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-text-xlight);
-	font-size: var(--font-size-3xs);
+	color: var(--color--text--tint-3);
+	font-size: var(--font-size--3xs);
 	font-weight: 700;
 	width: 16px;
 	height: 16px;
