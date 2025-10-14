@@ -73,6 +73,7 @@ watch(
 			editedLabel.value = label;
 			await nextTick();
 			input.value?.focus();
+			input.value?.select();
 		} else {
 			editedLabel.value = '';
 		}
