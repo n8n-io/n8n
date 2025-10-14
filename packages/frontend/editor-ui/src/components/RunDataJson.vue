@@ -232,7 +232,7 @@ const getListItemName = (path: string) => {
 		cursor: grab;
 
 		&:hover {
-			background-color: var(--color-json-highlight);
+			background-color: var(--json--highlight--color);
 		}
 	}
 
@@ -253,8 +253,8 @@ const getListItemName = (path: string) => {
 
 <style lang="scss">
 .vjs-tree {
-	color: var(--color-json-default);
-	--color-line-break: var(--color-code-line-break);
+	color: var(--json--color);
+	--line-break--color: var(--code--line-break--color);
 	font-size: var(--font-size--2xs);
 }
 
@@ -264,7 +264,7 @@ const getListItemName = (path: string) => {
 	}
 
 	&.is-highlight {
-		background-color: var(--color-json-highlight);
+		background-color: var(--json--highlight--color);
 	}
 }
 
@@ -288,45 +288,45 @@ const getListItemName = (path: string) => {
 .vjs-tree .vjs-value-null {
 	&,
 	span {
-		color: var(--color-json-null);
+		color: var(--json--null--color);
 	}
 }
 
 .vjs-tree .vjs-value-boolean {
 	&,
 	span {
-		color: var(--color-json-boolean);
+		color: var(--json--boolean--color);
 	}
 }
 
 .vjs-tree .vjs-value-number {
 	&,
 	span {
-		color: var(--color-json-number);
+		color: var(--json--number--color);
 	}
 }
 
 .vjs-tree .vjs-value-string {
 	&,
 	span {
-		color: var(--color-json-string);
+		color: var(--json--string--color);
 	}
 }
 
 .vjs-tree .vjs-key {
-	color: var(--color-json-key);
+	color: var(--json--key--color);
 }
 
 .vjs-tree .vjs-tree__brackets {
-	color: var(--color-json-brackets);
+	color: var(--json--brackets--color);
 }
 
 .vjs-tree .vjs-tree__brackets:hover {
-	color: var(--color-json-brackets-hover);
+	color: var(--json--brackets--color--hover);
 }
 
 .vjs-tree .vjs-tree__content.has-line {
-	border-left: 1px dotted var(--color-json-line);
+	border-left: 1px dotted var(--json--line--color);
 }
 
 .vjs-tree .vjs-tree-list-holder-inner {

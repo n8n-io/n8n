@@ -61,6 +61,7 @@ catalog:
   typescript: 5.9.2
   eslint: 9.29.0
   mysql2: 3.15.0
+  run-script-os: 1.1.6
 
 catalogs:
   frontend:

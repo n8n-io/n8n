@@ -737,11 +737,11 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 		left: calc(-0.5 * var(--spacing--xs));
 		transition: opacity 100ms ease-in;
 		Button {
-			color: var(--color-icon-base);
+			color: var(--icon--color);
 		}
 	}
 	.icon-button > Button:hover {
-		color: var(--color-icon-hover);
+		color: var(--icon--color--hover);
 	}
 
 	.indent > div {
@@ -788,7 +788,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 		cursor: pointer;
 	}
 	.callout-dismiss:hover {
-		color: var(--color-icon-hover);
+		color: var(--icon--color--hover);
 	}
 }
 </style>
