@@ -125,7 +125,6 @@ function itemComparator(a: Item, b: Item) {
 	min-width: max-content;
 	border-radius: var(--radius);
 	font-size: small;
-	background-color: var(--ndv--color--background);
 	color: var(--color--text--shade-1);
 
 	cursor: pointer;
