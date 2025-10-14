@@ -9,7 +9,7 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { NodeTypes } from '@test/helpers';
 
@@ -122,6 +122,79 @@ describe('processRunExecutionData', () => {
 		expect(runHook).toHaveBeenNthCalledWith(4, 'nodeExecuteBefore', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(5, 'nodeExecuteAfter', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(6, 'workflowExecuteAfter', expect.any(Array));
+	});
+
+	test('agent node emits nodeExecuteBefore only once when resuming after tool execution', async () => {
+		// ARRANGE
+		// Create agent node that returns EngineRequest, then resumes with tool results
+		const agentNodeType = modifyNode(passThroughNode)
+			.return({
+				actions: [
+					{
+						actionType: 'ExecutionNodeAction',
+						nodeName: 'tool',
+						input: { query: 'test input' },
+						type: 'ai_tool',
+						id: 'action_1',
+						metadata: {},
+					},
+				],
+				metadata: {},
+			})
+			.return((response) => [[{ json: { result: 'agent completed', response } }]])
+			.done();
+
+		const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+		const agent = createNodeData({ name: 'agent', type: 'agent' });
+		const tool = createNodeData({ name: 'tool', type: types.passThrough });
+
+		const nodeTypes = NodeTypes({
+			...nodeTypeArguments,
+			agent: { type: agentNodeType, sourcePath: '' },
+		});
+
+		const workflowInstance = new DirectedGraph()
+			.addNodes(trigger, agent, tool)
+			.addConnections(
+				{ from: trigger, to: agent },
+				{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+			)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+		const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
+		const executionData: IRunExecutionData = {
+			startData: { startNodes: [{ name: trigger.name, sourceData: null }] },
+			resultData: { runData: {} },
+			executionData: {
+				contextData: {},
+				nodeExecutionStack: [{ data: taskDataConnection, node: trigger, source: null }],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		};
+
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+		// ACT
+		await workflowExecute.processRunExecutionData(workflowInstance);
+
+		// ASSERT
+		expect(
+			runHook.mock.calls.map((hook: [string, unknown[]]) => ({
+				name: hook[0],
+				node: typeof hook[1][0] === 'string' ? hook[1][0] : undefined,
+			})),
+		).toEqual([
+			{ name: 'workflowExecuteBefore' },
+			{ name: 'nodeExecuteBefore', node: 'trigger' },
+			{ name: 'nodeExecuteAfter', node: 'trigger' },
+			{ name: 'nodeExecuteBefore', node: 'agent' },
+			{ name: 'nodeExecuteBefore', node: 'tool' },
+			{ name: 'nodeExecuteAfter', node: 'tool' },
+			{ name: 'nodeExecuteAfter', node: 'agent' },
+			{ name: 'workflowExecuteAfter' },
+		]);
 	});
 
 	describe('runExecutionData.waitTill', () => {

@@ -477,7 +477,7 @@ export const isMatchingField = (
 };
 
 export const getThemedValue = <T extends string>(
-	value: Themed<T> | undefined,
+	value: Themed<T> | T | undefined,
 	theme: AppliedThemeOption = 'light',
 ): T | null => {
 	if (!value) {

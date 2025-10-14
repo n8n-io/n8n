@@ -19,8 +19,8 @@ const props = withDefaults(defineProps<AvatarProps>(), {
 	colors: () => [
 		'--color--primary',
 		'--color--secondary',
-		'--color-avatar-accent-1',
-		'--color-avatar-accent-2',
+		'--avatar--color--accent-1',
+		'--avatar--color--accent-2',
 		'--color--primary--tint-1',
 	],
 });
@@ -81,7 +81,7 @@ const getSize = (size: string): number => sizes[size];
 	position: absolute;
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color-avatar-font);
+	color: var(--avatar--color--text);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;
 }

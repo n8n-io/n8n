@@ -210,6 +210,6 @@ async function onAskAssistantButtonClick() {
 }
 
 .activeButton {
-	background-color: var(--button-hover-background-color) !important;
+	background-color: var(--button--color--background--hover) !important;
 }
 </style>

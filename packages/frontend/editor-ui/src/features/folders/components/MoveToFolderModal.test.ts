@@ -801,9 +801,7 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(anotherUserPersonalProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
-		expect(submitButton).toBeEnabled();
-
-		expect(submitButton).toBeEnabled();
+		await waitFor(() => expect(submitButton).toBeEnabled());
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {

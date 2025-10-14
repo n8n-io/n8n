@@ -174,7 +174,7 @@ watch(
 .cardContainer {
 	display: flex;
 	padding: var(--spacing--sm);
-	border: var(--border-width) var(--border-style) var(--color-info-tint-1);
+	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }

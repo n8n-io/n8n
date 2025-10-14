@@ -11,7 +11,7 @@ export function findOneFromModelsResponse(
 ): ChatHubConversationModel | undefined {
 	for (const provider of chatHubProviderSchema.options) {
 		if (response[provider].models.length > 0) {
-			return { model: response[provider].models[0].name, provider };
+			return { model: response[provider].models[0].name, provider, workflowId: null };
 		}
 	}
 

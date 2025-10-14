@@ -6,6 +6,7 @@ import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
+import ContactAdministratorToInstall from '@/components/ContactAdministratorToInstall.vue';
 import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -30,12 +31,6 @@ const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
 const nodeTypesStore = useNodeTypesStore();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
-
-const ownerEmailList = computed(() =>
-	useUsersStore()
-		.allUsers.filter((user) => user.role?.includes('owner'))
-		.map((user) => user.email),
-);
 
 const formatNumber = (number: number) => {
 	if (!number) return null;
@@ -161,17 +156,7 @@ onMounted(async () => {
 				</N8nText>
 			</div>
 		</div>
-		<div v-if="!isOwner && !communityNodeDetails?.installed" :class="$style.contactOwnerHint">
-			<N8nIcon color="text-light" icon="info" size="large" />
-			<N8nText color="text-base" size="medium">
-				<div style="padding-bottom: 8px">
-					{{ i18n.baseText('communityNodeInfo.contact.admin') }}
-				</div>
-				<N8nText v-if="ownerEmailList.length" bold>
-					{{ ownerEmailList.join(', ') }}
-				</N8nText>
-			</N8nText>
-		</div>
+		<ContactAdministratorToInstall v-if="!isOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
 
@@ -186,7 +171,7 @@ onMounted(async () => {
 }
 
 .nodeIcon {
-	--node-icon-size: 36px;
+	--node--icon--size: 36px;
 	margin-right: var(--spacing--sm);
 }
 

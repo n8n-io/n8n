@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "main": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
   "exports": {
@@ -44,8 +44,14 @@
   },
   "eslint-doc-generator": {
     "configEmoji": [
-		["recommended", "✅"],
-		["recommendedWithoutN8nCloudSupport", "☑️"]
-	]
+      [
+        "recommended",
+        "✅"
+      ],
+      [
+        "recommendedWithoutN8nCloudSupport",
+        "☑️"
+      ]
+    ]
   }
 }

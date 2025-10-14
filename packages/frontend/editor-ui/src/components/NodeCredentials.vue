@@ -579,7 +579,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 .hasIssues {
 	composes: input;
-	--input-border-color: var(--color--danger);
+	--input--border-color: var(--color--danger);
 }
 
 .credentialOption {
