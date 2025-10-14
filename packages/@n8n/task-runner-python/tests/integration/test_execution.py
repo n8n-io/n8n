@@ -120,6 +120,25 @@ async def test_per_item_with_explicit_json_and_binary(broker, manager):
 
 
 @pytest.mark.asyncio
+async def test_per_item_with_binary_only(broker, manager):
+    task_id = nanoid()
+    items = [{"json": {"value": 10}}]
+    code = "return {'binary': {'file': 'data'}}"
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"] == [
+        {
+            "json": {},
+            "binary": {"file": "data"},
+            "pairedItem": {"item": 0}
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_per_item_with_filtering(broker, manager):
     task_id = nanoid()
     items = [

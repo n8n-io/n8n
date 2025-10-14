@@ -228,10 +228,7 @@ class TaskExecutor:
                 if user_output is None:
                     continue
 
-                if isinstance(user_output, dict) and "json" in user_output:
-                    json_data = user_output["json"]
-                else:
-                    json_data = user_output
+                json_data = TaskExecutor._extract_json_data_per_item(user_output)
 
                 item = {"json": json_data, "pairedItem": {"item": index}}
 
@@ -249,6 +246,19 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
+    
+    @staticmethod
+    def _extract_json_data_per_item(user_output):
+        if not isinstance(user_output, dict):
+            return user_output
+
+        if "json" in user_output:
+            return user_output["json"]
+
+        if "binary" in user_output:
+            return {k: v for k, v in user_output.items() if k != "binary"}
+
+        return user_output
 
     @staticmethod
     def _put_result(
