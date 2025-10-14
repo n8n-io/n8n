@@ -25,14 +25,7 @@ function handleRegenerate() {
 <template>
 	<div :class="$style.actions">
 		<N8nIconButton icon="copy" type="tertiary" size="small" text @click="handleCopy" />
-		<N8nIconButton
-			v-if="role === 'user'"
-			icon="pen"
-			type="tertiary"
-			size="small"
-			text
-			@click="handleEdit"
-		/>
+		<N8nIconButton icon="pen" type="tertiary" size="small" text @click="handleEdit" />
 		<N8nIconButton
 			v-if="role === 'assistant'"
 			icon="refresh-cw"

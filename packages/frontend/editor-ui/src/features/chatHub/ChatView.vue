@@ -10,7 +10,12 @@ import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 import { useChatStore } from './chat.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
-import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import {
+	type ChatMessage as ChatMessageType,
+	credentialsMapSchema,
+	type CredentialsMap,
+	type Suggestion,
+} from './chat.types';
 import {
 	chatHubConversationModelSchema,
 	type ChatHubProvider,
@@ -123,6 +128,7 @@ const inputPlaceholder = computed(() => {
 });
 
 const scrollOnNewMessage = ref(true);
+const editingMessageId = ref<string>();
 
 const credentialsName = computed(() =>
 	selectedModel.value
@@ -254,6 +260,19 @@ function onSubmit(message: string) {
 function onSuggestionClick(s: Suggestion) {
 	inputRef.value?.setText(`${s.title} ${s.subtitle}`);
 }
+
+function handleStartEditMessage(messageId: string) {
+	editingMessageId.value = messageId;
+}
+
+function handleCancelEditMessage() {
+	editingMessageId.value = undefined;
+}
+
+function handleUpdateMessage(message: ChatMessageType) {
+	editingMessageId.value = undefined;
+	// TODO: trigger regenerate
+}
 </script>
 
 <template>
@@ -301,7 +320,16 @@ function onSuggestionClick(s: Suggestion) {
 			/>
 
 			<div v-else ref="messagesRef" role="log" aria-live="polite" :class="$style.messageList">
-				<ChatMessage v-for="m in chatMessages" :key="m.id" :message="m" :compact="isMobileDevice" />
+				<ChatMessage
+					v-for="message in chatMessages"
+					:key="message.id"
+					:message="message"
+					:compact="isMobileDevice"
+					:is-editing="editingMessageId === message.id"
+					@start-edit="handleStartEditMessage(message.id)"
+					@cancel-edit="handleCancelEditMessage"
+					@update="handleUpdateMessage"
+				/>
 
 				<div v-if="chatStore.isResponding" :class="[$style.message, $style.assistant]">
 					<div :class="$style.avatar">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ChatMessage } from '@/features/chatHub/chat.types';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nButton } from '@n8n/design-system';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
 import markdownLink from 'markdown-it-link-attributes';
@@ -9,17 +9,28 @@ import ChatMessageActions from './ChatMessageActions.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { ref, nextTick, watch } from 'vue';
+import { useTemplateRef } from 'vue';
 
-const { message, compact } = defineProps<{ message: ChatMessage; compact: boolean }>();
+const { message, compact, isEditing } = defineProps<{
+	message: ChatMessage;
+	compact: boolean;
+	isEditing: boolean;
+}>();
 
 const emit = defineEmits<{
-	edit: [message: ChatMessage];
+	startEdit: [];
+	cancelEdit: [];
+	update: [message: ChatMessage];
 	regenerate: [message: ChatMessage];
 }>();
 
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
+
+const editedText = ref('');
+const textareaRef = useTemplateRef('textarea');
 
 async function handleCopy() {
 	const text = messageText(message);
@@ -28,7 +39,19 @@ async function handleCopy() {
 }
 
 function handleEdit() {
-	emit('edit', message);
+	emit('startEdit');
+}
+
+function handleCancelEdit() {
+	emit('cancelEdit');
+}
+
+function handleConfirmEdit() {
+	if (message.type === 'error' || !editedText.value.trim()) {
+		return;
+	}
+
+	emit('update', { ...message, text: editedText.value });
 }
 
 function handleRegenerate() {
@@ -59,6 +82,21 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 		},
 	});
 };
+
+// Watch for isEditing prop changes to initialize edit mode
+watch(
+	() => isEditing,
+	async (editing) => {
+		if (editing) {
+			editedText.value = messageText(message);
+			await nextTick();
+			textareaRef.value?.focus();
+		} else {
+			editedText.value = '';
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -75,21 +113,43 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 			<N8nIcon :icon="message.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
 		</div>
 		<div :class="$style.content">
-			<div :class="$style.chatMessage">
-				<VueMarkdown
-					:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-					:source="messageText(message)"
-					:options="markdownOptions"
-					:plugins="[linksNewTabPlugin]"
+			<div v-if="isEditing" :class="$style.editContainer">
+				<N8nInput
+					ref="textarea"
+					v-model="editedText"
+					type="textarea"
+					:autosize="{ minRows: 3, maxRows: 20 }"
+					:class="$style.textarea"
 				/>
+				<div :class="$style.editActions">
+					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
+					<N8nButton
+						type="primary"
+						size="small"
+						:disabled="!editedText.trim()"
+						@click="handleConfirmEdit"
+					>
+						Save
+					</N8nButton>
+				</div>
 			</div>
-			<ChatMessageActions
-				:role="message.role"
-				:class="$style.actions"
-				@copy="handleCopy"
-				@edit="handleEdit"
-				@regenerate="handleRegenerate"
-			/>
+			<template v-else>
+				<div :class="$style.chatMessage">
+					<VueMarkdown
+						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
+						:source="messageText(message)"
+						:options="markdownOptions"
+						:plugins="[linksNewTabPlugin]"
+					/>
+				</div>
+				<ChatMessageActions
+					:role="message.role"
+					:class="$style.actions"
+					@copy="handleCopy"
+					@edit="handleEdit"
+					@regenerate="handleRegenerate"
+				/>
+			</template>
 		</div>
 	</div>
 </template>
@@ -166,5 +226,21 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 
 .actions {
 	margin-top: var(--spacing--2xs);
+}
+
+.editContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.textarea {
+	width: 100%;
+}
+
+.editActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 }
 </style>
