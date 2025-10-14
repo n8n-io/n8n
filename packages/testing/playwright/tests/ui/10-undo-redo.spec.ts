@@ -205,14 +205,8 @@ test.describe('Undo/Redo', () => {
 			'utf-8',
 		);
 
-		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-
-		await n8n.page.evaluate(async (data) => {
-			await navigator.clipboard.writeText(data);
-		}, workflowJson);
-
 		await n8n.canvas.canvasPane().click();
-		await n8n.canvas.hitPaste();
+		await n8n.clipboard.paste(workflowJson);
 		await n8n.canvas.clickZoomToFitButton();
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
@@ -232,14 +226,8 @@ test.describe('Undo/Redo', () => {
 			'utf-8',
 		);
 
-		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-
-		await n8n.page.evaluate(async (data) => {
-			await navigator.clipboard.writeText(data);
-		}, workflowJson);
-
 		await n8n.canvas.canvasPane().click();
-		await n8n.canvas.hitPaste();
+		await n8n.clipboard.paste(workflowJson);
 		await n8n.canvas.clickZoomToFitButton();
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
@@ -249,12 +237,8 @@ test.describe('Undo/Redo', () => {
 		// Wait for clipboard paste throttling
 		await n8n.page.waitForTimeout(1000);
 
-		await n8n.page.evaluate(async (data) => {
-			await navigator.clipboard.writeText(data);
-		}, workflowJson);
-
 		await n8n.canvas.canvasPane().click();
-		await n8n.canvas.hitPaste();
+		await n8n.clipboard.paste(workflowJson);
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(2);
