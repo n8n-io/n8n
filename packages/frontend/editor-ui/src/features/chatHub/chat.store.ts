@@ -6,14 +6,14 @@ import {
 	fetchChatModelsApi,
 	sendText,
 	fetchConversationsApi as fetchSessionsApi,
-	fetchConversationMessagesApi as fetchMessagesApi,
+	fetchSingleConversationApi as fetchMessagesApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	ChatHubConversationModel,
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
-	ChatHubConversation,
+	ChatHubSessionDto,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -23,7 +23,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const isResponding = ref(false);
 	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
-	const sessions = ref<ChatHubConversation[]>([]);
+	const sessions = ref<ChatHubSessionDto[]>([]);
+
+	const getLastMessage = (sessionId: string) => {
+		const msgs = messagesBySession.value[sessionId];
+		if (!msgs || msgs.length === 0) return null;
+		return msgs[msgs.length - 1];
+	};
 
 	async function fetchChatModels(credentialMap: CredentialsMap) {
 		loadingModels.value = true;
@@ -39,15 +45,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchMessages(sessionId: string) {
-		const messages = await fetchMessagesApi(rootStore.restApiContext, sessionId);
+		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
+		const { messages, activeMessageChain } = conversation;
 
 		messagesBySession.value = {
 			...messagesBySession.value,
-			[sessionId]: messages.map((msg) => ({
-				id: msg.id,
-				role: msg.role,
+			[sessionId]: activeMessageChain.map((id) => ({
+				id: messages[id].id,
+				role: messages[id].type === 'ai' ? 'assistant' : 'user',
 				type: 'message' as const,
-				text: msg.content,
+				text: messages[id].content,
+				key: messages[id].id,
 			})),
 		};
 	}
@@ -59,6 +67,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				...(messagesBySession.value[sessionId] ?? []),
 				{
 					id,
+					key: id,
 					role: 'user',
 					type: 'message',
 					text: content,
@@ -67,13 +76,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		};
 	}
 
-	function addAiMessage(sessionId: string, content: string, id: string) {
+	function addAiMessage(sessionId: string, content: string, id: string, key: string) {
 		messagesBySession.value = {
 			...messagesBySession.value,
 			[sessionId]: [
 				...(messagesBySession.value[sessionId] ?? []),
 				{
 					id,
+					key,
 					role: 'assistant',
 					type: 'message',
 					text: content,
@@ -82,11 +92,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		};
 	}
 
-	function appendMessage(sessionId: string, content: string, id: string) {
+	function appendMessage(sessionId: string, content: string, key: string) {
 		messagesBySession.value = {
 			...messagesBySession.value,
 			[sessionId]: (messagesBySession.value[sessionId] ?? []).map((msg) => {
-				if (msg.id === id && msg.type === 'message') {
+				if (msg.key === key && msg.type === 'message') {
 					return {
 						...msg,
 						text: msg.text + content,
@@ -99,7 +109,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	function onBeginMessage(sessionId: string, messageId: string, nodeId: string, runIndex?: number) {
 		isResponding.value = true;
-		addAiMessage(sessionId, '', `${messageId}-${nodeId}-${runIndex ?? 0}`);
+		addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
 	function onChunk(
@@ -162,6 +172,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const messageId = uuidv4();
+		const replyId = uuidv4();
+		const previousMessageId = getLastMessage(sessionId)?.id ?? null;
 
 		addUserMessage(sessionId, message, messageId);
 
@@ -171,10 +183,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model,
 				messageId,
 				sessionId,
+				replyId,
 				message,
 				credentials,
+				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, messageId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
 			onStreamDone,
 			onStreamError,
 		);

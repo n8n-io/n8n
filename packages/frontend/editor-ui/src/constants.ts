@@ -52,7 +52,6 @@ export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
-export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
@@ -360,7 +359,7 @@ export const MODAL_CLOSE = 'close';
 
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
+export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^https?:\/\/.+/i;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
