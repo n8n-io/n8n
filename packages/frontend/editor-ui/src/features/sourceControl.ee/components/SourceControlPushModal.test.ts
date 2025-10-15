@@ -146,14 +146,15 @@ describe('SourceControlPushModal', () => {
 		// Setup store with default mock to prevent automatic data loading
 		pinia = createTestingPinia();
 		sourceControlStore = mockedStore(useSourceControlStore);
-		sourceControlStore.getAggregatedStatus = vi.fn().mockResolvedValue([]);
-		sourceControlStore.pushWorkfolder = vi.fn().mockResolvedValue([]);
+		sourceControlStore.getAggregatedStatus.mockResolvedValue([]);
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings.enterprise = defaultSettings.enterprise;
 	});
 
-	it('mounts', () => {
+	it('mounts', async () => {
+		sourceControlStore.getAggregatedStatus.mockResolvedValue([]);
+
 		const { getByText } = renderModal({
 			pinia,
 			props: {
@@ -163,7 +164,10 @@ describe('SourceControlPushModal', () => {
 				},
 			},
 		});
-		expect(getByText('Commit and push changes')).toBeInTheDocument();
+
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
 	});
 
 	it('should toggle checkboxes', async () => {
@@ -190,7 +194,10 @@ describe('SourceControlPushModal', () => {
 			},
 		];
 
-		const { getByTestId, getAllByTestId } = renderModal({
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
+			pinia,
 			props: {
 				data: {
 					eventBus,
@@ -199,8 +206,17 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
+		// Wait for modal content to be visible (v-if="!isLoading" check passes)
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const files = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(files).toHaveLength(2);
+		});
+
 		const files = getAllByTestId('source-control-push-modal-file-checkbox');
-		expect(files).toHaveLength(2);
 
 		await userEvent.click(files[0]);
 		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
@@ -299,7 +315,9 @@ describe('SourceControlPushModal', () => {
 			},
 		];
 
-		const { getByTestId, getByRole } = renderModal({
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByTestId, getByRole, getByText } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -309,9 +327,18 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const submitButton = getByTestId('source-control-push-modal-submit');
+			expect(submitButton).toBeDisabled();
+		});
+
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		const commitMessage = 'commit message';
-		expect(submitButton).toBeDisabled();
 
 		expect(getByRole('alert').textContent).toContain(
 			[
@@ -360,10 +387,12 @@ describe('SourceControlPushModal', () => {
 			},
 		];
 
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
 		mockRoute.name = VIEWS.WORKFLOW;
 		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
 
-		const { getByTestId, getAllByTestId } = renderModal({
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -373,8 +402,17 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const files = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(files).toHaveLength(2);
+		});
+
 		const files = getAllByTestId('source-control-push-modal-file-checkbox');
-		expect(files).toHaveLength(2);
 
 		// The current workflow should be auto-selected now that we fixed the regression
 		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
@@ -419,7 +457,10 @@ describe('SourceControlPushModal', () => {
 			},
 		];
 
-		const { getAllByTestId } = renderModal({
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getAllByTestId, getByText } = renderModal({
+			pinia,
 			props: {
 				data: {
 					eventBus,
@@ -428,8 +469,15 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
-		const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
-		expect(workflows).toHaveLength(2);
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(workflows).toHaveLength(2);
+		});
 
 		const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
 			textContent?.includes('Credentials'),
@@ -467,7 +515,10 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			const { getByTestId, getAllByTestId } = renderModal({
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
 				props: {
 					data: {
 						eventBus,
@@ -476,7 +527,14 @@ describe('SourceControlPushModal', () => {
 				},
 			});
 
-			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
 
 			await userEvent.type(getByTestId('source-control-push-search'), '1');
 			await waitFor(() => {
@@ -511,7 +569,10 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			const { getByTestId, getAllByTestId } = renderModal({
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
 				props: {
 					data: {
 						eventBus,
@@ -520,7 +581,14 @@ describe('SourceControlPushModal', () => {
 				},
 			});
 
-			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
 
 			await userEvent.click(getByTestId('source-control-filter-dropdown'));
 
@@ -588,7 +656,10 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			const { getByTestId, getAllByTestId } = renderModal({
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
 				props: {
 					data: {
 						eventBus,
@@ -597,13 +668,27 @@ describe('SourceControlPushModal', () => {
 				},
 			});
 
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
+					textContent?.includes(name),
+				);
+				expect(tab.length).toBeGreaterThan(0);
+			});
+
 			const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
 				textContent?.includes(name),
 			);
 
 			await userEvent.click(tab[0]);
 
-			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
 
 			await userEvent.click(getByTestId('source-control-filter-dropdown'));
 
@@ -635,7 +720,10 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			const { getByTestId, getAllByTestId, queryAllByTestId } = renderModal({
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, queryAllByTestId, getByText } = renderModal({
+				pinia,
 				props: {
 					data: {
 						eventBus,
@@ -644,7 +732,14 @@ describe('SourceControlPushModal', () => {
 				},
 			});
 
-			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
 
 			await userEvent.click(getByTestId('source-control-filter-dropdown'));
 
@@ -689,9 +784,9 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			// Use the existing store instance from beforeEach
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-			const { getByTestId } = renderModal({
+			const { getByTestId, getByText } = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -699,6 +794,15 @@ describe('SourceControlPushModal', () => {
 						status,
 					},
 				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-commit')).toBeInTheDocument();
 			});
 
 			const commitInput = getByTestId('source-control-push-modal-commit');
@@ -732,9 +836,9 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			// Use the existing store instance from beforeEach
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-			const { getByTestId } = renderModal({
+			const { getByTestId, getByText } = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -742,6 +846,15 @@ describe('SourceControlPushModal', () => {
 						status,
 					},
 				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-commit')).toBeInTheDocument();
 			});
 
 			const commitInput = getByTestId('source-control-push-modal-commit');
@@ -767,12 +880,12 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			// Use the existing store instance from beforeEach
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
 			mockRoute.name = 'SOME_OTHER_VIEW';
 			mockRoute.params = { name: 'differentId' };
 
-			const { getByTestId, getAllByTestId } = renderModal({
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -782,11 +895,20 @@ describe('SourceControlPushModal', () => {
 				},
 			});
 
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const files = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(files).toHaveLength(1);
+			});
+
 			const commitInput = getByTestId('source-control-push-modal-commit');
 			const commitMessage = 'Test commit message';
 
 			const files = getAllByTestId('source-control-push-modal-file-checkbox');
-			expect(files).toHaveLength(1);
 			expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
 
 			await userEvent.type(commitInput, commitMessage);
