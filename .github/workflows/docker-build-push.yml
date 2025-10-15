@@ -577,3 +577,16 @@ jobs:
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
     secrets: inherit
+
+  notify-on-failure:
+    name: Notify Cats on nightly build failure
+    runs-on: ubuntu-latest
+    needs: [build-and-push-docker]
+    if: needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
+    steps:
+      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ needs.build-and-push-docker.result }}
+          channel: '#team-catalysts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

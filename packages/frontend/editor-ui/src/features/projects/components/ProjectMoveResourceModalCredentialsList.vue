@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { RouteLocationNamedRaw } from 'vue-router';
-import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { VIEWS } from '@/constants';
 

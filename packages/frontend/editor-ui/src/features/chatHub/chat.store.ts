@@ -4,7 +4,9 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
-	sendText,
+	sendMessageApi,
+	editMessageApi,
+	regenerateMessageApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
 } from './chat.api';
@@ -14,6 +16,8 @@ import type {
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubSessionDto,
+	ChatMessageId,
+	ChatSessionId,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -21,11 +25,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const streamingMessageId = ref<string>();
+	const ongoingStreaming = ref<{ messageId: string; replyToMessageId: string }>();
 	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
 	const sessions = ref<ChatHubSessionDto[]>([]);
 
-	const isResponding = computed(() => streamingMessageId.value !== undefined);
+	const isResponding = computed(() => ongoingStreaming.value !== undefined);
 
 	const getLastMessage = (sessionId: string) => {
 		const msgs = messagesBySession.value[sessionId];
@@ -109,8 +113,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		};
 	}
 
-	function onBeginMessage(sessionId: string, messageId: string, nodeId: string, runIndex?: number) {
-		streamingMessageId.value = messageId;
+	function onBeginMessage(
+		sessionId: string,
+		messageId: string,
+		replyToMessageId: string,
+		nodeId: string,
+		runIndex?: number,
+	) {
+		ongoingStreaming.value = { messageId, replyToMessageId };
 		addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
@@ -126,16 +136,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		streamingMessageId.value = undefined;
+		ongoingStreaming.value = undefined;
 	}
 
-	function onStreamMessage(sessionId: string, message: StructuredChunk, messageId: string) {
+	function onStreamMessage(
+		sessionId: string,
+		message: StructuredChunk,
+		messageId: string,
+		replyToMessageId: string,
+	) {
 		const nodeId = message.metadata?.nodeId || 'unknown';
 		const runIndex = message.metadata?.runIndex;
 
 		switch (message.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, nodeId, runIndex);
+				onBeginMessage(sessionId, messageId, replyToMessageId, nodeId, runIndex);
 				break;
 			case 'item':
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
@@ -158,17 +173,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// addAssistantMessages(response.messages);
 	}
 
-	function onStreamDone() {
-		streamingMessageId.value = undefined;
+	async function onStreamDone() {
+		ongoingStreaming.value = undefined;
+		await fetchSessions(); // update the conversation list
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onStreamError(_e: Error) {
-		streamingMessageId.value = undefined;
+		ongoingStreaming.value = undefined;
 	}
 
-	function askAI(
-		sessionId: string,
+	function sendMessage(
+		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
@@ -179,7 +195,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		addUserMessage(sessionId, message, messageId);
 
-		sendText(
+		sendMessageApi(
 			rootStore.restApiContext,
 			{
 				model,
@@ -190,7 +206,67 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			onStreamDone,
+			onStreamError,
+		);
+	}
+
+	function editMessage(
+		sessionId: ChatSessionId,
+		editId: ChatMessageId,
+		message: string,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
+	) {
+		const messageId = uuidv4();
+		const replyId = uuidv4();
+
+		addUserMessage(sessionId, message, messageId);
+
+		// TODO: remove descendants of the message being edited
+		// or better yet, turn the frontend chat into a graph and
+		// maintain the visible active chain, and this would just switch to that branch.
+
+		editMessageApi(
+			rootStore.restApiContext,
+			{
+				model,
+				messageId,
+				sessionId,
+				replyId,
+				editId,
+				message,
+				credentials,
+			},
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			onStreamDone,
+			onStreamError,
+		);
+	}
+
+	function regenerateMessage(
+		sessionId: ChatSessionId,
+		retryId: ChatMessageId,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
+	) {
+		const replyId = uuidv4();
+
+		// TODO: remove descendants of the message being retried
+		// or better yet, turn the frontend chat into a graph and
+		// maintain the visible active chain, and this would just switch to that branch.
+
+		regenerateMessageApi(
+			rootStore.restApiContext,
+			{
+				model,
+				sessionId,
+				retryId,
+				replyId,
+				credentials,
+			},
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, retryId),
 			onStreamDone,
 			onStreamError,
 		);
@@ -212,24 +288,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: call the endpoint
 	}
 
-	async function updateChatMessage(_sessionId: string, _messageId: string, _content: string) {
-		// TODO: call the endpoint
-	}
-
 	return {
 		models,
 		loadingModels,
 		messagesBySession,
 		isResponding,
-		streamingMessageId,
+		ongoingStreaming,
 		sessions,
 		fetchChatModels,
-		askAI,
+		sendMessage,
+		editMessage,
+		regenerateMessage,
 		addUserMessage,
 		fetchSessions,
 		fetchMessages,
 		renameSession,
 		deleteSession,
-		updateChatMessage,
 	};
 });

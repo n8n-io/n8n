@@ -105,8 +105,7 @@ onMounted(async () => {
 					<ChatSessionMenuItem
 						v-for="session in group.sessions"
 						:key="session.id"
-						:session-id="session.id"
-						:label="session.label"
+						:session="session"
 						:active="currentSessionId === session.id"
 						:is-renaming="renamingSessionId === session.id"
 						@start-rename="handleStartRename"
