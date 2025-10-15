@@ -5,7 +5,7 @@ services:
     plan: free
     branch: main
     buildCommand: yarn install
-    startCommand: yarn start
+    startCommand: n8n start
     envVars:
       - key: N8N_BASIC_AUTH_ACTIVE
         value: "true"
@@ -15,7 +15,7 @@ services:
         value: "change-this-password"
       - key: N8N_ENCRYPTION_KEY
         value: "my-super-secret-key"
-      - key: N8N_HOST
-        value: "Futgtg9-n8n.onrender.com"
-      - key: N8N_PORT
-        value: "10000"
+      - key: WEBHOOK_URL_BASE
+        value: "https://Futgtg9-n8n.onrender.com"
+      - key: GENERIC_TIMEZONE
+        value: "Asia/Taipei"
