@@ -52,7 +52,6 @@ import type {
 	RegenerateMessagePayload,
 	EditMessagePayload,
 	MessageRecord,
-	BaseMessagePayload,
 	ModelWithCredentials,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
@@ -341,15 +340,15 @@ export class ChatHubService {
 	}
 
 	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
-		const { sessionId, messageId, replyId } = payload;
+		const { sessionId, messageId, replyId, message } = payload;
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, payload, selectedModel);
+		const session = await this.getChatSession(user, sessionId, selectedModel, true, message);
 
-		const turnId = payload.messageId;
+		const turnId = messageId;
 		await this.saveHumanMessage(payload, user, turnId, payload.previousMessageId, selectedModel);
 
 		const history = session.messages ?? [];
@@ -358,7 +357,7 @@ export class ChatHubService {
 			user,
 			session.id,
 			history,
-			payload.message,
+			message,
 			payload.credentials,
 			payload.model,
 		);
@@ -383,7 +382,7 @@ export class ChatHubService {
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, payload, selectedModel, false);
+		const session = await this.getChatSession(user, sessionId, selectedModel);
 		const messages = session.messages ?? [];
 		const messageToEdit = await this.getChatMessage(session.id, editId);
 
@@ -451,7 +450,7 @@ export class ChatHubService {
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, payload, selectedModel, false);
+		const session = await this.getChatSession(user, sessionId, selectedModel);
 		const messages = session.messages ?? [];
 		const messageToRetry = await this.getChatMessage(session.id, retryId);
 
@@ -762,13 +761,14 @@ export class ChatHubService {
 
 	private async getChatSession(
 		user: User,
-		payload: BaseMessagePayload,
+		sessionId: ChatSessionId,
 		selectedModel: ModelWithCredentials,
-		initialize: boolean = true,
+		initialize: boolean = false,
+		title: string | null = null,
 	) {
 		// TODO: Handle session ID conflicts better (different user, same ID)
 
-		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
+		const existing = await this.sessionRepository.getOneById(sessionId, user.id);
 		if (existing) {
 			return existing;
 		} else if (!initialize) {
@@ -776,9 +776,9 @@ export class ChatHubService {
 		}
 
 		return await this.sessionRepository.createChatSession({
-			id: payload.sessionId,
+			id: sessionId,
 			ownerId: user.id,
-			title: 'New Chat',
+			title: title ?? 'New Chat',
 			...selectedModel,
 		});
 	}

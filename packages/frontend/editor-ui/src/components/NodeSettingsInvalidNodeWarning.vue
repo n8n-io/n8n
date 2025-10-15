@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useInstallNode } from '@/composables/useInstallNode';
+import { useInstallNode } from '@/features/communityNodes/composables/useInstallNode';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, CUSTOM_NODES_DOCS_URL } from '@/constants';
+import { CUSTOM_NODES_DOCS_URL } from '@/constants';
+import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -13,7 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import { isCommunityPackageName } from 'n8n-workflow';
 import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
-import ContactAdministratorToInstall from './ContactAdministratorToInstall.vue';
+import ContactAdministratorToInstall from '@/features/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from './Node/NodeCreator/utils';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();

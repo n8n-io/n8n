@@ -1,10 +1,10 @@
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from '../communityNodes.store';
 import { useUsersStore } from '@/features/users/users.store';
 import { isCommunityPackageName } from 'n8n-workflow';
 import {
 	type ExtendedPublicInstalledPackage,
 	fetchInstalledPackageInfo,
-} from '@/utils/communityNodeUtils';
+} from '../communityNodes.utils';
 import { computed, type MaybeRefOrGetter, onMounted, ref, watch, toValue } from 'vue';
 
 export function useInstalledCommunityPackage(nodeTypeName?: MaybeRefOrGetter<string | undefined>) {

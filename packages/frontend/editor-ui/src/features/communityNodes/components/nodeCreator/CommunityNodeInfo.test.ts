@@ -1,11 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
-import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
+import { useInstalledCommunityPackage } from '../../composables/useInstalledCommunityPackage';
+import type { ExtendedPublicInstalledPackage } from '../../communityNodes.utils';
 import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { type ComputedRef, ref } from 'vue';
-import type { CommunityNodeDetails } from '../composables/useViewStacks';
+import type { CommunityNodeDetails } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
 
 vi.mock('./utils', () => ({
@@ -26,7 +26,7 @@ const defaultUseInstalledCommunityPackage = {
 	initInstalledPackage: vi.fn(),
 } as unknown as ReturnType<typeof useInstalledCommunityPackage>;
 
-vi.mock('@/composables/useInstalledCommunityPackage', () => ({
+vi.mock('../../composables/useInstalledCommunityPackage', () => ({
 	useInstalledCommunityPackage: vi.fn(() => defaultUseInstalledCommunityPackage),
 }));
 
@@ -44,7 +44,7 @@ vi.mock('@/features/users/users.store', () => ({
 	})),
 }));
 
-vi.mock('../composables/useViewStacks', () => ({
+vi.mock('@/components/Node/NodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(),
 }));
 
@@ -94,7 +94,9 @@ describe('CommunityNodeInfo', () => {
 		originalFetch = global.fetch;
 		global.fetch = vi.fn();
 
-		const { useViewStacks } = await import('../composables/useViewStacks');
+		const { useViewStacks } = await import(
+			'@/components/Node/NodeCreator/composables/useViewStacks'
+		);
 		vi.mocked(useViewStacks).mockReturnValue({
 			activeViewStack: defaultViewStack,
 		} as ReturnType<typeof useViewStacks>);
@@ -135,7 +137,9 @@ describe('CommunityNodeInfo', () => {
 	});
 
 	it('should display update notice, should show verified badge for older versions', async () => {
-		const { useViewStacks } = await import('../composables/useViewStacks');
+		const { useViewStacks } = await import(
+			'@/components/Node/NodeCreator/composables/useViewStacks'
+		);
 		vi.mocked(useViewStacks).mockReturnValue({
 			activeViewStack: {
 				...defaultViewStack,
@@ -179,7 +183,9 @@ describe('CommunityNodeInfo', () => {
 	});
 
 	it('should NOT display update notice for unverified update', async () => {
-		const { useViewStacks } = await import('../composables/useViewStacks');
+		const { useViewStacks } = await import(
+			'@/components/Node/NodeCreator/composables/useViewStacks'
+		);
 		vi.mocked(useViewStacks).mockReturnValue({
 			activeViewStack: {
 				...defaultViewStack,

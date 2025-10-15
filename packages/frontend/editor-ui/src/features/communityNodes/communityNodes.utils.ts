@@ -1,4 +1,4 @@
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from './communityNodes.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type PublicInstalledPackage } from 'n8n-workflow';
 import semver from 'semver';
