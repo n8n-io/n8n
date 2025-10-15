@@ -2,7 +2,7 @@
 import type { Suggestion } from '@/features/chatHub/chat.types';
 import { SUGGESTIONS } from '@/features/chatHub/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { N8nHeading, N8nText } from '@n8n/design-system';
 import Logo from '@n8n/design-system/components/N8nLogo/Logo.vue';
 import { computed } from 'vue';

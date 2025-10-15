@@ -30,7 +30,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -55,7 +55,15 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { saveAs } from 'file-saver';
-import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -442,6 +450,97 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
+async function handleArchiveWorkflow() {
+	if (props.active) {
+		const archiveConfirmed = await message.confirm(
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+				interpolate: { workflowName: props.name },
+			}),
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+				),
+				cancelButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+				),
+			},
+		);
+
+		if (archiveConfirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
+	try {
+		await workflowsStore.archiveWorkflow(props.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+		return;
+	}
+
+	uiStore.stateIsDirty = false;
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+
+	await router.push({ name: VIEWS.WORKFLOWS });
+}
+
+async function handleUnarchiveWorkflow() {
+	await workflowsStore.unarchiveWorkflow(props.id);
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+}
+
+async function handleDeleteWorkflow() {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
+			interpolate: { workflowName: props.name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsStore.deleteWorkflow(props.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
+		return;
+	}
+	uiStore.stateIsDirty = false;
+	// Reset tab title since workflow is deleted.
+	documentTitle.reset();
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+
+	await router.push({ name: VIEWS.WORKFLOWS });
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -492,7 +591,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
-			importFileRef.value?.click();
+			handleImportWorkflowFromFile();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
@@ -528,95 +627,15 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
-			if (props.active) {
-				const archiveConfirmed = await message.confirm(
-					locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
-						interpolate: { workflowName: props.name },
-					}),
-					locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
-					{
-						type: 'warning',
-						confirmButtonText: locale.baseText(
-							'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
-						),
-						cancelButtonText: locale.baseText(
-							'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
-						),
-					},
-				);
-
-				if (archiveConfirmed !== MODAL_CONFIRM) {
-					return;
-				}
-			}
-
-			try {
-				await workflowsStore.archiveWorkflow(props.id);
-			} catch (error) {
-				toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
-				return;
-			}
-
-			uiStore.stateIsDirty = false;
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
-
-			await router.push({ name: VIEWS.WORKFLOWS });
-
+			await handleArchiveWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
-			await workflowsStore.unarchiveWorkflow(props.id);
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
+			await handleUnarchiveWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
-			const deleteConfirmed = await message.confirm(
-				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-					interpolate: { workflowName: props.name },
-				}),
-				locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
-					),
-					cancelButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
-					),
-				},
-			);
-
-			if (deleteConfirmed !== MODAL_CONFIRM) {
-				return;
-			}
-
-			try {
-				await workflowsStore.deleteWorkflow(props.id);
-			} catch (error) {
-				toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
-				return;
-			}
-			uiStore.stateIsDirty = false;
-			// Reset tab title since workflow is deleted.
-			documentTitle.reset();
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
-
-			await router.push({ name: VIEWS.WORKFLOWS });
+			await handleDeleteWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
@@ -717,6 +736,28 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		});
 	}
 };
+
+const handleImportWorkflowFromFile = () => {
+	importFileRef.value?.click();
+};
+
+onMounted(() => {
+	nodeViewEventBus.on('importWorkflowFromFile', handleImportWorkflowFromFile);
+	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
+	nodeViewEventBus.on('unarchiveWorkflow', handleUnarchiveWorkflow);
+	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
+	nodeViewEventBus.on('renameWorkflow', onNameToggle);
+	nodeViewEventBus.on('addTag', onTagsEditEnable);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('importWorkflowFromFile', handleImportWorkflowFromFile);
+	nodeViewEventBus.off('archiveWorkflow', handleArchiveWorkflow);
+	nodeViewEventBus.off('unarchiveWorkflow', handleUnarchiveWorkflow);
+	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
+	nodeViewEventBus.off('renameWorkflow', onNameToggle);
+	nodeViewEventBus.off('addTag', onTagsEditEnable);
+});
 
 const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
 	if (!value.active) {

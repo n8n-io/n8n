@@ -209,10 +209,18 @@ defineExpose({ open, close });
 	display: flex;
 	text-align: center;
 	margin-right: var(--spacing--2xs);
+	flex-grow: 0;
+	flex-shrink: 0;
+	margin-right: calc(-1 * var(--spacing--2xs));
 
 	svg {
 		width: 1.2em !important;
 	}
+}
+
+.label {
+	flex-grow: 1;
+	flex-shrink: 1;
 }
 
 .checkIcon {

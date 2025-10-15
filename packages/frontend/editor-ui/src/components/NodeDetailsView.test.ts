@@ -4,7 +4,7 @@ import { waitFor, fireEvent } from '@testing-library/vue';
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import { VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

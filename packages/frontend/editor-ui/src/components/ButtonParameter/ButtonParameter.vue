@@ -337,7 +337,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 }
 .disabled {
 	.meta {
-		background-color: var(--fill-disabled);
+		background-color: var(--input--color--background--disabled);
 	}
 }
 </style>
