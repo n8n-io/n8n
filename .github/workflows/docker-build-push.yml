@@ -586,7 +586,7 @@ jobs:
     steps:
       - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         with:
-          status: ${{ job.status }}
+          status: ${{ needs.build-and-push-docker.result }}
           channel: '#team-catalysts'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
