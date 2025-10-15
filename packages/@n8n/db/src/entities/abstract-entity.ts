@@ -61,11 +61,8 @@ function mixinStringId<T extends Class<{}, any[]>>(base: T) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mixinTimestamps<T extends Class<{}, any[]>>(base: T) {
+function mixinUpdatedAt<T extends Class<{}, any[]>>(base: T) {
 	class Derived extends base {
-		@CreateDateColumn(tsColumnOptions)
-		createdAt: Date;
-
 		@UpdateDateColumn(tsColumnOptions)
 		updatedAt: Date;
 
@@ -89,6 +86,7 @@ function mixinCreatedAt<T extends Class<{}, any[]>>(base: T) {
 class BaseEntity {}
 
 export const WithStringId = mixinStringId(BaseEntity);
-export const WithTimestamps = mixinTimestamps(BaseEntity);
-export const WithTimestampsAndStringId = mixinStringId(WithTimestamps);
 export const WithCreatedAt = mixinCreatedAt(BaseEntity);
+export const WithUpdatedAt = mixinUpdatedAt(BaseEntity);
+export const WithTimestamps = mixinCreatedAt(mixinUpdatedAt(BaseEntity));
+export const WithTimestampsAndStringId = mixinStringId(WithTimestamps);

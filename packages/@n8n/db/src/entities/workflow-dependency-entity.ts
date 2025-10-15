@@ -15,8 +15,8 @@ export type DependencyType = 'credential' | 'nodeType' | 'webhookPath' | 'workfl
 
 @Entity({ name: 'workflow_dependency' })
 export class WorkflowDependency extends WithCreatedAt {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
+	@PrimaryGeneratedColumn()
+	id: number;
 
 	/**
 	 * The ID of the workflow the dependency belongs to.

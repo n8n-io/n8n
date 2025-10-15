@@ -4,7 +4,7 @@ export class CreateWorkflowDependencyTable1760314000000 implements ReversibleMig
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('workflow_dependency')
 			.withColumns(
-				column('id').uuid.primary,
+				column('id').int.primary.autoGenerate2,
 				column('workflowId').varchar(36).notNull,
 				column('workflowVersionId').int.notNull.comment('Version of the workflow'),
 				column('dependencyType')
