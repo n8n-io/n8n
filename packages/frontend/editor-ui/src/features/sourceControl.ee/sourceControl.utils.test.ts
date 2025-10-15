@@ -8,6 +8,7 @@ import {
 import type { useToast } from '@/composables/useToast';
 
 import { SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
+import { Router } from 'vue-router';
 
 describe('source control utils', () => {
 	describe('getStatusText()', () => {
@@ -39,7 +40,11 @@ describe('source control utils', () => {
 	describe('notifyUserAboutPullWorkFolderOutcome()', () => {
 		it('should show up to date notification when there are no changes', async () => {
 			const toast = { showMessage: vi.fn() } as unknown as ReturnType<typeof useToast>;
-			await notifyUserAboutPullWorkFolderOutcome([], toast);
+			const router = {
+				push: vi.fn(),
+				resolve: vi.fn().mockReturnValue({ href: '/test' }),
+			} as unknown as Router;
+			await notifyUserAboutPullWorkFolderOutcome([], toast, router);
 
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -50,6 +55,10 @@ describe('source control utils', () => {
 
 		it('should show granular feedback', async () => {
 			const toast = { showToast: vi.fn() } as unknown as ReturnType<typeof useToast>;
+			const router = {
+				push: vi.fn(),
+				resolve: vi.fn().mockReturnValue({ href: '/test' }),
+			} as unknown as Router;
 			await notifyUserAboutPullWorkFolderOutcome(
 				[
 					{
@@ -94,6 +103,7 @@ describe('source control utils', () => {
 					},
 				],
 				toast,
+				router,
 			);
 
 			expect(toast.showToast).toHaveBeenNthCalledWith(
