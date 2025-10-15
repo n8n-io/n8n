@@ -29,7 +29,7 @@ function handleSubmitForm() {
 function handleKeydownTextarea(e: KeyboardEvent) {
 	const trimmed = message.value.trim();
 
-	if (e.key === 'Enter' && !e.shiftKey && trimmed) {
+	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();
 		emit('submit', trimmed);
 	}
