@@ -56,9 +56,14 @@ export type JSONRPCRequest = {
 
 // Telemetry payloads
 export type UserConnectedToMCPEventPayload = {
-	mcp_connection_status: 'success' | 'error';
 	user_id?: string;
-	error?: string;
 	client_name?: string;
 	client_version?: string;
+	mcp_connection_status: 'success' | 'error';
+	error?: string;
+};
+
+export type UserCalledMCPToolEventPayload = {
+	tool_name: string;
+	parameters?: Record<string, unknown>;
 };

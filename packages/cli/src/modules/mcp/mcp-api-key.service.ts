@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
+import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
 import { getClientInfo } from './mcp.utils';
 
@@ -154,15 +155,18 @@ export class McpServerApiKeyService {
 	}
 
 	private responseWithUnauthorized(res: Response, req: Request) {
+		this.trackUnauthorizedEvent(req);
+		res.status(401).send({ message: UNAUTHORIZED_ERROR_MESSAGE });
+	}
+
+	private trackUnauthorizedEvent(req: Request) {
 		const clientInfo = getClientInfo(req);
-		const telemetryPayload: UserConnectedToMCPEventPayload = {
+		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, {
 			mcp_connection_status: 'error',
-			error: 'Unauthorized',
+			error: UNAUTHORIZED_ERROR_MESSAGE,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
-		};
-		this.telemetry.track('User Connected to MCP', telemetryPayload);
-		res.status(401).send({ message: 'Unauthorized' });
+		});
 	}
 
 	async getOrCreateApiKey(user: User) {
