@@ -441,9 +441,8 @@ export class JsTaskRunner extends TaskRunner {
 		if ('json' in result) return result.json;
 
 		if ('binary' in result) {
-			// Exclude binary to prevent duplication
-			const { binary, ...rest } = result as Record<string, IDataObject>;
-			return rest;
+			// Pick only json property to prevent metadata duplication
+			return (result as INodeExecutionData).json ?? {};
 		}
 
 		return result;

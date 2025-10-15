@@ -922,6 +922,24 @@ describe('JsTaskRunner', () => {
 					customData: undefined,
 				});
 			});
+
+			it('should not include metadata properties in json when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } }, pairedItem: 1 }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
 		});
 
 		describe('chunked execution', () => {
