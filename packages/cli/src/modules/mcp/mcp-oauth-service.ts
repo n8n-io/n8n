@@ -184,6 +184,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		client: OAuthClientInformationFull,
 		authorizationCode: string,
 	): Promise<string> {
+		console.log('Challenging for authorization code', { clientId: client.client_id });
 		// Find the authorization code record
 		const authRecord = await this.authorizationCodeRepository.findOne({
 			where: {
@@ -211,6 +212,8 @@ export class McpOAuthService implements OAuthServerProvider {
 		codeVerifier?: string,
 		redirectUri?: string,
 	): Promise<OAuthTokens> {
+		console.log('exchangeAuthorizationCode', { clientId: client.client_id });
+
 		// Find the authorization code record
 		const authRecord = await this.authorizationCodeRepository.findOne({
 			where: {
@@ -256,14 +259,18 @@ export class McpOAuthService implements OAuthServerProvider {
 		const accessToken = randomBytes(32).toString('hex');
 		const refreshToken = randomBytes(32).toString('hex');
 
+		try {
+			await this.accessTokenRepository.save({
+				token: accessToken,
+				clientId: client.client_id,
+				userId: authRecord.userId,
+				// expiresAt: Date.now() + 3600 * 1000, // 1 hour
+				revoked: false,
+			});
+		} catch (e) {
+			console.log(e);
+		}
 		// Save access token
-		await this.accessTokenRepository.save({
-			token: accessToken,
-			clientId: client.client_id,
-			userId: authRecord.userId,
-			expiresAt: Date.now() + 3600 * 1000, // 1 hour
-			revoked: false,
-		});
 
 		// Save refresh token
 		await this.refreshTokenRepository.save({
@@ -445,10 +452,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			redirectUrl.searchParams.set('error', 'access_denied');
 			redirectUrl.searchParams.set('error_description', 'User denied the authorization request');
 
-			if (authRecord.state !== null) {
-				redirectUrl.searchParams.set('state', authRecord.state);
-			}
-
 			// Clean up the pending authorization
 			await this.authorizationCodeRepository.remove(authRecord);
 		} else {
@@ -456,19 +459,15 @@ export class McpOAuthService implements OAuthServerProvider {
 			await this.userConsentRepository.save({
 				userId,
 				clientId: authRecord.clientId,
+				grantedAt: Date.now(),
 			});
 
 			// Generate final authorization code
-			const code = randomBytes(32).toString('hex');
-			authRecord.code = code;
-			authRecord.expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+			// const code = randomBytes(32).toString('hex');
+			// authRecord.code = code;
 			await this.authorizationCodeRepository.save(authRecord);
 
-			redirectUrl.searchParams.set('code', code);
-
-			if (authRecord.state !== null) {
-				redirectUrl.searchParams.set('state', authRecord.state);
-			}
+			redirectUrl.searchParams.set('code', authRecord.code);
 		}
 
 		this.logger.info('Consent decision handled', {

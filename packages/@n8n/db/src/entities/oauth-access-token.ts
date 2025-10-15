@@ -22,9 +22,9 @@ export class AccessToken {
 	@Column({ type: String })
 	userId: string;
 
-	@Index()
-	@Column({ type: 'int' })
-	expiresAt: number;
+	// @Index()
+	// @Column({ type: 'int' })
+	// expiresAt: number;
 
 	@Column({ type: Boolean, default: false })
 	revoked: boolean;
