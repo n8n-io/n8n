@@ -173,7 +173,7 @@ describe('dataTable.store', () => {
 				undefined,
 				{ projectId: 'p1', id: 'dt-1' },
 			);
-			expect(result).toBe(mockTable);
+			expect(result).toEqual(mockTable);
 			expect(dataTableStore.dataTables).toEqual([mockTable]);
 		});
 

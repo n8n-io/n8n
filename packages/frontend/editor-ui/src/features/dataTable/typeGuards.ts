@@ -12,7 +12,7 @@ export const isDataTableValue = (value: unknown): value is DataTableValue => {
 		typeof value === 'number' ||
 		typeof value === 'boolean' ||
 		value instanceof Date ||
-		typeof value === 'object'
+		(typeof value === 'object' && value !== null && !Array.isArray(value))
 	);
 };
 
