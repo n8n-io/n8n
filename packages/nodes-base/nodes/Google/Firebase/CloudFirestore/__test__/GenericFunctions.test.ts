@@ -98,7 +98,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 
 			it('should include body for POST requests', async () => {
 				const mockResponse = { success: true };
-				const requestBody = { name: 'test', value: 'data' };
+				const requestBody = { name: 'Test', value: 'data' };
 				mockRequestWithAuth.mockResolvedValue(mockResponse);
 
 				await googleApiRequest.call(mockExecuteFunctions, 'POST', '/test', requestBody);
