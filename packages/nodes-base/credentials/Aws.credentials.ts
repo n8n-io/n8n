@@ -1,4 +1,3 @@
-import { sign } from 'aws4';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -7,7 +6,11 @@ import type {
 } from 'n8n-workflow';
 
 import type { AwsIamCredentialsType, AWSRegion } from './common/aws/types';
-import { awsCredentialsTest, awsGetSignInOptionsAndUpdateRequest } from './common/aws/utils';
+import {
+	awsCredentialsTest,
+	awsGetSignInOptionsAndUpdateRequest,
+	signOptions,
+} from './common/aws/utils';
 import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 
 export class Aws implements ICredentialType {
@@ -92,21 +95,7 @@ export class Aws implements ICredentialType {
 				: undefined,
 		};
 
-		try {
-			sign(signOpts, securityHeaders);
-		} catch (err) {
-			console.error(err);
-		}
-		const options: IHttpRequestOptions = {
-			...requestOptions,
-			headers: signOpts.headers,
-			method,
-			url,
-			body: signOpts.body,
-			qs: undefined, // override since it's already in the url
-		};
-
-		return options;
+		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
 	test = awsCredentialsTest;

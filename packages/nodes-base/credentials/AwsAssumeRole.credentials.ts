@@ -1,4 +1,3 @@
-import { sign } from 'aws4';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -13,10 +12,8 @@ import {
 	assumeRole,
 	awsCredentialsTest,
 	awsGetSignInOptionsAndUpdateRequest,
+	signOptions,
 } from './common/aws/utils';
-
-import { NodesConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 
 export class AwsAssumeRole implements ICredentialType {
 	name = 'awsAssumeRole';
@@ -28,13 +25,6 @@ export class AwsAssumeRole implements ICredentialType {
 	icon = { light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' } as const;
 
 	properties: INodeProperties[] = [
-		{
-			displayName:
-				'This credentials is disabled by default and must be explicitly enabled by setting <code>N8N_AWS_ASSUME_ROLE_CREDENTIALS_ENABLED</code> environment variable to "true", please see the <a href="https://docs.n8n.io/integrations/credentials/awsassumerole/">documentation</a> for more information.',
-			name: 'test',
-			type: 'notice',
-			default: '',
-		},
 		awsRegionProperty,
 		{
 			displayName: 'Role ARN',
@@ -49,7 +39,7 @@ export class AwsAssumeRole implements ICredentialType {
 			displayName: 'External ID',
 			name: 'externalId',
 			description:
-				"External ID for cross-account role assumption (should be required by your role's trust policy). This really should be generated automatically by n8n but there is not a way to do this automatically. Given this limitation, **you should treat this value as a secret and not share it with any other users of this n8n instance.** For more information, see https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html",
+				"External ID for cross-account role assumption (should be required by your role's trust policy)",
 			type: 'string',
 			required: true,
 			default: '',
@@ -60,36 +50,35 @@ export class AwsAssumeRole implements ICredentialType {
 		{
 			displayName: 'Role Session Name',
 			name: 'roleSessionName',
-			description: 'Name for the role session (required, defaults to n8n-session)',
+			description: 'Name for the role session',
 			type: 'string',
 			required: true,
 			default: 'n8n-session',
 		},
 		{
-			displayName: 'Use System Credentials for STS Call',
+			displayName: 'Use System Credentials',
 			name: 'useSystemCredentialsForRole',
 			description:
-				'Use system credentials (environment variables, container role, etc.) to call STS.AssumeRole. If system credentials are not configured by your administrator, you must provide an access key id and secret access key below that has the necessary permissions to assume the role.',
+				'Use system credentials (environment variables, container role, etc.) to call STS.AssumeRole. Must be explicitly enabled and configured.',
 			type: 'boolean',
 			default: false,
 		},
 		{
-			displayName: 'Temporary STS Credentials',
-			name: 'temporaryStsCredentials',
-			description: 'Support for temporary credentials for the STS.AssumeRole call',
-			type: 'boolean',
+			displayName:
+				'Access to AWS system credentials is disabled by default and must be explicitly enabled. See <a href="https://docs.n8n.io/integrations/credentials/awsassumerole/">documentation</a> for more information.',
+			name: 'test',
+			type: 'notice',
+			default: '',
 			displayOptions: {
 				show: {
-					useSystemCredentialsForRole: [false],
+					useSystemCredentialsForRole: [true],
 				},
 			},
-			default: false,
 		},
 		{
 			displayName: 'STS Access Key ID',
 			name: 'stsAccessKeyId',
-			description:
-				'Access Key ID to use for the STS.AssumeRole call (only if not using system credentials)',
+			description: 'Access Key ID to use for the STS.AssumeRole call',
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -103,10 +92,9 @@ export class AwsAssumeRole implements ICredentialType {
 			},
 		},
 		{
-			displayName: 'STS Secret Access Key',
+			displayName: 'STS Access Key Secret',
 			name: 'stsSecretAccessKey',
-			description:
-				'Secret Access Key to use for the STS.AssumeRole call (only if not using system credentials)',
+			description: 'Secret Access Key to use for the STS.AssumeRole call',
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -120,15 +108,13 @@ export class AwsAssumeRole implements ICredentialType {
 			},
 		},
 		{
-			displayName: 'STS Session Token',
+			displayName: 'STS Session Token (optional)',
 			name: 'stsSessionToken',
-			description:
-				'Session Token to use for the STS.AssumeRole call (only needed when using temporary STS credentials)',
+			description: 'Session Token to use for the STS.AssumeRole call',
 			type: 'string',
 			displayOptions: {
 				show: {
 					useSystemCredentialsForRole: [false],
-					temporaryStsCredentials: [true],
 				},
 			},
 			default: '',
@@ -143,11 +129,6 @@ export class AwsAssumeRole implements ICredentialType {
 		decryptedCredentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		if (!Container.get(NodesConfig).awsAssumeRoleCredentialsEnabled) {
-			throw new ApplicationError(
-				'AWS Assume Role credentials are not enabled, contact your administrator.',
-			);
-		}
 		const credentials = decryptedCredentials as AwsAssunmeRoleCredentialsType;
 		const service = requestOptions.qs?.service as string;
 		const path = (requestOptions.qs?.path as string) ?? '';
@@ -159,7 +140,6 @@ export class AwsAssumeRole implements ICredentialType {
 			delete requestOptions.qs._region;
 		}
 
-		// Handle role assumption if enabled
 		let finalCredentials = credentials;
 		let securityHeaders: {
 			accessKeyId: string;
@@ -195,21 +175,7 @@ export class AwsAssumeRole implements ICredentialType {
 			region,
 		);
 
-		try {
-			sign(signOpts, securityHeaders);
-		} catch (err) {
-			console.error(err);
-		}
-		const options: IHttpRequestOptions = {
-			...requestOptions,
-			headers: signOpts.headers,
-			method,
-			url,
-			body: signOpts.body,
-			qs: undefined, // override since it's already in the url
-		};
-
-		return options;
+		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
 	test = awsCredentialsTest;

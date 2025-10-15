@@ -228,3 +228,9 @@ export type AwsAssunmeRoleCredentialsType = AwsCredentialsTypeBase & {
 	stsSecretAccessKey?: string;
 	stsSessionToken?: string;
 };
+
+export type AwsSecurityHeaders = {
+	accessKeyId: string;
+	secretAccessKey: string;
+	sessionToken: string | undefined;
+};

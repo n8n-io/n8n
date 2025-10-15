@@ -1,5 +1,6 @@
 import {
 	ApplicationError,
+	type IHttpRequestMethods,
 	isObjectEmpty,
 	type ICredentialTestRequest,
 	type IDataObject,
@@ -14,8 +15,12 @@ import {
 	regions,
 	type AWSRegion,
 	type AwsAssunmeRoleCredentialsType,
+	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
+
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 /**
  * Checks if a request body value should be JSON stringified for AWS requests.
@@ -141,7 +146,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 	method: string | undefined,
 	service: string,
 	region: AWSRegion,
-) {
+): { signOpts: Request; url: string } {
 	let body = requestOptions.body;
 	let endpoint: URL;
 	let query = requestOptions.qs?.query as IDataObject;
@@ -281,6 +286,12 @@ async function getSystemCredentials(): Promise<{
 	secretAccessKey: string;
 	sessionToken?: string;
 } | null> {
+	if (!Container.get(SecurityConfig).awsSystemCredentialsAccess) {
+		throw new ApplicationError(
+			'Access to AWS system credentials disabled, contact your administrator.',
+		);
+	}
+
 	// 1. Check for explicit environment variables
 	const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
 	const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
@@ -565,14 +576,11 @@ export async function assumeRole(
 	secretAccessKey: string;
 	sessionToken: string;
 }> {
-	// Get credentials for the STS call
 	let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
-	// Use the user's choice for system credentials (defaults to false for security)
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
 
 	if (useSystemCredentialsForRole) {
-		// Use system credentials for the STS call
 		const systemCredentials = await getSystemCredentials();
 		if (!systemCredentials) {
 			throw new ApplicationError(
@@ -581,7 +589,6 @@ export async function assumeRole(
 		}
 		stsCallCredentials = systemCredentials;
 	} else {
-		// Use manually provided STS credentials
 		if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {
 			throw new ApplicationError(
 				'STS Access Key ID is required when not using system credentials.',
@@ -593,15 +600,12 @@ export async function assumeRole(
 			);
 		}
 
-		// For backward compatibility: if temporaryStsCredentials is not set, default to false
-		const temporaryStsCredentials = credentials.temporaryStsCredentials ?? false;
+		const sessionToken = credentials.stsSessionToken?.trim() || undefined;
 
 		stsCallCredentials = {
 			accessKeyId: credentials.stsAccessKeyId.trim(),
 			secretAccessKey: credentials.stsSecretAccessKey.trim(),
-			sessionToken: temporaryStsCredentials
-				? credentials.stsSessionToken?.trim() || undefined
-				: undefined,
+			sessionToken,
 		};
 	}
 
@@ -678,9 +682,36 @@ export async function assumeRole(
 	}
 
 	const assumedCredentials = assumeRoleResult.Credentials as IDataObject;
-	return {
+
+	const securityHeaders = {
 		accessKeyId: assumedCredentials.AccessKeyId as string,
 		secretAccessKey: assumedCredentials.SecretAccessKey as string,
 		sessionToken: assumedCredentials.SessionToken as string,
 	};
+
+	return securityHeaders;
+}
+
+export function signOptions(
+	requestOptions: IHttpRequestOptions,
+	signOpts: Request,
+	securityHeaders: AwsSecurityHeaders,
+	url: string,
+	method?: IHttpRequestMethods,
+) {
+	try {
+		sign(signOpts, securityHeaders);
+	} catch (err) {
+		console.error(err);
+	}
+	const options: IHttpRequestOptions = {
+		...requestOptions,
+		headers: signOpts.headers,
+		method,
+		url,
+		body: signOpts.body,
+		qs: undefined, // override since it's already in the url
+	};
+
+	return options;
 }

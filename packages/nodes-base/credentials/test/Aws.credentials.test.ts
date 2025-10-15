@@ -22,7 +22,7 @@ describe('Aws Credential', () => {
 
 	it('should have correct properties', () => {
 		expect(aws.name).toBe('aws');
-		expect(aws.displayName).toBe('AWS');
+		expect(aws.displayName).toBe('AWS (IAM)');
 		expect(aws.documentationUrl).toBe('aws');
 		expect(aws.icon).toEqual({ light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' });
 		expect(aws.properties.length).toBeGreaterThan(0);
