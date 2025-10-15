@@ -194,8 +194,8 @@ watch(
 	max-width: fit-content;
 
 	.user & {
-		padding: var(--spacing--md);
-		border-radius: var(--radius--lg);
+		padding: var(--spacing--4xs) var(--spacing--md);
+		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 	}
 
