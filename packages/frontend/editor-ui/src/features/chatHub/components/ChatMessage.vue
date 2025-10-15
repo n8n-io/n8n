@@ -225,6 +225,25 @@ watch(
 			background: var(--chat--message--pre--background);
 			border-radius: var(--chat--border-radius);
 		}
+
+		table {
+			width: 100%;
+			border-bottom: var(--border);
+			border-top: var(--border);
+			border-width: 2px;
+			margin-bottom: 1em;
+			border-color: var(--color--text--shade-1);
+		}
+
+		th,
+		td {
+			padding: 0.25em 1em 0.25em 0;
+		}
+
+		th {
+			border-bottom: var(--border);
+			border-color: var(--color--text--shade-1);
+		}
 	}
 }
 
