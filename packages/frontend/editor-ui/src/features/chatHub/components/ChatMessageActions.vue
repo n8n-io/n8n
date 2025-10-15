@@ -36,16 +36,13 @@ function handleRegenerate() {
 <template>
 	<div :class="$style.actions">
 		<N8nTooltip placement="bottom" :show-after="300">
-			<Transition name="fade" mode="out-in">
-				<N8nIconButton
-					:key="justCopied ? 'check' : 'copy'"
-					:icon="justCopied ? 'check' : 'copy'"
-					type="tertiary"
-					size="medium"
-					text
-					@click="handleCopy"
-				/>
-			</Transition>
+			<N8nIconButton
+				:icon="justCopied ? 'check' : 'copy'"
+				type="tertiary"
+				size="medium"
+				text
+				@click="handleCopy"
+			/>
 			<template #content>{{ copyTooltip }}</template>
 		</N8nTooltip>
 		<N8nTooltip placement="bottom" :show-after="300">
