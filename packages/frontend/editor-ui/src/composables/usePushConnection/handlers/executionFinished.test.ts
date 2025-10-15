@@ -21,14 +21,6 @@ vi.mock('@/composables/useRunWorkflow', () => ({
 	})),
 }));
 
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 describe('continueEvaluationLoop()', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
