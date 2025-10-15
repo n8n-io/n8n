@@ -267,6 +267,7 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
 							userId: true,
 							role: {
 								slug: true,
@@ -389,6 +390,7 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
 							userId: true,
 							role: {
 								slug: true,
