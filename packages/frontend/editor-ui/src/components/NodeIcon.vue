@@ -2,6 +2,7 @@
 import type { SimplifiedNodeType } from '@/Interface';
 import { getNodeIconSource, type NodeIconSource } from '@/utils/nodeIcon';
 import type { VersionNode } from '@n8n/rest-api-client/api/versions';
+import type { INode } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { N8nNodeIcon } from '@n8n/design-system';
@@ -17,11 +18,13 @@ type Props = {
 	// but it breaks Vue template type checking
 	iconSource?: NodeIconSource;
 	nodeType?: SimplifiedNodeType | VersionNode | null;
+	node?: INode;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	nodeType: undefined,
 	iconSource: undefined,
+	node: undefined,
 	size: undefined,
 	circle: false,
 	disabled: false,
@@ -38,7 +41,7 @@ const emit = defineEmits<{
 
 const iconSource = computed(() => {
 	if (props.iconSource) return props.iconSource;
-	return getNodeIconSource(props.nodeType);
+	return getNodeIconSource(props.nodeType, props.node ?? null);
 });
 
 const iconType = computed(() => iconSource.value?.type ?? 'unknown');

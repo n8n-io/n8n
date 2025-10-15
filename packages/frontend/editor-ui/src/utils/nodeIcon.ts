@@ -1,10 +1,16 @@
-import { type INodeTypeDescription } from 'n8n-workflow';
-import type { VersionNode } from '@n8n/rest-api-client/api/versions';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUIStore } from '../stores/ui.store';
-import { getThemedValue } from './nodeTypesUtils';
-import { isNodePreviewKey, removePreviewToken } from '../components/Node/NodeCreator/utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { VersionNode } from '@n8n/rest-api-client/api/versions';
+import {
+	type INode,
+	type INodeTypeDescription,
+	type IWorkflowDataProxyAdditionalKeys,
+	isExpression,
+} from 'n8n-workflow';
+import { isNodePreviewKey, removePreviewToken } from '@/components/Node/NodeCreator/utils';
+import { getThemedValue } from './nodeTypesUtils';
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
 type NodeIconSourceFile = {
@@ -20,12 +26,54 @@ export type NodeIconType = 'file' | 'icon' | 'unknown';
 type IconNodeTypeDescription = Pick<
 	INodeTypeDescription,
 	'icon' | 'iconUrl' | 'iconColor' | 'defaults' | 'badgeIconUrl' | 'name'
->;
+> & { iconBasePath?: string };
 type IconVersionNode = Pick<VersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
 export type IconNodeType = IconNodeTypeDescription | IconVersionNode;
 
-export const getNodeIcon = (nodeType: IconNodeType): string | null => {
-	return getThemedValue(nodeType.icon, useUIStore().appliedTheme);
+const resolveIconExpression = (
+	icon: string,
+	node?: INode | null,
+	nodeType?: IconNodeType,
+): string | null => {
+	try {
+		const workflowsStore = useWorkflowsStore();
+		const parameters = node?.parameters ?? {};
+
+		let fullNodeType = nodeType;
+		if (nodeType && !('properties' in nodeType) && 'name' in nodeType && nodeType.name) {
+			fullNodeType = useNodeTypesStore().getNodeType(nodeType.name) ?? nodeType;
+		}
+
+		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
+		additionalKeys.$parameter = parameters;
+
+		const result = workflowsStore.workflowObject.expression.getParameterValue(
+			icon,
+			null,
+			0,
+			0,
+			node?.name ?? '',
+			[],
+			'internal',
+			additionalKeys,
+			undefined,
+			false,
+		);
+
+		return typeof result === 'string' ? result : null;
+	} catch {
+		return null;
+	}
+};
+
+export const getNodeIcon = (nodeType: IconNodeType, node?: INode | null): string | null => {
+	const themedIcon = getThemedValue(nodeType.icon, useUIStore().appliedTheme);
+
+	if (isExpression(themedIcon)) {
+		return resolveIconExpression(themedIcon, node, nodeType);
+	}
+
+	return themedIcon;
 };
 
 export const getNodeIconUrl = (nodeType: IconNodeType): string | null => {
@@ -38,101 +86,94 @@ export const getBadgeIconUrl = (
 	return getThemedValue(nodeType.badgeIconUrl, useUIStore().appliedTheme);
 };
 
-function getNodeIconColor(nodeType: IconNodeType) {
+const getNodeIconColor = (nodeType: IconNodeType): string | undefined => {
 	if ('iconColor' in nodeType && nodeType.iconColor) {
 		return `var(--node--icon--color--${nodeType.iconColor})`;
 	}
-	return nodeType?.defaults?.color?.toString();
-}
+	const defaultColor = nodeType?.defaults?.color;
+	return typeof defaultColor === 'string' ? defaultColor : undefined;
+};
 
-function prefixBaseUrl(url: string) {
-	return useRootStore().baseUrl + url;
-}
+const prefixBaseUrl = (url: string): string => useRootStore().baseUrl + url;
+
+const getNodeBadgeIconSource = (nodeType: IconNodeType): BaseNodeIconSource | undefined => {
+	if (!('badgeIconUrl' in nodeType) || !nodeType.badgeIconUrl) return undefined;
+
+	const badgeUrl = getBadgeIconUrl(nodeType);
+	return badgeUrl ? { type: 'file', src: prefixBaseUrl(badgeUrl) } : undefined;
+};
+
+const createFileIconSource = (src: string, nodeType: IconNodeType): NodeIconSource => ({
+	type: 'file',
+	src,
+	badge: getNodeBadgeIconSource(nodeType),
+});
+
+const createNamedIconSource = (name: string, nodeType: IconNodeType): NodeIconSource => ({
+	type: 'icon',
+	name,
+	color: getNodeIconColor(nodeType),
+	badge: getNodeBadgeIconSource(nodeType),
+});
+
+const getIconFromNodeTypeString = (nodeTypeName: string): NodeIconSource | undefined => {
+	const nodeTypeStore = useNodeTypesStore();
+	const cleanedNodeType = removePreviewToken(nodeTypeName);
+	const nodeDescription =
+		nodeTypeStore.communityNodeType(cleanedNodeType)?.nodeDescription ??
+		nodeTypeStore.getNodeType(cleanedNodeType);
+
+	const iconUrl = nodeDescription?.iconUrl
+		? getThemedValue(nodeDescription.iconUrl, useUIStore().appliedTheme)
+		: null;
+
+	return iconUrl ? { type: 'file', src: iconUrl } : undefined;
+};
 
 export function getNodeIconSource(
-	nodeType?: IconNodeType | string | null,
+	nodeType: IconNodeType | string | null | undefined,
+	node?: INode | null,
 ): NodeIconSource | undefined {
-	const nodeTypeStore = useNodeTypesStore();
 	if (!nodeType) return undefined;
+	if (typeof nodeType === 'string') return getIconFromNodeTypeString(nodeType);
 
-	if (typeof nodeType === 'string') {
-		const cleanedNodeType = removePreviewToken(nodeType);
-		const nodeDescription =
-			nodeTypeStore.communityNodeType(cleanedNodeType)?.nodeDescription ??
-			nodeTypeStore.getNodeType(cleanedNodeType);
-		let url: string | null = null;
-		if (nodeDescription?.iconUrl) {
-			const themedUrl = getThemedValue(nodeDescription.iconUrl, useUIStore().appliedTheme);
-			url = themedUrl;
-		}
-		return url ? { type: 'file', src: url } : undefined;
-	}
-
-	const createFileIconSource = (src: string): NodeIconSource => ({
-		type: 'file',
-		src,
-		badge: getNodeBadgeIconSource(nodeType),
-	});
-	const createNamedIconSource = (name: string): NodeIconSource => ({
-		type: 'icon',
-		name,
-		color: getNodeIconColor(nodeType),
-		badge: getNodeBadgeIconSource(nodeType),
-	});
-
-	// If node type has icon data, use it
 	if ('iconData' in nodeType && nodeType.iconData) {
-		if (nodeType.iconData.icon) {
-			return createNamedIconSource(nodeType.iconData.icon);
-		}
-
-		if (nodeType.iconData.fileBuffer) {
-			return createFileIconSource(nodeType.iconData.fileBuffer);
-		}
+		if (nodeType.iconData.icon) return createNamedIconSource(nodeType.iconData.icon, nodeType);
+		if (nodeType.iconData.fileBuffer)
+			return createFileIconSource(nodeType.iconData.fileBuffer, nodeType);
 	}
 
 	if (nodeType.name && isNodePreviewKey(nodeType.name)) {
 		const themedUrl = getThemedValue(nodeType.iconUrl, useUIStore().appliedTheme);
-		if (themedUrl) {
-			return {
-				type: 'file',
-				src: themedUrl,
-				badge: undefined,
-			};
-		}
+		if (themedUrl) return { type: 'file', src: themedUrl, badge: undefined };
 	}
 
 	const iconUrl = getNodeIconUrl(nodeType);
-	if (iconUrl) {
-		return createFileIconSource(prefixBaseUrl(iconUrl));
-	}
+	if (iconUrl) return createFileIconSource(prefixBaseUrl(iconUrl), nodeType);
 
-	// Otherwise, extract it from icon prop
 	if (nodeType.icon) {
-		const icon = getNodeIcon(nodeType);
-
-		if (icon) {
-			const [type, iconName] = icon.split(':');
-			if (type === 'file') {
-				return undefined;
-			}
-
-			return createNamedIconSource(iconName);
+		let fullNodeType = nodeType;
+		if (!('iconBasePath' in nodeType) && 'name' in nodeType && nodeType.name) {
+			fullNodeType = useNodeTypesStore().getNodeType(nodeType.name) ?? nodeType;
 		}
-	}
 
-	return undefined;
-}
+		const icon = getNodeIcon(fullNodeType, node);
+		if (!icon) return undefined;
 
-function getNodeBadgeIconSource(nodeType: IconNodeType): BaseNodeIconSource | undefined {
-	if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
-		const badgeUrl = getBadgeIconUrl(nodeType);
+		const [type, iconName] = icon.split(':');
 
-		if (!badgeUrl) return undefined;
-		return {
-			type: 'file',
-			src: prefixBaseUrl(badgeUrl),
-		};
+		if (type === 'file') {
+			if ('iconBasePath' in fullNodeType && fullNodeType.iconBasePath) {
+				const iconPath = iconName.replace(/^\//, '');
+				return createFileIconSource(
+					prefixBaseUrl(`${fullNodeType.iconBasePath}/${iconPath}`),
+					fullNodeType,
+				);
+			}
+			return undefined;
+		}
+
+		return createNamedIconSource(iconName, fullNodeType);
 	}
 
 	return undefined;
