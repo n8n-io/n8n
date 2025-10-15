@@ -7,7 +7,7 @@ import { promptCategorizationChain } from '@/chains/prompt-categorization';
 import { ValidationError, ToolExecutionError } from '@/errors';
 import { createProgressReporter } from '@/tools/helpers/progress';
 import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
-import type { PromptTaxonomy } from '@/types/taxonomy';
+import type { PromptCategorization } from '@/types/categorization';
 import type { CategorizePromptOutput } from '@/types/tools';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
@@ -21,21 +21,21 @@ const categorizePromptSchema = z.object({
 /**
  * Build a human-readable message from categorization results
  */
-function buildCategorizationMessage(taxonomy: PromptTaxonomy): string {
+function buildCategorizationMessage(categorization: PromptCategorization): string {
 	const parts: string[] = [];
 
 	parts.push('Prompt categorized successfully:');
 
-	if (taxonomy.useCase) {
-		parts.push(`- Use case: ${taxonomy.useCase}`);
+	if (categorization.useCase) {
+		parts.push(`- Use case: ${categorization.useCase}`);
 	}
 
-	if (taxonomy.techniques.length > 0) {
-		parts.push(`- Techniques: ${taxonomy.techniques.join(', ')}`);
+	if (categorization.techniques.length > 0) {
+		parts.push(`- Techniques: ${categorization.techniques.join(', ')}`);
 	}
 
-	if (taxonomy.confidence !== undefined) {
-		parts.push(`- Confidence: ${(taxonomy.confidence * 100).toFixed(0)}%`);
+	if (categorization.confidence !== undefined) {
+		parts.push(`- Confidence: ${(categorization.confidence * 100).toFixed(0)}%`);
 	}
 
 	return parts.join('\n');
@@ -59,43 +59,32 @@ export function createCategorizePromptTool(llm: BaseChatModel, logger?: Logger):
 			);
 
 			try {
-				// Validate input using Zod schema
 				const validatedInput = categorizePromptSchema.parse(input);
 				const { prompt } = validatedInput;
 
-				// Report tool start
 				reporter.start(validatedInput);
 
-				// Report progress
 				logger?.debug('Categorizing user prompt using LLM...');
 				reporter.progress('Analyzing prompt to identify use case and techniques...');
 
 				// Use the categorization chain to analyze the prompt
-				const taxonomy = await promptCategorizationChain(llm, prompt);
+				const categorization = await promptCategorizationChain(llm, prompt);
 
 				logger?.debug('Prompt categorized', {
-					useCase: taxonomy.useCase,
-					techniques: taxonomy.techniques,
-					confidence: taxonomy.confidence,
+					useCase: categorization.useCase,
+					techniques: categorization.techniques,
+					confidence: categorization.confidence,
 				});
 
-				// Build response message
-				const message = buildCategorizationMessage(taxonomy);
-
-				// Report completion with taxonomy data
 				const output: CategorizePromptOutput = {
-					taxonomy,
-					message,
+					categorization,
 				};
 				reporter.complete(output);
 
-				// Return the categorization as tool output
-				// This will be available to the agent in the tool response
-				return createSuccessResponse(config, message, {
-					promptTaxonomy: taxonomy,
+				return createSuccessResponse(config, buildCategorizationMessage(categorization), {
+					categorization,
 				});
 			} catch (error) {
-				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
 						extra: { errors: error.errors },

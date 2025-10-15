@@ -1,8 +1,8 @@
 import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
+import type { PromptCategorization } from './categorization';
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
-import type { PromptTaxonomy } from './taxonomy';
 
 /**
  * Types of progress updates
@@ -150,6 +150,5 @@ export interface RemoveConnectionOutput {
  * Output type for categorize prompt tool
  */
 export interface CategorizePromptOutput {
-	taxonomy: PromptTaxonomy;
-	message: string;
+	categorization: PromptCategorization;
 }

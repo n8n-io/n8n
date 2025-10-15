@@ -1,9 +1,4 @@
 /**
- * Workflow taxonomy types for categorizing user prompts
- * Based on AI-1538: Enhance workflow builder with taxonomy-aware context loading
- */
-
-/**
  * Common workflow building techniques that can be combined in workflows
  */
 export const workflowTechnique = {
@@ -69,7 +64,7 @@ export type WorkflowUseCaseType = (typeof workflowUseCase)[keyof typeof workflow
 /**
  * Result of prompt categorization
  */
-export interface PromptTaxonomy {
+export interface PromptCategorization {
 	/** The primary use case identified (optional) */
 	useCase?: WorkflowUseCaseType;
 	/** One or more techniques identified in the prompt */

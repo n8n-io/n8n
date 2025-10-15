@@ -1,7 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 import { promptCategorizationChain } from '@/chains/prompt-categorization';
-import { workflowTechnique, workflowUseCase, type PromptTaxonomy } from '@/types/taxonomy';
+import {
+	workflowTechnique,
+	workflowUseCase,
+	type PromptCategorization,
+} from '@/types/categorization';
 
 import {
 	parseToolResult,
@@ -45,7 +49,7 @@ describe('CategorizePromptTool', () => {
 
 	describe('invoke', () => {
 		it('should categorize a scraping prompt', async () => {
-			const mockTaxonomy: PromptTaxonomy = {
+			const mockCategorization: PromptCategorization = {
 				useCase: workflowUseCase.DATA_PROCESSING,
 				techniques: [
 					workflowTechnique.SCRAPING_AND_RESEARCH,
@@ -54,7 +58,7 @@ describe('CategorizePromptTool', () => {
 				confidence: 0.9,
 			};
 
-			mockCategorizationChain.mockResolvedValue(mockTaxonomy);
+			mockCategorizationChain.mockResolvedValue(mockCategorization);
 
 			const mockConfig = createToolConfig('categorize_prompt', 'test-call-1');
 
@@ -74,10 +78,10 @@ describe('CategorizePromptTool', () => {
 			expect(message).toContain('Confidence: 90%');
 
 			// Verify state update is present in the update object
-			expect(content.update).toHaveProperty('promptTaxonomy');
+			expect(content.update).toHaveProperty('categorization');
 			expect(
-				(content.update as unknown as { promptTaxonomy: PromptTaxonomy }).promptTaxonomy,
-			).toEqual(mockTaxonomy);
+				(content.update as unknown as { categorization: PromptCategorization }).categorization,
+			).toEqual(mockCategorization);
 
 			// Verify the chain was called with correct parameters
 			expect(mockCategorizationChain).toHaveBeenCalledWith(
@@ -87,13 +91,13 @@ describe('CategorizePromptTool', () => {
 		});
 
 		it('should categorize a chatbot prompt', async () => {
-			const mockTaxonomy: PromptTaxonomy = {
+			const mockCategorization: PromptCategorization = {
 				useCase: workflowUseCase.CUSTOMER_SUPPORT,
 				techniques: [workflowTechnique.CHATBOT, workflowTechnique.NOTIFICATION],
 				confidence: 0.85,
 			};
 
-			mockCategorizationChain.mockResolvedValue(mockTaxonomy);
+			mockCategorizationChain.mockResolvedValue(mockCategorization);
 
 			const mockConfig = createToolConfig('categorize_prompt', 'test-call-2');
 
@@ -114,12 +118,12 @@ describe('CategorizePromptTool', () => {
 		});
 
 		it('should handle categorization without use case', async () => {
-			const mockTaxonomy: PromptTaxonomy = {
+			const mockCategorization: PromptCategorization = {
 				techniques: [workflowTechnique.DATA_TRANSFORMATION],
 				confidence: 0.7,
 			};
 
-			mockCategorizationChain.mockResolvedValue(mockTaxonomy);
+			mockCategorizationChain.mockResolvedValue(mockCategorization);
 
 			const mockConfig = createToolConfig('categorize_prompt', 'test-call-3');
 
@@ -139,7 +143,7 @@ describe('CategorizePromptTool', () => {
 		});
 
 		it('should handle categorization with multiple techniques', async () => {
-			const mockTaxonomy: PromptTaxonomy = {
+			const mockCategorization: PromptCategorization = {
 				useCase: workflowUseCase.MARKETING_AUTOMATION,
 				techniques: [
 					workflowTechnique.SCHEDULING,
@@ -150,7 +154,7 @@ describe('CategorizePromptTool', () => {
 				confidence: 0.95,
 			};
 
-			mockCategorizationChain.mockResolvedValue(mockTaxonomy);
+			mockCategorizationChain.mockResolvedValue(mockCategorization);
 
 			const mockConfig = createToolConfig('categorize_prompt', 'test-call-4');
 

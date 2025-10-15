@@ -7,8 +7,8 @@ import {
 	workflowUseCase,
 	TECHNIQUE_DESCRIPTIONS,
 	USE_CASE_DESCRIPTIONS,
-	type PromptTaxonomy,
-} from '@/types/taxonomy';
+	type PromptCategorization,
+} from '@/types/categorization';
 
 const promptCategorizationTemplate = PromptTemplate.fromTemplate(
 	`You are an expert at analyzing workflow automation requests and categorizing them based on common patterns.
@@ -58,7 +58,7 @@ function formatUseCaseList(): string {
 }
 
 /**
- * Chain for categorizing user prompts based on workflow taxonomy
+ * Chain for categorizing user prompts into a prompt category
  * @param llm - The language model to use for categorization
  * @param userPrompt - The user's workflow request to categorize
  * @returns Categorization result with use case, techniques, and confidence
@@ -66,7 +66,7 @@ function formatUseCaseList(): string {
 export async function promptCategorizationChain(
 	llm: BaseChatModel,
 	userPrompt: string,
-): Promise<PromptTaxonomy> {
+): Promise<PromptCategorization> {
 	// Define the schema for structured output
 	const categorizationSchema = z.object({
 		techniques: z

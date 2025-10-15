@@ -2,7 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { PromptTaxonomy } from './types/taxonomy';
+import type { PromptCategorization } from './types/categorization';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -88,7 +88,7 @@ export const WorkflowState = Annotation.Root({
 	}),
 
 	// Prompt taxonomy categorization (use case and techniques)
-	promptTaxonomy: Annotation<PromptTaxonomy | undefined>({
+	promptTaxonomy: Annotation<PromptCategorization | undefined>({
 		reducer: (x, y) => y ?? x, // Overwrite with the latest categorization
 	}),
 });
