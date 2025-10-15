@@ -135,12 +135,13 @@ export interface ChatHubMessageDto {
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];
 
+export interface ChatHubConversationDto {
+	messages: Record<string, ChatHubMessageDto>;
+	rootIds: string[];
+	activeMessageChain: string[];
+}
+
 export interface ChatHubConversationResponse {
 	session: ChatHubSessionDto;
-
-	conversation: {
-		messages: Record<string, ChatHubMessageDto>;
-		rootIds: string[];
-		activeMessageChain: string[];
-	};
+	conversation: ChatHubConversationDto;
 }

@@ -16,26 +16,107 @@ import type {
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubSessionDto,
+	ChatHubConversationDto,
 	ChatMessageId,
 	ChatSessionId,
+	ChatHubMessageDto,
 } from '@n8n/api-types';
-import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
+import type { StructuredChunk, CredentialsMap } from './chat.types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const ongoingStreaming = ref<{ messageId: string; replyToMessageId: string }>();
-	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
-	const sessions = ref<ChatHubSessionDto[]>([]);
-
+	const ongoingStreaming = ref<{ messageId: ChatMessageId; replyToMessageId: ChatMessageId }>();
 	const isResponding = computed(() => ongoingStreaming.value !== undefined);
 
-	const getLastMessage = (sessionId: string) => {
-		const msgs = messagesBySession.value[sessionId];
-		if (!msgs || msgs.length === 0) return null;
-		return msgs[msgs.length - 1];
+	const conversationsBySession = ref<Map<ChatSessionId, ChatHubConversationDto>>(new Map());
+	const sessions = ref<ChatHubSessionDto[]>([]);
+
+	const getConversation = (sessionId: ChatSessionId): ChatHubConversationDto | undefined =>
+		conversationsBySession.value.get(sessionId);
+
+	const getActiveMessages = (sessionId: ChatSessionId): ChatHubMessageDto[] => {
+		const conversation = getConversation(sessionId);
+		if (!conversation) return [];
+
+		return conversation.activeMessageChain.map((id) => conversation.messages[id]).filter(Boolean);
 	};
+
+	function ensureConversation(sessionId: ChatSessionId): ChatHubConversationDto {
+		if (!conversationsBySession.value.has(sessionId)) {
+			conversationsBySession.value.set(sessionId, {
+				messages: {},
+				rootIds: [],
+				activeMessageChain: [],
+			});
+		}
+
+		const conversation = conversationsBySession.value.get(sessionId);
+		if (!conversation) {
+			throw new Error(`Conversation for session ID ${sessionId} not found`);
+		}
+
+		return conversation;
+	}
+
+	function computeActiveChain(
+		conversation: ChatHubConversationDto,
+		lastMessageId: ChatMessageId | null,
+	) {
+		const messages = conversation.messages;
+		const chain: ChatMessageId[] = [];
+
+		if (!lastMessageId) {
+			return chain;
+		}
+		const visited = new Set<ChatMessageId>();
+
+		let current: ChatMessageId | null = lastMessageId;
+
+		while (current && !visited.has(current)) {
+			chain.unshift(current);
+			visited.add(current);
+			current = messages[current]?.previousMessageId ?? null;
+		}
+
+		return chain;
+	}
+
+	function addMessage(sessionId: ChatSessionId, message: ChatHubMessageDto) {
+		const conversation = ensureConversation(sessionId);
+		conversation.messages[message.id] = message;
+
+		if (message.previousMessageId) {
+			if (!conversation.messages[message.previousMessageId].responseIds.includes(message.id)) {
+				conversation.messages[message.previousMessageId].responseIds.push(message.id);
+			}
+		}
+
+		if (message.retryOfMessageId) {
+			if (!conversation.messages[message.retryOfMessageId].retryIds.includes(message.id)) {
+				conversation.messages[message.retryOfMessageId].retryIds.push(message.id);
+			}
+		}
+
+		if (message.revisionOfMessageId) {
+			if (!conversation.messages[message.revisionOfMessageId].revisionIds.includes(message.id)) {
+				conversation.messages[message.revisionOfMessageId].revisionIds.push(message.id);
+			}
+		}
+
+		conversation.activeMessageChain = computeActiveChain(conversation, message.id);
+	}
+
+	function appendMessage(sessionId: ChatSessionId, messageId: ChatMessageId, chunk: string) {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (!message) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		message.content += chunk;
+	}
 
 	async function fetchChatModels(credentialMap: CredentialsMap) {
 		loadingModels.value = true;
@@ -52,76 +133,42 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	async function fetchMessages(sessionId: string) {
 		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
-		const { messages, activeMessageChain } = conversation;
 
-		messagesBySession.value = {
-			...messagesBySession.value,
-			[sessionId]: activeMessageChain.map((id) => ({
-				id: messages[id].id,
-				role: messages[id].type === 'ai' ? 'assistant' : 'user',
-				type: 'message' as const,
-				text: messages[id].content,
-				key: messages[id].id,
-			})),
-		};
-	}
-
-	function addUserMessage(sessionId: string, content: string, id: string) {
-		messagesBySession.value = {
-			...messagesBySession.value,
-			[sessionId]: [
-				...(messagesBySession.value[sessionId] ?? []),
-				{
-					id,
-					key: id,
-					role: 'user',
-					type: 'message',
-					text: content,
-				},
-			],
-		};
-	}
-
-	function addAiMessage(sessionId: string, content: string, id: string, key: string) {
-		messagesBySession.value = {
-			...messagesBySession.value,
-			[sessionId]: [
-				...(messagesBySession.value[sessionId] ?? []),
-				{
-					id,
-					key,
-					role: 'assistant',
-					type: 'message',
-					text: content,
-				},
-			],
-		};
-	}
-
-	function appendMessage(sessionId: string, content: string, key: string) {
-		messagesBySession.value = {
-			...messagesBySession.value,
-			[sessionId]: (messagesBySession.value[sessionId] ?? []).map((msg) => {
-				if (msg.key === key && msg.type === 'message') {
-					return {
-						...msg,
-						text: msg.text + content,
-					};
-				}
-				return msg;
-			}),
-		};
+		conversationsBySession.value.set(sessionId, conversation);
 	}
 
 	function onBeginMessage(
 		sessionId: string,
 		messageId: string,
 		replyToMessageId: string,
-		nodeId: string,
-		runIndex?: number,
+		retryOfMessageId: string | null,
+		_nodeId: string,
+		_runIndex?: number,
 	) {
 		ongoingStreaming.value = { messageId, replyToMessageId };
-		addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
+		// addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
+		addMessage(sessionId, {
+			id: messageId,
+			sessionId,
+			type: 'ai',
+			name: 'AI',
+			content: '',
+			provider: null,
+			model: null,
+			workflowId: null,
+			executionId: null,
+			state: 'active',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			previousMessageId: replyToMessageId,
+			turnId: null,
+			retryOfMessageId,
+			revisionOfMessageId: null,
+			runIndex: 0,
+			responseIds: [],
+			retryIds: [],
+			revisionIds: [],
+		});
 	}
 
 	function onChunk(
@@ -131,7 +178,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		nodeId?: string,
 		runIndex?: number,
 	) {
-		appendMessage(sessionId, chunk, `${messageId}-${nodeId}-${runIndex ?? 0}`);
+		// appendMessage(sessionId, chunk, `${messageId}-${nodeId}-${runIndex ?? 0}`);
+		appendMessage(sessionId, messageId, chunk);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -144,13 +192,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message: StructuredChunk,
 		messageId: string,
 		replyToMessageId: string,
+		retryOfMessageId: string | null,
 	) {
 		const nodeId = message.metadata?.nodeId || 'unknown';
 		const runIndex = message.metadata?.runIndex;
 
 		switch (message.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, replyToMessageId, nodeId, runIndex);
+				onBeginMessage(sessionId, messageId, replyToMessageId, retryOfMessageId, nodeId, runIndex);
 				break;
 			case 'item':
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
@@ -191,9 +240,33 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	) {
 		const messageId = uuidv4();
 		const replyId = uuidv4();
-		const previousMessageId = getLastMessage(sessionId)?.id ?? null;
+		const conversation = ensureConversation(sessionId);
+		const previousMessageId = conversation.activeMessageChain.length
+			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
+			: null;
 
-		addUserMessage(sessionId, message, messageId);
+		addMessage(sessionId, {
+			id: messageId,
+			sessionId,
+			type: 'human',
+			name: 'User',
+			content: message,
+			provider: null,
+			model: null,
+			workflowId: null,
+			executionId: null,
+			state: 'active',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			previousMessageId,
+			turnId: null,
+			retryOfMessageId: null,
+			revisionOfMessageId: null,
+			runIndex: 0,
+			responseIds: [],
+			retryIds: [],
+			revisionIds: [],
+		});
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -206,7 +279,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
 			onStreamDone,
 			onStreamError,
 		);
@@ -222,11 +295,31 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const messageId = uuidv4();
 		const replyId = uuidv4();
 
-		addUserMessage(sessionId, message, messageId);
+		const conversation = ensureConversation(sessionId);
+		const previousMessageId = conversation.messages[editId]?.previousMessageId ?? null;
 
-		// TODO: remove descendants of the message being edited
-		// or better yet, turn the frontend chat into a graph and
-		// maintain the visible active chain, and this would just switch to that branch.
+		addMessage(sessionId, {
+			id: messageId,
+			sessionId,
+			type: 'human',
+			name: 'User',
+			content: message,
+			provider: null,
+			model: null,
+			workflowId: null,
+			executionId: null,
+			state: 'active',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			previousMessageId,
+			turnId: null,
+			retryOfMessageId: null,
+			revisionOfMessageId: editId,
+			runIndex: 0,
+			responseIds: [],
+			retryIds: [],
+			revisionIds: [],
+		});
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -239,7 +332,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
 			onStreamDone,
 			onStreamError,
 		);
@@ -252,6 +345,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const replyId = uuidv4();
+		const conversation = ensureConversation(sessionId);
+		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
+
+		if (!previousMessageId) {
+			throw new Error('No previous message to base regeneration on');
+		}
 
 		// TODO: remove descendants of the message being retried
 		// or better yet, turn the frontend chat into a graph and
@@ -266,7 +365,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				replyId,
 				credentials,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, retryId),
+			(chunk: StructuredChunk) =>
+				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),
 			onStreamDone,
 			onStreamError,
 		);
@@ -291,7 +391,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	return {
 		models,
 		loadingModels,
-		messagesBySession,
 		isResponding,
 		ongoingStreaming,
 		sessions,
@@ -299,10 +398,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sendMessage,
 		editMessage,
 		regenerateMessage,
-		addUserMessage,
 		fetchSessions,
 		fetchMessages,
 		renameSession,
 		deleteSession,
+		getConversation,
+		getActiveMessages,
 	};
 });
