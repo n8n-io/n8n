@@ -10,7 +10,7 @@ import { useEnvironmentsStore } from '../environments.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 

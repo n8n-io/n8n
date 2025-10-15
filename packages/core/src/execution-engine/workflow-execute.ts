@@ -1636,7 +1636,16 @@ export class WorkflowExecute {
 						node: executionNode.name,
 						workflowId: workflow.id,
 					});
-					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
+					// Skip nodeExecuteBefore for resumed agent nodes to prevent duplicate event emission.
+					// Context: AI agents pause execution to run tools, then resume with tool results.
+					// Without this check, the agent would emit nodeExecuteBefore twice (initial + resume)
+					// but only one nodeExecuteAfter, causing frontend spinner state to become stuck.
+					// See: AI-1414
+					// Future: May introduce dedicated nodeExecutionPaused/nodeExecutionResumed events
+					// if we need finer-grained visibility into the pause/resume cycle.
+					if (!executionData.metadata?.nodeWasResumed) {
+						await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
+					}
 					let maxTries = 1;
 					if (executionData.node.retryOnFail === true) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue

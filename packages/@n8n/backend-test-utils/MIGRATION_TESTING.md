@@ -24,6 +24,11 @@ Runs a single migration by name.
 **Throws:**
 - `UnexpectedError` if the migration is not found or database is not initialized
 
+## `undoLastSingleMigration(): Promise<void>`
+
+Undoes the last single migration.
+
+
 ## Usage Example
 
 ```typescript

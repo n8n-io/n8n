@@ -6,7 +6,7 @@ import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();

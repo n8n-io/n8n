@@ -84,7 +84,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
@@ -623,18 +623,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function searchWorkflows({
 		projectId,
 		name,
+		nodeTypes,
+		tags,
+		select,
 	}: {
 		projectId?: string;
 		name?: string;
+		nodeTypes?: string[];
+		tags?: string[];
+		select?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			name,
+			nodeTypes,
+			tags,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
+			undefined,
+			select,
 		);
 		return workflows;
 	}
@@ -704,6 +714,47 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				(node.credentials as INodeCredentials)[data.type] = data.credentials;
 			}
 		});
+	}
+
+	// Assign credential to all nodes that support it but don't have it set
+	function assignCredentialToMatchingNodes(data: {
+		credentials: INodeCredentialsDetails;
+		type: string;
+		currentNodeName: string;
+	}): number {
+		let updatedNodesCount = 0;
+
+		workflow.value.nodes.forEach((node: INodeUi) => {
+			// Skip the current node (it was just set)
+			if (node.name === data.currentNodeName) {
+				return;
+			}
+
+			// Skip if node already has credential set
+			if (node.credentials && Object.keys(node.credentials).length > 0) {
+				return;
+			}
+
+			// Get node type to check if it supports this credential
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (!nodeType?.credentials) {
+				return;
+			}
+
+			// Check if this node type supports the credential type
+			const supportsCredential = nodeType.credentials.some((cred) => cred.name === data.type);
+			if (!supportsCredential) {
+				return;
+			}
+
+			// Assign the same credential to the node
+			node.credentials ??= {} satisfies INodeCredentials;
+			node.credentials[data.type] = data.credentials;
+
+			updatedNodesCount++;
+		});
+
+		return updatedNodesCount;
 	}
 
 	function setWorkflows(workflows: IWorkflowDb[]) {
@@ -1768,6 +1819,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setUsedCredentials,
 		setWorkflowVersionId,
 		replaceInvalidWorkflowCredentials,
+		assignCredentialToMatchingNodes,
 		setWorkflows,
 		deleteWorkflow,
 		archiveWorkflow,

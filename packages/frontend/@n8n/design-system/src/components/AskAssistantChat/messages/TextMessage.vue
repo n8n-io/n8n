@@ -107,7 +107,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	font-size: var(--font-size--3xs);
 	max-height: 218px; // 12 lines
 	overflow: auto;
-	margin: var(--spacing-4s) 0;
+	margin: var(--spacing--4xs) 0;
 
 	header {
 		display: flex;

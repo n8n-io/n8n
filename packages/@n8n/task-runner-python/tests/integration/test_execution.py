@@ -94,9 +94,47 @@ async def test_per_item_with_success(broker, manager):
 
     assert done_msg["taskId"] == task_id
     assert done_msg["data"]["result"] == [
-        {"doubled": 20, "pairedItem": {"item": 0}},
-        {"doubled": 40, "pairedItem": {"item": 1}},
-        {"doubled": 60, "pairedItem": {"item": 2}},
+        {"json": {"doubled": 20}, "pairedItem": {"item": 0}},
+        {"json": {"doubled": 40}, "pairedItem": {"item": 1}},
+        {"json": {"doubled": 60}, "pairedItem": {"item": 2}},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_per_item_with_explicit_json_and_binary(broker, manager):
+    task_id = nanoid()
+    items = [{"json": {"value": 10}}]
+    code = "return {'json': {'custom': 'data'}, 'binary': {'file': 'data'}}"
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"] == [
+        {
+            "json": {"custom": "data"},
+            "binary": {"file": "data"},
+            "pairedItem": {"item": 0}
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_per_item_with_binary_only(broker, manager):
+    task_id = nanoid()
+    items = [{"json": {"value": 10}}]
+    code = "return {'binary': {'file': 'data'}}"
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"] == [
+        {
+            "json": {},
+            "binary": {"file": "data"},
+            "pairedItem": {"item": 0}
+        }
     ]
 
 
@@ -122,8 +160,8 @@ async def test_per_item_with_filtering(broker, manager):
     result = await wait_for_task_done(broker, task_id)
 
     assert result["data"]["result"] == [
-        {"value": 15, "passed": True, "pairedItem": {"item": 1}},
-        {"value": 25, "passed": True, "pairedItem": {"item": 2}},
+        {"json": {"value": 15, "passed": True}, "pairedItem": {"item": 1}},
+        {"json": {"value": 25, "passed": True}, "pairedItem": {"item": 2}},
     ]
 
 

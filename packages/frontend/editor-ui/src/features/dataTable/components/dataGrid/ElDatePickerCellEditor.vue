@@ -87,7 +87,7 @@ defineExpose({
 
 	&:where(:focus-within, :active) {
 		box-shadow: none;
-		border: var(--grid-cell-editing-border);
+		border: var(--grid--cell--border-color--editing);
 	}
 }
 
