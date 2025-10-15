@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
-import { type AwsAssunmeRoleCredentialsType, type AWSRegion } from './common/aws/types';
+import { type AwsAssumeRoleCredentialsType, type AWSRegion } from './common/aws/types';
 import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 import {
 	assumeRole,
@@ -129,7 +129,7 @@ export class AwsAssumeRole implements ICredentialType {
 		decryptedCredentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		const credentials = decryptedCredentials as AwsAssunmeRoleCredentialsType;
+		const credentials = decryptedCredentials as AwsAssumeRoleCredentialsType;
 		const service = requestOptions.qs?.service as string;
 		const path = (requestOptions.qs?.path as string) ?? '';
 		const method = requestOptions.method;

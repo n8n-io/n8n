@@ -14,7 +14,7 @@ import {
 	type AwsCredentialsTypeBase,
 	regions,
 	type AWSRegion,
-	type AwsAssunmeRoleCredentialsType,
+	type AwsAssumeRoleCredentialsType,
 	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
@@ -45,12 +45,6 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
  *
  * @param region - The AWS region to get the domain for
  * @returns The AWS domain for the region, or the global domain if region not found
- *
- * @example
- * ```typescript
- * const domain = getAwsDomain('us-east-1'); // Returns 'amazonaws.com'
- * const chinaDomain = getAwsDomain('cn-north-1'); // Returns 'amazonaws.com.cn'
- * ```
  */
 export function getAwsDomain(region: AWSRegion): string {
 	return regions.find((r) => r.name === region)?.domain ?? AWS_GLOBAL_DOMAIN;
@@ -64,18 +58,6 @@ export function getAwsDomain(region: AWSRegion): string {
  * @returns Object containing the service name and region (null for global services)
  *
  * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
- *
- * @example
- * ```typescript
- * const globalService = parseAwsUrl(new URL('https://iam.amazonaws.com'));
- * // Returns: { service: 'iam', region: null }
- *
- * const regionalService = parseAwsUrl(new URL('https://s3.us-east-1.amazonaws.com'));
- * // Returns: { service: 's3', region: 'us-east-1' }
- *
- * const chinaService = parseAwsUrl(new URL('https://s3.cn-north-1.amazonaws.com.cn'));
- * // Returns: { service: 's3', region: 'cn-north-1' }
- * ```
  */
 export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
 	const hostname = url.hostname;
@@ -88,13 +70,6 @@ export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: stri
  * AWS credentials test configuration for validating AWS credentials.
  * Uses the STS GetCallerIdentity action to verify that the provided credentials are valid.
  * Automatically handles both standard AWS regions and China regions with appropriate endpoints.
- *
- * @example
- * ```typescript
- * // This test will make a request to:
- * // - https://sts.us-east-1.amazonaws.com for standard regions
- * // - https://sts.cn-north-1.amazonaws.com.cn for China regions
- * ```
  */
 export const awsCredentialsTest: ICredentialTestRequest = {
 	request: {
@@ -124,20 +99,6 @@ export const awsCredentialsTest: ICredentialTestRequest = {
  * @param service - AWS service name (e.g., 's3', 'lambda', 'sts')
  * @param region - AWS region for the request
  * @returns Object containing signing options and the constructed endpoint URL
- *
- * @example
- * ```typescript
- * const { signOpts, endpoint } = awsGetSignInOptionsAndUpdateRequest(
- *   requestOptions,
- *   credentials,
- *   '/my-api-path',
- *   'POST',
- *   's3',
- *   'us-east-1'
- * );
- * // signOpts can now be used with aws4.sign()
- * // endpoint contains the full URL that will be called
- * ```
  */
 export function awsGetSignInOptionsAndUpdateRequest(
 	requestOptions: IHttpRequestOptions,
@@ -271,15 +232,6 @@ export function awsGetSignInOptionsAndUpdateRequest(
  *
  * @returns Promise resolving to credentials object or null if no credentials found
  *
- * @example
- * ```typescript
- * const credentials = await getSystemCredentials();
- * if (credentials) {
- *   console.log('Found credentials:', credentials.accessKeyId);
- * } else {
- *   console.log('No system credentials available');
- * }
- * ```
  */
 async function getSystemCredentials(): Promise<{
 	accessKeyId: string;
@@ -306,13 +258,13 @@ async function getSystemCredentials(): Promise<{
 	}
 
 	// 2. Check for AWS_PROFILE environment variable
-	if (process.env.AWS_PROFILE) {
-		// Note: In a real implementation, you might want to use AWS SDK to load credentials from profile
-		// For now, we'll just indicate that profile-based credentials are supported
-		console.warn(
-			'AWS_PROFILE is set but profile-based credential loading is not implemented in this credential. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or use instance/container role.',
-		);
-	}
+	// if (process.env.AWS_PROFILE) {
+	// 	// Note: In a real implementation, you might want to use AWS SDK to load credentials from profile
+	// 	// For now, we'll just indicate that profile-based credentials are supported
+	// 	console.warn(
+	// 		'AWS_PROFILE is set but profile-based credential loading is not implemented in this credential. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or use instance/container role.',
+	// 	);
+	// }
 
 	// 3. Try to get credentials from EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
 	try {
@@ -321,7 +273,6 @@ async function getSystemCredentials(): Promise<{
 			return podIdentityCredentials;
 		}
 	} catch (error) {
-		// Silently continue to next credential source
 		console.debug('Failed to get credentials from EKS Pod Identity:', error);
 	}
 
@@ -332,7 +283,6 @@ async function getSystemCredentials(): Promise<{
 			return containerCredentials;
 		}
 	} catch (error) {
-		// Silently continue to next credential source
 		console.debug('Failed to get credentials from container metadata:', error);
 	}
 
@@ -343,11 +293,9 @@ async function getSystemCredentials(): Promise<{
 			return instanceCredentials;
 		}
 	} catch (error) {
-		// Silently continue to next credential source
 		console.debug('Failed to get credentials from instance metadata:', error);
 	}
 
-	// No credentials found
 	return null;
 }
 
@@ -358,15 +306,6 @@ async function getSystemCredentials(): Promise<{
  *
  * @returns Promise resolving to credentials object or null if not running on EC2 or no role attached
  *
- * @example
- * ```typescript
- * // This function is typically called automatically by getSystemCredentials()
- * const credentials = await getInstanceMetadataCredentials();
- * if (credentials) {
- *   console.log('Using EC2 instance role credentials');
- * }
- * ```
- *
  * @see {@link https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html IAM Roles for Amazon EC2}
  */
 async function getInstanceMetadataCredentials(): Promise<{
@@ -375,7 +314,6 @@ async function getInstanceMetadataCredentials(): Promise<{
 	sessionToken: string;
 } | null> {
 	try {
-		// Check if we're running on EC2 by trying to access instance metadata
 		const response = await fetch(
 			'http://169.254.169.254/latest/meta-data/iam/security-credentials/',
 			{
@@ -383,7 +321,6 @@ async function getInstanceMetadataCredentials(): Promise<{
 				headers: {
 					'User-Agent': 'n8n-aws-credential',
 				},
-				// Short timeout to avoid hanging
 				signal: AbortSignal.timeout(2000),
 			},
 		);
@@ -392,7 +329,6 @@ async function getInstanceMetadataCredentials(): Promise<{
 			return null;
 		}
 
-		// Get the role name
 		const roleName = await response.text();
 		if (!roleName) {
 			return null;
@@ -422,7 +358,6 @@ async function getInstanceMetadataCredentials(): Promise<{
 			sessionToken: credentialsData.Token,
 		};
 	} catch (error) {
-		// Not running on EC2 or metadata service unavailable
 		return null;
 	}
 }
@@ -434,15 +369,6 @@ async function getInstanceMetadataCredentials(): Promise<{
  *
  * @returns Promise resolving to credentials object or null if not running in ECS/Fargate or no task role
  *
- * @example
- * ```typescript
- * // This function is typically called automatically by getSystemCredentials()
- * const credentials = await getContainerMetadataCredentials();
- * if (credentials) {
- *   console.log('Using ECS/Fargate task role credentials');
- * }
- * ```
- *
  * @see {@link https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html IAM Roles for Tasks}
  */
 async function getContainerMetadataCredentials(): Promise<{
@@ -451,7 +377,6 @@ async function getContainerMetadataCredentials(): Promise<{
 	sessionToken: string;
 } | null> {
 	try {
-		// Check for ECS container credentials
 		const relativeUri = process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI;
 		if (!relativeUri) {
 			return null;
@@ -477,7 +402,6 @@ async function getContainerMetadataCredentials(): Promise<{
 			sessionToken: credentialsData.Token,
 		};
 	} catch (error) {
-		// Not running in ECS or metadata service unavailable
 		return null;
 	}
 }
@@ -488,15 +412,6 @@ async function getContainerMetadataCredentials(): Promise<{
  * It uses the AWS_CONTAINER_CREDENTIALS_FULL_URI environment variable to fetch credentials.
  *
  * @returns Promise resolving to credentials object or null if not running with EKS Pod Identity
- *
- * @example
- * ```typescript
- * // This function is typically called automatically by getSystemCredentials()
- * const credentials = await getPodIdentityCredentials();
- * if (credentials) {
- *   console.log('Using EKS Pod Identity credentials');
- * }
- * ```
  *
  * @see {@link https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html EKS Pod Identities}
  */
@@ -531,7 +446,6 @@ async function getPodIdentityCredentials(): Promise<{
 			sessionToken: credentialsData.Token,
 		};
 	} catch (error) {
-		// Not running with EKS Pod Identity or metadata service unavailable
 		return null;
 	}
 }
@@ -547,29 +461,10 @@ async function getPodIdentityCredentials(): Promise<{
  * @returns Promise resolving to temporary credentials for the assumed role
  * @throws {ApplicationError} When credentials are invalid or STS call fails
  *
- * @example
- * ```typescript
- * // Using system credentials for STS call
- * const assumedCreds = await assumeRole({
- *   roleArn: 'arn:aws:iam::123456789012:role/MyRole',
- *   roleSessionName: 'my-session',
- *   useSystemCredentialsForRole: true
- * }, 'us-east-1');
- *
- * // Using manual STS credentials
- * const assumedCreds = await assumeRole({
- *   roleArn: 'arn:aws:iam::123456789012:role/MyRole',
- *   roleSessionName: 'my-session',
- *   stsAccessKeyId: 'AKIA...',
- *   stsSecretAccessKey: 'secret...',
- *   externalId: 'optional-external-id'
- * }, 'us-east-1');
- * ```
- *
  * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html STS AssumeRole API}
  */
 export async function assumeRole(
-	credentials: AwsAssunmeRoleCredentialsType,
+	credentials: AwsAssumeRoleCredentialsType,
 	region: AWSRegion,
 ): Promise<{
 	accessKeyId: string;
@@ -609,15 +504,15 @@ export async function assumeRole(
 		};
 	}
 
-	// Prepare STS AssumeRole request
-	const stsEndpoint = `https://sts.${region}.amazonaws.com`;
+	const domain = getAwsDomain(region);
+	const stsEndpoint = `https://sts.${region}.${domain}`;
+
 	const assumeRoleBody = {
 		RoleArn: credentials.roleArn,
 		RoleSessionName: credentials.roleSessionName || 'n8n-session',
 		...(credentials.externalId && { ExternalId: credentials.externalId }),
 	};
 
-	// Build URLSearchParams properly
 	const params = new URLSearchParams({
 		Action: 'AssumeRole',
 		Version: '2011-06-15',
@@ -630,7 +525,6 @@ export async function assumeRole(
 
 	const bodyContent = params.toString();
 
-	// Sign the STS request
 	const stsUrl = new URL(stsEndpoint);
 	const signOpts = {
 		headers: {
@@ -650,7 +544,6 @@ export async function assumeRole(
 		throw new ApplicationError('Failed to sign STS request');
 	}
 
-	// Make the STS request
 	const response = await fetch(stsEndpoint, {
 		method: 'POST',
 		headers: signOpts.headers as Record<string, string>,

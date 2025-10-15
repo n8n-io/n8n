@@ -214,16 +214,12 @@ export type AwsIamCredentialsType = AwsCredentialsTypeBase & {
 	sessionToken?: string;
 };
 
-export type AwsAssunmeRoleCredentialsType = AwsCredentialsTypeBase & {
-	// Role assumption fields (optional for backward compatibility)
+export type AwsAssumeRoleCredentialsType = AwsCredentialsTypeBase & {
 	assumeRole?: boolean;
 	roleArn?: string;
 	externalId?: string;
 	roleSessionName?: string;
-	// For role assumption: whether to use system credentials for STS call
 	useSystemCredentialsForRole?: boolean;
-	// STS credentials for role assumption (when not using system credentials)
-	temporaryStsCredentials?: boolean;
 	stsAccessKeyId?: string;
 	stsSecretAccessKey?: string;
 	stsSessionToken?: string;

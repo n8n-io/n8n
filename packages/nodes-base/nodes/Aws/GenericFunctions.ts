@@ -10,7 +10,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 import { parseString as parseXml } from 'xml2js';
 import type {
-	AwsAssunmeRoleCredentialsType,
+	AwsAssumeRoleCredentialsType,
 	AwsIamCredentialsType,
 } from '../../credentials/common/aws/types';
 
@@ -29,7 +29,7 @@ export async function getAwsCredentials(
 		context.logger.warn('Could not get authentication type');
 	}
 
-	const credentials: AwsIamCredentialsType | AwsAssunmeRoleCredentialsType =
+	const credentials: AwsIamCredentialsType | AwsAssumeRoleCredentialsType =
 		await context.getCredentials(credentialsType);
 
 	return { credentials, credentialsType };
