@@ -413,7 +413,7 @@ export class FrontendService {
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
-			this.settings.aiAssistant.setup = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
+			this.settings.aiAssistant.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
 		if (isAskAiEnabled) {
