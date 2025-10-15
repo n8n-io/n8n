@@ -53,7 +53,7 @@ export const AlternateE = Template(
 	"<color-circles :colors=\"['--color--blue-800', '--color--blue-700', '--color--blue-600', '--color--blue-500', '--color--blue-400', '--color--blue-200', '--color--blue-100']\" />",
 );
 
-export const AlternateF = Template('<color-circles :colors="[\'--color--green-light-600\']" />');
+export const AlternateF = Template('<color-circles :colors="[\'--color--mint-600\']" />');
 
 export const AlternateG = Template('<color-circles :colors="[\'--color--slate-700\']" />');
 
