@@ -288,75 +288,96 @@ async function handleUpdateMessage(message: ChatMessageType) {
 </script>
 
 <template>
-	<N8nScrollArea
-		type="hover"
-		:enable-vertical-scroll="true"
-		:enable-horizontal-scroll="false"
-		as-child
-		:class="$style.scrollArea"
+	<div
+		:class="[
+			$style.component,
+			{
+				[$style.isNewChat]: isNewChat,
+				[$style.isMobileDevice]: isMobileDevice,
+				[$style.didSubmitInCurrentSession]: didSubmitInCurrentSession,
+			},
+		]"
 	>
-		<div :class="$style.floating">
-			<N8nIconButton
-				v-if="isMobileDevice"
-				type="secondary"
-				icon="menu"
-				@click="uiStore.openModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY)"
-			/>
-			<ModelSelector
-				:models="chatStore.models ?? null"
-				:selected-model="selectedModel"
-				:disabled="chatStore.isResponding"
-				:credentials-name="credentialsName"
-				@change="onModelChange"
-				@configure="onConfigure"
-			/>
-		</div>
-
-		<CredentialSelectorModal
-			v-if="credentialSelectorProvider"
-			:key="credentialSelectorProvider"
-			:provider="credentialSelectorProvider"
-			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
-			@select="onCredentialSelected"
-			@create-new="onCreateNewCredential"
-		/>
-
-		<div :class="$style.scrollable" ref="scrollable">
-			<ChatStarter
-				v-if="isNewChat"
-				:class="$style.starter"
-				:is-mobile-device="isMobileDevice"
-				@select="onSuggestionClick"
-			/>
-
-			<div v-else role="log" aria-live="polite" :class="$style.messageList">
-				<ChatMessage
-					v-for="message in chatMessages"
-					:key="message.id"
-					:message="message"
-					:compact="isMobileDevice"
-					:is-editing="editingMessageId === message.id"
-					:is-streaming="chatStore.ongoingStreaming?.messageId === message.id"
-					@start-edit="handleStartEditMessage(message.id)"
-					@cancel-edit="handleCancelEditMessage"
-					@update="handleUpdateMessage"
+		<N8nScrollArea
+			type="hover"
+			:enable-vertical-scroll="true"
+			:enable-horizontal-scroll="false"
+			as-child
+			:class="$style.scrollArea"
+		>
+			<div :class="$style.floating">
+				<N8nIconButton
+					v-if="isMobileDevice"
+					type="secondary"
+					icon="menu"
+					@click="uiStore.openModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY)"
 				/>
-			</div>
-
-			<div :class="$style.promptContainer">
-				<ChatPrompt
-					ref="inputRef"
-					:class="$style.prompt"
-					:placeholder="inputPlaceholder"
+				<ModelSelector
+					:models="chatStore.models ?? null"
+					:selected-model="selectedModel"
 					:disabled="chatStore.isResponding"
-					@submit="onSubmit"
+					:credentials-name="credentialsName"
+					@change="onModelChange"
+					@configure="onConfigure"
 				/>
 			</div>
-		</div>
-	</N8nScrollArea>
+
+			<CredentialSelectorModal
+				v-if="credentialSelectorProvider"
+				:key="credentialSelectorProvider"
+				:provider="credentialSelectorProvider"
+				:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
+				@select="onCredentialSelected"
+				@create-new="onCreateNewCredential"
+			/>
+
+			<div :class="$style.scrollable" ref="scrollable">
+				<ChatStarter
+					v-if="isNewChat"
+					:class="$style.starter"
+					:is-mobile-device="isMobileDevice"
+					@select="onSuggestionClick"
+				/>
+
+				<div v-else role="log" aria-live="polite" :class="$style.messageList">
+					<ChatMessage
+						v-for="message in chatMessages"
+						:key="message.id"
+						:message="message"
+						:compact="isMobileDevice"
+						:is-editing="editingMessageId === message.id"
+						:is-streaming="chatStore.ongoingStreaming?.messageId === message.id"
+						@start-edit="handleStartEditMessage(message.id)"
+						@cancel-edit="handleCancelEditMessage"
+						@update="handleUpdateMessage"
+					/>
+				</div>
+
+				<div :class="$style.promptContainer">
+					<ChatPrompt
+						ref="inputRef"
+						:class="$style.prompt"
+						:placeholder="inputPlaceholder"
+						:disabled="chatStore.isResponding"
+						@submit="onSubmit"
+					/>
+				</div>
+			</div>
+		</N8nScrollArea>
+	</div>
 </template>
 
 <style lang="scss" module>
+.component {
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) 0;
+	background-color: var(--color--background--light-3);
+
+	&.isMobileDevice {
+		padding: 0;
+	}
+}
+
 .scrollArea {
 	border: var(--border);
 	border-radius: var(--radius);
