@@ -88,14 +88,6 @@ spy.mockImplementation(
 		}) as unknown as Telemetry,
 );
 
-const setBuilderEnabled = (enabled: boolean) => {
-	settingsStore.setSettings(
-		merge({}, defaultSettings, {
-			aiBuilder: { enabled, setup: true },
-		}),
-	);
-};
-
 const currentRouteName = ENABLED_VIEWS[0];
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn(() =>
