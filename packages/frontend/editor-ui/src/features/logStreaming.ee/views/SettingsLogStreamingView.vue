@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeMount, onMounted, ref, getCurrentInstance }
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';

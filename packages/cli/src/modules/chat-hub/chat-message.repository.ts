@@ -1,3 +1,4 @@
+import type { ChatHubMessageState, ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
@@ -23,7 +24,17 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		});
 	}
 
-	async deleteChatMessage(id: string, trx?: EntityManager) {
+	async updateChatMessage(
+		id: ChatMessageId,
+		fields: { state: ChatHubMessageState },
+		trx?: EntityManager,
+	) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			return await em.update(ChatHubMessage, { id }, fields);
+		});
+	}
+
+	async deleteChatMessage(id: ChatMessageId, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			return await em.delete(ChatHubMessage, { id });
 		});
@@ -33,6 +44,12 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		return await this.find({
 			where: { sessionId },
 			order: { createdAt: 'ASC', id: 'DESC' },
+		});
+	}
+
+	async getOneById(id: ChatMessageId, sessionId: ChatSessionId) {
+		return await this.findOne({
+			where: { id, sessionId },
 		});
 	}
 }

@@ -6,7 +6,7 @@ import { useEvaluationStore } from '../../evaluation.store';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
-import { useUsageStore } from '@/stores/usage.store';
+import { useUsageStore } from '@/features/usage/usage.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 

@@ -109,9 +109,9 @@ $index-popper: 2000;
 
 /* Disable base
 -------------------------- */
-$disabled-fill-base: var(--disabled-fill, var(--color--background--light-2));
-$disabled-color-base: var(--disabled-color, var(--color--text));
-$disabled-border-base: var(--disabled-border, var(--border-color));
+$disabled-fill-base: var(--input--color--background--disabled, var(--color--background--light-2));
+$disabled-color-base: var(--input--color--disabled, var(--color--text));
+$disabled-border-base: var(--input--border-color--disabled, var(--border-color));
 
 /* Icon
 -------------------------- */
@@ -393,7 +393,7 @@ $input-placeholder-color: var(--input--placeholder--color, var(--color--text--ti
 $input-focus-border: var(--input--border-color--focus, var(--color--secondary));
 $input-border-color: var(--input--border-color, var(--border-color));
 $input-border-style: var(--input--border-style, var(--border-style));
-$input-border-width: var(--input-border-width, var(--border-width));
+$input-border-width: var(--input--border-width, var(--border-width));
 $input-border: $input-border-color $input-border-style $input-border-width;
 $input-border-right-color: var(
 	--input--border-right-color,

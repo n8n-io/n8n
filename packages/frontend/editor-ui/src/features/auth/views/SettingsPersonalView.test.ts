@@ -3,7 +3,7 @@ import { createPinia } from 'pinia';
 import { waitAllPromises } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { ROLE } from '@n8n/api-types';
