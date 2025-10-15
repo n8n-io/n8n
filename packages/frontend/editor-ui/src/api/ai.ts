@@ -1,6 +1,6 @@
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	AskAiRequest,

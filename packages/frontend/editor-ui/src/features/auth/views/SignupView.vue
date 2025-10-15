@@ -5,7 +5,7 @@ import { useToast } from '@/composables/useToast';
 import { computed, onMounted, ref } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 

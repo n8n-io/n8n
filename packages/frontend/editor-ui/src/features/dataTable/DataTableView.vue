@@ -132,7 +132,7 @@ watch(
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader main-button="dataTable">
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"

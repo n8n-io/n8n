@@ -50,7 +50,7 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	async getManyByUserId(userId: string) {
 		return await this.find({
 			where: { ownerId: userId },
-			order: { lastMessageAt: 'DESC' },
+			order: { lastMessageAt: 'DESC', id: 'ASC' },
 		});
 	}
 
@@ -58,6 +58,12 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		return await this.findOne({
 			where: { id, ownerId: userId },
 			relations: ['messages'],
+		});
+	}
+
+	async deleteAll(trx?: EntityManager) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			return await em.createQueryBuilder().delete().from(ChatHubSession).execute();
 		});
 	}
 }

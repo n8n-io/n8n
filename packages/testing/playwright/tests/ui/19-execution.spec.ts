@@ -139,11 +139,12 @@ test.describe('Execution', () => {
 		await expect(n8n.canvas.stopExecutionWaitingForWebhookButton()).toBeVisible();
 
 		await n8n.canvas.openNode('Webhook');
-		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+
+		await n8n.clipboard.grant();
 		await n8n.page.getByTestId('copy-input').click();
 		await n8n.ndv.clickBackToCanvasButton();
 
-		const webhookUrl = await n8n.page.evaluate(() => navigator.clipboard.readText());
+		const webhookUrl = await n8n.clipboard.readText();
 		const response = await n8n.page.request.get(webhookUrl);
 		expect(response.status()).toBe(200);
 

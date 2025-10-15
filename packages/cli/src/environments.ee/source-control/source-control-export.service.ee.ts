@@ -20,7 +20,6 @@ import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workfl
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
-import { VariablesService } from '../variables/variables.service.ee';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -40,14 +39,15 @@ import {
 	stringContainsExpression,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
+import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-import { ExportableProject } from './types/exportable-project';
 
 @Service()
 export class SourceControlExportService {
@@ -269,7 +269,7 @@ export class SourceControlExportService {
 			// keep all folders that are not accessible by the current user
 			// if allowedProjects is undefined, all folders are accessible by the current user
 			const foldersToKeepUnchanged = context.hasAccessToAllProjects()
-				? existingFolders.folders
+				? []
 				: existingFolders.folders.filter((folder) => {
 						return !allowedProjects.some((project) => project.id === folder.homeProjectId);
 					});

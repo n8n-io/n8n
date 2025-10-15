@@ -21,7 +21,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/sso/sso.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';

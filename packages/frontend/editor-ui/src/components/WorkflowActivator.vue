@@ -13,8 +13,9 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import type { INodeUi, IUsedCredential } from '@/Interface';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { INodeUi } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 
