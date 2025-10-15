@@ -76,11 +76,12 @@ export const createStringValueSetter =
 		if (originalValue === undefined) {
 			originalValue = null;
 		}
-		let newValue = params.newValue as unknown as DataTableRow[keyof DataTableRow];
 
-		if (!isDataTableValue(newValue)) {
+		if (!isDataTableValue(params.newValue)) {
 			return false;
 		}
+
+		let newValue = params.newValue;
 
 		if (originalValue === null && newValue === '') {
 			return false;
@@ -94,12 +95,32 @@ export const createStringValueSetter =
 		return true;
 	};
 
+export const createJsonValueSetter =
+	(col: DataTableColumn) => (params: ValueSetterParams<DataTableRow>) => {
+		let originalValue = params.data[col.name];
+		if (originalValue === undefined) {
+			originalValue = null;
+		}
+		if (!isDataTableValue(params.newValue)) {
+			return false;
+		}
+		params.data[col.name] = params.newValue;
+		return true;
+	};
+
 export const stringCellEditorParams = (
 	params: CellEditRequestEvent<DataTableRow>,
 ): { value: string; maxLength: number } => ({
 	value: (params.value as string | null | undefined) ?? '',
 	maxLength: 999999999,
 });
+
+export const jsonValueFormatter = (
+	params: ValueFormatterParams<DataTableRow, Record<string, unknown> | null | undefined>,
+): string => {
+	if (params.value === null || params.value === undefined) return '';
+	return JSON.stringify(params.value);
+};
 
 export const dateValueFormatter = (
 	params: ValueFormatterParams<DataTableRow, Date | null | undefined>,

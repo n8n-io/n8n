@@ -32,6 +32,8 @@ import {
 	getDateColumnFilterOptions,
 	getNumberColumnFilterOptions,
 	getBooleanColumnFilterOptions,
+	createJsonValueSetter,
+	jsonValueFormatter,
 } from '@/features/dataTable/utils/columnUtils';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/dataTable/utils/filterMappings';
@@ -83,17 +85,14 @@ export const useDataTableColumns = ({
 			columnDef.filterParams = {
 				filterOptions: getStringColumnFilterOptions(i18n),
 			};
-			// @ts-expect-error
 		} else if (col.type === 'json') {
 			columnDef.cellEditorSelector = () => ({
 				component: JsonCellEditor,
 			});
 			columnDef.cellEditorPopup = true;
-			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
-			// TODO
-			columnDef.filterParams = {
-				filterOptions: getStringColumnFilterOptions(i18n),
-			};
+			columnDef.valueSetter = createJsonValueSetter(col);
+			columnDef.filter = false;
+			columnDef.valueFormatter = jsonValueFormatter;
 		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
 				component: ElDatePickerCellEditor,

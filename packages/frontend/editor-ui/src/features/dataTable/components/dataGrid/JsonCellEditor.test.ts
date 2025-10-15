@@ -33,7 +33,10 @@ vi.mock('@/features/editors/components/JsonEditor/JsonEditor.vue', () => ({
 	}),
 }));
 
-function createParams(initialValue: string, apiOverrides: Partial<ICellEditorParams['api']> = {}) {
+function createParams(
+	initialValue: Record<string, unknown>,
+	apiOverrides: Partial<ICellEditorParams['api']> = {},
+) {
 	const api = {
 		stopEditing: vi.fn(),
 		...apiOverrides,
@@ -47,20 +50,20 @@ function createParams(initialValue: string, apiOverrides: Partial<ICellEditorPar
 
 describe('JsonCellEditor', () => {
 	it('renders with initial value and binds v-model', async () => {
-		const params = createParams('{"foo":1}');
+		const params = createParams({ foo: 1 });
 		const { getByTestId } = renderComponent(JsonCellEditor, {
 			props: { params },
 		});
 
 		const input = getByTestId('json-editor-input');
-		expect(input.value).toBe('{"foo":1}');
+		expect((input as HTMLInputElement).value).toBe(JSON.stringify({ foo: 1 }, null, 2));
 
 		await fireEvent.update(input, '{"bar":2}');
-		expect(input.value).toBe('{"bar":2}');
+		expect((input as HTMLInputElement).value).toBe('{"bar":2}');
 	});
 
 	it('pressing Escape cancels editing via grid api', async () => {
-		const params = createParams('{"a":1}');
+		const params = createParams({ a: 1 });
 		const { container } = renderComponent(JsonCellEditor, {
 			props: { params },
 		});

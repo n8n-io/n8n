@@ -12,7 +12,7 @@ export type DataTable = {
 };
 
 // Single sources of truth for supported types
-export const DATA_TABLE_COLUMN_TYPES = ['string', 'number', 'boolean', 'date'] as const;
+export const DATA_TABLE_COLUMN_TYPES = ['string', 'number', 'boolean', 'date', 'json'] as const;
 export type DataTableColumnType = (typeof DATA_TABLE_COLUMN_TYPES)[number];
 
 export const AG_GRID_CELL_TYPES = [
@@ -34,7 +34,7 @@ export type DataTableColumn = {
 
 export type DataTableColumnCreatePayload = Pick<DataTableColumn, 'name' | 'type'>;
 
-export type DataTableValue = string | number | boolean | Date | null;
+export type DataTableValue = string | number | boolean | Date | null | Record<string, unknown>;
 
 export type DataTableRow = Record<string, DataTableValue>;
 

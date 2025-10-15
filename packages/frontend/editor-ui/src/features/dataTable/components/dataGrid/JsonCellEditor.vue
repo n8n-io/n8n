@@ -2,17 +2,18 @@
 import { ref } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
 import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
+import { jsonParse } from 'n8n-workflow';
 
 const props = defineProps<{
 	params: ICellEditorParams;
 }>();
 
 const editorRef = ref<InstanceType<typeof JsonEditor>>();
-const valueRef = ref(String(props.params.value ?? ''));
+const valueRef = ref(props.params.value ? JSON.stringify(props.params.value, null, 2) : '');
 const isCancelledRef = ref(false);
 
-const getValue = (): string => {
-	return valueRef.value;
+const getValue = (): Record<string, unknown> | null => {
+	return valueRef.value ? jsonParse(valueRef.value) : null;
 };
 
 const isPopup = () => true;
