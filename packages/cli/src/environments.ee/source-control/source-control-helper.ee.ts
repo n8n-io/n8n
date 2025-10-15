@@ -21,6 +21,7 @@ import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import type { StatusResourceOwner } from './types/resource-owner';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -246,6 +247,33 @@ export function normalizeAndValidateSourceControlledFilePath(
 	return normalizedPath;
 }
 
+function areOwnersDifferent(
+	owner1: StatusResourceOwner | undefined,
+	owner2: StatusResourceOwner | undefined,
+): boolean {
+	// Both undefined/null - not different
+	if (!owner1 && !owner2) return false;
+
+	// One is undefined/null - different
+	if (!owner1 || !owner2) return true;
+
+	// Different types - different
+	if (owner1.type !== owner2.type) return true;
+
+	// Compare based on type
+	if (owner1.type === 'personal' && owner2.type === 'personal') {
+		// For personal projects, compare projectId
+		return owner1.projectId !== owner2.projectId;
+	}
+
+	if (owner1.type === 'team' && owner2.type === 'team') {
+		// For team projects, compare projectId
+		return owner1.projectId !== owner2.projectId;
+	}
+
+	return false;
+}
+
 /**
  * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
  * between local and remote versions
@@ -254,8 +282,10 @@ export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
 ): boolean {
-	return (
-		remote.versionId !== local.versionId ||
-		(remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId)
-	);
+	const hasVersionIdChanged = remote.versionId !== local.versionId;
+	const hasParentFolderIdChanged =
+		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
+	const hasOwnerChanged = areOwnersDifferent(remote.owner, local.owner);
+
+	return hasVersionIdChanged || hasParentFolderIdChanged || hasOwnerChanged;
 }

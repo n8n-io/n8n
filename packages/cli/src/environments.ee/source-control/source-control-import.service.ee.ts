@@ -248,6 +248,7 @@ export class SourceControlImportService {
 					project: {
 						projectRelations: {
 							user: true,
+							role: true,
 						},
 					},
 				},
@@ -266,6 +267,7 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							userId: true,
 							role: {
 								slug: true,
 							},
@@ -293,6 +295,7 @@ export class SourceControlImportService {
 				});
 				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
 			}
+
 			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
 
 			return {
