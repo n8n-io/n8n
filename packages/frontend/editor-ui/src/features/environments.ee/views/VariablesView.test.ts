@@ -1,6 +1,6 @@
 import VariablesView from './VariablesView.vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useEnvironmentsStore } from '../environments.store';
 import { createComponentRenderer } from '@/__tests__/render';

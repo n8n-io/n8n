@@ -24,19 +24,20 @@ import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	INodeCredentials,
 	OperationalError,
 	type IConnections,
 	type INode,
+	type INodeCredentials,
+	type INodeTypeNameVersion,
 	type ITaskData,
 	type IWorkflowBase,
+	type IWorkflowExecuteAdditionalData,
 	type StartNodeData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -46,13 +47,29 @@ import { ChatHubSession } from './chat-hub-session.entity';
 import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+
+const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
+	openai: {
+		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		version: 1.2,
+	},
+	anthropic: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+		version: 1.3,
+	},
+	google: {
+		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+		version: 1.2,
+	},
+};
 
 @Service()
 export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsHelper: CredentialsHelper,
+		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -82,27 +99,15 @@ export class ChatHubService {
 				// Ensure the user has the permission to read the credential
 				await this.credentialsService.getOne(user, credentialId, false);
 
-				const credentials = await this.credentialsHelper.getDecrypted(
-					additionalData,
-					{
-						id: credentialId,
-						name: PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-					},
-					PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-					'internal',
-					undefined,
-					true,
-				);
-
-				// Extract API key from credentials based on provider
-				const apiKey = this.extractApiKey(provider, credentials);
-
-				if (!apiKey) {
-					return [provider, { models: [] }];
-				}
-
 				try {
-					return [provider, await this.fetchModelsForProvider(provider, apiKey)];
+					const credentials = {
+						[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]: { name: '', id: credentialId },
+					};
+
+					return [
+						provider,
+						await this.fetchModelsForProvider(provider, credentials, additionalData),
+					];
 				} catch {
 					return [
 						provider,
@@ -127,116 +132,109 @@ export class ChatHubService {
 
 	private async fetchModelsForProvider(
 		provider: ChatHubProvider,
-		apiKey: string,
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		switch (provider) {
 			case 'openai':
-				return await this.fetchOpenAiModels(apiKey);
+				return await this.fetchOpenAiModels(credentials, additionalData);
 			case 'anthropic':
-				return await this.fetchAnthropicModels(apiKey);
+				return await this.fetchAnthropicModels(credentials, additionalData);
 			case 'google':
-				return await this.fetchGoogleModels(apiKey);
+				return await this.fetchGoogleModels(credentials, additionalData);
 		}
 	}
 
-	private async fetchOpenAiModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch('https://api.openai.com/v1/models', {
-			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch OpenAI models: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-
-		return {
-			models: data.data
-				.filter(
-					(model: { id: string }) =>
-						model.id.includes('gpt') &&
-						!model.id.includes('instruct') &&
-						!model.id.includes('audio'),
-				)
-				.map((model: { id: string }) => ({ name: model.id })),
-		};
-	}
-
-	private async fetchAnthropicModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch('https://api.anthropic.com/v1/models', {
-			method: 'GET',
-			headers: {
-				'x-api-key': apiKey,
-				'anthropic-version': '2023-06-01',
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch Anthropic models: ${response.statusText}`);
-		}
-
-		const data = (await response.json()) as {
-			data: Array<{ id: string; display_name: string; type: string; created_at: string }>;
-		};
-
-		return {
-			models: (data.data || [])
-				.sort((a, b) => {
-					const dateA = new Date(a.created_at);
-					const dateB = new Date(b.created_at);
-					return dateB.getTime() - dateA.getTime();
-				})
-				.map((model) => ({ name: model.id })),
-		};
-	}
-
-	private async fetchGoogleModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch(
-			`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
-			{
-				method: 'GET',
-			},
+	private async fetchOpenAiModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
+			'searchModels',
+			'parameters.model',
+			additionalData,
+			providerNodeTypeMapping.openai,
+			{},
+			credentials,
 		);
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch Google models: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-
 		return {
-			models: data.models
-				?.filter(
-					(model: { name: string; supportedGenerationMethods?: string[] }) =>
-						model.name.includes('gemini') &&
-						model.supportedGenerationMethods?.includes('generateContent'),
-				)
-				.map((model: { name: string }) => {
-					// Extract model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
-					const modelId = model.name.split('/').pop();
-
-					return { name: modelId };
-				}),
+			models: resourceLocatorResults.results.map((result) => ({ name: String(result.value) })),
 		};
 	}
 
-	private extractApiKey(provider: ChatHubProvider, credentials: unknown): string | undefined {
-		if (typeof credentials !== 'object' || credentials === null) {
-			return undefined;
-		}
+	private async fetchAnthropicModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
+			'searchModels',
+			'parameters.model',
+			additionalData,
+			providerNodeTypeMapping.anthropic,
+			{},
+			credentials,
+		);
 
-		const creds = credentials as Record<string, unknown>;
+		return {
+			models: resourceLocatorResults.results.map((result) => ({ name: String(result.value) })),
+		};
+	}
 
-		switch (provider) {
-			case 'openai':
-			case 'anthropic':
-			case 'google':
-				// All providers use 'apiKey' field
-				return typeof creds.apiKey === 'string' ? creds.apiKey : undefined;
-		}
+	private async fetchGoogleModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				// From Gemini node
+				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts#L75
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1beta/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'models',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: "={{ !$responseItem.name.includes('embedding') }}",
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.name}}',
+									value: '={{$responseItem.name}}',
+									description: '={{$responseItem.description}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			providerNodeTypeMapping.google,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({ name: String(result.value) })),
+		};
 	}
 
 	private async createChatWorkflow(
@@ -527,6 +525,8 @@ export class ChatHubService {
 			id: uuidv4(),
 			name: 'Chat Model',
 			credentials: payload.credentials,
+			type: providerNodeTypeMapping[payload.model.provider].name,
+			typeVersion: providerNodeTypeMapping[payload.model.provider].version,
 		};
 
 		switch (payload.model.provider) {
@@ -537,8 +537,6 @@ export class ChatHubService {
 						model: { __rl: true, mode: 'list', value: payload.model.model },
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-					typeVersion: 1.2,
 				};
 			case 'anthropic':
 				return {
@@ -552,8 +550,6 @@ export class ChatHubService {
 						},
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-					typeVersion: 1.3,
 				};
 			case 'google':
 				return {
@@ -562,8 +558,6 @@ export class ChatHubService {
 						model: { __rl: true, mode: 'list', value: payload.model.model },
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-					typeVersion: 1.2,
 				};
 		}
 	}

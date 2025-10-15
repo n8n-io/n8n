@@ -6,23 +6,19 @@ import {
 	CHAT_EMBED_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
-	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
-	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
-	PERSONALIZATION_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
@@ -43,6 +39,12 @@ import {
 	VARIABLE_MODAL_KEY,
 } from '@/constants';
 import {
+	DELETE_USER_MODAL_KEY,
+	INVITE_USER_MODAL_KEY,
+	PERSONALIZATION_MODAL_KEY,
+} from '@/features/users/users.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/folders/folders.constants';
@@ -60,7 +62,7 @@ import ConfirmPasswordModal from '@/features/auth/components/ConfirmPasswordModa
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
-import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
+import CommunityPlusEnrollmentModal from '@/features/communityPlus/components/CommunityPlusEnrollmentModal.vue';
 import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
@@ -73,11 +75,11 @@ import ExternalSecretsProviderModal from '@/features/externalSecrets/components/
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
-import InviteUsersModal from '@/components/InviteUsersModal.vue';
+import InviteUsersModal from '@/features/users/components/InviteUsersModal.vue';
 import MfaSetupModal from '@/features/auth/components/MfaSetupModal.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import PersonalizationModal from '@/components/PersonalizationModal.vue';
+import PersonalizationModal from '@/features/users/components/PersonalizationModal.vue';
 import PreBuiltAgentsModal from '@/components/PreBuiltAgentsModal.vue';
 import ProjectMoveResourceModal from '@/features/projects/components/ProjectMoveResourceModal.vue';
 import EventDestinationSettingsModal from '@/features/logStreaming.ee/components/EventDestinationSettingsModal.vue';

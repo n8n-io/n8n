@@ -26,7 +26,7 @@ import CommunityNodeDetails from './CommunityNodeDetails.vue';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
 import CommunityNodeDocsLink from './CommunityNodeDocsLink.vue';
 import CommunityNodeFooter from './CommunityNodeFooter.vue';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();

@@ -2,12 +2,12 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
+import CommunityPlusEnrollmentModal from './CommunityPlusEnrollmentModal.vue';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../communityPlus.constants';
 import { useUsageStore } from '@/stores/usage.store';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();

@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
-import PersonalizationModal from '@/components/PersonalizationModal.vue';
+import PersonalizationModal from './PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import {
 	COMPANY_TYPE_KEY,
@@ -13,7 +13,7 @@ import {
 	ROLE_OTHER_KEY,
 	DEVOPS_AUTOMATION_GOAL_OTHER_KEY,
 	DEVOPS_AUTOMATION_GOAL_KEY,
-} from '@/constants';
+} from '../users.constants';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({

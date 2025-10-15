@@ -24,7 +24,7 @@ import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { Project } from '@/features/projects/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
