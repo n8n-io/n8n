@@ -659,10 +659,8 @@ watchEffect(() => {
 
 // Load data when modal opens
 onMounted(async () => {
-	// Only load fresh data if we don't have any initial data
-	if (!props.data.status || props.data.status.length === 0) {
-		await loadSourceControlStatus();
-	}
+	// Always load fresh data to ensure workflow names are populated
+	await loadSourceControlStatus();
 });
 </script>
 
