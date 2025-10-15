@@ -24,6 +24,9 @@ import {
 	createSdkMcpServer,
 	type AgentDefinition,
 	type SDKMessage,
+	type SDKAssistantMessage,
+	type SDKUserMessage,
+	type SDKResultMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -37,6 +40,7 @@ import {
 } from './prompts/sdk-prompts';
 import { createConnection, inferConnectionType } from './tools/utils/connection.utils';
 import { getLatestVersion } from './tools/utils/node-creation.utils';
+import { fixExpressionPrefixes } from './tools/utils/parameter-update.utils';
 import type { SimpleWorkflow } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -60,6 +64,21 @@ export interface WorkflowBuilderAgentClaudeConfig {
  * This class provides a simpler alternative to the LangGraph implementation
  * by using Claude's Agent SDK for orchestration, routing, and tool execution.
  */
+/**
+ * Type guards for SDK messages
+ */
+function isSDKAssistantMessage(message: SDKMessage): message is SDKAssistantMessage {
+	return message.type === 'assistant' && 'message' in message;
+}
+
+function isSDKUserMessage(message: SDKMessage): message is SDKUserMessage {
+	return message.type === 'user' && 'message' in message;
+}
+
+function isSDKResultMessage(message: SDKMessage): message is SDKResultMessage {
+	return message.type === 'result';
+}
+
 /**
  * Usage tracking for a single step
  */
@@ -112,7 +131,8 @@ export class WorkflowBuilderAgentClaude {
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.logger = config.logger;
 		this.apiKey = config.apiKey;
-		this.model = config.model ?? 'haiku';
+		// this.model = config.model ?? 'haiku';
+		this.model = 'sonnet';
 
 		// Initialize empty workflow
 		this.workflowJSON = { nodes: [], connections: {}, name: '' };
@@ -125,11 +145,7 @@ export class WorkflowBuilderAgentClaude {
 	 * This is the public API that matches the LangGraph implementation's signature
 	 * for easy drop-in replacement.
 	 */
-	async *chat(
-		payload: ChatPayload,
-		_userId?: string,
-		_abortSignal?: AbortSignal,
-	): AsyncGenerator<any, void> {
+	async *chat(payload: ChatPayload, _userId?: string, _abortSignal?: AbortSignal) {
 		// Initialize state from payload
 		if (payload.workflowContext?.currentWorkflow) {
 			this.workflowJSON = payload.workflowContext.currentWorkflow as SimpleWorkflow;
@@ -208,30 +224,50 @@ export class WorkflowBuilderAgentClaude {
 				console.log('Type:', message.type);
 
 				// Log message details based on type
-				if (message.type === 'assistant' && 'message' in message) {
+				if (isSDKAssistantMessage(message)) {
 					console.log(
 						'Assistant message content:',
-						JSON.stringify((message as any).message.content, null, 2),
+						JSON.stringify(message.message.content, null, 2),
 					);
-				} else if (message.type === 'user' && 'message' in message) {
+				} else if (isSDKUserMessage(message)) {
 					// Log tool results (truncated to 1000 chars)
-					const content = (message as any).message?.content;
+					const content = message.message.content;
 					if (Array.isArray(content)) {
 						for (const block of content) {
-							if (block.type === 'tool_result') {
-								const resultText = Array.isArray(block.content)
-									? block.content.map((c: any) => c.text || '').join('\n')
-									: String(block.content);
+							if ('type' in block && block.type === 'tool_result' && 'content' in block) {
+								let resultText = '';
+								if (Array.isArray(block.content)) {
+									resultText = block.content
+										.map((c) => {
+											if (
+												typeof c === 'object' &&
+												c !== null &&
+												'type' in c &&
+												c.type === 'text' &&
+												'text' in c
+											) {
+												return c.text;
+											}
+											return '';
+										})
+										.filter(Boolean)
+										.join('\n');
+								} else if (typeof block.content === 'string') {
+									resultText = block.content;
+								}
 								const truncated =
 									resultText.length > 1000
 										? resultText.substring(0, 1000) + '...[truncated]'
 										: resultText;
-								console.log(`Tool result for ${block.tool_use_id}:`, truncated);
+								console.log(
+									`Tool result for ${'tool_use_id' in block ? block.tool_use_id : 'unknown'}:`,
+									truncated,
+								);
 							}
 						}
 					}
-				} else if (message.type === 'result') {
-					console.log('Result - completed in', (message as any).duration_ms, 'ms');
+				} else if (isSDKResultMessage(message)) {
+					console.log('Result - completed in', message.duration_ms, 'ms');
 				}
 
 				console.log('Current workflow state - Nodes:', this.workflowJSON.nodes.length);
@@ -258,16 +294,16 @@ export class WorkflowBuilderAgentClaude {
 				// Messages FROM subagent tools have parent_tool_use_id set to the Task's ID
 				// The Task tool's own result has parent_tool_use_id === null
 				const isSubagentComplete =
-					message.type === 'user' &&
-					'message' in message &&
-					(message as any).parent_tool_use_id === null &&
-					(message as any).message?.content?.some?.((c: any) => c.type === 'tool_result');
+					isSDKUserMessage(message) &&
+					message.parent_tool_use_id === null &&
+					Array.isArray(message.message.content) &&
+					message.message.content.some((c) => 'type' in c && c.type === 'tool_result');
 
 				const isAgentResponseWithoutTools =
-					message.type === 'assistant' &&
-					'message' in message &&
-					(message as any).message?.content?.some?.((c: any) => c.type === 'text') &&
-					!(message as any).message?.content?.some?.((c: any) => c.type === 'tool_use');
+					isSDKAssistantMessage(message) &&
+					Array.isArray(message.message.content) &&
+					message.message.content.some((c) => 'type' in c && c.type === 'text') &&
+					!message.message.content.some((c) => 'type' in c && c.type === 'tool_use');
 
 				const currentNodeCount = this.workflowJSON.nodes.length;
 				const currentConnectionCount = Object.keys(this.workflowJSON.connections).length;
@@ -353,27 +389,27 @@ export class WorkflowBuilderAgentClaude {
 	 * Messages with same ID have identical usage - only count once
 	 */
 	private trackUsage(message: SDKMessage) {
-		// Only track assistant messages with usage
-		if (message.type !== 'assistant' || !('message' in message)) {
-			// Also check result message for final cumulative usage
-			if (message.type === 'result') {
-				const resultMsg = message as any;
-				if (resultMsg.usage) {
-					console.log('\n📊 Final SDK Usage from Result Message:');
-					console.log('  Total Input:', resultMsg.usage.input_tokens);
-					console.log('  Total Output:', resultMsg.usage.output_tokens);
-					console.log('  Cache Read:', resultMsg.usage.cache_read_input_tokens || 0);
-					console.log('  Cache Creation:', resultMsg.usage.cache_creation_input_tokens || 0);
-					console.log('  Duration:', resultMsg.duration_ms, 'ms');
-					console.log('  Total Cost: $' + (resultMsg.total_cost_usd || 0).toFixed(4));
-				}
+		// Check result message for final cumulative usage
+		if (isSDKResultMessage(message)) {
+			if (message.usage) {
+				console.log('\n📊 Final SDK Usage from Result Message:');
+				console.log('  Total Input:', message.usage.input_tokens);
+				console.log('  Total Output:', message.usage.output_tokens);
+				console.log('  Cache Read:', message.usage.cache_read_input_tokens);
+				console.log('  Cache Creation:', message.usage.cache_creation_input_tokens);
+				console.log('  Duration:', message.duration_ms, 'ms');
+				console.log('  Total Cost: $' + message.total_cost_usd.toFixed(4));
 			}
 			return;
 		}
 
-		const assistantMsg = message as any;
-		const msgUsage = assistantMsg.message?.usage;
-		const msgUuid = assistantMsg.uuid;
+		// Only track assistant messages with usage
+		if (!isSDKAssistantMessage(message)) {
+			return;
+		}
+
+		const msgUsage = message.message.usage;
+		const msgUuid = message.uuid;
 
 		if (!msgUsage || !msgUuid) {
 			return;
@@ -390,14 +426,14 @@ export class WorkflowBuilderAgentClaude {
 		// Calculate step duration
 		const stepDuration = this.stepStartTime ? Date.now() - this.stepStartTime : 0;
 
-		// Extract usage data
+		// Extract usage data safely
 		const stepUsage: StepUsage = {
 			messageId: msgUuid,
 			timestamp: new Date().toISOString(),
-			inputTokens: msgUsage.input_tokens || 0,
-			outputTokens: msgUsage.output_tokens || 0,
-			cacheReadTokens: msgUsage.cache_read_input_tokens || 0,
-			cacheCreationTokens: msgUsage.cache_creation_input_tokens || 0,
+			inputTokens: msgUsage.input_tokens ?? 0,
+			outputTokens: msgUsage.output_tokens ?? 0,
+			cacheReadTokens: msgUsage.cache_read_input_tokens ?? 0,
+			cacheCreationTokens: msgUsage.cache_creation_input_tokens ?? 0,
 			durationMs: stepDuration,
 		};
 
@@ -406,7 +442,7 @@ export class WorkflowBuilderAgentClaude {
 		this.usage.totalOutputTokens += stepUsage.outputTokens;
 		this.usage.totalCacheReadTokens += stepUsage.cacheReadTokens;
 		this.usage.totalCacheCreationTokens += stepUsage.cacheCreationTokens;
-		this.usage.totalDurationMs += stepUsage.durationMs || 0;
+		this.usage.totalDurationMs += stepUsage.durationMs ?? 0;
 		this.usage.stepCount++;
 		this.usage.steps.push(stepUsage);
 
@@ -449,7 +485,7 @@ export class WorkflowBuilderAgentClaude {
 					'mcp__workflow-builder__get_node_details',
 					'mcp__workflow-builder__get_workflow_context',
 				],
-				model: 'haiku',
+				model: 'sonnet',
 			},
 
 			builder: {
@@ -830,7 +866,7 @@ export class WorkflowBuilderAgentClaude {
 					// Directly apply parameters (subagent has already reasoned about them)
 					node.parameters = {
 						...node.parameters,
-						...args.parameters,
+						...fixExpressionPrefixes(args.parameters),
 					};
 
 					this.logger?.debug('[SDK Tool] Set node parameters', {
@@ -904,20 +940,24 @@ export class WorkflowBuilderAgentClaude {
 		const messages: any[] = [];
 
 		// Handle assistant messages
-		if (message.type === 'assistant' && 'message' in message) {
-			const assistantMsg = message as any;
-			const content = assistantMsg.message.content;
+		if (isSDKAssistantMessage(message)) {
+			const messageContent = message.message.content;
 
-			// Extract text content
-			if (Array.isArray(content)) {
-				for (const block of content) {
-					if (block.type === 'text' && block.text) {
+			// Handle array content
+			if (Array.isArray(messageContent)) {
+				for (const block of messageContent) {
+					if ('type' in block && block.type === 'text' && 'text' in block && block.text) {
 						messages.push({
 							role: 'assistant',
 							type: 'message',
 							text: block.text,
 						});
-					} else if (block.type === 'tool_use') {
+					} else if (
+						'type' in block &&
+						block.type === 'tool_use' &&
+						'id' in block &&
+						'name' in block
+					) {
 						// Emit tool call
 						messages.push({
 							id: block.id,
@@ -930,51 +970,41 @@ export class WorkflowBuilderAgentClaude {
 							updates: [
 								{
 									type: 'input',
-									data: block.input || {},
+									data: ('input' in block ? block.input : {}) || {},
 								},
 							],
 						});
 					}
 				}
-			} else if (typeof content === 'string' && content.trim()) {
-				messages.push({
-					role: 'assistant',
-					type: 'message',
-					text: content,
-				});
 			}
-
-			// Handle tool calls if any (for non-array content)
-			if (assistantMsg.message.tool_calls?.length) {
-				for (const toolCall of assistantMsg.message.tool_calls) {
+			// Handle string content case
+			// Note: TypeScript can't narrow SDK's union type properly after Array.isArray check
+			// But we know it's safe because content is either string or array
+			else if (typeof messageContent === 'string') {
+				// @ts-expect-error - TypeScript narrowing issue with SDK union types, but this is safe after Array check
+				const trimmed = messageContent.trim();
+				if (trimmed) {
 					messages.push({
-						id: toolCall.id,
-						toolCallId: toolCall.id,
 						role: 'assistant',
-						type: 'tool',
-						toolName: toolCall.name,
-						displayTitle: this.getToolDisplayTitle(toolCall.name),
-						status: 'executing',
-						updates: [
-							{
-								type: 'input',
-								data: toolCall.input || {},
-							},
-						],
+						type: 'message',
+						text: messageContent,
 					});
 				}
 			}
 		}
 
 		// Handle result messages (final response)
-		if (message.type === 'result') {
-			const resultMsg = message as any;
-			if (resultMsg.result && typeof resultMsg.result === 'string') {
-				messages.push({
-					role: 'assistant',
-					type: 'message',
-					text: resultMsg.result,
-				});
+		if (isSDKResultMessage(message)) {
+			// Only success subtype has result field
+			if (message.subtype === 'success' && 'result' in message) {
+				const successMsg = message as Extract<SDKResultMessage, { subtype: 'success' }>;
+				if (successMsg.result && typeof successMsg.result === 'string') {
+					messages.push({
+						role: 'assistant',
+						type: 'message',
+						text: successMsg.result,
+					});
+				}
 			}
 		}
 
