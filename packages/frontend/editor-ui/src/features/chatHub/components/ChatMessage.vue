@@ -131,7 +131,7 @@ watch(
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Save
+						Send
 					</N8nButton>
 				</div>
 			</div>
