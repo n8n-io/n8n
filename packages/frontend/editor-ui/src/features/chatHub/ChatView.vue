@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, useTemplateRef } from 'vue';
+import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -114,7 +114,7 @@ const mergedCredentials = computed(() => ({
 }));
 
 const chatMessages = computed(() => chatStore.messagesBySession[sessionId.value] ?? []);
-const hasMessages = computed(() => chatMessages.value.length > 0);
+const isNewChat = computed(() => route.name === CHAT_VIEW);
 const inputPlaceholder = computed(() => {
 	if (!selectedModel.value) {
 		return 'Select a model';
@@ -323,7 +323,7 @@ async function handleUpdateMessage(message: ChatMessageType) {
 
 		<div :class="$style.scrollable" ref="scrollable">
 			<ChatStarter
-				v-if="!hasMessages"
+				v-if="isNewChat"
 				:class="$style.starter"
 				:is-mobile-device="isMobileDevice"
 				@select="onSuggestionClick"
@@ -421,7 +421,7 @@ async function handleUpdateMessage(message: ChatMessageType) {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.hasMessages & {
+	.component:not(.isNewChat) & {
 		position: absolute;
 		bottom: 0;
 		left: 0;
