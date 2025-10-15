@@ -226,13 +226,10 @@ export class Server extends AbstractServer {
 			}
 		}
 
-		// console.log('Setting up MCP auth metadata endpoint');
-		// console.log(new URL(`${Container.get(UrlService).getInstanceBaseUrl()}/mcp`));
-
 		// this.app.use(
 		// 	mcpAuthRouter({
 		// 		provider: Container.get(McpOAuthService),
-		// 		issuerUrl: new URL(`${Container.get(UrlService).getInstanceBaseUrl()}/mcp`),
+		// 		issuerUrl: new URL(`${Container.get(UrlService).getInstanceBaseUrl()}/mcp-oauth`),
 		// 		tokenOptions: {
 		// 			rateLimit: {
 		// 				windowMs: 5 * 1000,

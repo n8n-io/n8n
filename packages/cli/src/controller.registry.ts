@@ -53,6 +53,9 @@ export class ControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
+			console.log(`Registering controller at prefix: ${prefix}`);
+			console.log(`Route path: ${route.path}`);
+			console.log(`Full path: ${prefix}${route.path}`);
 			const argTypes = Reflect.getMetadata(
 				'design:paramtypes',
 				controller,
