@@ -1,12 +1,12 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, Relation } from '@n8n/typeorm';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
+import { WithCreatedAtAndStringId } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 
 export type DependencyType = 'credential' | 'nodeType' | 'webhookPath' | 'workflowCall';
 
 @Entity({ name: 'workflow_dependency' })
-export class WorkflowDependency extends WithTimestampsAndStringId {
+export class WorkflowDependency extends WithCreatedAtAndStringId {
 	/**
 	 * The ID of the workflow the dependency belongs to.
 	 */

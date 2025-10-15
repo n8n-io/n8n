@@ -77,8 +77,18 @@ function mixinTimestamps<T extends Class<{}, any[]>>(base: T) {
 	return Derived;
 }
 
+function mixinCreatedAt<T extends Class<{}, any[]>>(base: T) {
+	class Derived extends base {
+		@CreateDateColumn(tsColumnOptions)
+		createdAt: Date;
+	}
+	return Derived;
+}
+
 class BaseEntity {}
 
 export const WithStringId = mixinStringId(BaseEntity);
 export const WithTimestamps = mixinTimestamps(BaseEntity);
 export const WithTimestampsAndStringId = mixinStringId(WithTimestamps);
+export const WithCreatedAt = mixinCreatedAt(BaseEntity);
+export const WithCreatedAtAndStringId = mixinStringId(mixinCreatedAt(BaseEntity));
