@@ -31,7 +31,7 @@ export function sendMessageApi(
 ) {
 	void streamRequest<StructuredChunk>(
 		ctx,
-		'/chat/send',
+		'/chat/conversations/send',
 		payload,
 		onMessageUpdated,
 		onDone,
@@ -49,7 +49,7 @@ export function editMessageApi(
 ) {
 	void streamRequest<StructuredChunk>(
 		ctx,
-		'/chat/edit',
+		'/chat/conversations/edit',
 		payload,
 		onMessageUpdated,
 		onDone,
@@ -67,7 +67,7 @@ export function regenerateMessageApi(
 ) {
 	void streamRequest<StructuredChunk>(
 		ctx,
-		'/chat/regenerate',
+		'/chat/conversations/regenerate',
 		payload,
 		onMessageUpdated,
 		onDone,

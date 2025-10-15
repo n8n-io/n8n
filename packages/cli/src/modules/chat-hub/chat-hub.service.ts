@@ -375,6 +375,74 @@ export class ChatHubService {
 		);
 	}
 
+	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
+		const { sessionId, editId, messageId, message, replyId } = payload;
+
+		const selectedModel: ModelWithCredentials = {
+			...payload.model,
+			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+		};
+
+		const session = await this.getChatSession(user, payload, selectedModel, false);
+		const messages = session.messages ?? [];
+		const messageToEdit = await this.getChatMessage(session.id, editId);
+
+		if (messageToEdit.type !== 'human') {
+			throw new BadRequestError('Can only edit human messages');
+		}
+
+		const historyIds = messageToEdit.previousMessageId
+			? this.buildActiveMessageChain(messages, messageToEdit.previousMessageId)
+			: [];
+
+		const history = historyIds.flatMap((id) => {
+			return messages.find((m) => m.id === id) ?? [];
+		});
+
+		// If the message to edit isn't the original message, we want to point to the original message
+		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
+		const otherRuns = messages.filter((m) => m.revisionOfMessageId === revisionOfMessageId);
+		const runIndex = otherRuns.length + 1;
+
+		await this.messageRepository.updateChatMessage(revisionOfMessageId, { state: 'replaced' });
+		for (const run of otherRuns) {
+			if (run.state === 'active') {
+				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
+			}
+		}
+
+		const turnId = payload.messageId;
+		await this.saveHumanMessage(
+			payload,
+			user,
+			turnId,
+			messageToEdit.previousMessageId,
+			selectedModel,
+			revisionOfMessageId,
+			runIndex,
+		);
+
+		const workflow = await this.createChatWorkflow(
+			user,
+			session.id,
+			history,
+			message,
+			payload.credentials,
+			payload.model,
+		);
+
+		await this.executeChatWorkflow(
+			res,
+			user,
+			workflow,
+			replyId,
+			sessionId,
+			messageId,
+			turnId,
+			selectedModel,
+		);
+	}
+
 	async regenerateAiMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
 		const { sessionId, retryId, replyId } = payload;
 
@@ -443,74 +511,6 @@ export class ChatHubService {
 			selectedModel,
 			retryOfMessageId,
 			runIndex,
-		);
-	}
-
-	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
-		const { sessionId, editId, messageId, message, replyId } = payload;
-
-		const selectedModel: ModelWithCredentials = {
-			...payload.model,
-			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
-		};
-
-		const session = await this.getChatSession(user, payload, selectedModel, false);
-		const messages = session.messages ?? [];
-		const messageToEdit = await this.getChatMessage(session.id, editId);
-
-		if (messageToEdit.type !== 'human') {
-			throw new BadRequestError('Can only edit human messages');
-		}
-
-		const historyIds = messageToEdit.previousMessageId
-			? this.buildActiveMessageChain(messages, messageToEdit.previousMessageId)
-			: [];
-
-		const history = historyIds.flatMap((id) => {
-			return messages.find((m) => m.id === id) ?? [];
-		});
-
-		// If the message to edit isn't the original message, we want to point to the original message
-		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-		const otherRuns = messages.filter((m) => m.revisionOfMessageId === revisionOfMessageId);
-		const runIndex = otherRuns.length + 1;
-
-		await this.messageRepository.updateChatMessage(revisionOfMessageId, { state: 'replaced' });
-		for (const run of otherRuns) {
-			if (run.state === 'active') {
-				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
-			}
-		}
-
-		const turnId = payload.messageId;
-		await this.saveHumanMessage(
-			payload,
-			user,
-			turnId,
-			messageToEdit.previousMessageId,
-			selectedModel,
-			revisionOfMessageId,
-			runIndex,
-		);
-
-		const workflow = await this.createChatWorkflow(
-			user,
-			session.id,
-			history,
-			message,
-			payload.credentials,
-			payload.model,
-		);
-
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
 		);
 	}
 

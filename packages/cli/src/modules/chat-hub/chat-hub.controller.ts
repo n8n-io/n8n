@@ -41,8 +41,26 @@ export class ChatHubController {
 		return await this.chatService.getModels(req.user, payload.credentials);
 	}
 
+	@Get('/conversations')
 	@GlobalScope('chatHub:message')
-	@Post('/send')
+	async getConversations(
+		req: AuthenticatedRequest,
+		_res: Response,
+	): Promise<ChatHubConversationsResponse> {
+		return await this.chatService.getConversations(req.user.id);
+	}
+
+	@Get('/conversations/:id')
+	@GlobalScope('chatHub:message')
+	async getConversationMessages(
+		req: AuthenticatedRequest<{ id: string }>,
+		_res: Response,
+	): Promise<ChatHubConversationResponse> {
+		return await this.chatService.getConversation(req.user.id, req.params.id);
+	}
+
+	@GlobalScope('chatHub:message')
+	@Post('/conversations/send')
 	async sendMessage(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -84,49 +102,7 @@ export class ChatHubController {
 	}
 
 	@GlobalScope('chatHub:message')
-	@Post('/regenerate')
-	async regenerateMessage(
-		req: AuthenticatedRequest,
-		res: Response,
-		@Body payload: ChatHubRegenerateMessageRequest,
-	) {
-		res.writeHead(200, JSONL_STREAM_HEADERS);
-		res.flushHeaders();
-
-		this.logger.debug(`Chat retry request received: ${JSON.stringify(payload)}`);
-
-		try {
-			await this.chatService.regenerateAiMessage(res, req.user, {
-				...payload,
-				userId: req.user.id,
-			});
-		} catch (executionError: unknown) {
-			assert(executionError instanceof Error);
-
-			this.logger.error(`Error in chat retry endpoint: ${executionError}`);
-
-			if (!res.headersSent) {
-				res.status(500).json({
-					code: 500,
-					message: executionError.message,
-				});
-			} else {
-				res.write(
-					JSON.stringify({
-						type: 'error',
-						content: executionError.message,
-						id: payload.replyId,
-					}) + '\n',
-				);
-				res.flush();
-			}
-
-			if (!res.writableEnded) res.end();
-		}
-	}
-
-	@GlobalScope('chatHub:message')
-	@Post('/edit')
+	@Post('/conversations/edit')
 	async editMessage(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -167,21 +143,45 @@ export class ChatHubController {
 		}
 	}
 
-	@Get('/conversations')
 	@GlobalScope('chatHub:message')
-	async getConversations(
+	@Post('/conversations/regenerate')
+	async regenerateMessage(
 		req: AuthenticatedRequest,
-		_res: Response,
-	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations(req.user.id);
-	}
+		res: Response,
+		@Body payload: ChatHubRegenerateMessageRequest,
+	) {
+		res.writeHead(200, JSONL_STREAM_HEADERS);
+		res.flushHeaders();
 
-	@Get('/conversations/:id')
-	@GlobalScope('chatHub:message')
-	async getConversationMessages(
-		req: AuthenticatedRequest<{ id: string }>,
-		_res: Response,
-	): Promise<ChatHubConversationResponse> {
-		return await this.chatService.getConversation(req.user.id, req.params.id);
+		this.logger.debug(`Chat retry request received: ${JSON.stringify(payload)}`);
+
+		try {
+			await this.chatService.regenerateAiMessage(res, req.user, {
+				...payload,
+				userId: req.user.id,
+			});
+		} catch (executionError: unknown) {
+			assert(executionError instanceof Error);
+
+			this.logger.error(`Error in chat retry endpoint: ${executionError}`);
+
+			if (!res.headersSent) {
+				res.status(500).json({
+					code: 500,
+					message: executionError.message,
+				});
+			} else {
+				res.write(
+					JSON.stringify({
+						type: 'error',
+						content: executionError.message,
+						id: payload.replyId,
+					}) + '\n',
+				);
+				res.flush();
+			}
+
+			if (!res.writableEnded) res.end();
+		}
 	}
 }
