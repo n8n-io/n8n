@@ -15,6 +15,8 @@ export const useDataTableTypes = () => {
 	const mapToAGCellType = (colType: DataTableColumnType): AGGridCellType => {
 		if (colType === 'string') {
 			return 'text';
+		} else if (colType === 'json') {
+			return 'object';
 		}
 		return colType;
 	};
@@ -22,10 +24,12 @@ export const useDataTableTypes = () => {
 	const mapToDataTableColumnType = (colType: AGGridCellType): DataTableColumnType => {
 		if (!isAGGridCellType(colType)) {
 			return 'string';
-		}
-		if (colType === 'text') {
+		} else if (colType === 'text') {
 			return 'string';
+		} else if (colType === 'object') {
+			return 'json';
 		}
+
 		return colType as DataTableColumnType;
 	};
 

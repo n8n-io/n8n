@@ -3,6 +3,8 @@ import { ref } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
 import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 import { jsonParse } from 'n8n-workflow';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	params: ICellEditorParams;
@@ -11,9 +13,16 @@ const props = defineProps<{
 const editorRef = ref<InstanceType<typeof JsonEditor>>();
 const valueRef = ref(props.params.value ? JSON.stringify(props.params.value, null, 2) : '');
 const isCancelledRef = ref(false);
+const toast = useToast();
+const i18n = useI18n();
 
 const getValue = (): Record<string, unknown> | null => {
-	return valueRef.value ? jsonParse(valueRef.value) : null;
+	try {
+		return valueRef.value ? jsonParse(valueRef.value) : null;
+	} catch (e) {
+		toast.showError(e, i18n.baseText('generic.invalidJsonSaveFailed'));
+		return props.params.value;
+	}
 };
 
 const isPopup = () => true;

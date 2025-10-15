@@ -962,7 +962,7 @@ function onClickSaveEdit() {
 			return;
 		}
 	} catch (error) {
-		toast.showError(error, i18n.baseText('ndv.pinData.error.syntaxError.title'));
+		toast.showError(error, i18n.baseText('generic.invalidJsonSaveFailed'));
 		return;
 	}
 

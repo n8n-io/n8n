@@ -14,7 +14,7 @@ import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
 import type { TelemetryContext } from './types/telemetry';
-import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { WorkflowState } from './composables/useWorkflowState';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
@@ -354,6 +354,7 @@ export const DATA_TYPE_ICON_MAP = {
 	array: 'list',
 	object: 'box',
 	file: 'file',
+	json: 'json',
 } satisfies Record<string, IconName>;
 
 /** PERSONALIZATION SURVEY */
