@@ -7,8 +7,11 @@ import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 import { computed } from 'vue';
-import { useViewStacks } from '../composables/useViewStacks';
-import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
+import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import {
+	prepareCommunityNodeDetailsViewStack,
+	removePreviewToken,
+} from '@/components/Node/NodeCreator/utils';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 const {

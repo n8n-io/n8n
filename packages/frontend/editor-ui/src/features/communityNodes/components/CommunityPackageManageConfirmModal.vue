@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import Modal from '@/components/Modal.vue';
-import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
+import {
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+} from '../communityNodes.constants';
 import { useToast } from '@/composables/useToast';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from '../communityNodes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -16,7 +19,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowResource } from '@/Interface';
 
 import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
-import NodesInWorkflowTable from '@/components/NodesInWorkflowTable.vue';
+import NodesInWorkflowTable from './NodesInWorkflowTable.vue';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 

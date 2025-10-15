@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import type { IUser, PublicInstalledPackage } from 'n8n-workflow';
-import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
+import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
+import { NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';

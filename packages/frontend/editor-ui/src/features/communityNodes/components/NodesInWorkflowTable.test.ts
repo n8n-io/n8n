@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import NodesInWorkflowTable from '@/components/NodesInWorkflowTable.vue';
+import NodesInWorkflowTable from './NodesInWorkflowTable.vue';
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';

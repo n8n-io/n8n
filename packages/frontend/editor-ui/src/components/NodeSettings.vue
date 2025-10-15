@@ -29,7 +29,7 @@ import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import NodeActionsList from '@/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+import { useInstalledCommunityPackage } from '@/features/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
@@ -56,8 +56,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
-import CommunityNodeFooter from '@/components/Node/NodeCreator/Panel/CommunityNodeFooter.vue';
-import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
+import CommunityNodeFooter from '@/features/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import CommunityNodeUpdateInfo from '@/features/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
