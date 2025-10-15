@@ -74,7 +74,7 @@
 	--canvas--color--background--l: 18%;
 	--canvas--dot--color: var(--p--color--gray-670);
 	--canvas--read-only-line--color: var(--p--color--gray-800);
-	--canvas--color--selected: var(--p--color--white-a-025);
+	--canvas--color--selected: var(--color--white-alpha-400);
 	--canvas--color--selected-transparent: var(--canvas--color--selected);
 	--canvas--label--color--background: hsla(
 		var(--canvas--color--background--h),
@@ -195,7 +195,7 @@
 
 	// Button primary
 	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
-	--button--color--text--primary--disabled: var(--p--color--white-a-030);
+	--button--color--text--primary--disabled: var(--color--white-alpha-500);
 	--button--border-color--primary--disabled: transparent;
 	--button--color--background--primary--disabled: var(--color--orange-alpha-500);
 
@@ -207,7 +207,7 @@
 	--button--color--background--secondary--hover: var(--color--background--light-2);
 	--button--color--background--secondary--active-focus: var(--color--orange-alpha-100);
 	--button--outline-color--secondary--focus: var(--color--orange-alpha-300);
-	--button--color--text--secondary--disabled: var(--p--color--white-a-030);
+	--button--color--text--secondary--disabled: var(--color--white-alpha-500);
 	--button--border-color--secondary--disabled: var(--color--foreground);
 
 	// Button highlight
@@ -219,14 +219,14 @@
 	--button--color--background--highlight--hover: var(--p--color--gray-670);
 	--button--color--background--highlight--active-focus: var(--p--color--gray-670);
 	--button--outline-color--highlight--focus: var(--p--color--gray-670);
-	--button--color--text--highlight--disabled: var(--p--color--white-a-010);
+	--button--color--text--highlight--disabled: var(--color--white-alpha-100);
 	--button--border-color--highlight--disabled: transparent;
 
 	// Button success, warning, danger
 	--button--color--text--danger: var(--p--color--white);
 	--button--border-color--danger: transparent;
 	--button--outline-color--danger--focus: var(--color--red-300);
-	--button--color--text--danger--disabled: var(--p--color--white-a-025);
+	--button--color--text--danger--disabled: var(--color--white-alpha-400);
 	--button--border-color--danger--disabled: transparent;
 	--button--color--background--danger--disabled: var(--color--red-alpha-020);
 

@@ -387,7 +387,7 @@
 	--button--border-color--primary--hover-active: var(--color--orange-400);
 	--button--color--background--primary--hover-active-focus: var(--color--orange-400);
 	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
-	--button--color--text--primary--disabled: var(--p--color--white-a-075);
+	--button--color--text--primary--disabled: var(--color--white-alpha-800);
 	--button--border-color--primary--disabled: var(--color--orange-200);
 	--button--color--background--primary--disabled: var(--color--orange-200);
 
@@ -418,13 +418,13 @@
 
 	// Button success, warning, danger
 	--button--color--text--success: var(--p--color--white);
-	--button--color--text--success--disabled: var(--p--color--white-a-075);
+	--button--color--text--success--disabled: var(--color--white-alpha-800);
 	--button--color--text--warning: var(--color--text--tint-3);
-	--button--color--text--warning--disabled: var(--p--color--white-a-075);
+	--button--color--text--warning--disabled: var(--color--white-alpha-800);
 	--button--color--text--danger: var(--color--text--tint-3);
 	--button--border-color--danger: var(--color--danger);
 	--button--outline-color--danger--focus: var(--color--danger--tint-3);
-	--button--color--text--danger--disabled: var(--p--color--white-a-075);
+	--button--color--text--danger--disabled: var(--color--white-alpha-800);
 	--button--border-color--danger--disabled: var(--color--danger--tint-3);
 	--button--color--background--danger--disabled: var(--color--danger--tint-3);
 
@@ -498,7 +498,7 @@
 
 	// Dialogs and overlays
 	--dialog--color--background: var(--p--color--white);
-	--dialog--overlay--color--background: var(--p--color--white-a-075);
+	--dialog--overlay--color--background: var(--color--white-alpha-800);
 	--dialog--overlay--color--background--dark: var(--color--slate-alpha-700);
 	--block-ui--overlay--color: var(--p--color--gray-820);
 
