@@ -71,7 +71,7 @@ import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import DeleteFolderModal from '@/features/folders/components/DeleteFolderModal.vue';
 import MoveToFolderModal from '@/features/folders/components/MoveToFolderModal.vue';
-import DeleteUserModal from '@/components/DeleteUserModal.vue';
+import DeleteUserModal from '@/features/users/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/externalSecrets/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
