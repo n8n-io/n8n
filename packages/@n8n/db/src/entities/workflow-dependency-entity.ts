@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, Relation } from '@n8n/typeorm';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
@@ -53,5 +53,5 @@ export class WorkflowDependency extends WithTimestampsAndStringId {
 		onDelete: 'CASCADE',
 	})
 	@JoinColumn({ name: 'workflowId' })
-	workflow: WorkflowEntity;
+	workflow: Relation<WorkflowEntity>;
 }
