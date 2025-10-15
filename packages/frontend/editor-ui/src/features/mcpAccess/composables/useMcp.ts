@@ -21,8 +21,13 @@ export function useMcp() {
 		telemetry.track('User gave MCP access to workflow', { workflow_id: workflowId });
 	};
 
+	const trackUserToggledMcpAccess = (enabled: boolean) => {
+		telemetry.track('User toggled MCP access', { state: enabled });
+	};
+
 	return {
 		isEligibleForMcpAccess,
 		trackMcpAccessEnabledForWorkflow,
+		trackUserToggledMcpAccess,
 	};
 }
