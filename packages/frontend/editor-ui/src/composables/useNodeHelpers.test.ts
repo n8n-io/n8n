@@ -40,6 +40,7 @@ describe('useNodeHelpers()', () => {
 	describe('initialization', () => {
 		it('should use provided workflowState and not inject', () => {
 			const workflowState = useWorkflowState();
+			vi.clearAllMocks();
 
 			useNodeHelpers({ workflowState });
 
