@@ -68,10 +68,7 @@ const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undef
 			return { workflow, remote: true };
 		} catch (error) {
 			toast.showError(error, i18n.baseText('generic.error'));
-			if (!isClosed.value) {
-				isClosed.value = true;
-				handleBeforeClose();
-			}
+			handleBeforeClose();
 			return { workflow: undefined, remote: true };
 		}
 	},
@@ -87,10 +84,7 @@ const local = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefi
 			return { workflow, remote: false };
 		} catch (error) {
 			toast.showError(error, i18n.baseText('generic.error'));
-			if (!isClosed.value) {
-				isClosed.value = true;
-				handleBeforeClose();
-			}
+			handleBeforeClose();
 			return { workflow: undefined, remote: false };
 		}
 	},
@@ -309,6 +303,9 @@ const nodeDiffs = computed(() => {
 });
 
 function handleBeforeClose() {
+	if (isClosed.value) return;
+	isClosed.value = true;
+
 	selectedDetailId.value = undefined;
 
 	// Check if we have history to go back to avoid empty navigation issues
@@ -359,7 +356,7 @@ const isSourceWorkflowNew = computed(() => {
 	return !sourceExists && targetExists;
 });
 
-onNodeClick((nodeId) => {
+onNodeClick((nodeId: string) => {
 	const node = nodesDiff.value.get(nodeId);
 	if (!node) {
 		return;
