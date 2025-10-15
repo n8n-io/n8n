@@ -71,7 +71,7 @@ import {
 	unflattenExecutionData,
 	findTriggerNodeToAutoSelect,
 	openFormPopupWindow,
-} from '@/utils/executionUtils';
+} from '@/features/executions/executions.utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';

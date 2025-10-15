@@ -35,9 +35,9 @@ const DemoFooter = async () => await import('@/features/logs/components/DemoFoot
 const NodeView = async () => await import('@/views/NodeView.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
-	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
+	await import('@/features/executions/components/workflow/WorkflowExecutionsLandingPage.vue');
 const WorkflowExecutionsPreview = async () =>
-	await import('@/components/executions/workflow/WorkflowExecutionsPreview.vue');
+	await import('@/features/executions/components/workflow/WorkflowExecutionsPreview.vue');
 const SettingsView = async () => await import('./views/SettingsView.vue');
 const SettingsLdapView = async () => await import('@/features/sso/views/SettingsLdapView.vue');
 const SettingsPersonalView = async () =>

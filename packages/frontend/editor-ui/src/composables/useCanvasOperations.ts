@@ -25,7 +25,7 @@ import { type PinDataSource, usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { getExecutionErrorToastConfiguration } from '@/utils/executionUtils';
+import { getExecutionErrorToastConfiguration } from '@/features/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
@@ -46,7 +46,7 @@ import {
 } from '@/models/history';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
