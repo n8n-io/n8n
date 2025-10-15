@@ -19,8 +19,6 @@ const TEXT_TYPE_TO_BACKEND_MAP: Partial<Record<FilterOperation, BackendFilterCon
 	contains: 'ilike',
 	equals: 'eq',
 	notEqual: 'neq',
-	startsWith: 'ilike',
-	endsWith: 'ilike',
 	isEmpty: 'eq',
 	notEmpty: 'neq',
 	null: 'eq',
@@ -40,6 +38,11 @@ const NUMBER_DATE_TYPE_TO_BACKEND_MAP: Partial<Record<FilterOperation, BackendFi
 	notNull: 'neq',
 } as const;
 
+const JSON_TYPE_TO_BACKEND_MAP: Partial<Record<FilterOperation, BackendFilterCondition>> = {
+	equals: 'eq',
+	notEqual: 'neq',
+} as const;
+
 export function mapTextTypeToBackend(
 	type: keyof typeof TEXT_TYPE_TO_BACKEND_MAP,
 ): BackendFilterCondition {
@@ -56,6 +59,16 @@ export function mapNumberDateTypeToBackend(
 	const condition = NUMBER_DATE_TYPE_TO_BACKEND_MAP[type];
 	if (!condition) {
 		throw new Error(`Unknown number/date type: ${type}`);
+	}
+	return condition;
+}
+
+export function mapJsonTypeToBackend(
+	type: keyof typeof JSON_TYPE_TO_BACKEND_MAP,
+): BackendFilterCondition {
+	const condition = JSON_TYPE_TO_BACKEND_MAP[type];
+	if (!condition) {
+		throw new Error(`Unknown json type: ${type}`);
 	}
 	return condition;
 }

@@ -16,8 +16,6 @@ export type FilterOperation =
 	| 'contains'
 	| 'equals'
 	| 'notEqual'
-	| 'startsWith'
-	| 'endsWith'
 	| 'isEmpty'
 	| 'notEmpty'
 	| 'null'

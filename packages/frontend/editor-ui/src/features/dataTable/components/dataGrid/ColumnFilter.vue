@@ -3,7 +3,10 @@ import { ref, watch, computed } from 'vue';
 import type { IFilterParams } from 'ag-grid-community';
 import { N8nSelect, N8nOption, N8nInput, N8nButton } from '@n8n/design-system';
 import ElDatePickerFilter from '@/features/dataTable/components/dataGrid/ElDatePickerFilter.vue';
-import type { FilterModel } from '@/features/dataTable/types/dataTableFilters.types';
+import type {
+	FilterModel,
+	FilterOperation,
+} from '@/features/dataTable/types/dataTableFilters.types';
 import { useI18n } from '@n8n/i18n';
 
 type ColumnFilterModel = FilterModel[string] | null;
@@ -15,13 +18,8 @@ const i18n = useI18n();
 const currentModel = ref<ColumnFilterModel>(null);
 const isActive = ref(false);
 
-const filterType = computed<'text' | 'number' | 'date' | 'json'>(() => {
-	const t = props.params.colDef.cellDataType;
-	if (t === 'boolean') return 'text';
-	if (t === 'date') return 'date';
-	if (t === 'json') return 'json';
-	// boolean and others map to text
-	return 'text';
+const filterType = computed(() => {
+	return props.params.colDef.cellDataType;
 });
 
 type GridFilterOption = { displayKey: string; displayName: string };
@@ -83,7 +81,7 @@ function isFilterActive(): boolean {
 	return isActive.value;
 }
 
-function inferInputsForKey(key: string): 0 | 1 | 2 {
+function inferInputsForKey(key: FilterOperation): 0 | 1 | 2 {
 	if (key === 'between' || key === 'inRange') return 2;
 	if (
 		key === 'null' ||
@@ -106,36 +104,37 @@ defineExpose({
 	afterGuiAttached: () => {},
 });
 
-// Update active state when model changes programmatically
-// watch(currentModel, () => {
-// 	isActive.value = Boolean(currentModel.value);
-// });
-
 function buildModel(): ColumnFilterModel {
 	const kind = filterType.value;
 	const type = selectedType.value;
 	const selected = availableOptions.value.find((o) => o.key === type);
 	if (!selected || selected.key === 'empty') return null;
-	if (inputValue.value === '' && inputValueTo.value === '' && numberOfInputs.value > 0) {
+	if (
+		inputValue.value === '' &&
+		inputValueTo.value === '' &&
+		numberOfInputs.value > 0 &&
+		inputPath.value === ''
+	) {
 		return null;
 	}
 
-	if (numberOfInputs.value === 0) {
-		return { filterType: kind, type } as ColumnFilterModel;
-	}
-
-	if (kind === 'text') {
+	if (kind === 'json') {
+		if (inputValue.value === '') return null;
 		return {
-			filterType: 'text',
+			filterType: 'json',
 			type,
 			filter: inputValue.value,
 			path: inputPath.value,
 		} as ColumnFilterModel;
 	}
 
-	if (kind === 'json') {
+	if (numberOfInputs.value === 0) {
+		return { filterType: kind, type } as ColumnFilterModel;
+	}
+
+	if (kind === 'text' || kind === 'boolean') {
 		return {
-			filterType: 'json',
+			filterType: 'text',
 			type,
 			filter: inputValue.value,
 			path: inputPath.value,
@@ -186,7 +185,7 @@ function onReset() {
 	endDatePicker.value?.setDate?.(null);
 }
 
-watch([selectedType, inputValue, inputValueTo, filterType], updateModel);
+watch([selectedType, inputValue, inputValueTo, filterType, inputPath], updateModel);
 </script>
 
 <template>

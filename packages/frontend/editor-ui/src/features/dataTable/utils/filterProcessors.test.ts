@@ -8,8 +8,6 @@ vi.mock('./filterMappings', () => ({
 			contains: 'ilike',
 			equals: 'eq',
 			notEqual: 'neq',
-			startsWith: 'ilike',
-			endsWith: 'ilike',
 			isEmpty: 'eq',
 			notEmpty: 'neq',
 			null: 'eq',
@@ -50,28 +48,6 @@ describe('filterProcessors', () => {
 				columnName: 'columnName',
 				condition: 'ilike',
 				value: 'test',
-			});
-		});
-
-		it('should process startsWith filter with % suffix', () => {
-			const filter = createTextFilter('startsWith', 'test');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'ilike',
-				value: 'test%',
-			});
-		});
-
-		it('should process endsWith filter with % prefix', () => {
-			const filter = createTextFilter('endsWith', 'test');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'ilike',
-				value: '%test',
 			});
 		});
 

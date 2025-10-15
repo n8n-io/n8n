@@ -195,6 +195,11 @@ const createInRangeFilterOption = (i18n: I18nClass) => ({
 	displayName: i18n.baseText('dataTable.filters.between'),
 });
 
+const createContainsFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'contains',
+	displayName: i18n.baseText('dataTable.filters.contains'),
+});
+
 const createEqualsFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'equals',
 	displayName: i18n.baseText('dataTable.filters.equals'),
@@ -206,16 +211,18 @@ const createNotEqualFilterOption = (i18n: I18nClass) => ({
 });
 
 export const getStringColumnFilterOptions = (i18n: I18nClass) => [
-	{
-		displayKey: 'contains',
-		displayName: i18n.baseText('dataTable.filters.contains'),
-	},
+	createContainsFilterOption(i18n),
 	createEqualsFilterOption(i18n),
 	createNotEqualFilterOption(i18n),
 	createIsEmptyFilterOption(i18n),
 	createIsNotEmptyFilterOption(i18n),
 	createNullFilterOption(i18n),
 	createNotNullFilterOption(i18n),
+];
+
+export const getJsonColumnFilterOptions = (i18n: I18nClass) => [
+	createEqualsFilterOption(i18n),
+	createNotEqualFilterOption(i18n),
 ];
 
 export const getDateColumnFilterOptions = (i18n: I18nClass) => [
