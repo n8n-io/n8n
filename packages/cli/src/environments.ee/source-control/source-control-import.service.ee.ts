@@ -374,6 +374,7 @@ export class SourceControlImportService {
 					project: {
 						projectRelations: {
 							user: true,
+							role: true,
 						},
 					},
 				},
@@ -388,6 +389,7 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							userId: true,
 							role: {
 								slug: true,
 							},

@@ -247,7 +247,7 @@ export function normalizeAndValidateSourceControlledFilePath(
 	return normalizedPath;
 }
 
-function areOwnersDifferent(
+export function areOwnersDifferent(
 	owner1: StatusResourceOwner | undefined,
 	owner2: StatusResourceOwner | undefined,
 ): boolean {
