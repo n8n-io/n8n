@@ -222,7 +222,7 @@
 	--color-json-highlight: var(--color-background-base);
 	--color-code-background: var(--color--white);
 	--color-code-background-readonly: var(--color--gray-100);
-	--color-code-lineHighlight: var(--color--gray-300-a-010);
+	--color-code-lineHighlight: var(--color--gray-300-alpha-100);
 	--color-code-foreground: var(--color--gray-700);
 	--color-code-caret: var(--color--gray-950);
 	--color-code-selection: #0366d625;
@@ -258,7 +258,7 @@
 	--color-button-primary-background: var(--color--orange-300);
 	--color-button-primary-hover-active-border: var(--color--orange-400);
 	--color-button-primary-hover-active-focus-background: var(--color--orange-400);
-	--color-button-primary-focus-outline: var(--color--orange-300-a-035);
+	--color-button-primary-focus-outline: var(--color--orange-alpha-300);
 	--color-button-primary-disabled-font: var(--color--white-alpha-800);
 	--color-button-primary-disabled-border: var(--color--orange-200);
 	--color-button-primary-disabled-background: var(--color--orange-200);
@@ -337,8 +337,8 @@
 	--color-run-data-background: var(--color--gray-150);
 	--color-ndvv2-run-data-background: var(--color--gray-100);
 	--color-ndv-droppable-parameter: var(--color-secondary);
-	--color-ndv-droppable-parameter-background: var(--color--purple-600-a-010);
-	--color-ndv-droppable-parameter-active-background: var(--color--green-600-a-015);
+	--color-ndv-droppable-parameter-background: var(--color--purple-alpha-100);
+	--color-ndv-droppable-parameter-active-background: var(--color--green-alpha-100);
 	--color-ndv-back-font: var(--color--white);
 
 	// Notice

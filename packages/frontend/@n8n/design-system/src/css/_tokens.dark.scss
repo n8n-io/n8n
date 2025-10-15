@@ -102,7 +102,7 @@
 	--color-sticky-border: var(--color--yellow-700);
 	--color-sticky-font: var(--color--gray-100);
 	--color-sticky-code-font: var(--color--purple-300);
-	--color-sticky-code-background: var(--color--gray-alpha-100);
+	--color-sticky-code-background: var(--color--gray-150-alpha-100);
 
 	--color-sticky-background-1: var(--color--yellow-800);
 	--color-sticky-border-1: var(--color--yellow-700);
@@ -136,11 +136,11 @@
 
 	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--color--green-300);
-	--color-valid-resolvable-background: var(--color--green-600-a-025);
+	--color-valid-resolvable-background: var(--color--green-alpha-200);
 	--color-invalid-resolvable-foreground: var(--color--red-300);
-	--color-invalid-resolvable-background: var(--color--red-600-a-020);
+	--color-invalid-resolvable-background: var(--color--red-alpha-020);
 	--color-pending-resolvable-foreground: var(--color-text-base);
-	--color-pending-resolvable-background: var(--color--gray-alpha-100);
+	--color-pending-resolvable-background: var(--color--gray-150-alpha-100);
 	--color-expression-editor-background: var(--color--gray-900);
 	--color-expression-editor-modal-background: var(--color--gray-900);
 	--color-expression-syntax-example: var(--color--gray-700);
@@ -176,7 +176,7 @@
 	--color-json-highlight: var(--color-background-base);
 	--color-code-background: var(--color--gray-950);
 	--color-code-background-readonly: var(--color--gray-850);
-	--color-code-lineHighlight: var(--color--gray-300-a-010);
+	--color-code-lineHighlight: var(--color--gray-300-alpha-100);
 	--color-code-foreground: var(--color--gray-150);
 	--color-code-caret: var(--color--gray-50);
 	--color-code-selection: #3392ff44;
@@ -198,13 +198,13 @@
 
 	// Variables
 	--color-variables-usage-font: var(--color--green-300);
-	--color-variables-usage-syntax-bg: var(--color--green-600-a-025);
+	--color-variables-usage-syntax-bg: var(--color--green-alpha-200);
 
 	// Button primary
-	--color-button-primary-focus-outline: var(--color--orange-300-a-035);
+	--color-button-primary-focus-outline: var(--color--orange-alpha-300);
 	--color-button-primary-disabled-font: var(--color--white-alpha-500);
 	--color-button-primary-disabled-border: transparent;
-	--color-button-primary-disabled-background: var(--color--orange-300-a-050);
+	--color-button-primary-disabled-background: var(--color--orange-alpha-500);
 
 	// Button secondary
 	--color-button-secondary-font: var(--color--gray-150);
@@ -212,8 +212,8 @@
 	--color-button-secondary-background: var(--color-background-light);
 	--color-button-secondary-hover-active-focus-font: var(--color--orange-250);
 	--color-button-secondary-hover-background: var(--color-background-light);
-	--color-button-secondary-active-focus-background: var(--color--orange-300-a-010);
-	--color-button-secondary-focus-outline: var(--color--orange-300-a-035);
+	--color-button-secondary-active-focus-background: var(--color--orange-alpha-100);
+	--color-button-secondary-focus-outline: var(--color--orange-alpha-300);
 	--color-button-secondary-disabled-font: var(--color--white-alpha-500);
 	--color-button-secondary-disabled-border: var(--color-foreground-base);
 
@@ -226,7 +226,7 @@
 	--color-button-highlight-hover-background: var(--prim-gray-670);
 	--color-button-highlight-active-focus-background: var(--prim-gray-670);
 	--color-button-highlight-focus-outline: var(--prim-gray-670);
-	--color-button-highlight-disabled-font: var(--prim-gray-0-a-010);
+	--color-button-highlight-disabled-font: var(--color--white-alpha-100);
 	--color-button-highlight-disabled-border: transparent;
 
 	// Button success, warning, danger
@@ -235,7 +235,7 @@
 	--color-button-danger-focus-outline: var(--color--red-300);
 	--color-button-danger-disabled-font: var(--color--white-alpha-400);
 	--color-button-danger-disabled-border: transparent;
-	--color-button-danger-disabled-background: var(--color--red-600-a-020);
+	--color-button-danger-disabled-background: var(--color--red-alpha-020);
 
 	// Text button
 	--color-text-button-secondary-font: var(--color--gray-300);
@@ -244,7 +244,7 @@
 	--color-button-node-creator-border-font: var(--color-button-secondary-font);
 	--color-button-node-creator-hover-font: var(--color-button-secondary-hover-active-focus-font);
 	--color-button-node-creator-hover-border: var(--color--orange-300);
-	--color-button-node-creator-background: var(--color--orange-300-a-010);
+	--color-button-node-creator-background: var(--color--orange-alpha-100);
 
 	// Table
 	--color-table-header-background: var(--color--gray-850);
@@ -268,13 +268,13 @@
 	--color-run-data-background: var(--color--gray-900);
 	--color-ndvv2-run-data-background: var(--color--gray-900);
 	--color-ndv-droppable-parameter: var(--color--orange-300);
-	--color-ndv-droppable-parameter-background: var(--color--orange-300-a-010);
-	--color-ndv-droppable-parameter-active-background: var(--color--green-600-a-015);
+	--color-ndv-droppable-parameter-background: var(--color--orange-alpha-100);
+	--color-ndv-droppable-parameter-active-background: var(--color--green-alpha-100);
 	--color-ndv-back-font: var(--color--white);
 
 	// Notice
 	--color-notice-warning-border: var(--color--gold-200);
-	--color-notice-warning-background: var(--color--gold-400-a-020);
+	--color-notice-warning-background: var(--color--gold-alpha-020);
 	--color-notice-font: var(--color--white);
 
 	// Callout
@@ -292,7 +292,7 @@
 	--color-callout-danger-font: var(--color--white);
 	--color-callout-danger-icon: var(--color-danger);
 	--color-callout-secondary-border: var(--color-secondary);
-	--color-callout-secondary-background: var(--color--purple-600-a-025);
+	--color-callout-secondary-background: var(--color--purple-alpha-200);
 	--color-callout-secondary-font: var(--color--white);
 
 	// Dialogs and overlays

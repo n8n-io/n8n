@@ -39,7 +39,8 @@
 	--color--gray-900: hsl(220, 1%, 20%);
 	--color--gray-950: hsl(220, 1%, 18%);
 
-	--color--gray-alpha-100: hsla(220, 32%, 93%, 0.1);
+	--color--gray-150-alpha-100: hsla(220, 32%, 93%, 0.1);
+	--color--gray-300-alpha-100: hsla(220, 10%, 68%, 0.1);
 
 	// Orange
 	--color--orange-50: hsl(7, 100%, 98%);
@@ -56,6 +57,10 @@
 	--color--orange-900: hsl(7, 100%, 10%);
 	--color--orange-950: hsl(7, 100%, 5%);
 
+	--color--orange-alpha-100: hsla(7, 100%, 68%, 0.1);
+	--color--orange-alpha-300: hsla(7, 100%, 68%, 0.35);
+	--color--orange-alpha-500: hsla(7, 100%, 68%, 0.5);
+
 	// Purple
 	--color--purple-50: hsl(247, 49%, 98%);
 	--color--purple-100: hsl(247, 49%, 95%);
@@ -69,6 +74,9 @@
 	--color--purple-900: hsl(247, 49%, 30%);
 	--color--purple-950: hsl(247, 49%, 21%);
 
+	--color--purple-alpha-100: hsla(247, 49%, 53%, 0.1);
+	--color--purple-alpha-200: hsla(247, 49%, 53%, 0.25);
+
 	// Green
 	--color--green-50: hsl(144, 60%, 97%);
 	--color--green-100: hsl(145, 60%, 93%);
@@ -81,6 +89,9 @@
 	--color--green-800: hsl(148, 60%, 24%);
 	--color--green-900: hsl(148, 60%, 20%);
 	--color--green-900: hsl(151, 60%, 10%);
+
+	--color--green-alpha-100: hsl(147, 60%, 36%, 0.15);
+	--color--green-alpha-200: hsl(147, 60%, 36%, 0.25);
 
 	// Blue
 	--color--blue-50: hsl(210, 67%, 95%);
@@ -106,6 +117,8 @@
 	--color--gold-800: hsl(36, 77%, 22%);
 	--color--gold-900: hsl(36, 77%, 10%);
 
+	--color--gold-alpha-020: hsla(36, 77%, 57%, 0.2);
+
 	// Red
 	--color--red-50: hsl(356, 83%, 97%);
 	--color--red-100: hsl(354, 83%, 92%);
@@ -118,6 +131,8 @@
 	--color--red-800: hsl(355, 83%, 37%);
 	--color--red-900: hsl(355, 83%, 27%);
 	--color--red-950: hsl(355, 83%, 20%);
+
+	--color--red-alpha-020: hsla(355, 83%, 52%, 0.2);
 
 	// Yellow
 	--color--yellow-100: hsl(46, 100%, 92%);
@@ -151,6 +166,7 @@
 	--color--slate-700: hsl(248, 10%, 30%);
 	--color--slate-800: hsl(248, 10%, 20%);
 	--color--slate-900: hsl(248, 10%, 10%);
+
 	--color--slate-alpha-700: hsla(247, 10%, 30%, 0.75);
 
 	// Spacing
