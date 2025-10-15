@@ -52,6 +52,7 @@ vi.mock('ag-grid-community', () => ({
 	NumberFilterModule: {},
 	DateFilterModule: {},
 	EventApiModule: {},
+	CustomFilterModule: {},
 }));
 
 // Mock the n8n theme

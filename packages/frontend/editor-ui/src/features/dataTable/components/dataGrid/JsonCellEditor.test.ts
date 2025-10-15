@@ -4,6 +4,7 @@ import { fireEvent } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
 import type { ICellEditorParams } from 'ag-grid-community';
 import JsonCellEditor from '@/features/dataTable/components/dataGrid/JsonCellEditor.vue';
+import { setActivePinia, createPinia } from 'pinia';
 
 vi.mock('@/features/editors/components/JsonEditor/JsonEditor.vue', () => ({
 	default: defineComponent({
@@ -49,6 +50,10 @@ function createParams(
 }
 
 describe('JsonCellEditor', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
 	it('renders with initial value and binds v-model', async () => {
 		const params = createParams({ foo: 1 });
 		const { getByTestId } = renderComponent(JsonCellEditor, {

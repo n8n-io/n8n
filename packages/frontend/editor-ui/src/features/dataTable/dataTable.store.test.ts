@@ -7,7 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { DataTable } from '@/features/dataTable/dataTable.types';
 
-vi.mock('@/stores/projects.store');
+vi.mock('@/features/projects/projects.store');
 vi.mock('@/stores/settings.store');
 
 function createTable(data: Partial<DataTable>) {
@@ -173,7 +173,7 @@ describe('dataTable.store', () => {
 				undefined,
 				{ projectId: 'p1', id: 'dt-1' },
 			);
-			expect(result).toBe(mockTable);
+			expect(result).toEqual(mockTable);
 			expect(dataTableStore.dataTables).toEqual([mockTable]);
 		});
 
