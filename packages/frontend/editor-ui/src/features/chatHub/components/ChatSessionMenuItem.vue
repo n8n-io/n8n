@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { CHAT_CONVERSATION_VIEW } from '@/features/chatHub/constants';
+import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-const { sessionId, label, active, isRenaming } = defineProps<{
-	sessionId: string;
-	label: string;
-	active: boolean;
+const { session, isRenaming, active } = defineProps<{
+	session: ChatHubSessionDto;
 	isRenaming: boolean;
+	active: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,7 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const input = useTemplateRef('input');
-const editedLabel = ref(label);
+const editedLabel = ref('');
 
 type SessionAction = 'rename' | 'delete';
 
@@ -38,18 +39,18 @@ const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 
 function handleActionSelect(action: SessionAction) {
 	if (action === 'rename') {
-		editedLabel.value = label;
-		emit('startRename', sessionId);
+		editedLabel.value = session.title;
+		emit('startRename', session.id);
 	} else if (action === 'delete') {
-		emit('delete', sessionId);
+		emit('delete', session.id);
 	}
 }
 
 function handleBlur() {
 	const trimmed = editedLabel.value.trim();
 
-	if (trimmed && trimmed !== label) {
-		emit('confirmRename', sessionId, trimmed);
+	if (trimmed && trimmed !== session.title) {
+		emit('confirmRename', session.id, trimmed);
 	} else {
 		emit('cancelRename');
 	}
@@ -70,7 +71,7 @@ watch(
 	() => isRenaming,
 	async (renaming) => {
 		if (renaming) {
-			editedLabel.value = label;
+			editedLabel.value = session.title;
 			await nextTick();
 			input.value?.focus();
 			input.value?.select();
@@ -78,6 +79,7 @@ watch(
 			editedLabel.value = '';
 		}
 	},
+	{ immediate: true },
 );
 </script>
 
@@ -93,11 +95,16 @@ watch(
 		/>
 		<template v-else>
 			<RouterLink
-				:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId } }"
+				:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: session.id } }"
 				:class="$style.menuItemLink"
 			>
-				<N8nIcon size="small" icon="message-circle" />
-				<N8nText :class="$style.label">{{ label }}</N8nText>
+				<N8nIcon v-if="session.provider === null" size="medium" icon="message-circle" />
+				<CredentialIcon
+					v-else
+					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[session.provider]"
+					:size="16"
+				/>
+				<N8nText :class="$style.label">{{ session.title }}</N8nText>
 			</RouterLink>
 			<N8nActionDropdown
 				:items="dropdownItems"
