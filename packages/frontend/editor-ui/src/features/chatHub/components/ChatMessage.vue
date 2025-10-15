@@ -110,6 +110,7 @@ watch(
 				[$style.compact]: compact,
 			},
 		]"
+		:data-message-id="message.id"
 	>
 		<div :class="$style.avatar">
 			<N8nIcon :icon="message.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
