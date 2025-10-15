@@ -56,7 +56,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 .modal {
 	:global(.el-dialog__body) {
 		padding: 0;
-		padding-bottom: var(--spacing-s);
+		padding-bottom: var(--spacing--sm);
 	}
 }
 
@@ -64,7 +64,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 
 .container {

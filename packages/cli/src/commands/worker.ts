@@ -159,7 +159,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.scalingService.setupQueue();
 
-		await this.scalingService.setupWorker(this.concurrency);
+		this.scalingService.setupWorker(this.concurrency);
 	}
 
 	async run() {

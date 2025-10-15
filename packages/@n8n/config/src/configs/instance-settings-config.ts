@@ -13,6 +13,14 @@ export class InstanceSettingsConfig {
 	enforceSettingsFilePermissions: boolean = false;
 
 	/**
+	 * Encryption key to use for encrypting and decrypting credentials.
+	 * If none is provided, a random key will be generated and saved to the settings file on the first launch.
+	 * Can be provided directly via N8N_ENCRYPTION_KEY or via a file path using N8N_ENCRYPTION_KEY_FILE.
+	 */
+	@Env('N8N_ENCRYPTION_KEY')
+	encryptionKey: string = '';
+
+	/**
 	 * The home folder path of the user.
 	 * If none can be found it falls back to the current working directory
 	 */

@@ -122,7 +122,7 @@ export class ProjectService {
 			targetProject = await this.getProjectWithScope(user, migrateToProject, [
 				'credential:create',
 				'workflow:create',
-				'dataStore:create',
+				'dataTable:create',
 			]);
 
 			if (!targetProject) {
@@ -509,7 +509,6 @@ export class ProjectService {
 	) {
 		await em.insert(
 			ProjectRelation,
-			// @ts-ignore CAT-957
 			relations.map((v) =>
 				this.projectRelationRepository.create({
 					projectId: project.id,

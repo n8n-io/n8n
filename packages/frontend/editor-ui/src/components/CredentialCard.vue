@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import dateformat from 'dateformat';
-import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
+import { MODAL_CONFIRM } from '@/constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { useProjectsStore } from '@/stores/projects.store';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/features/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
 
 import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
@@ -179,7 +180,7 @@ function moveResource() {
 
 <style lang="scss" module>
 .cardLink {
-	--card--padding: 0 0 0 var(--spacing-s);
+	--card--padding: 0 0 0 var(--spacing--sm);
 
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -191,15 +192,15 @@ function moveResource() {
 }
 
 .cardHeading {
-	font-size: var(--font-size-s);
-	padding: var(--spacing-s) 0 0;
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--sm) 0 0;
 }
 
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
-	padding: 0 0 var(--spacing-s);
+	padding: 0 0 var(--spacing--sm);
 }
 
 .cardActions {
@@ -208,13 +209,13 @@ function moveResource() {
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
 }
 
 @include mixins.breakpoint('sm-and-down') {
 	.cardLink {
-		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
 
 		flex-wrap: wrap;

@@ -230,11 +230,11 @@ watch(sortBy, (newValue) => {
 	display: inline-flex;
 	height: 100%;
 	align-items: center;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	text-decoration: underline;
 	max-width: 100%;
 	&:hover {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 
@@ -257,7 +257,7 @@ watch(sortBy, (newValue) => {
 		left: 0;
 		width: 100%;
 		height: 100%;
-		background: var(--color-foreground-xlight);
+		background: var(--color--foreground--tint-2);
 		opacity: 0.5;
 		z-index: -1;
 	}

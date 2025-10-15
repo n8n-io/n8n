@@ -10,6 +10,7 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '../stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const httpNode: INodeUi = {
 	parameters: {
@@ -51,6 +52,20 @@ const openAiNode: INodeUi = {
 	name: 'OpenAI',
 	credentials: { openAiApi: { id: 'byDFnd7vN5GzMVD2', name: 'n8n free OpenAI API credits' } },
 	issues: { parameters: { modelId: ['Parameter "Model" is required.'] } },
+};
+
+const openAiNodeNoCreds: INodeUi = {
+	...openAiNode,
+	id: '54b41295-a277-4cdf-8c46-6c3f85b335e9',
+	name: 'OpenAI no creds',
+	credentials: {},
+};
+
+const openAiNodeNoCreds2: INodeUi = {
+	...openAiNode,
+	id: '74b41295-a277-4cdf-8c46-6c3f85b335e9',
+	name: 'OpenAI no creds 2',
+	credentials: {},
 };
 
 describe('NodeCredentials', () => {
@@ -264,5 +279,52 @@ describe('NodeCredentials', () => {
 		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
 
 		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', true);
+	});
+
+	describe('onCredentialSelected', () => {
+		const renderComponentNoCreds = createComponentRenderer(NodeCredentials, {
+			...defaultRenderOptions,
+			props: {
+				...defaultRenderOptions.props,
+				node: openAiNodeNoCreds,
+			},
+		});
+
+		it('should call assignCredentialToMatchingNodes after selecting credentials', async () => {
+			ndvStore.activeNode = openAiNodeNoCreds;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: {
+					id: 'c8vqdPpPClh4TgIO',
+					name: 'OpenAi account',
+					type: 'openAiApi',
+					isManaged: false,
+					createdAt: '',
+					updatedAt: '',
+				},
+			};
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.allNodes = [openAiNodeNoCreds, openAiNodeNoCreds2];
+
+			renderComponentNoCreds();
+
+			const credentialsSelect = screen.getByTestId('node-credentials-select');
+
+			await userEvent.click(credentialsSelect);
+
+			const openAiCreds = screen.queryByText('OpenAi account');
+			expect(openAiCreds).toBeInTheDocument();
+
+			await userEvent.click(openAiCreds!);
+
+			expect(workflowsStore.assignCredentialToMatchingNodes).toHaveBeenCalledWith({
+				credentials: {
+					id: 'c8vqdPpPClh4TgIO',
+					name: 'OpenAi account',
+				},
+				currentNodeName: 'OpenAI no creds',
+				type: 'openAiApi',
+			});
+		});
 	});
 });

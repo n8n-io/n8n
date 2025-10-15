@@ -2,7 +2,6 @@ import type { Plugin } from 'vue';
 import { render, type RenderOptions as TestingLibraryRenderOptions } from '@testing-library/vue';
 import { i18nInstance } from '@n8n/i18n';
 import { GlobalDirectivesPlugin } from '@/plugins/directives';
-import { FontAwesomePlugin } from '@/plugins/icons';
 import { N8nPlugin } from '@n8n/design-system';
 import type { Pinia } from 'pinia';
 import { PiniaVuePlugin } from 'pinia';
@@ -33,14 +32,7 @@ const defaultOptions = {
 			},
 			VueJsonPretty: vueJsonPretty,
 		},
-		plugins: [
-			i18nInstance,
-			PiniaVuePlugin,
-			FontAwesomePlugin,
-			N8nPlugin,
-			GlobalDirectivesPlugin,
-			TelemetryPlugin,
-		],
+		plugins: [i18nInstance, PiniaVuePlugin, N8nPlugin, GlobalDirectivesPlugin, TelemetryPlugin],
 	},
 };
 

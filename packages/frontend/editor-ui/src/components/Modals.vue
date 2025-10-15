@@ -2,31 +2,21 @@
 import {
 	ABOUT_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
-	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
-	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
-	DELETE_FOLDER_MODAL_KEY,
-	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
-	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
-	MOVE_FOLDER_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
-	PERSONALIZATION_MODAL_KEY,
-	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
@@ -43,42 +33,58 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	VARIABLE_MODAL_KEY,
 } from '@/constants';
+import {
+	DELETE_USER_MODAL_KEY,
+	INVITE_USER_MODAL_KEY,
+	PERSONALIZATION_MODAL_KEY,
+} from '@/features/users/users.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import {
+	DELETE_FOLDER_MODAL_KEY,
+	MOVE_FOLDER_MODAL_KEY,
+} from '@/features/folders/folders.constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/sourceControl.ee/sourceControl.constants';
-
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
+import {
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+} from '@/features/communityNodes/communityNodes.constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/apiKeys/apiKeys.constants';
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
-import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
-import NewAssistantSessionModal from '@/components/AskAssistant/Chat/NewAssistantSessionModal.vue';
-import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
-import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
+import ApiKeyCreateOrEditModal from '@/features/apiKeys/components/ApiKeyCreateOrEditModal.vue';
+import NewAssistantSessionModal from '@/features/assistant/components/Chat/NewAssistantSessionModal.vue';
+import ChangePasswordModal from '@/features/auth/components/ChangePasswordModal.vue';
+import ConfirmPasswordModal from '@/features/auth/components/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
-import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
-import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
-import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
+import CommunityPackageInstallModal from '@/features/communityNodes/components/CommunityPackageInstallModal.vue';
+import CommunityPackageManageConfirmModal from '@/features/communityNodes/components/CommunityPackageManageConfirmModal.vue';
+import CommunityPlusEnrollmentModal from '@/features/communityPlus/components/CommunityPlusEnrollmentModal.vue';
 import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
-import DeleteFolderModal from '@/components/Folders/DeleteFolderModal.vue';
-import MoveToFolderModal from '@/components/Folders/MoveToFolderModal.vue';
+import DeleteFolderModal from '@/features/folders/components/DeleteFolderModal.vue';
+import MoveToFolderModal from '@/features/folders/components/MoveToFolderModal.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/externalSecrets/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
-import InviteUsersModal from '@/components/InviteUsersModal.vue';
-import MfaSetupModal from '@/components/MfaSetupModal.vue';
+import InviteUsersModal from '@/features/users/components/InviteUsersModal.vue';
+import MfaSetupModal from '@/features/auth/components/MfaSetupModal.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import PersonalizationModal from '@/components/PersonalizationModal.vue';
+import PersonalizationModal from '@/features/users/components/PersonalizationModal.vue';
 import PreBuiltAgentsModal from '@/components/PreBuiltAgentsModal.vue';
-import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
-import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
+import ProjectMoveResourceModal from '@/features/projects/components/ProjectMoveResourceModal.vue';
+import EventDestinationSettingsModal from '@/features/logStreaming.ee/components/EventDestinationSettingsModal.vue';
 import SetupWorkflowCredentialsModal from '@/features/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/sourceControl.ee/components/SourceControlPullModal.vue';
 import SourceControlPushModal from '@/features/sourceControl.ee/components/SourceControlPushModal.vue';
@@ -88,15 +94,16 @@ import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import WhatsNewModal from '@/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
 import WorkflowExtractionNameModal from '@/components/WorkflowExtractionNameModal.vue';
-import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
+import WorkflowHistoryVersionRestoreModal from '@/features/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import PromptMfaCodeModal from '@/features/auth/components/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
+import VariableModal from '@/components/VariableModal.vue';
 </script>
 
 <template>
@@ -375,6 +382,12 @@ import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/com
 		<ModalRoot :name="PRE_BUILT_AGENTS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<PreBuiltAgentsModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="VARIABLE_MODAL_KEY">
+			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
+				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
 			</template>
 		</ModalRoot>
 

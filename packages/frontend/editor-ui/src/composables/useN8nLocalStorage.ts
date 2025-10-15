@@ -1,4 +1,4 @@
-import { useProjectPages } from '@/composables/useProjectPages';
+import { useProjectPages } from '@/features/projects/composables/useProjectPages';
 import { LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY } from '@/constants';
 import { useLocalStorage } from '@vueuse/core';
 

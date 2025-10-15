@@ -1,17 +1,17 @@
 <script lang="ts" setup>
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY } from '../sourceControl.constants';
 import type { WorkflowResource } from '@/Interface';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
-import { useUsersStore } from '@/stores/users.store';
-import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
-import { ResourceType } from '@/utils/projects.utils';
+import { useUsersStore } from '@/features/users/users.store';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import { ResourceType } from '@/features/projects/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
 import type { SourceControlledFile } from '@n8n/api-types';
 import {
@@ -30,7 +30,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/components/Modal.vue';
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import {
 	N8nBadge,
 	N8nButton,
@@ -977,13 +977,13 @@ onMounted(async () => {
 }
 
 .filtersApplied {
-	border-top: var(--border-base);
+	border-top: var(--border);
 }
 
 .scroller {
 	max-height: 100%;
-	scrollbar-color: var(--color-foreground-base) transparent;
-	outline: var(--border-base);
+	scrollbar-color: var(--color--foreground) transparent;
+	outline: var(--border);
 
 	:global(.scrollerItem) {
 		&:last-child {
@@ -998,7 +998,7 @@ onMounted(async () => {
 	align-items: center;
 	padding: 10px 16px;
 	margin: 0;
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 
 	.listItemName {
 		line-clamp: 2;
@@ -1042,7 +1042,7 @@ onMounted(async () => {
 	}
 
 	:global(.el-dialog__header) {
-		padding-bottom: var(--spacing-xs);
+		padding-bottom: var(--spacing--xs);
 	}
 }
 
@@ -1051,13 +1051,13 @@ onMounted(async () => {
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
-	border: var(--border-base);
+	border: var(--border);
 	border-top-right-radius: 8px;
 	border-bottom-right-radius: 8px;
 }
 
 .tableHeader {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 	display: flex;
 	flex-direction: column;
 }
@@ -1067,18 +1067,18 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: 4px;
 	width: 165px;
-	padding: var(--spacing-2xs);
-	border: var(--border-base);
+	padding: var(--spacing--2xs);
+	border: var(--border);
 	border-right: 0;
 	border-top-left-radius: 8px;
 	border-bottom-left-radius: 8px;
 }
 
 .tab {
-	color: var(--color-text-base);
+	color: var(--color--text);
 	background-color: transparent;
 	border: 1px solid transparent;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	cursor: pointer;
 	border-radius: 4px;
 	text-align: left;
@@ -1086,12 +1086,12 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: 2px;
 	&:hover {
-		border-color: var(--color-background-base);
+		border-color: var(--color--background);
 	}
 }
 
 .tabActive {
-	background-color: var(--color-background-base);
-	color: var(--color-text-dark);
+	background-color: var(--color--background);
+	color: var(--color--text--shade-1);
 }
 </style>

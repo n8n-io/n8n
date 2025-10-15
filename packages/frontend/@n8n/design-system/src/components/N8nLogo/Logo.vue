@@ -70,9 +70,9 @@ onMounted(() => {
 }
 
 .logoText {
-	margin-left: var(--spacing-5xs);
+	margin-left: var(--spacing--5xs);
 	path {
-		fill: var(--color-text-dark);
+		fill: var(--color--text--shade-1);
 	}
 }
 
@@ -83,6 +83,7 @@ onMounted(() => {
 	svg > path {
 		fill: var(--color-text-dark, #13285a);
 	}
+	margin-bottom: var(--spacing--xl);
 
 	.logo,
 	.logoText {
@@ -93,8 +94,8 @@ onMounted(() => {
 	}
 
 	.logoText {
-		margin-left: var(--spacing-xs);
-		margin-right: var(--spacing-3xs);
+		margin-left: var(--spacing--xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 
@@ -103,6 +104,7 @@ onMounted(() => {
 	path {
 		fill: var(--color-text-dark);
 	}
+	margin-left: var(--spacing--2xs);
 }
 
 .sidebarCollapsed .logo {
@@ -112,5 +114,6 @@ onMounted(() => {
 	path {
 		fill: var(--color-text-dark);
 	}
+	padding: 0 var(--spacing--4xs);
 }
 </style>

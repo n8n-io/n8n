@@ -219,28 +219,28 @@ function valueChanged(parameterData: IUpdateInformation) {
 
 <style lang="scss">
 .collection-parameter {
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 
 	.param-options {
-		margin-top: var(--spacing-xs);
+		margin-top: var(--spacing--xs);
 
 		.button {
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 			font-weight: var(--font-weight-normal);
-			--button-border-color: var(--color-foreground-base);
-			--button-background-color: var(--color-background-base);
+			--button--border-color: var(--color--foreground);
+			--button--color--background: var(--color--background);
 
-			--button-hover-font-color: var(--color-button-secondary-font);
-			--button-hover-border-color: var(--color-foreground-base);
-			--button-hover-background-color: var(--color-background-base);
+			--button--color--text--hover: var(--button--color--text--secondary);
+			--button--border-color--hover: var(--color--foreground);
+			--button--color--background--hover: var(--color--background);
 
-			--button-active-font-color: var(--color-button-secondary-font);
-			--button-active-border-color: var(--color-foreground-base);
-			--button-active-background-color: var(--color-background-base);
+			--button--color--text--active: var(--button--color--text--secondary);
+			--button--border-color--active: var(--color--foreground);
+			--button--color--background--active: var(--color--background);
 
-			--button-focus-font-color: var(--color-button-secondary-font);
-			--button-focus-border-color: var(--color-foreground-base);
-			--button-focus-background-color: var(--color-background-base);
+			--button--color--text--focus: var(--button--color--text--secondary);
+			--button--border-color--focus: var(--color--foreground);
+			--button--color--background--focus: var(--color--background);
 
 			&:active,
 			&.active,
@@ -251,7 +251,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	.no-items-exist {
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 	}
 	.option {
 		position: relative;

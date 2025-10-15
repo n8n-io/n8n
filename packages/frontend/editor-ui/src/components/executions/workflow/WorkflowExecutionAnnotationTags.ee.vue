@@ -149,29 +149,29 @@ const onTagsEditEsc = () => {
 
 .tags {
 	display: block;
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing--4xs);
 }
 
 .addTagButton {
 	height: 24px;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	white-space: nowrap;
-	padding: var(--spacing-4xs) var(--spacing-3xs);
-	background-color: var(--color-button-secondary-background);
-	border: 1px solid var(--color-foreground-light);
-	border-radius: var(--border-radius-base);
-	font-weight: var(--font-weight-regular);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	background-color: var(--button--color--background--secondary);
+	border: 1px solid var(--color--foreground--tint-1);
+	border-radius: var(--radius);
+	font-weight: var(--font-weight--regular);
 
 	&:hover {
 		color: $color-primary;
 		text-decoration: none;
-		background-color: var(--color-button-secondary-hover-background);
-		border: 1px solid var(--color-button-secondary-hover-active-focus-border);
-		border-radius: var(--border-radius-base);
+		background-color: var(--button--color--background--secondary--hover);
+		border: 1px solid var(--button--border-color--secondary--hover-active-focus);
+		border-radius: var(--radius);
 	}
 
 	span + span {
-		margin-left: var(--spacing-4xs);
+		margin-left: var(--spacing--4xs);
 	}
 }
 
@@ -184,7 +184,7 @@ const onTagsEditEsc = () => {
 	display: inline-flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	max-width: 360px;
 
 	:global(.el-tag) {
@@ -192,14 +192,14 @@ const onTagsEditEsc = () => {
 		align-items: center;
 		justify-content: center;
 		min-width: max-content;
-		height: var(--tag-height);
-		padding: var(--tag-padding);
-		line-height: var(--tag-line-height);
-		color: var(--tag-text-color);
-		background-color: var(--tag-background-color);
-		border: 1px solid var(--tag-border-color);
-		border-radius: var(--tag-border-radius);
-		font-size: var(--tag-font-size);
+		height: var(--tag--height);
+		padding: var(--tag--padding);
+		line-height: var(--tag--line-height);
+		color: var(--tag--color--text);
+		background-color: var(--tag--color--background);
+		border: 1px solid var(--tag--border-color);
+		border-radius: var(--tag--radius);
+		font-size: var(--tag--font-size);
 	}
 }
 

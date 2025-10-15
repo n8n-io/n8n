@@ -59,7 +59,6 @@ vi.mock('@/stores/workflows.store', () => {
 		getPinnedDataLastRemovedAt: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
-		markExecutionAsStopped: vi.fn(),
 		private: {
 			setWorkflowSettings: vi.fn(),
 			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
@@ -116,7 +115,6 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
-		setDocumentTitle: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
 	}),
@@ -180,6 +178,24 @@ describe('useRunWorkflow({ router })', () => {
 	afterEach(() => {
 		workflowState.setActiveExecutionId(undefined);
 		vi.clearAllMocks();
+	});
+
+	it('should use passed workflowState parameter', async () => {
+		const customWorkflowState = vi.mocked(useWorkflowState());
+		const setActiveExecutionIdSpy = vi.spyOn(customWorkflowState, 'setActiveExecutionId');
+
+		const { runWorkflowApi } = useRunWorkflow({ router, workflowState: customWorkflowState });
+
+		vi.mocked(pushConnectionStore).isConnected = true;
+		vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+			executionId: '123',
+			waitingForWebhook: false,
+		});
+
+		await runWorkflowApi({} as IStartRunData);
+
+		expect(setActiveExecutionIdSpy).toHaveBeenCalledWith(null);
+		expect(setActiveExecutionIdSpy).toHaveBeenCalledWith('123');
 	});
 
 	describe('runWorkflowApi()', () => {
@@ -375,7 +391,7 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('should prevent execution and show error message when workflow is active with multiple tirggers and a single webhook trigger is chosen', async () => {
+		it('should prevent execution and show error message when workflow is active with multiple triggers and a single webhook trigger is chosen', async () => {
 			// ARRANGE
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
@@ -1029,7 +1045,7 @@ describe('useRunWorkflow({ router })', () => {
 				startedAt: new Date('2025-04-01T00:00:00.000Z'),
 				createdAt: new Date('2025-04-01T00:00:00.000Z'),
 			};
-			const markStoppedSpy = vi.spyOn(workflowsStore, 'markExecutionAsStopped');
+			const markStoppedSpy = vi.spyOn(workflowState, 'markExecutionAsStopped');
 			const getExecutionSpy = vi.spyOn(workflowsStore, 'getExecution');
 
 			workflowsStore.activeWorkflows = ['test-wf-id'];

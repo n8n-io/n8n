@@ -3,12 +3,12 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import DeleteUserModal from './DeleteUserModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { getDropdownItems } from '@/__tests__/utils';
-import { createProjectListItem } from '@/__tests__/data/projects';
-import { DELETE_USER_MODAL_KEY } from '@/constants';
+import { createProjectListItem } from '@/features/projects/__tests__/utils';
+import { DELETE_USER_MODAL_KEY } from '@/features/users/users.constants';
 import { STORES } from '@n8n/stores';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import userEvent from '@testing-library/user-event';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { ROLE, type UsersList, type User } from '@n8n/api-types';
 
 const ModalStub = {
