@@ -7,8 +7,6 @@ import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
 import { ref, nextTick, watch } from 'vue';
 import { useTemplateRef } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
@@ -28,16 +26,18 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
-const toast = useToast();
-const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
+const justCopied = ref(false);
 
 async function handleCopy() {
 	const text = messageText(message);
 	await clipboard.copy(text);
-	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	justCopied.value = true;
+	setTimeout(() => {
+		justCopied.value = false;
+	}, 1000);
 }
 
 function handleEdit() {
@@ -148,6 +148,7 @@ watch(
 				<ChatMessageActions
 					v-else
 					:role="message.role"
+					:just-copied="justCopied"
 					:class="$style.actions"
 					@copy="handleCopy"
 					@edit="handleEdit"
