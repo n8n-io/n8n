@@ -1,4 +1,4 @@
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useTelemetry } from './useTelemetry';

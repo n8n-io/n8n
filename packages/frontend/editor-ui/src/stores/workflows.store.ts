@@ -84,7 +84,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
@@ -623,18 +623,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function searchWorkflows({
 		projectId,
 		name,
+		nodeTypes,
+		tags,
+		select,
 	}: {
 		projectId?: string;
 		name?: string;
+		nodeTypes?: string[];
+		tags?: string[];
+		select?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			name,
+			nodeTypes,
+			tags,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
+			undefined,
+			select,
 		);
 		return workflows;
 	}

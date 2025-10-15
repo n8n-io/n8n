@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
@@ -21,9 +21,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const isResponding = ref(false);
+	const ongoingStreaming = ref<{ messageId: string; replyToMessageId: string }>();
 	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
 	const sessions = ref<ChatHubSessionDto[]>([]);
+
+	const isResponding = computed(() => ongoingStreaming.value !== undefined);
 
 	const getLastMessage = (sessionId: string) => {
 		const msgs = messagesBySession.value[sessionId];
@@ -107,8 +109,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		};
 	}
 
-	function onBeginMessage(sessionId: string, messageId: string, nodeId: string, runIndex?: number) {
-		isResponding.value = true;
+	function onBeginMessage(
+		sessionId: string,
+		messageId: string,
+		replyToMessageId: string,
+		nodeId: string,
+		runIndex?: number,
+	) {
+		ongoingStreaming.value = { messageId, replyToMessageId };
 		addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
@@ -124,16 +132,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		isResponding.value = false;
+		ongoingStreaming.value = undefined;
 	}
 
-	function onStreamMessage(sessionId: string, message: StructuredChunk, messageId: string) {
+	function onStreamMessage(
+		sessionId: string,
+		message: StructuredChunk,
+		messageId: string,
+		replyToMessageId: string,
+	) {
 		const nodeId = message.metadata?.nodeId || 'unknown';
 		const runIndex = message.metadata?.runIndex;
 
 		switch (message.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, nodeId, runIndex);
+				onBeginMessage(sessionId, messageId, replyToMessageId, nodeId, runIndex);
 				break;
 			case 'item':
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
@@ -156,13 +169,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// addAssistantMessages(response.messages);
 	}
 
-	function onStreamDone() {
-		isResponding.value = false;
+	async function onStreamDone() {
+		ongoingStreaming.value = undefined;
+		await fetchSessions(); // update the conversation list
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onStreamError(_e: Error) {
-		isResponding.value = false;
+		ongoingStreaming.value = undefined;
 	}
 
 	function askAI(
@@ -188,10 +202,30 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
 			onStreamDone,
 			onStreamError,
 		);
+	}
+
+	async function renameSession(sessionId: string, name: string) {
+		// Optimistic update
+		sessions.value = sessions.value.map((session) =>
+			session.id === sessionId ? { ...session, title: name } : session,
+		);
+
+		// TODO: call the endpoint
+	}
+
+	async function deleteSession(sessionId: string) {
+		// Optimistic update
+		sessions.value = sessions.value.filter((session) => session.id !== sessionId);
+
+		// TODO: call the endpoint
+	}
+
+	async function updateChatMessage(_sessionId: string, _messageId: string, _content: string) {
+		// TODO: call the endpoint
 	}
 
 	return {
@@ -199,11 +233,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		messagesBySession,
 		isResponding,
+		ongoingStreaming,
 		sessions,
 		fetchChatModels,
 		askAI,
 		addUserMessage,
 		fetchSessions,
 		fetchMessages,
+		renameSession,
+		deleteSession,
+		updateChatMessage,
 	};
 });

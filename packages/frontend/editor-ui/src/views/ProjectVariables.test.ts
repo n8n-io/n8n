@@ -1,6 +1,6 @@
 import ProjectVariables from '@/views/ProjectVariables.vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature, VARIABLE_MODAL_KEY } from '@/constants';
