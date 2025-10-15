@@ -705,7 +705,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (!response) return [];
 
-	let toolCalls = response.output.filter((item) => item.type === 'function_call');
+	// reasoning models such as gpt5 include reasoning items that must be included in the request
+	const isToolRelatedCall: (item: { type: string }) => boolean = (item) =>
+		item.type === 'function_call' || item.type === 'reasoning';
+
+	let toolCalls = response.output.filter(isToolRelatedCall);
 	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
 	while (toolCalls.length) {
@@ -714,40 +718,45 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 
 		for (const item of toolCalls) {
-			if (item.type !== 'function_call' || answeredToolCalls.has(item.call_id)) {
+			if (item.type === 'function_call' && answeredToolCalls.has(item.call_id)) {
 				continue;
 			}
+
+			// include function_call or reasoning items in the request
 			body.input.push(item);
-			const functionName = item.name;
-			const functionArgs = item.arguments;
-			const callId = item.call_id;
 
-			let functionResponse;
-			for (const tool of externalTools ?? []) {
-				if (tool.name === functionName) {
-					const parsedArgs: { input: string } = jsonParse(functionArgs);
-					const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
-					functionResponse = await tool.invoke(functionInput);
+			if (item.type === 'function_call') {
+				const functionName = item.name;
+				const functionArgs = item.arguments;
+				const callId = item.call_id;
+
+				let functionResponse;
+				for (const tool of externalTools ?? []) {
+					if (tool.name === functionName) {
+						const parsedArgs: { input: string } = jsonParse(functionArgs);
+						const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
+						functionResponse = await tool.invoke(functionInput);
+					}
+
+					if (typeof functionResponse === 'object') {
+						functionResponse = JSON.stringify(functionResponse);
+					}
 				}
 
-				if (typeof functionResponse === 'object') {
-					functionResponse = JSON.stringify(functionResponse);
-				}
+				body.input.push({
+					type: 'function_call_output',
+					call_id: callId,
+					output: functionResponse,
+				});
+
+				answeredToolCalls.add(callId);
 			}
-
-			body.input.push({
-				type: 'function_call_output',
-				call_id: callId,
-				output: functionResponse,
-			});
-
-			answeredToolCalls.add(callId);
 		}
 
 		response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
 		})) as ChatResponse;
-		toolCalls = response.output.filter((item) => item.type === 'function_call');
+		toolCalls = response.output.filter(isToolRelatedCall);
 
 		currentIteration++;
 	}
