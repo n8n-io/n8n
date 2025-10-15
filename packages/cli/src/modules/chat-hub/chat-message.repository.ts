@@ -28,9 +28,9 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		id: ChatMessageId,
 		message: Partial<ChatHubMessage>,
 		trx?: EntityManager,
-	) {
+	): Promise<void> {
 		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.update(ChatHubMessage, { id }, message);
+			await em.update(ChatHubMessage, { id }, message);
 		});
 	}
 
