@@ -4,12 +4,10 @@ import { FolderRepository, type TagEntity, TagRepository, type User, Variables }
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
-import path from 'path';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
-import { SOURCE_CONTROL_PROJECT_EXPORT_FOLDER } from './constants';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	getFoldersPath,
@@ -18,7 +16,6 @@ import {
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
 	isWorkflowModified,
-	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
@@ -635,18 +632,6 @@ export class SourceControlStatusService {
 			await this.sourceControlImportService.getRemoteProjectsFromFiles(context);
 		const projectsLocal = await this.sourceControlImportService.getLocalTeamProjectsFromDb(context);
 
-		// Check if projects folder exists in the remote repository
-		// If it doesn't exist, this means projects have never been synced before
-		// and we should not mark local projects as "to be deleted"
-		const projectExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_PROJECT_EXPORT_FOLDER);
-		const projectsFolderExists = sourceControlFoldersExistCheck([projectExportFolder], false);
-
-		if (!projectsFolderExists && projectsLocal.length > 0) {
-			this.logger.info(
-				`Projects folder not found in remote repository. Skipping project deletion check for backward compatibility. ${projectsLocal.length} local projects will be preserved.`,
-			);
-		}
-
 		let outOfScopeProjects: ExportableProjectWithFileName[] = [];
 
 		if (!context.hasAccessToAllProjects()) {
@@ -667,12 +652,16 @@ export class SourceControlStatusService {
 				(remote) => !outOfScopeProjects.some((outOfScope) => outOfScope.id === remote.id),
 			);
 
-		// BACKWARD COMPATIBILITY: Only mark projects as missing in remote if the projects folder exists
-		// This prevents deleting local projects when pulling from a repository that was created
-		// before project sync was implemented
-		const projectsMissingInRemote = projectsFolderExists
-			? projectsLocal.filter((local) => !projectsRemote.some((remote) => remote.id === local.id))
-			: []; // Don't mark any projects for deletion if folder doesn't exist
+		// BACKWARD COMPATIBILITY: When there are no remote projects we can't safely delete local projects
+		// because we don't know if it's the first pull or if all team projects have been removed
+		// As a downside this means that it's not possible to delete all team projects via source control sync
+		const areRemoteProjectsEmpty = projectsRemote.length === 0;
+		let projectsMissingInRemote = projectsLocal.filter(
+			(local) => !projectsRemote.some((remote) => remote.id === local.id),
+		);
+		if (options.direction === 'pull' && areRemoteProjectsEmpty) {
+			projectsMissingInRemote = [];
+		}
 
 		const projectsModifiedInEither: ExportableProjectWithFileName[] = [];
 
