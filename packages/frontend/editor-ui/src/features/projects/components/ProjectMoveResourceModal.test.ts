@@ -5,7 +5,7 @@ import { createTestWorkflow } from '@/__tests__/mocks';
 import { createProjectListItem } from '../__tests__/utils';
 import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import type { MockedStore } from '@/__tests__/utils';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '../projects.constants';
 import ProjectMoveResourceModal from './ProjectMoveResourceModal.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '../projects.store';
