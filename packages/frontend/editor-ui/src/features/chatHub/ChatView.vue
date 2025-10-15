@@ -251,7 +251,7 @@ function onSubmit(message: string) {
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.askAI(sessionId.value, message, selectedModel.value, {
+	chatStore.sendMessage(sessionId.value, message, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -277,13 +277,43 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-async function handleUpdateMessage(message: ChatMessageType) {
-	if (message.type === 'error') {
+function handleEditMessage(message: ChatMessageType) {
+	if (chatStore.isResponding || message.type === 'error' || !selectedModel.value) {
 		return;
 	}
 
-	await chatStore.updateChatMessage(sessionId.value, message.id, message.text);
+	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+
+	if (!credentialsId) {
+		return;
+	}
+
+	chatStore.editMessage(sessionId.value, message.id, message.text, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	});
 	editingMessageId.value = undefined;
+}
+
+function handleRegenerateMessage(message: ChatMessageType) {
+	if (chatStore.isResponding || message.type === 'error' || !selectedModel.value) {
+		return;
+	}
+
+	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+
+	if (!credentialsId) {
+		return;
+	}
+
+	chatStore.regenerateMessage(sessionId.value, message.id, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	});
 }
 </script>
 
@@ -349,7 +379,8 @@ async function handleUpdateMessage(message: ChatMessageType) {
 						:is-streaming="chatStore.ongoingStreaming?.messageId === message.id"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
-						@update="handleUpdateMessage"
+						@regenerate="handleRegenerateMessage"
+						@update="handleEditMessage"
 					/>
 				</div>
 

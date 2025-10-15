@@ -4,7 +4,9 @@ import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
-	sendText,
+	sendMessageApi,
+	editMessageApi,
+	regenerateMessageApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
 } from './chat.api';
@@ -14,6 +16,8 @@ import type {
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubSessionDto,
+	ChatMessageId,
+	ChatSessionId,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -179,8 +183,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		ongoingStreaming.value = undefined;
 	}
 
-	function askAI(
-		sessionId: string,
+	function sendMessage(
+		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
@@ -191,7 +195,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		addUserMessage(sessionId, message, messageId);
 
-		sendText(
+		sendMessageApi(
 			rootStore.restApiContext,
 			{
 				model,
@@ -203,6 +207,66 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				previousMessageId,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			onStreamDone,
+			onStreamError,
+		);
+	}
+
+	function editMessage(
+		sessionId: ChatSessionId,
+		editId: ChatMessageId,
+		message: string,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
+	) {
+		const messageId = uuidv4();
+		const replyId = uuidv4();
+
+		addUserMessage(sessionId, message, messageId);
+
+		// TODO: remove descendants of the message being edited
+		// or better yet, turn the frontend chat into a graph and
+		// maintain the visible active chain, and this would just switch to that branch.
+
+		editMessageApi(
+			rootStore.restApiContext,
+			{
+				model,
+				messageId,
+				sessionId,
+				replyId,
+				editId,
+				message,
+				credentials,
+			},
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			onStreamDone,
+			onStreamError,
+		);
+	}
+
+	function regenerateMessage(
+		sessionId: ChatSessionId,
+		retryId: ChatMessageId,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
+	) {
+		const replyId = uuidv4();
+
+		// TODO: remove descendants of the message being retried
+		// or better yet, turn the frontend chat into a graph and
+		// maintain the visible active chain, and this would just switch to that branch.
+
+		regenerateMessageApi(
+			rootStore.restApiContext,
+			{
+				model,
+				sessionId,
+				retryId,
+				replyId,
+				credentials,
+			},
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, retryId),
 			onStreamDone,
 			onStreamError,
 		);
@@ -224,10 +288,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: call the endpoint
 	}
 
-	async function updateChatMessage(_sessionId: string, _messageId: string, _content: string) {
-		// TODO: call the endpoint
-	}
-
 	return {
 		models,
 		loadingModels,
@@ -236,12 +296,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		ongoingStreaming,
 		sessions,
 		fetchChatModels,
-		askAI,
+		sendMessage,
+		editMessage,
+		regenerateMessage,
 		addUserMessage,
 		fetchSessions,
 		fetchMessages,
 		renameSession,
 		deleteSession,
-		updateChatMessage,
 	};
 });
