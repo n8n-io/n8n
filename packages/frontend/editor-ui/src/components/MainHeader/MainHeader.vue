@@ -362,7 +362,7 @@ async function onWorkflowDeactivated() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--p--color--primary-420);
+		color: var(--color--orange-400);
 	}
 }
 .github-button-container {

@@ -38,22 +38,24 @@
 	--p--color--white-a-015: hsla(var(--p--color--gray), 50%, 100%, 0.15);
 	--p--color--white-a-010: hsla(var(--p--color--gray), 50%, 100%, 0.1);
 
-	// Primary color
-	--p--color--primary--h: 7;
-	--p--color--primary--s: 100%;
-	--p--color--primary--l: 68%;
+	// Orange
+	--color--orange-50: hsl(7, 100%, 98%);
+	--color--orange-100: hsl(7, 100%, 95%);
+	--color--orange-150: hsl(7, 100%, 93%);
+	--color--orange-200: hsl(7, 100%, 88%);
+	--color--orange-250: hsl(7, 100%, 78%);
+	--color--orange-300: hsl(7, 100%, 68%);
+	--color--orange-400: hsl(7, 100%, 60%);
+	--color--orange-500: hsl(7, 100%, 50%);
+	--color--orange-600: hsl(7, 100%, 40%);
+	--color--orange-700: hsl(7, 100%, 30%);
+	--color--orange-800: hsl(7, 100%, 20%);
+	--color--orange-900: hsl(7, 100%, 10%);
+	--color--orange-950: hsl(7, 100%, 5%);
 
-	--p--color--primary-420: hsl(7, 85%, 58%);
-	--p--color--primary-320: hsl(7, 100%, 68%); // Base
-	--p--color--primary-220: hsl(7, 100%, 78%);
-	--p--color--primary-120: hsl(7, 100%, 88%);
-	--p--color--primary-070: hsl(7, 100%, 93%);
-	--p--color--primary-050: hsl(7, 100%, 95%);
-	--p--color--primary-030: hsl(7, 100%, 98%);
-
-	--p--color--primary-320-a-010: hsla(7, 100%, 68%, 0.1);
-	--p--color--primary-320-a-035: hsla(7, 100%, 68%, 0.35);
-	--p--color--primary-320-a-050: hsla(7, 100%, 68%, 0.5);
+	--color--orange-alpha-100: hsla(7, 100%, 68%, 0.1);
+	--color--orange-alpha-300: hsla(7, 100%, 68%, 0.35);
+	--color--orange-alpha-500: hsla(7, 100%, 68%, 0.5);
 
 	// Purple
 	--color--purple-50: hsl(247, 49%, 98%);

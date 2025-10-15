@@ -118,7 +118,7 @@
 	--node--icon--color--blue: #898fff;
 	--node--icon--color--light-blue: #58abff;
 	--node--icon--color--dark-blue: #7ba7ff;
-	--node--icon--color--orange-red: var(--p--color--primary-320);
+	--node--icon--color--orange-red: var(--color--orange-300);
 	--node--icon--color--pink-red: #f85d82;
 	--node--icon--color--red: var(--p--color--alt-h-310);
 	--node--icon--color--light-green: #20b69e;
@@ -194,19 +194,19 @@
 	--variables-usage--syntax--color--background: var(--color--green-alpha-200);
 
 	// Button primary
-	--button--outline-color--primary--focus: var(--p--color--primary-320-a-035);
+	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
 	--button--color--text--primary--disabled: var(--p--color--white-a-030);
 	--button--border-color--primary--disabled: transparent;
-	--button--color--background--primary--disabled: var(--p--color--primary-320-a-050);
+	--button--color--background--primary--disabled: var(--color--orange-alpha-500);
 
 	// Button secondary
 	--button--color--text--secondary: var(--p--color--gray-070);
 	--button--border-color--secondary: var(--color--foreground);
 	--button--color--background--secondary: var(--color--background--light-2);
-	--button--color--text--secondary--hover-active-focus: var(--p--color--primary-220);
+	--button--color--text--secondary--hover-active-focus: var(--color--orange-250);
 	--button--color--background--secondary--hover: var(--color--background--light-2);
-	--button--color--background--secondary--active-focus: var(--p--color--primary-320-a-010);
-	--button--outline-color--secondary--focus: var(--p--color--primary-320-a-035);
+	--button--color--background--secondary--active-focus: var(--color--orange-alpha-100);
+	--button--outline-color--secondary--focus: var(--color--orange-alpha-300);
 	--button--color--text--secondary--disabled: var(--p--color--white-a-030);
 	--button--border-color--secondary--disabled: var(--color--foreground);
 
@@ -214,7 +214,7 @@
 	--button--color--text--highlight: var(--p--color--gray-320);
 	--button--border-color--highlight: transparent;
 	--button--color--background--highlight: transparent;
-	--button--color--text--highlight--hover-active-focus: var(--p--color--primary-420);
+	--button--color--text--highlight--hover-active-focus: var(--color--orange-400);
 	--button--border-color--highlight--hover-active-focus: var(--p--color--gray-670);
 	--button--color--background--highlight--hover: var(--p--color--gray-670);
 	--button--color--background--highlight--active-focus: var(--p--color--gray-670);
@@ -238,8 +238,8 @@
 	--node-creator--button--color--text--hover: var(
 		--button--color--text--secondary--hover-active-focus
 	);
-	--node-creator--button--border-color--hover: var(--p--color--primary-320);
-	--node-creator--button--color--background: var(--p--color--primary-320-a-010);
+	--node-creator--button--border-color--hover: var(--color--orange-300);
+	--node-creator--button--color--background: var(--color--orange-alpha-100);
 
 	// Table
 	--table--header--color--background: var(--p--color--gray-740);
@@ -262,8 +262,8 @@
 	// NDV
 	--run-data--color--background: var(--p--color--gray-800);
 	--ndvv2--run-data--color--background: var(--p--color--gray-800);
-	--ndv--droppable-parameter--color: var(--p--color--primary-320);
-	--ndv--droppable-parameter--color--background: var(--p--color--primary-320-a-010);
+	--ndv--droppable-parameter--color: var(--color--orange-300);
+	--ndv--droppable-parameter--color--background: var(--color--orange-alpha-100);
 	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--p--color--white);
 
@@ -521,7 +521,7 @@
 	--link--color--secondary--hover: var(--color--purple-500);
 	// Params
 	--icon--color: var(--color--text--tint-1);
-	--icon--color--hover: var(--p--color--primary-320);
+	--icon--color--hover: var(--color--orange-300);
 
 	--menu--color--background: var(--p--color--gray-740);
 	--menu--color--background--hover: var(--p--color--gray-670);

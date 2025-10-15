@@ -8,7 +8,7 @@
  *
  * To maintain backwards compatibility for users (for example embed customers that customize n8n)
  * we use CSS variable fallbacks:
- * --color--primary: var(--color-primary, var(--p--color--primary-320))
+ * --color--primary: var(--color-primary, var(--color--orange-300))
  *
  * This ensures:
  * 1. New code using --color--primary--* works correctly
@@ -20,25 +20,25 @@
 
 @mixin theme {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--h: var(--color-primary-h, var(--p--color--primary--h));
+	--color--primary--h: 7;
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--s: var(--color-primary-s, var(--p--color--primary--s));
+	--color--primary--s: 100%;
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--l: var(--color-primary-l, var(--p--color--primary--l));
+	--color--primary--l: 68%;
 
 	// Primary tokens
 
 	// Primary
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--shade-1: var(--color-primary-shade-1, var(--p--color--primary-420));
+	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--orange-400));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary: var(--color-primary, var(--p--color--primary-320));
+	--color--primary: var(--color-primary, var(--color--orange-300));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--tint-1: var(--color-primary-tint-1, var(--p--color--primary-120));
+	--color--primary--tint-1: var(--color-primary-tint-1, var(--color--orange-200));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--tint-2: var(--color-primary-tint-2, var(--p--color--primary-070));
+	--color--primary--tint-2: var(--color-primary-tint-2, var(--color--orange-150));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--tint-3: var(--color-primary-tint-3, var(--p--color--primary-030));
+	--color--primary--tint-3: var(--color-primary-tint-3, var(--color--orange-50));
 
 	// Secondary
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -382,23 +382,23 @@
 
 	// Button primary
 	--button--color--text--primary: var(--p--color--white);
-	--button--border-color--primary: var(--p--color--primary-320);
-	--button--color--background--primary: var(--p--color--primary-320);
-	--button--border-color--primary--hover-active: var(--p--color--primary-420);
-	--button--color--background--primary--hover-active-focus: var(--p--color--primary-420);
-	--button--outline-color--primary--focus: var(--p--color--primary-320-a-035);
+	--button--border-color--primary: var(--color--orange-300);
+	--button--color--background--primary: var(--color--orange-300);
+	--button--border-color--primary--hover-active: var(--color--orange-400);
+	--button--color--background--primary--hover-active-focus: var(--color--orange-400);
+	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
 	--button--color--text--primary--disabled: var(--p--color--white-a-075);
-	--button--border-color--primary--disabled: var(--p--color--primary-120);
-	--button--color--background--primary--disabled: var(--p--color--primary-120);
+	--button--border-color--primary--disabled: var(--color--orange-200);
+	--button--color--background--primary--disabled: var(--color--orange-200);
 
 	// Button secondary
 	--button--color--text--secondary: var(--p--color--gray-670);
 	--button--border-color--secondary: var(--p--color--gray-320);
 	--button--color--background--secondary: var(--p--color--white);
-	--button--color--text--secondary--hover-active-focus: var(--p--color--primary-420);
-	--button--border-color--secondary--hover-active-focus: var(--p--color--primary-320);
-	--button--color--background--secondary--hover: var(--p--color--primary-030);
-	--button--color--background--secondary--active-focus: var(--p--color--primary-050);
+	--button--color--text--secondary--hover-active-focus: var(--color--orange-400);
+	--button--border-color--secondary--hover-active-focus: var(--color--orange-300);
+	--button--color--background--secondary--hover: var(--color--orange-50);
+	--button--color--background--secondary--active-focus: var(--color--orange-100);
 	--button--outline-color--secondary--focus: var(--p--color--gray-120);
 	--button--color--text--secondary--disabled: var(--p--color--gray-200);
 	--button--border-color--secondary--disabled: var(--p--color--gray-200);
@@ -407,7 +407,7 @@
 	--button--color--text--highlight: var(--p--color--gray-670);
 	--button--border-color--highlight: transparent;
 	--button--color--background--highlight: transparent;
-	--button--color--text--highlight--hover-active-focus: var(--p--color--primary-420);
+	--button--color--text--highlight--hover-active-focus: var(--color--orange-400);
 	--button--border-color--highlight--hover-active-focus: var(--p--color--gray-040);
 	--button--color--background--highlight--hover: var(--p--color--gray-040);
 	--button--color--background--highlight--active-focus: var(--p--color--gray-040);
@@ -433,8 +433,8 @@
 
 	// Node Creator Button
 	--node-creator--button--color--text: var(--p--color--gray-540);
-	--node-creator--button--color--text--hover: var(--p--color--primary-320);
-	--node-creator--button--border-color--hover: var(--p--color--primary-320);
+	--node-creator--button--color--text--hover: var(--color--orange-300);
+	--node-creator--button--border-color--hover: var(--color--orange-300);
 	--node-creator--button--color--background: var(--p--color--white);
 
 	// Table
@@ -737,7 +737,7 @@
 
 	// Params
 	--icon--color: var(--color--text--tint-1);
-	--icon--color--hover: var(--p--color--primary-320);
+	--icon--color--hover: var(--color--orange-300);
 
 	/* Ag Grid */
 	--grid--row--color--background--selected: var(--color--purple-200);
