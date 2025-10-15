@@ -77,6 +77,7 @@ function mixinTimestamps<T extends Class<{}, any[]>>(base: T) {
 	return Derived;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mixinCreatedAt<T extends Class<{}, any[]>>(base: T) {
 	class Derived extends base {
 		@CreateDateColumn(tsColumnOptions)

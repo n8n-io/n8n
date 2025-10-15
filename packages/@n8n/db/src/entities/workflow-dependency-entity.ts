@@ -38,7 +38,8 @@ export class WorkflowDependency extends WithCreatedAtAndStringId {
 	dependencyKey: string;
 
 	/**
-	 * The node ID the dependency is associated with, if applicable.
+	 * Additional information about the dependency, interpreted based on the type.
+	 * E.g., for 'nodeType' it could be the node ID, for 'webhookPath' the webhook ID.
 	 */
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	dependencyInfo: string | null;
