@@ -251,23 +251,17 @@ export function areOwnersDifferent(
 	owner1?: StatusResourceOwner,
 	owner2?: StatusResourceOwner,
 ): boolean {
-	// Both undefined/null - not different
 	if (!owner1 && !owner2) return false;
 
-	// One is undefined/null - different
 	if (!owner1 || !owner2) return true;
 
-	// Different types - different
 	if (owner1.type !== owner2.type) return true;
 
-	// Compare based on type
 	if (owner1.type === 'personal' && owner2.type === 'personal') {
-		// For personal projects, compare projectId
 		return owner1.projectId !== owner2.projectId;
 	}
 
 	if (owner1.type === 'team' && owner2.type === 'team') {
-		// For team projects, compare projectId
 		return owner1.projectId !== owner2.projectId;
 	}
 
