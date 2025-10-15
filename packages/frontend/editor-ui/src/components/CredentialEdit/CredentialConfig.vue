@@ -403,7 +403,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 <style lang="scss" module>
 .config {
-	--notice-margin: 0;
+	--notice--margin: 0;
 	flex-grow: 1;
 
 	> * {

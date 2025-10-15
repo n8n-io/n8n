@@ -1,6 +1,7 @@
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
+import { aggregateCacheStats, formatCacheStats } from './cache-analyzer.js';
 import {
 	formatColoredScore,
 	formatHeader,
@@ -10,7 +11,7 @@ import {
 	formatViolationType,
 } from './evaluation-helpers.js';
 import type { Violation } from '../types/evaluation.js';
-import type { TestResult } from '../types/test-result.js';
+import type { TestResult, CacheStatistics } from '../types/test-result.js';
 
 /**
  * Generates a markdown report from evaluation results
@@ -29,6 +30,13 @@ export function generateMarkdownReport(
 	},
 ): string {
 	const { totalTests, successfulTests, averageScore, categoryAverages, violationCounts } = metrics;
+
+	// Calculate aggregate cache statistics
+	const cacheStats = results
+		.map((r) => r.cacheStats)
+		.filter((r): r is CacheStatistics => r !== undefined);
+
+	const aggregateCache = cacheStats.length > 0 ? aggregateCacheStats(cacheStats) : null;
 
 	let report = `# AI Workflow Builder Evaluation Report
 
@@ -49,7 +57,23 @@ export function generateMarkdownReport(
 - Major: ${violationCounts.major}
 - Minor: ${violationCounts.minor}
 
-## Detailed Results
+`;
+
+	// Add cache statistics section if available
+	if (aggregateCache) {
+		const formatted = formatCacheStats(aggregateCache);
+		report += `## Prompt Caching Statistics
+- Input Tokens: ${formatted.inputTokens}
+- Output Tokens: ${formatted.outputTokens}
+- Cache Creation Tokens: ${formatted.cacheCreationTokens}
+- Cache Read Tokens: ${formatted.cacheReadTokens}
+- Cache Hit Rate: ${formatted.cacheHitRate}
+- Estimated Cost Savings: ${formatted.costSavings}
+
+`;
+	}
+
+	report += `## Detailed Results
 
 `;
 
@@ -59,8 +83,17 @@ export function generateMarkdownReport(
 - **Generation Time**: ${result.generationTime}ms
 - **Nodes Generated**: ${result.generatedWorkflow.nodes.length}
 - **Summary**: ${result.evaluationResult.summary}
-
 `;
+
+		// Add cache stats for this test if available
+		if (result.cacheStats) {
+			const formatted = formatCacheStats(result.cacheStats);
+			report += `- **Cache Hit Rate**: ${formatted.cacheHitRate}
+- **Cost Savings**: ${formatted.costSavings}
+`;
+		}
+
+		report += '\n';
 
 		if (
 			result.evaluationResult.criticalIssues &&
@@ -145,7 +178,7 @@ export function displayTestResults(
  * @param metrics - Calculated metrics
  */
 export function displaySummaryTable(
-	_results: TestResult[],
+	results: TestResult[],
 	metrics: {
 		totalTests: number;
 		successfulTests: number;
@@ -223,6 +256,73 @@ export function displaySummaryTable(
 	console.log();
 	console.log(formatHeader('Summary', 70));
 	console.log(summaryTable.toString());
+
+	// Display cache statistics if available
+	displayCacheStatistics(results);
+}
+
+/**
+ * Displays cache statistics table
+ * @param results - Array of test results
+ */
+export function displayCacheStatistics(results: TestResult[]): void {
+	const cacheStats = results
+		.map((r) => r.cacheStats)
+		.filter((r): r is CacheStatistics => r !== undefined);
+
+	if (cacheStats.length === 0) return;
+
+	const aggregateCache = aggregateCacheStats(cacheStats);
+	const formatted = formatCacheStats(aggregateCache);
+
+	const cacheTable = new Table({
+		head: ['Cache Metric', 'Value'],
+		style: { head: ['cyan'] },
+	});
+
+	// Determine cache quality color
+	const hitRateColor =
+		aggregateCache.cacheHitRate > 0.6
+			? pc.green
+			: aggregateCache.cacheHitRate > 0.3
+				? pc.yellow
+				: pc.red;
+
+	const savingsColor =
+		aggregateCache.estimatedCostSavings > 0.01
+			? pc.green
+			: aggregateCache.estimatedCostSavings > 0.001
+				? pc.yellow
+				: pc.dim;
+
+	cacheTable.push(
+		['Input Tokens', formatted.inputTokens],
+		['Output Tokens', formatted.outputTokens],
+		['Cache Creation', formatted.cacheCreationTokens],
+		['Cache Read', formatted.cacheReadTokens],
+		[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
+		['Cache Hit Rate', hitRateColor(formatted.cacheHitRate)],
+		['Cost Savings', savingsColor(formatted.costSavings)],
+	);
+
+	console.log();
+	console.log(formatHeader('Prompt Caching Statistics', 70));
+	console.log(cacheTable.toString());
+
+	// Add interpretation
+	if (aggregateCache.cacheHitRate > 0.6) {
+		console.log(
+			pc.green('\n  ✓ Excellent cache performance! High hit rate indicates effective caching.'),
+		);
+	} else if (aggregateCache.cacheHitRate > 0.3) {
+		console.log(
+			pc.yellow('\n  ⚠ Moderate cache performance. Consider optimizing cache control markers.'),
+		);
+	} else if (aggregateCache.cacheHitRate > 0) {
+		console.log(
+			pc.red('\n  ✗ Low cache hit rate. Review cache control configuration and prompt structure.'),
+		);
+	}
 }
 
 /**

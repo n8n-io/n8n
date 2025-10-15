@@ -2,12 +2,18 @@ import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchChatModelsApi, sendText } from './chat.api';
+import {
+	fetchChatModelsApi,
+	sendText,
+	fetchConversationsApi as fetchSessionsApi,
+	fetchSingleConversationApi as fetchMessagesApi,
+} from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	ChatHubConversationModel,
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
+	ChatHubSessionDto,
 } from '@n8n/api-types';
 import type { StructuredChunk, ChatMessage, CredentialsMap } from './chat.types';
 
@@ -15,13 +21,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const isResponding = ref(false);
-	const chatMessages = ref<ChatMessage[]>([]);
+	const ongoingStreaming = ref<{ messageId: string; replyToMessageId: string }>();
+	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
+	const sessions = ref<ChatHubSessionDto[]>([]);
 
-	const assistantMessages = computed(() =>
-		chatMessages.value.filter((msg) => msg.role === 'assistant'),
-	);
-	const usersMessages = computed(() => chatMessages.value.filter((msg) => msg.role === 'user'));
+	const isResponding = computed(() => ongoingStreaming.value !== undefined);
+
+	const getLastMessage = (sessionId: string) => {
+		const msgs = messagesBySession.value[sessionId];
+		if (!msgs || msgs.length === 0) return null;
+		return msgs[msgs.length - 1];
+	};
 
 	async function fetchChatModels(credentialMap: CredentialsMap) {
 		loadingModels.value = true;
@@ -32,62 +42,126 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return models.value;
 	}
 
-	function addUserMessage(content: string, id: string) {
-		chatMessages.value.push({
-			id,
-			role: 'user',
-			type: 'message',
-			text: content,
-		});
+	async function fetchSessions() {
+		sessions.value = await fetchSessionsApi(rootStore.restApiContext);
 	}
 
-	function addAiMessage(content: string, id: string) {
-		chatMessages.value.push({
-			id,
-			role: 'assistant',
-			type: 'message',
-			text: content,
-		});
+	async function fetchMessages(sessionId: string) {
+		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
+		const { messages, activeMessageChain } = conversation;
+
+		messagesBySession.value = {
+			...messagesBySession.value,
+			[sessionId]: activeMessageChain.map((id) => ({
+				id: messages[id].id,
+				role: messages[id].type === 'ai' ? 'assistant' : 'user',
+				type: 'message' as const,
+				text: messages[id].content,
+				key: messages[id].id,
+			})),
+		};
 	}
 
-	function appendMessage(content: string, id: string) {
-		const existingMessage = chatMessages.value.find((m) => m.id === id);
-		if (existingMessage && existingMessage.type === 'message') {
-			existingMessage.text += content;
-			return;
-		}
+	function addUserMessage(sessionId: string, content: string, id: string) {
+		messagesBySession.value = {
+			...messagesBySession.value,
+			[sessionId]: [
+				...(messagesBySession.value[sessionId] ?? []),
+				{
+					id,
+					key: id,
+					role: 'user',
+					type: 'message',
+					text: content,
+				},
+			],
+		};
 	}
 
-	function onBeginMessage(messageId: string, nodeId: string, runIndex?: number) {
-		isResponding.value = true;
-		addAiMessage('', `${messageId}-${nodeId}-${runIndex ?? 0}`);
+	function addAiMessage(sessionId: string, content: string, id: string, key: string) {
+		messagesBySession.value = {
+			...messagesBySession.value,
+			[sessionId]: [
+				...(messagesBySession.value[sessionId] ?? []),
+				{
+					id,
+					key,
+					role: 'assistant',
+					type: 'message',
+					text: content,
+				},
+			],
+		};
 	}
 
-	function onChunk(messageId: string, chunk: string, nodeId?: string, runIndex?: number) {
-		appendMessage(chunk, `${messageId}-${nodeId}-${runIndex ?? 0}`);
+	function appendMessage(sessionId: string, content: string, key: string) {
+		messagesBySession.value = {
+			...messagesBySession.value,
+			[sessionId]: (messagesBySession.value[sessionId] ?? []).map((msg) => {
+				if (msg.key === key && msg.type === 'message') {
+					return {
+						...msg,
+						text: msg.text + content,
+					};
+				}
+				return msg;
+			}),
+		};
+	}
+
+	function onBeginMessage(
+		sessionId: string,
+		messageId: string,
+		replyToMessageId: string,
+		nodeId: string,
+		runIndex?: number,
+	) {
+		ongoingStreaming.value = { messageId, replyToMessageId };
+		addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
+	}
+
+	function onChunk(
+		sessionId: string,
+		messageId: string,
+		chunk: string,
+		nodeId?: string,
+		runIndex?: number,
+	) {
+		appendMessage(sessionId, chunk, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		isResponding.value = false;
+		ongoingStreaming.value = undefined;
 	}
 
-	function onStreamMessage(message: StructuredChunk, messageId: string) {
+	function onStreamMessage(
+		sessionId: string,
+		message: StructuredChunk,
+		messageId: string,
+		replyToMessageId: string,
+	) {
 		const nodeId = message.metadata?.nodeId || 'unknown';
 		const runIndex = message.metadata?.runIndex;
 
 		switch (message.type) {
 			case 'begin':
-				onBeginMessage(messageId, nodeId, runIndex);
+				onBeginMessage(sessionId, messageId, replyToMessageId, nodeId, runIndex);
 				break;
 			case 'item':
-				onChunk(messageId, message.content ?? '', nodeId, runIndex);
+				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
 				break;
 			case 'end':
 				onEndMessage(messageId, nodeId, runIndex);
 				break;
 			case 'error':
-				onChunk(messageId, `Error: ${message.content ?? 'Unknown error'}`, nodeId, runIndex);
+				onChunk(
+					sessionId,
+					messageId,
+					`Error: ${message.content ?? 'Unknown error'}`,
+					nodeId,
+					runIndex,
+				);
 				onEndMessage(messageId, nodeId, runIndex);
 				break;
 		}
@@ -95,23 +169,27 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// addAssistantMessages(response.messages);
 	}
 
-	function onStreamDone() {
-		isResponding.value = false;
+	async function onStreamDone() {
+		ongoingStreaming.value = undefined;
+		await fetchSessions(); // update the conversation list
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onStreamError(_e: Error) {
-		isResponding.value = false;
+		ongoingStreaming.value = undefined;
 	}
 
-	const askAI = (
-		message: string,
+	function askAI(
 		sessionId: string,
+		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
-	) => {
+	) {
 		const messageId = uuidv4();
-		addUserMessage(message, messageId);
+		const replyId = uuidv4();
+		const previousMessageId = getLastMessage(sessionId)?.id ?? null;
+
+		addUserMessage(sessionId, message, messageId);
 
 		sendText(
 			rootStore.restApiContext,
@@ -119,24 +197,51 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model,
 				messageId,
 				sessionId,
+				replyId,
 				message,
 				credentials,
+				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(chunk, messageId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
 			onStreamDone,
 			onStreamError,
 		);
-	};
+	}
+
+	async function renameSession(sessionId: string, name: string) {
+		// Optimistic update
+		sessions.value = sessions.value.map((session) =>
+			session.id === sessionId ? { ...session, title: name } : session,
+		);
+
+		// TODO: call the endpoint
+	}
+
+	async function deleteSession(sessionId: string) {
+		// Optimistic update
+		sessions.value = sessions.value.filter((session) => session.id !== sessionId);
+
+		// TODO: call the endpoint
+	}
+
+	async function updateChatMessage(_sessionId: string, _messageId: string, _content: string) {
+		// TODO: call the endpoint
+	}
 
 	return {
 		models,
 		loadingModels,
+		messagesBySession,
+		isResponding,
+		ongoingStreaming,
+		sessions,
 		fetchChatModels,
 		askAI,
-		isResponding,
-		chatMessages,
-		assistantMessages,
-		usersMessages,
 		addUserMessage,
+		fetchSessions,
+		fetchMessages,
+		renameSession,
+		deleteSession,
+		updateChatMessage,
 	};
 });

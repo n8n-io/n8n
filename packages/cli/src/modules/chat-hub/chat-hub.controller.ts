@@ -1,7 +1,12 @@
-import { ChatHubSendMessageRequest, ChatModelsResponse } from '@n8n/api-types';
+import {
+	ChatHubSendMessageRequest,
+	ChatModelsResponse,
+	ChatHubConversationsResponse,
+	ChatHubConversationResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Post, Body, GlobalScope } from '@n8n/decorators';
+import { RestController, Post, Body, GlobalScope, Get } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
@@ -16,6 +21,7 @@ export class ChatHubController {
 	) {}
 
 	@Post('/models')
+	@GlobalScope('chatHub:message')
 	async getModels(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -37,17 +43,12 @@ export class ChatHubController {
 		res.header('Cache-Control', 'no-cache');
 		res.flushHeaders();
 
-		// TODO: Save human message to DB
-
-		const replyId = crypto.randomUUID();
-
 		this.logger.info(`Chat send request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.askN8n(res, req.user, {
+			await this.chatService.respondMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
-				replyId,
 			});
 		} catch (executionError: unknown) {
 			assert(executionError instanceof Error);
@@ -64,7 +65,7 @@ export class ChatHubController {
 					JSON.stringify({
 						type: 'error',
 						content: executionError.message,
-						id: replyId,
+						id: payload.replyId,
 					}) + '\n',
 				);
 				res.flush();
@@ -72,5 +73,23 @@ export class ChatHubController {
 
 			if (!res.writableEnded) res.end();
 		}
+	}
+
+	@Get('/conversations')
+	@GlobalScope('chatHub:message')
+	async getConversations(
+		req: AuthenticatedRequest,
+		_res: Response,
+	): Promise<ChatHubConversationsResponse> {
+		return await this.chatService.getConversations(req.user.id);
+	}
+
+	@Get('/conversations/:id')
+	@GlobalScope('chatHub:message')
+	async getConversationMessages(
+		req: AuthenticatedRequest<{ id: string }>,
+		_res: Response,
+	): Promise<ChatHubConversationResponse> {
+		return await this.chatService.getConversation(req.user.id, req.params.id);
 	}
 }

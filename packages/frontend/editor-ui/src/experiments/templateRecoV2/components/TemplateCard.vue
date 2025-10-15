@@ -83,7 +83,7 @@ const handleUseTemplate = async () => {
 
 .nodeIcon {
 	padding: var(--spacing--2xs);
-	background-color: var(--color-dialog-background);
+	background-color: var(--dialog--color--background);
 	border-radius: var(--radius--lg);
 	z-index: 1;
 	display: flex;

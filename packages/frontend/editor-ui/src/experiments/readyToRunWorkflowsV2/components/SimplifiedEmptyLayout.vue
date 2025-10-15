@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nCard, N8nHeading, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';

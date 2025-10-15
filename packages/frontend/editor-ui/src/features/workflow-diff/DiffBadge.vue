@@ -21,11 +21,11 @@ const label = computed(() => {
 const backgroundColor = computed(() => {
 	switch (props.type) {
 		case NodeDiffStatus.Added:
-			return 'var(--color-node-icon-green)';
+			return 'var(--node--icon--color--green)';
 		case NodeDiffStatus.Deleted:
-			return 'var(--color-node-icon-red)';
+			return 'var(--node--icon--color--red)';
 		case NodeDiffStatus.Modified:
-			return 'var(--color-node-icon-orange)';
+			return 'var(--node--icon--color--orange)';
 		default:
 			return '';
 	}

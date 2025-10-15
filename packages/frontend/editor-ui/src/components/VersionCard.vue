@@ -80,7 +80,7 @@ const nodeName = (node: VersionNode): string => {
 	text-decoration: none;
 
 	&:hover {
-		box-shadow: 0 2px 10px $version-card-box-shadow-color;
+		box-shadow: var(--shadow);
 	}
 }
 

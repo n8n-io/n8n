@@ -80,20 +80,22 @@ export async function generateCodeForPrompt(
 	ctx: IRestApiContext,
 	{ question, context, forNode }: AskAiRequest.RequestPayload,
 ): Promise<{ code: string }> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', {
+	const body: IDataObject = {
 		question,
 		context,
 		forNode,
-	} as IDataObject);
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', body);
 }
 
 export async function claimFreeAiCredits(
 	ctx: IRestApiContext,
 	{ projectId }: { projectId?: string },
 ): Promise<ICredentialsResponse> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai/free-credits', {
+	const body: IDataObject = {
 		projectId,
-	} as IDataObject);
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/free-credits', body);
 }
 
 export async function getAiSessions(
@@ -106,9 +108,22 @@ export async function getAiSessions(
 		lastUpdated: string;
 	}>;
 }> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', {
+	const body: IDataObject = {
 		workflowId,
-	} as IDataObject);
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', body);
+}
+
+export async function getSessionsMetadata(
+	ctx: IRestApiContext,
+	workflowId?: string,
+): Promise<{
+	hasMessages: boolean;
+}> {
+	const body: IDataObject = {
+		workflowId,
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions/metadata', body);
 }
 
 export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
