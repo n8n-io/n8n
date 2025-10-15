@@ -253,19 +253,7 @@ export function areOwnersDifferent(
 ): boolean {
 	if (!owner1 && !owner2) return false;
 
-	if (!owner1 || !owner2) return true;
-
-	if (owner1.type !== owner2.type) return true;
-
-	if (owner1.type === 'personal' && owner2.type === 'personal') {
-		return owner1.projectId !== owner2.projectId;
-	}
-
-	if (owner1.type === 'team' && owner2.type === 'team') {
-		return owner1.projectId !== owner2.projectId;
-	}
-
-	return false;
+	return owner1?.projectId !== owner2?.projectId;
 }
 
 /**
