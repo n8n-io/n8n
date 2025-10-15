@@ -93,8 +93,8 @@ body {
 	width: 100%;
 	overscroll-behavior: none;
 	line-height: 1;
-	font-size: var(--font-size-m);
-	font-weight: var(--font-weight-regular);
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text--shade-1);
 	background-color: var(--color--background--light-2);
 	-webkit-font-smoothing: antialiased;
@@ -110,11 +110,11 @@ input {
 }
 
 input {
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 
 button {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 article,
@@ -159,7 +159,12 @@ a {
 	color: var(--color--primary);
 
 	&:active {
-		color: function.saturation(--color--primary-h, --color--primary-s, --color--primary-l, -(30%));
+		color: function.saturation(
+			--color--primary--h,
+			--color--primary--s,
+			--color--primary--l,
+			-(30%)
+		);
 	}
 }
 
@@ -207,10 +212,10 @@ ins {
 }
 
 mark {
-	background-color: var(--color-text-highlight-background);
+	background-color: var(--text-highlight--color--background);
 	color: var(--color--text--shade-1);
 	font-style: italic;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 del {

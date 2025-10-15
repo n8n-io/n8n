@@ -56,12 +56,14 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 
-		// Handle mode-specific initialization
+		chatPanelStateStore.isOpen = true;
+
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
 			builderStore.chatMessages = [];
-			await builderStore.fetchBuilderCredits();
-			await builderStore.loadSessions();
+			// Load credits and sessions in the background without blocking panel opening
+			void builderStore.fetchBuilderCredits();
+			void builderStore.loadSessions();
 		} else if (chatPanelStateStore.activeMode === 'assistant') {
 			const assistantStore = useAssistantStore();
 			assistantStore.chatMessages = assistantStore.chatMessages.map((msg) => ({
@@ -69,8 +71,6 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-
-		chatPanelStateStore.isOpen = true;
 		// Update UI grid dimensions when opening
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,

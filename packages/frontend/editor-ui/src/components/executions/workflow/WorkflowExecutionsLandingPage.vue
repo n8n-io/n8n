@@ -70,7 +70,7 @@ function getWorkflowRoute(): { name: string; params: {} } {
 }
 
 .messageContainer {
-	margin-top: var(--spacing-4xl);
+	margin-top: var(--spacing--4xl);
 	color: var(--color--text);
 
 	div {

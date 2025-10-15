@@ -1,4 +1,4 @@
-import { createCanvasGraphNode } from '@/__tests__/data';
+import { createCanvasGraphNode } from '@/features/canvas/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';

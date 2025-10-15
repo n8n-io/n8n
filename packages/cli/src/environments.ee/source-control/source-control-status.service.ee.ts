@@ -10,6 +10,7 @@ import { EventService } from '@/events/event.service';
 
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
+	areOwnersDifferent,
 	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPrePushResult,
@@ -303,12 +304,18 @@ export class SourceControlStatusService {
 			(local) => credRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		// only compares the name, since that is the only change synced for credentials
 		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
+			// Compare name, type and owner since those are the synced properties for credentials
 			const mismatchingCreds = credRemoteIds.find((remote) => {
-				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
+				return (
+					remote.id === local.id &&
+					(remote.name !== local.name ||
+						remote.type !== local.type ||
+						areOwnersDifferent(remote.ownedBy, local.ownedBy))
+				);
 			});
+
 			if (mismatchingCreds) {
 				credModifiedInEither.push({
 					...local,
@@ -358,6 +365,7 @@ export class SourceControlStatusService {
 				owner: item.ownedBy,
 			});
 		});
+
 		return {
 			credMissingInLocal,
 			credMissingInRemote,
@@ -569,12 +577,15 @@ export class SourceControlStatusService {
 			const mismatchingIds = foldersMappingsRemote.folders.find(
 				(remote) =>
 					remote.id === local.id &&
-					(remote.name !== local.name || remote.parentFolderId !== local.parentFolderId),
+					(remote.name !== local.name ||
+						remote.parentFolderId !== local.parentFolderId ||
+						remote.homeProjectId !== local.homeProjectId),
 			);
 
 			if (!mismatchingIds) {
 				return;
 			}
+
 			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
 		});
 

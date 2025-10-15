@@ -6,7 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
@@ -15,10 +15,9 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const route = useRoute();
 const i18n = useI18n();
 
-const { canUserAccessRouteByName } = useUserHelpers(router, route);
+const { canUserAccessRouteByName } = useUserHelpers(router);
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -154,16 +153,16 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	min-width: $sidebar-expanded-width;
 	height: 100%;
 	background-color: var(--color--background--light-3);
-	border-right: var(--border-base);
+	border-right: var(--border);
 	position: relative;
 	overflow: auto;
 }
 
 .returnButton {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	cursor: pointer;
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	align-items: center;
 	&:hover {
 		color: var(--color--primary);
@@ -174,11 +173,11 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	display: flex;
 	flex-direction: column;
 
-	padding: 0 var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs);
 }
 
 .versionContainer {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 }
 
 @media screen and (max-height: 420px) {

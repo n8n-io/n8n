@@ -464,7 +464,7 @@ const goToUpgrade = () => {
 
 <style module lang="scss">
 .execListWrapper {
-	padding: var(--spacing-l) var(--spacing-2xl);
+	padding: var(--spacing--lg) var(--spacing--2xl);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -482,7 +482,7 @@ const goToUpgrade = () => {
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .execTable {

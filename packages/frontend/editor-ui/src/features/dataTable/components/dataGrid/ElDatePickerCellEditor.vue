@@ -67,7 +67,7 @@ defineExpose({
 
 <style lang="scss">
 .data-table-datepicker-wrapper {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 
 	.el-input__prefix {
 		display: none;
@@ -87,7 +87,7 @@ defineExpose({
 
 	&:where(:focus-within, :active) {
 		box-shadow: none;
-		border: var(--grid-cell-editing-border);
+		border: var(--grid--cell--border-color--editing);
 	}
 }
 

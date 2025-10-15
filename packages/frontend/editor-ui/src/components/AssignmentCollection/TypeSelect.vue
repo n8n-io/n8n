@@ -65,8 +65,8 @@ const onTypeChange = (type: string): void => {
 
 .option {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 </style>

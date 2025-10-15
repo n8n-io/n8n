@@ -13,6 +13,8 @@ import CanvasNodeTooltip from './parts/CanvasNodeTooltip.vue';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { useRoute } from 'vue-router';
+import { VIEWS } from '@/constants';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -23,6 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
+const route = useRoute();
 const {
 	id,
 	label,
@@ -41,6 +44,7 @@ const {
 	hasRunData,
 	hasExecutionErrors,
 	render,
+	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
@@ -51,12 +55,14 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 
 const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
-		[$style.disabled]: isDisabled.value,
+		[$style.disabled]:
+			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
 		[$style.success]: hasRunData.value && executionStatus.value === 'success',
 		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
@@ -85,7 +91,7 @@ const nodeSize = computed(() =>
 const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
-	'--node-icon-size': `${iconSize.value}px`,
+	'--node--icon--size': `${iconSize.value}px`,
 }));
 
 const dataTestId = computed(() => {
@@ -186,8 +192,8 @@ function onActivate(event: MouseEvent) {
 .node {
 	--canvas-node-border-width: 2px;
 	--trigger-node--border-radius: 36px;
-	--canvas-node--status-icons-offset: var(--spacing-3xs);
-	--node-icon-color: var(--color--foreground--shade-1);
+	--canvas-node--status-icons-offset: var(--spacing--3xs);
+	--node--icon--color: var(--color--foreground--shade-1);
 
 	position: relative;
 	height: var(--canvas-node--height);
@@ -195,14 +201,14 @@ function onActivate(event: MouseEvent) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: var(--canvas-node--background, var(--color-node-background));
+	background: var(--canvas-node--background, var(--node--color--background));
 	border: var(--canvas-node-border-width) solid
 		var(--canvas-node--border-color, var(--color--foreground--shade-2));
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 
 	&.trigger {
-		border-radius: var(--trigger-node--border-radius) var(--border-radius-large)
-			var(--border-radius-large) var(--trigger-node--border-radius);
+		border-radius: var(--trigger-node--border-radius) var(--radius--lg) var(--radius--lg)
+			var(--trigger-node--border-radius);
 	}
 
 	/**
@@ -210,7 +216,7 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		background: var(--canvas-node--background, var(--node-type-supplemental-background));
+		background: var(--canvas-node--background, var(--node-type--supplemental--color--background));
 		border: var(--canvas-node-border-width) solid
 			var(--canvas-node--border-color, var(--color--foreground--shade-1));
 		border-radius: calc(var(--canvas-node--height) / 2);
@@ -222,15 +228,15 @@ function onActivate(event: MouseEvent) {
 
 	&.configurable {
 		.icon {
-			margin-left: calc(40px - (var(--node-icon-size)) / 2 - var(--canvas-node-border-width));
+			margin-left: calc(40px - (var(--node--icon--size)) / 2 - var(--canvas-node-border-width));
 		}
 
 		.description {
 			top: unset;
 			position: relative;
 			margin-top: 0;
-			margin-left: var(--spacing-s);
-			margin-right: var(--spacing-s);
+			margin-left: var(--spacing--sm);
+			margin-right: var(--spacing--sm);
 			width: auto;
 			min-width: unset;
 			overflow: hidden;
@@ -250,18 +256,18 @@ function onActivate(event: MouseEvent) {
 		&.configuration {
 			.icon {
 				// 4px represents calc(var(--handle--indicator--width) - configuration node offset) / 2)
-				margin-left: calc((var(--canvas-node--height) - var(--node-icon-size) - 4px) / 2);
+				margin-left: calc((var(--canvas-node--height) - var(--node--icon--size) - 4px) / 2);
 			}
 
 			&:not(.running) {
 				.statusIcons {
 					position: static;
-					margin-right: var(--spacing-2xs);
+					margin-right: var(--spacing--2xs);
 				}
 			}
 
 			.description {
-				margin-right: var(--spacing-xs);
+				margin-right: var(--spacing--xs);
 			}
 		}
 	}
@@ -273,7 +279,7 @@ function onActivate(event: MouseEvent) {
 
 	&.selected {
 		box-shadow: 0 0 0 calc(8px * var(--canvas-zoom-compensation-factor, 1))
-			var(--color-canvas-selected-transparent);
+			var(--canvas--color--selected-transparent);
 	}
 
 	&.success {
@@ -294,7 +300,7 @@ function onActivate(event: MouseEvent) {
 	&.pinned {
 		--canvas-node--border-color: var(
 			--color-canvas-node-pinned-border-color,
-			var(--color-node-pinned-border)
+			var(--node--border-color--pinned)
 		);
 	}
 
@@ -306,10 +312,10 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.running {
-		background-color: var(--color-node-executing-background);
+		background-color: var(--node--color--background--executing);
 		--canvas-node--border-color: var(
 			--color-canvas-node-running-border-color,
-			var(--color-node-running-border)
+			var(--node--border-color--running)
 		);
 	}
 
@@ -326,16 +332,16 @@ function onActivate(event: MouseEvent) {
 	position: absolute;
 	width: 100%;
 	min-width: calc(var(--canvas-node--width) * 2);
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	pointer-events: none;
 }
 
 .label,
 .disabledLabel {
-	font-size: var(--font-size-m);
+	font-size: var(--font-size--md);
 	text-align: center;
 	text-overflow: ellipsis;
 	display: -webkit-box;
@@ -343,20 +349,20 @@ function onActivate(event: MouseEvent) {
 	-webkit-line-clamp: 2;
 	overflow: hidden;
 	overflow-wrap: anywhere;
-	font-weight: var(--font-weight-medium);
-	line-height: var(--font-line-height-compact);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
 }
 
 .subtitle {
 	width: 100%;
 	text-align: center;
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	line-height: var(--font-line-height-compact);
-	font-weight: var(--font-weight-regular);
+	line-height: var(--line-height--sm);
+	font-weight: var(--font-weight--regular);
 }
 
 .statusIcons {

@@ -332,7 +332,7 @@ async function onConnectionStateChange() {
 		position: relative;
 		top: unset;
 		right: unset;
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing--xs);
 	}
 }
 </style>

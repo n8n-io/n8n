@@ -52,36 +52,36 @@ const classes = computed(() => {
 
 <style lang="scss" module>
 .bold {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .regular {
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 
 .size-2xlarge {
-	font-size: var(--font-size-2xl);
-	line-height: var(--font-line-height-compact);
+	font-size: var(--font-size--2xl);
+	line-height: var(--line-height--sm);
 }
 
 .size-xlarge {
-	font-size: var(--font-size-xl);
-	line-height: var(--font-line-height-compact);
+	font-size: var(--font-size--xl);
+	line-height: var(--line-height--sm);
 }
 
 .size-large {
-	font-size: var(--font-size-l);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--lg);
+	line-height: var(--line-height--lg);
 }
 
 .size-medium {
-	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--lg);
 }
 
 .size-small {
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-regular);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
 }
 
 .primary {

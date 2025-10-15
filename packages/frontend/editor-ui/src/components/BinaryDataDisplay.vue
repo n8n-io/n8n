@@ -101,7 +101,7 @@ function closeWindow() {
 	z-index: 10;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-run-data-background);
+	background-color: var(--run-data--color--background);
 	overflow: hidden;
 	text-align: center;
 

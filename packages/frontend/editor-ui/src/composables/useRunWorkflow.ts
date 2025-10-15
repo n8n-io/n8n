@@ -47,10 +47,13 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
-import { injectWorkflowState } from './useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 
-export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
+export function useRunWorkflow(useRunWorkflowOpts: {
+	router: ReturnType<typeof useRouter>;
+	workflowState?: WorkflowState;
+}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
 	const workflowSaving = useWorkflowSaving({ router: useRunWorkflowOpts.router });
@@ -64,7 +67,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();

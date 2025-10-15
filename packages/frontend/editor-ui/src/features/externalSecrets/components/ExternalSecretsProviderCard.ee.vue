@@ -170,7 +170,7 @@ async function onActionDropdownClick(id: string) {
 <style lang="scss" module>
 .card {
 	position: relative;
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .cardImage {
@@ -188,14 +188,14 @@ async function onActionDropdownClick(id: string) {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
-	margin-left: var(--spacing-s);
+	margin-left: var(--spacing--sm);
 }
 
 .cardActions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-left: var(--spacing-s);
+	margin-left: var(--spacing--sm);
 }
 
 .deprecationWarning {
@@ -204,6 +204,6 @@ async function onActionDropdownClick(id: string) {
 
 .warningTriangle {
 	color: var(--color--warning);
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 </style>

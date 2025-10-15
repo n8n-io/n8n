@@ -123,6 +123,36 @@ const y = f({ a: 'c' })
 					valueToInsert('{{ $json.foo.bar[0].baz }}', 'pythonNative', 'runOnceForEachItem'),
 				).toBe('{{ _item["json"]["foo"]["bar"][0]["baz"] }}');
 			});
+
+			it('should return empty string for specific node references (single quotes), runOnceForAllItems', () => {
+				expect(
+					valueToInsert(
+						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
+						'pythonNative',
+						'runOnceForAllItems',
+					),
+				).toBe('');
+			});
+
+			it('should return empty string for specific node references (double quotes), runOnceForAllItems', () => {
+				expect(
+					valueToInsert(
+						'{{ $("Some Previous Node").item.json.foo.bar[0].baz }}',
+						'pythonNative',
+						'runOnceForAllItems',
+					),
+				).toBe('');
+			});
+
+			it('should return empty string for specific node references, runOnceForEachItem', () => {
+				expect(
+					valueToInsert(
+						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
+						'pythonNative',
+						'runOnceForEachItem',
+					),
+				).toBe('');
+			});
 		});
 	});
 });

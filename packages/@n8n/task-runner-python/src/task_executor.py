@@ -10,11 +10,15 @@ import logging
 
 from src.errors import (
     TaskCancelledError,
+    TaskKilledError,
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
-    TaskProcessExitError,
+    TaskSubprocessFailedError,
+    SecurityViolationError,
 )
+from src.import_validation import validate_module_import
+from src.config.security_config import SecurityConfig
 
 from src.message_types.broker import NodeMode, Items
 from src.constants import (
@@ -23,8 +27,9 @@ from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
     SIGTERM_EXIT_CODE,
+    SIGKILL_EXIT_CODE,
 )
-from typing import Any, Set
+from typing import Any
 
 from multiprocessing.context import ForkServerProcess
 from multiprocessing import shared_memory
@@ -45,9 +50,7 @@ class TaskExecutor:
         code: str,
         node_mode: NodeMode,
         items: Items,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
+        security_config: SecurityConfig,
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -64,9 +67,7 @@ class TaskExecutor:
                 code,
                 items,
                 queue,
-                stdlib_allow,
-                external_allow,
-                builtins_deny,
+                security_config,
             ),
         )
 
@@ -88,7 +89,7 @@ class TaskExecutor:
                 process.start()
             except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
                 logger.error(f"Failed to start child process: {e}")
-                raise TaskProcessExitError(-1)
+                raise TaskSubprocessFailedError(-1)
 
             process.join(timeout=task_timeout)
 
@@ -99,9 +100,12 @@ class TaskExecutor:
             if process.exitcode == SIGTERM_EXIT_CODE:
                 raise TaskCancelledError()
 
+            if process.exitcode == SIGKILL_EXIT_CODE:
+                raise TaskKilledError()
+
             if process.exitcode != 0:
                 assert process.exitcode is not None
-                raise TaskProcessExitError(process.exitcode)
+                raise TaskSubprocessFailedError(process.exitcode)
 
             try:
                 returned = queue.get_nowait()
@@ -165,15 +169,13 @@ class TaskExecutor:
         raw_code: str,
         items: Items,
         queue: multiprocessing.Queue,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
+        security_config: SecurityConfig,
     ):
         """Execute a Python code task in all-items mode."""
 
         os.environ.clear()
 
-        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
+        TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
@@ -183,7 +185,7 @@ class TaskExecutor:
             compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
             globals = {
-                "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
+                "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
@@ -201,15 +203,13 @@ class TaskExecutor:
         raw_code: str,
         items: Items,
         queue: multiprocessing.Queue,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
+        security_config: SecurityConfig,
     ):
         """Execute a Python code task in per-item mode."""
 
         os.environ.clear()
 
-        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
+        TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
@@ -221,7 +221,7 @@ class TaskExecutor:
             result = []
             for index, item in enumerate(items):
                 globals = {
-                    "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
+                    "__builtins__": TaskExecutor._filter_builtins(security_config),
                     "_item": item,
                     "print": TaskExecutor._create_custom_print(print_args),
                 }
@@ -233,8 +233,14 @@ class TaskExecutor:
                 if user_output is None:
                     continue
 
-                user_output["pairedItem"] = {"item": index}
-                result.append(user_output)
+                json_data = TaskExecutor._extract_json_data_per_item(user_output)
+
+                item = {"json": json_data, "pairedItem": {"item": index}}
+
+                if isinstance(user_output, dict) and "binary" in user_output:
+                    item["binary"] = user_output["binary"]
+
+                result.append(item)
 
             TaskExecutor._put_result(queue, result, print_args)
 
@@ -245,6 +251,19 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
+    
+    @staticmethod
+    def _extract_json_data_per_item(user_output):
+        if not isinstance(user_output, dict):
+            return user_output
+
+        if "json" in user_output:
+            return user_output["json"]
+
+        if "binary" in user_output:
+            return {k: v for k, v in user_output.items() if k != "binary"}
+
+        return user_output
 
     @staticmethod
     def _put_result(
@@ -278,6 +297,7 @@ class TaskExecutor:
             "message": f"Process exited with code {e.code}"
             if isinstance(e, SystemExit)
             else str(e),
+            "description": getattr(e, "description", ""),
             "stack": traceback.format_exc(),
             "stderr": stderr,
         }
@@ -363,16 +383,24 @@ class TaskExecutor:
     # ========== security ==========
 
     @staticmethod
-    def _filter_builtins(builtins_deny: set[str]):
+    def _filter_builtins(security_config: SecurityConfig):
         """Get __builtins__ with denied ones removed."""
 
-        if len(builtins_deny) == 0:
-            return __builtins__
+        if len(security_config.builtins_deny) == 0:
+            filtered = dict(__builtins__)
+        else:
+            filtered = {
+                k: v
+                for k, v in __builtins__.items()
+                if k not in security_config.builtins_deny
+            }
 
-        return {k: v for k, v in __builtins__.items() if k not in builtins_deny}
+        filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
+
+        return filtered
 
     @staticmethod
-    def _sanitize_sys_modules(stdlib_allow: Set[str], external_allow: Set[str]):
+    def _sanitize_sys_modules(security_config: SecurityConfig):
         safe_modules = {
             "builtins",
             "__main__",
@@ -383,19 +411,19 @@ class TaskExecutor:
             "importlib.machinery",
         }
 
-        if "*" in stdlib_allow:
+        if "*" in security_config.stdlib_allow:
             safe_modules.update(sys.stdlib_module_names)
         else:
-            safe_modules.update(stdlib_allow)
+            safe_modules.update(security_config.stdlib_allow)
 
-        if "*" in external_allow:
+        if "*" in security_config.external_allow:
             safe_modules.update(
                 name
                 for name in sys.modules.keys()
                 if name not in sys.stdlib_module_names
             )
         else:
-            safe_modules.update(external_allow)
+            safe_modules.update(security_config.external_allow)
 
         # keep modules marked as safe and submodules of those
         modules_to_remove = [
@@ -407,3 +435,21 @@ class TaskExecutor:
 
         for module_name in modules_to_remove:
             del sys.modules[module_name]
+
+    @staticmethod
+    def _create_safe_import(security_config: SecurityConfig):
+        original_import = __builtins__["__import__"]
+
+        def safe_import(name, *args, **kwargs):
+            is_allowed, error_msg = validate_module_import(name, security_config)
+
+            if not is_allowed:
+                assert error_msg is not None
+                raise SecurityViolationError(
+                    message="Security violation detected",
+                    description=error_msg,
+                )
+
+            return original_import(name, *args, **kwargs)
+
+        return safe_import

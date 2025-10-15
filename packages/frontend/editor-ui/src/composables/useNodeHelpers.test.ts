@@ -16,7 +16,8 @@ import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import { faker } from '@faker-js/faker';
-import type { INodeUi, IUsedCredential } from '@/Interface';
+import type { INodeUi } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 describe('useNodeHelpers()', () => {

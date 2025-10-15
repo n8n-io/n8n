@@ -36,8 +36,8 @@ defineProps<{
 	border-radius: 50%;
 	border: 1px solid var(--color--text--tint-1);
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
 	flex-shrink: 0;
 	transition: all 0.2s ease;
 
@@ -49,7 +49,7 @@ defineProps<{
 	&.completed {
 		background-color: var(--color--success);
 		border-color: var(--color--success);
-		color: var(--prim-color-white);
+		color: var(--p--color--white);
 	}
 
 	&.inactive {

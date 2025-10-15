@@ -1,4 +1,4 @@
-import type { Project } from '@/types/projects.types';
+import type { Project } from '@/features/projects/projects.types';
 
 export type DataTable = {
 	id: string;
