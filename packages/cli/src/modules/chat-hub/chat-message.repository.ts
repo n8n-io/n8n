@@ -26,7 +26,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 
 	async updateChatMessage(
 		id: ChatMessageId,
-		message: Omit<Partial<ChatHubMessage>, 'id' | 'sessionId'>,
+		message: Partial<Omit<ChatHubMessage, 'id' | 'sessionId'>>,
 		trx?: EntityManager,
 	) {
 		return await withTransaction(this.manager, trx, async (em) => {
