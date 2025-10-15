@@ -241,13 +241,27 @@ describe('getStatus', () => {
 			],
 		});
 
-		// Define a project that does only exist locally.
-		// Pulling this would delete it so it should be marked as a conflict.
-		// Pushing this is conflict free.
-
-		sourceControlImportService.getRemoteProjectsFromFiles.mockResolvedValue([]);
+		// Define a project that only exists locally and another that exists both locally and remotely.
+		const project1 = mock<ExportableProjectWithFileName>({
+			id: 'project-id-1',
+			name: 'Project 1 Remote',
+			owner: {
+				type: 'team',
+				teamId: 'team-id-1',
+				teamName: 'Team 1',
+			},
+		});
+		sourceControlImportService.getRemoteProjectsFromFiles.mockResolvedValue([
+			mock<ExportableProjectWithFileName>({ ...project1 }),
+		]);
 		sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([
-			mock<ExportableProjectWithFileName>(),
+			mock<ExportableProjectWithFileName>({
+				...project1,
+				name: 'Project 1 Local',
+			}),
+			mock<ExportableProjectWithFileName>({
+				id: 'project-id-2',
+			}),
 		]);
 
 		// ACT
@@ -272,8 +286,8 @@ describe('getStatus', () => {
 			fail('Expected pushResult to be an array.');
 		}
 
-		expect(pullResult).toHaveLength(6);
-		expect(pushResult).toHaveLength(6);
+		expect(pullResult).toHaveLength(7);
+		expect(pushResult).toHaveLength(7);
 
 		expect(pullResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', true);
 		expect(pushResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', false);
@@ -290,8 +304,23 @@ describe('getStatus', () => {
 		expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
 		expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
 
-		expect(pullResult.find((i) => i.type === 'project')).toHaveProperty('conflict', true);
-		expect(pushResult.find((i) => i.type === 'project')).toHaveProperty('conflict', false);
+		expect(pullResult.find((i) => i.type === 'project' && i.id === 'project-id-2')).toHaveProperty(
+			'conflict',
+			true,
+		);
+		expect(pushResult.find((i) => i.type === 'project' && i.id === 'project-id-2')).toHaveProperty(
+			'conflict',
+			false,
+		);
+
+		expect(pullResult.find((i) => i.type === 'project' && i.id === 'project-id-1')).toHaveProperty(
+			'conflict',
+			true,
+		);
+		expect(pushResult.find((i) => i.type === 'project' && i.id === 'project-id-1')).toHaveProperty(
+			'conflict',
+			true,
+		);
 	});
 
 	it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
