@@ -1,4 +1,4 @@
-import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
+import type { ChatHubMessageState, ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
@@ -26,11 +26,11 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 
 	async updateChatMessage(
 		id: ChatMessageId,
-		message: Partial<ChatHubMessage>,
+		fields: { state: ChatHubMessageState },
 		trx?: EntityManager,
 	): Promise<void> {
 		return await withTransaction(this.manager, trx, async (em) => {
-			await em.update(ChatHubMessage, { id }, message);
+			await em.update(ChatHubMessage, { id }, fields);
 		});
 	}
 
