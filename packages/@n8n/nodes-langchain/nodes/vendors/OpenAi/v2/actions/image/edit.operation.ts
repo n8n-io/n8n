@@ -350,7 +350,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (isGPTImage1) {
 		const imagesParam = this.getNodeParameter('images', i, {
 			values: [{ binaryPropertyName: 'data' }],
-		}) as { values: { binaryPropertyName: string | IBinaryData }[] };
+		}) as { values: Array<{ binaryPropertyName: string | IBinaryData }> };
 
 		const imagesUi = imagesParam.values ?? [];
 		const imageFieldNames = imagesUi.map((v) => v.binaryPropertyName).filter((n) => Boolean(n));

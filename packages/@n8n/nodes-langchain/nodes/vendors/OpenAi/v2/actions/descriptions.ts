@@ -43,7 +43,7 @@ const imageMessageProperties: INodeProperties[] = [
 		options: [
 			{ name: 'Image URL', value: 'url' },
 			{ name: 'File ID', value: 'fileId' },
-			{ name: 'File data', value: 'base64' },
+			{ name: 'File Data', value: 'base64' },
 		],
 		displayOptions: {
 			show: {
