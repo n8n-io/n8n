@@ -39,3 +39,11 @@ export type SearchWorkflowsResult = {
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
 export type WorkflowDetailsWorkflow = WorkflowDetailsResult['workflow'];
 export type WorkflowDetailsNode = WorkflowDetailsWorkflow['nodes'][number];
+
+// Telemetry payloads
+export type UserConnectedToMCPEventPayload = {
+	user_id: string;
+	mcp_connection_status?: 'success' | 'error';
+	error?: string;
+	user_agent?: string;
+};

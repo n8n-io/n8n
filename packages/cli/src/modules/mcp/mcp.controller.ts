@@ -8,6 +8,9 @@ import { ErrorReporter } from 'n8n-core';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
+import type { UserConnectedToMCPEventPayload } from './mcp.types';
+
+import { Telemetry } from '@/telemetry';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -19,6 +22,7 @@ export class McpController {
 		private readonly errorReporter: ErrorReporter,
 		private readonly mcpService: McpService,
 		private readonly mcpSettingsService: McpSettingsService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	@Post('/http', {
@@ -28,9 +32,24 @@ export class McpController {
 		usesTemplates: true,
 	})
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
+		// Check if this is an initialization request by examining the JSON-RPC method
+		const isInitializationRequest = req.body?.method === 'initialize';
+
+		const telemetryPayload: UserConnectedToMCPEventPayload = {
+			user_id: req.user.id,
+			user_agent: req.headers['user-agent'],
+		};
 		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
 		if (!enabled) {
+			if (isInitializationRequest) {
+				this.trackConnectionEvent('User Connected to MCP', {
+					...telemetryPayload,
+					mcp_connection_status: 'error',
+					error: 'MCP access is disabled',
+				});
+			}
+			// Return 403 Forbidden
 			res.status(403).json({ message: 'MCP access is disabled' });
 			return;
 		}
@@ -48,8 +67,22 @@ export class McpController {
 			});
 			await server.connect(transport);
 			await transport.handleRequest(req, res, req.body);
+			if (isInitializationRequest) {
+				this.trackConnectionEvent('User Connected to MCP', {
+					...telemetryPayload,
+					mcp_connection_status: 'success',
+				});
+			}
 		} catch (error) {
 			this.errorReporter.error(error);
+			if (isInitializationRequest) {
+				this.trackConnectionEvent('User Connected to MCP', {
+					...telemetryPayload,
+					mcp_connection_status: 'error',
+					error: error.message,
+				});
+			}
+			// Return JSON-RPC error response
 			if (!res.headersSent) {
 				res.status(500).json({
 					jsonrpc: '2.0',
@@ -61,5 +94,9 @@ export class McpController {
 				});
 			}
 		}
+	}
+
+	trackConnectionEvent(event: string, payload: UserConnectedToMCPEventPayload) {
+		this.telemetry.track(event, payload);
 	}
 }
