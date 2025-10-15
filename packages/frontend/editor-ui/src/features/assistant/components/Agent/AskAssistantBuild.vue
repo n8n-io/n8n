@@ -51,7 +51,7 @@ const loadingMessage = computed(() => {
 		return undefined;
 	}
 
-	return builderStore.assistantThinkingMessage;
+	return builderStore.builderThinkingMessage;
 });
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
