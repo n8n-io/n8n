@@ -7,19 +7,25 @@ import type {
 	FilterModel,
 	FilterOperation,
 } from '@/features/dataTable/types/dataTableFilters.types';
+import { useDataTableTypes } from '@/features/dataTable/composables/useDataTableTypes';
 import { useI18n } from '@n8n/i18n';
+import { isAGGridCellType } from '@/features/dataTable/typeGuards';
 
 type ColumnFilterModel = FilterModel[string] | null;
 
 const props = defineProps<{ params: IFilterParams }>();
 
 const i18n = useI18n();
+const { mapToDataTableColumnType } = useDataTableTypes();
 
 const currentModel = ref<ColumnFilterModel>(null);
 const isActive = ref(false);
 
 const filterType = computed(() => {
-	return props.params.colDef.cellDataType;
+	if (!isAGGridCellType(props.params.colDef.cellDataType)) {
+		return null;
+	}
+	return mapToDataTableColumnType(props.params.colDef.cellDataType);
 });
 
 type GridFilterOption = { displayKey: string; displayName: string };
@@ -132,7 +138,7 @@ function buildModel(): ColumnFilterModel {
 		return { filterType: kind, type } as ColumnFilterModel;
 	}
 
-	if (kind === 'text' || kind === 'boolean') {
+	if (kind === 'string' || kind === 'boolean') {
 		return {
 			filterType: 'text',
 			type,
