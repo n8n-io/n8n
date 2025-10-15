@@ -114,7 +114,7 @@ export class McpController {
 		}
 	}
 
-	trackMCPEvent(
+	private trackMCPEvent(
 		type: 'connected' | 'tool_call',
 		payload: UserConnectedToMCPEventPayload | UserCalledMCPToolEventPayload,
 	) {

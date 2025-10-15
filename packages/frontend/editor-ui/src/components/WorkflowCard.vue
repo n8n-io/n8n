@@ -40,6 +40,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
+import { useMcp } from '@/features/mcpAccess/composables/useMcp';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -96,6 +97,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
+const mcp = useMcp();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -326,6 +328,7 @@ async function onAction(action: string) {
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
 			await toggleMCPAccess(true);
+			mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
 			await toggleMCPAccess(false);
