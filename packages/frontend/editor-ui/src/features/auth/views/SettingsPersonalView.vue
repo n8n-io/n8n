@@ -14,7 +14,7 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';

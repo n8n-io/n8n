@@ -10,10 +10,11 @@ import logging
 
 from src.errors import (
     TaskCancelledError,
+    TaskKilledError,
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
-    TaskProcessExitError,
+    TaskSubprocessFailedError,
     SecurityViolationError,
 )
 from src.import_validation import validate_module_import
@@ -26,6 +27,7 @@ from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
     SIGTERM_EXIT_CODE,
+    SIGKILL_EXIT_CODE,
 )
 from typing import Any
 
@@ -87,7 +89,7 @@ class TaskExecutor:
                 process.start()
             except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
                 logger.error(f"Failed to start child process: {e}")
-                raise TaskProcessExitError(-1)
+                raise TaskSubprocessFailedError(-1)
 
             process.join(timeout=task_timeout)
 
@@ -98,9 +100,12 @@ class TaskExecutor:
             if process.exitcode == SIGTERM_EXIT_CODE:
                 raise TaskCancelledError()
 
+            if process.exitcode == SIGKILL_EXIT_CODE:
+                raise TaskKilledError()
+
             if process.exitcode != 0:
                 assert process.exitcode is not None
-                raise TaskProcessExitError(process.exitcode)
+                raise TaskSubprocessFailedError(process.exitcode)
 
             try:
                 returned = queue.get_nowait()
@@ -228,8 +233,14 @@ class TaskExecutor:
                 if user_output is None:
                     continue
 
-                user_output["pairedItem"] = {"item": index}
-                result.append(user_output)
+                json_data = TaskExecutor._extract_json_data_per_item(user_output)
+
+                item = {"json": json_data, "pairedItem": {"item": index}}
+
+                if isinstance(user_output, dict) and "binary" in user_output:
+                    item["binary"] = user_output["binary"]
+
+                result.append(item)
 
             TaskExecutor._put_result(queue, result, print_args)
 
@@ -240,6 +251,19 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
+    
+    @staticmethod
+    def _extract_json_data_per_item(user_output):
+        if not isinstance(user_output, dict):
+            return user_output
+
+        if "json" in user_output:
+            return user_output["json"]
+
+        if "binary" in user_output:
+            return {k: v for k, v in user_output.items() if k != "binary"}
+
+        return user_output
 
     @staticmethod
     def _put_result(

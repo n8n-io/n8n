@@ -10,7 +10,7 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/chatHub/constants';
-import CredentialIcon from '@/components/CredentialIcon.vue';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
 const props = defineProps<{
 	disabled?: boolean;
@@ -75,7 +75,7 @@ function onSelect(id: string) {
 		return;
 	}
 
-	emit('change', { provider: parsedProvider, model });
+	emit('change', { provider: parsedProvider, model, workflowId: null });
 }
 </script>
 

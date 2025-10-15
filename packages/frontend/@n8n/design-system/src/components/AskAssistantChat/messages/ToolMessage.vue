@@ -116,7 +116,7 @@ const statusColor = computed(() => {
 	font-size: var(--font-size--2xs);
 
 	&.status-running {
-		color: var(--execution-card-text-waiting);
+		color: var(--execution-card--color--text--waiting);
 	}
 
 	&.status-completed {

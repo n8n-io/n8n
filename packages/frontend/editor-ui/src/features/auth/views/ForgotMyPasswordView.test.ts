@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import ForgotMyPasswordView from './ForgotMyPasswordView.vue';
 import { useToast } from '@/composables/useToast';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
 vi.mock('vue-router', () => {

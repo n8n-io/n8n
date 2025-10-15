@@ -108,11 +108,8 @@ export function useCanvasMapping({
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
-		const icon = getNodeIconSource(
-			simulatedNodeTypeDescriptionByNodeId.value[node.id]
-				? simulatedNodeTypeDescriptionByNodeId.value[node.id]
-				: nodeType,
-		);
+		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
+		const icon = getNodeIconSource(source);
 
 		return {
 			type: CanvasNodeRenderType.Default,
@@ -156,7 +153,10 @@ export function useCanvasMapping({
 
 	const nodeTypeDescriptionByNodeId = computed(() =>
 		nodes.value.reduce<Record<string, INodeTypeDescription | null>>((acc, node) => {
-			acc[node.id] = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			acc[node.id] =
+				nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+				nodeTypesStore.communityNodeType(node.type)?.nodeDescription ??
+				null;
 			return acc;
 		}, {}),
 	);
@@ -193,7 +193,6 @@ export function useCanvasMapping({
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
 			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
 			const workflowObjectNode = workflowObject.value.getNode(node.name);
-
 			acc[node.id] =
 				workflowObjectNode && nodeTypeDescription
 					? mapLegacyEndpointsToCanvasConnectionPort(
@@ -622,8 +621,6 @@ export function useCanvasMapping({
 			...nodes.value.map<CanvasNode>((node) => {
 				const outputConnections = connectionsBySourceNode[node.name] ?? {};
 				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
-
-				// console.log(node.name, nodeInputsById.value[node.id]);
 
 				const data: CanvasNodeData = {
 					id: node.id,

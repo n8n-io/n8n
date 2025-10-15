@@ -7,12 +7,15 @@ import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
 import { ProjectTypes } from '@/features/projects/projects.types';
 import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 import type { ChangeLocationSearchResult } from '../folders.types';
-import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import Modal from '@/components/Modal.vue';

@@ -35,6 +35,7 @@ const projectPages = useProjectPages();
 
 const props = defineProps<{
 	hasActiveCallouts?: boolean;
+	mainButton?: ActionTypes;
 }>();
 
 const emit = defineEmits<{
@@ -127,16 +128,65 @@ const createWorkflowButton = computed(() => ({
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
 }));
 
+const createCredentialButton = computed(() => ({
+	value: ACTION_TYPES.CREDENTIAL,
+	label: i18n.baseText('projects.header.create.credential'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(homeProject.value?.scopes).credential.create,
+}));
+
+const createDataTableButton = computed(() => ({
+	value: ACTION_TYPES.DATA_TABLE,
+	label: i18n.baseText('dataTable.add.button.label'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
+}));
+
+const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);
+
+const mainButtonConfig = computed(() => {
+	switch (selectedMainButtonType.value) {
+		case ACTION_TYPES.CREDENTIAL:
+			return createCredentialButton.value;
+		case ACTION_TYPES.DATA_TABLE:
+			return createDataTableButton.value;
+		case ACTION_TYPES.WORKFLOW:
+		default:
+			return createWorkflowButton.value;
+	}
+});
+
 const menu = computed(() => {
-	const items: Array<UserAction<IUser>> = [
-		{
+	const items: Array<UserAction<IUser>> = [];
+
+	// Add workflow to menu if it's not the main button
+	if (selectedMainButtonType.value !== ACTION_TYPES.WORKFLOW) {
+		items.push({
+			value: ACTION_TYPES.WORKFLOW,
+			label: i18n.baseText('projects.header.create.workflow'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes).workflow.create,
+		});
+	}
+
+	// Add credential to menu if it's not the main button
+	if (selectedMainButtonType.value !== ACTION_TYPES.CREDENTIAL) {
+		items.push({
 			value: ACTION_TYPES.CREDENTIAL,
 			label: i18n.baseText('projects.header.create.credential'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
-		},
-	];
+		});
+	}
+
 	if (showFolders.value) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
@@ -147,7 +197,10 @@ const menu = computed(() => {
 		});
 	}
 
-	if (settingsStore.isDataTableFeatureEnabled) {
+	if (
+		settingsStore.isDataTableFeatureEnabled &&
+		selectedMainButtonType.value !== ACTION_TYPES.DATA_TABLE
+	) {
 		// TODO: this should probably be moved to the module descriptor as a setting
 		items.push({
 			value: ACTION_TYPES.DATA_TABLE,
@@ -355,9 +408,9 @@ const onSelect = (action: string) => {
 							@action="onSelect"
 						>
 							<N8nButton
-								data-test-id="add-resource-workflow"
-								v-bind="createWorkflowButton"
-								@click="onSelect(ACTION_TYPES.WORKFLOW)"
+								:data-test-id="`add-resource-${selectedMainButtonType}`"
+								v-bind="mainButtonConfig"
+								@click="onSelect(selectedMainButtonType)"
 							/>
 						</ProjectCreateResource>
 					</div>

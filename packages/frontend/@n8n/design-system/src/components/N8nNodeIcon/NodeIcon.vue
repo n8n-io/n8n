@@ -81,11 +81,11 @@ const iconStyleData = computed((): Record<string, string> => {
 
 <style lang="scss" module>
 .nodeIconWrapper {
-	width: var(--node-icon-size, 26px);
-	height: var(--node-icon-size, 26px);
+	width: var(--node--icon--size, 26px);
+	height: var(--node--icon--size, 26px);
 	border-radius: var(--radius--sm);
-	color: var(--node-icon-color, #444);
-	line-height: var(--node-icon-size, 26px);
+	color: var(--node--icon--color, #444);
+	line-height: var(--node--icon--size, 26px);
 	font-size: 1.1em;
 	text-align: center;
 	font-weight: var(--font-weight--bold);

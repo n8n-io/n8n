@@ -3,7 +3,7 @@ import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { ProjectListItem } from '../projects.types';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';

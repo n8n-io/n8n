@@ -88,10 +88,10 @@ const onClick = (event: MouseEvent) => {
 .notice {
 	font-size: var(--font-size--2xs);
 	display: flex;
-	color: var(--color-notice-font);
-	margin: var(--notice-margin, var(--spacing--sm) 0);
+	color: var(--notice--color--text);
+	margin: var(--notice--margin, var(--spacing--sm) 0);
 	padding: var(--spacing--2xs);
-	background-color: var(--background-color);
+	background-color: var(--notice--color--background);
 	border-width: 1px 1px 1px 7px;
 	border-style: solid;
 	border-color: var(--border-color);
@@ -104,23 +104,23 @@ const onClick = (event: MouseEvent) => {
 }
 
 .warning {
-	--border-color: var(--color-notice-warning-border);
-	--background-color: var(--color-notice-warning-background);
+	--border-color: var(--notice--border-color--warning);
+	--notice--color--background: var(--notice--color--background--warning);
 }
 
 .danger {
 	--border-color: var(--color--danger--tint-3);
-	--background-color: var(--color--danger--tint-4);
+	--notice--color--background: var(--color--danger--tint-4);
 }
 
 .success {
 	--border-color: var(--color--success--tint-3);
-	--background-color: var(--color--success--tint-4);
+	--notice--color--background: var(--color--success--tint-4);
 }
 
 .info {
-	--border-color: var(--color-info-tint-1);
-	--background-color: var(--color-info-tint-2);
+	--border-color: var(--color--info--tint-1);
+	--notice--color--background: var(--color--info--tint-2);
 }
 
 .expanded {

@@ -36,8 +36,8 @@ const handleClick = () => {
 <style lang="scss" scoped>
 .usageSyntax {
 	cursor: pointer;
-	background: var(--color-variables-usage-syntax-bg);
-	color: var(--color-variables-usage-font);
+	background: var(--variables-usage--syntax--color--background);
+	color: var(--variables-usage--color--text);
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--sm);
 }

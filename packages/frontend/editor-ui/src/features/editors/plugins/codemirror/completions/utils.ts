@@ -1,8 +1,5 @@
-import {
-	CREDENTIAL_EDIT_MODAL_KEY,
-	HTTP_REQUEST_NODE_TYPE,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-} from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
