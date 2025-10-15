@@ -325,11 +325,7 @@ function handleRegenerateMessage(message: ChatMessageType) {
 	<div
 		:class="[
 			$style.component,
-			{
-				[$style.isNewChat]: isNewChat,
-				[$style.isMobileDevice]: isMobileDevice,
-				[$style.didSubmitInCurrentSession]: didSubmitInCurrentSession,
-			},
+			{ [$style.isNewChat]: isNewChat, [$style.isMobileDevice]: isMobileDevice },
 		]"
 	>
 		<N8nScrollArea
@@ -381,6 +377,11 @@ function handleRegenerateMessage(message: ChatMessageType) {
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
 						:is-streaming="chatStore.ongoingStreaming?.messageId === message.id"
+						:bottom-spacer-height="
+							didSubmitInCurrentSession && message.role === 'user'
+								? scrollContainerRef?.offsetHeight
+								: undefined
+						"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
@@ -444,11 +445,6 @@ function handleRegenerateMessage(message: ChatMessageType) {
 	align-items: stretch;
 	justify-content: center;
 	gap: var(--spacing--2xl);
-
-	.didSubmitInCurrentSession & {
-		/* This allows scrolling user's prompt to the top while generating response */
-		padding-bottom: 100vh;
-	}
 }
 
 .header {
