@@ -34,6 +34,7 @@ import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
 	isIpWhitelisted,
+	redactSensitiveHeaders,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from './utils';
@@ -266,7 +267,7 @@ export class Webhook extends Node {
 
 		const response: INodeExecutionData = {
 			json: {
-				headers: req.headers,
+				headers: redactSensitiveHeaders(req.headers),
 				params: req.params,
 				query: req.query,
 				body: req.body,
@@ -321,7 +322,7 @@ export class Webhook extends Node {
 
 		const returnItem: INodeExecutionData = {
 			json: {
-				headers: req.headers,
+				headers: redactSensitiveHeaders(req.headers),
 				params: req.params,
 				query: req.query,
 				body: data,
@@ -388,7 +389,7 @@ export class Webhook extends Node {
 
 			const returnItem: INodeExecutionData = {
 				json: {
-					headers: req.headers,
+					headers: redactSensitiveHeaders(req.headers),
 					params: req.params,
 					query: req.query,
 					body: {},

@@ -11,6 +11,37 @@ import type {
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
 
+export const REDACTED = '**hidden**';
+
+/**
+ * Redacts sensitive headers from webhook request headers
+ * Uses the same blocklist as the HTTP Request node for consistency
+ */
+export function redactSensitiveHeaders(headers: IDataObject): IDataObject {
+	if (!headers) {
+		return headers;
+	}
+
+	const HEADER_BLOCKLIST = new Set([
+		'authorization',
+		'x-api-key',
+		'x-auth-token',
+		'cookie',
+		'proxy-authorization',
+		'sslclientcert',
+	]);
+
+	const redactedHeaders = { ...headers };
+
+	for (const headerName of Object.keys(redactedHeaders)) {
+		if (HEADER_BLOCKLIST.has(headerName.toLowerCase())) {
+			redactedHeaders[headerName] = REDACTED;
+		}
+	}
+
+	return redactedHeaders;
+}
+
 export type WebhookParameters = {
 	httpMethod: string | string[];
 	responseMode: string;
