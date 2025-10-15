@@ -3,7 +3,7 @@ import { versionDescription } from './description';
 import { process } from './actions/process';
 import { getChatModel } from './helpers/model';
 
-export class GuardRails implements INodeType {
+export class Guardrails implements INodeType {
 	description = versionDescription;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
