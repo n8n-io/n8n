@@ -28,9 +28,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useMcp } from './composables/useMcp';
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
+const mcp = useMcp();
 
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
@@ -139,6 +141,7 @@ const onUpdateMCPEnabled = async (value: string | number | boolean) => {
 		} else {
 			workflowsLoading.value = false;
 		}
+		mcp.trackUserToggledMcpAccess(boolValue);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {

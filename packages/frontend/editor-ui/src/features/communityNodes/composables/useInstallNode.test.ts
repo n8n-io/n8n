@@ -1,6 +1,6 @@
 import { removePreviewToken } from '@/components/Node/NodeCreator/utils';
 import type { IWorkflowDb } from '@/Interface';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/users/users.store';
@@ -9,9 +9,9 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import type { INode } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { useCanvasOperations } from './useCanvasOperations';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
-import { useToast } from './useToast';
+import { useToast } from '@/composables/useToast';
 
 vi.mock('@/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn().mockReturnValue({
@@ -19,7 +19,7 @@ vi.mock('@/composables/useCanvasOperations', () => ({
 	}),
 }));
 
-vi.mock('./useToast', () => ({
+vi.mock('@/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
