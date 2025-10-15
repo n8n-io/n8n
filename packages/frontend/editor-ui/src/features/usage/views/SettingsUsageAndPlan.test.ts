@@ -2,10 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { useUsageStore } from '@/stores/usage.store';
-import SettingsUsageAndPlan from '@/views/SettingsUsageAndPlan.vue';
+import { useUsageStore } from '../usage.store';
+import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@/features/users/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 

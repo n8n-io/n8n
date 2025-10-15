@@ -1,15 +1,15 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { UsageTelemetry } from '@/stores/usage.store';
-import { useUsageStore } from '@/stores/usage.store';
+import type { UsageTelemetry } from '../usage.store';
+import { useUsageStore } from '../usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@/features/users/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
