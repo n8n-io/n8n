@@ -37,7 +37,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	VARIABLE_MODAL_KEY,
 } from '@/constants';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/usage/usage.constants';
 import {
 	DELETE_USER_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,

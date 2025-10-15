@@ -40,7 +40,7 @@ import {
 	INVITE_USER_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 } from '@/features/users/users.constants';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/usage/usage.constants';
 import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
@@ -64,7 +64,7 @@ import ConfirmPasswordModal from '@/features/auth/components/ConfirmPasswordModa
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/features/communityNodes/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/features/communityNodes/components/CommunityPackageManageConfirmModal.vue';
-import CommunityPlusEnrollmentModal from '@/features/communityPlus/components/CommunityPlusEnrollmentModal.vue';
+import CommunityPlusEnrollmentModal from '@/features/usage/components/CommunityPlusEnrollmentModal.vue';
 import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';

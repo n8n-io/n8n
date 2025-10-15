@@ -61,7 +61,8 @@ const TemplatesSearchView = async () =>
 	await import('@/features/templates/views/TemplatesSearchView.vue');
 const VariablesView = async () =>
 	await import('@/features/environments.ee/views/VariablesView.vue');
-const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
+const SettingsUsageAndPlan = async () =>
+	await import('@/features/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/sso/views/SettingsSso.vue');
 const SignoutView = async () => await import('@/features/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
