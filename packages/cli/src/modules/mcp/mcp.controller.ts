@@ -8,7 +8,9 @@ import { ErrorReporter } from 'n8n-core';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
+import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
+import { getClientInfo } from './mcp.utils';
 
 import { Telemetry } from '@/telemetry';
 
@@ -33,12 +35,16 @@ export class McpController {
 	})
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
 		// Check if this is an initialization request by examining the JSON-RPC method
-		const isInitializationRequest = req.body?.method === 'initialize';
+		const body = req.body;
+		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
+		const clientInfo = getClientInfo(req);
 
-		const telemetryPayload: UserConnectedToMCPEventPayload = {
+		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
-			user_agent: req.headers['user-agent'],
+			client_name: clientInfo?.name,
+			client_version: clientInfo?.version,
 		};
+
 		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
 		if (!enabled) {

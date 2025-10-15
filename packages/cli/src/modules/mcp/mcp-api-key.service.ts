@@ -6,6 +6,7 @@ import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
+import { getClientInfo } from './mcp.utils';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
@@ -153,10 +154,12 @@ export class McpServerApiKeyService {
 	}
 
 	private responseWithUnauthorized(res: Response, req: Request) {
+		const clientInfo = getClientInfo(req);
 		const telemetryPayload: UserConnectedToMCPEventPayload = {
-			user_agent: req.headers['user-agent'],
 			mcp_connection_status: 'error',
 			error: 'Unauthorized',
+			client_name: clientInfo?.name,
+			client_version: clientInfo?.version,
 		};
 		this.telemetry.track('User Connected to MCP', telemetryPayload);
 		res.status(401).send({ message: 'Unauthorized' });

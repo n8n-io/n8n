@@ -40,10 +40,25 @@ export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
 export type WorkflowDetailsWorkflow = WorkflowDetailsResult['workflow'];
 export type WorkflowDetailsNode = WorkflowDetailsWorkflow['nodes'][number];
 
+// JSON-RPC types for MCP protocol
+export type JSONRPCRequest = {
+	jsonrpc?: string;
+	method?: string;
+	params?: {
+		clientInfo?: {
+			name?: string;
+			version?: string;
+		};
+		[key: string]: unknown;
+	};
+	id?: string | number | null;
+};
+
 // Telemetry payloads
 export type UserConnectedToMCPEventPayload = {
-	user_id: string;
-	mcp_connection_status?: 'success' | 'error';
+	mcp_connection_status: 'success' | 'error';
+	user_id?: string;
 	error?: string;
-	user_agent?: string;
+	client_name?: string;
+	client_version?: string;
 };
