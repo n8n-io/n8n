@@ -6,7 +6,6 @@ import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import type { UserConnectedToMCPEventPayload } from './mcp.types';
 import { getClientInfo } from './mcp.utils';
 
 import { AuthError } from '@/errors/response-errors/auth.error';

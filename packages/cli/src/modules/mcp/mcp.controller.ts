@@ -15,7 +15,7 @@ import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload, UserCalledMCPToolEventPayload } from './mcp.types';
-import { getClientInfo } from './mcp.utils';
+import { getClientInfo, getToolName, getToolArguments } from './mcp.utils';
 
 import { Telemetry } from '@/telemetry';
 
@@ -84,14 +84,11 @@ export class McpController {
 					mcp_connection_status: 'success',
 				});
 			} else if (isToolCallRequest) {
-				const toolName =
-					isJSONRPCRequest(body) && body.params ? (body.params.name as string) : 'unknown';
+				const toolName = getToolName(body);
+				const parameters = getToolArguments(body);
 				this.trackMCPEvent('tool_call', {
 					tool_name: toolName,
-					parameters:
-						isJSONRPCRequest(body) && body.params
-							? (body.params.arguments as Record<string, unknown>)
-							: {},
+					parameters,
 				});
 			}
 		} catch (error) {

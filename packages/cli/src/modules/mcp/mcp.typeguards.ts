@@ -5,16 +5,16 @@ import type { JSONRPCRequest } from './mcp.types';
 
 type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-	return typeof value === 'object' && value !== null;
-}
-
 export type HttpHeaderAuthDecryptedData = {
 	name: string;
 	value?: unknown;
 };
 
 export type WithDecryptedData<T> = UnknownRecord & { data: T };
+
+export function isRecord(value: unknown): value is UnknownRecord {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /**
  * Narrows down credentials to those that have decrypted data of type HttpHeaderAuthDecryptedData.
