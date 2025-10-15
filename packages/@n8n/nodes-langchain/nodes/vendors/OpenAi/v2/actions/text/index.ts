@@ -34,7 +34,7 @@ export const description: INodeProperties[] = [
 				description: 'Check whether content complies with usage policies',
 			},
 		],
-		default: 'message',
+		default: 'response',
 		displayOptions: {
 			show: {
 				resource: ['text'],

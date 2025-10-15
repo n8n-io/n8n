@@ -466,7 +466,7 @@ const properties: INodeProperties[] = [
 					{ name: 'Auto', value: 'auto' },
 					{ name: 'Flex', value: 'flex' },
 					{ name: 'Default', value: 'default' },
-					{ name: 'Priority', value: 'Priority' },
+					{ name: 'Priority', value: 'priority' },
 				],
 			},
 			{

@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -164,6 +165,11 @@ export const properties: INodeProperties[] = [
 				value: 'standard',
 			},
 		],
+		displayOptions: {
+			show: {
+				'/model': ['gpt-image-1'],
+			},
+		},
 	},
 	{
 		displayName: 'Response Format',
@@ -321,42 +327,6 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-interface ImagesParameter {
-	values?: Array<{ binaryPropertyName?: string }>;
-}
-
-function isImagesParameter(param: unknown): param is ImagesParameter {
-	if (typeof param !== 'object' || param === null) {
-		return false;
-	}
-
-	const paramObj = param as Record<string, unknown>;
-
-	if (!('values' in paramObj)) {
-		return true; // values is optional
-	}
-
-	if (!Array.isArray(paramObj.values)) {
-		return false;
-	}
-
-	return paramObj.values.every((item: unknown) => {
-		if (typeof item !== 'object' || item === null) {
-			return false;
-		}
-
-		const itemObj = item as Record<string, unknown>;
-
-		if (!('binaryPropertyName' in itemObj)) {
-			return true; // binaryPropertyName is optional
-		}
-
-		return (
-			typeof itemObj.binaryPropertyName === 'string' || itemObj.binaryPropertyName === undefined
-		);
-	});
-}
-
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('model', i);
 	const prompt = this.getNodeParameter('prompt', i);
@@ -380,16 +350,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (isGPTImage1) {
 		const imagesParam = this.getNodeParameter('images', i, {
 			values: [{ binaryPropertyName: 'data' }],
-		});
-
-		if (!isImagesParameter(imagesParam)) {
-			throw new Error('Invalid images parameter format');
-		}
+		}) as { values: { binaryPropertyName: string | IBinaryData }[] };
 
 		const imagesUi = imagesParam.values ?? [];
-		const imageFieldNames = imagesUi
-			.map((v) => v.binaryPropertyName)
-			.filter((n): n is string => Boolean(n));
+		const imageFieldNames = imagesUi.map((v) => v.binaryPropertyName).filter((n) => Boolean(n));
 
 		for (const fieldName of imageFieldNames) {
 			const { fileContent, contentType, filename } = await getBinaryDataFile(this, i, fieldName);
