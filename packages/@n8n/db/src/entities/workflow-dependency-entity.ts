@@ -1,12 +1,23 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, Relation } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+	Relation,
+} from '@n8n/typeorm';
 
-import { WithCreatedAtAndStringId } from './abstract-entity';
+import { WithCreatedAt } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 
 export type DependencyType = 'credential' | 'nodeType' | 'webhookPath' | 'workflowCall';
 
 @Entity({ name: 'workflow_dependency' })
-export class WorkflowDependency extends WithCreatedAtAndStringId {
+export class WorkflowDependency extends WithCreatedAt {
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
+
 	/**
 	 * The ID of the workflow the dependency belongs to.
 	 */

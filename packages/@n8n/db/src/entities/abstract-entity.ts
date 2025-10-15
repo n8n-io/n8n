@@ -92,4 +92,3 @@ export const WithStringId = mixinStringId(BaseEntity);
 export const WithTimestamps = mixinTimestamps(BaseEntity);
 export const WithTimestampsAndStringId = mixinStringId(WithTimestamps);
 export const WithCreatedAt = mixinCreatedAt(BaseEntity);
-export const WithCreatedAtAndStringId = mixinStringId(WithCreatedAt);
