@@ -185,6 +185,7 @@ describe('Test Webhook Node', () => {
 		it('should redact sensitive headers in form data response', async () => {
 			context.getRequestObject.mockReturnValue({
 				method: 'POST',
+				contentType: 'multipart/form-data',
 				headers: {
 					authorization: 'Bearer secret-token',
 					cookie: 'session=abc123',
