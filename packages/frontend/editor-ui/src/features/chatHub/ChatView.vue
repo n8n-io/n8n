@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, useTemplateRef, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,7 +23,7 @@ import {
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
 } from '@n8n/api-types';
-import { useLocalStorage, useMediaQuery } from '@vueuse/core';
+import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import {
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
@@ -56,8 +56,11 @@ const sessionId = computed<string>(() =>
 );
 const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
+const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
-const showScrollToBottom = ref(false);
+
+const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
+
 const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -138,8 +141,8 @@ const credentialsName = computed(() =>
 );
 
 function scrollToBottom(smooth: boolean) {
-	scrollableRef.value?.parentElement?.scrollTo({
-		top: scrollableRef.value.scrollHeight,
+	scrollContainerRef.value?.scrollTo({
+		top: scrollableRef.value?.scrollHeight,
 		behavior: smooth ? 'smooth' : 'instant',
 	});
 }
@@ -148,19 +151,6 @@ function scrollToMessage(messageId: string) {
 	scrollableRef.value
 		?.querySelector(`[data-message-id="${messageId}"]`)
 		?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function checkScrollPosition() {
-	const scrollContainer = scrollableRef.value?.parentElement;
-	if (!scrollContainer) {
-		return;
-	}
-
-	const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-	const threshold = 100;
-	const isAtBottom = scrollHeight - scrollTop - clientHeight < threshold;
-
-	showScrollToBottom.value = !isAtBottom;
 }
 
 // Scroll to the bottom when messages are loaded
@@ -225,19 +215,6 @@ onMounted(async () => {
 		credentialsStore.fetchCredentialTypes(false),
 		credentialsStore.fetchAllCredentials(),
 	]);
-
-	const scrollContainer = scrollableRef.value?.parentElement;
-	if (scrollContainer) {
-		scrollContainer.addEventListener('scroll', checkScrollPosition);
-		checkScrollPosition();
-	}
-});
-
-onUnmounted(() => {
-	const scrollContainer = scrollableRef.value?.parentElement;
-	if (scrollContainer) {
-		scrollContainer.removeEventListener('scroll', checkScrollPosition);
-	}
 });
 
 function onModelChange(selection: ChatHubConversationModel) {
@@ -413,7 +390,7 @@ function handleRegenerateMessage(message: ChatMessageType) {
 
 				<div :class="$style.promptContainer">
 					<N8nIconButton
-						v-if="showScrollToBottom && !isNewChat"
+						v-if="!arrivedState.bottom && !isNewChat"
 						type="secondary"
 						icon="arrow-down"
 						:class="$style.scrollToBottomButton"
