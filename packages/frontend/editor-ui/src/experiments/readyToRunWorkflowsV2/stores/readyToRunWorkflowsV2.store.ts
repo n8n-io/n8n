@@ -2,7 +2,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { READY_TO_RUN_V2_PART2_EXPERIMENT, VIEWS } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/features/users/users.store';

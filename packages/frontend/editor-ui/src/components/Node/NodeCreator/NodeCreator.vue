@@ -9,7 +9,7 @@ import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 import { useChatPanelStore } from '@/features/assistant/chatPanel.store';

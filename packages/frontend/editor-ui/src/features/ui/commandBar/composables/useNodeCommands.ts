@@ -2,7 +2,7 @@ import { type Component, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { canvasEventBus } from '@/features/canvas/canvas.eventBus';

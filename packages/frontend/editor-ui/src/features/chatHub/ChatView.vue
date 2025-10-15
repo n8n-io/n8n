@@ -8,7 +8,7 @@ import ModelSelector from './components/ModelSelector.vue';
 import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 
 import { useChatStore } from './chat.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
 	type ChatMessage as ChatMessageType,
