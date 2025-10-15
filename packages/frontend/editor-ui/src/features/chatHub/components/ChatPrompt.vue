@@ -90,7 +90,7 @@ defineExpose({
 				type="textarea"
 				:placeholder="placeholder"
 				autocomplete="off"
-				:autosize="{ minRows: 3, maxRows: 6 }"
+				:autosize="{ minRows: 1, maxRows: 6 }"
 				autofocus
 				@keydown="handleKeydownTextarea"
 			/>
@@ -148,7 +148,7 @@ defineExpose({
 		line-height: 1.5em;
 		border-radius: 16px !important;
 		resize: none;
-		padding: 16px;
+		padding: 16px 16px 48px 16px;
 		box-shadow: 0 10px 24px 0 #0000002e;
 	}
 }
