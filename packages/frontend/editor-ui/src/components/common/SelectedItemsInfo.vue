@@ -70,9 +70,9 @@ const handleClearSelection = () => {
 	left: 50%;
 	transform: translateX(-50%);
 	bottom: var(--spacing--3xl);
-	background: var(--execution-selector-background);
+	background: var(--execution-selector--color--background);
 	border-radius: var(--radius);
-	color: var(--execution-selector-text);
+	color: var(--execution-selector--color--text);
 	font-size: var(--font-size--2xs);
 	gap: var(--spacing--2xs);
 }

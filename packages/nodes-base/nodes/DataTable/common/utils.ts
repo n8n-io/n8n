@@ -9,6 +9,7 @@ import type {
 	ILoadOptionsFunctions,
 	DataTableColumnJsType,
 	DataTableColumnType,
+	GenericValue,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -91,34 +92,38 @@ export function buildGetManyFilter(
 	node: INode,
 ): DataTableFilter {
 	const filters = fieldEntries.map((x) => {
+		const common = {
+			columnName: x.keyName.split(' ')[0],
+			path: x.path,
+		};
 		switch (x.condition) {
 			case 'isEmpty':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'eq' as const,
 					value: null,
 				};
 			case 'isNotEmpty':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'neq' as const,
 					value: null,
 				};
 			case 'isTrue':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'eq' as const,
 					value: true,
 				};
 			case 'isFalse':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'eq' as const,
 					value: false,
 				};
 			default: {
 				let value = x.keyValue;
-				const columnType = columnTypeMap[x.keyName];
+				const columnType = columnTypeMap[common.columnName];
 
 				// Convert ISO date strings to Date objects for date columns
 				if (columnType === 'date' && typeof value === 'string') {
@@ -126,13 +131,13 @@ export function buildGetManyFilter(
 					if (isNaN(parsed.getTime())) {
 						throw new NodeOperationError(
 							node,
-							`Invalid date string '${value}' for column '${x.keyName}'`,
+							`Invalid date string '${value}' for column '${common.columnName}'`,
 						);
 					}
 					value = parsed;
 				}
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: x.condition ?? 'eq',
 					value,
 				};
@@ -158,10 +163,15 @@ export function dataObjectToApiInput(
 			if (v === undefined || v === null) return [k, null];
 
 			if (Array.isArray(v)) {
-				throw new NodeOperationError(
-					node,
-					`unexpected array input '${JSON.stringify(v)}' in row ${row}`,
-				);
+				const z = v as GenericValue[] | IDataObject[];
+				return [
+					k,
+					z.map((x) =>
+						typeof x === 'object' && x !== null
+							? dataObjectToApiInput(x as IDataObject, node, row)
+							: (x ?? null),
+					),
+				];
 			}
 
 			if (v instanceof Date) {
@@ -186,10 +196,7 @@ export function dataObjectToApiInput(
 					}
 				}
 
-				throw new NodeOperationError(
-					node,
-					`unexpected object input '${JSON.stringify(v)}' in row ${row}`,
-				);
+				return [k, dataObjectToApiInput(v as IDataObject, node, row)];
 			}
 
 			return [k, v];

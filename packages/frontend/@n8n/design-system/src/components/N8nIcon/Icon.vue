@@ -65,7 +65,7 @@ const styles = computed(() => {
 	}
 
 	if (props.strokeWidth) {
-		stylesToApply['--n8n-icon-stroke-width'] = `${props.strokeWidth}px`;
+		stylesToApply['--icon--stroke-width'] = `${props.strokeWidth}px`;
 	}
 
 	return stylesToApply;
@@ -97,7 +97,7 @@ const styles = computed(() => {
 .strokeWidth {
 	rect,
 	path {
-		stroke-width: var(--n8n-icon-stroke-width);
+		stroke-width: var(--icon--stroke-width);
 	}
 }
 

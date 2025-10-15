@@ -153,12 +153,12 @@ const handleIgnoreClick = (actionId: string) => {
 .triggerContainer {
 	display: inline-block;
 	position: relative;
-	--tag-height: 24px;
+	--tag--height: 24px;
 }
 
 .activeTrigger {
-	--tag-text-color: var(--color--primary);
-	--tag-border-color: var(--color--primary);
+	--tag--color--text: var(--color--primary);
+	--tag--border-color: var(--color--primary);
 }
 
 .popoverContent {

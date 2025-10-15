@@ -2,7 +2,11 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubProvider,
 	type ChatModelsResponse,
+	type ChatHubConversationsResponse,
+	type ChatHubConversationResponse,
 	chatHubProviderSchema,
+	ChatHubMessageDto,
+	type ChatMessageId,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -20,6 +24,7 @@ import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	INodeCredentials,
 	OperationalError,
 	type IConnections,
 	type INode,
@@ -29,19 +34,21 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatPayloadWithCredentials, ChatMessage } from './chat-hub.types';
-
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ActiveExecutions } from '@/active-executions';
+
+import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
 
 @Service()
 export class ChatHubService {
-	private sesssions: Map<string, ChatMessage[]>;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
@@ -52,9 +59,9 @@ export class ChatHubService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeExecutions: ActiveExecutions,
-	) {
-		this.sesssions = new Map<string, ChatMessage[]>();
-	}
+		private readonly sessionRepository: ChatHubSessionRepository,
+		private readonly messageRepository: ChatHubMessageRepository,
+	) {}
 
 	async getModels(
 		user: User,
@@ -291,23 +298,55 @@ export class ChatHubService {
 		return undefined;
 	}
 
-	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
-		let session = this.sesssions.get(payload.sessionId);
-		if (!session) {
-			session = [];
-			this.sesssions.set(payload.sessionId, session);
+	private getCredentialId(provider: ChatHubProvider, credentials: INodeCredentials): string | null {
+		switch (provider) {
+			case 'openai':
+				return credentials['openAiApi'].id;
+			case 'anthropic':
+				return credentials['anthropicApi'].id;
+			case 'google':
+				return credentials['googlePalmApi'].id;
+			default:
+				return null;
+		}
+	}
+
+	async respondMessage(res: Response, user: User, payload: ChatPayloadWithCredentials) {
+		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
+		const turnId = payload.messageId;
+
+		const usedModel = {
+			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+			provider: payload.model.provider,
+			model: payload.model.model,
+			workflowId: payload.model.workflowId,
+		};
+
+		// TODO: we're now providing both replyId and messageId from the frontend, but we shouldn't.
+
+		// TODO: Handle session ID conflicts better (different user, same ID)
+		let session: ChatHubSession;
+		if (existing) {
+			session = existing;
+		} else {
+			session = await this.sessionRepository.createChatSession({
+				id: payload.sessionId,
+				ownerId: user.id,
+				title: 'New Chat',
+				...usedModel,
+			});
 		}
 
-		const chatHistory = session.map((msg) => ({
-			type: msg.type,
-			message: msg.message,
-		}));
-
-		session.push({
+		await this.messageRepository.createChatMessage({
 			id: payload.messageId,
-			message: payload.message,
-			type: 'user',
-			createdAt: new Date(),
+			sessionId: payload.sessionId,
+			type: 'human',
+			name: user.firstName || 'User',
+			state: 'active',
+			content: payload.message,
+			turnId,
+			previousMessageId: payload.previousMessageId ?? null,
+			...usedModel,
 		});
 
 		/* eslint-disable @typescript-eslint/naming-convention */
@@ -355,7 +394,20 @@ export class ChatHubService {
 				parameters: {
 					mode: 'insert',
 					messages: {
-						messageValues: chatHistory,
+						messageValues: session.messages?.map((message) => {
+							const typeMap: Record<string, MessageRecord['type']> = {
+								human: 'user',
+								ai: 'ai',
+								system: 'system',
+							};
+
+							// TODO: Tools ?
+							return {
+								type: typeMap[message.type] || 'system',
+								message: message.content,
+								hideFromUI: false,
+							};
+						}),
 					},
 				},
 				type: '@n8n/n8n-nodes-langchain.memoryManager',
@@ -454,12 +506,17 @@ export class ChatHubService {
 
 		const message = this.getMessage(execution);
 		if (message) {
-			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
-			session.push({
+			await this.messageRepository.createChatMessage({
 				id: payload.replyId,
-				message,
+				sessionId: payload.sessionId,
 				type: 'ai',
-				createdAt: new Date(),
+				name: 'AI',
+				content: message,
+				state: 'active',
+				turnId,
+				executionId: parseInt(execution.id, 10),
+				previousMessageId: payload.messageId,
+				...usedModel,
 			});
 		}
 	}
@@ -509,5 +566,152 @@ export class ChatHubService {
 					typeVersion: 1.2,
 				};
 		}
+	}
+
+	/**
+	 * Get all conversations for a user
+	 */
+	async getConversations(userId: string): Promise<ChatHubConversationsResponse> {
+		const sessions = await this.sessionRepository.getManyByUserId(userId);
+
+		return sessions.map((session) => ({
+			id: session.id,
+			title: session.title,
+			ownerId: session.ownerId,
+			lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+			credentialId: session.credentialId,
+			provider: session.provider,
+			model: session.model,
+			workflowId: session.workflowId,
+			createdAt: session.createdAt.toISOString(),
+			updatedAt: session.updatedAt.toISOString(),
+		}));
+	}
+
+	/**
+	 * Get a single conversation with messages and ready to render timeline of latest messages
+	 * */
+	async getConversation(userId: string, sessionId: string): Promise<ChatHubConversationResponse> {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+		if (!session) {
+			throw new NotFoundError('Chat session not found');
+		}
+
+		const messages = await this.messageRepository.getManyBySessionId(sessionId);
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
+			this.buildMessagesGraph(messages);
+
+		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
+		const activeMessageChain = this.buildActiveMessageChain(messages);
+
+		return {
+			session: {
+				id: session.id,
+				title: session.title,
+				ownerId: session.ownerId,
+				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+				credentialId: session.credentialId,
+				provider: session.provider,
+				model: session.model,
+				workflowId: session.workflowId,
+				createdAt: session.createdAt.toISOString(),
+				updatedAt: session.updatedAt.toISOString(),
+			},
+			conversation: {
+				messages: messagesGraph,
+				rootIds,
+				activeMessageChain,
+			},
+		};
+	}
+
+	private buildMessagesGraph(messages: ChatHubMessage[]) {
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
+
+		for (const message of messages) {
+			messagesGraph[message.id] = {
+				id: message.id,
+				sessionId: message.sessionId,
+				type: message.type,
+				name: message.name,
+				content: message.content,
+				provider: message.provider,
+				model: message.model,
+				workflowId: message.workflowId,
+				executionId: message.executionId,
+				state: message.state,
+				createdAt: message.createdAt.toISOString(),
+				updatedAt: message.updatedAt.toISOString(),
+
+				previousMessageId: message.previousMessageId,
+				turnId: message.turnId,
+				retryOfMessageId: message.retryOfMessageId,
+				revisionOfMessageId: message.revisionOfMessageId,
+				runIndex: message.runIndex,
+
+				responseIds: [],
+				retryIds: [],
+				revisionIds: [],
+			};
+		}
+
+		for (const node of Object.values(messagesGraph)) {
+			if (node.previousMessageId && messagesGraph[node.previousMessageId]) {
+				messagesGraph[node.previousMessageId].responseIds.push(node.id);
+			}
+			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
+				messagesGraph[node.retryOfMessageId].retryIds.push(node.id);
+			}
+			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
+				messagesGraph[node.revisionOfMessageId].revisionIds.push(node.id);
+			}
+		}
+
+		const sortByRunThenTime = (first: ChatMessageId, second: ChatMessageId) => {
+			const a = messagesGraph[first];
+			const b = messagesGraph[second];
+
+			if (a.runIndex !== b.runIndex) {
+				return a.runIndex - b.runIndex;
+			}
+
+			if (a.createdAt !== b.createdAt) {
+				return a.createdAt < b.createdAt ? -1 : 1;
+			}
+
+			return a.id < b.id ? -1 : 1;
+		};
+
+		for (const node of Object.values(messagesGraph)) {
+			node.responseIds.sort(sortByRunThenTime);
+			node.retryIds.sort(sortByRunThenTime);
+			node.revisionIds.sort(sortByRunThenTime);
+		}
+		return messagesGraph;
+	}
+
+	private buildActiveMessageChain(messages: ChatHubMessage[]) {
+		const nodes = new Map(messages.map((m) => [m.id, m]));
+		const activeMessages = messages.filter((m) => m.state === 'active');
+
+		const visited = new Set<string>();
+		const activeMessageChain = [];
+		const latest = activeMessages[activeMessages.length - 1]; // Messages are sorted by createdAt
+
+		let current = latest ? latest.id : null;
+
+		while (current && !visited.has(current)) {
+			activeMessageChain.unshift(current);
+			visited.add(current);
+			current = nodes.get(current)?.previousMessageId ?? null;
+		}
+
+		return activeMessageChain;
+	}
+
+	async deleteAllSessions() {
+		const result = await this.sessionRepository.deleteAll();
+
+		return result;
 	}
 }

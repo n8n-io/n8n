@@ -23,6 +23,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
 export const chatHubConversationModelSchema = z.object({
 	provider: chatHubProviderSchema,
 	model: z.string(),
+	workflowId: z.string().nullable().default(null),
 });
 
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
@@ -48,8 +49,10 @@ export type ChatModelsResponse = Record<
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
+	previousMessageId: z.string().uuid().nullable(),
 	credentials: z.record(
 		z.object({
 			id: z.string(),
@@ -57,3 +60,59 @@ export class ChatHubSendMessageRequest extends Z.class({
 		}),
 	),
 }) {}
+
+export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
+export type ChatHubMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
+
+export type ChatSessionId = string; // UUID
+export type ChatMessageId = string; // UUID
+
+export interface ChatHubSessionDto {
+	id: ChatSessionId;
+	title: string;
+	ownerId: string;
+	lastMessageAt: string | null;
+	credentialId: string | null;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ChatHubMessageDto {
+	id: ChatMessageId;
+	sessionId: ChatSessionId;
+	type: ChatHubMessageType;
+	name: string;
+	content: string;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	executionId: number | null;
+	state: ChatHubMessageState;
+	createdAt: string;
+	updatedAt: string;
+
+	previousMessageId: ChatMessageId | null;
+	turnId: ChatMessageId | null;
+	retryOfMessageId: ChatMessageId | null;
+	revisionOfMessageId: ChatMessageId | null;
+	runIndex: number;
+
+	responseIds: ChatMessageId[];
+	retryIds: ChatMessageId[];
+	revisionIds: ChatMessageId[];
+}
+
+export type ChatHubConversationsResponse = ChatHubSessionDto[];
+
+export interface ChatHubConversationResponse {
+	session: ChatHubSessionDto;
+
+	conversation: {
+		messages: Record<string, ChatHubMessageDto>;
+		rootIds: string[];
+		activeMessageChain: string[];
+	};
+}

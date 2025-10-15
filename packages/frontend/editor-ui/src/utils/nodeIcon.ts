@@ -3,7 +3,8 @@ import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
 import { getThemedValue } from './nodeTypesUtils';
-import { isNodePreviewKey } from '../components/Node/NodeCreator/utils';
+import { isNodePreviewKey, removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
 type NodeIconSourceFile = {
@@ -39,7 +40,7 @@ export const getBadgeIconUrl = (
 
 function getNodeIconColor(nodeType: IconNodeType) {
 	if ('iconColor' in nodeType && nodeType.iconColor) {
-		return `var(--color-node-icon-${nodeType.iconColor})`;
+		return `var(--node--icon--color--${nodeType.iconColor})`;
 	}
 	return nodeType?.defaults?.color?.toString();
 }
@@ -48,8 +49,25 @@ function prefixBaseUrl(url: string) {
 	return useRootStore().baseUrl + url;
 }
 
-export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSource | undefined {
+export function getNodeIconSource(
+	nodeType?: IconNodeType | string | null,
+): NodeIconSource | undefined {
+	const nodeTypeStore = useNodeTypesStore();
 	if (!nodeType) return undefined;
+
+	if (typeof nodeType === 'string') {
+		const cleanedNodeType = removePreviewToken(nodeType);
+		const nodeDescription =
+			nodeTypeStore.communityNodeType(cleanedNodeType)?.nodeDescription ??
+			nodeTypeStore.getNodeType(cleanedNodeType);
+		let url: string | null = null;
+		if (nodeDescription?.iconUrl) {
+			const themedUrl = getThemedValue(nodeDescription.iconUrl, useUIStore().appliedTheme);
+			url = themedUrl;
+		}
+		return url ? { type: 'file', src: url } : undefined;
+	}
+
 	const createFileIconSource = (src: string): NodeIconSource => ({
 		type: 'file',
 		src,
@@ -74,23 +92,13 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 	}
 
 	if (nodeType.name && isNodePreviewKey(nodeType.name)) {
-		// Handle both string and object iconUrl for preview nodes
-		if (typeof nodeType.iconUrl === 'string') {
+		const themedUrl = getThemedValue(nodeType.iconUrl, useUIStore().appliedTheme);
+		if (themedUrl) {
 			return {
 				type: 'file',
-				src: nodeType.iconUrl,
+				src: themedUrl,
 				badge: undefined,
 			};
-		} else if (nodeType.iconUrl && typeof nodeType.iconUrl === 'object') {
-			// Use getThemedValue to get the appropriate theme URL
-			const themedUrl = getThemedValue(nodeType.iconUrl, useUIStore().appliedTheme);
-			if (themedUrl) {
-				return {
-					type: 'file',
-					src: themedUrl,
-					badge: undefined,
-				};
-			}
 		}
 	}
 

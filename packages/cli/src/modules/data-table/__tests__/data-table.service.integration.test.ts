@@ -1493,6 +1493,69 @@ describe('dataTable', () => {
 				},
 			]);
 		});
+		it('inserts json', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'c1', type: 'json' }],
+			});
+
+			// ACT
+			const d = new Date();
+			const rows = [{ c1: { a: 3, b: { c: true }, d } }];
+			const result = await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+			// ASSERT
+			expect(result).toEqual([{ id: 1 }]);
+			{
+				const { count, data } = await dataTableService.getManyRowsAndCount(
+					dataStoreId,
+					project1.id,
+					{},
+				);
+				expect(count).toEqual(1);
+				expect(data).toHaveLength(1);
+				expect(data[0]).toMatchObject({
+					c1: { a: 3, b: { c: true }, d: `${d.toISOString()}` },
+				});
+			}
+			{
+				const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
+					filter: {
+						type: 'and',
+						filters: [
+							{
+								columnName: 'c1',
+								condition: 'eq',
+								value: 3,
+								path: 'a',
+							},
+							{
+								columnName: 'c1',
+								condition: 'eq',
+								value: true,
+								path: 'b.c',
+							},
+							{
+								columnName: 'c1',
+								condition: 'gte',
+								value: `${d.toISOString()}`,
+								path: 'd',
+							},
+						],
+					},
+				});
+				expect(data).toEqual([
+					{
+						c1: { a: 3, b: { c: true }, d: d.toISOString() },
+						id: 1,
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+					},
+				]);
+			}
+		});
+
 		describe('bulk', () => {
 			it('handles single empty row correctly in bulk mode', async () => {
 				// ARRANGE

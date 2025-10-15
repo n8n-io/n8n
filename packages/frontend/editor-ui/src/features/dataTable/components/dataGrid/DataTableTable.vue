@@ -309,7 +309,7 @@ defineExpose({
 			padding-top: var(--spacing--2xs);
 
 			&:where(:focus-within, :active) {
-				border: var(--grid-cell-editing-border);
+				border: var(--grid--cell--border-color--editing);
 			}
 		}
 	}
@@ -344,7 +344,7 @@ defineExpose({
 		box-shadow: none;
 
 		&:global(.boolean-cell) {
-			border: var(--grid-cell-editing-border) !important;
+			border: var(--grid--cell--border-color--editing) !important;
 
 			&:global(.ag-cell-focus) {
 				background-color: var(--grid-cell-active-background);
@@ -353,7 +353,7 @@ defineExpose({
 	}
 
 	:global(.ag-cell-focus) {
-		background-color: var(--grid-row-selected-background);
+		background-color: var(--grid--row--color--background--selected);
 	}
 
 	&.has-records {

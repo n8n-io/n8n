@@ -98,7 +98,7 @@ function handleEditClick() {
 }
 
 .editButton {
-	--button-border-color: transparent;
+	--button--border-color: transparent;
 	margin-left: auto;
 	flex-shrink: 0;
 	align-self: center;

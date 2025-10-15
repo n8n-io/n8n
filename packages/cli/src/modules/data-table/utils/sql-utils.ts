@@ -14,7 +14,7 @@ import type {
 	DataTableRowReturn,
 	DataTableRowsReturn,
 } from 'n8n-workflow';
-import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
@@ -34,6 +34,8 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 				return name.text;
 			case 'date':
 				return name.timestampTimezone();
+			case 'json':
+				return name.json;
 			default:
 				return name.text;
 		}
@@ -66,6 +68,8 @@ function dataTableColumnTypeToSql(
 				return 'TIMESTAMP';
 			}
 			return 'DATETIME';
+		case 'json':
+			return 'JSON';
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -230,6 +234,16 @@ export function normalizeRows(
 		for (const [key, value] of Object.entries(rest)) {
 			const type = typeMap[key];
 
+			if (type === 'json') {
+				try {
+					if (typeof value === 'string') {
+						normalized[key] = JSON.parse(value) as never;
+					}
+				} catch (e) {
+					normalized[key] = 'failed to parse';
+				}
+			}
+
 			if (type === 'boolean') {
 				// Convert boolean values to true/false
 				if (typeof value === 'boolean') {
@@ -288,11 +302,37 @@ function formatDateForDatabase(
  */
 export function normalizeValueForDatabase(
 	value: DataTableColumnJsType,
-	columnType: string | undefined,
+	columnType: DataTableColumnType | undefined,
 	dbType?: DataSourceOptions['type'],
+	path?: string,
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
 		return formatDateForDatabase(value, dbType);
+	}
+
+	if (columnType === 'json') {
+		if (path) {
+			if (value instanceof Date) {
+				return formatDateForDatabase(value, dbType);
+			}
+			return value;
+		} else {
+			// json accepts objects or strings containing objects as input
+			// but expects values with a path for output/get/read operations
+			if (typeof value === 'string') {
+				try {
+					JSON.parse(value);
+					return value;
+				} catch (e) {
+					throw new UserError(`Failed to parse string input '${value}' as object for json column`);
+				}
+			} else if (typeof value !== 'object') {
+				throw new UserError(
+					`Unexpected non-object input '${value}' of type ${typeof value} for json column`,
+				);
+			}
+			return JSON.stringify(value);
+		}
 	}
 
 	return value;
