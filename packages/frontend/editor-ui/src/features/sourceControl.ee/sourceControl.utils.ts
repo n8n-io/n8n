@@ -47,7 +47,8 @@ export const getPushPriorityByStatus = (status: SourceControlledFileStatus) =>
 	pushStatusPriority[status] ?? 0;
 
 const createVariablesToast = (router: Router) => {
-	const { href } = router.resolve({ name: VIEWS.VARIABLES, query: { incomplete: 'true' } });
+	const route = { name: VIEWS.VARIABLES, query: { incomplete: 'true' } };
+	const { href } = router.resolve(route);
 
 	return {
 		title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
@@ -55,8 +56,10 @@ const createVariablesToast = (router: Router) => {
 			'a',
 			{
 				href,
-				onClick: () => {
+				onClick: (e: MouseEvent) => {
+					e.preventDefault();
 					telemetry.track('User clicked review variables');
+					void router.push(route);
 				},
 			},
 			i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
@@ -67,7 +70,8 @@ const createVariablesToast = (router: Router) => {
 };
 
 const createCredentialsToast = (router: Router) => {
-	const { href } = router.resolve({ name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } });
+	const route = { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } };
+	const { href } = router.resolve(route);
 
 	return {
 		title: i18n.baseText('settings.sourceControl.pull.upToDate.credentials.title'),
@@ -75,8 +79,10 @@ const createCredentialsToast = (router: Router) => {
 			'a',
 			{
 				href,
-				onClick: () => {
+				onClick: (e: MouseEvent) => {
+					e.preventDefault();
 					telemetry.track('User clicked review credentials');
+					void router.push(route);
 				},
 			},
 			i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
