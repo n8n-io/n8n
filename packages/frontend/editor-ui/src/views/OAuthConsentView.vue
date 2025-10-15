@@ -51,18 +51,21 @@ const handleAllow = async () => {
 			}),
 		});
 
+		const data = await response.json();
+
 		if (!response.ok) {
-			const data = await response.json();
 			throw new Error(data.message || 'Failed to approve consent');
 		}
 
-		const data = await response.json();
-
-		// Clear the session cookie
+		// Backend clears the cookie, but we can do it client-side too for safety
 		document.cookie = 'n8n-oauth-session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 
-		// Redirect to client application
-		window.location.href = data.redirectUrl;
+		// Redirect to client application - note the 'status' field
+		if (data.status === 'success' && data.redirectUrl) {
+			window.location.href = data.redirectUrl;
+		} else {
+			throw new Error('Invalid response from server');
+		}
 	} catch (err) {
 		error.value = err instanceof Error ? err.message : 'Authorization failed. Please try again.';
 		isLoading.value = false;
@@ -71,6 +74,7 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	isLoading.value = true;
+	error.value = null;
 
 	try {
 		const response = await fetch('/oauth/consent/approve', {
@@ -84,18 +88,21 @@ const handleDeny = async () => {
 			}),
 		});
 
+		const data = await response.json();
+
 		if (!response.ok) {
-			const data = await response.json();
 			throw new Error(data.message || 'Failed to deny consent');
 		}
 
-		const data = await response.json();
-
-		// Clear the session cookie
+		// Backend clears the cookie, but we can do it client-side too for safety
 		document.cookie = 'n8n-oauth-session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 
-		// Redirect to client application with error
-		window.location.href = data.redirectUrl;
+		// Redirect to client application with error - note the 'status' field
+		if (data.status === 'success' && data.redirectUrl) {
+			window.location.href = data.redirectUrl;
+		} else {
+			throw new Error('Invalid response from server');
+		}
 	} catch (err) {
 		error.value =
 			err instanceof Error ? err.message : 'Failed to deny authorization. Please try again.';
@@ -105,20 +112,29 @@ const handleDeny = async () => {
 
 // Lifecycle
 onMounted(async () => {
-	// Optionally: Fetch consent details from backend using the cookie
 	try {
 		const response = await fetch('/oauth/consent/details', {
 			credentials: 'include', // Sends the n8n-oauth-session cookie
 		});
 
-		if (response.ok) {
+		if (!response.ok) {
 			const data = await response.json();
-			consentDetails.value = data;
-		} else {
-			error.value = 'Invalid or expired authorization session. Please try again.';
+			throw new Error(data.message || 'Failed to load consent details');
 		}
+
+		const data = await response.json();
+
+		// Update consent details with response data
+		consentDetails.value = {
+			clientName: data.clientName || 'Unknown Application',
+			clientId: data.clientId || '',
+			scopes: data.scopes || [],
+		};
 	} catch (err) {
-		error.value = 'Failed to load authorization details. Please try again.';
+		error.value =
+			err instanceof Error
+				? err.message
+				: 'Failed to load authorization details. Please try again.';
 	}
 });
 </script>
@@ -192,6 +208,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* Same styles as before */
 .consent-container {
 	background: white;
 	border-radius: 8px;

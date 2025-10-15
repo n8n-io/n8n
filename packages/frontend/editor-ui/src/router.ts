@@ -483,33 +483,33 @@ export const routes: RouteRecordRaw[] = [
 		},
 		beforeEnter: (to, from, next) => {
 			// Validate required OAuth parameters
-			const requiredParams = ['session_id'];
-			const missingParams = requiredParams.filter((param) => !to.query[param]);
+			// const requiredParams = ['session_id'];
+			// const missingParams = requiredParams.filter((param) => !to.query[param]);
 
-			if (missingParams.length > 0) {
-				// Redirect to error page if required OAuth params are missing
-				return next({
-					name: VIEWS.NOT_FOUND,
-					params: {
-						messageKey: 'error.oauth.missingParameters',
-						errorCode: 400,
-						redirectTextKey: 'error.goBack',
-						redirectPage: VIEWS.SIGNIN,
-					},
-				});
-			}
+			// if (missingParams.length > 0) {
+			// 	// Redirect to error page if required OAuth params are missing
+			// 	return next({
+			// 		name: VIEWS.NOT_FOUND,
+			// 		params: {
+			// 			messageKey: 'error.oauth.missingParameters',
+			// 			errorCode: 400,
+			// 			redirectTextKey: 'error.goBack',
+			// 			redirectPage: VIEWS.SIGNIN,
+			// 		},
+			// 	});
+			// }
 
-			// Validate response_type
-			const validResponseTypes = ['code', 'token'];
-			if (!validResponseTypes.includes(to.query.response_type as string)) {
-				return next({
-					name: VIEWS.NOT_FOUND,
-					params: {
-						messageKey: 'error.oauth.invalidResponseType',
-						errorCode: 400,
-					},
-				});
-			}
+			// // Validate response_type
+			// const validResponseTypes = ['code', 'token'];
+			// if (!validResponseTypes.includes(to.query.response_type as string)) {
+			// 	return next({
+			// 		name: VIEWS.NOT_FOUND,
+			// 		params: {
+			// 			messageKey: 'error.oauth.invalidResponseType',
+			// 			errorCode: 400,
+			// 		},
+			// 	});
+			// }
 
 			next();
 		},

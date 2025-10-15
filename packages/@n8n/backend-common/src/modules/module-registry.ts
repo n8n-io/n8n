@@ -33,6 +33,7 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		'mcp',
 	];
 
 	private readonly activeModules: string[] = [];
