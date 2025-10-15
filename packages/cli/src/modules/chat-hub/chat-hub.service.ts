@@ -3,8 +3,10 @@ import {
 	type ChatHubProvider,
 	type ChatModelsResponse,
 	type ChatHubConversationsResponse,
-	type ChatHubMessagesResponse,
+	type ChatHubConversationResponse,
 	chatHubProviderSchema,
+	ChatHubMessageDto,
+	type ChatMessageId,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -25,38 +27,58 @@ import {
 	OperationalError,
 	type IConnections,
 	type INode,
+	type INodeCredentials,
+	type INodeTypeNameVersion,
 	type ITaskData,
 	type IWorkflowBase,
+	type IWorkflowExecuteAdditionalData,
 	type StartNodeData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatPayloadWithCredentials, ChatMessage } from './chat-hub.types';
-
-import { CredentialsHelper } from '@/credentials-helper';
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ActiveExecutions } from '@/active-executions';
+
+import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+
+const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
+	openai: {
+		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		version: 1.2,
+	},
+	anthropic: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+		version: 1.3,
+	},
+	google: {
+		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+		version: 1.2,
+	},
+};
 
 @Service()
 export class ChatHubService {
-	private sesssions: Map<string, ChatMessage[]>;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsHelper: CredentialsHelper,
+		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeExecutions: ActiveExecutions,
-	) {
-		this.sesssions = new Map<string, ChatMessage[]>();
-	}
+		private readonly sessionRepository: ChatHubSessionRepository,
+		private readonly messageRepository: ChatHubMessageRepository,
+	) {}
 
 	async getModels(
 		user: User,
@@ -77,27 +99,15 @@ export class ChatHubService {
 				// Ensure the user has the permission to read the credential
 				await this.credentialsService.getOne(user, credentialId, false);
 
-				const credentials = await this.credentialsHelper.getDecrypted(
-					additionalData,
-					{
-						id: credentialId,
-						name: PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-					},
-					PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-					'internal',
-					undefined,
-					true,
-				);
-
-				// Extract API key from credentials based on provider
-				const apiKey = this.extractApiKey(provider, credentials);
-
-				if (!apiKey) {
-					return [provider, { models: [] }];
-				}
-
 				try {
-					return [provider, await this.fetchModelsForProvider(provider, apiKey)];
+					const credentials = {
+						[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]: { name: '', id: credentialId },
+					};
+
+					return [
+						provider,
+						await this.fetchModelsForProvider(provider, credentials, additionalData),
+					];
 				} catch {
 					return [
 						provider,
@@ -122,116 +132,109 @@ export class ChatHubService {
 
 	private async fetchModelsForProvider(
 		provider: ChatHubProvider,
-		apiKey: string,
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		switch (provider) {
 			case 'openai':
-				return await this.fetchOpenAiModels(apiKey);
+				return await this.fetchOpenAiModels(credentials, additionalData);
 			case 'anthropic':
-				return await this.fetchAnthropicModels(apiKey);
+				return await this.fetchAnthropicModels(credentials, additionalData);
 			case 'google':
-				return await this.fetchGoogleModels(apiKey);
+				return await this.fetchGoogleModels(credentials, additionalData);
 		}
 	}
 
-	private async fetchOpenAiModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch('https://api.openai.com/v1/models', {
-			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch OpenAI models: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-
-		return {
-			models: data.data
-				.filter(
-					(model: { id: string }) =>
-						model.id.includes('gpt') &&
-						!model.id.includes('instruct') &&
-						!model.id.includes('audio'),
-				)
-				.map((model: { id: string }) => ({ name: model.id })),
-		};
-	}
-
-	private async fetchAnthropicModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch('https://api.anthropic.com/v1/models', {
-			method: 'GET',
-			headers: {
-				'x-api-key': apiKey,
-				'anthropic-version': '2023-06-01',
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch Anthropic models: ${response.statusText}`);
-		}
-
-		const data = (await response.json()) as {
-			data: Array<{ id: string; display_name: string; type: string; created_at: string }>;
-		};
-
-		return {
-			models: (data.data || [])
-				.sort((a, b) => {
-					const dateA = new Date(a.created_at);
-					const dateB = new Date(b.created_at);
-					return dateB.getTime() - dateA.getTime();
-				})
-				.map((model) => ({ name: model.id })),
-		};
-	}
-
-	private async fetchGoogleModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch(
-			`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
-			{
-				method: 'GET',
-			},
+	private async fetchOpenAiModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
+			'searchModels',
+			'parameters.model',
+			additionalData,
+			providerNodeTypeMapping.openai,
+			{},
+			credentials,
 		);
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch Google models: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-
 		return {
-			models: data.models
-				?.filter(
-					(model: { name: string; supportedGenerationMethods?: string[] }) =>
-						model.name.includes('gemini') &&
-						model.supportedGenerationMethods?.includes('generateContent'),
-				)
-				.map((model: { name: string }) => {
-					// Extract model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
-					const modelId = model.name.split('/').pop();
-
-					return { name: modelId };
-				}),
+			models: resourceLocatorResults.results.map((result) => ({ name: String(result.value) })),
 		};
 	}
 
-	private extractApiKey(provider: ChatHubProvider, credentials: unknown): string | undefined {
-		if (typeof credentials !== 'object' || credentials === null) {
-			return undefined;
-		}
+	private async fetchAnthropicModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
+			'searchModels',
+			'parameters.model',
+			additionalData,
+			providerNodeTypeMapping.anthropic,
+			{},
+			credentials,
+		);
 
-		const creds = credentials as Record<string, unknown>;
+		return {
+			models: resourceLocatorResults.results.map((result) => ({ name: String(result.value) })),
+		};
+	}
 
-		switch (provider) {
-			case 'openai':
-			case 'anthropic':
-			case 'google':
-				// All providers use 'apiKey' field
-				return typeof creds.apiKey === 'string' ? creds.apiKey : undefined;
-		}
+	private async fetchGoogleModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				// From Gemini node
+				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts#L75
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1beta/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'models',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: "={{ !$responseItem.name.includes('embedding') }}",
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.name}}',
+									value: '={{$responseItem.name}}',
+									description: '={{$responseItem.description}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			providerNodeTypeMapping.google,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({ name: String(result.value) })),
+		};
 	}
 
 	private async createChatWorkflow(
@@ -293,23 +296,55 @@ export class ChatHubService {
 		return undefined;
 	}
 
-	async askN8n(res: Response, user: User, payload: ChatPayloadWithCredentials) {
-		let session = this.sesssions.get(payload.sessionId);
-		if (!session) {
-			session = [];
-			this.sesssions.set(payload.sessionId, session);
+	private getCredentialId(provider: ChatHubProvider, credentials: INodeCredentials): string | null {
+		switch (provider) {
+			case 'openai':
+				return credentials['openAiApi'].id;
+			case 'anthropic':
+				return credentials['anthropicApi'].id;
+			case 'google':
+				return credentials['googlePalmApi'].id;
+			default:
+				return null;
+		}
+	}
+
+	async respondMessage(res: Response, user: User, payload: ChatPayloadWithCredentials) {
+		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
+		const turnId = payload.messageId;
+
+		const usedModel = {
+			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+			provider: payload.model.provider,
+			model: payload.model.model,
+			workflowId: payload.model.workflowId,
+		};
+
+		// TODO: we're now providing both replyId and messageId from the frontend, but we shouldn't.
+
+		// TODO: Handle session ID conflicts better (different user, same ID)
+		let session: ChatHubSession;
+		if (existing) {
+			session = existing;
+		} else {
+			session = await this.sessionRepository.createChatSession({
+				id: payload.sessionId,
+				ownerId: user.id,
+				title: payload.message, // first user message as the title for now
+				...usedModel,
+			});
 		}
 
-		const chatHistory = session.map((msg) => ({
-			type: msg.type,
-			message: msg.message,
-		}));
-
-		session.push({
+		await this.messageRepository.createChatMessage({
 			id: payload.messageId,
-			message: payload.message,
-			type: 'user',
-			createdAt: new Date(),
+			sessionId: payload.sessionId,
+			type: 'human',
+			name: user.firstName || 'User',
+			state: 'active',
+			content: payload.message,
+			turnId,
+			previousMessageId: payload.previousMessageId ?? null,
+			...usedModel,
 		});
 
 		/* eslint-disable @typescript-eslint/naming-convention */
@@ -357,7 +392,20 @@ export class ChatHubService {
 				parameters: {
 					mode: 'insert',
 					messages: {
-						messageValues: chatHistory,
+						messageValues: session.messages?.map((message) => {
+							const typeMap: Record<string, MessageRecord['type']> = {
+								human: 'user',
+								ai: 'ai',
+								system: 'system',
+							};
+
+							// TODO: Tools ?
+							return {
+								type: typeMap[message.type] || 'system',
+								message: message.content,
+								hideFromUI: false,
+							};
+						}),
 					},
 				},
 				type: '@n8n/n8n-nodes-langchain.memoryManager',
@@ -456,12 +504,17 @@ export class ChatHubService {
 
 		const message = this.getMessage(execution);
 		if (message) {
-			this.logger.debug(`Assistant: ${message} (${payload.replyId})`);
-			session.push({
+			await this.messageRepository.createChatMessage({
 				id: payload.replyId,
-				message,
+				sessionId: payload.sessionId,
 				type: 'ai',
-				createdAt: new Date(),
+				name: 'AI',
+				content: message,
+				state: 'active',
+				turnId,
+				executionId: parseInt(execution.id, 10),
+				previousMessageId: payload.messageId,
+				...usedModel,
 			});
 		}
 	}
@@ -472,6 +525,8 @@ export class ChatHubService {
 			id: uuidv4(),
 			name: 'Chat Model',
 			credentials: payload.credentials,
+			type: providerNodeTypeMapping[payload.model.provider].name,
+			typeVersion: providerNodeTypeMapping[payload.model.provider].version,
 		};
 
 		switch (payload.model.provider) {
@@ -482,8 +537,6 @@ export class ChatHubService {
 						model: { __rl: true, mode: 'list', value: payload.model.model },
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-					typeVersion: 1.2,
 				};
 			case 'anthropic':
 				return {
@@ -497,8 +550,6 @@ export class ChatHubService {
 						},
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-					typeVersion: 1.3,
 				};
 			case 'google':
 				return {
@@ -507,179 +558,154 @@ export class ChatHubService {
 						model: { __rl: true, mode: 'list', value: payload.model.model },
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-					typeVersion: 1.2,
 				};
 		}
 	}
 
 	/**
 	 * Get all conversations for a user
-	 * TODO: Replace with actual database queries
 	 */
-	async getConversations(): Promise<ChatHubConversationsResponse> {
-		// Mock data for now with diverse dates to demonstrate grouping
-		const now = new Date();
-		const today = new Date(now);
-		const yesterday = new Date(now);
-		yesterday.setDate(yesterday.getDate() - 1);
-		const threeDaysAgo = new Date(now);
-		threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-		const twoWeeksAgo = new Date(now);
-		twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-		const twoMonthsAgo = new Date(now);
-		twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+	async getConversations(userId: string): Promise<ChatHubConversationsResponse> {
+		const sessions = await this.sessionRepository.getManyByUserId(userId);
 
-		return [
-			{
-				id: '7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f',
-				title: 'Getting Started with n8n',
-				createdAt: today.toISOString(),
-				updatedAt: today.toISOString(),
-			},
-			{
-				id: '3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c',
-				title: 'Workflow Automation Ideas',
-				createdAt: yesterday.toISOString(),
-				updatedAt: yesterday.toISOString(),
-			},
-			{
-				id: '9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f',
-				title: 'API Integration Help',
-				createdAt: threeDaysAgo.toISOString(),
-				updatedAt: threeDaysAgo.toISOString(),
-			},
-			{
-				id: '5c8a1d3e-4b9f-4e2a-8d6c-7f3a9b2e4c8d',
-				title: 'Database Schema Design',
-				createdAt: twoWeeksAgo.toISOString(),
-				updatedAt: twoWeeksAgo.toISOString(),
-			},
-			{
-				id: '2f6d9a4c-8e1b-4d7a-9c3e-6a8f2b5d4e9c',
-				title: 'Docker Deployment Questions',
-				createdAt: twoMonthsAgo.toISOString(),
-				updatedAt: twoMonthsAgo.toISOString(),
-			},
-		];
+		return sessions.map((session) => ({
+			id: session.id,
+			title: session.title,
+			ownerId: session.ownerId,
+			lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+			credentialId: session.credentialId,
+			provider: session.provider,
+			model: session.model,
+			workflowId: session.workflowId,
+			createdAt: session.createdAt.toISOString(),
+			updatedAt: session.updatedAt.toISOString(),
+		}));
 	}
 
 	/**
-	 * Get all messages for a specific conversation
-	 * TODO: Replace with actual database queries
-	 */
-	async getConversationMessages(conversationId: string): Promise<ChatHubMessagesResponse> {
-		// Mock data for now - in a real implementation, we'd query by conversationId
-		this.logger.debug(`Fetching messages for conversation ${conversationId}`);
-
-		// Return different mock data based on conversation ID
-		const mockConversations: Record<string, ChatHubMessagesResponse> = {
-			'7f3e2a91-8c4d-4b5a-9e1f-2d6c8a4b5e7f': [
-				{
-					id: '650e8400-e29b-41d4-a716-446655440001',
-					conversationId,
-					role: 'user',
-					content: 'How do I create my first workflow in n8n?',
-					createdAt: new Date('2025-01-08T10:00:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440002',
-					conversationId,
-					role: 'assistant',
-					content:
-						"To create your first workflow in n8n:\n\n1. Click the '+' button in the top left\n2. Select 'Create New Workflow'\n3. Add nodes by clicking the '+' on the canvas\n4. Configure each node\n5. Connect nodes by dragging from one to another\n6. Test and activate your workflow\n\nWould you like help with a specific type of workflow?",
-					createdAt: new Date('2025-01-08T10:00:30Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440003',
-					conversationId,
-					role: 'user',
-					content:
-						'Yes, I want to automate sending emails when a new row is added to a Google Sheet.',
-					createdAt: new Date('2025-01-08T10:05:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440004',
-					conversationId,
-					role: 'assistant',
-					content:
-						"Perfect! Here's how to set that up:\n\n1. Add a **Google Sheets Trigger** node\n   - Select 'On Row Added'\n   - Connect your Google account\n   - Choose your spreadsheet\n\n2. Add a **Gmail** node\n   - Connect your Gmail account\n   - Set the recipient email\n   - Use expressions to include data from the sheet\n\n3. Activate the workflow\n\nWould you like more details on any of these steps?",
-					createdAt: new Date('2025-01-08T10:05:45Z').toISOString(),
-				},
-			],
-			'3a8f5c2d-1e9b-4d7a-8c3e-6f2a9b4d8e1c': [
-				{
-					id: '650e8400-e29b-41d4-a716-446655440011',
-					conversationId,
-					role: 'user',
-					content: 'What are some creative workflow automation ideas?',
-					createdAt: new Date('2025-01-07T14:30:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440012',
-					conversationId,
-					role: 'assistant',
-					content:
-						'Here are some creative workflow automation ideas:\n\n**Social Media Automation:**\n- Auto-post blog content to multiple platforms\n- Monitor mentions and send notifications\n- Generate reports on engagement metrics\n\n**Business Operations:**\n- Sync data between CRM and accounting software\n- Auto-generate invoices from project completion\n- Send weekly team reports\n\n**Personal Productivity:**\n- Save email attachments to cloud storage\n- Create calendar events from emails\n- Track expenses from receipts\n\nWhich area interests you most?',
-					createdAt: new Date('2025-01-07T14:32:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440013',
-					conversationId,
-					role: 'user',
-					content: 'The social media automation sounds great! How complex is it to set up?',
-					createdAt: new Date('2025-01-07T14:45:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440014',
-					conversationId,
-					role: 'assistant',
-					content:
-						"It's actually quite straightforward! For auto-posting to multiple platforms:\n\n**Difficulty: Beginner-friendly**\n\n1. Use an **RSS** trigger to monitor your blog\n2. Add **Twitter**, **LinkedIn**, and **Facebook** nodes\n3. Format your message with expressions\n4. Add conditions to customize per platform\n\nMost of the work is just connecting your accounts. The actual workflow can be set up in under 30 minutes!\n\nWant me to walk you through the specific nodes you'll need?",
-					createdAt: new Date('2025-01-07T14:47:00Z').toISOString(),
-				},
-			],
-			'9b2e4f6a-7d1c-4a8b-9e3f-5c7d2a8b4e6f': [
-				{
-					id: '650e8400-e29b-41d4-a716-446655440021',
-					conversationId,
-					role: 'user',
-					content: "I'm having trouble integrating with the Stripe API. Any tips?",
-					createdAt: new Date('2025-01-06T09:00:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440022',
-					conversationId,
-					role: 'assistant',
-					content:
-						"I'd be happy to help with Stripe integration! What specific issue are you encountering?\n\n**Common Stripe integration patterns in n8n:**\n\n1. **Webhook-based** (Recommended)\n   - Stripe sends events to n8n\n   - Great for payment notifications\n   - Real-time updates\n\n2. **Polling-based**\n   - Check for new data periodically\n   - Good for reports and syncing\n\n3. **Manual trigger**\n   - Run on-demand operations\n   - Create customers, charges, etc.\n\nWhat's your use case?",
-					createdAt: new Date('2025-01-06T09:02:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440023',
-					conversationId,
-					role: 'user',
-					content:
-						'I want to receive notifications when a payment succeeds and create an invoice in my accounting software.',
-					createdAt: new Date('2025-01-06T09:15:00Z').toISOString(),
-				},
-				{
-					id: '650e8400-e29b-41d4-a716-446655440024',
-					conversationId,
-					role: 'assistant',
-					content:
-						"Perfect use case for webhooks! Here's the setup:\n\n**Step 1: n8n Webhook**\n- Add a Webhook node\n- Set method to POST\n- Copy the webhook URL\n\n**Step 2: Stripe Dashboard**\n- Go to Developers → Webhooks\n- Add endpoint with your n8n URL\n- Select `payment_intent.succeeded` event\n\n**Step 3: Process Payment Data**\n- Add a **Function** node to extract payment details\n- Parse customer, amount, currency\n\n**Step 4: Create Invoice**\n- Add your accounting software node (QuickBooks, Xero, etc.)\n- Map payment data to invoice fields\n\n**Step 5: Send Notification**\n- Add Email/Slack node for confirmation\n\nWant the specific code for the Function node?",
-					createdAt: new Date('2025-01-06T09:18:00Z').toISOString(),
-				},
-			],
-		};
-
-		const messages = mockConversations[conversationId];
-
-		if (messages) {
-			return messages;
+	 * Get a single conversation with messages and ready to render timeline of latest messages
+	 * */
+	async getConversation(userId: string, sessionId: string): Promise<ChatHubConversationResponse> {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+		if (!session) {
+			throw new NotFoundError('Chat session not found');
 		}
 
-		throw new NotFoundError(`Conversation not found. ID: ${conversationId}`);
+		const messages = await this.messageRepository.getManyBySessionId(sessionId);
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
+			this.buildMessagesGraph(messages);
+
+		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
+		const activeMessageChain = this.buildActiveMessageChain(messages);
+
+		return {
+			session: {
+				id: session.id,
+				title: session.title,
+				ownerId: session.ownerId,
+				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+				credentialId: session.credentialId,
+				provider: session.provider,
+				model: session.model,
+				workflowId: session.workflowId,
+				createdAt: session.createdAt.toISOString(),
+				updatedAt: session.updatedAt.toISOString(),
+			},
+			conversation: {
+				messages: messagesGraph,
+				rootIds,
+				activeMessageChain,
+			},
+		};
+	}
+
+	private buildMessagesGraph(messages: ChatHubMessage[]) {
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
+
+		for (const message of messages) {
+			messagesGraph[message.id] = {
+				id: message.id,
+				sessionId: message.sessionId,
+				type: message.type,
+				name: message.name,
+				content: message.content,
+				provider: message.provider,
+				model: message.model,
+				workflowId: message.workflowId,
+				executionId: message.executionId,
+				state: message.state,
+				createdAt: message.createdAt.toISOString(),
+				updatedAt: message.updatedAt.toISOString(),
+
+				previousMessageId: message.previousMessageId,
+				turnId: message.turnId,
+				retryOfMessageId: message.retryOfMessageId,
+				revisionOfMessageId: message.revisionOfMessageId,
+				runIndex: message.runIndex,
+
+				responseIds: [],
+				retryIds: [],
+				revisionIds: [],
+			};
+		}
+
+		for (const node of Object.values(messagesGraph)) {
+			if (node.previousMessageId && messagesGraph[node.previousMessageId]) {
+				messagesGraph[node.previousMessageId].responseIds.push(node.id);
+			}
+			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
+				messagesGraph[node.retryOfMessageId].retryIds.push(node.id);
+			}
+			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
+				messagesGraph[node.revisionOfMessageId].revisionIds.push(node.id);
+			}
+		}
+
+		const sortByRunThenTime = (first: ChatMessageId, second: ChatMessageId) => {
+			const a = messagesGraph[first];
+			const b = messagesGraph[second];
+
+			if (a.runIndex !== b.runIndex) {
+				return a.runIndex - b.runIndex;
+			}
+
+			if (a.createdAt !== b.createdAt) {
+				return a.createdAt < b.createdAt ? -1 : 1;
+			}
+
+			return a.id < b.id ? -1 : 1;
+		};
+
+		for (const node of Object.values(messagesGraph)) {
+			node.responseIds.sort(sortByRunThenTime);
+			node.retryIds.sort(sortByRunThenTime);
+			node.revisionIds.sort(sortByRunThenTime);
+		}
+		return messagesGraph;
+	}
+
+	private buildActiveMessageChain(messages: ChatHubMessage[]) {
+		const nodes = new Map(messages.map((m) => [m.id, m]));
+		const activeMessages = messages.filter((m) => m.state === 'active');
+
+		const visited = new Set<string>();
+		const activeMessageChain = [];
+		const latest = activeMessages[activeMessages.length - 1]; // Messages are sorted by createdAt
+
+		let current = latest ? latest.id : null;
+
+		while (current && !visited.has(current)) {
+			activeMessageChain.unshift(current);
+			visited.add(current);
+			current = nodes.get(current)?.previousMessageId ?? null;
+		}
+
+		return activeMessageChain;
+	}
+
+	async deleteAllSessions() {
+		const result = await this.sessionRepository.deleteAll();
+
+		return result;
 	}
 }

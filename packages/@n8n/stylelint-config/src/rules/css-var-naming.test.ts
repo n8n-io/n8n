@@ -43,6 +43,18 @@ describe('css-var-naming rule', () => {
 			expect(result.warnings).toHaveLength(0);
 		});
 
+		it('should accept any reka css vars as valid', async () => {
+			const namespacePattern = `
+				:root {
+					--reka-color-primary: #0d6efd;
+					--reka--button--color--background--primary: #0d6efd;
+					--reka--other: #333;
+				}
+			`;
+			const result = await lintCSS(namespacePattern);
+			expect(result.warnings).toHaveLength(0);
+		});
+
 		it('should accept valid p namespace for primitives', async () => {
 			const namespacePattern = `
 				:root {

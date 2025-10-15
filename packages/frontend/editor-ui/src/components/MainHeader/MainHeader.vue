@@ -26,10 +26,12 @@ import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/folders/folders.types';
 
 import { N8nIcon } from '@n8n/design-system';
+import { useToast } from '@/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 const pushConnection = usePushConnection({ router });
+const toast = useToast();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
@@ -244,6 +246,23 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 function hideGithubButton() {
 	githubButtonHidden.value = true;
 }
+
+async function onWorkflowDeactivated() {
+	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+		try {
+			// Fetch the updated workflow to get the latest settings after backend processing
+			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value.id);
+			workflowsStore.setWorkflow(updatedWorkflow);
+			toast.showToast({
+				title: locale.baseText('mcp.workflowDeactivated.title'),
+				message: locale.baseText('mcp.workflowDeactivated.message'),
+				type: 'info',
+			});
+		} catch (error) {
+			toast.showError(error, locale.baseText('workflowSettings.showError.fetchSettings.title'));
+		}
+	}
+}
 </script>
 
 <template>
@@ -263,6 +282,7 @@ function hideGithubButton() {
 					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
+					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">

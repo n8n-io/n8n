@@ -6,7 +6,7 @@ import { createProjectListItem } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');

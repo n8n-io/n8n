@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import dateformat from 'dateformat';
-import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
+import { MODAL_CONFIRM } from '@/constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';

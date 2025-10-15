@@ -82,11 +82,11 @@ const activeSettings = computed(() => {
 
 <style lang="scss" module>
 .settingsHint {
-	background-color: var(--color-callout-info-background);
+	background-color: var(--callout--color--background--info);
 	border-radius: var(--radius);
 	border: var(--border-width) var(--border-style);
-	border-color: var(--color-callout-info-border);
-	color: var(--color-callout-info-font);
+	border-color: var(--callout--border-color--info);
+	color: var(--callout--color--text--info);
 	margin-top: var(--spacing--2xs);
 	margin-bottom: var(--spacing--xs);
 	margin-left: var(--spacing--sm);
@@ -112,7 +112,7 @@ const activeSettings = computed(() => {
 }
 
 .icon {
-	color: var(--color-callout-info-icon);
+	color: var(--callout--icon-color--info);
 	font-size: var(--font-size--sm);
 	line-height: 1;
 }

@@ -128,15 +128,15 @@ const onInputScroll = (event: WheelEvent) => {
 	position: absolute;
 	border-radius: var(--radius);
 
-	background-color: var(--color-sticky-background);
-	border: 1px solid var(--color-sticky-border);
+	background-color: var(--sticky--color--background);
+	border: 1px solid var(--sticky--border-color);
 
 	.wrapper::after {
 		opacity: 0.15;
 		background: linear-gradient(
 			180deg,
-			var(--color-sticky-background) 0.01%,
-			var(--color-sticky-border)
+			var(--sticky--color--background) 0.01%,
+			var(--sticky--border-color)
 		);
 	}
 }
@@ -170,33 +170,33 @@ const onInputScroll = (event: WheelEvent) => {
 }
 
 .color-2 {
-	--color-sticky-background: var(--color-sticky-background-2);
-	--color-sticky-border: var(--color-sticky-border-2);
+	--sticky--color--background: var(--sticky--color--background--variant-2);
+	--sticky--border-color: var(--sticky--border-color--variant-2);
 }
 
 .color-3 {
-	--color-sticky-background: var(--color-sticky-background-3);
-	--color-sticky-border: var(--color-sticky-border-3);
+	--sticky--color--background: var(--sticky--color--background--variant-3);
+	--sticky--border-color: var(--sticky--border-color--variant-3);
 }
 
 .color-4 {
-	--color-sticky-background: var(--color-sticky-background-4);
-	--color-sticky-border: var(--color-sticky-border-4);
+	--sticky--color--background: var(--sticky--color--background--variant-4);
+	--sticky--border-color: var(--sticky--border-color--variant-4);
 }
 
 .color-5 {
-	--color-sticky-background: var(--color-sticky-background-5);
-	--color-sticky-border: var(--color-sticky-border-5);
+	--sticky--color--background: var(--sticky--color--background--variant-5);
+	--sticky--border-color: var(--sticky--border-color--variant-5);
 }
 
 .color-6 {
-	--color-sticky-background: var(--color-sticky-background-6);
-	--color-sticky-border: var(--color-sticky-border-6);
+	--sticky--color--background: var(--sticky--color--background--variant-6);
+	--sticky--border-color: var(--sticky--border-color--variant-6);
 }
 
 .color-7 {
-	--color-sticky-background: var(--color-sticky-background-7);
-	--color-sticky-border: var(--color-sticky-border-7);
+	--sticky--color--background: var(--sticky--color--background--variant-7);
+	--sticky--border-color: var(--sticky--border-color--variant-7);
 }
 </style>
 

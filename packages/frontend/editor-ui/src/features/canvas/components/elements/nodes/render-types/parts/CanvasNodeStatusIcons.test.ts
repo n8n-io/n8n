@@ -1,14 +1,36 @@
-import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
-import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide, createCanvasProvide } from '@/features/canvas/__tests__/utils';
-import { createTestingPinia } from '@pinia/testing';
+import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/constants';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
+import { createTestingPinia } from '@pinia/testing';
+import type * as actualVueRouter from 'vue-router';
+import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
+import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as typeof actualVueRouter),
+		useRoute: vi.fn(),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
 });
 
+const mockedUseRoute = vi.mocked(useRoute);
+
 describe('CanvasNodeStatusIcons', () => {
+	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+
+	beforeEach(() => {
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
+	});
+
 	it('should render correctly for a pinned node', () => {
 		const { getByTestId } = renderComponent({
 			global: {
@@ -124,6 +146,36 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(getByTestId('canvas-node-status-warning')).toBeInTheDocument();
+	});
+
+	it('should render warning icon when node is not installed', () => {
+		nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+		const { queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+				},
+			},
+		});
+
+		expect(queryByTestId('node-not-installed')).toBeInTheDocument();
+	});
+	it('should not render warning icon when node is not installed and route is demo', () => {
+		mockedUseRoute.mockReturnValue({
+			name: VIEWS.DEMO,
+		} as RouteLocationNormalizedLoadedGeneric);
+		nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+		const { queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+				},
+			},
+		});
+
+		expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
 	});
 
 	describe('status precedence', () => {

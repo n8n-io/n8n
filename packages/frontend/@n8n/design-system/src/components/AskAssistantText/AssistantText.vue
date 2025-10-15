@@ -11,7 +11,7 @@ withDefaults(defineProps<{ text: string; size?: 'small' | 'medium' | 'large' | '
 
 <style lang="scss" module>
 .text {
-	background: var(--color-assistant-highlight-gradient);
+	background: var(--assistant--color--highlight-gradient);
 	-webkit-background-clip: text;
 	background-clip: text;
 	-webkit-text-fill-color: transparent;

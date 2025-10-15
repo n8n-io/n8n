@@ -21,16 +21,16 @@ const cssClasses = {
 
 const resolvablesTheme = EditorView.theme({
 	['.' + cssClasses.validResolvable]: {
-		color: 'var(--color-valid-resolvable-foreground)',
-		backgroundColor: 'var(--color-valid-resolvable-background)',
+		color: 'var(--expression-editor--resolvable--color--foreground--valid)',
+		backgroundColor: 'var(--expression-editor--resolvable--color--background--valid)',
 	},
 	['.' + cssClasses.invalidResolvable]: {
-		color: 'var(--color-invalid-resolvable-foreground)',
-		backgroundColor: 'var(--color-invalid-resolvable-background)',
+		color: 'var(--expression-editor--resolvable--color--foreground--invalid)',
+		backgroundColor: 'var(--expression-editor--resolvable--color--background--invalid)',
 	},
 	['.' + cssClasses.pendingResolvable]: {
-		color: 'var(--color-pending-resolvable-foreground)',
-		backgroundColor: 'var(--color-pending-resolvable-background)',
+		color: 'var(--expression-editor--resolvable--color--foreground--pending)',
+		backgroundColor: 'var(--expression-editor--resolvable--color--background--pending)',
 	},
 });
 

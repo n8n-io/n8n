@@ -266,7 +266,7 @@ watch(
 	}
 
 	.selected:not(:hover).error & {
-		background-color: var(--color-callout-danger-background);
+		background-color: var(--callout--color--background--danger);
 	}
 }
 
@@ -284,7 +284,7 @@ watch(
 		position: absolute;
 		left: var(--spacing--sm);
 		bottom: var(--spacing--sm);
-		border: 2px solid var(--color-canvas-dot);
+		border: 2px solid var(--canvas--dot--color);
 		width: var(--spacing--lg);
 		height: var(--spacing--lg);
 		border-radius: var(--radius--lg);
@@ -295,7 +295,7 @@ watch(
 		position: absolute;
 		left: var(--spacing--sm);
 		top: 0;
-		border-left: 2px solid var(--color-canvas-dot);
+		border-left: 2px solid var(--canvas--dot--color);
 		height: 100%;
 	}
 }

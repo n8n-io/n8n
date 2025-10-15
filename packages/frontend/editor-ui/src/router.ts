@@ -20,12 +20,14 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/features/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from './composables/useCalloutHelpers';
+import { useRecentResources } from '@/features/ui/commandBar/composables/useRecentResources';
 
-const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
+const ChangePasswordView = async () => await import('@/features/auth/views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
 const EntityNotFound = async () => await import('./views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('./views/EntityUnAuthorised.vue');
-const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
+const ForgotMyPasswordView = async () =>
+	await import('@/features/auth/views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const LogsPanel = async () => await import('@/features/logs/components/LogsPanel.vue');
@@ -38,16 +40,17 @@ const WorkflowExecutionsPreview = async () =>
 	await import('@/components/executions/workflow/WorkflowExecutionsPreview.vue');
 const SettingsView = async () => await import('./views/SettingsView.vue');
 const SettingsLdapView = async () => await import('@/features/sso/views/SettingsLdapView.vue');
-const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
-const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
+const SettingsPersonalView = async () =>
+	await import('@/features/auth/views/SettingsPersonalView.vue');
+const SettingsUsersView = async () => await import('@/features/users/views/SettingsUsersView.vue');
 const SettingsCommunityNodesView = async () =>
-	await import('./views/SettingsCommunityNodesView.vue');
-const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
+	await import('@/features/communityNodes/views/SettingsCommunityNodesView.vue');
+const SettingsApiView = async () => await import('@/features/apiKeys/views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () =>
 	await import('@/features/logStreaming.ee/views/SettingsLogStreamingView.vue');
-const SetupView = async () => await import('./views/SetupView.vue');
-const SigninView = async () => await import('./views/SigninView.vue');
-const SignupView = async () => await import('./views/SignupView.vue');
+const SetupView = async () => await import('@/features/auth/views/SetupView.vue');
+const SigninView = async () => await import('@/features/auth/views/SigninView.vue');
+const SignupView = async () => await import('@/features/auth/views/SignupView.vue');
 const TemplatesCollectionView = async () =>
 	await import('@/features/templates/views/TemplatesCollectionView.vue');
 const TemplatesWorkflowView = async () =>
@@ -60,13 +63,13 @@ const VariablesView = async () =>
 	await import('@/features/environments.ee/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/sso/views/SettingsSso.vue');
-const SignoutView = async () => await import('@/views/SignoutView.vue');
+const SignoutView = async () => await import('@/features/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
 	await import('@/features/externalSecrets/views/SettingsExternalSecrets.vue');
-const WorkerView = async () => await import('./views/WorkerView.vue');
+const WorkerView = async () => await import('@/features/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
@@ -903,6 +906,9 @@ router.afterEach((to, from) => {
 			templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
 		}
 		telemetry.page(to);
+
+		const { trackResourceOpened } = useRecentResources();
+		trackResourceOpened(to);
 	} catch (failure) {
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
