@@ -80,7 +80,7 @@ export function isJSONRPCRequest(value: unknown): value is JSONRPCRequest {
 
 	if ('method' in value && typeof value.method !== 'string') return false;
 
-	if ('params' in value && !isRecord(value.params)) return false;
+	if ('params' in value && value.params !== undefined && !isRecord(value.params)) return false;
 
 	if (
 		'id' in value &&

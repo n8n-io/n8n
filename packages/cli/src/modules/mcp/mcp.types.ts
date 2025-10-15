@@ -64,6 +64,7 @@ export type UserConnectedToMCPEventPayload = {
 };
 
 export type UserCalledMCPToolEventPayload = {
+	user_id?: string;
 	tool_name: string;
 	parameters?: Record<string, unknown>;
 };

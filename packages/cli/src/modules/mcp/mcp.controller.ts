@@ -10,6 +10,7 @@ import {
 	USER_CONNECTED_TO_MCP_EVENT,
 	USER_CALLED_MCP_TOOL_EVENT,
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
+	INTERNAL_SERVER_ERROR_MESSAGE,
 } from './mcp.constants';
 import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
@@ -87,6 +88,7 @@ export class McpController {
 				const toolName = getToolName(body);
 				const parameters = getToolArguments(body);
 				this.trackMCPEvent('tool_call', {
+					user_id: req.user.id,
 					tool_name: toolName,
 					parameters,
 				});
@@ -97,7 +99,7 @@ export class McpController {
 				this.trackMCPEvent('connected', {
 					...telemetryPayload,
 					mcp_connection_status: 'error',
-					error: error.message,
+					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 			// Return JSON-RPC error response
@@ -106,7 +108,7 @@ export class McpController {
 					jsonrpc: '2.0',
 					error: {
 						code: -32603,
-						message: 'Internal server error',
+						message: INTERNAL_SERVER_ERROR_MESSAGE,
 					},
 					id: null,
 				});
