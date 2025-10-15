@@ -87,14 +87,14 @@
 	--node--color--background: var(--p--color--gray-740);
 	--node--color--background--executing: var(--p--color--gray-670);
 	--node--color--background--executing-1: var(--p--color--gray-670);
-	--node--border-color--pinned: var(--p--color--secondary-370);
+	--node--border-color--pinned: var(--color--purple-500);
 	--node--type-main--color: var(--p--color--gray-420);
 
 	// Sticky
 	--sticky--color--background: var(--color--yellow-800);
 	--sticky--border-color: var(--color--yellow-700);
 	--sticky--color--text: var(--p--color--gray-040);
-	--sticky--code--color--text: var(--p--color--secondary-170);
+	--sticky--code--color--text: var(--color--purple-300);
 	--sticky--code--color--background: var(--p--color--gray-70-a-010);
 
 	--sticky--color--background--variant-1: var(--color--yellow-800);
@@ -107,8 +107,8 @@
 	--sticky--border-color--variant-4: var(--color--green-700);
 	--sticky--color--background--variant-5: var(--color--blue-800);
 	--sticky--border-color--variant-5: var(--color--blue-700);
-	--sticky--color--background--variant-6: var(--p--color--secondary-720);
-	--sticky--border-color--variant-6: var(--p--color--secondary-570);
+	--sticky--color--background--variant-6: var(--color--purple-900);
+	--sticky--border-color--variant-6: var(--color--purple-700);
 	--sticky--color--background--variant-7: var(--p--color--gray-740);
 	--sticky--border-color--variant-7: var(--p--color--gray-670);
 
@@ -137,7 +137,7 @@
 	--expression-editor--color--background: var(--p--color--gray-800);
 	--expression-editor--modal--color--background: var(--p--color--gray-800);
 	--expression-editor--syntax-example--color: var(--p--color--gray-670);
-	--autocomplete--item--color--selected: var(--p--color--secondary-270);
+	--autocomplete--item--color--selected: var(--color--purple-400);
 	--autocomplete--section-header--border-color: var(--p--color--gray-540);
 	--autocomplete--infobox--color--background: var(--p--color--gray-780);
 	--autocomplete--infobox--examples--border-color: var(--p--color--gray-670);
@@ -157,11 +157,11 @@
 	--code-tags--heading--color: #79b8ff;
 	--code-tags--invalid--color: #f97583;
 	--code-tags--comment--color: #6a737d;
-	--json--color: var(--p--color--secondary-270);
+	--json--color: var(--color--purple-400);
 	--json--null--color: var(--color--danger);
 	--json--boolean--color: var(--color--green-600);
 	--json--number--color: var(--color--green-600);
-	--json--string--color: var(--p--color--secondary-270);
+	--json--string--color: var(--color--purple-400);
 	--json--key--color: var(--color--text--shade-1);
 	--json--brackets--color: var(--p--color--gray-670);
 	--json--brackets--color--hover: var(--color--blue-400);
@@ -180,7 +180,7 @@
 	--code--indentation-marker--color: var(--p--color--gray-740);
 	--code--indentation-marker--color--active: var(--p--color--gray-670);
 	--line-break--color: var(--p--color--gray-420);
-	--code--line-break--color: var(--p--color--secondary-370);
+	--code--line-break--color: var(--color--purple-500);
 
 	// Tag
 	--tag--color--background: var(--p--color--gray-670);
@@ -257,7 +257,7 @@
 	--execution-selector--color--background: var(--color--background--shade-2);
 	--execution-selector--color--text: var(--color--text--tint-3);
 	--execution-select-all--color--text: var(--color--text);
-	--execution-card--color--text--waiting: var(--p--color--secondary-370);
+	--execution-card--color--text--waiting: var(--color--purple-500);
 
 	// NDV
 	--run-data--color--background: var(--p--color--gray-800);
@@ -287,7 +287,7 @@
 	--callout--color--text--danger: var(--p--color--white);
 	--callout--icon-color--danger: var(--color--danger);
 	--callout--border-color--secondary: var(--color--secondary);
-	--callout--color--background--secondary: var(--p--color--secondary-470-a-025);
+	--callout--color--background--secondary: var(--color--purple-alpha-200);
 	--callout--color--text--secondary: var(--p--color--white);
 
 	// Dialogs and overlays
@@ -517,8 +517,8 @@
 		var(--node-type--supplemental--label--color--l)
 	);
 	--node--configurable-name--color: var(--color--text--shade-1);
-	--link--color--secondary: var(--p--color--secondary-270);
-	--link--color--secondary--hover: var(--p--color--secondary-370);
+	--link--color--secondary: var(--color--purple-400);
+	--link--color--secondary--hover: var(--color--purple-500);
 	// Params
 	--icon--color: var(--color--text--tint-1);
 	--icon--color--hover: var(--p--color--primary-320);
@@ -528,7 +528,7 @@
 	--menu--color--background--active: var(--p--color--gray-670);
 
 	/* Ag Grid */
-	--grid--row--color--background--selected: var(--p--color--secondary-720);
+	--grid--row--color--background--selected: var(--color--purple-900);
 
 	--command-bar-item--color--background--hover: var(--color--background--light-1);
 	--command-bar--shadow: 0 15px 45px 0 hsla(0, 0%, 0%, 0.25), 0 5px 10px 0 hsla(0, 0%, 0%, 0.15);

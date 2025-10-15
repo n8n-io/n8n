@@ -55,17 +55,21 @@
 	--p--color--primary-320-a-035: hsla(7, 100%, 68%, 0.35);
 	--p--color--primary-320-a-050: hsla(7, 100%, 68%, 0.5);
 
-	// Secondary color
-	--p--color--secondary-720: hsl(247, 24%, 28%);
-	--p--color--secondary-570: hsl(247, 49%, 43%);
-	--p--color--secondary-470: hsl(247, 49%, 53%); // Base
-	--p--color--secondary-370: hsl(247, 49%, 63%);
-	--p--color--secondary-270: hsl(247, 49%, 73%);
-	--p--color--secondary-170: hsl(247, 49%, 83%);
-	--p--color--secondary-070: hsl(247, 49%, 93%);
+	// Purple
+	--color--purple-50: hsl(247, 49%, 98%);
+	--color--purple-100: hsl(247, 49%, 95%);
+	--color--purple-200: hsl(247, 49%, 93%);
+	--color--purple-300: hsl(247, 49%, 83%);
+	--color--purple-400: hsl(247, 49%, 73%);
+	--color--purple-500: hsl(247, 49%, 63%);
+	--color--purple-600: hsl(247, 49%, 53%);
+	--color--purple-700: hsl(247, 49%, 43%);
+	--color--purple-800: hsl(247, 49%, 37%);
+	--color--purple-900: hsl(247, 49%, 30%);
+	--color--purple-950: hsl(247, 49%, 21%);
 
-	--p--color--secondary-470-a-010: hsla(247, 49%, 53%, 0.1);
-	--p--color--secondary-470-a-025: hsla(247, 49%, 53%, 0.25);
+	--color--purple-alpha-100: hsla(247, 49%, 53%, 0.1);
+	--color--purple-alpha-200: hsla(247, 49%, 53%, 0.25);
 
 	// Green
 	--color--green-50: hsl(144, 60%, 95%);

@@ -30,7 +30,7 @@ export const Primary = Template(
 );
 
 export const Secondary = Template(
-	"<color-circles :colors=\"['--p--color--secondary-720','--p--color--secondary-570','--p--color--secondary-470','--p--color--secondary-370','--p--color--secondary-270','--p--color--secondary-170','--p--color--secondary-070']\" />",
+	"<color-circles :colors=\"['--color--purple-900','--color--purple-700','--color--purple-600','--color--purple-500','--color--purple-400','--color--purple-300','--color--purple-200']\" />",
 );
 
 export const AlternateA = Template(
