@@ -127,6 +127,10 @@ COPY --from=python-runner-builder --chown=root:root /app/task-runner-python /opt
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 
+RUN rm -f /bin/sh /bin/ash /bin/busybox /usr/bin/wget /usr/bin/curl \
+          /sbin/apk /bin/nc /bin/netcat /usr/bin/nc /usr/bin/netcat \
+          /bin/bash /usr/bin/bash /bin/dash /usr/bin/dash
+
 USER runner
 
 EXPOSE 5680/tcp
