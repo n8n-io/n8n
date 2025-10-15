@@ -410,6 +410,11 @@ const previousConversationSummary = `
 {previousSummary}
 </previous_summary>`;
 
+const workflowValidationReport = `
+<workflow_validation_report>
+{workflowValidation}
+</workflow_validation_report>`;
+
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
@@ -429,6 +434,10 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: previousConversationSummary,
+			},
+			{
+				type: 'text',
+				text: workflowValidationReport,
 				cache_control: { type: 'ephemeral' },
 			},
 		],
