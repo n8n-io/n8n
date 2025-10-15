@@ -7,7 +7,7 @@ const EDIT_FIELDS_NAMES = [
 	'Edit Fields3',
 	'Edit Fields4',
 	'Edit Fields5',
-] as const;
+];
 
 test.describe('Subworkflow Extraction', () => {
 	test.beforeEach(async ({ n8n }) => {
