@@ -22,7 +22,7 @@ const Template =
 	});
 
 export const Gray = Template(
-	"<color-circles :colors=\"['--p--color--gray-820', '--p--color--gray-800', '--p--color--gray-780', '--p--color--gray-740', '--p--color--gray-710', '--p--color--gray-670', '--p--color--gray-540', '--p--color--gray-490', '--p--color--gray-420', '--p--color--gray-320', '--p--color--gray-200', '--p--color--gray-120', '--p--color--gray-070', '--p--color--gray-040', '--p--color--gray-030', '--p--color--gray-025', '--p--color--gray-010', '--p--color--white']\" />",
+	"<color-circles :colors=\"['--color--gray-950', '--color--gray-900', '--color--gray-850', '--color--gray-800', '--color--gray-700', '--color--gray-600', '--color--gray-500', '--color--gray-400', '--color--gray-300', '--color--gray-250', '--color--gray-200', '--color--gray-150', '--color--gray-125', '--color--gray-100', '--color--gray-100', '--color--gray-50', '--color--gray-white']\" />",
 );
 
 export const Primary = Template(
@@ -57,4 +57,4 @@ export const AlternateF = Template('<color-circles :colors="[\'--color--green-li
 
 export const AlternateG = Template('<color-circles :colors="[\'--color--slate-700\']" />');
 
-export const AlternateH = Template('<color-circles :colors="[\'--p--color--alt-h-310\']" />');
+export const AlternateH = Template('<color-circles :colors="[\'--color--red-400\']" />');
