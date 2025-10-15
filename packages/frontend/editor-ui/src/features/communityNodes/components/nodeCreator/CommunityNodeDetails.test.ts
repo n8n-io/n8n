@@ -61,7 +61,7 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/stores/communityNodes.store', () => ({
+vi.mock('../../communityNodes.store', () => ({
 	useCommunityNodesStore: vi.fn(() => ({
 		installPackage,
 	})),
@@ -78,7 +78,7 @@ vi.mock('@/composables/useToast', () => ({
 	})),
 }));
 
-vi.mock('../composables/useViewStacks', () => ({
+vi.mock('@/components/Node/NodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(() => ({
 		activeViewStack: {
 			communityNodeDetails: {

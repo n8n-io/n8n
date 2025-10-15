@@ -6,12 +6,12 @@ import CommunityNodeFooter from './CommunityNodeFooter.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { vi } from 'vitest';
 import { ref } from 'vue';
-import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
+import type { ExtendedPublicInstalledPackage } from '../../communityNodes.utils';
 
 // Mock the useInstalledCommunityPackage composable
 const mockInstalledPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
 
-vi.mock('@/composables/useInstalledCommunityPackage', () => ({
+vi.mock('../../composables/useInstalledCommunityPackage', () => ({
 	useInstalledCommunityPackage: vi.fn(() => ({
 		installedPackage: mockInstalledPackage,
 		isUpdateCheckAvailable: ref(false),

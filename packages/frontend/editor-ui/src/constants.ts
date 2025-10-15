@@ -64,8 +64,6 @@ export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
-export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
-export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
@@ -88,12 +86,6 @@ export const CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY = 'chatHubSideMenuDrawer';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 
-export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
-	UNINSTALL: 'uninstall',
-	UPDATE: 'update',
-	VIEW_DOCS: 'view-documentation',
-};
-
 // breakpoints
 export const BREAKPOINT_SM = 768;
 export const BREAKPOINT_MD = 992;
@@ -108,12 +100,7 @@ export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`
 export const SCHEMA_PREVIEW_DOCS_URL = `https://${DOCS_DOMAIN}/data/schema-preview/`;
 export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
-export const NPM_KEYWORD_SEARCH_URL =
-	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
-export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;

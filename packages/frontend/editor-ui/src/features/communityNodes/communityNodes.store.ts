@@ -5,7 +5,7 @@ import type { PublicInstalledPackage } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import { computed, ref } from 'vue';
 import { isAuthenticated } from '@/utils/rbac/checks';
-import type { CommunityPackageMap } from '@/Interface';
+import type { CommunityPackageMap } from './communityNodes.types';
 
 const LOADER_DELAY = 300;
 
