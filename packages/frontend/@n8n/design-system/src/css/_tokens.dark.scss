@@ -99,8 +99,8 @@
 
 	--sticky--color--background--variant-1: var(--color--yellow-800);
 	--sticky--border-color--variant-1: var(--color--yellow-700);
-	--sticky--color--background--variant-2: var(--p--color--alt-b-780);
-	--sticky--border-color--variant-2: var(--p--color--alt-b-680);
+	--sticky--color--background--variant-2: var(--color--gold-800);
+	--sticky--border-color--variant-2: var(--color--gold-700);
 	--sticky--color--background--variant-3: var(--color--red-900);
 	--sticky--border-color--variant-3: var(--color--red-800);
 	--sticky--color--background--variant-4: var(--p--color--alt-a-800);
@@ -268,8 +268,8 @@
 	--ndv--back--color--text: var(--p--color--white);
 
 	// Notice
-	--notice--border-color--warning: var(--p--color--alt-b-180);
-	--notice--color--background--warning: var(--p--color--alt-b-430-a-020);
+	--notice--border-color--warning: var(--color--gold-200);
+	--notice--color--background--warning: var(--color--gold-alpha-020);
 	--notice--color--text: var(--p--color--white);
 
 	// Callout
@@ -280,7 +280,7 @@
 	--callout--color--background--success: var(--p--color--alt-a-800);
 	--callout--color--text--success: var(--p--color--white);
 	--callout--border-color--warning: var(--color--warning);
-	--callout--color--background--warning: var(--p--color--alt-b-780);
+	--callout--color--background--warning: var(--color--gold-800);
 	--callout--color--text--warning: var(--p--color--white);
 	--callout--border-color--danger: var(--color--danger);
 	--callout--color--background--danger: var(--color--red-900);

@@ -66,13 +66,13 @@
 
 	// Warning
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--warning--shade-1: var(--color-warning-shade-1, var(--p--color--alt-b-530));
+	--color--warning--shade-1: var(--color-warning-shade-1, var(--color--gold-500));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--warning: var(--color-warning, var(--p--color--alt-b-430));
+	--color--warning: var(--color-warning, var(--color--gold-400));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--warning--tint-1: var(--color-warning-tint-1, var(--p--color--alt-b-180));
+	--color--warning--tint-1: var(--color-warning-tint-1, var(--color--gold-200));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--warning--tint-2: var(--color-warning-tint-2, var(--p--color--alt-b-030));
+	--color--warning--tint-2: var(--color-warning-tint-2, var(--color--gold-50));
 
 	// Danger
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -236,8 +236,8 @@
 
 	--sticky--color--background--variant-1: var(--sticky--color--background);
 	--sticky--border-color--variant-1: var(--sticky--border-color);
-	--sticky--color--background--variant-2: var(--p--color--alt-b-130);
-	--sticky--border-color--variant-2: var(--p--color--alt-b-280);
+	--sticky--color--background--variant-2: var(--color--gold-100);
+	--sticky--border-color--variant-2: var(--color--gold-300);
 	--sticky--color--background--variant-3: var(--color--red-100);
 	--sticky--border-color--variant-3: var(--color--red-250);
 	--sticky--color--background--variant-4: var(--p--color--alt-a-100);
@@ -452,7 +452,7 @@
 	--execution-card--border-color--success: var(--p--color--alt-a-300);
 	--execution-card--border-color--error: var(--color--red-300);
 	--execution-card--border-color--waiting: var(--p--color--secondary-170);
-	--execution-card--border-color--running: var(--p--color--alt-b-180);
+	--execution-card--border-color--running: var(--color--gold-200);
 	--execution-card--border-color--unknown: var(--p--color--gray-120);
 	--execution-card--color--background: var(--color--foreground--tint-2);
 	--execution-card--color--background--hover: var(--color--foreground--tint-1);

@@ -79,17 +79,19 @@
 	--p--color--alt-a-600-a-015: hsla(150, 60%, 40%, 0.15);
 	--p--color--alt-a-600-a-025: hsla(150, 60%, 40%, 0.25);
 
-	// Color Alternate B
-	--p--color--alt-b-780: hsl(36, 42%, 22%);
-	--p--color--alt-b-680: hsl(36, 42%, 32%);
-	--p--color--alt-b-530: hsl(36, 77%, 47%);
-	--p--color--alt-b-430: hsl(36, 77%, 57%); // Base
-	--p--color--alt-b-280: hsl(36, 77%, 72%);
-	--p--color--alt-b-180: hsl(36, 77%, 82%);
-	--p--color--alt-b-130: hsl(36, 77%, 87%);
-	--p--color--alt-b-030: hsl(36, 77%, 97%);
+	// Gold
+	--color--gold-50: hsl(36, 77%, 97%);
+	--color--gold-100: hsl(36, 77%, 87%);
+	--color--gold-200: hsl(36, 77%, 82%);
+	--color--gold-300: hsl(36, 77%, 72%);
+	--color--gold-400: hsl(36, 77%, 57%);
+	--color--gold-500: hsl(36, 77%, 47%);
+	--color--gold-600: hsl(36, 77%, 40%);
+	--color--gold-700: hsl(36, 77%, 32%);
+	--color--gold-800: hsl(36, 77%, 22%);
+	--color--gold-900: hsl(36, 77%, 10%);
 
-	--p--color--alt-b-430-a-020: hsla(36, 77%, 57%, 0.2);
+	--color--gold-alpha-020: hsla(36, 77%, 57%, 0.2);
 
 	// Red
 	--color--red-50: hsl(356, 83%, 97%);
