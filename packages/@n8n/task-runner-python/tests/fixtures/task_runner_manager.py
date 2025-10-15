@@ -14,10 +14,9 @@ from src.constants import (
 
 from tests.fixtures.test_constants import (
     GRACEFUL_SHUTDOWN_TIMEOUT,
-    HEALTH_CHECK_PORT,
-    LOCAL_TASK_BROKER_URL,
     TASK_TIMEOUT,
 )
+from tests.integration.test_port import find_free_port
 
 
 class TaskRunnerManager:
@@ -25,7 +24,7 @@ class TaskRunnerManager:
 
     def __init__(
         self,
-        task_broker_url: str = LOCAL_TASK_BROKER_URL,
+        task_broker_url: str | None = None,
         graceful_shutdown_timeout: float | None = None,
         custom_env: dict[str, str] | None = None,
     ):
@@ -35,6 +34,7 @@ class TaskRunnerManager:
         self.subprocess: asyncio.subprocess.Process | None = None
         self.stdout_buffer: list[str] = []
         self.stderr_buffer: list[str] = []
+        self.health_check_port = find_free_port()
 
     async def start(self):
         project_root = Path(__file__).parent.parent.parent
@@ -45,7 +45,7 @@ class TaskRunnerManager:
         env_vars[ENV_TASK_BROKER_URI] = self.task_broker_url
         env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
         env_vars[ENV_HEALTH_CHECK_SERVER_ENABLED] = "true"
-        env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = str(HEALTH_CHECK_PORT)
+        env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = str(self.health_check_port)
         if self.graceful_shutdown_timeout is not None:
             env_vars[ENV_GRACEFUL_SHUTDOWN_TIMEOUT] = str(
                 self.graceful_shutdown_timeout
@@ -67,6 +67,9 @@ class TaskRunnerManager:
 
     def is_running(self) -> bool:
         return self.subprocess is not None and self.subprocess.returncode is None
+
+    def get_health_check_url(self) -> str:
+        return f"http://localhost:{self.health_check_port}"
 
     async def stop(self) -> None:
         if not self.subprocess or self.subprocess.returncode is not None:

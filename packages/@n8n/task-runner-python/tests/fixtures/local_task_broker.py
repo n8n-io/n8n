@@ -9,9 +9,9 @@ from src.nanoid import nanoid
 
 from tests.fixtures.test_constants import (
     TASK_RESPONSE_WAIT,
-    LOCAL_TASK_BROKER_PORT,
     LOCAL_TASK_BROKER_WS_PATH,
 )
+from tests.integration.test_port import find_free_port
 
 TaskId = str
 TaskSettings = dict[str, Any]
@@ -25,7 +25,7 @@ class ActiveTask:
 
 class LocalTaskBroker:
     def __init__(self):
-        self.port = LOCAL_TASK_BROKER_PORT
+        self.port = find_free_port()
         self.app = web.Application()
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
@@ -43,6 +43,9 @@ class LocalTaskBroker:
         self.site = web.TCPSite(self.runner, "localhost", self.port)
         await self.site.start()
         print(f"Local task broker started on port {self.port}")
+
+    def get_url(self) -> str:
+        return f"http://localhost:{self.port}"
 
     async def stop(self) -> None:
         for ws in self.connections.values():
