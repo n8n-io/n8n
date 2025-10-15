@@ -312,16 +312,16 @@ describe('ProjectSettings', () => {
 	});
 
 	it('renders core form elements and initializes state', async () => {
-		const { getByTestId, queryByTestId } = renderComponent();
+		const { getByTestId } = renderComponent();
 		await nextTick();
 		expect(getByTestId('project-settings-container')).toBeInTheDocument();
 		const nameInput = getByTestId('project-settings-name-input');
 		const descriptionInput = getByTestId('project-settings-description-input');
 		expect(nameInput).toBeInTheDocument();
 		expect(descriptionInput).toBeInTheDocument();
-		// Save/Cancel are not rendered until form is dirty
-		expect(queryByTestId('project-settings-save-button')).toBeNull();
-		expect(queryByTestId('project-settings-cancel-button')).toBeNull();
+		// Save/Cancel are always rendered but disabled when clean
+		expect(getByTestId('project-settings-save-button')).toBeDisabled();
+		expect(getByTestId('project-settings-cancel-button')).toBeDisabled();
 		const actualName = getInput(nameInput);
 		const actualDesc = getTextarea(descriptionInput);
 		expect(actualName.value).toBe('Test Project');
@@ -331,7 +331,7 @@ describe('ProjectSettings', () => {
 	describe('Form interactions', () => {
 		it('marks dirty, cancels reset, and saves via Enter and button', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId, queryByTestId } = renderComponent();
+			const { getByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
 			const actualInput = getInput(nameInput);
 
@@ -341,9 +341,9 @@ describe('ProjectSettings', () => {
 			expect(cancelBtn1).toBeEnabled();
 			await userEvent.click(cancelBtn1);
 			expect(actualInput.value).toBe('Test Project');
-			// Buttons disappear when clean
-			expect(queryByTestId('project-settings-cancel-button')).toBeNull();
-			expect(queryByTestId('project-settings-save-button')).toBeNull();
+			// Buttons are disabled when clean
+			expect(getByTestId('project-settings-cancel-button')).toBeDisabled();
+			expect(getByTestId('project-settings-save-button')).toBeDisabled();
 
 			// Save via Enter
 			await userEvent.type(actualInput, ' - Updated');
@@ -397,7 +397,7 @@ describe('ProjectSettings', () => {
 	describe('Save state and validation', () => {
 		it('maintains state after save and validation toggles', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId, queryByTestId } = renderComponent();
+			const { getByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
 			const actualInput = getInput(nameInput);
 
@@ -410,9 +410,9 @@ describe('ProjectSettings', () => {
 			await userEvent.click(saveButton);
 			await nextTick();
 			expect(updateSpy).toHaveBeenCalled();
-			// Buttons removed when clean again
-			expect(queryByTestId('project-settings-cancel-button')).toBeNull();
-			expect(queryByTestId('project-settings-save-button')).toBeNull();
+			// Buttons disabled when clean again
+			expect(getByTestId('project-settings-cancel-button')).toBeDisabled();
+			expect(getByTestId('project-settings-save-button')).toBeDisabled();
 		});
 	});
 
@@ -438,14 +438,11 @@ describe('ProjectSettings', () => {
 		});
 		it('filters members via search and saves', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 			await nextTick();
 			expect(getByTestId('members-count').textContent).toBe('1');
-			const searchContainer = getByTestId('project-members-search');
-			const searchInput = searchContainer.querySelector('input')!;
-			await userEvent.type(searchInput, 'john@example.com');
-			await new Promise((r) => setTimeout(r, 350));
-			expect(getByTestId('members-count').textContent).toBe('1');
+			// Search input only appears with 10+ members, so it shouldn't be visible with 1 member
+			expect(queryByTestId('project-members-search')).toBeNull();
 			// Make a minor change to mark the form dirty so save is enabled
 			const nameInput = getByTestId('project-settings-name-input');
 			await userEvent.type(nameInput.querySelector('input')!, ' ');
@@ -510,8 +507,9 @@ describe('ProjectSettings', () => {
 				expect.objectContaining({ project_id: '123', target_user_id: '1' }),
 			);
 
-			// Save button is not shown (no form edits)
-			expect(queryByTestId('project-settings-save-button')).toBeNull();
+			// Buttons disabled when no form edits
+			expect(queryByTestId('project-settings-save-button')).toBeDisabled();
+			expect(queryByTestId('project-settings-cancel-button')).toBeDisabled();
 		});
 
 		it('saves only name and description with Save button', async () => {
@@ -541,6 +539,19 @@ describe('ProjectSettings', () => {
 		});
 
 		it('resets pagination to first page on search', async () => {
+			// Set up project with 10+ members to make search visible
+			const mockProjectWith10Members: Project = {
+				...projectsStore.currentProject!,
+				relations: Array.from({ length: 10 }, (_, i) => ({
+					id: String(i + 1),
+					firstName: `User${i + 1}`,
+					lastName: 'Test',
+					email: `user${i + 1}@example.com`,
+					role: 'project:editor',
+				})),
+			};
+			projectsStore.currentProject = mockProjectWith10Members;
+
 			const wrapper = renderComponent();
 			await nextTick();
 			emitters.projectMembersTable.emit('update:options', {
