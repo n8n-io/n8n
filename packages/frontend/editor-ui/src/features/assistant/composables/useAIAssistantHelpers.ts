@@ -317,7 +317,7 @@ export const useAIAssistantHelpers = () => {
 				return '<EMPTY>';
 			}
 
-			// For primitives (string, number, boolean, null), check string length
+			// For string primitives, check string length
 			if (typeof value === 'string') {
 				if (value.length <= MAX_VALUE_LENGTH) {
 					return value;
