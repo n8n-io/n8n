@@ -332,7 +332,7 @@ export class ChatHubService {
 			session = await this.sessionRepository.createChatSession({
 				id: payload.sessionId,
 				ownerId: user.id,
-				title: 'New Chat',
+				title: payload.message, // first user message as the title for now
 				...usedModel,
 			});
 		}
