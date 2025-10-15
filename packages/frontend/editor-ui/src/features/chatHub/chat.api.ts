@@ -7,8 +7,12 @@ import type {
 	ChatHubConversationsResponse,
 	ChatHubConversationResponse,
 	ChatHubRegenerateMessageRequest,
+	ChatHubEditMessageRequest,
 } from '@n8n/api-types';
 import type { StructuredChunk } from './chat.types';
+
+// Workflows stream data as newline separated JSON objects (jsonl)
+const STREAM_SEPARATOR = '\n';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
@@ -32,7 +36,25 @@ export function sendMessageApi(
 		onMessageUpdated,
 		onDone,
 		onError,
-		'\n',
+		STREAM_SEPARATOR,
+	);
+}
+
+export function editMessageApi(
+	ctx: IRestApiContext,
+	payload: ChatHubEditMessageRequest,
+	onMessageUpdated: (data: StructuredChunk) => void,
+	onDone: () => void,
+	onError: (e: Error) => void,
+) {
+	void streamRequest<StructuredChunk>(
+		ctx,
+		'/chat/edit',
+		payload,
+		onMessageUpdated,
+		onDone,
+		onError,
+		STREAM_SEPARATOR,
 	);
 }
 
@@ -50,7 +72,7 @@ export function regenerateMessageApi(
 		onMessageUpdated,
 		onDone,
 		onError,
-		'\n',
+		STREAM_SEPARATOR,
 	);
 }
 

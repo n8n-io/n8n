@@ -268,16 +268,7 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-async function handleUpdateMessage(message: ChatMessageType) {
-	if (message.type === 'error') {
-		return;
-	}
-
-	await chatStore.updateChatMessage(sessionId.value, message.id, message.text);
-	editingMessageId.value = undefined;
-}
-
-async function handleRegenerateMessage(message: ChatMessageType) {
+function handleEditMessage(message: ChatMessageType) {
 	if (chatStore.isResponding || message.type === 'error' || !selectedModel.value) {
 		return;
 	}
@@ -288,7 +279,27 @@ async function handleRegenerateMessage(message: ChatMessageType) {
 		return;
 	}
 
-	await chatStore.regenerateMessage(sessionId.value, message.id, selectedModel.value, {
+	chatStore.editMessage(sessionId.value, message.id, message.text, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	});
+	editingMessageId.value = undefined;
+}
+
+function handleRegenerateMessage(message: ChatMessageType) {
+	if (chatStore.isResponding || message.type === 'error' || !selectedModel.value) {
+		return;
+	}
+
+	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+
+	if (!credentialsId) {
+		return;
+	}
+
+	chatStore.regenerateMessage(sessionId.value, message.id, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -351,7 +362,7 @@ async function handleRegenerateMessage(message: ChatMessageType) {
 					:is-streaming="chatStore.streamingMessageId === message.id"
 					@start-edit="handleStartEditMessage(message.id)"
 					@cancel-edit="handleCancelEditMessage"
-					@update="handleUpdateMessage"
+					@update="handleEditMessage"
 					@regenerate="handleRegenerateMessage"
 				/>
 			</div>

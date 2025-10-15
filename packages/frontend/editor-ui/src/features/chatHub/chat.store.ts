@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
 	sendMessageApi,
+	editMessageApi,
 	regenerateMessageApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
@@ -199,6 +200,39 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
+	function editMessage(
+		sessionId: ChatSessionId,
+		editId: ChatMessageId,
+		message: string,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
+	) {
+		const messageId = uuidv4();
+		const replyId = uuidv4();
+
+		addUserMessage(sessionId, message, messageId);
+
+		// TODO: remove descendants of the message being edited
+		// or better yet, turn the frontend chat into a graph and
+		// maintain the visible active chain, and this would just switch to that branch.
+
+		editMessageApi(
+			rootStore.restApiContext,
+			{
+				model,
+				messageId,
+				sessionId,
+				replyId,
+				editId,
+				message,
+				credentials,
+			},
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
+			onStreamDone,
+			onStreamError,
+		);
+	}
+
 	function regenerateMessage(
 		sessionId: ChatSessionId,
 		retryId: ChatMessageId,
@@ -242,10 +276,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: call the endpoint
 	}
 
-	async function updateChatMessage(_sessionId: string, _messageId: string, _content: string) {
-		// TODO: call the endpoint
-	}
-
 	return {
 		models,
 		loadingModels,
@@ -255,12 +285,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessions,
 		fetchChatModels,
 		sendMessage,
+		editMessage,
 		regenerateMessage,
 		addUserMessage,
 		fetchSessions,
 		fetchMessages,
 		renameSession,
 		deleteSession,
-		updateChatMessage,
 	};
 });

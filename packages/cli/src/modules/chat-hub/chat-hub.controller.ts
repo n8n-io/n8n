@@ -61,7 +61,7 @@ export class ChatHubController {
 		} catch (executionError: unknown) {
 			assert(executionError instanceof Error);
 
-			this.logger.error('Error in chat send endpoint', { error: executionError });
+			this.logger.error(`Error in chat send endpoint: ${executionError}`);
 
 			if (!res.headersSent) {
 				res.status(500).json({
@@ -103,7 +103,7 @@ export class ChatHubController {
 		} catch (executionError: unknown) {
 			assert(executionError instanceof Error);
 
-			this.logger.error('Error in chat retry endpoint', { error: executionError });
+			this.logger.error(`Error in chat retry endpoint: ${executionError}`);
 
 			if (!res.headersSent) {
 				res.status(500).json({
@@ -145,7 +145,7 @@ export class ChatHubController {
 		} catch (executionError: unknown) {
 			assert(executionError instanceof Error);
 
-			this.logger.error(`Error in chat retry endpoint: ${executionError}`);
+			this.logger.error(`Error in chat edit endpoint: ${executionError}`);
 
 			if (!res.headersSent) {
 				res.status(500).json({
