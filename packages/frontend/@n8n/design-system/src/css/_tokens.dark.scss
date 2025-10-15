@@ -2,7 +2,7 @@
 
 @mixin theme {
 	// Primary tokens
-	--color-danger: var(--color--red-300);
+	--color-danger: var(--color--red-400);
 
 	// Diff colors (dark theme overrides)
 	--diff-new: #38cb7a;
@@ -21,7 +21,7 @@
 	--color-text-light: var(--color--gray-300);
 	--color-text-lighter: var(--color--gray-850);
 	--color-text-xlight: var(--color--gray-950);
-	--color-text-danger: var(--color--red-300);
+	--color-text-danger: var(--color--red-400);
 
 	// Foreground
 	--color-foreground-xdark: var(--color--gray-250);
@@ -94,28 +94,28 @@
 	--color-node-background: var(--color--gray-850);
 	--color-node-executing-background: var(--color--gray-700);
 	--color-node-executing-other-background: var(--color--gray-700);
-	--color-node-pinned-border: var(--color--purple-400);
+	--color-node-pinned-border: var(--color--purple-500);
 	--node-type-main-color: var(--color--gray-400);
 
 	// Sticky
 	--color-sticky-background: var(--color--yellow-800);
 	--color-sticky-border: var(--color--yellow-700);
 	--color-sticky-font: var(--color--gray-100);
-	--color-sticky-code-font: var(--color--purple-200);
+	--color-sticky-code-font: var(--color--purple-300);
 	--color-sticky-code-background: var(--color--gray-alpha-100);
 
 	--color-sticky-background-1: var(--color--yellow-800);
 	--color-sticky-border-1: var(--color--yellow-700);
 	--color-sticky-background-2: var(--color--gold-800);
 	--color-sticky-border-2: var(--color--gold-700);
-	--color-sticky-background-3: var(--color--red-700);
-	--color-sticky-border-3: var(--color--red-650);
+	--color-sticky-background-3: var(--color--red-900);
+	--color-sticky-border-3: var(--color--red-800);
 	--color-sticky-background-4: var(--color--green-800);
 	--color-sticky-border-4: var(--color--green-700);
 	--color-sticky-background-5: var(--color--blue-800);
 	--color-sticky-border-5: var(--color--blue-700);
-	--color-sticky-background-6: var(--color--purple-700);
-	--color-sticky-border-6: var(--color--purple-600);
+	--color-sticky-background-6: var(--color--purple-900);
+	--color-sticky-border-6: var(--color--purple-700);
 	--color-sticky-background-7: var(--color--gray-850);
 	--color-sticky-border-7: var(--color--gray-700);
 
@@ -127,7 +127,7 @@
 	--color-node-icon-dark-blue: #7ba7ff;
 	--color-node-icon-orange-red: var(--color--orange-300);
 	--color-node-icon-pink-red: #f85d82;
-	--color-node-icon-red: var(--color--red-300);
+	--color-node-icon-red: var(--color--red-400);
 	--color-node-icon-light-green: #20b69e;
 	--color-node-icon-green: #38cb7a;
 	--color-node-icon-dark-green: #86decc;
@@ -137,14 +137,14 @@
 	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--color--green-300);
 	--color-valid-resolvable-background: var(--color--green-600-a-025);
-	--color-invalid-resolvable-foreground: var(--color--red-250);
-	--color-invalid-resolvable-background: var(--color--red-500-a-020);
+	--color-invalid-resolvable-foreground: var(--color--red-300);
+	--color-invalid-resolvable-background: var(--color--red-600-a-020);
 	--color-pending-resolvable-foreground: var(--color-text-base);
 	--color-pending-resolvable-background: var(--color--gray-alpha-100);
 	--color-expression-editor-background: var(--color--gray-900);
 	--color-expression-editor-modal-background: var(--color--gray-900);
 	--color-expression-syntax-example: var(--color--gray-700);
-	--color-autocomplete-item-selected: var(--color--purple-300);
+	--color-autocomplete-item-selected: var(--color--purple-400);
 	--color-autocomplete-section-header-border: var(--color--gray-600);
 	--color-infobox-background: var(--color--gray-900);
 	--color-infobox-examples-border-color: var(--color--gray-700);
@@ -164,11 +164,11 @@
 	--color-code-tags-heading: #79b8ff;
 	--color-code-tags-invalid: #f97583;
 	--color-code-tags-comment: #6a737d;
-	--color-json-default: var(--color--purple-300);
+	--color-json-default: var(--color--purple-400);
 	--color-json-null: var(--color-danger);
 	--color-json-boolean: var(--color--green-600);
 	--color-json-number: var(--color--green-600);
-	--color-json-string: var(--color--purple-300);
+	--color-json-string: var(--color--purple-400);
 	--color-json-key: var(--color-text-dark);
 	--color-json-brackets: var(--color--gray-700);
 	--color-json-brackets-hover: var(--color--blue-400);
@@ -187,7 +187,7 @@
 	--color-code-indentation-marker: var(--color--gray-850);
 	--color-code-indentation-marker-active: var(--color--gray-700);
 	--color-line-break: var(--color--gray-400);
-	--color-code-line-break: var(--color--purple-400);
+	--color-code-line-break: var(--color--purple-500);
 
 	// Tag
 	--tag-background-color: var(--color--gray-700);
@@ -232,10 +232,10 @@
 	// Button success, warning, danger
 	--color-button-danger-font: var(--color--white);
 	--color-button-danger-border: transparent;
-	--color-button-danger-focus-outline: var(--color--red-250);
+	--color-button-danger-focus-outline: var(--color--red-300);
 	--color-button-danger-disabled-font: var(--color--white-alpha-400);
 	--color-button-danger-disabled-border: transparent;
-	--color-button-danger-disabled-background: var(--color--red-500-a-020);
+	--color-button-danger-disabled-background: var(--color--red-600-a-020);
 
 	// Text button
 	--color-text-button-secondary-font: var(--color--gray-300);
@@ -262,7 +262,7 @@
 	--execution-selector-background: var(--color-background-dark);
 	--execution-selector-text: var(--color-text-xlight);
 	--execution-select-all-text: var(--color-text-base);
-	--execution-card-text-waiting: var(--color--purple-400);
+	--execution-card-text-waiting: var(--color--purple-500);
 
 	// NDV
 	--color-run-data-background: var(--color--gray-900);
@@ -288,11 +288,11 @@
 	--color-callout-warning-background: var(--color--gold-800);
 	--color-callout-warning-font: var(--color--white);
 	--color-callout-danger-border: var(--color-danger);
-	--color-callout-danger-background: var(--color--red-700);
+	--color-callout-danger-background: var(--color--red-900);
 	--color-callout-danger-font: var(--color--white);
 	--color-callout-danger-icon: var(--color-danger);
 	--color-callout-secondary-border: var(--color-secondary);
-	--color-callout-secondary-background: var(--color--purple-500-a-025);
+	--color-callout-secondary-background: var(--color--purple-600-a-025);
 	--color-callout-secondary-font: var(--color--white);
 
 	// Dialogs and overlays
@@ -511,8 +511,8 @@
 		var(--node-type-supplemental-label-color-l)
 	);
 	--color-configurable-node-name: var(--color-text-dark);
-	--color-secondary-link: var(--color--purple-300);
-	--color-secondary-link-hover: var(--color--purple-400);
+	--color-secondary-link: var(--color--purple-400);
+	--color-secondary-link-hover: var(--color--purple-500);
 	// Params
 	--color-icon-base: var(--color-text-light);
 	--color-icon-hover: var(--color--orange-300);
@@ -522,7 +522,7 @@
 	--color-menu-active-background: var(--color--gray-700);
 
 	/* Ag Grid */
-	--grid-row-selected-background: var(--color--purple-700);
+	--grid-row-selected-background: var(--color--purple-900);
 }
 
 body[data-theme='dark'] {

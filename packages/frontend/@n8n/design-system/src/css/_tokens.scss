@@ -15,10 +15,10 @@
 	--color-primary-tint-3: var(--color--orange-50);
 
 	// Secondary
-	--color-secondary-shade-1: var(--color--purple-600);
-	--color-secondary: var(--color--purple-500);
-	--color-secondary-tint-1: var(--color--purple-200);
-	--color-secondary-tint-3: var(--color--purple-100);
+	--color-secondary-shade-1: var(--color--purple-700);
+	--color-secondary: var(--color--purple-600);
+	--color-secondary-tint-1: var(--color--purple-300);
+	--color-secondary-tint-3: var(--color--purple-200);
 
 	// Success
 	--color-success-shade-1: var(--color--green-700);
@@ -35,10 +35,10 @@
 	--color-warning-tint-2: var(--color--gold-50);
 
 	// Danger
-	--color-danger-shade-1: var(--color--red-600);
-	--color-danger: var(--color--red-500);
-	--color-danger-light: var(--color--red-300);
-	--color-danger-light-2: var(--color--red-250);
+	--color-danger-shade-1: var(--color--red-700);
+	--color-danger: var(--color--red-600);
+	--color-danger-light: var(--color--red-400);
+	--color-danger-light-2: var(--color--red-300);
 	--color-danger-tint-1: var(--color--red-100);
 	--color-danger-tint-2: var(-color--red-50);
 
@@ -59,7 +59,7 @@
 	--color-text-light: var(--color--gray-400);
 	--color-text-lighter: var(--color--gray-200);
 	--color-text-xlight: var(--color--white);
-	--color-text-danger: var(--color--red-500);
+	--color-text-danger: var(--color--red-600);
 
 	// Foreground
 	--color-foreground-xdark: var(--color--gray-500);
@@ -125,8 +125,8 @@
 	--color-sticky-border-4: var(--color--green-300);
 	--color-sticky-background-5: var(--color--blue-100);
 	--color-sticky-border-5: var(--color--blue-200);
-	--color-sticky-background-6: var(--color--purple-100);
-	--color-sticky-border-6: var(--color--purple-200);
+	--color-sticky-background-6: var(--color--purple-200);
+	--color-sticky-border-6: var(--color--purple-300);
 	--color-sticky-background-7: var(--color--gray-50);
 	--color-sticky-border-7: var(--color--gray-200);
 
@@ -172,7 +172,7 @@
 	--color-node-icon-orange: #ff965a;
 	--color-node-icon-orange-red: #ff6d5a;
 	--color-node-icon-pink-red: #ea4b71;
-	--color-node-icon-red: var(--color--red-500);
+	--color-node-icon-red: var(--color--red-600);
 	--color-node-icon-light-green: #31c4ab;
 	--color-node-icon-green: #108e49;
 	--color-node-icon-dark-green: #157562;
@@ -183,7 +183,7 @@
 	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--color--green-600);
 	--color-valid-resolvable-background: var(--color--green-100);
-	--color-invalid-resolvable-foreground: var(--color--red-500);
+	--color-invalid-resolvable-foreground: var(--color--red-600);
 	--color-invalid-resolvable-background: var(-color--red-50);
 	--color-pending-resolvable-foreground: var(--color-text-base);
 	--color-pending-resolvable-background: var(--color--gray-100);
@@ -210,11 +210,11 @@
 	--color-code-tags-heading: #005cc5;
 	--color-code-tags-invalid: #cb2431;
 	--color-code-tags-comment: #6a737d;
-	--color-json-default: var(--color--purple-600);
-	--color-json-null: var(--color--red-500);
+	--color-json-default: var(--color--purple-700);
+	--color-json-null: var(--color--red-600);
 	--color-json-boolean: var(--color--green-600);
 	--color-json-number: var(--color--green-600);
-	--color-json-string: var(--color--purple-600);
+	--color-json-string: var(--color--purple-700);
 	--color-json-key: var(--color--gray-700);
 	--color-json-brackets: var(--color--gray-700);
 	--color-json-brackets-hover: var(--color--blue-400);
@@ -233,7 +233,7 @@
 	--color-code-indentation-marker: var(--color--gray-150);
 	--color-code-indentation-marker-active: var(--color--gray-250);
 	--color-line-break: var(--color--gray-300);
-	--color-code-line-break: var(--color--purple-300);
+	--color-code-line-break: var(--color--purple-400);
 
 	// Tag
 	--tag-height: 20px;
@@ -322,8 +322,8 @@
 	// Execution
 	--execution-card-border-new: var(--color--gray-250);
 	--execution-card-border-success: var(--color--green-300);
-	--execution-card-border-error: var(--color--red-250);
-	--execution-card-border-waiting: var(--color--purple-200);
+	--execution-card-border-error: var(--color--red-300);
+	--execution-card-border-waiting: var(--color--purple-300);
 	--execution-card-border-running: var(--color--gold-200);
 	--execution-card-border-unknown: var(--color--gray-200);
 	--execution-card-background: var(--color-foreground-xlight);
@@ -337,7 +337,7 @@
 	--color-run-data-background: var(--color--gray-150);
 	--color-ndvv2-run-data-background: var(--color--gray-100);
 	--color-ndv-droppable-parameter: var(--color-secondary);
-	--color-ndv-droppable-parameter-background: var(--color--purple-500-a-010);
+	--color-ndv-droppable-parameter-background: var(--color--purple-600-a-010);
 	--color-ndv-droppable-parameter-active-background: var(--color--green-600-a-015);
 	--color-ndv-back-font: var(--color--white);
 
@@ -688,7 +688,7 @@
 	--color-icon-hover: var(--color--orange-300);
 
 	/* Ag Grid */
-	--grid-row-selected-background: var(--color--purple-100);
+	--grid-row-selected-background: var(--color--purple-200);
 	--grid-cell-editing-border: 2px solid var(--color-secondary);
 }
 

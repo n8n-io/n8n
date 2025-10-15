@@ -38,7 +38,7 @@ export const Orange = Template(
 );
 
 export const Purple = Template(
-	"<color-circles :colors=\"['--color--purple-50', '--color--purple-100', '--color--purple-200', '--color--purple-300', '--color--purple-400', '--color--purple-500', '--color--purple-600', '--color--purple-700', '--color--purple-800', '--color--purple-900']\" />",
+	"<color-circles :colors=\"['--color--purple-50', '--color--purple-200', '--color--purple-300', '--color--purple-400', '--color--purple-500', '--color--purple-600', '--color--purple-700', '--color--purple-900', '--color--purple-800', '--color--purple-900']\" />",
 );
 
 export const Green = Template(
@@ -54,7 +54,7 @@ export const Gold = Template(
 );
 
 export const Red = Template(
-	"<color-circles :colors=\"['--color--red-50', '--color--red-100', '--color--red-200', '--color--red-250', '--color--red-300', '--color--red-400', '--color--red-500', '--color--red-600', '--color--red-650', '--color--red-700', '--color--red-800']\" />",
+	"<color-circles :colors=\"['--color--red-50', '--color--red-100', '--color--red-200', '--color--red-300', '--color--red-400', '--color--red-400', '--color--red-600', '--color--red-600', '--color--red-650', '--color--red-700', '--color--red-800']\" />",
 );
 
 export const Yellow = Template(
