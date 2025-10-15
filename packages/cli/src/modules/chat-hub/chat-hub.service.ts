@@ -420,8 +420,9 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		const runIndex = messages.filter((m) => m.retryOfMessageId === retryId).length + 1;
-		const retryOfMessageId = messageToRetry.id;
+		// If the message being retried is itself a retry, we want to point to the original message
+		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
+		const runIndex = messages.filter((m) => m.retryOfMessageId === retryOfMessageId).length + 1;
 
 		await this.executeChatWorkflow(
 			res,
@@ -461,10 +462,12 @@ export class ChatHubService {
 			return messages.find((m) => m.id === id) ?? [];
 		});
 
-		// TOOD: Update status of other revisions / original
+		// TODO: Update status of other revisions / original
 
-		const runIndex = messages.filter((m) => m.revisionOfMessageId === editId).length + 1;
-		const revisionOfMessageId = messageToEdit.id;
+		// If the message to edit isn't the original message, we want to point to the original message
+		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
+		const runIndex =
+			messages.filter((m) => m.revisionOfMessageId === revisionOfMessageId).length + 1;
 
 		const turnId = payload.messageId;
 		await this.saveHumanMessage(
