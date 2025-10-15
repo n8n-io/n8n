@@ -1506,6 +1506,238 @@ describe('useWorkflowsStore', () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});
+
+	describe('assignCredentialToMatchingNodes', () => {
+		beforeEach(() => {
+			// Reset mock
+			getNodeType.mockReset();
+		});
+
+		it("should assign credential to nodes that support it but don't have it set", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			// Set up nodes with different scenarios
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Slack Node 1',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Slack Node 2',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			// Mock getNodeType to return node type with credential support
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			// Simulate setting credential on the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(2); // Should update 2 nodes (excluding current node)
+			expect(workflowsStore.workflow.nodes[1].credentials).toEqual({
+				slackApi: credential,
+			});
+			expect(workflowsStore.workflow.nodes[2].credentials).toEqual({
+				slackApi: credential,
+			});
+		});
+
+		it('should not overwrite existing credentials of the same type', () => {
+			const newCredential = { id: 'cred-new', name: 'New Credential' };
+			const existingCredential = { id: 'cred-old', name: 'Existing Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Node With Existing Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					credentials: {
+						slackApi: existingCredential,
+					},
+				}),
+				createTestNode({
+					name: 'Node Without Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			// Simulate assigning new credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: newCredential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1); // Only 1 node updated (the one without credentials)
+			expect(workflowsStore.workflow.nodes[1].credentials?.slackApi).toEqual(existingCredential); // Unchanged
+			expect(workflowsStore.workflow.nodes[2].credentials?.slackApi).toEqual(newCredential); // Updated
+		});
+
+		it("should not affect nodes that don't support the credential type", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Slack Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'HTTP Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+			]);
+
+			// Mock getNodeType to return different credentials for different node types
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return {
+					credentials: [{ name: 'httpBasicAuth', required: false }],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [],
+				};
+			});
+
+			// Simulate assigning credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1); // Only the Slack node updated
+			expect(workflowsStore.workflow.nodes[1].credentials?.slackApi).toEqual(credential);
+			expect(workflowsStore.workflow.nodes[2].credentials).toBeUndefined(); // HTTP node unchanged
+		});
+
+		it('should handle nodes with no credential support', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Node Without Creds Support',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+				}),
+			]);
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				// Return node type without credentials field
+				return {
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [],
+				};
+			});
+
+			// Simulate assigning credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0); // No nodes updated
+			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
+		});
+
+		it('should return 0 when there are no matching nodes', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			// Simulate assigning credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0); // No nodes to update (only current node exists)
+		});
+	});
 });
 
 function getMockEditFieldsNode(): Partial<INodeTypeDescription> {

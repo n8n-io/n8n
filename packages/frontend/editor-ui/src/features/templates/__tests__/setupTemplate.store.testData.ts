@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker/locale/en';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type {
 	ITemplatesWorkflowFull,
 	IWorkflowTemplateNode,

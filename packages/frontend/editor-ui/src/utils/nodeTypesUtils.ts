@@ -8,7 +8,7 @@ import {
 	TEMPLATES_NODES_FILTER,
 } from '@/constants';
 import { i18n as locale } from '@n8n/i18n';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isJsonKeyObject } from '@/utils/typesUtils';
 import {
@@ -477,7 +477,7 @@ export const isMatchingField = (
 };
 
 export const getThemedValue = <T extends string>(
-	value: Themed<T> | undefined,
+	value: Themed<T> | T | undefined,
 	theme: AppliedThemeOption = 'light',
 ): T | null => {
 	if (!value) {

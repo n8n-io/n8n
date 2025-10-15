@@ -283,7 +283,7 @@ const handleDragEnd = () => {
 	left: 0;
 	right: 0;
 	height: 3px;
-	background-color: var(--prim-color-secondary);
+	background-color: var(--color--secondary);
 	border-radius: 2px;
 	z-index: 10;
 }

@@ -4,7 +4,7 @@ import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useDebounceFn } from '@vueuse/core';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';

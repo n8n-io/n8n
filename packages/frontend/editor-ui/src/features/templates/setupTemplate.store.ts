@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { Router } from 'vue-router';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTemplatesStore } from '@/features/templates/templates.store';
