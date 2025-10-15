@@ -41,6 +41,17 @@
 	--color--white-alpha-800: hsla(220, 1%, 100%, 0.7);
 	--color--white-alpha-900: hsla(220, 1%, 100%, 0.9);
 
+	// Black
+	--color--black-alpha-100: hsl(220, 1%, 0%, 0.05);
+	--color--black-alpha-200: hsl(220, 1%, 0%, 0.1);
+	--color--black-alpha-300: hsl(220, 1%, 0%, 0.2);
+	--color--black-alpha-400: hsl(220, 1%, 0%, 0.3);
+	--color--black-alpha-500: hsl(220, 1%, 0%, 0.5);
+	--color--black-alpha-600: hsl(220, 1%, 0%, 0.8);
+	--color--black-alpha-700: hsl(220, 1%, 0%, 0.85);
+	--color--black-alpha-800: hsl(220, 1%, 0%, 0.9);
+	--color--black-alpha-900: hsl(220, 1%, 0%, 0.95);
+
 	// Orange
 	--color--orange-50: hsl(7, 100%, 98%);
 	--color--orange-100: hsl(7, 100%, 95%);
