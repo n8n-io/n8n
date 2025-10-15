@@ -16,9 +16,6 @@
  * Pros: Much simpler, easier to extend, built-in features
  * Cons: Less routing control, no explicit state isolation, harder to evaluate per-stage
  *
- * NOTE: This is a PoC implementation showing the structure. The actual SDK integration
- * is commented out until @anthropic-ai/claude-agent-sdk is installed as a dependency.
- * Many variables are currently unused but will be used when the SDK is integrated.
  */
 
 import {
@@ -63,6 +60,32 @@ export interface WorkflowBuilderAgentClaudeConfig {
  * This class provides a simpler alternative to the LangGraph implementation
  * by using Claude's Agent SDK for orchestration, routing, and tool execution.
  */
+/**
+ * Usage tracking for a single step
+ */
+interface StepUsage {
+	messageId: string;
+	timestamp: string;
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadTokens: number;
+	cacheCreationTokens: number;
+	durationMs?: number;
+}
+
+/**
+ * Cumulative usage statistics
+ */
+interface CumulativeUsage {
+	totalInputTokens: number;
+	totalOutputTokens: number;
+	totalCacheReadTokens: number;
+	totalCacheCreationTokens: number;
+	totalDurationMs: number;
+	stepCount: number;
+	steps: StepUsage[];
+}
+
 export class WorkflowBuilderAgentClaude {
 	// State lives in instance fields
 	private workflowJSON: SimpleWorkflow;
@@ -72,12 +95,24 @@ export class WorkflowBuilderAgentClaude {
 	private apiKey?: string;
 	private model: string;
 
+	// Usage tracking
+	private processedMessageIds = new Set<string>();
+	private usage: CumulativeUsage = {
+		totalInputTokens: 0,
+		totalOutputTokens: 0,
+		totalCacheReadTokens: 0,
+		totalCacheCreationTokens: 0,
+		totalDurationMs: 0,
+		stepCount: 0,
+		steps: [],
+	};
+	private stepStartTime?: number;
+
 	constructor(config: WorkflowBuilderAgentClaudeConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.logger = config.logger;
 		this.apiKey = config.apiKey;
 		this.model = config.model ?? 'haiku';
-		console.log('🚀 ~ WorkflowBuilderAgentClaude ~ constructor ~ this.model:', this.model);
 
 		// Initialize empty workflow
 		this.workflowJSON = { nodes: [], connections: {}, name: '' };
@@ -106,6 +141,9 @@ export class WorkflowBuilderAgentClaude {
 			currentNodeCount: this.workflowJSON.nodes.length,
 			apiKeyConfigured: !!this.apiKey,
 		});
+
+		// Start timing the entire workflow building process
+		this.stepStartTime = Date.now();
 
 		try {
 			// Create workflow tools
@@ -203,6 +241,9 @@ export class WorkflowBuilderAgentClaude {
 				);
 				console.log('=== END MESSAGE #' + messageCount + ' ===\n');
 
+				// Track usage from assistant messages (avoid duplicates by message ID)
+				this.trackUsage(message);
+
 				// Transform SDK messages to match existing output format
 				const output = this.transformSDKMessage(message);
 				if (output) {
@@ -279,6 +320,25 @@ export class WorkflowBuilderAgentClaude {
 			}
 
 			this.logger?.info('[SDK] Workflow building completed');
+
+			// Log final usage statistics
+			console.log('\n========== USAGE SUMMARY ==========');
+			console.log('Total Steps:', this.usage.stepCount);
+			console.log('Total Input Tokens:', this.usage.totalInputTokens);
+			console.log('Total Output Tokens:', this.usage.totalOutputTokens);
+			console.log('Total Cache Read Tokens:', this.usage.totalCacheReadTokens);
+			console.log('Total Cache Creation Tokens:', this.usage.totalCacheCreationTokens);
+			console.log('Total Duration:', this.usage.totalDurationMs, 'ms');
+			console.log('===================================\n');
+
+			this.logger?.info('[SDK] Usage summary', {
+				steps: this.usage.stepCount,
+				inputTokens: this.usage.totalInputTokens,
+				outputTokens: this.usage.totalOutputTokens,
+				cacheReadTokens: this.usage.totalCacheReadTokens,
+				cacheCreationTokens: this.usage.totalCacheCreationTokens,
+				durationMs: this.usage.totalDurationMs,
+			});
 		} catch (error) {
 			this.logger?.error('[SDK] Error building workflow', {
 				error: error instanceof Error ? error.message : String(error),
@@ -286,6 +346,90 @@ export class WorkflowBuilderAgentClaude {
 			});
 			throw error;
 		}
+	}
+
+	/**
+	 * Track usage from messages to avoid double-counting
+	 * Messages with same ID have identical usage - only count once
+	 */
+	private trackUsage(message: SDKMessage) {
+		// Only track assistant messages with usage
+		if (message.type !== 'assistant' || !('message' in message)) {
+			// Also check result message for final cumulative usage
+			if (message.type === 'result') {
+				const resultMsg = message as any;
+				if (resultMsg.usage) {
+					console.log('\n📊 Final SDK Usage from Result Message:');
+					console.log('  Total Input:', resultMsg.usage.input_tokens);
+					console.log('  Total Output:', resultMsg.usage.output_tokens);
+					console.log('  Cache Read:', resultMsg.usage.cache_read_input_tokens || 0);
+					console.log('  Cache Creation:', resultMsg.usage.cache_creation_input_tokens || 0);
+					console.log('  Duration:', resultMsg.duration_ms, 'ms');
+					console.log('  Total Cost: $' + (resultMsg.total_cost_usd || 0).toFixed(4));
+				}
+			}
+			return;
+		}
+
+		const assistantMsg = message as any;
+		const msgUsage = assistantMsg.message?.usage;
+		const msgUuid = assistantMsg.uuid;
+
+		if (!msgUsage || !msgUuid) {
+			return;
+		}
+
+		// Skip if already processed this message ID
+		if (this.processedMessageIds.has(msgUuid)) {
+			return;
+		}
+
+		// Mark as processed
+		this.processedMessageIds.add(msgUuid);
+
+		// Calculate step duration
+		const stepDuration = this.stepStartTime ? Date.now() - this.stepStartTime : 0;
+
+		// Extract usage data
+		const stepUsage: StepUsage = {
+			messageId: msgUuid,
+			timestamp: new Date().toISOString(),
+			inputTokens: msgUsage.input_tokens || 0,
+			outputTokens: msgUsage.output_tokens || 0,
+			cacheReadTokens: msgUsage.cache_read_input_tokens || 0,
+			cacheCreationTokens: msgUsage.cache_creation_input_tokens || 0,
+			durationMs: stepDuration,
+		};
+
+		// Update cumulative totals
+		this.usage.totalInputTokens += stepUsage.inputTokens;
+		this.usage.totalOutputTokens += stepUsage.outputTokens;
+		this.usage.totalCacheReadTokens += stepUsage.cacheReadTokens;
+		this.usage.totalCacheCreationTokens += stepUsage.cacheCreationTokens;
+		this.usage.totalDurationMs += stepUsage.durationMs || 0;
+		this.usage.stepCount++;
+		this.usage.steps.push(stepUsage);
+
+		// Log step usage
+		console.log(`\n📊 Step #${this.usage.stepCount} Usage (ID: ${msgUuid.substring(0, 8)}...):`);
+		console.log(`  Input: ${stepUsage.inputTokens} | Output: ${stepUsage.outputTokens}`);
+		console.log(
+			`  Cache Read: ${stepUsage.cacheReadTokens} | Cache Creation: ${stepUsage.cacheCreationTokens}`,
+		);
+		console.log(`  Duration: ${stepUsage.durationMs}ms`);
+
+		// Reset step timer for next step
+		this.stepStartTime = Date.now();
+	}
+
+	/**
+	 * Get current usage statistics
+	 */
+	getUsageStats() {
+		return {
+			...this.usage,
+			totalTokens: this.usage.totalInputTokens + this.usage.totalOutputTokens,
+		};
 	}
 
 	/**

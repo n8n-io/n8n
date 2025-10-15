@@ -14,7 +14,7 @@ The original single-agent design has limitations:
 
 2. **Monolithic Prompt**: Single 400-line prompt trying to do everything
    - Discovery: "Search for nodes"
-   - Building: "Add nodes and connect them"
+	- Building: "Add nodes and connect them"
    - Configuration: "Set all parameters"
    - Mixed responsibilities = confused agent
 
