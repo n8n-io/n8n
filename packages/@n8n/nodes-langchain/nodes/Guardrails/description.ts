@@ -74,8 +74,17 @@ export const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
-	outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
-	outputNames: ['Pass', 'Fail'],
+	outputs: `={{
+			((parameters) => {
+				const mode = parameters.violationBehavior ?? 'routeToFailOutput';
+
+				if (mode === 'routeToFailOutput') {
+					return [{displayName: "Pass", type: "${NodeConnectionTypes.Main}"}, {displayName: "Fail", type: "${NodeConnectionTypes.Main}"}]
+				}
+
+				return [{ displayName: "", type: "${NodeConnectionTypes.Main}"}]
+			})($parameter)
+		}}`,
 	properties: [
 		{
 			displayName: 'Connect chat models that support tool calling',
@@ -365,7 +374,7 @@ export const versionDescription: INodeTypeDescription = {
 						multipleValues: true,
 					},
 					placeholder: 'Add Custom Guardrail',
-					default: { guardrail: [{ name: 'Custom guardrail' }] },
+					default: { guardrail: [] },
 					options: [
 						{
 							displayName: 'Guardrail',
