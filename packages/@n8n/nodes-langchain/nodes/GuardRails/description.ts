@@ -1,31 +1,18 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { INodeProperties, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
-import { NSFW_SYSTEM_PROMPT } from './checks/nsfw';
-import { PROMPT_INJECTION_DETECTION_CHECK_PROMPT } from './checks/promptInjection';
-import { JAILBREAK_PROMPT } from './checks/jailbreak';
-import { TOPICAL_ALIGNMENT_SYSTEM_PROMPT } from './checks/topicalAlignment';
+import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
+
+import { JAILBREAK_PROMPT } from './actions/checks/jailbreak';
+import { NSFW_SYSTEM_PROMPT } from './actions/checks/nsfw';
+import { PII_NAME_MAP, PIIEntity } from './actions/checks/pii';
+import { PROMPT_INJECTION_DETECTION_CHECK_PROMPT } from './actions/checks/promptInjection';
+import { TOPICAL_ALIGNMENT_SYSTEM_PROMPT } from './actions/checks/topicalAlignment';
 
 const THRESHOLD_OPTION: INodeProperties = {
 	displayName: 'Threshold',
 	name: 'threshold',
-	type: 'options',
-	default: 1,
-	description:
-		'The confidence threshold for the guardrail. 0.0 is the lowest threshold and 1.0 is the highest threshold.',
-	options: [
-		{
-			name: 'Low',
-			value: 0.25,
-		},
-		{
-			name: 'Medium',
-			value: 0.5,
-		},
-		{
-			name: 'High',
-			value: 1.0,
-		},
-	],
+	type: 'number',
+	default: 0.5,
+	description: 'Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)',
 };
 
 const getPromptOption: (defaultPrompt: string) => INodeProperties = (defaultPrompt: string) => ({
@@ -47,9 +34,9 @@ const wrapValue = (properties: INodeProperties[]) => ({
 });
 
 export const versionDescription: INodeTypeDescription = {
-	displayName: 'GuardRails',
+	displayName: 'Guardrails',
 	name: 'guardrails',
-	icon: 'file:openAi.svg',
+	icon: 'file:guardrails.svg',
 	group: ['transform'],
 	version: 1,
 	description: 'Validates your inputs and outputs of AI models',
@@ -70,12 +57,12 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	// TODO: make inputs
 	inputs: [
 		'main',
 		{
 			type: 'ai_languageModel',
 			displayName: 'Chat Model',
+			maxConnections: 1,
 			required: true,
 			filter: {
 				excludedNodes: [
@@ -87,16 +74,33 @@ export const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
-	outputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+	outputNames: ['Pass', 'Fail'],
 	properties: [
+		{
+			displayName: 'Connect chat models that support tool calling',
+			name: 'noticeChatModel',
+			type: 'notice',
+			default: '',
+		},
 		{
 			displayName: 'Input Text',
 			name: 'inputText',
 			type: 'string',
 			default: '',
 			typeOptions: {
-				rows: 6,
+				rows: 4,
 			},
+		},
+		{
+			displayName: 'On Violation',
+			name: 'violationBehavior',
+			type: 'options',
+			default: 'routeToFailOutput',
+			options: [
+				{ name: 'Route to Fail Output', value: 'routeToFailOutput' },
+				{ name: 'Throw Error', value: 'throwError' },
+			],
 		},
 		{
 			displayName: 'Guardrails',
@@ -111,13 +115,13 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'string',
 					default: '',
 					description:
-						'This guardrail checks if specified keywords appear in the input text and can be configured to trigger tripwires based on keyword matches. Multiple keywords can be added separated by comma',
+						'This guardrail checks if specified keywords appear in the input text and can be configured to trigger tripwires based on keyword matches. Multiple keywords can be added separated by comma.',
 				},
 				{
 					displayName: 'Jailbreak',
 					name: 'jailbreak',
 					type: 'fixedCollection',
-					default: { value: { threshold: 1 } },
+					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to jailbreak or bypass AI safety measures',
 					options: [wrapValue([getPromptOption(JAILBREAK_PROMPT), THRESHOLD_OPTION])],
 				},
@@ -125,7 +129,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'NSFW',
 					name: 'nsfw',
 					type: 'fixedCollection',
-					default: { value: { threshold: 1 } },
+					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to generate NSFW content',
 					options: [wrapValue([getPromptOption(NSFW_SYSTEM_PROMPT), THRESHOLD_OPTION])],
 				},
@@ -141,7 +145,7 @@ export const versionDescription: INodeTypeDescription = {
 								displayName: 'Mode',
 								name: 'mode',
 								type: 'options',
-								default: 'Redact',
+								default: '',
 								options: [
 									{
 										name: 'Redact',
@@ -153,6 +157,65 @@ export const versionDescription: INodeTypeDescription = {
 									},
 								],
 							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								default: 'all',
+								options: [
+									{ name: 'All', value: 'all' },
+									{ name: 'Selected', value: 'selected' },
+								],
+							},
+							{
+								displayName: 'Entities',
+								name: 'entities',
+								type: 'multiOptions',
+								default: [],
+								displayOptions: {
+									show: {
+										type: ['selected'],
+									},
+								},
+								options: Object.values(PIIEntity).map((entity) => ({
+									name: PII_NAME_MAP[entity],
+									value: entity,
+								})),
+							},
+							{
+								displayName: 'Custom Regex',
+								name: 'customRegex',
+								type: 'fixedCollection',
+								typeOptions: {
+									sortable: true,
+									multipleValues: true,
+								},
+								placeholder: 'Add Custom Regex',
+								default: { regex: [] },
+								options: [
+									{
+										displayName: 'Regex',
+										name: 'regex',
+										values: [
+											{
+												displayName: 'Name',
+												name: 'name',
+												type: 'string',
+												default: '',
+												description: 'Name of the custom regex. Will be used for replacement.',
+											},
+											{
+												displayName: 'Regex',
+												name: 'value',
+												type: 'string',
+												default: '',
+												description: 'Regex to match the input text',
+												placeholder: '/text/gi',
+											},
+										],
+									},
+								],
+							},
 						]),
 					],
 				},
@@ -160,7 +223,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'Prompt Injection',
 					name: 'promptInjection',
 					type: 'fixedCollection',
-					default: { value: { threshold: 1 } },
+					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to inject prompt into the input text',
 					options: [
 						wrapValue([getPromptOption(PROMPT_INJECTION_DETECTION_CHECK_PROMPT), THRESHOLD_OPTION]),
@@ -178,7 +241,7 @@ export const versionDescription: INodeTypeDescription = {
 								displayName: 'Mode',
 								name: 'mode',
 								type: 'options',
-								default: 'redact',
+								default: 'block',
 								options: [
 									{
 										name: 'Redact',
@@ -214,7 +277,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'Topical Alignment',
 					name: 'topicalAlignment',
 					type: 'fixedCollection',
-					default: { value: { threshold: 1 } },
+					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to stray from the business scope',
 					options: [
 						wrapValue([getPromptOption(TOPICAL_ALIGNMENT_SYSTEM_PROMPT), THRESHOLD_OPTION]),
@@ -229,6 +292,22 @@ export const versionDescription: INodeTypeDescription = {
 					options: [
 						wrapValue([
 							{
+								displayName: 'Mode',
+								name: 'mode',
+								type: 'options',
+								default: 'block',
+								options: [
+									{
+										name: 'Redact',
+										value: 'redact',
+									},
+									{
+										name: 'Block',
+										value: 'block',
+									},
+								],
+							},
+							{
 								displayName: 'Allowed URLs',
 								name: 'allowedUrls',
 								type: 'string',
@@ -238,9 +317,25 @@ export const versionDescription: INodeTypeDescription = {
 							{
 								displayName: 'Allowed Schemes',
 								name: 'allowedSchemes',
-								type: 'string',
-								default: 'https',
-								description: 'Multiple schemes can be added separated by comma',
+								type: 'multiOptions',
+								default: ['https'],
+								// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
+								options: [
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'https', value: 'https' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'http', value: 'http' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'ftp', value: 'ftp' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'data', value: 'data' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'javascript', value: 'javascript' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'vbscript', value: 'vbscript' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'mailto', value: 'mailto' },
+								],
 							},
 							{
 								displayName: 'Block Userinfo',
@@ -270,11 +365,11 @@ export const versionDescription: INodeTypeDescription = {
 						multipleValues: true,
 					},
 					placeholder: 'Add Custom Guardrail',
-					default: { values: [{ type: 'text' }] },
+					default: { guardrail: [{ name: 'Custom guardrail' }] },
 					options: [
 						{
-							displayName: 'Values',
-							name: 'values',
+							displayName: 'Guardrail',
+							name: 'guardrail',
 							values: [
 								{
 									displayName: 'Name',

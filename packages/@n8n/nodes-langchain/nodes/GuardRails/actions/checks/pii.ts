@@ -1,4 +1,15 @@
-import { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+// Source: https://github.com/openai/openai-guardrails-js/blob/b9b99b4fb454f02a362c2836aec6285176ec40a8/src/checks/pii.ts
+/**
+ * PII detection guardrail for sensitive text content.
+ *
+ * This module implements a guardrail for detecting Personally Identifiable
+ * Information (PII) in text using regex patterns. It defines the config
+ * schema for entity selection, output/result structures, and the async guardrail
+ * check_fn for runtime enforcement.
+ */
+
+import { parseRegex } from '../../helpers/common';
+import type { CreateCheckFn, CustomRegex } from '../types';
 
 /**
  * Supported PII entity types for detection.
@@ -6,6 +17,7 @@ import { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
  * Includes global and region-specific types (US, UK, Spain, Italy, etc.).
  * These map to regex patterns for detection.
  */
+// eslint-disable-next-line no-restricted-syntax
 export enum PIIEntity {
 	// Global
 	CREDIT_CARD = 'CREDIT_CARD',
@@ -14,7 +26,6 @@ export enum PIIEntity {
 	EMAIL_ADDRESS = 'EMAIL_ADDRESS',
 	IBAN_CODE = 'IBAN_CODE',
 	IP_ADDRESS = 'IP_ADDRESS',
-	NRP = 'NRP',
 	LOCATION = 'LOCATION',
 	PERSON = 'PERSON',
 	PHONE_NUMBER = 'PHONE_NUMBER',
@@ -67,14 +78,39 @@ export enum PIIEntity {
 	FI_PERSONAL_IDENTITY_CODE = 'FI_PERSONAL_IDENTITY_CODE',
 }
 
-export const PII_DISPLAY_NAMES: Record<PIIEntity, string> = {
+const allEntities = Object.values(PIIEntity);
+
+export type PIIConfig = {
+	entities?: PIIEntity[];
+	block: boolean;
+	customRegex?: CustomRegex[];
+};
+
+/**
+ * Internal result structure for PII detection.
+ */
+interface PiiDetectionResult {
+	mapping: Record<string, string[]>;
+	analyzerResults: PiiAnalyzerResult[];
+}
+
+/**
+ * PII analyzer result structure.
+ */
+interface PiiAnalyzerResult {
+	entityType: string;
+	start: number;
+	end: number;
+	score: number;
+}
+
+export const PII_NAME_MAP: Record<PIIEntity, string> = {
 	[PIIEntity.CREDIT_CARD]: 'Credit Card',
 	[PIIEntity.CRYPTO]: 'Crypto',
 	[PIIEntity.DATE_TIME]: 'Date Time',
 	[PIIEntity.EMAIL_ADDRESS]: 'Email Address',
 	[PIIEntity.IBAN_CODE]: 'IBAN Code',
 	[PIIEntity.IP_ADDRESS]: 'IP Address',
-	[PIIEntity.NRP]: 'NRP',
 	[PIIEntity.LOCATION]: 'Location',
 	[PIIEntity.PERSON]: 'Person',
 	[PIIEntity.PHONE_NUMBER]: 'Phone Number',
@@ -119,11 +155,10 @@ const DEFAULT_PII_PATTERNS: Record<PIIEntity, RegExp> = {
 	[PIIEntity.EMAIL_ADDRESS]: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
 	[PIIEntity.IBAN_CODE]: /\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}([A-Z0-9]?){0,16}\b/g,
 	[PIIEntity.IP_ADDRESS]: /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g,
-	[PIIEntity.NRP]: /\b[A-Za-z]+ [A-Za-z]+\b/g,
 	[PIIEntity.LOCATION]:
 		/\b[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Place|Pl|Court|Ct|Way|Highway|Hwy)\b/g,
 	[PIIEntity.PERSON]: /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g,
-	[PIIEntity.PHONE_NUMBER]: /\b(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
+	[PIIEntity.PHONE_NUMBER]: /\b[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}\b/g,
 	[PIIEntity.MEDICAL_LICENSE]: /\b[A-Z]{2}\d{6}\b/g,
 	[PIIEntity.URL]:
 		/\bhttps?:\/\/(?:[-\w.])+(?:\:[0-9]+)?(?:\/(?:[\w\/_.])*(?:\?(?:[\w&=%.])*)?(?:\#(?:[\w.])*)?)?/g,
@@ -172,4 +207,78 @@ const DEFAULT_PII_PATTERNS: Record<PIIEntity, RegExp> = {
 
 	// Finland
 	[PIIEntity.FI_PERSONAL_IDENTITY_CODE]: /\b\d{6}[+-A]\d{3}[A-Z0-9]\b/g,
+};
+
+/**
+ * Run regex analysis and collect findings by entity type.
+ *
+ * @param text The text to analyze for PII
+ * @param config PII detection configuration
+ * @returns Object containing mapping of entities to detected snippets
+ * @throws Error if text is empty or null
+ */
+function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
+	if (!text) {
+		throw new Error('Text cannot be empty or null');
+	}
+
+	const grouped: Record<string, string[]> = {};
+	const analyzerResults: PiiAnalyzerResult[] = [];
+
+	const matchAgainstPattern = (name: string, pattern: RegExp) => {
+		const regex = new RegExp(pattern.source, pattern.flags);
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			const entityType = name;
+			const start = match.index;
+			const end = match.index + match[0].length;
+			const score = 0.9; // High confidence for regex matches
+
+			if (!grouped[entityType]) {
+				grouped[entityType] = [];
+			}
+			grouped[entityType].push(text.substring(start, end));
+
+			analyzerResults.push({
+				entityType,
+				start,
+				end,
+				score,
+			});
+		}
+	};
+
+	// Check each configured entity type
+	const entities = config.entities ?? allEntities;
+	for (const entity of entities) {
+		const pattern = DEFAULT_PII_PATTERNS[entity];
+		if (pattern) {
+			matchAgainstPattern(entity, pattern);
+		}
+	}
+	if (config.customRegex?.length) {
+		for (const regex of config.customRegex) {
+			matchAgainstPattern(regex.name, parseRegex(regex.value));
+		}
+	}
+
+	return {
+		mapping: grouped,
+		analyzerResults,
+	};
+}
+
+export const createPiiCheckFn: CreateCheckFn<PIIConfig> = (config) => {
+	return (input: string) => {
+		const detection = detectPii(input, config);
+		const piiFound = detection.mapping && Object.keys(detection.mapping).length > 0;
+		return {
+			guardrailName: 'pii',
+			tripwireTriggered: config.block && piiFound,
+			info: {
+				maskEntities: detection.mapping,
+				analyzerResults: detection.analyzerResults,
+			},
+		};
+	};
 };

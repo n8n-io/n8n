@@ -1,3 +1,6 @@
+import { createLLMCheckFn } from '../../helpers/model';
+import type { CreateCheckFn, LLMConfig } from '../types';
+
 /**
  * Pre-defined prompt for prompt injection detection analysis.
  */
@@ -34,3 +37,6 @@ Respond with ONLY a JSON object containing these exact fields:
 }
 
 Do not include any text outside the JSON object.`;
+
+export const createPromptInjectionCheckFn: CreateCheckFn<LLMConfig> = (config) =>
+	createLLMCheckFn('promptInjection', config);

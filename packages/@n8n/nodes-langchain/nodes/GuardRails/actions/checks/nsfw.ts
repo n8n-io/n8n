@@ -1,3 +1,6 @@
+import { createLLMCheckFn } from '../../helpers/model';
+import type { CreateCheckFn, LLMConfig } from '../types';
+
 export const NSFW_SYSTEM_PROMPT = `
 You are a content moderation assistant.
 Your task is to analyze text and determine if it contains NSFW (Not Safe For Work) content.
@@ -19,3 +22,6 @@ Focus on detecting ALL types of NSFW content, including:
 
 Flag any content that matches these criteria.
 `;
+
+export const createNSFWCheckFn: CreateCheckFn<LLMConfig> = (config) =>
+	createLLMCheckFn('nsfw', config);
