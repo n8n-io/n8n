@@ -14,6 +14,7 @@ import {
 } from './subgraphs';
 import type { SimpleWorkflow } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
+import { trimWorkflowJSON } from './utils/trim-workflow-context';
 
 /**
  * Parent Graph State
@@ -86,8 +87,8 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const { parsedNodeTypes, llmSimpleTask, llmComplexTask, logger, instanceUrl } = config;
 
 	// Initialize agents
-	const responderAgent = new ResponderAgent({ llm: llmSimpleTask });
-	const supervisorAgent = new SupervisorAgent({ llm: llmSimpleTask });
+	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
+	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
 
 	// Initialize subgraphs
 	const discoverySubgraph = createDiscoverySubgraph({
@@ -117,9 +118,34 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			nodeCount: state.workflowJSON.nodes.length,
 		});
 
+		const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+		const executionData = state.workflowContext?.executionData ?? {};
+		const executionSchema = state.workflowContext?.executionSchema ?? [];
+
+		const workflowContext = [
+			'',
+			'<current_workflow_json>',
+			JSON.stringify(trimmedWorkflow, null, 2),
+			'</current_workflow_json>',
+			'<trimmed_workflow_json_note>',
+			'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+			'Use get_node_parameter tool to get full details when needed.',
+			'</trimmed_workflow_json_note>',
+			'',
+			'<current_simplified_execution_data>',
+			JSON.stringify(executionData, null, 2),
+			'</current_simplified_execution_data>',
+			'',
+			'<current_execution_nodes_schemas>',
+			JSON.stringify(executionSchema, null, 2),
+			'</current_execution_nodes_schemas>',
+		].join('\n');
+
 		const supervisor = supervisorAgent.getAgent();
+
+		const messagesWithContext = [...state.messages, new HumanMessage({ content: workflowContext })];
 		const routing = await supervisor.invoke({
-			messages: state.messages,
+			messages: messagesWithContext,
 		});
 
 		console.log('[Supervisor] Decision', routing);
