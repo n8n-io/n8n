@@ -334,7 +334,7 @@ onUnmounted(() => {
 	background: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
-	box-shadow: var(--shadow-command-bar);
+	box-shadow: var(--command-bar--shadow);
 
 	width: 100%;
 	max-width: 700px;

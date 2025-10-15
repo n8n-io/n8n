@@ -73,11 +73,11 @@ const handleMouseLeave = () => {
 	transition: background-color 0.1s ease;
 
 	&:hover {
-		background-color: var(--color-command-bar-item-hover-background);
+		background-color: var(--command-bar-item--color--background--hover);
 	}
 
 	&.selected {
-		background-color: var(--color-command-bar-item-hover-background);
+		background-color: var(--command-bar-item--color--background--hover);
 	}
 }
 
