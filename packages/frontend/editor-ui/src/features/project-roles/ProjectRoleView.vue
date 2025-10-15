@@ -4,7 +4,14 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
-import { N8nButton, N8nFormInput, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nFormInput,
+	N8nHeading,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
@@ -369,16 +376,21 @@ const displayNameValidationRules = [
 				<div style="flex: 1">
 					<N8nLoading v-if="isLoading" :rows="scopes[type].length" :shrink-last="false" />
 					<template v-else>
-						<N8nFormInput
-							v-for="scope in scopes[type]"
-							:key="scope"
-							:data-test-id="`scope-checkbox-${scope}`"
-							:model-value="form.scopes.includes(scope)"
-							:label="i18n.baseText(`projectRoles.${scope}`)"
-							validate-on-blur
-							type="checkbox"
-							@update:model-value="() => toggleScope(scope)"
-						/>
+						<div v-for="scope in scopes[type]" :key="scope">
+							<N8nTooltip
+								:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
+								placement="right"
+							>
+								<N8nFormInput
+									:data-test-id="`scope-checkbox-${scope}`"
+									:model-value="form.scopes.includes(scope)"
+									:label="i18n.baseText(`projectRoles.${scope}`)"
+									validate-on-blur
+									type="checkbox"
+									@update:model-value="() => toggleScope(scope)"
+								/>
+							</N8nTooltip>
+						</div>
 					</template>
 				</div>
 			</div>
