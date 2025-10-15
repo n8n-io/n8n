@@ -366,8 +366,6 @@ export class SourceControlStatusService {
 			});
 		});
 
-		console.log({ credModifiedInEither });
-
 		return {
 			credMissingInLocal,
 			credMissingInRemote,
