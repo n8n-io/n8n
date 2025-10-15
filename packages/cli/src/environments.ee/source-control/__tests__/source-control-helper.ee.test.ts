@@ -10,6 +10,7 @@ import {
 	SOURCE_CONTROL_GIT_FOLDER,
 } from '@/environments.ee/source-control/constants';
 import {
+	areOwnersDifferent,
 	generateSshKeyPair,
 	getRepoType,
 	getTrackingInformationFromPostPushResult,
@@ -311,6 +312,177 @@ describe('isWorkflowModified', () => {
 		const remote = createWorkflowVersion({ parentFolderId: null });
 
 		expect(isWorkflowModified(local, remote)).toBe(false);
+	});
+
+	it('should detect modifications when owner changes', () => {
+		const local = createWorkflowVersion({
+			owner: {
+				type: 'personal',
+				projectId: 'project1',
+				projectName: 'Project 1',
+			},
+		});
+		const remote = createWorkflowVersion({
+			owner: {
+				type: 'team',
+				projectId: 'team1',
+				projectName: 'Team 1',
+			},
+		});
+
+		expect(isWorkflowModified(local, remote)).toBe(true);
+	});
+});
+
+describe('areOwnersDifferent', () => {
+	describe('both owners undefined/null', () => {
+		it('should return false when both owners are undefined', () => {
+			expect(areOwnersDifferent(undefined, undefined)).toBe(false);
+			expect(areOwnersDifferent(undefined, null as any)).toBe(false);
+			expect(areOwnersDifferent(null as any, null as any)).toBe(false);
+		});
+	});
+
+	describe('one owner undefined', () => {
+		const owner = {
+			type: 'personal' as const,
+			projectId: 'project1',
+			projectName: 'Project 1',
+		};
+
+		it('should return true when owner1 is undefined and owner2 is defined', () => {
+			expect(areOwnersDifferent(undefined, owner)).toBe(true);
+		});
+
+		it('should return true when owner1 is defined and owner2 is undefined', () => {
+			expect(areOwnersDifferent(owner, undefined)).toBe(true);
+		});
+	});
+
+	describe('different types', () => {
+		it('should return true when owner1 is personal and owner2 is team', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'project1',
+				projectName: 'Project 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'project1',
+				projectName: 'Team 1',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(true);
+		});
+
+		it('should return true when owner1 is team and owner2 is personal', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'project1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'project1',
+				projectName: 'Project 1',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(true);
+		});
+	});
+
+	describe('both personal type', () => {
+		it('should return false when both are personal with same projectId', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'project1',
+				projectName: 'Project 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'project1',
+				projectName: 'Project 1',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(false);
+		});
+
+		it('should return true when both are personal with different projectId', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'project1',
+				projectName: 'Project 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'project2',
+				projectName: 'Project 2',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(true);
+		});
+
+		it('should return false when both are personal with same projectId but different projectName', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'project1',
+				projectName: 'Project 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'project1',
+				projectName: 'Different Name',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(false);
+		});
+	});
+
+	describe('both team type', () => {
+		it('should return false when both are team with same projectId', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(false);
+		});
+
+		it('should return true when both are team with different projectId', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'team2',
+				projectName: 'Team 2',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(true);
+		});
+
+		it('should return false when both are team with same projectId but different projectName', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Different Team Name',
+			};
+
+			expect(areOwnersDifferent(owner1, owner2)).toBe(false);
+		});
 	});
 });
 
