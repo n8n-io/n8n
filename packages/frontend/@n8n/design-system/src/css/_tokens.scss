@@ -76,17 +76,17 @@
 
 	// Danger
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--danger--shade-1: var(--color-danger-shade-1, var(--p--color--alt-c-580));
+	--color--danger--shade-1: var(--color-danger-shade-1, var(--color--red-700));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--danger: var(--color-danger, var(--p--color--alt-c-480));
+	--color--danger: var(--color-danger, var(--color--red-600));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--danger--tint-1: var(--color-danger-light, var(--p--color--alt-c-330));
+	--color--danger--tint-1: var(--color-danger-light, var(--color--red-400));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--danger--tint-2: var(--color-danger-light-2, var(--p--color--alt-c-230));
+	--color--danger--tint-2: var(--color-danger-light-2, var(--color--red-300));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--danger--tint-3: var(--color-danger-tint-1, var(--p--color--alt-c-080));
+	--color--danger--tint-3: var(--color-danger-tint-1, var(--color--red-100));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--danger--tint-4: var(--color-danger-tint-2, var(--p--color--alt-c-030));
+	--color--danger--tint-4: var(--color-danger-tint-2, var(--color--red-50));
 
 	// Text
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -100,7 +100,7 @@
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--text--tint-3: var(--color-text-xlight, var(--p--color--white));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--text--danger: var(--color-text-danger, var(--p--color--alt-c-480));
+	--color--text--danger: var(--color-text-danger, var(--color--red-600));
 
 	// Foreground
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -228,8 +228,8 @@
 	--node--type-main--color: var(--p--color--gray-490);
 
 	// Sticky
-	--sticky--color--background: var(--p--color--alt-d-080);
-	--sticky--border-color: var(--p--color--alt-d-230);
+	--sticky--color--background: var(--color--yellow-100);
+	--sticky--border-color: var(--color--yellow-200);
 	--sticky--color--text: var(--p--color--gray-740);
 	--sticky--code--color--text: var(--color--secondary);
 	--sticky--code--color--background: var(--color--background);
@@ -238,12 +238,12 @@
 	--sticky--border-color--variant-1: var(--sticky--border-color);
 	--sticky--color--background--variant-2: var(--p--color--alt-b-130);
 	--sticky--border-color--variant-2: var(--p--color--alt-b-280);
-	--sticky--color--background--variant-3: var(--p--color--alt-c-080);
-	--sticky--border-color--variant-3: var(--p--color--alt-c-180);
+	--sticky--color--background--variant-3: var(--color--red-100);
+	--sticky--border-color--variant-3: var(--color--red-250);
 	--sticky--color--background--variant-4: var(--p--color--alt-a-100);
 	--sticky--border-color--variant-4: var(--p--color--alt-a-300);
-	--sticky--color--background--variant-5: var(--p--color--alt-e-080);
-	--sticky--border-color--variant-5: var(--p--color--alt-e-180);
+	--sticky--color--background--variant-5: var(--color--blue-100);
+	--sticky--border-color--variant-5: var(--color--blue-200);
 	--sticky--color--background--variant-6: var(--p--color--secondary-070);
 	--sticky--border-color--variant-6: var(--p--color--secondary-170);
 	--sticky--color--background--variant-7: var(--p--color--gray-010);
@@ -300,7 +300,7 @@
 	--node--icon--color--orange: #ff965a;
 	--node--icon--color--orange-red: #ff6d5a;
 	--node--icon--color--pink-red: #ea4b71;
-	--node--icon--color--red: var(--p--color--alt-c-480);
+	--node--icon--color--red: var(--color--red-600);
 	--node--icon--color--light-green: #31c4ab;
 	--node--icon--color--green: #108e49;
 	--node--icon--color--dark-green: #157562;
@@ -311,8 +311,8 @@
 	// Expressions, autocomplete, infobox
 	--expression-editor--resolvable--color--foreground--valid: var(--p--color--alt-a-600);
 	--expression-editor--resolvable--color--background--valid: var(--p--color--alt-a-100);
-	--expression-editor--resolvable--color--foreground--invalid: var(--p--color--alt-c-480);
-	--expression-editor--resolvable--color--background--invalid: var(--p--color--alt-c-030);
+	--expression-editor--resolvable--color--foreground--invalid: var(--color--red-600);
+	--expression-editor--resolvable--color--background--invalid: var(--color--red-50);
 	--expression-editor--resolvable--color--foreground--pending: var(--color--text);
 	--expression-editor--resolvable--color--background--pending: var(--p--color--gray-040);
 	--expression-editor--color--background: var(--p--color--white);
@@ -339,13 +339,13 @@
 	--code-tags--invalid--color: #cb2431;
 	--code-tags--comment--color: #6a737d;
 	--json--color: var(--p--color--secondary-570);
-	--json--null--color: var(--p--color--alt-c-480);
+	--json--null--color: var(--color--red-600);
 	--json--boolean--color: var(--p--color--alt-a-600);
 	--json--number--color: var(--p--color--alt-a-600);
 	--json--string--color: var(--p--color--secondary-570);
 	--json--key--color: var(--p--color--gray-670);
 	--json--brackets--color: var(--p--color--gray-670);
-	--json--brackets--color--hover: var(--p--color--alt-e-430);
+	--json--brackets--color--hover: var(--color--blue-400);
 	--json--line--color: var(--p--color--gray-200);
 	--json--highlight--color: var(--color--background);
 	--code--color--background: var(--p--color--white);
@@ -450,7 +450,7 @@
 	// Execution
 	--execution-card--border-color--new: var(--p--color--gray-200);
 	--execution-card--border-color--success: var(--p--color--alt-a-300);
-	--execution-card--border-color--error: var(--p--color--alt-c-230);
+	--execution-card--border-color--error: var(--color--red-300);
 	--execution-card--border-color--waiting: var(--p--color--secondary-170);
 	--execution-card--border-color--running: var(--p--color--alt-b-180);
 	--execution-card--border-color--unknown: var(--p--color--gray-120);
@@ -499,7 +499,7 @@
 	// Dialogs and overlays
 	--dialog--color--background: var(--p--color--white);
 	--dialog--overlay--color--background: var(--p--color--white-a-075);
-	--dialog--overlay--color--background--dark: var(--p--color--alt-g-700-a-075);
+	--dialog--overlay--color--background--dark: var(--color--slate-alpha-700);
 	--block-ui--overlay--color: var(--p--color--gray-820);
 
 	// Avatar
@@ -514,7 +514,7 @@
 
 	// Switch (Activation, boolean)
 	--switch--color--background: var(--p--color--gray-420);
-	--switch--color--background--active: var(--p--color--alt-f-560);
+	--switch--color--background--active: var(--color--green-light-600);
 	--switch--border-color: transparent;
 	--switch--toggle--color: var(--p--color--white);
 
@@ -533,7 +533,7 @@
 	--mfa--lose-access--color--text: var(--color--danger);
 
 	// Text highlight
-	--text-highlight--color--background: var(--p--color--alt-d-230);
+	--text-highlight--color--background: var(--color--yellow-200);
 
 	// MFA Modal
 	--qr-code--border-color: var(--p--color--gray-010);
@@ -720,7 +720,7 @@
 
 	// Various
 	--avatar--color--accent-1: var(--p--color--gray-120);
-	--avatar--color--accent-2: var(--p--color--alt-e-530);
+	--avatar--color--accent-2: var(--color--blue-500);
 	--color--info: var(--p--color--gray-420);
 	--color--info--tint-1: var(--p--color--gray-120);
 	--color--info--tint-2: var(--p--color--gray-040);

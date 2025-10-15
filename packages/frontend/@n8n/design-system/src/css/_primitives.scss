@@ -91,45 +91,87 @@
 
 	--p--color--alt-b-430-a-020: hsla(36, 77%, 57%, 0.2);
 
-	// Color Alternate C
-	--p--color--alt-c-730: hsl(355, 43%, 27%);
-	--p--color--alt-c-630: hsl(355, 53%, 37%);
-	--p--color--alt-c-580: hsl(355, 83%, 42%);
-	--p--color--alt-c-480: hsl(355, 83%, 52%); // Base
-	--p--color--alt-c-330: hsl(355, 83%, 67%);
-	--p--color--alt-c-230: hsl(355, 83%, 77%);
-	--p--color--alt-c-180: hsl(355, 83%, 82%);
-	--p--color--alt-c-080: hsl(355, 83%, 92%);
-	--p--color--alt-c-030: hsl(355, 83%, 97%);
+	// Red
+	--color--red-50: hsl(356, 83%, 97%);
+	--color--red-100: hsl(354, 83%, 92%);
+	--color--red-200: hsl(355, 83%, 89%);
+	--color--red-250: hsl(355, 83%, 82%);
+	--color--red-300: hsl(355, 83%, 77%);
+	--color--red-400: hsl(355, 83%, 67%);
+	--color--red-500: hsl(355, 83%, 60%);
+	--color--red-600: hsl(355, 83%, 52%);
+	--color--red-700: hsl(355, 83%, 42%);
+	--color--red-800: hsl(355, 83%, 37%);
+	--color--red-900: hsl(355, 83%, 27%);
+	--color--red-950: hsl(355, 83%, 20%);
 
-	--p--color--alt-c-480-a-020: hsla(355, 83%, 52%, 0.2);
-	--p--color--alt-c-480-a-010: hsla(355, 83%, 52%, 0.1);
+	--color--red-alpha-020: hsla(355, 83%, 52%, 0.2);
 
-	// Color Alternate D
-	--p--color--alt-d-780: hsl(46, 45%, 22%);
-	--p--color--alt-d-680: hsl(46, 45%, 32%);
-	--p--color--alt-d-230: hsl(46, 100%, 77%);
-	--p--color--alt-d-080: hsl(46, 100%, 92%); // Base
+	// Yellow
+	--color--yellow-100: hsl(46, 100%, 92%);
+	--color--yellow-200: hsl(46, 100%, 77%);
+	--color--yellow-300: hsl(46, 100%, 70%);
+	--color--yellow-400: hsl(46, 100%, 60%);
+	--color--yellow-500: hsl(46, 100%, 50%);
+	--color--yellow-600: hsl(46, 100%, 40%);
+	--color--yellow-700: hsl(46, 100%, 32%);
+	--color--yellow-800: hsl(46, 100%, 22%);
+	--color--yellow-900: hsl(46, 100%, 10%);
 
-	// Color Alternate E
-	--p--color--alt-e-780: hsl(210, 47%, 22%);
-	--p--color--alt-e-680: hsl(210, 57%, 32%);
-	--p--color--alt-e-580: hsl(210, 67%, 42%);
-	--p--color--alt-e-530: hsl(210, 67%, 47%);
-	--p--color--alt-e-430: hsl(210, 67%, 57%); // Base
-	--p--color--alt-e-180: hsl(210, 67%, 82%);
-	--p--color--alt-e-080: hsl(210, 67%, 92%);
+	// Blue
+	--color--blue-50: hsl(210, 67%, 95%);
+	--color--blue-100: hsl(210, 67%, 92%);
+	--color--blue-200: hsl(210, 67%, 82%);
+	--color--blue-300: hsl(210, 67%, 70%);
+	--color--blue-400: hsl(210, 67%, 57%);
+	--color--blue-500: hsl(210, 67%, 47%);
+	--color--blue-600: hsl(210, 67%, 42%);
+	--color--blue-700: hsl(210, 67%, 32%);
+	--color--blue-800: hsl(210, 67%, 22%);
+	--color--blue-900: hsl(210, 67%, 10%);
 
-	// Color Alternate F
-	--p--color--alt-f-560: hsl(147, 83%, 44%); // Base
+	// GreeLight
+	--color--green-light-100: hsl(147, 83%, 90%);
+	--color--green-light-200: hsl(147, 83%, 80%);
+	--color--green-light-300: hsl(147, 83%, 70%);
+	--color--green-light-400: hsl(147, 83%, 60%);
+	--color--green-light-500: hsl(147, 83%, 50%);
+	--color--green-light-600: hsl(147, 83%, 44%);
+	--color--green-light-700: hsl(147, 83%, 30%);
+	--color--green-light-800: hsl(147, 83%, 20%);
+	--color--green-light-900: hsl(147, 83%, 10%);
 
-	// Color Alternate G
-	--p--color--alt-g-700: hsl(247, 10%, 30%); // Base
+	// Slate
+	--color--slate-100: hsl(248, 10%, 90%);
+	--color--slate-200: hsl(248, 10%, 80%);
+	--color--slate-300: hsl(248, 10%, 70%);
+	--color--slate-400: hsl(248, 10%, 60%);
+	--color--slate-500: hsl(248, 10%, 50%);
+	--color--slate-600: hsl(248, 10%, 40%);
+	--color--slate-700: hsl(248, 10%, 30%);
+	--color--slate-800: hsl(248, 10%, 20%);
+	--color--slate-900: hsl(248, 10%, 10%);
 
-	--p--color--alt-g-700-a-075: hsla(247, 10%, 30%, 0.75);
+	--color--slate-alpha-700: hsla(247, 10%, 30%, 0.75);
 
 	// Color Alternate H - Used for errors in dark mode
 	--p--color--alt-h-310: hsl(355, 100%, 69%); // Base
+
+	// Spacing
+	--spacing--3xs: 0.125rem; // 2px
+	--spacing--2xs: 0.25rem; // 4px
+	--spacing--xs: 0.5rem; // 8px
+	--spacing--sm: 0.75rem; // 12px
+	--spacing--md: 1rem; // 16px
+	--spacing--lg: 1.25rem; // 20px
+	--spacing--xl: 1.5rem; // 24px
+	--spacing--2xl: 2rem; // 32px
+	--spacing--3xl: 3rem; // 48px
+	--spacing--4xl: 4rem; // 64px
+	--spacing--5xl: 6rem; // 96px
+	--spacing--6xl: 8rem; // 128px
+	--spacing--7xl: 12rem; // 192px
+	--spacing--8xl: 16rem; // 256px
 }
 
 :root {
