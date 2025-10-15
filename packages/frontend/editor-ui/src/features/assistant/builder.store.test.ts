@@ -444,20 +444,6 @@ describe('AI Builder store', () => {
 		expect(builderStore.builderThinkingMessage).toBeUndefined();
 	});
 
-	it('should not show builder if disabled in settings', () => {
-		const builderStore = useBuilderStore();
-
-		setBuilderEnabled(false);
-		expect(builderStore.isAIBuilderEnabled).toBe(false);
-	});
-
-	it('should show builder if all conditions are met', () => {
-		const builderStore = useBuilderStore();
-
-		setBuilderEnabled(true);
-		expect(builderStore.isAIBuilderEnabled).toBe(true);
-	});
-
 	describe('isAIBuilderEnabled computed property', () => {
 		it('should return false when license does not have aiBuilder feature', () => {
 			const builderStore = useBuilderStore();
