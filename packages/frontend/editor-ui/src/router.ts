@@ -64,7 +64,7 @@ const VariablesView = async () =>
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/sso/views/SettingsSso.vue');
 const SignoutView = async () => await import('@/features/auth/views/SignoutView.vue');
-const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
+const SamlOnboarding = async () => await import('@/features/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
