@@ -376,10 +376,11 @@ const displayNameValidationRules = [
 				<div style="flex: 1">
 					<N8nLoading v-if="isLoading" :rows="scopes[type].length" :shrink-last="false" />
 					<template v-else>
-						<div v-for="scope in scopes[type]" :key="scope">
+						<div v-for="scope in scopes[type]" :key="scope" class="mb-2xs">
 							<N8nTooltip
 								:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
 								placement="right"
+								:enterable="false"
 							>
 								<N8nFormInput
 									:data-test-id="`scope-checkbox-${scope}`"
@@ -387,6 +388,7 @@ const displayNameValidationRules = [
 									:label="i18n.baseText(`projectRoles.${scope}`)"
 									validate-on-blur
 									type="checkbox"
+									:class="$style.checkbox"
 									@update:model-value="() => toggleScope(scope)"
 								/>
 							</N8nTooltip>
@@ -469,5 +471,13 @@ const displayNameValidationRules = [
 .presetsContainer {
 	display: flex;
 	gap: 8px;
+}
+
+.checkbox {
+	display: inline-flex !important;
+	margin-bottom: 0 !important;
+	:global(label) {
+		padding-bottom: 0 !important;
+	}
 }
 </style>
