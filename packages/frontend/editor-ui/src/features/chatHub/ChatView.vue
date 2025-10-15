@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
+import { ref, computed, watch, onMounted, useTemplateRef, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -57,6 +57,7 @@ const sessionId = computed<string>(() =>
 const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const showScrollToBottom = ref(false);
 const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -149,6 +150,19 @@ function scrollToMessage(messageId: string) {
 		?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function checkScrollPosition() {
+	const scrollContainer = scrollableRef.value?.parentElement;
+	if (!scrollContainer) {
+		return;
+	}
+
+	const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+	const threshold = 100;
+	const isAtBottom = scrollHeight - scrollTop - clientHeight < threshold;
+
+	showScrollToBottom.value = !isAtBottom;
+}
+
 // Scroll to the bottom when messages are loaded
 watch(
 	[chatMessages, didSubmitInCurrentSession],
@@ -211,6 +225,19 @@ onMounted(async () => {
 		credentialsStore.fetchCredentialTypes(false),
 		credentialsStore.fetchAllCredentials(),
 	]);
+
+	const scrollContainer = scrollableRef.value?.parentElement;
+	if (scrollContainer) {
+		scrollContainer.addEventListener('scroll', checkScrollPosition);
+		checkScrollPosition();
+	}
+});
+
+onUnmounted(() => {
+	const scrollContainer = scrollableRef.value?.parentElement;
+	if (scrollContainer) {
+		scrollContainer.removeEventListener('scroll', checkScrollPosition);
+	}
 });
 
 function onModelChange(selection: ChatHubConversationModel) {
@@ -385,6 +412,15 @@ function handleRegenerateMessage(message: ChatMessageType) {
 				</div>
 
 				<div :class="$style.promptContainer">
+					<N8nIconButton
+						v-if="showScrollToBottom && !isNewChat"
+						type="secondary"
+						icon="arrow-down"
+						:class="$style.scrollToBottomButton"
+						title="Scroll to bottom"
+						@click="scrollToBottom(true)"
+					/>
+
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
@@ -502,5 +538,13 @@ function handleRegenerateMessage(message: ChatMessageType) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+
+.scrollToBottomButton {
+	position: absolute;
+	bottom: 100%;
+	left: auto;
+	box-shadow: 0px 4px 12px 0px rgba(0, 0, 0, 0.15);
+	border-radius: 50%;
 }
 </style>
