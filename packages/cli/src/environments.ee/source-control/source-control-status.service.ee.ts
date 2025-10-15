@@ -577,12 +577,15 @@ export class SourceControlStatusService {
 			const mismatchingIds = foldersMappingsRemote.folders.find(
 				(remote) =>
 					remote.id === local.id &&
-					(remote.name !== local.name || remote.parentFolderId !== local.parentFolderId),
+					(remote.name !== local.name ||
+						remote.parentFolderId !== local.parentFolderId ||
+						remote.homeProjectId !== local.homeProjectId),
 			);
 
 			if (!mismatchingIds) {
 				return;
 			}
+
 			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
 		});
 
