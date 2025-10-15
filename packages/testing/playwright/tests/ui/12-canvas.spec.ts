@@ -11,14 +11,15 @@ import {
 	CODE_NODE_DISPLAY_NAME,
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
+import type { n8nPage } from '../../pages/n8nPage';
 import { resolveFromRoot } from '../../utils/path-helper';
 
 const DEFAULT_ZOOM_FACTOR = 1;
-const ZOOM_IN_X1_FACTOR = 1.25;
-const ZOOM_IN_X2_FACTOR = 1.5625;
-const ZOOM_OUT_X1_FACTOR = 0.8;
-const ZOOM_OUT_X2_FACTOR = 0.64;
-const ZOOM_TOLERANCE = 0.2;
+const ZOOM_IN_X1_FACTOR = 1.25; // Expected zoom after 1 zoom-in click (125%)
+const ZOOM_IN_X2_FACTOR = 1.5625; // Expected zoom after 2 zoom-in clicks (156.25%)
+const ZOOM_OUT_X1_FACTOR = 0.8; // Expected zoom after 1 zoom-out click (80%)
+const ZOOM_OUT_X2_FACTOR = 0.64; // Expected zoom after 2 zoom-out clicks (64%)
+const ZOOM_TOLERANCE = 0.2; // Acceptable variance for floating-point zoom comparisons
 
 test.describe('Canvas Node Manipulation and Navigation', () => {
 	test.beforeEach(async ({ n8n }) => {
@@ -55,9 +56,7 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.saveWorkflow();
 		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
-		await n8n.page.reload();
-		await expect(n8n.canvas.getNodeViewLoader()).toBeHidden();
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden();
+		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
 		await expect(
 			n8n.canvas.connectionBetweenNodes('Edit Fields3', `${SWITCH_NODE_NAME}1`),
@@ -70,6 +69,8 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 	});
 
 	test('should add merge node and test connections', async ({ n8n }) => {
+		const editFieldsNodeCount = 2;
+
 		const checkConnections = async () => {
 			await expect(
 				n8n.canvas.connectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, 'Edit Fields1').first(),
@@ -85,10 +86,11 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 
-		for (let i = 0; i < 2; i++) {
+		for (let i = 0; i < editFieldsNodeCount; i++) {
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.canvasPane().click({
 				position: { x: (i + 1) * 200, y: (i + 1) * 200 },
+				// eslint-disable-next-line playwright/no-force-option
 				force: true,
 			});
 		}
@@ -108,18 +110,14 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.saveWorkflow();
 		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
-		await n8n.page.reload();
-		await expect(n8n.canvas.getNodeViewLoader()).toBeHidden();
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden();
+		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
 		await checkConnections();
 
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(n8n.canvas.stopExecutionButton()).toBeHidden();
 
-		await n8n.page.reload();
-		await expect(n8n.canvas.getNodeViewLoader()).toBeHidden();
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden();
+		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
 		await checkConnections();
 
@@ -132,10 +130,12 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 	});
 
 	test('should add nodes and check execution success', async ({ n8n }) => {
+		const nodeCount = 3;
+
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 
-		for (let i = 0; i < 3; i++) {
+		for (let i = 0; i < nodeCount; i++) {
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 		}
 		await n8n.canvas.clickZoomToFitButton();
@@ -143,8 +143,8 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(n8n.canvas.stopExecutionButton()).toBeHidden();
 
-		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(3);
-		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(4);
+		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(nodeCount);
+		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(nodeCount + 1);
 		await expect(n8n.canvas.getCanvasHandlePlusWrapper()).toHaveAttribute(
 			'data-plus-type',
 			'success',
@@ -155,8 +155,8 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 
 		await expect(n8n.canvas.getCanvasHandlePlus()).not.toHaveAttribute('data-plus-type', 'success');
 
-		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(4);
-		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(4);
+		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(nodeCount + 1);
+		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(nodeCount + 1);
 	});
 
 	test('should delete node using context menu', async ({ n8n }) => {
@@ -235,34 +235,32 @@ test.describe('Canvas Zoom Functionality', () => {
 		await n8n.start.fromBlankCanvas();
 	});
 
+	const expectZoomLevel = async (n8n: n8nPage, expectedFactor: number) => {
+		const actual = await n8n.canvas.getCanvasZoomLevel();
+		expect(actual).toBeGreaterThanOrEqual(expectedFactor - ZOOM_TOLERANCE);
+		expect(actual).toBeLessThanOrEqual(expectedFactor + ZOOM_TOLERANCE);
+	};
+
 	test('should zoom in', async ({ n8n }) => {
 		await expect(n8n.canvas.getZoomInButton()).toBeVisible();
 
 		const initialZoom = await n8n.canvas.getCanvasZoomLevel();
 
 		await n8n.canvas.clickZoomInButton();
-		const zoom1 = await n8n.canvas.getCanvasZoomLevel();
-		const expected1 = initialZoom * ZOOM_IN_X1_FACTOR;
-		expect(zoom1).toBeGreaterThanOrEqual(expected1 - ZOOM_TOLERANCE);
-		expect(zoom1).toBeLessThanOrEqual(expected1 + ZOOM_TOLERANCE);
+		await expectZoomLevel(n8n, initialZoom * ZOOM_IN_X1_FACTOR);
 
 		await n8n.canvas.clickZoomInButton();
-		const zoom2 = await n8n.canvas.getCanvasZoomLevel();
-		const expected2 = initialZoom * ZOOM_IN_X2_FACTOR;
-		expect(zoom2).toBeGreaterThanOrEqual(expected2 - ZOOM_TOLERANCE);
-		expect(zoom2).toBeLessThanOrEqual(expected2 + ZOOM_TOLERANCE);
+		await expectZoomLevel(n8n, initialZoom * ZOOM_IN_X2_FACTOR);
 	});
 
 	test('should zoom out', async ({ n8n }) => {
 		await n8n.canvas.clickZoomOutButton();
-		const zoom1 = await n8n.canvas.getCanvasZoomLevel();
-		expect(zoom1).toBeGreaterThanOrEqual(ZOOM_OUT_X1_FACTOR - ZOOM_TOLERANCE);
-		expect(zoom1).toBeLessThanOrEqual(ZOOM_OUT_X1_FACTOR + ZOOM_TOLERANCE);
+		await expectZoomLevel(n8n, ZOOM_OUT_X1_FACTOR);
 
 		await n8n.canvas.clickZoomOutButton();
-		const zoom2 = await n8n.canvas.getCanvasZoomLevel();
-		expect(zoom2).toBeGreaterThanOrEqual(ZOOM_OUT_X2_FACTOR - ZOOM_TOLERANCE);
-		expect(zoom2).toBeLessThanOrEqual(ZOOM_OUT_X2_FACTOR + ZOOM_TOLERANCE);
+		const finalZoom = await n8n.canvas.getCanvasZoomLevel();
+		expect(finalZoom).toBeGreaterThanOrEqual(ZOOM_OUT_X2_FACTOR - ZOOM_TOLERANCE);
+		expect(finalZoom).toBeLessThanOrEqual(ZOOM_OUT_X2_FACTOR + ZOOM_TOLERANCE);
 	});
 
 	test('should reset zoom', async ({ n8n }) => {
@@ -273,9 +271,7 @@ test.describe('Canvas Zoom Functionality', () => {
 		await expect(n8n.canvas.getResetZoomButton()).toBeVisible();
 		await n8n.canvas.getResetZoomButton().click();
 
-		const zoom = await n8n.canvas.getCanvasZoomLevel();
-		expect(zoom).toBeGreaterThanOrEqual(DEFAULT_ZOOM_FACTOR - ZOOM_TOLERANCE);
-		expect(zoom).toBeLessThanOrEqual(DEFAULT_ZOOM_FACTOR + ZOOM_TOLERANCE);
+		await expectZoomLevel(n8n, DEFAULT_ZOOM_FACTOR);
 	});
 
 	test('should zoom to fit', async ({ n8n }) => {
@@ -352,16 +348,12 @@ test.describe('Canvas Zoom Functionality', () => {
 	test('should rename node (context menu or shortcut)', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
-		await n8n.canvas.getCanvasNodes().last().click();
-		await n8n.page.keyboard.press('F2');
-		await expect(n8n.page.locator('.rename-prompt')).toBeVisible();
-		await n8n.page.keyboard.type('Something else');
-		await n8n.page.keyboard.press('Enter');
+		await n8n.canvasComposer.renameNodeViaShortcut(CODE_NODE_DISPLAY_NAME, 'Something else');
 		await expect(n8n.canvas.nodeByName('Something else')).toBeAttached();
 
 		await n8n.canvas.rightClickNode('Something else');
 		await n8n.canvas.getContextMenuItem('rename').click();
-		await expect(n8n.page.locator('.rename-prompt')).toBeVisible();
+		await expect(n8n.canvas.getRenamePrompt()).toBeVisible();
 		await n8n.page.keyboard.type('Something different');
 		await n8n.page.keyboard.press('Enter');
 		await expect(n8n.canvas.nodeByName('Something different')).toBeAttached();
@@ -372,10 +364,10 @@ test.describe('Canvas Zoom Functionality', () => {
 		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 		await n8n.canvas.getCanvasNodes().last().click();
 		await n8n.page.keyboard.press('F2');
-		await expect(n8n.page.locator('.rename-prompt')).toBeVisible();
+		await expect(n8n.canvas.getRenamePrompt()).toBeVisible();
 		await n8n.page.keyboard.press('Backspace');
 		await n8n.page.keyboard.press('Enter');
-		await expect(n8n.page.locator('.rename-prompt')).toContainText('Invalid Name');
+		await expect(n8n.canvas.getRenamePrompt()).toContainText('Invalid Name');
 	});
 
 	test('should duplicate nodes (context menu or shortcut)', async ({ n8n }) => {
@@ -401,30 +393,24 @@ test.describe('Canvas Zoom Functionality', () => {
 		).toBeVisible();
 		await n8n.notifications.closeNotificationByText('Workflow executed successfully');
 
-		await n8n.page.getByTestId('radio-button-executions').click();
+		await n8n.canvas.openExecutions();
 		await expect(n8n.executions.getSuccessfulExecutionItems()).toHaveCount(1);
 
-		await n8n.page.getByTestId('radio-button-workflow').click();
+		await n8n.canvas.clickEditorTab();
 
-		await n8n.page.getByTestId('radio-button-executions').click();
+		await n8n.canvas.openExecutions();
 		await expect(n8n.executions.getSuccessfulExecutionItems()).toHaveCount(1);
 
-		await n8n.page.getByTestId('radio-button-workflow').click();
+		await n8n.canvas.clickEditorTab();
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 
-		await n8n.canvas.getCanvasNodes().last().click();
-		await n8n.page.keyboard.press('F2');
-		await expect(n8n.page.locator('.rename-prompt')).toBeVisible();
-		await n8n.page.keyboard.type('Something else');
-		await n8n.page.keyboard.press('Enter');
+		await n8n.canvasComposer.renameNodeViaShortcut(CODE_NODE_DISPLAY_NAME, 'Something else');
 		await expect(n8n.canvas.nodeByName('Something else')).toBeAttached();
 
 		await n8n.canvas.saveWorkflow();
 		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
-		await n8n.page.reload();
-		await expect(n8n.canvas.getNodeViewLoader()).toBeHidden();
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden();
+		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);

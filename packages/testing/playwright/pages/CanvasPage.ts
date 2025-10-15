@@ -192,6 +192,10 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).dblclick();
 	}
 
+	getRenamePrompt(): Locator {
+		return this.page.locator('.rename-prompt');
+	}
+
 	/**
 	 * Get the names of all pinned nodes on the canvas.
 	 * @returns An array of node names.
