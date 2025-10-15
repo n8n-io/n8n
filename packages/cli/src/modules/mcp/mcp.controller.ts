@@ -123,7 +123,7 @@ export class McpController {
 		if (type === 'connected') {
 			this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);
 		} else if (type === 'tool_call') {
-			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, payload as UserCalledMCPToolEventPayload);
+			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, payload);
 		}
 	}
 }
