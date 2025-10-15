@@ -40,8 +40,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -56,7 +57,6 @@ import type {
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -422,7 +422,15 @@ export class ChatHubService {
 
 		// If the message being retried is itself a retry, we want to point to the original message
 		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
-		const runIndex = messages.filter((m) => m.retryOfMessageId === retryOfMessageId).length + 1;
+		const otherRuns = messages.filter((m) => m.retryOfMessageId === retryOfMessageId);
+		const runIndex = otherRuns.length + 1;
+
+		await this.messageRepository.updateChatMessage(retryOfMessageId, { state: 'replaced' });
+		for (const run of otherRuns) {
+			if (run.state === 'active') {
+				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
+			}
+		}
 
 		await this.executeChatWorkflow(
 			res,
@@ -462,12 +470,17 @@ export class ChatHubService {
 			return messages.find((m) => m.id === id) ?? [];
 		});
 
-		// TODO: Update status of other revisions / original
-
 		// If the message to edit isn't the original message, we want to point to the original message
 		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-		const runIndex =
-			messages.filter((m) => m.revisionOfMessageId === revisionOfMessageId).length + 1;
+		const otherRuns = messages.filter((m) => m.revisionOfMessageId === revisionOfMessageId);
+		const runIndex = otherRuns.length + 1;
+
+		await this.messageRepository.updateChatMessage(revisionOfMessageId, { state: 'replaced' });
+		for (const run of otherRuns) {
+			if (run.state === 'active') {
+				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
+			}
+		}
 
 		const turnId = payload.messageId;
 		await this.saveHumanMessage(

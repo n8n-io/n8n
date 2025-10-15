@@ -90,7 +90,7 @@ export class ChatHubEditMessageRequest extends Z.class({
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
+export type ChatHubMessageState = 'active' | 'replaced';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
