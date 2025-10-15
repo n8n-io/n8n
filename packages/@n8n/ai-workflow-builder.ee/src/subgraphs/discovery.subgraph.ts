@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { Annotation, StateGraph, END } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -14,73 +14,75 @@ import { executeSubgraphTools } from '../utils/subgraph-helpers';
 /**
  * Discovery Agent Prompt
  *
- * Focused on finding and analyzing nodes needed for the workflow.
- * Does NOT build or configure - only discovers and recommends.
+ * Context gatherer for the AI Workflow Builder.
+ * Discovers nodes and provides structured context for builder/configurator agents.
  */
-const DISCOVERY_PROMPT = `You are a Discovery Agent specialized in finding context for n8n AI Workflow Builder.
+const DISCOVERY_PROMPT = `You are a Discovery Agent for n8n AI Workflow Builder.
 
-Your ONLY job is to:
-1. Understand what the user wants to build
-2. Search for ALL relevant NODE TYPES (not actual data/URLs)
-3. Get detailed information about those node types
-4. Report back ALL nodes you found with their capabilities
+YOUR ROLE: Gather ALL relevant context needed to successfully build and configure the workflow.
 
-WHAT YOU SEARCH FOR:
-- n8n NODE TYPES like "RSS Read", "OpenAI", "Gmail", "Schedule Trigger"
-- NOT actual RSS feed URLs, API endpoints, or data sources
-- Think: "What n8n integration nodes exist?" not "What websites have RSS feeds?"
+AVAILABLE TOOLS:
+- search_nodes: Find n8n integration nodes by keyword (e.g., "Gmail", "OpenAI", "HTTP")
+- get_node_details: Get complete information about a specific node type
 
-SEARCH STRATEGY:
-- Search broadly first (e.g., "OpenAI" not just "ChatGPT")
-- Search for ALL node types needed for the workflow
-- Call get_node_details for nodes that seem relevant
-- Search in PARALLEL when looking for multiple node types
-- Consider alternative nodes (e.g., both "HTTP Request" and service-specific nodes)
+WHAT TO DISCOVER:
+1. **Node Types**: Which n8n integrations are needed (Gmail, Slack, HTTP Request, etc.)
+2. **Connection Patterns**: How nodes should connect (sequential, parallel, AI sub-nodes)
+3. **Data Requirements**: Input/output formats, API requirements, credential needs
+4. **Configuration Hints**: Critical parameters, common pitfalls, best practices
 
 CRITICAL RULES:
-- Call search_nodes to find node types by name
-- Call get_node_details to understand node inputs/outputs/parameters
+- NEVER ask clarifying questions - work with the information provided
+- Search comprehensively - find ALL relevant nodes
+- Call get_node_details for EVERY node you find (Builder needs full details)
+- Execute tools in PARALLEL for efficiency
 - Execute tools SILENTLY - no commentary before or between tool calls
-- Be efficient - you have a call limit
-- Find ALL matching nodes, not just the first one
+- Search broadly (e.g., "OpenAI" finds ChatGPT, DALL-E, Whisper nodes)
+
+SEARCH STRATEGY:
+1. Identify workflow components from user request (trigger, data source, processing, action)
+2. Search for each component type
+3. Get details for ALL promising matches
+4. Consider alternatives (e.g., both "Gmail" and "HTTP Request" for email sending)
 
 DO NOT:
-- Output text before calling tools
-- Add commentary between tool calls
-- Try to build the workflow (that's the Builder Agent's job)
-- Configure parameters (that's the Configurator Agent's job)
-- Make assumptions about which nodes to use - always search first
-- Stop after finding just one node - find all relevant options
+- Ask "what API endpoint?" or "which service?" - make reasonable assumptions
+- Output commentary between tool calls
+- Skip get_node_details (Builder/Configurator need complete node information)
+- Try to build or configure workflows (other agents handle that)
 
-RESPONSE FORMAT:
-After ALL tools have completed, provide a comprehensive summary:
+OUTPUT FORMAT (after ALL tools complete):
 
-**Nodes Found:**
-- [Node Display Name] ([Node Type]): [Key capability and why it's relevant]
-- [Node Display Name] ([Node Type]): [Key capability and why it's relevant]
-...
+**Nodes:**
+- [Display Name] ([node.type]): [Why this node is needed for the workflow]
+- [Display Name] ([node.type]): [Why this node is needed for the workflow]
 
-**Additional Context:**
-- Any important details about node compatibility, credentials, or limitations
-- Recommendations for the builder (e.g., "Connect HTTP Request output to Code node")
-- Data format or API considerations
+**Context for Builder:**
+- [Connection pattern, e.g., "Connect trigger → data fetch → processing → action"]
+- [Structural guidance, e.g., "Vector Store needs Document Loader via ai_document connection"]
+
+**Context for Configurator:**
+- [Parameter requirements, e.g., "HTTP Request needs POST method and /weather endpoint"]
+- [Data format notes, e.g., "Document Loader must use 'binary' dataType for PDF files"]
+- [API/credential notes, e.g., "OpenWeather requires API key in query params"]
 
 Example:
-**Nodes Found:**
-- Schedule Trigger (scheduleTrigger): Triggers workflow on daily schedule
-- OpenWeatherMap (openWeatherMap): Fetches weather data by location
-- DALL-E (openAiDallE): Generates images from text prompts
-- Gmail (gmail): Sends emails with attachments
 
-**Additional Context:**
-- OpenWeatherMap requires API credentials
-- DALL-E node outputs image URLs, not binary data
-- Gmail can attach images via URL
+**Nodes:**
+- Schedule Trigger (n8n-nodes-base.scheduleTrigger): Triggers workflow daily at specified time
+- HTTP Request (n8n-nodes-base.httpRequest): Fetches weather data from OpenWeather API
+- Gmail (n8n-nodes-base.gmail): Sends formatted weather alert emails
 
-CRITICAL:
-- Only respond AFTER all search_nodes and get_node_details tools have executed
-- Include ALL nodes you found, not just a selection
-- Provide reasoning for WHY each node is relevant`;
+**Context for Builder:**
+- Connect sequentially: Schedule Trigger → HTTP Request → Gmail
+- Standard main connection flow (no AI sub-nodes needed)
+
+**Context for Configurator:**
+- HTTP Request: Set method to GET, URL to https://api.openweathermap.org/data/2.5/weather, add API key header
+- Gmail: Use recipient email, subject line with date, body with weather data from HTTP response
+- Schedule: Set to run daily at 8 AM
+
+CRITICAL: Respond ONCE after ALL tools complete. NEVER ask questions - work with what you have.`;
 
 /**
  * Discovery Subgraph State
@@ -142,7 +144,7 @@ export const DiscoverySubgraphState = Annotation.Root({
 
 	// Internal: Track iterations to prevent infinite loops
 	iterationCount: Annotation<number>({
-		reducer: (x, y) => (y !== undefined ? y : x) + 1,
+		reducer: (x, y) => (y ?? x) + 1,
 		default: () => 0,
 	}),
 });
@@ -172,6 +174,7 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 	// Create agent with tools bound
 	const systemPrompt = ChatPromptTemplate.fromMessages([
 		['system', DISCOVERY_PROMPT],
+		['human', '{prompt}'],
 		['placeholder', '{messages}'],
 	]);
 
@@ -197,18 +200,10 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 		if (state.supervisorInstructions) {
 			message += `\n<supervisor_instructions>${state.supervisorInstructions}</supervisor_instructions`;
 		}
-		// On first call, create initial message
-		const messagesToUse =
-			state.messages.length === 0
-				? [
-						new HumanMessage({
-							content: message,
-						}),
-					]
-				: state.messages;
 
 		const response = await agent.invoke({
-			messages: messagesToUse,
+			messages: state.messages,
+			prompt: message,
 		});
 
 		console.log('[Discovery Agent] Response', {
@@ -226,34 +221,21 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 		const result = await executeSubgraphTools(state, toolMap);
 
 		// Track which nodes we fetched details for
-		const lastMessage = state.messages[state.messages.length - 1];
+		const lastMessage = state.messages.at(-1);
 		const fetchedNodes = new Map<string, INodeTypeDescription>();
 
-		if (
-			lastMessage &&
-			'tool_calls' in lastMessage &&
-			Array.isArray(lastMessage.tool_calls) &&
-			lastMessage.tool_calls.length > 0
-		) {
-			for (const toolCall of lastMessage.tool_calls) {
-				if (
-					toolCall &&
-					typeof toolCall === 'object' &&
-					'name' in toolCall &&
-					toolCall.name === 'get_node_details' &&
-					'args' in toolCall &&
-					toolCall.args
-				) {
-					const args = toolCall.args as Record<string, unknown>;
-					const nodeType = args.nodeType as string | undefined;
+		if (lastMessage && isAIMessage(lastMessage) && lastMessage.tool_calls) {
+			lastMessage.tool_calls
+				.filter((tc) => tc.name === 'get_node_details')
+				.forEach((tc) => {
+					const nodeType = tc.args?.nodeType as string | undefined;
 					if (nodeType) {
 						const nodeDesc = config.parsedNodeTypes.find((n) => n.name === nodeType);
 						if (nodeDesc) {
 							fetchedNodes.set(nodeType, nodeDesc);
 						}
 					}
-				}
-			}
+				});
 		}
 
 		return {
@@ -263,24 +245,55 @@ export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
 	};
 
 	/**
-	 * Extract structured results from fetched nodes
+	 * Extract structured results from agent's markdown output
 	 */
 	const extractResults = (state: typeof DiscoverySubgraphState.State) => {
-		const lastMessage = state.messages[state.messages.length - 1];
-		const summary = typeof lastMessage?.content === 'string' ? lastMessage.content : '';
+		const lastMessage = state.messages.at(-1);
+		const content = typeof lastMessage?.content === 'string' ? lastMessage.content : '';
 
-		// Convert fetched node types to nodesFound format
-		const nodesFound = Array.from(state.fetchedNodeTypes.values()).map((nodeType) => ({
-			nodeType,
-			reasoning: 'Selected for workflow based on requirements',
-		}));
+		// Extract reasoning for each node from **Nodes:** section
+		const nodesFound = Array.from(state.fetchedNodeTypes.values()).map((nodeType) => {
+			// Try to find this node's line in the markdown
+			const nodePattern = new RegExp(`-\\s+${nodeType.displayName}\\s*\\([^)]+\\):\\s*(.+)`, 'i');
+			const match = content.match(nodePattern);
+			const reasoning = match?.[1]?.trim() ?? 'Selected for workflow';
+
+			return { nodeType, reasoning };
+		});
+
+		// Parse "Context for Builder:" section
+		const builderMatch = content.match(/\*\*Context for Builder:\*\*\s*\n([\s\S]*?)(?=\n\*\*|$)/i);
+		const builderContext =
+			builderMatch?.[1]
+				?.split('\n')
+				.filter((line) => line.trim().startsWith('-'))
+				.map((line) => ({
+					context: line.replace(/^-\s*/, '').trim(),
+					relevancy: 'builder' as const,
+				})) ?? [];
+
+		// Parse "Context for Configurator:" section
+		const configMatch = content.match(
+			/\*\*Context for Configurator:\*\*\s*\n([\s\S]*?)(?=\n\*\*|$)/i,
+		);
+		const configContext =
+			configMatch?.[1]
+				?.split('\n')
+				.filter((line) => line.trim().startsWith('-'))
+				.map((line) => ({
+					context: line.replace(/^-\s*/, '').trim(),
+					relevancy: 'configurator' as const,
+				})) ?? [];
+
+		const relevantContext = [...builderContext, ...configContext];
 
 		console.log('[Discovery] Extracted results', {
 			nodesFoundCount: nodesFound.length,
 			nodeNames: nodesFound.map((n) => n.nodeType.displayName),
+			relevantContextCount: relevantContext.length,
 		});
 
-		return { nodesFound, summary };
+		return { nodesFound, relevantContext, summary: content };
 	};
 
 	/**
