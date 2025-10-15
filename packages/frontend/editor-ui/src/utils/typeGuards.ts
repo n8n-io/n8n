@@ -7,7 +7,6 @@ import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import type {
 	IExecutionResponse,
-	ICredentialsResponse,
 	NewCredentialsModal,
 	CredentialsResource,
 	FolderResource,
@@ -16,6 +15,7 @@ import type {
 	WorkflowResource,
 	WorkflowListItem,
 } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/features/canvas/canvas.types';

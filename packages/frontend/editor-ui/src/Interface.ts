@@ -3,20 +3,17 @@ import type { NotificationOptions as ElementNotificationOptions } from 'element-
 import type {
 	BannerName,
 	FrontendSettings,
-	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/users/users.types';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
-	ICredentialsDecrypted,
-	ICredentialsEncrypted,
-	ICredentialType,
 	IDataObject,
 	INode,
 	INodeIssues,
@@ -55,18 +52,17 @@ import type { ITag } from '@n8n/rest-api-client/api/tags';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
-	CREDENTIAL_EDIT_MODAL_KEY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
 } from '@/constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
-import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -377,33 +373,8 @@ export interface IActivationError {
 	};
 }
 
-export interface IShareCredentialsPayload {
-	shareWithIds: string[];
-}
-
 export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
-}
-
-export interface ICredentialsResponse extends ICredentialsEncrypted {
-	id: string;
-	createdAt: Iso8601DateTimeString;
-	updatedAt: Iso8601DateTimeString;
-	sharedWithProjects?: ProjectSharingData[];
-	homeProject?: ProjectSharingData;
-	currentUserHasAccess?: boolean;
-	scopes?: Scope[];
-	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
-	isManaged: boolean;
-}
-
-export interface ICredentialsBase {
-	createdAt: Iso8601DateTimeString;
-	updatedAt: Iso8601DateTimeString;
-}
-
-export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
-	id: string;
 }
 
 export interface IExecutionBase {
@@ -705,34 +676,12 @@ export interface INodeMetadata {
 	pristine: boolean;
 }
 
-export interface IUsedCredential {
-	id: string;
-	name: string;
-	credentialType: string;
-	currentUserHasAccess: boolean;
-	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
-}
-
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
 
 export interface CommunityPackageMap {
 	[name: string]: PublicInstalledPackage;
-}
-
-export interface ICredentialTypeMap {
-	[name: string]: ICredentialType;
-}
-
-export interface ICredentialMap {
-	[name: string]: ICredentialsResponse;
-}
-
-export interface ICredentialsState {
-	credentialTypes: ICredentialTypeMap;
-	credentials: ICredentialMap;
 }
 
 export interface ITagsState {

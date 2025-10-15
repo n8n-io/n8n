@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUsageStore } from '@/stores/usage.store';
+import { useUsageStore } from '@/features/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';

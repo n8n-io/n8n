@@ -5,8 +5,12 @@ import { randomUUID } from 'crypto';
 import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
+import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
+import { getClientInfo } from './mcp.utils';
+
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+import { Telemetry } from '@/telemetry';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -24,6 +28,7 @@ export class McpServerApiKeyService {
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 		private readonly userRepository: UserRepository,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
@@ -114,21 +119,21 @@ export class McpServerApiKeyService {
 			const authorizationHeader = req.header('authorization');
 
 			if (!authorizationHeader) {
-				this.responseWithUnauthorized(res);
+				this.responseWithUnauthorized(res, req);
 				return;
 			}
 
 			const apiKey = this.extractAPIKeyFromHeader(authorizationHeader);
 
 			if (!apiKey) {
-				this.responseWithUnauthorized(res);
+				this.responseWithUnauthorized(res, req);
 				return;
 			}
 
 			const user = await this.getUserForApiKey(apiKey);
 
 			if (!user) {
-				this.responseWithUnauthorized(res);
+				this.responseWithUnauthorized(res, req);
 				return;
 			}
 
@@ -138,7 +143,7 @@ export class McpServerApiKeyService {
 					audience: API_KEY_AUDIENCE,
 				});
 			} catch (e) {
-				this.responseWithUnauthorized(res);
+				this.responseWithUnauthorized(res, req);
 				return;
 			}
 
@@ -148,8 +153,19 @@ export class McpServerApiKeyService {
 		};
 	}
 
-	private responseWithUnauthorized(res: Response) {
-		res.status(401).send({ message: 'Unauthorized' });
+	private responseWithUnauthorized(res: Response, req: Request) {
+		this.trackUnauthorizedEvent(req);
+		res.status(401).send({ message: UNAUTHORIZED_ERROR_MESSAGE });
+	}
+
+	private trackUnauthorizedEvent(req: Request) {
+		const clientInfo = getClientInfo(req);
+		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, {
+			mcp_connection_status: 'error',
+			error: UNAUTHORIZED_ERROR_MESSAGE,
+			client_name: clientInfo?.name,
+			client_version: clientInfo?.version,
+		});
 	}
 
 	async getOrCreateApiKey(user: User) {
