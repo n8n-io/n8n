@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatAnthropic } from '@langchain/anthropic';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LMChatAnthropic/LmChatAnthropic.node';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -412,15 +412,155 @@ describe('LmChatAnthropic', () => {
 	});
 
 	describe('methods', () => {
-		beforeEach(() => {
-			setupMockContext();
-		});
+		describe('searchModels', () => {
+			let mockLoadContext: ILoadOptionsFunctions;
+			let mockGetCredentials: jest.Mock;
+			let mockHttpRequest: jest.Mock;
 
-		it('should have searchModels method', () => {
-			expect(lmChatAnthropic.methods).toEqual({
-				listSearch: {
-					searchModels: expect.any(Function),
-				},
+			beforeEach(() => {
+				mockGetCredentials = jest.fn();
+				mockHttpRequest = jest.fn();
+
+				mockLoadContext = {
+					getCredentials: mockGetCredentials,
+					helpers: {
+						httpRequestWithAuthentication: mockHttpRequest,
+					},
+				} as unknown as ILoadOptionsFunctions;
+			});
+
+			it('should return all models sorted by creation date', async () => {
+				const mockModels = [
+					{
+						id: 'claude-2',
+						display_name: 'Claude 2',
+						type: 'chat',
+						created_at: '2023-01-01T00:00:00Z',
+					},
+					{
+						id: 'claude-3-opus-20240229',
+						display_name: 'Claude 3 Opus',
+						type: 'chat',
+						created_at: '2024-02-29T00:00:00Z',
+					},
+					{
+						id: 'claude-3-sonnet-20240229',
+						display_name: 'Claude 3 Sonnet',
+						type: 'chat',
+						created_at: '2024-02-29T00:00:00Z',
+					},
+				];
+
+				mockGetCredentials.mockResolvedValue({});
+				mockHttpRequest.mockResolvedValue({
+					data: mockModels,
+				});
+
+				const { searchModels } = lmChatAnthropic.methods.listSearch;
+				const result = await searchModels.call(mockLoadContext);
+
+				expect(mockHttpRequest).toHaveBeenCalledWith('anthropicApi', {
+					url: 'https://api.anthropic.com/v1/models',
+					headers: {
+						'anthropic-version': '2023-06-01',
+					},
+				});
+
+				expect(result.results).toHaveLength(3);
+				// Verify sorted by creation date (newest first)
+				expect(result.results[0].value).toBe('claude-3-opus-20240229');
+				expect(result.results[0].name).toBe('Claude 3 Opus');
+				expect(result.results[2].value).toBe('claude-2');
+			});
+
+			it('should filter models by search term', async () => {
+				const mockModels = [
+					{
+						id: 'claude-2',
+						display_name: 'Claude 2',
+						type: 'chat',
+						created_at: '2023-01-01T00:00:00Z',
+					},
+					{
+						id: 'claude-3-opus-20240229',
+						display_name: 'Claude 3 Opus',
+						type: 'chat',
+						created_at: '2024-02-29T00:00:00Z',
+					},
+					{
+						id: 'claude-3-sonnet-20240229',
+						display_name: 'Claude 3 Sonnet',
+						type: 'chat',
+						created_at: '2024-02-29T00:00:00Z',
+					},
+				];
+
+				mockGetCredentials.mockResolvedValue({});
+				mockHttpRequest.mockResolvedValue({
+					data: mockModels,
+				});
+
+				const { searchModels } = lmChatAnthropic.methods.listSearch;
+				const result = await searchModels.call(mockLoadContext, 'opus');
+
+				expect(result.results).toHaveLength(1);
+				expect(result.results[0].value).toBe('claude-3-opus-20240229');
+				expect(result.results[0].name).toBe('Claude 3 Opus');
+			});
+
+			it('should filter models case-insensitively', async () => {
+				const mockModels = [
+					{
+						id: 'claude-3-sonnet-20240229',
+						display_name: 'Claude 3 Sonnet',
+						type: 'chat',
+						created_at: '2024-02-29T00:00:00Z',
+					},
+				];
+
+				mockGetCredentials.mockResolvedValue({});
+				mockHttpRequest.mockResolvedValue({
+					data: mockModels,
+				});
+
+				const { searchModels } = lmChatAnthropic.methods.listSearch;
+				const result = await searchModels.call(mockLoadContext, 'SONNET');
+
+				expect(result.results).toHaveLength(1);
+				expect(result.results[0].value).toBe('claude-3-sonnet-20240229');
+			});
+
+			it('should use custom URL from credentials', async () => {
+				const customURL = 'https://custom-anthropic.example.com';
+
+				mockGetCredentials.mockResolvedValue({
+					url: customURL,
+				});
+				mockHttpRequest.mockResolvedValue({
+					data: [],
+				});
+
+				const { searchModels } = lmChatAnthropic.methods.listSearch;
+				await searchModels.call(mockLoadContext);
+
+				expect(mockHttpRequest).toHaveBeenCalledWith('anthropicApi', {
+					url: `${customURL}/v1/models`,
+					headers: {
+						'anthropic-version': '2023-06-01',
+					},
+				});
+			});
+
+			it('should handle empty model list', async () => {
+				mockGetCredentials.mockResolvedValue({});
+				mockHttpRequest.mockResolvedValue({
+					data: [],
+				});
+
+				const { searchModels } = lmChatAnthropic.methods.listSearch;
+				const result = await searchModels.call(mockLoadContext);
+
+				expect(result.results).toHaveLength(0);
 			});
 		});
 	});
