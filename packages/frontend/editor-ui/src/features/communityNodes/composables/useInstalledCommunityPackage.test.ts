@@ -5,9 +5,9 @@ import { nextTick } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 
 import { useInstalledCommunityPackage } from './useInstalledCommunityPackage';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from '../communityNodes.store';
 import { useUsersStore } from '@/features/users/users.store';
-import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
+import type { ExtendedPublicInstalledPackage } from '../communityNodes.utils';
 import type * as n8nWorkflow from 'n8n-workflow';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
@@ -18,13 +18,13 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/utils/communityNodeUtils', () => ({
+vi.mock('../communityNodes.utils', () => ({
 	fetchInstalledPackageInfo: vi.fn(),
 }));
 
 // Import mocked functions
 import { isCommunityPackageName } from 'n8n-workflow';
-import { fetchInstalledPackageInfo } from '@/utils/communityNodeUtils';
+import { fetchInstalledPackageInfo } from '../communityNodes.utils';
 
 const mockIsCommunityPackageName = vi.mocked(isCommunityPackageName);
 const mockFetchInstalledPackageInfo = vi.mocked(fetchInstalledPackageInfo);

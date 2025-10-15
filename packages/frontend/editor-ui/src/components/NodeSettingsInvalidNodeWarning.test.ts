@@ -1,7 +1,7 @@
 import { mockNode } from '@/__tests__/mocks';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { useInstallNode } from '@/composables/useInstallNode';
+import { useInstallNode } from '@/features/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -16,7 +16,7 @@ import { vi, type MockedFunction } from 'vitest';
 import { ref } from 'vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
 
-vi.mock('@/composables/useInstallNode');
+vi.mock('@/features/communityNodes/composables/useInstallNode');
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),

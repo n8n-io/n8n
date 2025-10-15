@@ -1,13 +1,24 @@
 <script setup lang="ts">
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
-const { role } = defineProps<{ role: 'user' | 'assistant' }>();
+const i18n = useI18n();
+
+const { role, justCopied } = defineProps<{
+	role: 'user' | 'assistant';
+	justCopied: boolean;
+}>();
 
 const emit = defineEmits<{
 	copy: [];
 	edit: [];
 	regenerate: [];
 }>();
+
+const copyTooltip = computed(() => {
+	return justCopied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy');
+});
 
 function handleCopy() {
 	emit('copy');
@@ -24,16 +35,33 @@ function handleRegenerate() {
 
 <template>
 	<div :class="$style.actions">
-		<N8nIconButton icon="copy" type="tertiary" size="small" text @click="handleCopy" />
-		<N8nIconButton icon="pen" type="tertiary" size="small" text @click="handleEdit" />
-		<N8nIconButton
-			v-if="role === 'assistant'"
-			icon="refresh-cw"
-			type="tertiary"
-			size="small"
-			text
-			@click="handleRegenerate"
-		/>
+		<N8nTooltip placement="bottom" :show-after="300">
+			<Transition name="fade" mode="out-in">
+				<N8nIconButton
+					:key="justCopied ? 'check' : 'copy'"
+					:icon="justCopied ? 'check' : 'copy'"
+					type="tertiary"
+					size="medium"
+					text
+					@click="handleCopy"
+				/>
+			</Transition>
+			<template #content>{{ copyTooltip }}</template>
+		</N8nTooltip>
+		<N8nTooltip placement="bottom" :show-after="300">
+			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />
+			<template #content>Edit</template>
+		</N8nTooltip>
+		<N8nTooltip v-if="role === 'assistant'" placement="bottom" :show-after="300">
+			<N8nIconButton
+				icon="refresh-cw"
+				type="tertiary"
+				size="medium"
+				text
+				@click="handleRegenerate"
+			/>
+			<template #content>Regenerate</template>
+		</N8nTooltip>
 	</div>
 </template>
 
@@ -41,5 +69,23 @@ function handleRegenerate() {
 .actions {
 	display: flex;
 	align-items: center;
+
+	& g,
+	& path {
+		color: var(--color--text--tint-1);
+		stroke-width: 2.5;
+	}
+}
+</style>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+	opacity: 0;
 }
 </style>

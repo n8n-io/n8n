@@ -2,13 +2,13 @@
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-} from '@/constants';
-import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
+} from '../communityNodes.constants';
+import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useCommunityNodesStore } from '../communityNodes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { onBeforeUnmount, ref, computed, onBeforeMount, onMounted } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';

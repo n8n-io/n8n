@@ -44,31 +44,29 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 	const groups = new Map<string, ChatHubSessionDto[]>();
 
 	// Group sessions by relative date
-	sessions.forEach((session) => {
+	for (const session of sessions) {
 		const group = getRelativeDate(session.updatedAt);
+
 		if (!groups.has(group)) {
 			groups.set(group, []);
 		}
+
 		groups.get(group)!.push(session);
-	});
+	}
 
 	// Define order for groups
 	const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'];
 
-	// Convert to array and sort by group order
-	const result: GroupedConversations[] = [];
-	groupOrder.forEach((groupName) => {
-		if (groups.has(groupName)) {
-			const sessions = groups.get(groupName)!;
-			result.push({
-				group: groupName,
-				sessions: sessions.map((session) => ({
-					id: session.id,
-					label: session.title,
-				})),
-			});
-		}
-	});
+	return groupOrder.flatMap((groupName) => {
+		const sessions = groups.get(groupName) ?? [];
 
-	return result;
+		return sessions.length > 0
+			? [
+					{
+						group: groupName,
+						sessions: sessions.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+					},
+				]
+			: [];
+	});
 }
