@@ -51,8 +51,6 @@ export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
-export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
-export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
@@ -64,8 +62,6 @@ export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
-export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
-export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
@@ -73,7 +69,6 @@ export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
-export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
@@ -87,12 +82,6 @@ export const VARIABLE_MODAL_KEY = 'variableModal';
 export const CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY = 'chatHubSideMenuDrawer';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
-
-export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
-	UNINSTALL: 'uninstall',
-	UPDATE: 'update',
-	VIEW_DOCS: 'view-documentation',
-};
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -108,12 +97,7 @@ export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`
 export const SCHEMA_PREVIEW_DOCS_URL = `https://${DOCS_DOMAIN}/data/schema-preview/`;
 export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
-export const NPM_KEYWORD_SEARCH_URL =
-	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
-export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;

@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import {
-	DUPLICATE_MODAL_KEY,
-	MODAL_CONFIRM,
-	PROJECT_MOVE_RESOURCE_MODAL,
-	VIEWS,
-	WORKFLOW_SHARE_MODAL_KEY,
-} from '@/constants';
+import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -40,6 +35,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
+import { useMcp } from '@/features/mcpAccess/composables/useMcp';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -96,6 +92,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
+const mcp = useMcp();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -337,6 +334,7 @@ async function toggleMCPAccess(enabled: boolean) {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
 		mcpToggleStatus.value = enabled;
+		mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
 		return;

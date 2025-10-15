@@ -3,14 +3,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import debounce from 'lodash/debounce';
-import type { ICredentialsResponse } from '@/Interface';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { CommandBarItem } from '../types';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import CredentialIcon from '@/components/CredentialIcon.vue';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 

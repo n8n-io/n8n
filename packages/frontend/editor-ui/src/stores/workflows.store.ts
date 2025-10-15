@@ -18,7 +18,6 @@ import type {
 	INodeMetadata,
 	INodeUi,
 	IStartRunData,
-	IUsedCredential,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
@@ -26,6 +25,7 @@ import type {
 	WorkflowListResource,
 	WorkflowValidationIssue,
 } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
 	WorkflowMetadata,

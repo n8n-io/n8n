@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fireEvent, screen } from '@testing-library/vue';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/features/users/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -24,7 +24,7 @@ vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(),
 }));
 
-vi.mock('@/stores/credentials.store', () => ({
+vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(),
 }));
 

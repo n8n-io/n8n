@@ -31,8 +31,8 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
 import { getActiveViewCallouts, isNodePreviewKey } from '../utils';
 
-import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
-import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
+import CommunityNodeInfo from '@/features/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
+import CommunityNodeFooter from '@/features/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';

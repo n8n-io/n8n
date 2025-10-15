@@ -61,8 +61,36 @@ export class ChatHubSendMessageRequest extends Z.class({
 	),
 }) {}
 
+export class ChatHubRegenerateMessageRequest extends Z.class({
+	retryId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
+	model: chatHubConversationModelSchema,
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+}) {}
+
+export class ChatHubEditMessageRequest extends Z.class({
+	editId: z.string().uuid(),
+	message: z.string(),
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
+	model: chatHubConversationModelSchema,
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+}) {}
+
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageState = 'active' | 'superseded' | 'hidden' | 'deleted';
+export type ChatHubMessageState = 'active' | 'replaced';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID

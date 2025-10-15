@@ -32,9 +32,9 @@ import type {
 	INodeCredentials,
 } from 'n8n-workflow';
 
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type {
 	AddedNode,
-	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	NodePanelType,
@@ -44,7 +44,7 @@ import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';

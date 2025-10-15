@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type {
+	Folder,
 	FolderRepository,
 	Project,
 	ProjectRepository,
@@ -57,6 +58,7 @@ describe('SourceControlExportService', () => {
 	);
 
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
+	const fsReadFile = jest.spyOn(fsp, 'readFile');
 
 	beforeEach(() => jest.clearAllMocks());
 
@@ -272,6 +274,63 @@ describe('SourceControlExportService', () => {
 			// Assert
 			expect(result.count).toBe(0);
 			expect(result.files).toHaveLength(0);
+		});
+
+		it('should not duplicate folders on push', async () => {
+			// Arrange
+			const newFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProject: { id: 'project-id' },
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				} as Folder,
+			];
+			folderRepository.find.mockResolvedValue(newFolders);
+			workflowRepository.find.mockResolvedValue([mock()]);
+			const existingFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProjectId: 'project-id',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+			];
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					folders: existingFolders,
+				}),
+			);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+
+			// Assert
+			// new json file should contain only the new folders
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/folders.json',
+				JSON.stringify(
+					{
+						folders: newFolders.map((f) => ({
+							id: f.id,
+							name: f.name,
+							parentFolderId: f.parentFolderId,
+							homeProjectId: f.homeProject.id,
+							createdAt: f.createdAt.toISOString(),
+							updatedAt: f.updatedAt.toISOString(),
+						})),
+					},
+					null,
+					2,
+				),
+			);
+
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
 		});
 	});
 
