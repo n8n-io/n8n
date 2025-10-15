@@ -64,8 +64,8 @@
 	--lm-chat--messages--color--background: var(--p--color--gray-820);
 	--lm-chat--bot--color--background: var(--p--color--gray-740);
 	--lm-chat--bot--border-color: var(--p--color--gray-490);
-	--lm-chat--user--color--background: var(--p--color--alt-a-700);
-	--lm-chat--user--border-color: var(--p--color--alt-a-600);
+	--lm-chat--user--color--background: var(--color--green-700);
+	--lm-chat--user--border-color: var(--color--green-600);
 
 	// Canvas
 	--canvas--color--background: var(--p--color--gray-820);
@@ -103,8 +103,8 @@
 	--sticky--border-color--variant-2: var(--color--gold-700);
 	--sticky--color--background--variant-3: var(--color--red-900);
 	--sticky--border-color--variant-3: var(--color--red-800);
-	--sticky--color--background--variant-4: var(--p--color--alt-a-800);
-	--sticky--border-color--variant-4: var(--p--color--alt-a-700);
+	--sticky--color--background--variant-4: var(--color--green-900);
+	--sticky--border-color--variant-4: var(--color--green-700);
 	--sticky--color--background--variant-5: var(--color--blue-800);
 	--sticky--border-color--variant-5: var(--color--blue-700);
 	--sticky--color--background--variant-6: var(--p--color--secondary-720);
@@ -128,8 +128,8 @@
 	--node--icon--color--crimson: #f188a2;
 
 	// Expressions, autocomplete, infobox
-	--expression-editor--resolvable--color--foreground--valid: var(--p--color--alt-a-300);
-	--expression-editor--resolvable--color--background--valid: var(--p--color--alt-a-600-a-025);
+	--expression-editor--resolvable--color--foreground--valid: var(--color--green-300);
+	--expression-editor--resolvable--color--background--valid: var(--color--green-alpha-200);
 	--expression-editor--resolvable--color--foreground--invalid: var(--color--red-300);
 	--expression-editor--resolvable--color--background--invalid: var(--color--red-alpha-020);
 	--expression-editor--resolvable--color--foreground--pending: var(--color--text);
@@ -159,8 +159,8 @@
 	--code-tags--comment--color: #6a737d;
 	--json--color: var(--p--color--secondary-270);
 	--json--null--color: var(--color--danger);
-	--json--boolean--color: var(--p--color--alt-a-600);
-	--json--number--color: var(--p--color--alt-a-600);
+	--json--boolean--color: var(--color--green-600);
+	--json--number--color: var(--color--green-600);
 	--json--string--color: var(--p--color--secondary-270);
 	--json--key--color: var(--color--text--shade-1);
 	--json--brackets--color: var(--p--color--gray-670);
@@ -190,8 +190,8 @@
 	--tag--color--text: var(--color--text--shade-1);
 
 	// Variables
-	--variables-usage--color--text: var(--p--color--alt-a-300);
-	--variables-usage--syntax--color--background: var(--p--color--alt-a-600-a-025);
+	--variables-usage--color--text: var(--color--green-300);
+	--variables-usage--syntax--color--background: var(--color--green-alpha-200);
 
 	// Button primary
 	--button--outline-color--primary--focus: var(--p--color--primary-320-a-035);
@@ -264,7 +264,7 @@
 	--ndvv2--run-data--color--background: var(--p--color--gray-800);
 	--ndv--droppable-parameter--color: var(--p--color--primary-320);
 	--ndv--droppable-parameter--color--background: var(--p--color--primary-320-a-010);
-	--ndv--droppable-parameter--color--background--active: var(--p--color--alt-a-600-a-015);
+	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--p--color--white);
 
 	// Notice
@@ -277,7 +277,7 @@
 	--callout--color--background--info: var(--p--color--gray-740);
 	--callout--color--text--info: var(--p--color--white);
 	--callout--border-color--success: var(--color--success);
-	--callout--color--background--success: var(--p--color--alt-a-800);
+	--callout--color--background--success: var(--color--green-900);
 	--callout--color--text--success: var(--p--color--white);
 	--callout--border-color--warning: var(--color--warning);
 	--callout--color--background--warning: var(--color--gold-800);

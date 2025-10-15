@@ -52,17 +52,17 @@
 
 	// Success
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--success--shade-1: var(--color-success-shade-1, var(--p--color--alt-a-700));
+	--color--success--shade-1: var(--color-success-shade-1, var(--color--green-700));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--success: var(--color-success, var(--p--color--alt-a-600));
+	--color--success: var(--color-success, var(--color--green-600));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--success--tint-1: var(--color-success-light, var(--p--color--alt-a-300));
+	--color--success--tint-1: var(--color-success-light, var(--color--green-300));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--success--tint-2: var(--color-success-light-2, var(--p--color--alt-a-200));
+	--color--success--tint-2: var(--color-success-light-2, var(--color--green-200));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--success--tint-3: var(--color-success-tint-1, var(--p--color--alt-a-100));
+	--color--success--tint-3: var(--color-success-tint-1, var(--color--green-100));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--success--tint-4: var(--color-success-tint-2, var(--p--color--alt-a-050));
+	--color--success--tint-4: var(--color-success-tint-2, var(--color--green-50));
 
 	// Warning
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -200,7 +200,7 @@
 	// LangChain
 	--lm-chat--messages--color--background: var(--color--background);
 	--lm-chat--bot--color--background: var(--p--color--white);
-	--lm-chat--user--color--background: var(--p--color--alt-a-600);
+	--lm-chat--user--color--background: var(--color--green-600);
 	--lm-chat--user--color: var(--color--text--tint-3);
 
 	// Canvas
@@ -240,8 +240,8 @@
 	--sticky--border-color--variant-2: var(--color--gold-300);
 	--sticky--color--background--variant-3: var(--color--red-100);
 	--sticky--border-color--variant-3: var(--color--red-250);
-	--sticky--color--background--variant-4: var(--p--color--alt-a-100);
-	--sticky--border-color--variant-4: var(--p--color--alt-a-300);
+	--sticky--color--background--variant-4: var(--color--green-100);
+	--sticky--border-color--variant-4: var(--color--green-300);
 	--sticky--color--background--variant-5: var(--color--blue-100);
 	--sticky--border-color--variant-5: var(--color--blue-200);
 	--sticky--color--background--variant-6: var(--p--color--secondary-070);
@@ -309,8 +309,8 @@
 	--node--icon--color--crimson: #724;
 
 	// Expressions, autocomplete, infobox
-	--expression-editor--resolvable--color--foreground--valid: var(--p--color--alt-a-600);
-	--expression-editor--resolvable--color--background--valid: var(--p--color--alt-a-100);
+	--expression-editor--resolvable--color--foreground--valid: var(--color--green-600);
+	--expression-editor--resolvable--color--background--valid: var(--color--green-100);
 	--expression-editor--resolvable--color--foreground--invalid: var(--color--red-600);
 	--expression-editor--resolvable--color--background--invalid: var(--color--red-50);
 	--expression-editor--resolvable--color--foreground--pending: var(--color--text);
@@ -340,8 +340,8 @@
 	--code-tags--comment--color: #6a737d;
 	--json--color: var(--p--color--secondary-570);
 	--json--null--color: var(--color--red-600);
-	--json--boolean--color: var(--p--color--alt-a-600);
-	--json--number--color: var(--p--color--alt-a-600);
+	--json--boolean--color: var(--color--green-600);
+	--json--number--color: var(--color--green-600);
 	--json--string--color: var(--p--color--secondary-570);
 	--json--key--color: var(--p--color--gray-670);
 	--json--brackets--color: var(--p--color--gray-670);
@@ -449,7 +449,7 @@
 
 	// Execution
 	--execution-card--border-color--new: var(--p--color--gray-200);
-	--execution-card--border-color--success: var(--p--color--alt-a-300);
+	--execution-card--border-color--success: var(--color--green-300);
 	--execution-card--border-color--error: var(--color--red-300);
 	--execution-card--border-color--waiting: var(--p--color--secondary-170);
 	--execution-card--border-color--running: var(--color--gold-200);
@@ -466,7 +466,7 @@
 	--ndvv2--run-data--color--background: var(--p--color--gray-040);
 	--ndv--droppable-parameter--color: var(--color--secondary);
 	--ndv--droppable-parameter--color--background: var(--p--color--secondary-470-a-010);
-	--ndv--droppable-parameter--color--background--active: var(--p--color--alt-a-600-a-015);
+	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--p--color--white);
 
 	// Notice

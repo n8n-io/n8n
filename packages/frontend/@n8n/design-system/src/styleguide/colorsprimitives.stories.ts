@@ -34,7 +34,7 @@ export const Secondary = Template(
 );
 
 export const AlternateA = Template(
-	"<color-circles :colors=\"['--p--color--alt-a-800', '--p--color--alt-a-700', '--p--color--alt-a-600', '--p--color--alt-a-300', '--p--color--alt-a-200', '--p--color--alt-a-100', '--p--color--alt-a-050']\" />",
+	"<color-circles :colors=\"['--color--green-900', '--color--green-700', '--color--green-600', '--color--green-300', '--color--green-200', '--color--green-100', '--color--green-50']\" />",
 );
 
 export const AlternateB = Template(
