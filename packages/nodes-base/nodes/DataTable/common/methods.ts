@@ -76,7 +76,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		return [];
 	}
 	const rawKeyName = this.getCurrentNodeParameter('&keyName') as string;
-	const keyName = rawKeyName.split(' ')[0];
+	const keyName = rawKeyName?.split(' ')[0];
 
 	const nullConditions: INodePropertyOptions[] = [
 		{ name: 'Is Empty', value: 'isEmpty' },
