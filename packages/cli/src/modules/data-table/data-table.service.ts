@@ -26,7 +26,7 @@ import type {
 	DataTableColumnType,
 	DataTableRowReturnWithState,
 } from 'n8n-workflow';
-import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UserError, validateFieldType } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
 import { RoleService } from '@/services/role.service';
 
@@ -516,24 +516,6 @@ export class DataTableService {
 					`value '${String(cell)}' does not match column type 'date'`,
 				);
 			}
-		}
-
-		if (columnType === 'json') {
-			// json accepts objects or strings containing objects as input
-			// but expects values with a path for output/get/read operations
-			if (typeof cell === 'string') {
-				try {
-					JSON.parse(cell);
-					return cell;
-				} catch (e) {
-					throw new UserError(`Failed to parse string input '${cell}' as object for json column`);
-				}
-			} else if (typeof cell !== 'object') {
-				throw new UserError(
-					`Unexpected non-object input '${cell}' of type ${typeof cell} for json column`,
-				);
-			}
-			return JSON.stringify(cell);
 		}
 
 		return validationResult.newValue as DataTableColumnJsType;

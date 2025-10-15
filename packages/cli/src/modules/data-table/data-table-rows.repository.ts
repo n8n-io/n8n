@@ -59,7 +59,7 @@ function resolvePath(
 				return `(${base})::timestamp`;
 			}
 			if (typeof value === 'boolean') {
-				return `CAST(${base})::boolean`;
+				return `(${base})::boolean`;
 			}
 
 			// by converting to text by default we end up with `true` for an equals NULL check
