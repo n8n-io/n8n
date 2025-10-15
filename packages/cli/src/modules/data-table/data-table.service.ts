@@ -26,7 +26,7 @@ import type {
 	DataTableColumnType,
 	DataTableRowReturnWithState,
 } from 'n8n-workflow';
-import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UserError, validateFieldType } from 'n8n-workflow';
 
 import { RoleService } from '@/services/role.service';
 
@@ -41,6 +41,12 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+
+type ValidationOptions = Partial<{
+	includeSystemColumns: boolean;
+	skipDateTransform: boolean;
+	validateJsonInput: boolean;
+}>;
 
 @Service()
 export class DataTableService {
@@ -160,7 +166,6 @@ export class DataTableService {
 				: dto;
 			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
-				columns,
 				transformedDto,
 				em,
 			);
@@ -194,7 +199,9 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			const transformedRows = this.validateAndTransformRows(rows, columns);
+			const transformedRows = this.validateAndTransformRows(rows, columns, {
+				validateJsonInput: true,
+			});
 
 			return await this.dataTableRowsRepository.insertRows(
 				dataTableId,
@@ -303,7 +310,9 @@ export class DataTableService {
 			throw new DataTableValidationError('Data columns must not be empty');
 		}
 
-		const [transformedData] = this.validateAndTransformRows([data], columns, false);
+		const [transformedData] = this.validateAndTransformRows([data], columns, {
+			validateJsonInput: true,
+		});
 		const transformedFilter = this.validateAndTransformFilters(filter, columns);
 
 		return { data: transformedData, filter: transformedFilter };
@@ -432,8 +441,11 @@ export class DataTableService {
 	private validateAndTransformRows(
 		rows: DataTableRows,
 		columns: Array<{ name: string; type: DataTableColumnType }>,
-		includeSystemColumns = false,
-		skipDateTransform = false,
+		{
+			includeSystemColumns = false,
+			skipDateTransform = false,
+			validateJsonInput = false,
+		}: ValidationOptions = {},
 	): DataTableRows {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
@@ -455,12 +467,10 @@ export class DataTableService {
 				if (!columnNames.has(key)) {
 					throw new DataTableValidationError(`unknown column name '${key}'`);
 				}
-				transformedRow[key] = this.validateAndTransformCell(
-					row[key],
-					key,
-					columnTypeMap,
+				transformedRow[key] = this.validateAndTransformCell(row[key], key, columnTypeMap, {
 					skipDateTransform,
-				);
+					validateJsonInput,
+				});
 			}
 			return transformedRow;
 		});
@@ -470,7 +480,7 @@ export class DataTableService {
 		cell: DataTableColumnJsType,
 		key: string,
 		columnTypeMap: Map<string, string>,
-		skipDateTransform = false,
+		{ skipDateTransform = false, validateJsonInput = false } = {},
 	): DataTableColumnJsType {
 		if (cell === null) return null;
 
@@ -480,7 +490,7 @@ export class DataTableService {
 		const fieldType = columnTypeToFieldType[columnType];
 		if (!fieldType) return cell;
 
-		if (columnType === 'json') return cell;
+		if (!validateJsonInput && columnType === 'json') return cell;
 
 		const validationResult = validateFieldType(key, cell, fieldType, {
 			strict: false, // Allow type coercion (e.g., string numbers to numbers)
@@ -506,6 +516,24 @@ export class DataTableService {
 					`value '${String(cell)}' does not match column type 'date'`,
 				);
 			}
+		}
+
+		if (columnType === 'json') {
+			// json accepts objects or strings containing objects as input
+			// but expects values with a path for output/get/read operations
+			if (typeof cell === 'string') {
+				try {
+					JSON.parse(cell);
+					return cell;
+				} catch (e) {
+					throw new UserError(`Failed to parse string input '${cell}' as object for json column`);
+				}
+			} else if (typeof cell !== 'object') {
+				throw new UserError(
+					`Unexpected non-object input '${cell}' of type ${typeof cell} for json column`,
+				);
+			}
+			return JSON.stringify(cell);
 		}
 
 		return validationResult.newValue as DataTableColumnJsType;
@@ -562,8 +590,7 @@ export class DataTableService {
 				};
 			}),
 			columns,
-			true,
-			true,
+			{ includeSystemColumns: true, skipDateTransform: true },
 		);
 
 		const transformedFilters = filterObject.filters.map((filter, index) => {

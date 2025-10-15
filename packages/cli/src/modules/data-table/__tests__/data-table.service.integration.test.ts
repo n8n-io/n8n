@@ -1539,7 +1539,7 @@ describe('dataTable', () => {
 							{
 								columnName: 'c1',
 								condition: 'gte',
-								value: d,
+								value: `${d.toISOString()}`,
 								path: 'd',
 							},
 						],

@@ -102,7 +102,6 @@ function resolvePath(
 function getConditionAndParams(
 	filter: DataTableFilter['filters'][number],
 	index: number,
-	columns: DataTableColumn[],
 	dbType: DataSourceOptions['type'],
 	tableReference?: string,
 ): [string, Record<string, unknown>] {
@@ -125,11 +124,8 @@ function getConditionAndParams(
 		}
 	}
 
-	// Find the column type to normalize the value consistently
-	const columnInfo = columns?.find((col) => col.name === filter.columnName);
-	const value = columnInfo
-		? normalizeValueForDatabase(filter.value, columnInfo?.type, dbType, filter.path)
-		: filter.value;
+	// For filters, we let TypeORM handle date conversion through parameterized queries.
+	const value = filter.value;
 
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {
@@ -393,7 +389,7 @@ export class DataTableRowsRepository {
 
 			const query = em.createQueryBuilder().update(table);
 			// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
-			this.applyFilters(query, columns, filter, undefined);
+			this.applyFilters(query, filter, undefined);
 			query.set(setData);
 
 			if (useReturning && returnData) {
@@ -495,7 +491,7 @@ export class DataTableRowsRepository {
 				// Just delete and return true
 				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
 				if (filter) {
-					this.applyFilters(query, columns, filter, undefined);
+					this.applyFilters(query, filter, undefined);
 				}
 				await query.execute();
 
@@ -508,7 +504,7 @@ export class DataTableRowsRepository {
 				const selectQuery = em.createQueryBuilder().select('*').from(table, 'dataTable');
 
 				if (filter) {
-					this.applyFilters(selectQuery, columns, filter, 'dataTable');
+					this.applyFilters(selectQuery, filter, 'dataTable');
 				}
 
 				const rawRows = await selectQuery.getRawMany<DataTableRawRowReturn>();
@@ -532,7 +528,7 @@ export class DataTableRowsRepository {
 			}
 
 			if (filter) {
-				this.applyFilters(deleteQuery, columns, filter, undefined);
+				this.applyFilters(deleteQuery, filter, undefined);
 			}
 
 			const result = await deleteQuery.execute();
@@ -556,7 +552,7 @@ export class DataTableRowsRepository {
 			const table = toTableName(dataTableId);
 			const selectColumns = idsOnly ? 'id' : '*';
 			const selectQuery = em.createQueryBuilder().select(selectColumns).from(table, 'dataTable');
-			this.applyFilters(selectQuery, columns, filter, 'dataTable');
+			this.applyFilters(selectQuery, filter, 'dataTable');
 			const rawRows: DataTableRowsReturn = await selectQuery.getRawMany();
 
 			if (idsOnly) {
@@ -616,7 +612,6 @@ export class DataTableRowsRepository {
 
 	async getManyAndCount(
 		dataTableId: string,
-		columns: DataTableColumn[],
 		dto: ListDataTableContentQueryDto,
 		trx?: EntityManager,
 	) {
@@ -624,7 +619,7 @@ export class DataTableRowsRepository {
 			this.dataSource.manager,
 			trx,
 			async (em) => {
-				const [countQuery, query] = this.getManyQuery(dataTableId, columns, dto, em);
+				const [countQuery, query] = this.getManyQuery(dataTableId, dto, em);
 				const data: DataTableRowsReturn = await query.select('*').getRawMany();
 				const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 					count: number | string | null;
@@ -675,7 +670,6 @@ export class DataTableRowsRepository {
 
 	private getManyQuery(
 		dataTableId: string,
-		columns: DataTableColumn[],
 		dto: ListDataTableContentQueryDto,
 		em: EntityManager,
 	): [QueryBuilder, QueryBuilder] {
@@ -684,7 +678,7 @@ export class DataTableRowsRepository {
 		const tableReference = 'dataTable';
 		query.from(toTableName(dataTableId), tableReference);
 		if (dto.filter) {
-			this.applyFilters(query, columns, dto.filter, tableReference);
+			this.applyFilters(query, dto.filter, tableReference);
 		}
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
@@ -695,7 +689,6 @@ export class DataTableRowsRepository {
 
 	private applyFilters<T extends ObjectLiteral>(
 		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
-		columns: DataTableColumn[],
 		filter: DataTableFilter,
 		tableReference?: string,
 	): void {
@@ -704,7 +697,7 @@ export class DataTableRowsRepository {
 
 		const dbType = this.dataSource.options.type;
 		const conditionsAndParams = filters.map((filter, i) =>
-			getConditionAndParams(filter, i, columns, dbType, tableReference),
+			getConditionAndParams(filter, i, dbType, tableReference),
 		);
 
 		if (conditionsAndParams.length === 1) {
