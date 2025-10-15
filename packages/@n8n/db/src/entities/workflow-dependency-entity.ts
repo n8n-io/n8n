@@ -5,7 +5,7 @@ import type { WorkflowEntity } from './workflow-entity';
 
 export type DependencyType = 'credential' | 'nodeType' | 'webhookPath' | 'workflowCall';
 
-@Entity()
+@Entity({ name: 'workflow_dependency' })
 export class WorkflowDependency extends WithTimestampsAndStringId {
 	/**
 	 * The ID of the workflow the dependency belongs to.
@@ -35,18 +35,18 @@ export class WorkflowDependency extends WithTimestampsAndStringId {
 	 */
 	@Column({ length: 255 })
 	@Index()
-	dependencyId: string;
+	dependencyKey: string;
 
 	/**
 	 * The node ID the dependency is associated with, if applicable.
 	 */
 	@Column({ type: 'varchar', length: 255, nullable: true })
-	nodeId: string | null;
+	dependencyInfo: string | null;
 
 	/**
 	 * The version of the index structure. Used for migrations and updates.
 	 */
-	@Column({ type: 'int', default: 1 })
+	@Column({ type: 'smallint', default: 1 })
 	indexVersionId: number;
 
 	@ManyToOne('WorkflowEntity', {

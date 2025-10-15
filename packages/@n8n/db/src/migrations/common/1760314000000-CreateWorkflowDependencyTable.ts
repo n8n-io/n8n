@@ -12,9 +12,13 @@ export class CreateWorkflowDependencyTable1760314000000 implements ReversibleMig
 					.notNull.comment(
 						'Type of dependency: "credential", "nodeType", "webhookPath", or "workflowCall"',
 					),
-				column('dependencyId').varchar(255).notNull.comment('ID or name of the dependency'),
-				column('nodeId').varchar(255).comment('Node ID for nodeType dependencies, null otherwise'),
-				column('indexVersionId').int.notNull.default(1).comment('Version of the index structure'),
+				column('dependencyKey').varchar(255).notNull.comment('ID or name of the dependency'),
+				column('dependencyInfo')
+					.varchar(255)
+					.comment('Additional info about the dependency, interpreted based on type'),
+				column('indexVersionId')
+					.smallint.notNull.default(1)
+					.comment('Version of the index structure'),
 			)
 			.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
@@ -23,7 +27,7 @@ export class CreateWorkflowDependencyTable1760314000000 implements ReversibleMig
 			})
 			.withIndexOn(['workflowId'])
 			.withIndexOn(['dependencyType'])
-			.withIndexOn(['dependencyId']).withTimestamps;
+			.withIndexOn(['dependencyKey']).withCreatedAt;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
