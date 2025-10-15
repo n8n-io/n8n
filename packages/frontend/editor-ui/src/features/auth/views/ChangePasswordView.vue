@@ -6,7 +6,7 @@ import AuthView from './AuthView.vue';
 
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH, VIEWS } from '@/constants';

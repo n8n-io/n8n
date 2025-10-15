@@ -8,6 +8,7 @@ const SIZE = ['small', 'medium', 'large'] as const;
 
 interface InputLabelProps {
 	compact?: boolean;
+	// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
 	color?: TextColor;
 	label?: string;
 	tooltipText?: string;

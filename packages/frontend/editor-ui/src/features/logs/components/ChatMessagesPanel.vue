@@ -400,7 +400,7 @@ async function copySessionId() {
 	border-radius: var(--chat--input--border-radius);
 	transition: border-color 200ms ease-in-out;
 	border: var(--input--border-color, var(--border-color))
-		var(--input--border-style, var(--border-style)) var(--input-border-width, var(--border-width));
+		var(--input--border-style, var(--border-style)) var(--input--border-width, var(--border-width));
 
 	[data-theme='dark'] & {
 		--chat--input--text-color: var(--input--color--text, var(--color--text--shade-1));

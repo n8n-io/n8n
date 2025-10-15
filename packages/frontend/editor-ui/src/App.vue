@@ -20,7 +20,7 @@ import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import LoadingView from '@/views/LoadingView.vue';
 import { locale, N8nCommandBar } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
@@ -43,18 +43,18 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const {
 	initialize: initializeCommandBar,
 	isEnabled: isCommandBarEnabled,
 	items,
+	placeholder,
+	context,
 	onCommandBarChange,
 	onCommandBarNavigateTo,
+	isLoading: isCommandBarLoading,
 } = useCommandBar();
-
-const showCommandBar = computed(
-	() => isCommandBarEnabled.value && hasPermission(['authenticated']),
-);
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -70,6 +70,10 @@ const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
+
+const showCommandBar = computed(
+	() => isCommandBarEnabled.value && hasPermission(['authenticated']) && !isDemoMode.value,
+);
 
 const chatPanelWidth = computed(() => chatPanelStore.width);
 
@@ -172,6 +176,10 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<N8nCommandBar
 				v-if="showCommandBar"
 				:items="items"
+				:placeholder="placeholder"
+				:context="context"
+				:is-loading="isCommandBarLoading"
+				:z-index="APP_Z_INDEXES.COMMAND_BAR"
 				@input-change="onCommandBarChange"
 				@navigate-to="onCommandBarNavigateTo"
 			/>

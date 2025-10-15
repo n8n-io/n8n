@@ -7,7 +7,7 @@ import {
 	VIEWS,
 } from '@/constants';
 import { ref, onMounted } from 'vue';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { mfaEventBus } from '../auth.eventBus';
 import { useToast } from '@/composables/useToast';
 //@ts-ignore

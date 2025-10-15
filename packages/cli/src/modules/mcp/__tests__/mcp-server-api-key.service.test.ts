@@ -7,6 +7,7 @@ import { mock, mockDeep } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
+import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 
@@ -24,6 +25,7 @@ const jwtService = new JwtService(instanceSettings, mock());
 
 let userRepository: jest.Mocked<UserRepository>;
 let apiKeyRepository: jest.Mocked<ApiKeyRepository>;
+let telemetry: jest.Mocked<Telemetry>;
 let mcpServerApiKeyService: McpServerApiKeyService;
 
 describe('McpServerApiKeyService', () => {
@@ -34,10 +36,12 @@ describe('McpServerApiKeyService', () => {
 	beforeAll(() => {
 		userRepository = mockInstance(UserRepository);
 		apiKeyRepository = mockInstance(ApiKeyRepository);
+		telemetry = mockInstance(Telemetry);
 		mcpServerApiKeyService = new McpServerApiKeyService(
 			apiKeyRepository,
 			jwtService,
 			userRepository,
+			telemetry,
 		);
 	});
 

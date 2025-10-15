@@ -4,7 +4,7 @@ import { useAsyncState } from '@vueuse/core';
 import type { ListInsightsWorkflowQueryDto, InsightsDateRange } from '@n8n/api-types';
 import * as insightsApi from '@/features/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { transformInsightsSummary } from '@/features/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
