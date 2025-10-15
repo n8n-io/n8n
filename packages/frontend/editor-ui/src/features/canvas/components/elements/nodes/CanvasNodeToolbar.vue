@@ -210,11 +210,11 @@ function onFocusNode() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: var(--color-canvas-background);
+	background-color: var(--canvas--color--background);
 	border-radius: var(--radius);
 
 	:global(.button) {
-		--button-font-color: var(--color--text--tint-1);
+		--button--color--text: var(--color--text--tint-1);
 	}
 }
 

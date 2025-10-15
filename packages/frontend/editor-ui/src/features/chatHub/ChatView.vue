@@ -3,14 +3,19 @@ import { ref, computed, watch, nextTick, onMounted, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 
-import { N8nIcon, N8nScrollArea, N8nIconButton } from '@n8n/design-system';
+import { N8nScrollArea, N8nIconButton } from '@n8n/design-system';
 import ModelSelector from './components/ModelSelector.vue';
 import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 
 import { useChatStore } from './chat.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
-import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import {
+	type ChatMessage as ChatMessageType,
+	credentialsMapSchema,
+	type CredentialsMap,
+	type Suggestion,
+} from './chat.types';
 import {
 	chatHubConversationModelSchema,
 	type ChatHubProvider,
@@ -33,9 +38,8 @@ import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
 import { useToast } from '@/composables/useToast';
 import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
-import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 const router = useRouter();
 const route = useRoute();
@@ -123,6 +127,7 @@ const inputPlaceholder = computed(() => {
 });
 
 const scrollOnNewMessage = ref(true);
+const editingMessageId = ref<string>();
 
 const credentialsName = computed(() =>
 	selectedModel.value
@@ -254,6 +259,23 @@ function onSubmit(message: string) {
 function onSuggestionClick(s: Suggestion) {
 	inputRef.value?.setText(`${s.title} ${s.subtitle}`);
 }
+
+function handleStartEditMessage(messageId: string) {
+	editingMessageId.value = messageId;
+}
+
+function handleCancelEditMessage() {
+	editingMessageId.value = undefined;
+}
+
+async function handleUpdateMessage(message: ChatMessageType) {
+	if (message.type === 'error') {
+		return;
+	}
+
+	await chatStore.updateChatMessage(sessionId.value, message.id, message.text);
+	editingMessageId.value = undefined;
+}
 </script>
 
 <template>
@@ -301,16 +323,17 @@ function onSuggestionClick(s: Suggestion) {
 			/>
 
 			<div v-else ref="messagesRef" role="log" aria-live="polite" :class="$style.messageList">
-				<ChatMessage v-for="m in chatMessages" :key="m.id" :message="m" :compact="isMobileDevice" />
-
-				<div v-if="chatStore.isResponding" :class="[$style.message, $style.assistant]">
-					<div :class="$style.avatar">
-						<N8nIcon icon="sparkles" width="20" height="20" />
-					</div>
-					<div :class="$style.bubble">
-						<ChatTypingIndicator v-if="chatStore.isResponding" />
-					</div>
-				</div>
+				<ChatMessage
+					v-for="message in chatMessages"
+					:key="message.id"
+					:message="message"
+					:compact="isMobileDevice"
+					:is-editing="editingMessageId === message.id"
+					:is-streaming="chatStore.streamingMessageId === message.id"
+					@start-edit="handleStartEditMessage(message.id)"
+					@cancel-edit="handleCancelEditMessage"
+					@update="handleUpdateMessage"
+				/>
 			</div>
 
 			<div :class="$style.promptContainer">

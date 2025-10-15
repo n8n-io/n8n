@@ -57,6 +57,7 @@ export class MessageEventBusDestinationSyslog
 			facility: syslog.Facility.Local0,
 			// severity: syslog.Severity.Error,
 			port: this.port,
+			rfc3164: false,
 			transport:
 				options.protocol !== undefined && options.protocol === 'tcp'
 					? syslog.Transport.Tcp

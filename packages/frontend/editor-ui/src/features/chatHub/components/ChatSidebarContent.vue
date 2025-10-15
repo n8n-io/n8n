@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
-import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY, VIEWS } from '@/constants';
+import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useChatStore } from '@/features/chatHub/chat.store';
 import { groupConversationsByDate } from '@/features/chatHub/chat.utils';
-import { CHAT_CONVERSATION_VIEW, CHAT_VIEW } from '@/features/chatHub/constants';
+import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
-import { N8nIcon, N8nIconButton, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { computed, onMounted } from 'vue';
+import { N8nIcon, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 
 defineProps<{ isMobileDevice: boolean }>();
 
@@ -15,6 +18,10 @@ const route = useRoute();
 const router = useRouter();
 const chatStore = useChatStore();
 const uiStore = useUIStore();
+const toast = useToast();
+const message = useMessage();
+
+const renamingSessionId = ref<string>();
 
 const currentSessionId = computed(() =>
 	typeof route.params.id === 'string' ? route.params.id : undefined,
@@ -35,6 +42,37 @@ function onNewChat() {
 		name: CHAT_VIEW,
 		force: true, // to focus input again when the user is already in CHAT_VIEW
 	});
+}
+
+function handleStartRename(sessionId: string) {
+	renamingSessionId.value = sessionId;
+}
+
+function handleCancelRename() {
+	renamingSessionId.value = undefined;
+}
+
+async function handleConfirmRename(sessionId: string, newLabel: string) {
+	await chatStore.renameSession(sessionId, newLabel);
+	renamingSessionId.value = undefined;
+}
+
+async function handleDeleteSession(sessionId: string) {
+	const confirmed = await message.confirm(
+		'Are you sure you want to delete this conversation?',
+		'Delete conversation',
+		{
+			confirmButtonText: 'Delete',
+			cancelButtonText: 'Cancel',
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	await chatStore.deleteSession(sessionId);
+	toast.showMessage({ type: 'success', title: 'Conversation is deleted' });
 }
 
 onMounted(async () => {
@@ -64,16 +102,17 @@ onMounted(async () => {
 					<N8nText :class="$style.groupHeader" size="small" bold color="text-light">
 						{{ group.group }}
 					</N8nText>
-					<N8nMenuItem
+					<ChatSessionMenuItem
 						v-for="session in group.sessions"
 						:key="session.id"
+						:session-id="session.id"
+						:label="session.label"
 						:active="currentSessionId === session.id"
-						:item="{
-							id: session.id,
-							icon: 'message-circle',
-							label: session.label,
-							route: { to: { name: CHAT_CONVERSATION_VIEW, params: { id: session.id } } },
-						}"
+						:is-renaming="renamingSessionId === session.id"
+						@start-rename="handleStartRename"
+						@cancel-rename="handleCancelRename"
+						@confirm-rename="handleConfirmRename"
+						@delete="handleDeleteSession"
 					/>
 				</div>
 			</div>
@@ -125,6 +164,7 @@ onMounted(async () => {
 .group {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .groupHeader {

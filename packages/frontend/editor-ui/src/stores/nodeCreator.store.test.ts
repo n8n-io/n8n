@@ -1,15 +1,25 @@
-import { createPinia, setActivePinia } from 'pinia';
-import { useNodeCreatorStore } from './nodeCreator.store';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { prepareCommunityNodeDetailsViewStack } from '@/components/Node/NodeCreator/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	AI_UNCATEGORIZED_CATEGORY,
 	CUSTOM_API_CALL_KEY,
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/constants';
-import type { INodeCreateElement } from '@/Interface';
-import { parseCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type { ActionsRecord, INodeCreateElement, INodeUi, SimplifiedNodeType } from '@/Interface';
 import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
+import { parseCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
+import { getNodeIconSource } from '@/utils/nodeIcon';
+import type { CommunityNodeType } from '@n8n/api-types';
+import { createTestingPinia } from '@pinia/testing';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { useNDVStore } from './ndv.store';
+import { useNodeCreatorStore } from './nodeCreator.store';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useWorkflowsStore } from './workflows.store';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -34,39 +44,75 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-// Mock the workflows store so that getNodeById returns a dummy node.
-vi.mock('@/stores/workflows.store', () => {
-	return {
-		useWorkflowsStore: () => ({
-			getNodeById: vi.fn((id?: string) => {
-				return id ? { id, name: 'Test Node' } : null;
-			}),
-			workflowTriggerNodes: [],
-			workflowId: 'dummy-workflow-id',
-			workflowObject: {
-				getNode: vi.fn(() => ({
-					type: 'n8n-node.example',
-					typeVersion: 1,
-				})),
-			},
-		}),
-	};
-});
-
 vi.mock('@/features/canvas/canvas.utils', () => {
 	return {
 		parseCanvasConnectionHandleString: vi.fn(),
 	};
 });
 
+vi.mock('@/components/Node/NodeCreator/utils', async () => {
+	return {
+		prepareCommunityNodeDetailsViewStack: vi.fn(),
+	};
+});
+
+vi.mock('@/utils/nodeIcon', () => {
+	return {
+		getNodeIconSource: vi.fn(),
+	};
+});
+
+const mockedPrepareCommunityNodeDetailsViewStack = vi.mocked(prepareCommunityNodeDetailsViewStack);
+const mockedGetNodeIconSource = vi.mocked(getNodeIconSource);
+
 describe('useNodeCreatorStore', () => {
 	let nodeCreatorStore: ReturnType<typeof useNodeCreatorStore>;
+	let mockUseNodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+	let mockUseWorkflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let mockUseNDVStore: MockedStore<typeof useNDVStore>;
+	let mockUseViewStacks: MockedStore<typeof useViewStacks>;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.useFakeTimers();
-		vi.restoreAllMocks();
-		setActivePinia(createPinia());
+		vi.resetAllMocks();
+		setActivePinia(createTestingPinia({ stubActions: false }));
 		nodeCreatorStore = useNodeCreatorStore();
+		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
+		mockUseWorkflowsStore = mockedStore(useWorkflowsStore);
+		mockUseNDVStore = mockedStore(useNDVStore);
+		mockUseViewStacks = mockedStore(useViewStacks);
+
+		mockUseWorkflowsStore.getNodeByName = vi.fn((name?: string) => {
+			return name ? ({ id: 'Test Node', name, type: name } as INodeUi) : null;
+		});
+		mockUseWorkflowsStore.getNodeById = vi.fn((id?: string) => {
+			return id ? ({ id, name: 'Test Node', type: 'test-type' } as INodeUi) : undefined;
+		});
+		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
+		mockUseWorkflowsStore.workflowObject = {
+			...mockUseWorkflowsStore.workflowObject,
+			getNode: vi.fn(
+				() =>
+					({
+						type: 'n8n-node.example',
+						typeVersion: 1,
+					}) as INodeUi,
+			),
+		};
+
+		mockedPrepareCommunityNodeDetailsViewStack.mockReturnValue({
+			title: 'Test Node',
+			subcategory: '*',
+			mode: 'community-node',
+		});
+
+		mockedGetNodeIconSource.mockReturnValue({
+			type: 'icon',
+			name: 'test-icon',
+		});
+
+		mockUseViewStacks.pushViewStack = vi.fn();
+
 		vi.setSystemTime(now);
 	});
 
@@ -350,6 +396,165 @@ describe('useNodeCreatorStore', () => {
 			resource: 'contact',
 			operation: 'create',
 			nodes_panel_session_id: getSessionId(now),
+		});
+	});
+
+	describe('openNodeCreatorWithNode', () => {
+		const nodeName = 'test-node';
+		const nodeType = {
+			name: 'test-node-type',
+			displayName: 'Test Node Type',
+			description: 'Test description',
+		};
+
+		it('should return early when nodeData is null', async () => {
+			mockUseWorkflowsStore.getNodeByName.mockReturnValue(null);
+
+			mockUseNDVStore.unsetActiveNodeName = vi.fn();
+			mockUseNodeTypesStore.getNodeType = vi.fn();
+			mockUseNodeTypesStore.communityNodeType = vi.fn();
+
+			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+
+			expect(mockUseNDVStore.unsetActiveNodeName).not.toHaveBeenCalled();
+			expect(mockUseNodeTypesStore.getNodeType).not.toHaveBeenCalled();
+			expect(mockUseNodeTypesStore.communityNodeType).not.toHaveBeenCalled();
+		});
+
+		it('should return early when nodeType is null', async () => {
+			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+				id: 'test-id',
+				name: nodeName,
+				type: 'test-type',
+			} as INodeUi);
+			mockUseNodeTypesStore.getNodeType = vi.fn(() => null);
+			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
+
+			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+
+			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
+			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
+			expect(mockUseNodeTypesStore.communityNodeType).toHaveBeenCalledWith('test-type');
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(false);
+		});
+
+		it('should successfully open node creator with regular node type', async () => {
+			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+				id: 'test-id',
+				name: nodeName,
+				type: 'test-type',
+			} as INodeUi);
+			mockUseNodeTypesStore.getNodeType = vi.fn(() => nodeType as INodeTypeDescription);
+			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
+
+			nodeCreatorStore.actions = {
+				[nodeType.name]: [
+					{
+						actionKey: 'test-action',
+						displayName: 'Test Action',
+					},
+				],
+			} as ActionsRecord<SimplifiedNodeType[]>;
+
+			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
+			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
+				{
+					key: nodeType.name,
+					properties: nodeType,
+					type: 'node',
+					subcategory: '*',
+				},
+				{ type: 'icon', name: 'test-icon' },
+				'Regular',
+				[
+					{
+						actionKey: 'test-action',
+						displayName: 'Test Action',
+					},
+				],
+			);
+			expect(mockUseViewStacks.pushViewStack).toHaveBeenCalledWith(
+				{
+					title: 'Test Node',
+					subcategory: '*',
+					mode: 'community-node',
+				},
+				{ resetStacks: true },
+			);
+		});
+
+		it('should successfully open node creator with community node type', async () => {
+			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+				id: 'test-id',
+				name: nodeName,
+				type: 'test-type',
+			} as INodeUi);
+			mockUseNodeTypesStore.getNodeType = vi.fn(() => null);
+			mockUseNodeTypesStore.communityNodeType = vi.fn(
+				() =>
+					({
+						nodeDescription: nodeType as INodeTypeDescription,
+					}) as CommunityNodeType,
+			);
+
+			nodeCreatorStore.actions = {
+				[nodeType.name]: [],
+			};
+
+			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+
+			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
+			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
+			expect(mockUseNodeTypesStore.communityNodeType).toHaveBeenCalledWith('test-type');
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
+				{
+					key: nodeType.name,
+					properties: nodeType,
+					type: 'node',
+					subcategory: '*',
+				},
+				{ type: 'icon', name: 'test-icon' },
+				'Regular',
+				[],
+			);
+			expect(mockUseViewStacks.pushViewStack).toHaveBeenCalledWith(
+				{
+					title: 'Test Node',
+					subcategory: '*',
+					mode: 'community-node',
+				},
+				{ resetStacks: true },
+			);
+		});
+
+		it('should handle empty actions array', async () => {
+			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+				id: 'test-id',
+				name: nodeName,
+				type: 'test-type',
+			} as INodeUi);
+			mockUseNodeTypesStore.getNodeType = vi.fn(() => nodeType as INodeTypeDescription);
+			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
+
+			nodeCreatorStore.actions = {};
+
+			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+
+			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
+				{
+					key: nodeType.name,
+					properties: nodeType,
+					type: 'node',
+					subcategory: '*',
+				},
+				{ type: 'icon', name: 'test-icon' },
+				'Regular',
+				[],
+			);
 		});
 	});
 });

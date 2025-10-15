@@ -6,9 +6,9 @@ import type {
 	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
-	ROLE,
 	Role,
 } from '@n8n/api-types';
+import type { ILogInStatus } from '@/features/users/users.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
 import type {
@@ -66,7 +66,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
-import type { IUser, IUserResponse } from '@n8n/rest-api-client/api/users';
+import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -470,14 +470,6 @@ export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
 	filters?: ExecutionsQueryFilter;
 	ids?: string[];
-}
-
-export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
-
-export interface IUserListAction {
-	label: string;
-	value: string;
-	guard?: (user: IUser) => boolean;
 }
 
 export const enum UserManagementAuthenticationMethod {
@@ -888,19 +880,6 @@ export interface IBounds {
 	minY: number;
 	maxX: number;
 	maxY: number;
-}
-
-export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
-
-export interface IInviteResponse {
-	user: {
-		id: string;
-		email: string;
-		emailSent: boolean;
-		inviteAcceptUrl: string;
-		role: Role;
-	};
-	error?: string;
 }
 
 export interface ITab<Value extends string | number = string | number> {

@@ -45,6 +45,7 @@ import { ProjectComposer } from '../composables/ProjectComposer';
 import { TemplatesComposer } from '../composables/TemplatesComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
+import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NavigationHelper } from '../helpers/NavigationHelper';
 import { ApiHelpers } from '../services/api-helper';
 
@@ -106,6 +107,7 @@ export class n8nPage {
 	// Helpers
 	readonly navigate: NavigationHelper;
 	readonly breadcrumbs: Breadcrumbs;
+	readonly clipboard: ClipboardHelper;
 
 	constructor(page: Page) {
 		this.page = page;
@@ -164,6 +166,7 @@ export class n8nPage {
 		// Helpers
 		this.navigate = new NavigationHelper(page);
 		this.breadcrumbs = new Breadcrumbs(page);
+		this.clipboard = new ClipboardHelper(page);
 	}
 
 	async goHome() {

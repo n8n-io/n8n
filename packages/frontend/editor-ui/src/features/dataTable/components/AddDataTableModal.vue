@@ -89,7 +89,7 @@ const redirectToDataTables = () => {
 						:placeholder="i18n.baseText('dataTable.add.input.name.placeholder')"
 						data-test-id="data-table-name-input"
 						name="dataTableName"
-						@keyup.enter="onSubmit"
+						@keydown.enter="onSubmit"
 					/>
 				</N8nInputLabel>
 			</div>

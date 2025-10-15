@@ -369,7 +369,6 @@ jobs:
           file: ./docker/images/runners/Dockerfile
           build-args: |
             NODE_VERSION=${{ env.NODE_VERSION }}
-            PYTHON_VERSION=3.13
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
