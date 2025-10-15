@@ -119,11 +119,11 @@ function buildModel(): ColumnFilterModel {
 	}
 
 	if (kind === 'json') {
-		if (inputValue.value === '') return null;
+		if (inputValue.value === '' && numberOfInputs.value > 0) return null;
 		return {
 			filterType: 'json',
 			type,
-			filter: inputValue.value,
+			filter: numberOfInputs.value > 0 ? inputValue.value : undefined,
 			path: inputPath.value,
 		} as ColumnFilterModel;
 	}

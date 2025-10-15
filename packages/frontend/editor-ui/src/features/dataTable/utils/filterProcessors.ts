@@ -37,10 +37,14 @@ export function processJsonFilter(
 	filter: FilterModel[string],
 	colField: string,
 ): BackendFilterRecord {
+	let value = filter.filter ?? null;
+	if (filter.type === 'isEmpty' || filter.type === 'notEmpty') {
+		value = '';
+	}
 	return {
 		columnName: colField,
 		condition: mapJsonTypeToBackend(filter.type),
-		value: filter.filter ?? null,
+		value,
 		path: filter.path,
 	};
 }

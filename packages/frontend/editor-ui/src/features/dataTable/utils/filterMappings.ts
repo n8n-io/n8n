@@ -41,6 +41,10 @@ const NUMBER_DATE_TYPE_TO_BACKEND_MAP: Partial<Record<FilterOperation, BackendFi
 const JSON_TYPE_TO_BACKEND_MAP: Partial<Record<FilterOperation, BackendFilterCondition>> = {
 	equals: 'eq',
 	notEqual: 'neq',
+	isEmpty: 'eq',
+	notEmpty: 'neq',
+	null: 'eq',
+	notNull: 'neq',
 } as const;
 
 export function mapTextTypeToBackend(

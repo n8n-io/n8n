@@ -223,6 +223,10 @@ export const getStringColumnFilterOptions = (i18n: I18nClass) => [
 export const getJsonColumnFilterOptions = (i18n: I18nClass) => [
 	createEqualsFilterOption(i18n),
 	createNotEqualFilterOption(i18n),
+	createIsEmptyFilterOption(i18n),
+	createIsNotEmptyFilterOption(i18n),
+	createNullFilterOption(i18n),
+	createNotNullFilterOption(i18n),
 ];
 
 export const getDateColumnFilterOptions = (i18n: I18nClass) => [
