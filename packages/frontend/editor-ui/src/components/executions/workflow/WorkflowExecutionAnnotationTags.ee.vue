@@ -157,7 +157,7 @@ const onTagsEditEsc = () => {
 	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
-	background-color: var(--color-button-secondary-background);
+	background-color: var(--button--color--background--secondary);
 	border: 1px solid var(--color--foreground--tint-1);
 	border-radius: var(--radius);
 	font-weight: var(--font-weight--regular);
@@ -165,8 +165,8 @@ const onTagsEditEsc = () => {
 	&:hover {
 		color: $color-primary;
 		text-decoration: none;
-		background-color: var(--color-button-secondary-hover-background);
-		border: 1px solid var(--color-button-secondary-hover-active-focus-border);
+		background-color: var(--button--color--background--secondary--hover);
+		border: 1px solid var(--button--border-color--secondary--hover-active-focus);
 		border-radius: var(--radius);
 	}
 
@@ -192,14 +192,14 @@ const onTagsEditEsc = () => {
 		align-items: center;
 		justify-content: center;
 		min-width: max-content;
-		height: var(--tag-height);
-		padding: var(--tag-padding);
-		line-height: var(--tag-line-height);
-		color: var(--tag-text-color);
-		background-color: var(--tag-background-color);
-		border: 1px solid var(--tag-border-color);
-		border-radius: var(--tag-border-radius);
-		font-size: var(--tag-font-size);
+		height: var(--tag--height);
+		padding: var(--tag--padding);
+		line-height: var(--tag--line-height);
+		color: var(--tag--color--text);
+		background-color: var(--tag--color--background);
+		border: 1px solid var(--tag--border-color);
+		border-radius: var(--tag--radius);
+		font-size: var(--tag--font-size);
 	}
 }
 

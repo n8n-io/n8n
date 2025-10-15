@@ -1,14 +1,13 @@
 import type { ESLint, Linter } from 'eslint';
-import { rules } from './rules/index.js';
-import fs from 'node:fs';
 
-const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+import pkg from '../package.json' with { type: 'json' };
+import { rules } from './rules/index.js';
 
 const plugin = {
 	meta: {
 		name: pkg.name,
 		version: pkg.version,
-		namespace: '@n8n/eslint-plugin-community-nodes',
+		namespace: '@n8n/community-nodes',
 	},
 	// @ts-expect-error Rules type does not match for typescript-eslint and eslint
 	rules: rules as ESLint.Plugin['rules'],
@@ -18,38 +17,43 @@ const configs = {
 	recommended: {
 		ignores: ['eslint.config.{js,mjs,ts,mts}'],
 		plugins: {
-			'@n8n/eslint-plugin-community-nodes': plugin,
+			'@n8n/community-nodes': plugin,
 		},
 		rules: {
-			'@n8n/eslint-plugin-community-nodes/no-restricted-globals': 'error',
-			'@n8n/eslint-plugin-community-nodes/no-restricted-imports': 'error',
-			'@n8n/eslint-plugin-community-nodes/credential-password-field': 'error',
-			'@n8n/eslint-plugin-community-nodes/no-deprecated-workflow-functions': 'error',
-			'@n8n/eslint-plugin-community-nodes/node-usable-as-tool': 'error',
-			'@n8n/eslint-plugin-community-nodes/package-name-convention': 'error',
-			'@n8n/eslint-plugin-community-nodes/credential-test-required': 'error',
-			'@n8n/eslint-plugin-community-nodes/no-credential-reuse': 'error',
-			'@n8n/eslint-plugin-community-nodes/icon-validation': 'error',
-			'@n8n/eslint-plugin-community-nodes/resource-operation-pattern': 'warn',
+			'@n8n/community-nodes/no-restricted-globals': 'error',
+			'@n8n/community-nodes/no-restricted-imports': 'error',
+			'@n8n/community-nodes/credential-password-field': 'error',
+			'@n8n/community-nodes/no-deprecated-workflow-functions': 'error',
+			'@n8n/community-nodes/node-usable-as-tool': 'error',
+			'@n8n/community-nodes/package-name-convention': 'error',
+			'@n8n/community-nodes/credential-test-required': 'error',
+			'@n8n/community-nodes/no-credential-reuse': 'error',
+			'@n8n/community-nodes/icon-validation': 'error',
+			'@n8n/community-nodes/resource-operation-pattern': 'warn',
+			'@n8n/community-nodes/credential-documentation-url': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
 		ignores: ['eslint.config.{js,mjs,ts,mts}'],
 		plugins: {
-			'@n8n/eslint-plugin-community-nodes': plugin,
+			'@n8n/community-nodes': plugin,
 		},
 		rules: {
-			'@n8n/eslint-plugin-community-nodes/credential-password-field': 'error',
-			'@n8n/eslint-plugin-community-nodes/no-deprecated-workflow-functions': 'error',
-			'@n8n/eslint-plugin-community-nodes/node-usable-as-tool': 'error',
-			'@n8n/eslint-plugin-community-nodes/package-name-convention': 'error',
-			'@n8n/eslint-plugin-community-nodes/credential-test-required': 'error',
-			'@n8n/eslint-plugin-community-nodes/no-credential-reuse': 'error',
-			'@n8n/eslint-plugin-community-nodes/icon-validation': 'error',
-			'@n8n/eslint-plugin-community-nodes/resource-operation-pattern': 'warn',
+			'@n8n/community-nodes/credential-password-field': 'error',
+			'@n8n/community-nodes/no-deprecated-workflow-functions': 'error',
+			'@n8n/community-nodes/node-usable-as-tool': 'error',
+			'@n8n/community-nodes/package-name-convention': 'error',
+			'@n8n/community-nodes/credential-test-required': 'error',
+			'@n8n/community-nodes/no-credential-reuse': 'error',
+			'@n8n/community-nodes/icon-validation': 'error',
+			'@n8n/community-nodes/credential-documentation-url': 'error',
+			'@n8n/community-nodes/resource-operation-pattern': 'warn',
 		},
 	},
 } satisfies Record<string, Linter.Config>;
 
-export const n8nCommunityNodesPlugin = { ...plugin, configs } satisfies ESLint.Plugin;
-export default n8nCommunityNodesPlugin;
+const pluginWithConfigs = { ...plugin, configs } satisfies ESLint.Plugin;
+
+const n8nCommunityNodesPlugin = pluginWithConfigs;
+export default pluginWithConfigs;
+export { rules, configs, n8nCommunityNodesPlugin };

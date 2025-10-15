@@ -227,20 +227,20 @@ function valueChanged(parameterData: IUpdateInformation) {
 		.button {
 			color: var(--color--text--shade-1);
 			font-weight: var(--font-weight-normal);
-			--button-border-color: var(--color--foreground);
-			--button-background-color: var(--color--background);
+			--button--border-color: var(--color--foreground);
+			--button--color--background: var(--color--background);
 
-			--button-hover-font-color: var(--color-button-secondary-font);
-			--button-hover-border-color: var(--color--foreground);
-			--button-hover-background-color: var(--color--background);
+			--button--color--text--hover: var(--button--color--text--secondary);
+			--button--border-color--hover: var(--color--foreground);
+			--button--color--background--hover: var(--color--background);
 
-			--button-active-font-color: var(--color-button-secondary-font);
-			--button-active-border-color: var(--color--foreground);
-			--button-active-background-color: var(--color--background);
+			--button--color--text--active: var(--button--color--text--secondary);
+			--button--border-color--active: var(--color--foreground);
+			--button--color--background--active: var(--color--background);
 
-			--button-focus-font-color: var(--color-button-secondary-font);
-			--button-focus-border-color: var(--color--foreground);
-			--button-focus-background-color: var(--color--background);
+			--button--color--text--focus: var(--button--color--text--secondary);
+			--button--border-color--focus: var(--color--foreground);
+			--button--color--background--focus: var(--color--background);
 
 			&:active,
 			&.active,

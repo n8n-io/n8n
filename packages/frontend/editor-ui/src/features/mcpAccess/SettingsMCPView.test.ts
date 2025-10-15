@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useMCPStore } from './mcp.store';
 import { MCP_WORKFLOWS } from './SettingsMCPView.test.constants';

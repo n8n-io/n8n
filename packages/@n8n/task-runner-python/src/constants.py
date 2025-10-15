@@ -43,6 +43,7 @@ EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
 EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
 SIGTERM_EXIT_CODE = -15
+SIGKILL_EXIT_CODE = -9
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -150,6 +151,7 @@ BLOCKED_ATTRIBUTES = {
     "__func__",
     "__wrapped__",
     "__annotations__",
+    "__spec__",
 }
 
 # errors

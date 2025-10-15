@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/features/assistant/assistant.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { computed, ref } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';

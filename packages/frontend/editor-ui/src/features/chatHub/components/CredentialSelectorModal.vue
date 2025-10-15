@@ -76,7 +76,6 @@ function onCancel() {
 					:model-value="selectedCredentialId"
 					size="large"
 					placeholder="Select credential..."
-					data-test-id="credential-select"
 					@update:model-value="onCredentialSelect"
 				>
 					<N8nOption
@@ -130,7 +129,7 @@ function onCancel() {
 
 .header {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 

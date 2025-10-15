@@ -661,8 +661,8 @@ th.loading-row {
 		}
 
 		&__select {
-			--input-border-top-left-radius: 0;
-			--input-border-bottom-left-radius: 0;
+			--input--radius--top-left: 0;
+			--input--radius--bottom-left: 0;
 			width: 70px;
 		}
 	}

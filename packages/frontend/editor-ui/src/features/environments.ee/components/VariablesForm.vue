@@ -23,15 +23,8 @@ const keyValidationRules: Array<Rule | RuleGroup> = [
 	{
 		name: 'MATCH_REGEX',
 		config: {
-			regex: /^[a-zA-Z]/,
-			message: i18n.baseText('variables.editing.key.error.startsWithLetter'),
-		},
-	},
-	{
-		name: 'MATCH_REGEX',
-		config: {
-			regex: /^[a-zA-Z][a-zA-Z0-9_]*$/,
-			message: i18n.baseText('variables.editing.key.error.jsonKey'),
+			regex: /^[A-Za-z0-9_]+$/,
+			message: i18n.baseText('variables.editing.key.error.regex'),
 		},
 	},
 ];
