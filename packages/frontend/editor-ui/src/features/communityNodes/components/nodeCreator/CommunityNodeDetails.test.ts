@@ -40,7 +40,7 @@ const usersStore = {
 	isInstanceOwner: true,
 };
 
-vi.mock('@/stores/credentials.store', () => ({
+vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(() => ({
 		fetchCredentialTypes,
 	})),

@@ -10,7 +10,7 @@ import ProjectMoveResourceModal from './ProjectMoveResourceModal.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '../projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { ResourceType } from '../projects.utils';
 import type { ProjectSharingData } from 'n8n-workflow';

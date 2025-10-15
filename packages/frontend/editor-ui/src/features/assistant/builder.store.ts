@@ -29,7 +29,7 @@ import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { useChatPanelStateStore } from './chatPanelState.store';
