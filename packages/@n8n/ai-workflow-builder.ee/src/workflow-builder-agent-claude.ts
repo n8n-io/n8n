@@ -38,6 +38,8 @@ import {
 	SDK_DISCOVERY_PROMPT,
 	SDK_ORCHESTRATOR_PROMPT,
 } from './prompts/sdk-prompts';
+import { createConnection, inferConnectionType } from './tools/utils/connection.utils';
+import { getLatestVersion } from './tools/utils/node-creation.utils';
 import type { SimpleWorkflow } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -67,17 +69,15 @@ export class WorkflowBuilderAgentClaude {
 	private workflowContext: ChatPayload['workflowContext'] | null;
 	private parsedNodeTypes: INodeTypeDescription[];
 	private logger?: Logger;
-	// TODO: These will be used for webhook URLs and API key configuration
-	private instanceUrl?: string;
 	private apiKey?: string;
 	private model: string;
 
 	constructor(config: WorkflowBuilderAgentClaudeConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.logger = config.logger;
-		this.instanceUrl = config.instanceUrl;
 		this.apiKey = config.apiKey;
-		this.model = config.model ?? 'claude-sonnet-4-5';
+		this.model = config.model ?? 'haiku';
+		console.log('🚀 ~ WorkflowBuilderAgentClaude ~ constructor ~ this.model:', this.model);
 
 		// Initialize empty workflow
 		this.workflowJSON = { nodes: [], connections: {}, name: '' };
@@ -104,55 +104,187 @@ export class WorkflowBuilderAgentClaude {
 		this.logger?.info('[SDK] Building workflow', {
 			userMessage: payload.message.substring(0, 100),
 			currentNodeCount: this.workflowJSON.nodes.length,
+			apiKeyConfigured: !!this.apiKey,
 		});
 
-		// Create MCP server with workflow tools
-		const workflowMcp = createSdkMcpServer({
-			name: 'workflow-builder',
-			version: '1.0.0',
-			tools: this.createWorkflowTools(),
-		});
+		try {
+			// Create workflow tools
+			this.logger?.info('[SDK] Creating workflow tools...');
+			const tools = this.createWorkflowTools();
+			this.logger?.info('[SDK] Created tools', { toolCount: tools.length });
 
-		// Tool names for allowed tools
-		const workflowToolNames = [
-			'search_node_types',
-			'get_node_details',
-			'add_workflow_node',
-			'connect_nodes',
-			'set_node_parameters',
-			'get_workflow_context',
-		];
+			// Create MCP server with workflow tools
+			this.logger?.info('[SDK] Creating MCP server...');
+			const workflowMcp = createSdkMcpServer({
+				name: 'workflow-builder',
+				version: '1.0.0',
+				tools,
+			});
+			this.logger?.info('[SDK] MCP server created');
 
-		// Query with subagents and tools
-		const result = query({
-			prompt: payload.message,
-			options: {
-				systemPrompt: {
-					type: 'preset',
-					preset: 'claude_code',
-					append: SDK_ORCHESTRATOR_PROMPT,
-				},
-				agents: this.defineSubagents(),
-				mcpServers: {
-					'workflow-builder': workflowMcp,
-				},
+			// Tool names for allowed tools (with MCP prefix)
+			const workflowToolNames = [
+				'mcp__workflow-builder__search_node_types',
+				'mcp__workflow-builder__get_node_details',
+				'mcp__workflow-builder__add_workflow_node',
+				'mcp__workflow-builder__connect_nodes',
+				'mcp__workflow-builder__set_node_parameters',
+				'mcp__workflow-builder__get_workflow_context',
+			];
+			this.logger?.info('[SDK] Starting query with config', {
 				model: this.model,
-				maxTurns: 20,
-				allowedTools: ['Task', ...workflowToolNames],
-			},
-		});
+				toolCount: workflowToolNames.length,
+				subagentCount: Object.keys(this.defineSubagents()).length,
+			});
 
-		// Stream responses and yield workflow updates
-		for await (const message of result) {
-			// Transform SDK messages to match existing output format
-			const output = this.transformSDKMessage(message);
-			if (output) yield output;
+			// Query with subagents and tools
+			const result = query({
+				prompt: payload.message,
+				options: {
+					systemPrompt: {
+						type: 'preset',
+						preset: 'claude_code',
+						append: SDK_ORCHESTRATOR_PROMPT,
+					},
+					agents: this.defineSubagents(),
+					mcpServers: {
+						'workflow-builder': workflowMcp,
+					},
+					model: this.model,
+					maxTurns: 20,
+					allowedTools: ['Task', ...workflowToolNames],
+				},
+			});
 
-			// Also yield workflow updates
-			yield {
-				type: 'workflow_update',
-				workflowJSON: this.workflowJSON,
-			};
+			this.logger?.info('[SDK] Query started, waiting for messages...');
+
+			// Stream responses and yield workflow updates
+			let messageCount = 0;
+			let previousNodeCount = this.workflowJSON.nodes.length;
+			let previousConnectionCount = Object.keys(this.workflowJSON.connections).length;
+
+			for await (const message of result) {
+				messageCount++;
+
+				console.log('\n=== SDK MESSAGE #' + messageCount + ' ===');
+				console.log('Type:', message.type);
+
+				// Log message details based on type
+				if (message.type === 'assistant' && 'message' in message) {
+					console.log(
+						'Assistant message content:',
+						JSON.stringify((message as any).message.content, null, 2),
+					);
+				} else if (message.type === 'user' && 'message' in message) {
+					// Log tool results (truncated to 1000 chars)
+					const content = (message as any).message?.content;
+					if (Array.isArray(content)) {
+						for (const block of content) {
+							if (block.type === 'tool_result') {
+								const resultText = Array.isArray(block.content)
+									? block.content.map((c: any) => c.text || '').join('\n')
+									: String(block.content);
+								const truncated =
+									resultText.length > 1000
+										? resultText.substring(0, 1000) + '...[truncated]'
+										: resultText;
+								console.log(`Tool result for ${block.tool_use_id}:`, truncated);
+							}
+						}
+					}
+				} else if (message.type === 'result') {
+					console.log('Result - completed in', (message as any).duration_ms, 'ms');
+				}
+
+				console.log('Current workflow state - Nodes:', this.workflowJSON.nodes.length);
+				console.log(
+					'Current workflow state - Connections:',
+					Object.keys(this.workflowJSON.connections).length,
+				);
+				console.log('=== END MESSAGE #' + messageCount + ' ===\n');
+
+				// Transform SDK messages to match existing output format
+				const output = this.transformSDKMessage(message);
+				if (output) {
+					console.log('Yielding transformed output with', output.messages.length, 'messages');
+					yield output;
+				}
+
+				// Emit workflow-updated when:
+				// 1. Subagent completes (Task tool returns) - ALWAYS emit (parameters may change without count change)
+				// 2. Main agent responds without tools - only if counts changed
+				//
+				// Messages FROM subagent tools have parent_tool_use_id set to the Task's ID
+				// The Task tool's own result has parent_tool_use_id === null
+				const isSubagentComplete =
+					message.type === 'user' &&
+					'message' in message &&
+					(message as any).parent_tool_use_id === null &&
+					(message as any).message?.content?.some?.((c: any) => c.type === 'tool_result');
+
+				const isAgentResponseWithoutTools =
+					message.type === 'assistant' &&
+					'message' in message &&
+					(message as any).message?.content?.some?.((c: any) => c.type === 'text') &&
+					!(message as any).message?.content?.some?.((c: any) => c.type === 'tool_use');
+
+				const currentNodeCount = this.workflowJSON.nodes.length;
+				const currentConnectionCount = Object.keys(this.workflowJSON.connections).length;
+
+				// Subagent completed - always emit (builder changes structure, configurator changes parameters)
+				if (isSubagentComplete) {
+					console.log('⚡ Subagent completed - emitting workflow-updated event');
+					console.log(
+						`  Nodes: ${previousNodeCount} → ${currentNodeCount}, Connections: ${previousConnectionCount} → ${currentConnectionCount}`,
+					);
+
+					yield {
+						messages: [
+							{
+								role: 'assistant',
+								type: 'workflow-updated',
+								codeSnippet: JSON.stringify(this.workflowJSON, null, 2),
+							},
+						],
+					};
+
+					previousNodeCount = currentNodeCount;
+					previousConnectionCount = currentConnectionCount;
+				}
+				// Main agent responded - only emit if structure changed
+				else if (isAgentResponseWithoutTools) {
+					if (
+						currentNodeCount !== previousNodeCount ||
+						currentConnectionCount !== previousConnectionCount
+					) {
+						console.log('⚡ Main agent response with structure change - emitting workflow-updated');
+						console.log(
+							`  Nodes: ${previousNodeCount} → ${currentNodeCount}, Connections: ${previousConnectionCount} → ${currentConnectionCount}`,
+						);
+
+						yield {
+							messages: [
+								{
+									role: 'assistant',
+									type: 'workflow-updated',
+									codeSnippet: JSON.stringify(this.workflowJSON, null, 2),
+								},
+							],
+						};
+
+						previousNodeCount = currentNodeCount;
+						previousConnectionCount = currentConnectionCount;
+					}
+				}
+			}
+
+			this.logger?.info('[SDK] Workflow building completed');
+		} catch (error) {
+			this.logger?.error('[SDK] Error building workflow', {
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+			throw error;
 		}
 	}
 
@@ -168,15 +300,23 @@ export class WorkflowBuilderAgentClaude {
 				description:
 					'MUST USE when user describes what they want and you need to find relevant n8n nodes. Use proactively for any workflow building request before creating nodes.',
 				prompt: SDK_DISCOVERY_PROMPT,
-				tools: ['search_node_types', 'get_node_details', 'get_workflow_context'],
-				model: 'sonnet',
+				tools: [
+					'mcp__workflow-builder__search_node_types',
+					'mcp__workflow-builder__get_node_details',
+					'mcp__workflow-builder__get_workflow_context',
+				],
+				model: 'haiku',
 			},
 
 			builder: {
 				description:
 					'MUST USE after discovery to create workflow structure. Use when you have identified nodes and need to add them to the workflow and connect them.',
 				prompt: SDK_BUILDER_PROMPT,
-				tools: ['add_workflow_node', 'connect_nodes', 'get_workflow_context'],
+				tools: [
+					'mcp__workflow-builder__add_workflow_node',
+					'mcp__workflow-builder__connect_nodes',
+					'mcp__workflow-builder__get_workflow_context',
+				],
 				model: 'sonnet',
 			},
 
@@ -184,7 +324,10 @@ export class WorkflowBuilderAgentClaude {
 				description:
 					'MUST USE after building to configure node parameters. Use when workflow structure exists but nodes need parameter configuration.',
 				prompt: SDK_CONFIGURATOR_PROMPT,
-				tools: ['set_node_parameters', 'get_workflow_context'],
+				tools: [
+					'mcp__workflow-builder__set_node_parameters',
+					'mcp__workflow-builder__get_workflow_context',
+				],
 				model: 'sonnet',
 			},
 		};
@@ -206,25 +349,39 @@ export class WorkflowBuilderAgentClaude {
 					query: z.string().describe('Search query (e.g., "Gmail", "HTTP", "database")'),
 				},
 				async (args) => {
+					const queryLower = args.query.toLowerCase();
+
 					const results = this.parsedNodeTypes
-						.filter(
-							(node) =>
-								node.displayName.toLowerCase().includes(args.query.toLowerCase()) ||
-								node.description.toLowerCase().includes(args.query.toLowerCase()),
-						)
+						.filter((node) => {
+							const displayName = node.displayName?.toLowerCase() ?? '';
+							const description = node.description?.toLowerCase() ?? '';
+							return displayName.includes(queryLower) || description.includes(queryLower);
+						})
 						.slice(0, 10);
+
+					this.logger?.debug('[SDK Tool] Search node types', {
+						query: args.query,
+						resultsCount: results.length,
+					});
+
+					const output = JSON.stringify({
+						results: results.map((n) => ({
+							name: n.name,
+							displayName: n.displayName,
+							description: n.description,
+						})),
+					});
+
+					console.log(
+						'[Tool Output] search_node_types:',
+						output.length > 1000 ? output.substring(0, 1000) + '...[truncated]' : output,
+					);
 
 					return {
 						content: [
 							{
 								type: 'text' as const,
-								text: JSON.stringify({
-									results: results.map((n) => ({
-										name: n.name,
-										displayName: n.displayName,
-										description: n.description,
-									})),
-								}),
+								text: output,
 							},
 						],
 					};
@@ -242,6 +399,10 @@ export class WorkflowBuilderAgentClaude {
 					const node = this.parsedNodeTypes.find((n) => n.name === args.nodeType);
 
 					if (!node) {
+						console.log(
+							'[Tool Output] get_node_details: ERROR - Node type not found:',
+							args.nodeType,
+						);
 						return {
 							content: [
 								{
@@ -253,20 +414,31 @@ export class WorkflowBuilderAgentClaude {
 						};
 					}
 
+					const latestVersion = getLatestVersion(node);
+
+					const output = JSON.stringify({
+						node: {
+							name: node.name,
+							displayName: node.displayName,
+							description: node.description,
+							version: latestVersion,
+							defaultVersion: node.defaultVersion,
+							properties: node.properties,
+							inputs: node.inputs,
+							outputs: node.outputs,
+						},
+					});
+
+					console.log(
+						'[Tool Output] get_node_details:',
+						output.length > 1000 ? output.substring(0, 1000) + '...[truncated]' : output,
+					);
+
 					return {
 						content: [
 							{
 								type: 'text' as const,
-								text: JSON.stringify({
-									node: {
-										name: node.name,
-										displayName: node.displayName,
-										description: node.description,
-										properties: node.properties,
-										inputs: node.inputs,
-										outputs: node.outputs,
-									},
-								}),
+								text: output,
 							},
 						],
 					};
@@ -276,46 +448,82 @@ export class WorkflowBuilderAgentClaude {
 			// Add workflow node
 			tool(
 				'add_workflow_node',
-				'Add a node to the workflow',
+				'Add a node to the workflow. Position will be auto-calculated by the frontend.',
 				{
 					nodeType: z.string().describe('Node type name'),
 					name: z.string().describe('Human-readable node name'),
-					position: z
-						.object({
-							x: z.number(),
-							y: z.number(),
-						})
-						.optional()
-						.describe('Position on canvas (optional)'),
+					connectionParametersReasoning: z
+						.string()
+						.describe(
+							'Explain your reasoning about connection parameters. Does this node have dynamic inputs/outputs? Examples: "Vector Store needs mode:insert for document input" or "HTTP Request has static connections, using {}"',
+						),
+					connectionParameters: z
+						.record(z.any())
+						.describe(
+							'Parameters that affect connections (e.g., {mode: "insert"} for Vector Store). Use {} if no connection parameters needed.',
+						),
 				},
 				async (args) => {
+					// Find node type to get latest version
+					const nodeType = this.parsedNodeTypes.find((nt) => nt.name === args.nodeType);
+
+					if (!nodeType) {
+						console.log(
+							'[Tool Output] add_workflow_node: ERROR - Node type not found:',
+							args.nodeType,
+						);
+						return {
+							content: [
+								{
+									type: 'text' as const,
+									text: JSON.stringify({ error: 'Node type not found' }),
+								},
+							],
+							isError: true,
+						};
+					}
+
 					// Mutate instance state
 					const nodeId = `node-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+					const latestVersion = getLatestVersion(nodeType);
 
+					// Position will be auto-calculated by frontend
 					this.workflowJSON.nodes.push({
 						id: nodeId,
 						name: args.name,
 						type: args.nodeType,
-						position: args.position ?? [0, 0],
-						parameters: {},
-						typeVersion: 1,
-					} as any);
+						typeVersion: latestVersion,
+						position: [0, 0],
+						parameters: args.connectionParameters || {},
+					});
 
 					this.logger?.debug('[SDK Tool] Added node', {
 						nodeId,
 						nodeType: args.nodeType,
 						name: args.name,
+						typeVersion: latestVersion,
+						connectionParams: args.connectionParameters,
+						reasoning: args.connectionParametersReasoning.substring(0, 100),
 					});
+
+					const output = JSON.stringify({
+						success: true,
+						nodeId,
+						nodeName: args.name,
+						nodeCount: this.workflowJSON.nodes.length,
+						connectionParametersApplied: args.connectionParameters,
+					});
+
+					console.log(
+						'[Tool Output] add_workflow_node:',
+						output.length > 1000 ? output.substring(0, 1000) + '...[truncated]' : output,
+					);
 
 					return {
 						content: [
 							{
 								type: 'text' as const,
-								text: JSON.stringify({
-									success: true,
-									nodeId,
-									currentWorkflow: this.workflowJSON,
-								}),
+								text: output,
 							},
 						],
 					};
@@ -325,50 +533,125 @@ export class WorkflowBuilderAgentClaude {
 			// Connect nodes
 			tool(
 				'connect_nodes',
-				'Connect two nodes in the workflow',
+				'Connect two nodes in the workflow. Connection type is auto-detected based on node types.',
 				{
-					sourceNodeId: z.string().describe('Source node ID'),
-					targetNodeId: z.string().describe('Target node ID'),
-					outputIndex: z.number().default(0).describe('Source output index'),
-					inputIndex: z.number().default(0).describe('Target input index'),
-					connectionType: z
-						.string()
-						.default('main')
-						.describe('Connection type (main, ai_languageModel, etc.)'),
+					sourceNodeId: z.string().describe('Source node ID (provides output/capability)'),
+					targetNodeId: z.string().describe('Target node ID (receives input/uses capability)'),
+					sourceOutputIndex: z.number().optional().describe('Source output index (default: 0)'),
+					targetInputIndex: z.number().optional().describe('Target input index (default: 0)'),
 				},
 				async (args) => {
-					// Mutate instance state
-					if (!this.workflowJSON.connections[args.sourceNodeId]) {
-						this.workflowJSON.connections[args.sourceNodeId] = {};
+					// Find nodes by ID
+					const sourceNode = this.workflowJSON.nodes.find((n) => n.id === args.sourceNodeId);
+					const targetNode = this.workflowJSON.nodes.find((n) => n.id === args.targetNodeId);
+
+					if (!sourceNode || !targetNode) {
+						const missingId = !sourceNode ? args.sourceNodeId : args.targetNodeId;
+						console.log('[Tool Output] connect_nodes: ERROR - Node not found:', missingId);
+						return {
+							content: [
+								{
+									type: 'text' as const,
+									text: JSON.stringify({
+										error: 'Node not found',
+										missingNodeId: missingId,
+									}),
+								},
+							],
+							isError: true,
+						};
 					}
 
-					const outputKey = args.connectionType === 'main' ? 'main' : args.connectionType;
+					// Get node type descriptions for inference
+					const sourceNodeType = this.parsedNodeTypes.find((nt) => nt.name === sourceNode.type);
+					const targetNodeType = this.parsedNodeTypes.find((nt) => nt.name === targetNode.type);
 
-					if (!this.workflowJSON.connections[args.sourceNodeId][outputKey]) {
-						this.workflowJSON.connections[args.sourceNodeId][outputKey] = [];
+					if (!sourceNodeType || !targetNodeType) {
+						console.log('[Tool Output] connect_nodes: ERROR - Node type not found');
+						return {
+							content: [
+								{
+									type: 'text' as const,
+									text: JSON.stringify({ error: 'Node type not found' }),
+								},
+							],
+							isError: true,
+						};
 					}
 
-					this.workflowJSON.connections[args.sourceNodeId][outputKey].push({
-						// @ts-ignore: Ok
-						node: args.targetNodeId,
-						type: args.connectionType,
-						index: args.inputIndex,
-					});
+					// Infer connection type automatically
+					const inferResult = inferConnectionType(
+						sourceNode,
+						targetNode,
+						sourceNodeType,
+						targetNodeType,
+					);
+
+					if (inferResult.error) {
+						console.log(
+							'[Tool Output] connect_nodes: ERROR - Connection inference failed:',
+							inferResult.error,
+						);
+						return {
+							content: [
+								{
+									type: 'text' as const,
+									text: JSON.stringify({
+										error: inferResult.error,
+										possibleTypes: inferResult.possibleTypes,
+									}),
+								},
+							],
+							isError: true,
+						};
+					}
+
+					const connectionType = inferResult.connectionType!;
+					let actualSourceNode = sourceNode;
+					let actualTargetNode = targetNode;
+
+					// Swap nodes if required (for ai_* connections when specified backwards)
+					if (inferResult.requiresSwap) {
+						console.log('[Tool] Auto-swapping nodes for AI connection');
+						actualSourceNode = targetNode;
+						actualTargetNode = sourceNode;
+					}
+
+					// Create connection using node NAMES (not IDs)
+					this.workflowJSON.connections = createConnection(
+						this.workflowJSON.connections,
+						actualSourceNode.name,
+						actualTargetNode.name,
+						connectionType,
+						args.sourceOutputIndex ?? 0,
+						args.targetInputIndex ?? 0,
+					);
 
 					this.logger?.debug('[SDK Tool] Connected nodes', {
-						source: args.sourceNodeId,
-						target: args.targetNodeId,
-						type: args.connectionType,
+						source: actualSourceNode.name,
+						target: actualTargetNode.name,
+						type: connectionType,
+						swapped: inferResult.requiresSwap,
 					});
+
+					const output = JSON.stringify({
+						success: true,
+						sourceNode: actualSourceNode.name,
+						targetNode: actualTargetNode.name,
+						connectionType,
+						swapped: inferResult.requiresSwap ?? false,
+					});
+
+					console.log(
+						'[Tool Output] connect_nodes:',
+						output.length > 1000 ? output.substring(0, 1000) + '...[truncated]' : output,
+					);
 
 					return {
 						content: [
 							{
 								type: 'text' as const,
-								text: JSON.stringify({
-									success: true,
-									currentWorkflow: this.workflowJSON,
-								}),
+								text: output,
 							},
 						],
 					};
@@ -378,16 +661,17 @@ export class WorkflowBuilderAgentClaude {
 			// Set node parameters
 			tool(
 				'set_node_parameters',
-				'Configure parameters for a node',
+				'Configure parameters for a node. Pass the actual parameter object to set.',
 				{
 					nodeId: z.string().describe('Node ID to configure'),
-					instructions: z.string().describe('Natural language instructions for what to configure'),
+					parameters: z.record(z.any()).describe('Parameters object to set on the node'),
 				},
 				async (args) => {
 					// Find the node
 					const node = this.workflowJSON.nodes.find((n) => n.id === args.nodeId);
 
 					if (!node) {
+						console.log('[Tool Output] set_node_parameters: ERROR - Node not found:', args.nodeId);
 						return {
 							content: [
 								{
@@ -399,25 +683,35 @@ export class WorkflowBuilderAgentClaude {
 						};
 					}
 
-					// TODO: Parse instructions and update parameters
-					// For now, this is a placeholder
-					// In real implementation, would use an LLM chain to parse instructions
-					// similar to the updateNodeParametersTool
+					// Directly apply parameters (subagent has already reasoned about them)
+					node.parameters = {
+						...node.parameters,
+						...args.parameters,
+					};
 
 					this.logger?.debug('[SDK Tool] Set node parameters', {
 						nodeId: args.nodeId,
-						instructions: args.instructions,
+						nodeName: node.name,
+						parameterKeys: Object.keys(args.parameters),
 					});
+
+					const output = JSON.stringify({
+						success: true,
+						nodeId: args.nodeId,
+						nodeName: node.name,
+						updatedParameters: node.parameters,
+					});
+
+					console.log(
+						'[Tool Output] set_node_parameters:',
+						output.length > 1000 ? output.substring(0, 1000) + '...[truncated]' : output,
+					);
 
 					return {
 						content: [
 							{
 								type: 'text' as const,
-								text: JSON.stringify({
-									success: true,
-									nodeId: args.nodeId,
-									message: 'Parameters would be updated here (placeholder)',
-								}),
+								text: output,
 							},
 						],
 					};
@@ -430,17 +724,24 @@ export class WorkflowBuilderAgentClaude {
 				'Get current workflow structure, execution data, and node schemas',
 				{},
 				async () => {
+					const output = JSON.stringify({
+						workflowJSON: this.workflowJSON,
+						executionData: this.workflowContext?.executionData ?? {},
+						executionSchema: this.workflowContext?.executionSchema ?? [],
+						nodeCount: this.workflowJSON.nodes.length,
+						connectionCount: Object.keys(this.workflowJSON.connections).length,
+					});
+
+					console.log(
+						'[Tool Output] get_workflow_context:',
+						output.length > 1000 ? output.substring(0, 1000) + '...[truncated]' : output,
+					);
+
 					return {
 						content: [
 							{
 								type: 'text' as const,
-								text: JSON.stringify({
-									workflowJSON: this.workflowJSON,
-									executionData: this.workflowContext?.executionData ?? {},
-									executionSchema: this.workflowContext?.executionSchema ?? [],
-									nodeCount: this.workflowJSON.nodes.length,
-									connectionCount: Object.keys(this.workflowJSON.connections).length,
-								}),
+								text: output,
 							},
 						],
 					};
@@ -455,14 +756,101 @@ export class WorkflowBuilderAgentClaude {
 	 * This ensures compatibility with the existing frontend that expects
 	 * specific message formats from the LangGraph implementation.
 	 */
-	private transformSDKMessage(_message: SDKMessage) {
-		// TODO: Transform SDK message types to match existing output format
-		// This would map:
-		// - SDKAssistantMessage -> existing assistant message format
-		// - Tool calls -> existing tool call format
-		// - etc.
+	private transformSDKMessage(message: SDKMessage) {
+		const messages: any[] = [];
 
-		return null;
+		// Handle assistant messages
+		if (message.type === 'assistant' && 'message' in message) {
+			const assistantMsg = message as any;
+			const content = assistantMsg.message.content;
+
+			// Extract text content
+			if (Array.isArray(content)) {
+				for (const block of content) {
+					if (block.type === 'text' && block.text) {
+						messages.push({
+							role: 'assistant',
+							type: 'message',
+							text: block.text,
+						});
+					} else if (block.type === 'tool_use') {
+						// Emit tool call
+						messages.push({
+							id: block.id,
+							toolCallId: block.id,
+							role: 'assistant',
+							type: 'tool',
+							toolName: block.name,
+							displayTitle: this.getToolDisplayTitle(block.name),
+							status: 'executing',
+							updates: [
+								{
+									type: 'input',
+									data: block.input || {},
+								},
+							],
+						});
+					}
+				}
+			} else if (typeof content === 'string' && content.trim()) {
+				messages.push({
+					role: 'assistant',
+					type: 'message',
+					text: content,
+				});
+			}
+
+			// Handle tool calls if any (for non-array content)
+			if (assistantMsg.message.tool_calls?.length) {
+				for (const toolCall of assistantMsg.message.tool_calls) {
+					messages.push({
+						id: toolCall.id,
+						toolCallId: toolCall.id,
+						role: 'assistant',
+						type: 'tool',
+						toolName: toolCall.name,
+						displayTitle: this.getToolDisplayTitle(toolCall.name),
+						status: 'executing',
+						updates: [
+							{
+								type: 'input',
+								data: toolCall.input || {},
+							},
+						],
+					});
+				}
+			}
+		}
+
+		// Handle result messages (final response)
+		if (message.type === 'result') {
+			const resultMsg = message as any;
+			if (resultMsg.result && typeof resultMsg.result === 'string') {
+				messages.push({
+					role: 'assistant',
+					type: 'message',
+					text: resultMsg.result,
+				});
+			}
+		}
+
+		return messages.length > 0 ? { messages } : null;
+	}
+
+	/**
+	 * Get display title for a tool name
+	 */
+	private getToolDisplayTitle(toolName: string): string {
+		const displayTitles: Record<string, string> = {
+			'mcp__workflow-builder__search_node_types': 'Searching for nodes',
+			'mcp__workflow-builder__get_node_details': 'Getting node details',
+			'mcp__workflow-builder__add_workflow_node': 'Adding node',
+			'mcp__workflow-builder__connect_nodes': 'Connecting nodes',
+			'mcp__workflow-builder__set_node_parameters': 'Configuring node',
+			'mcp__workflow-builder__get_workflow_context': 'Getting workflow context',
+		};
+
+		return displayTitles[toolName] || toolName;
 	}
 
 	/**

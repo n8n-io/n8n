@@ -181,20 +181,37 @@ NODE CREATION:
 Each add_workflow_node call creates ONE node. You must provide:
 - nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest")
 - name: Descriptive name (e.g., "Fetch Weather Data")
-- position: Optional {x, y} coordinates (defaults to {x: 0, y: 0})
+- connectionParametersReasoning: Explain why you're using specific connection parameters or {}
+- connectionParameters: Parameters affecting connections (e.g., {mode: "insert"} for Vector Store, {} for HTTP Request)
+
+Position is auto-calculated by the frontend - DO NOT specify position
+
+CONNECTION PARAMETERS (set when creating node):
+- AI Agent: {hasOutputParser: true} if using output parser, {} otherwise
+- Vector Store: {mode: "insert"} for documents, {mode: "retrieve"} for querying
+- Document Loader: {textSplittingMode: "custom"} for text splitter input
+- Regular nodes (HTTP, Set, Code): {} (no special connection parameters)
 
 CONNECTIONS:
-- Main data flow: Source output → Target input
-- AI connections: Sub-nodes PROVIDE capabilities (they are the SOURCE)
-  - Example: OpenAI Chat Model → AI Agent [ai_languageModel]
-  - Example: Calculator Tool → AI Agent [ai_tool]
-  - Example: Document Loader → Vector Store [ai_document]
+The connect_nodes tool automatically detects the correct connection type. You only specify source and target:
+- Main data flow: Regular nodes → Regular nodes (auto-detects "main")
+- AI connections: Sub-nodes → Main nodes (auto-detects ai_languageModel, ai_tool, etc.)
+
+Connection direction matters:
+- SOURCE: Node that provides output/capability
+- TARGET: Node that receives input/uses capability
+
+Examples (connection type auto-detected):
+- OpenAI Chat Model (source) → AI Agent (target) = ai_languageModel
+- Calculator Tool (source) → AI Agent (target) = ai_tool
+- Document Loader (source) → Vector Store (target) = ai_document
+- HTTP Request (source) → Set (target) = main
 
 RAG PATTERN (CRITICAL):
 - Data flows: Data source → Vector Store (main connection)
 - AI capabilities: Document Loader → Vector Store [ai_document]
 - AI capabilities: Embeddings → Vector Store [ai_embedding]
-- NEVER connect Document Loader to main data flow - it's an AI sub-node!
+- Sub-nodes are ALWAYS the source for ai_* connections
 
 DO NOT:
 - Output text before calling tools
@@ -244,14 +261,48 @@ PARALLEL EXECUTION:
 - Call tools FIRST, then respond with summary
 
 PARAMETER CONFIGURATION:
-Use set_node_parameters with node ID and natural language instructions:
+Use set_node_parameters with node ID and actual parameters object:
 - nodeId: The node's ID (from workflow context)
-- instructions: Natural language like "Set URL to https://api.example.com/weather"
+- parameters: Actual parameters object with keys/values matching the node's schema
+
+How to determine parameters:
+1. Call get_workflow_context to see current nodes
+2. For each node needing configuration, look at its type in the workflow
+3. Use get_node_details if you need the full parameter schema
+4. Construct the parameters object based on the node's properties definition
+5. Call set_node_parameters with the structured object
 
 Examples:
-- "Set method to POST"
-- "Add header Authorization: Bearer token"
-- "Add field 'status' with value 'processed'"
+
+HTTP Request node:
+  set_node_parameters({
+    nodeId: "node-123",
+    parameters: {
+      method: "POST",
+      url: "https://api.example.com/weather",
+      authentication: "none"
+    }
+  })
+
+AI Agent node:
+  set_node_parameters({
+    nodeId: "node-456",
+    parameters: {
+      promptType: "define",
+      text: "={{ $json.chatInput }}",
+      systemMessage: "You are a helpful assistant..."
+    }
+  })
+
+OpenWeather node:
+  set_node_parameters({
+    nodeId: "node-789",
+    parameters: {
+      operation: "currentWeather",
+      format: "metric",
+      location: "cityName"
+    }
+  })
 
 SPECIAL EXPRESSIONS FOR TOOL NODES:
 Tool nodes (types ending in "Tool") support $fromAI expressions:

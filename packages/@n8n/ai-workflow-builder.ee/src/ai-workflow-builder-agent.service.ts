@@ -190,6 +190,7 @@ export class AiWorkflowBuilderService {
 					parsedNodeTypes: this.parsedNodeTypes,
 					logger: this.logger,
 					model: 'claude-sonnet-4-5',
+					apiKey: process.env.N8N_AI_ANTHROPIC_KEY,
 				})
 			: new WorkflowBuilderAgent({
 					parsedNodeTypes: this.parsedNodeTypes,
