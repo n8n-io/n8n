@@ -114,7 +114,6 @@ watch(
 				[$style.compact]: compact,
 			},
 		]"
-		:data-message-id="message.id"
 	>
 		<div :class="$style.avatar">
 			<N8nIcon :icon="message.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
@@ -123,7 +122,7 @@ watch(
 			<div
 				v-if="bottomSpacerHeight"
 				:class="$style.bottomSpacer"
-				:style="{ height: `calc(${bottomSpacerHeight}px - 100px)` }"
+				:style="{ height: `${bottomSpacerHeight - 100}px` }"
 			/>
 			<div v-if="isEditing" :class="$style.editContainer">
 				<N8nInput

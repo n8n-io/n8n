@@ -25,11 +25,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const ongoingStreaming = ref<{ messageId: string; replyToMessageId: string }>();
+	const streamingMessageId = ref<string>();
 	const messagesBySession = ref<Partial<Record<string, ChatMessage[]>>>({});
 	const sessions = ref<ChatHubSessionDto[]>([]);
 
-	const isResponding = computed(() => ongoingStreaming.value !== undefined);
+	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
 	const getLastMessage = (sessionId: string) => {
 		const msgs = messagesBySession.value[sessionId];
@@ -113,14 +113,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		};
 	}
 
-	function onBeginMessage(
-		sessionId: string,
-		messageId: string,
-		replyToMessageId: string,
-		nodeId: string,
-		runIndex?: number,
-	) {
-		ongoingStreaming.value = { messageId, replyToMessageId };
+	function onBeginMessage(sessionId: string, messageId: string, nodeId: string, runIndex?: number) {
+		streamingMessageId.value = messageId;
 		addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 	}
 
@@ -136,21 +130,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		ongoingStreaming.value = undefined;
+		streamingMessageId.value = undefined;
 	}
 
-	function onStreamMessage(
-		sessionId: string,
-		message: StructuredChunk,
-		messageId: string,
-		replyToMessageId: string,
-	) {
+	function onStreamMessage(sessionId: string, message: StructuredChunk, messageId: string) {
 		const nodeId = message.metadata?.nodeId || 'unknown';
 		const runIndex = message.metadata?.runIndex;
 
 		switch (message.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, replyToMessageId, nodeId, runIndex);
+				onBeginMessage(sessionId, messageId, nodeId, runIndex);
 				break;
 			case 'item':
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
@@ -174,13 +163,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function onStreamDone() {
-		ongoingStreaming.value = undefined;
+		streamingMessageId.value = undefined;
 		await fetchSessions(); // update the conversation list
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onStreamError(_e: Error) {
-		ongoingStreaming.value = undefined;
+		streamingMessageId.value = undefined;
 	}
 
 	function sendMessage(
@@ -206,7 +195,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
 			onStreamDone,
 			onStreamError,
 		);
@@ -239,7 +228,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
 			onStreamDone,
 			onStreamError,
 		);
@@ -266,7 +255,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				replyId,
 				credentials,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, retryId),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId),
 			onStreamDone,
 			onStreamError,
 		);
@@ -293,7 +282,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		messagesBySession,
 		isResponding,
-		ongoingStreaming,
+		streamingMessageId,
 		sessions,
 		fetchChatModels,
 		sendMessage,

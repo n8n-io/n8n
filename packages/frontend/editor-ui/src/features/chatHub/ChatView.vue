@@ -147,33 +147,15 @@ function scrollToBottom(smooth: boolean) {
 	});
 }
 
-function scrollToMessage(messageId: string) {
-	scrollableRef.value
-		?.querySelector(`[data-message-id="${messageId}"]`)
-		?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// Scroll to the bottom when messages are loaded
+// Scroll to the bottom when a new message is added
 watch(
-	[chatMessages, didSubmitInCurrentSession],
-	([messages, didSubmit]) => {
-		if (!didSubmit && messages.length > 0) {
-			scrollToBottom(false);
-			return;
+	() => chatMessages.value[chatMessages.value.length - 1]?.id,
+	(lastMessageId) => {
+		if (lastMessageId) {
+			scrollToBottom(chatStore.streamingMessageId !== undefined);
 		}
 	},
 	{ immediate: true, flush: 'post' },
-);
-
-// Scroll user's prompt to the top when start generating response
-watch(
-	() => chatStore.ongoingStreaming?.replyToMessageId,
-	(replyingTo) => {
-		if (replyingTo) {
-			scrollToMessage(replyingTo);
-		}
-	},
-	{ flush: 'post' },
 );
 
 // Reload models when credentials are updated
@@ -376,7 +358,7 @@ function handleRegenerateMessage(message: ChatMessageType) {
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
-						:is-streaming="chatStore.ongoingStreaming?.messageId === message.id"
+						:is-streaming="chatStore.streamingMessageId === message.id"
 						:bottom-spacer-height="
 							didSubmitInCurrentSession && message.role === 'user'
 								? scrollContainerRef?.offsetHeight
