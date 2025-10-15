@@ -521,7 +521,7 @@ function handleRegenerateMessage(message: ChatMessageType) {
 	position: absolute;
 	bottom: 100%;
 	left: auto;
-	box-shadow: 0px 4px 12px 0px rgba(0, 0, 0, 0.15);
+	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 	border-radius: 50%;
 }
 </style>
