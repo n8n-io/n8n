@@ -13,6 +13,7 @@ import { LLMServiceError } from '@/errors';
 import { anthropicClaudeHaiku, anthropicClaudeSonnet45, gpt5mini } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
+import { WorkflowBuilderAgentClaude } from './workflow-builder-agent-claude';
 
 type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
 
@@ -178,30 +179,37 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
+		const useSDK = process.env.N8N_AI_USE_SDK === 'true';
 		const { llmComplexTask, llmSimpleTask, tracingClient, authHeaders } = await this.setupModels(
 			user,
 			useDeprecatedCredentials,
 		);
 
-		const agent = new WorkflowBuilderAgent({
-			parsedNodeTypes: this.parsedNodeTypes,
-			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask,
-			llmComplexTask,
-			logger: this.logger,
-			checkpointer: this.sessionManager.getCheckpointer(),
-			enableMultiAgent: true,
-			useSubgraphs: true,
-			tracer: tracingClient
-				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
-				: undefined,
-			instanceUrl: this.instanceUrl,
-			onGenerationSuccess: async () => {
-				if (!useDeprecatedCredentials) {
-					await this.onGenerationSuccess(user, authHeaders);
-				}
-			},
-		});
+		const agent = useSDK
+			? new WorkflowBuilderAgentClaude({
+					parsedNodeTypes: this.parsedNodeTypes,
+					logger: this.logger,
+					model: 'claude-sonnet-4-5',
+				})
+			: new WorkflowBuilderAgent({
+					parsedNodeTypes: this.parsedNodeTypes,
+					// We use Sonnet both for simple and complex tasks
+					llmSimpleTask,
+					llmComplexTask,
+					logger: this.logger,
+					checkpointer: this.sessionManager.getCheckpointer(),
+					enableMultiAgent: true,
+					useSubgraphs: true,
+					tracer: tracingClient
+						? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
+						: undefined,
+					instanceUrl: this.instanceUrl,
+					onGenerationSuccess: async () => {
+						if (!useDeprecatedCredentials) {
+							await this.onGenerationSuccess(user, authHeaders);
+						}
+					},
+				});
 
 		return agent;
 	}
