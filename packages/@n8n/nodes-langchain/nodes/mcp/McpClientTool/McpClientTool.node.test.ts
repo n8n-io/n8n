@@ -469,64 +469,6 @@ describe('McpClientTool', () => {
 			});
 		});
 
-		it('should execute tool when tool name is in item.tool (direct execution)', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
-				content: [{ type: 'text', text: 'Weather is rainy' }],
-			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
-				tools: [
-					{
-						name: 'get_weather',
-						description: 'Gets the weather',
-						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
-					},
-				],
-			});
-
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
-			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
-					{
-						tool: 'get_weather',
-						json: {
-							location: 'London',
-						},
-					},
-				]),
-				getNodeParameter: jest.fn((key) => {
-					const params: Record<string, any> = {
-						include: 'all',
-						includeTools: [],
-						excludeTools: [],
-						authentication: 'none',
-						sseEndpoint: 'https://test.com/sse',
-						'options.timeout': 60000,
-					};
-					return params[key];
-				}),
-			});
-
-			const result = await new McpClientTool().execute.call(mockExecuteFunctions);
-
-			expect(result).toEqual([
-				[
-					{
-						json: {
-							response: [{ type: 'text', text: 'Weather is rainy' }],
-						},
-						pairedItem: { item: 0 },
-					},
-				],
-			]);
-
-			expect(Client.prototype.callTool).toHaveBeenCalledWith({
-				name: 'get_weather',
-				arguments: { location: 'London' },
-			});
-		});
-
 		it('should not execute if tool name does not match', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({

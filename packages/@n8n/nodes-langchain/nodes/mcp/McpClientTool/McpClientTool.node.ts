@@ -390,14 +390,20 @@ export class McpClientTool implements INodeType {
 				throw new NodeOperationError(node, error.error, { itemIndex });
 			}
 
-			if (!mcpTools || !mcpTools.length) {
+			if (!mcpTools?.length) {
 				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
 			}
 
 			for (const tool of mcpTools) {
 				// Check for tool name in item.json.tool (for toolkit execution from agent)
 				// or item.tool (for direct execution)
-				const toolName = (item.json.tool as string) ?? item.tool;
+				if (!item.json.tool || typeof item.json.tool !== 'string') {
+					throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
+						itemIndex,
+					});
+				}
+
+				const toolName = item.json.tool;
 				if (toolName === tool.name) {
 					// Extract the tool name from arguments before passing to MCP
 					const { tool: _, ...toolArguments } = item.json;
