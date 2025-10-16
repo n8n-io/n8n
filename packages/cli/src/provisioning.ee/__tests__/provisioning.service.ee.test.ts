@@ -2,10 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningService } from '@/provisioning.ee/provisioning.service.ee';
-import { SettingsRepository } from '@n8n/db';
-import { GlobalConfig } from '@n8n/config';
+import { type SettingsRepository } from '@n8n/db';
+import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
-import { ProvisioningConfigDto } from '@n8n/api-types';
+import { type ProvisioningConfigDto } from '@n8n/api-types';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();

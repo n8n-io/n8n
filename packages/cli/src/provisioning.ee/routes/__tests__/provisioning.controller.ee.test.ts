@@ -2,10 +2,10 @@ import type { LicenseState } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningController } from '../provisioning.controller.ee';
-import { ProvisioningService } from '@/provisioning.ee/provisioning.service.ee';
-import { Response } from 'express';
-import { AuthenticatedRequest } from '@n8n/db';
-import { ProvisioningConfigDto } from '@n8n/api-types';
+import { type ProvisioningService } from '@/provisioning.ee/provisioning.service.ee';
+import { type Response } from 'express';
+import { type AuthenticatedRequest } from '@n8n/db';
+import { type ProvisioningConfigDto } from '@n8n/api-types';
 
 const provisioningService = mock<ProvisioningService>();
 const licenseState = mock<LicenseState>();
