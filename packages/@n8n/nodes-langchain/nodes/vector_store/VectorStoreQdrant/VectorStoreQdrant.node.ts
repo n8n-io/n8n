@@ -119,15 +119,15 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 			extractValue: true,
 		}) as string;
 
-		const contentPayloadKey = context.getNodeParameter('contentPayloadKey', itemIndex);
-		if (contentPayloadKey !== undefined) {
-			assertParamIsString('contentPayloadKey', contentPayloadKey, context.getNode());
-		}
+		const contentPayloadKey = context.getNodeParameter('options.contentPayloadKey', itemIndex, '');
+		assertParamIsString('contentPayloadKey', contentPayloadKey, context.getNode());
 
-		const metadataPayloadKey = context.getNodeParameter('metadataPayloadKey', itemIndex);
-		if (metadataPayloadKey !== undefined) {
-			assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
-		}
+		const metadataPayloadKey = context.getNodeParameter(
+			'options.metadataPayloadKey',
+			itemIndex,
+			'',
+		);
+		assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
 
 		const credentials = await context.getCredentials('qdrantApi');
 
@@ -136,8 +136,8 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 		const config: QdrantLibArgs = {
 			client,
 			collectionName: collection,
-			contentPayloadKey,
-			metadataPayloadKey,
+			contentPayloadKey: contentPayloadKey !== '' ? contentPayloadKey : undefined,
+			metadataPayloadKey: metadataPayloadKey !== '' ? metadataPayloadKey : undefined,
 		};
 
 		return await ExtendedQdrantVectorStore.fromExistingCollection(embeddings, config, filter);
@@ -147,15 +147,15 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 			extractValue: true,
 		}) as string;
 
-		const contentPayloadKey = context.getNodeParameter('contentPayloadKey', itemIndex);
-		if (contentPayloadKey !== undefined) {
-			assertParamIsString('contentPayloadKey', contentPayloadKey, context.getNode());
-		}
+		const contentPayloadKey = context.getNodeParameter('options.contentPayloadKey', itemIndex, '');
+		assertParamIsString('contentPayloadKey', contentPayloadKey, context.getNode());
 
-		const metadataPayloadKey = context.getNodeParameter('metadataPayloadKey', itemIndex);
-		if (metadataPayloadKey !== undefined) {
-			assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
-		}
+		const metadataPayloadKey = context.getNodeParameter(
+			'options.metadataPayloadKey',
+			itemIndex,
+			'',
+		);
+		assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
 
 		// If collection config is not provided, the collection will be created with default settings
 		// i.e. with the size of the passed embeddings and "Cosine" distance metric
@@ -170,8 +170,8 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 			client,
 			collectionName,
 			collectionConfig,
-			contentPayloadKey,
-			metadataPayloadKey,
+			contentPayloadKey: contentPayloadKey !== '' ? contentPayloadKey : undefined,
+			metadataPayloadKey: metadataPayloadKey !== '' ? metadataPayloadKey : undefined,
 		};
 
 		await QdrantVectorStore.fromDocuments(documents, embeddings, config);
