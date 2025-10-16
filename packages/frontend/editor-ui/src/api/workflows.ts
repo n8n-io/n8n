@@ -1,11 +1,13 @@
 import type {
-	IExecutionResponse,
-	IExecutionsCurrentSummaryExtended,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+} from '@/features/executions/executions.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,

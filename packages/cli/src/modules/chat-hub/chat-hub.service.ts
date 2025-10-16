@@ -867,8 +867,9 @@ export class ChatHubService {
 		}
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
-		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
-			this.buildMessagesGraph(messages);
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = Object.fromEntries(
+			messages.map((m) => [m.id, this.convertMessageToDto(m)]),
+		);
 
 		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
 		const activeMessages = messages.filter((m) => m.state === 'active');
@@ -897,69 +898,27 @@ export class ChatHubService {
 		};
 	}
 
-	private buildMessagesGraph(messages: ChatHubMessage[]) {
-		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
+	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {
+		return {
+			id: message.id,
+			sessionId: message.sessionId,
+			type: message.type,
+			name: message.name,
+			content: message.content,
+			provider: message.provider,
+			model: message.model,
+			workflowId: message.workflowId,
+			executionId: message.executionId,
+			state: message.state,
+			createdAt: message.createdAt.toISOString(),
+			updatedAt: message.updatedAt.toISOString(),
 
-		for (const message of messages) {
-			messagesGraph[message.id] = {
-				id: message.id,
-				sessionId: message.sessionId,
-				type: message.type,
-				name: message.name,
-				content: message.content,
-				provider: message.provider,
-				model: message.model,
-				workflowId: message.workflowId,
-				executionId: message.executionId,
-				state: message.state,
-				createdAt: message.createdAt.toISOString(),
-				updatedAt: message.updatedAt.toISOString(),
-
-				previousMessageId: message.previousMessageId,
-				turnId: message.turnId,
-				retryOfMessageId: message.retryOfMessageId,
-				revisionOfMessageId: message.revisionOfMessageId,
-				runIndex: message.runIndex,
-
-				responseIds: [],
-				retryIds: [],
-				revisionIds: [],
-			};
-		}
-
-		for (const node of Object.values(messagesGraph)) {
-			if (node.previousMessageId && messagesGraph[node.previousMessageId]) {
-				messagesGraph[node.previousMessageId].responseIds.push(node.id);
-			}
-			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
-				messagesGraph[node.retryOfMessageId].retryIds.push(node.id);
-			}
-			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
-				messagesGraph[node.revisionOfMessageId].revisionIds.push(node.id);
-			}
-		}
-
-		const sortByRunThenTime = (first: ChatMessageId, second: ChatMessageId) => {
-			const a = messagesGraph[first];
-			const b = messagesGraph[second];
-
-			if (a.runIndex !== b.runIndex) {
-				return a.runIndex - b.runIndex;
-			}
-
-			if (a.createdAt !== b.createdAt) {
-				return a.createdAt < b.createdAt ? -1 : 1;
-			}
-
-			return a.id < b.id ? -1 : 1;
+			previousMessageId: message.previousMessageId,
+			turnId: message.turnId,
+			retryOfMessageId: message.retryOfMessageId,
+			revisionOfMessageId: message.revisionOfMessageId,
+			runIndex: message.runIndex,
 		};
-
-		for (const node of Object.values(messagesGraph)) {
-			node.responseIds.sort(sortByRunThenTime);
-			node.retryIds.sort(sortByRunThenTime);
-			node.revisionIds.sort(sortByRunThenTime);
-		}
-		return messagesGraph;
 	}
 
 	/**
@@ -984,7 +943,32 @@ export class ChatHubService {
 
 	async deleteAllSessions() {
 		const result = await this.sessionRepository.deleteAll();
-
 		return result;
+	}
+
+	/**
+	 * Updates the title of a session
+	 */
+	async updateSessionTitle(userId: string, sessionId: ChatSessionId, title: string) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+
+		if (!session) {
+			throw new NotFoundError('Session not found');
+		}
+
+		return await this.sessionRepository.updateChatTitle(sessionId, title);
+	}
+
+	/**
+	 * Deletes a session
+	 */
+	async deleteSession(userId: string, sessionId: ChatSessionId) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+
+		if (!session) {
+			throw new NotFoundError('Session not found');
+		}
+
+		await this.sessionRepository.deleteChatHubSession(sessionId);
 	}
 }

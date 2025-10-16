@@ -8,7 +8,7 @@ import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useI18n } from '@n8n/i18n';
 import { getConsumedTokens } from '@/features/logs/logs.utils';
 import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
-import ViewSubExecution from '../ViewSubExecution.vue';
+import ViewSubExecution from '@/features/executions/components/ViewSubExecution.vue';
 import { formatTokenUsageCount } from '@/utils/aiUtils';
 import { getReferencedData } from '@/components/RunDataAi/utils';
 import { type LogEntry } from '@/features/logs/logs.types';
