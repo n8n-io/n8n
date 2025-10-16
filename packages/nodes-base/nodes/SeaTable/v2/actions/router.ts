@@ -8,7 +8,7 @@ import * as row from './row';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const operationResult: INodeExecutionData[] = [];
+	let operationResult: INodeExecutionData[] = [];
 	let responseData: IDataObject | IDataObject[] = [];
 
 	for (let i = 0; i < items.length; i++) {
@@ -38,7 +38,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				},
 			);
 
-			operationResult.push(...executionData);
+			operationResult = operationResult.concat(executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				operationResult.push({ json: this.getInputData(i)[0].json, error });

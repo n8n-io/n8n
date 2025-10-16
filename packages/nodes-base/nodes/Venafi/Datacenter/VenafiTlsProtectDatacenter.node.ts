@@ -59,7 +59,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -236,8 +236,8 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					}
 				}
 
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
+				returnData = returnData.concat(
+					this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{
 							itemData: { item: i },

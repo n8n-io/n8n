@@ -58,7 +58,7 @@ export class MistralAi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -168,7 +168,7 @@ export class MistralAi implements INodeType {
 											}),
 											{ itemData: { item: i } },
 										);
-										returnData.push(...errorData);
+										returnData = returnData.concat(errorData);
 									} else {
 										throw new NodeApiError(this.getNode(), {
 											message: `Batch job failed with status: ${jobResult.status}`,
@@ -210,7 +210,7 @@ export class MistralAi implements INodeType {
 											this.helpers.returnJsonArray({ error: result.error }),
 											{ itemData: { item: index } },
 										);
-										returnData.push(...executionData);
+										returnData = returnData.concat(executionData);
 									} else {
 										const data = processResponseData(result.response.body);
 
@@ -218,7 +218,7 @@ export class MistralAi implements INodeType {
 											this.helpers.returnJsonArray(data),
 											{ itemData: { item: index } },
 										);
-										returnData.push(...executionData);
+										returnData = returnData.concat(executionData);
 									}
 								}
 							}
@@ -231,7 +231,7 @@ export class MistralAi implements INodeType {
 								}),
 								{ itemData: { item: 0 } },
 							);
-							returnData.push(...executionError);
+							returnData = returnData.concat(executionError);
 						} else {
 							throw new NodeApiError(this.getNode(), error);
 						}
@@ -292,7 +292,7 @@ export class MistralAi implements INodeType {
 								this.helpers.returnJsonArray(responseData),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						} catch (error) {
 							if (this.continueOnFail()) {
 								const executionError = this.helpers.constructExecutionMetaData(
@@ -301,7 +301,7 @@ export class MistralAi implements INodeType {
 									}),
 									{ itemData: { item: i } },
 								);
-								returnData.push(...executionError);
+								returnData = returnData.concat(executionError);
 							} else {
 								throw new NodeApiError(this.getNode(), error);
 							}

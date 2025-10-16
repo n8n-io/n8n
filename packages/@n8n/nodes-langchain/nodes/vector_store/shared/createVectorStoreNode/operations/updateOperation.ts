@@ -32,7 +32,7 @@ export async function handleUpdateOperation<T extends VectorStore = VectorStore>
 	// Create a loader for processing document data
 	const loader = new N8nJsonLoader(context);
 
-	const resultData: INodeExecutionData[] = [];
+	let resultData: INodeExecutionData[] = [];
 
 	// Process each input item
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -60,7 +60,7 @@ export async function handleUpdateOperation<T extends VectorStore = VectorStore>
 			}
 
 			// Add the serialized document to the result
-			resultData.push(...serializedDocuments);
+			resultData = resultData.concat(serializedDocuments);
 
 			// Use document ID to update the existing document
 			await vectorStore.addDocuments(processedDocuments, {

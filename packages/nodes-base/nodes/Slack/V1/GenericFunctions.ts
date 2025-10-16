@@ -90,7 +90,7 @@ export async function slackApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 	query.page = 1;
 	//if the endpoint uses legacy pagination use count
@@ -104,7 +104,7 @@ export async function slackApiRequestAllItems(
 		responseData = await slackApiRequest.call(this, method, endpoint, body as IDataObject, query);
 		query.cursor = get(responseData, 'response_metadata.next_cursor');
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (
 		(responseData.response_metadata?.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&

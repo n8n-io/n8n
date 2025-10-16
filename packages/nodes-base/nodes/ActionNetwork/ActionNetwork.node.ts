@@ -124,7 +124,7 @@ export class ActionNetwork implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as Resource;
 		const operation = this.getNodeParameter('operation', 0) as Operation;
@@ -483,7 +483,7 @@ export class ActionNetwork implements INodeType {
 				}
 
 				Array.isArray(response)
-					? returnData.push(...(response as IDataObject[]))
+					? (returnData = returnData.concat(response as IDataObject[]))
 					: returnData.push(response as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {

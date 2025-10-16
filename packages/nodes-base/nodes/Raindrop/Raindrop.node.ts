@@ -99,7 +99,7 @@ export class Raindrop implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -413,7 +413,7 @@ export class Raindrop implements INodeType {
 				}
 
 				Array.isArray(responseData)
-					? returnData.push(...(responseData as IDataObject[]))
+					? (returnData = returnData.concat(responseData as IDataObject[]))
 					: returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {

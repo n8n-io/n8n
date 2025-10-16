@@ -276,7 +276,7 @@ export class Hunter implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -320,8 +320,7 @@ export class Hunter implements INodeType {
 									tempReturnData = responseData[index];
 									continue;
 								}
-								(tempReturnData.emails as IDataObject[]).push.apply(
-									tempReturnData.emails,
+								tempReturnData.emails = (tempReturnData.emails as IDataObject[]).concat(
 									responseData[index].emails as IDataObject[],
 								);
 							}
@@ -340,7 +339,7 @@ export class Hunter implements INodeType {
 
 						if (Array.isArray(responseData)) {
 							for (const data of responseData) {
-								tempReturnData.push.apply(tempReturnData, data.emails as IDataObject[]);
+								tempReturnData = tempReturnData.concat(data.emails as IDataObject[]);
 							}
 						} else {
 							tempReturnData = responseData.emails;
@@ -373,14 +372,14 @@ export class Hunter implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 				throw error;

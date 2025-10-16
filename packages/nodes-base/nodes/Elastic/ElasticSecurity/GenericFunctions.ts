@@ -61,7 +61,7 @@ export async function elasticSecurityApiRequestAllItems(
 	qs: IDataObject = {},
 ) {
 	let _page = 1;
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData: any;
 
 	const resource = this.getNodeParameter('resource', 0) as 'case' | 'caseComment';
@@ -72,7 +72,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 		const items = resource === 'case' ? responseData.cases : responseData;
 
-		returnData.push(...(items as IDataObject[]));
+		returnData = returnData.concat(items as IDataObject[]);
 	} while (returnData.length < responseData.total);
 
 	return returnData;

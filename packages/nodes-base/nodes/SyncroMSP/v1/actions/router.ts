@@ -9,7 +9,7 @@ import * as ticket from './ticket';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const operationResult: INodeExecutionData[] = [];
+	let operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const resource = this.getNodeParameter<SyncroMsp>('resource', i);
@@ -39,14 +39,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				itemData: { item: i },
 			});
 
-			operationResult.push(...executionData);
+			operationResult = operationResult.concat(executionData);
 		} catch (err) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: err.message }),
 					{ itemData: { item: i } },
 				);
-				operationResult.push(...executionErrorData);
+				operationResult = operationResult.concat(executionErrorData);
 			} else {
 				throw new NodeApiError(this.getNode(), err as JsonObject, { itemIndex: i });
 			}

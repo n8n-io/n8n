@@ -123,25 +123,25 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		return [...equalsConditions, ...nullConditions];
 	}
 
-	const conditions: INodePropertyOptions[] = [];
+	let conditions: INodePropertyOptions[] = [];
 
 	if (type === 'boolean') {
-		conditions.push.apply(conditions, booleanConditions);
+		conditions = conditions.concat(booleanConditions);
 	}
 
 	// String columns get LIKE operators
 	if (type === 'string') {
-		conditions.push.apply(conditions, equalsConditions);
-		conditions.push.apply(conditions, stringConditions);
-		conditions.push.apply(conditions, comparableConditions);
+		conditions = conditions.concat(equalsConditions);
+		conditions = conditions.concat(stringConditions);
+		conditions = conditions.concat(comparableConditions);
 	}
 
 	if (['number', 'date'].includes(type)) {
-		conditions.push.apply(conditions, equalsConditions);
-		conditions.push.apply(conditions, comparableConditions);
+		conditions = conditions.concat(equalsConditions);
+		conditions = conditions.concat(comparableConditions);
 	}
 
-	conditions.push.apply(conditions, nullConditions);
+	conditions = conditions.concat(nullConditions);
 
 	return conditions;
 }

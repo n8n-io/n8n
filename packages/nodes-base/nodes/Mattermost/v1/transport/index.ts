@@ -42,7 +42,7 @@ export async function apiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 0;
@@ -51,7 +51,7 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData as IDataObject[]);
+		returnData = returnData.concat(responseData as IDataObject[]);
 	} while (responseData.length !== 0);
 
 	return returnData;

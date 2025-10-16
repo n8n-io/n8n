@@ -113,7 +113,7 @@ export class ERPNext implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const body: IDataObject = {};
@@ -285,7 +285,7 @@ export class ERPNext implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 		return [returnData];
 	}

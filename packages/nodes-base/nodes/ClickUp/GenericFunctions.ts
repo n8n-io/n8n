@@ -63,14 +63,14 @@ export async function clickupApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 0;
 
 	do {
 		responseData = await clickupApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		query.page++;
 		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length) {

@@ -84,7 +84,7 @@ export async function quickbaseApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData = [];
 
@@ -129,7 +129,7 @@ export async function quickbaseApiRequestAllItems(
 			//@ts-ignore
 			query.skip += query.top;
 		}
-		returnData.push.apply(returnData, responseData);
+		returnData = returnData.concat(responseData);
 		responseData = [];
 	} while (returnData.length < metadata.totalRecords);
 

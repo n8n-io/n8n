@@ -1,5 +1,4 @@
 import FormData from 'form-data';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -78,7 +77,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
 
@@ -212,7 +211,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		this.helpers.returnJsonArray(response as IDataObject[]),
 		{ itemData: { item: i } },
 	);
-	returnData.push(...executionData);
+	returnData = returnData.concat(executionData);
 
 	return returnData;
 }

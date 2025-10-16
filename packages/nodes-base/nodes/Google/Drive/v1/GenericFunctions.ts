@@ -72,7 +72,7 @@ export async function googleApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.maxResults = query.maxResults || 100;
@@ -80,7 +80,7 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

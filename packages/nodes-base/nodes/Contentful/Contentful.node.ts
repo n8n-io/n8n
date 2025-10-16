@@ -92,7 +92,7 @@ export class Contentful implements INodeType {
 		let responseData;
 
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const qs: Record<string, string | number> = {};
 
 		for (let i = 0; i < items.length; i++) {
@@ -362,7 +362,7 @@ export class Contentful implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {} });

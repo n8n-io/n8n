@@ -46,7 +46,7 @@ export async function intercomApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -57,7 +57,7 @@ export async function intercomApiRequestAllItems(
 	do {
 		responseData = await intercomApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = responseData.pages.next;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.pages?.next !== null);
 
 	return returnData;

@@ -160,7 +160,7 @@ export async function executeSelectMany(
 	}
 
 	const PAGE_SIZE = 1000;
-	const result: Array<{ json: DataTableRowReturn }> = [];
+	let result: Array<{ json: DataTableRowReturn }> = [];
 
 	const returnAll = ctx.getNodeParameter('returnAll', index, false);
 	limit = limit ?? (!returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0);
@@ -191,7 +191,7 @@ export async function executeSelectMany(
 		}
 		expectedTotal = count;
 
-		result.push.apply(result, wrapped);
+		result = result.concat(wrapped);
 
 		// Stop if we've hit the limit
 		if (limit && result.length >= limit) break;

@@ -210,7 +210,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			credentials as WeaviateCredential,
 			timeout as TimeoutParams,
 			proxies as ProxiesParams,
-			options.skip_init_checks as boolean,
+			options.skip_init_checks,
 		);
 
 		const metadataKeys = options.metadataKeys ? options.metadataKeys.split(',') : [];

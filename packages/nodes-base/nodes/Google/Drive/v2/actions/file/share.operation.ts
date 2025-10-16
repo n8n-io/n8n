@@ -29,7 +29,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const fileId = this.getNodeParameter('fileId', i, undefined, {
 		extractValue: true,
@@ -63,7 +63,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		this.helpers.returnJsonArray(response as IDataObject[]),
 		{ itemData: { item: i } },
 	);
-	returnData.push(...executionData);
+	returnData = returnData.concat(executionData);
 
 	return returnData;
 }

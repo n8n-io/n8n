@@ -53,7 +53,7 @@ export class UrlScanIo implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'scan';
 		const operation = this.getNodeParameter('operation', 0) as 'perform' | 'get' | 'getAll';
@@ -129,7 +129,7 @@ export class UrlScanIo implements INodeType {
 				}
 
 				Array.isArray(responseData)
-					? returnData.push(...(responseData as IDataObject[]))
+					? (returnData = returnData.concat(responseData as IDataObject[]))
 					: returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {

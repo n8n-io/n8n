@@ -52,7 +52,7 @@ export class AwsCertificateManager implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -219,7 +219,7 @@ export class AwsCertificateManager implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

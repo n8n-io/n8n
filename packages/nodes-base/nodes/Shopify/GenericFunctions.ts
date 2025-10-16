@@ -91,7 +91,7 @@ export async function shopifyApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	/*
 	 	When paginating some parameters
@@ -116,7 +116,7 @@ export async function shopifyApiRequestAllItems(
 		if (responseData.headers.link) {
 			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData.body[propertyName] as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }

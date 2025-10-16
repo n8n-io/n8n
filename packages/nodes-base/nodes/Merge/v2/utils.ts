@@ -1,3 +1,4 @@
+import { ApplicationError } from '@n8n/errors';
 import assign from 'lodash/assign';
 import assignWith from 'lodash/assignWith';
 import get from 'lodash/get';
@@ -10,7 +11,6 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError } from '@n8n/errors';
 
 import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 

@@ -297,7 +297,7 @@ export class MergeV2 implements INodeType {
 
 		if (mode === 'append') {
 			for (let i = 0; i < 2; i++) {
-				returnData.push.apply(returnData, this.getInputData(i));
+				returnData = returnData.concat(this.getInputData(i));
 			}
 		}
 
@@ -593,10 +593,10 @@ export class MergeV2 implements INodeType {
 				const output = this.getNodeParameter('output', 0) as string;
 
 				if (output === 'input1') {
-					returnData.push.apply(returnData, this.getInputData(0));
+					returnData = returnData.concat(this.getInputData(0));
 				}
 				if (output === 'input2') {
-					returnData.push.apply(returnData, this.getInputData(1));
+					returnData = returnData.concat(this.getInputData(1));
 				}
 				if (output === 'empty') {
 					const pairedItem = [

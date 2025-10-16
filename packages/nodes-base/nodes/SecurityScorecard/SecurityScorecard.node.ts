@@ -98,7 +98,7 @@ export class SecurityScorecard implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		let responseData;
 		const length = items.length;
 
@@ -163,7 +163,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = responseData.splice(0, limit);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 			}
 
@@ -209,7 +209,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = responseData.splice(0, limit);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 			}
 
@@ -299,7 +299,7 @@ export class SecurityScorecard implements INodeType {
 						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 			}
 
@@ -350,7 +350,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = simplify(responseData as IDataObject[]);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 
 				if (operation === 'getFactorHistorical') {
@@ -384,7 +384,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = simplify(responseData as IDataObject[]);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 			}
 
@@ -418,7 +418,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = responseData.splice(0, limit);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 
 				if (operation === 'getFactorHistorical') {
@@ -453,7 +453,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = simplify(responseData as IDataObject[]);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 
 				if (operation === 'getHistoricalScore') {
@@ -489,7 +489,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = simplify(responseData as IDataObject[]);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 
 				if (operation === 'getScorePlan') {
@@ -509,7 +509,7 @@ export class SecurityScorecard implements INodeType {
 						responseData = responseData.splice(0, limit);
 					}
 
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData = returnData.concat(responseData as IDataObject[]);
 				}
 			}
 		}

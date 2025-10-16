@@ -860,7 +860,7 @@ export class NextCloud implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData().slice();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 		let credentials;
@@ -1158,7 +1158,7 @@ export class NextCloud implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
@@ -1189,7 +1189,7 @@ export class NextCloud implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					} else {
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
 							parseString(responseData as string, { explicitArray: false }, (err, data) => {
@@ -1281,7 +1281,7 @@ export class NextCloud implements INodeType {
 						itemData: { item: i },
 					});
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

@@ -170,7 +170,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const length = items.length;
 
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const rows: IDataObject[] = [];
 	const body: IDataObject = {};
 
@@ -217,7 +217,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 			throw new NodeOperationError(this.getNode(), error.message as string, {
@@ -267,7 +267,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					this.helpers.returnJsonArray({ error: errors.join('\n, ') }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 
@@ -286,7 +286,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			{ itemData },
 		);
 
-		returnData.push(...executionData);
+		returnData = returnData.concat(executionData);
 	}
 
 	return returnData;

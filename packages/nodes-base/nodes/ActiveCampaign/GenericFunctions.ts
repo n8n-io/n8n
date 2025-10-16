@@ -87,7 +87,7 @@ export async function activeCampaignApiRequestAllItems(
 	query.limit = 100;
 	query.offset = 0;
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -96,12 +96,12 @@ export async function activeCampaignApiRequestAllItems(
 		responseData = await activeCampaignApiRequest.call(this, method, endpoint, body, query);
 
 		if (dataKey === undefined) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData = returnData.concat(responseData as IDataObject[]);
 			if (returnData !== undefined) {
 				itemsReceived += returnData.length;
 			}
 		} else {
-			returnData.push.apply(returnData, responseData[dataKey] as IDataObject[]);
+			returnData = returnData.concat(responseData[dataKey] as IDataObject[]);
 			if (responseData[dataKey] !== undefined) {
 				itemsReceived += responseData[dataKey].length;
 			}

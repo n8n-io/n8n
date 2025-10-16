@@ -269,7 +269,7 @@ export class Taiga implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as Resource;
 		const operation = this.getNodeParameter('operation', 0) as Operation;
@@ -576,7 +576,7 @@ export class Taiga implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 
@@ -588,7 +588,7 @@ export class Taiga implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 
 		return [returnData];

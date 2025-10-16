@@ -270,7 +270,7 @@ export async function loadUsers(this: ILoadOptionsFunctions): Promise<INodePrope
 export async function loadAlertFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
+	let returnData: INodePropertyOptions[] = [];
 
 	const excludeFields = ['addTags', 'removeTags'];
 
@@ -287,12 +287,12 @@ export async function loadAlertFields(
 
 	const customFields = await loadCustomFields.call(this);
 
-	returnData.push(...fields, ...customFields);
+	returnData = returnData.concat(fields).concat(customFields);
 	return returnData;
 }
 
 export async function loadCaseFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
+	let returnData: INodePropertyOptions[] = [];
 
 	const excludeFields = ['addTags', 'removeTags', 'taskRule', 'observableRule'];
 
@@ -309,14 +309,14 @@ export async function loadCaseFields(this: ILoadOptionsFunctions): Promise<INode
 
 	const customFields = await loadCustomFields.call(this);
 
-	returnData.push(...fields, ...customFields);
+	returnData = returnData.concat(fields).concat(customFields);
 	return returnData;
 }
 
 export async function loadObservableFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
+	let returnData: INodePropertyOptions[] = [];
 
 	const excludeFields = ['addTags', 'removeTags', 'zipPassword'];
 
@@ -331,7 +331,7 @@ export async function loadObservableFields(
 			return field;
 		});
 
-	returnData.push(...fields);
+	returnData = returnData.concat(fields);
 	return returnData;
 }
 

@@ -442,7 +442,7 @@ export class MongoDb implements INodeType {
 							json,
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
 						}));
-						returnData.push(...result);
+						returnData = returnData.concat(result);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({

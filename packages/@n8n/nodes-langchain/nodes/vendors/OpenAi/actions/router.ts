@@ -14,7 +14,7 @@ import * as text from './text';
 import { getCustomErrorMessage } from '../helpers/error-handling';
 
 export async function router(this: IExecuteFunctions) {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const items = this.getInputData();
 	const resource = this.getNodeParameter<OpenAiType>('resource', 0);
@@ -53,7 +53,7 @@ export async function router(this: IExecuteFunctions) {
 		try {
 			const responseData = await execute.call(this, i);
 
-			returnData.push(...responseData);
+			returnData = returnData.concat(responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });

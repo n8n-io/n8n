@@ -64,7 +64,7 @@ export async function agileCrmApiRequestAllItems(
 ): Promise<any> {
 	// https://github.com/agilecrm/rest-api#11-listing-contacts-
 
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 	do {
 		responseData = await agileCrmApiRequest.call(
@@ -77,7 +77,7 @@ export async function agileCrmApiRequestAllItems(
 			sendAsForm,
 		);
 		if (responseData.length !== 0) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData = returnData.concat(responseData as IDataObject[]);
 			if (sendAsForm) {
 				body.cursor = responseData[responseData.length - 1].cursor;
 			} else {

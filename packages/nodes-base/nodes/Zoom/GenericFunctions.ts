@@ -64,13 +64,13 @@ export async function zoomApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 	query.page_number = 0;
 	do {
 		responseData = await zoomApiRequest.call(this, method, endpoint, body, query);
 		query.page_number++;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		// zoom free plan rate limit is 1 request/second
 		// TODO just wait when the plan is free
 		await wait();

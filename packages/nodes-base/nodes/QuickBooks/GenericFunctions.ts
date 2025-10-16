@@ -112,7 +112,7 @@ export async function quickBooksApiRequestAllItems(
 	let responseData;
 	let startPosition = 1;
 	const maxResults = 1000;
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	const maxCountQuery = {
 		query: `SELECT COUNT(*) FROM ${resource}`,
@@ -128,9 +128,11 @@ export async function quickBooksApiRequestAllItems(
 		try {
 			const nonResource = originalQuery.split(' ')?.pop();
 			if (nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode') {
-				returnData.push(...(responseData.QueryResponse[nonResource] as IDataObject[]));
+				returnData = returnData.concat(responseData.QueryResponse[nonResource] as IDataObject[]);
 			} else {
-				returnData.push(...(responseData.QueryResponse[capitalCase(resource)] as IDataObject[]));
+				returnData = returnData.concat(
+					responseData.QueryResponse[capitalCase(resource)] as IDataObject[],
+				);
 			}
 		} catch (error) {
 			return [];

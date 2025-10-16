@@ -75,11 +75,11 @@ export async function monicaCrmApiRequestAllItems(
 	qs.limit = 100;
 
 	let responseData;
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	do {
 		responseData = await monicaCrmApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...(responseData.data as IDataObject[]));
+		returnData = returnData.concat(responseData.data as IDataObject[]);
 
 		if (!forLoader && !returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

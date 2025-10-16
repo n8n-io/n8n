@@ -292,7 +292,7 @@ export function configureQueryRunner(
 
 		if (queryBatching === 'transaction') {
 			returnData = await db.tx(async (transaction) => {
-				const result: INodeExecutionData[] = [];
+				let result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
 						const query = queries[i].query;
@@ -318,7 +318,7 @@ export function configureQueryRunner(
 							{ itemData: { item: i } },
 						);
 
-						result.push(...executionData);
+						result = result.concat(executionData);
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
@@ -332,7 +332,7 @@ export function configureQueryRunner(
 
 		if (queryBatching === 'independently') {
 			returnData = await db.task(async (task) => {
-				const result: INodeExecutionData[] = [];
+				let result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
 						const query = queries[i].query;
@@ -358,7 +358,7 @@ export function configureQueryRunner(
 							{ itemData: { item: i } },
 						);
 
-						result.push(...executionData);
+						result = result.concat(executionData);
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;

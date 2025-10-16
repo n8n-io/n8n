@@ -158,7 +158,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	guildId: string,
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {
@@ -190,12 +190,12 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
-				returnData.push(...prepareErrorData.call(this, err, i));
+				returnData = returnData.concat(prepareErrorData.call(this, err, i));
 				continue;
 			}
 

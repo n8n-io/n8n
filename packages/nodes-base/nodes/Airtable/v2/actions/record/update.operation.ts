@@ -55,7 +55,7 @@ export async function execute(
 	base: string,
 	table: string,
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const endpoint = `${base}/${table}`;
 
@@ -148,7 +148,7 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, recordId, i);
 			if (this.continueOnFail()) {

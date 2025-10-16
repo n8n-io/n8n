@@ -12,7 +12,6 @@ import type { GmailMessage, GmailMessageMetadata, GmailUserProfile } from '../..
 import { replyToEmail } from '../../utils/replyToEmail';
 
 jest.mock('../../GenericFunctions', () => ({
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	...jest.requireActual('../../GenericFunctions'),
 	googleApiRequest: jest.fn(),
 	prepareEmailsInput: jest.fn(),

@@ -122,7 +122,7 @@ export async function handleListing(
 	i: number,
 	qs: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 
 	const returnAll = this.getNodeParameter('returnAll', i);
@@ -130,7 +130,7 @@ export async function handleListing(
 
 	do {
 		responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, qs);
-		returnData.push(...(responseData.data as IDataObject[]));
+		returnData = returnData.concat(responseData.data as IDataObject[]);
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);

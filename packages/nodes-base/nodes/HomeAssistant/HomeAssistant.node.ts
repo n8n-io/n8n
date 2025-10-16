@@ -173,7 +173,7 @@ export class HomeAssistant implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -438,7 +438,7 @@ export class HomeAssistant implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 					continue;
 				}
@@ -448,7 +448,7 @@ export class HomeAssistant implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 
 		if (resource === 'cameraProxy' && operation === 'getScreenshot') {

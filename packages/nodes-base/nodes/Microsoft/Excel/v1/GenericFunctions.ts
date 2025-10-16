@@ -48,7 +48,7 @@ export async function microsoftApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
@@ -60,7 +60,7 @@ export async function microsoftApiRequestAllItems(
 		if (uri?.includes('$top')) {
 			delete query.$top;
 		}
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
@@ -75,7 +75,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.$top = 100;
@@ -84,7 +84,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
 		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.value.length !== 0);
 
 	return returnData;

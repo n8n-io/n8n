@@ -98,7 +98,7 @@ async function executeSelectWithMappedPairedItems(
 	query: string,
 	returnSuccessItemIfEmpty: boolean,
 ): Promise<INodeExecutionData[][]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const db: typeof Database = new (alasql as any).Database(node.id);
 
@@ -125,7 +125,7 @@ async function executeSelectWithMappedPairedItems(
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
-				returnData.push.apply(returnData, item.map(rowToExecutionData));
+				returnData = returnData.concat(item.map(rowToExecutionData));
 			} else if (typeof item === 'object') {
 				returnData.push(rowToExecutionData(item));
 			}
@@ -148,8 +148,8 @@ export async function execute(
 	inputsData: INodeExecutionData[][],
 ): Promise<INodeExecutionData[][]> {
 	const node = this.getNode();
-	const returnData: INodeExecutionData[] = [];
-	const pairedItem: IPairedItemData[] = [];
+	let returnData: INodeExecutionData[] = [];
+	let pairedItem: IPairedItemData[] = [];
 	const options = this.getNodeParameter('options', 0, {}) as OperationOptions;
 
 	let query = this.getNodeParameter('query', 0) as string;
@@ -211,7 +211,7 @@ export async function execute(
 								input: i,
 							};
 						});
-					pairedItem.push.apply(pairedItem, pairedItems);
+					pairedItem = pairedItem.concat(pairedItems);
 					return;
 				}
 
@@ -237,10 +237,7 @@ export async function execute(
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
-				returnData.push.apply(
-					returnData,
-					item.map((json) => ({ json, pairedItem })),
-				);
+				returnData = returnData.concat(item.map((json) => ({ json, pairedItem })));
 			} else if (typeof item === 'object') {
 				returnData.push({ json: item, pairedItem });
 			}

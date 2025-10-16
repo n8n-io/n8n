@@ -306,7 +306,7 @@ export class TheHive implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -325,7 +325,9 @@ export class TheHive implements INodeType {
 						if ('customFieldsUi' in filters) {
 							const customFields = (await prepareCustomFields.call(this, filters)) as IDataObject;
 							const searchQueries = buildCustomFieldSearch(customFields);
-							(_countSearchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+							_countSearchQuery['_and'] = (_countSearchQuery['_and'] as IQueryObject[]).concat(
+								searchQueries,
+							);
 						}
 
 						for (const key of Object.keys(countQueryAttributs)) {
@@ -518,7 +520,7 @@ export class TheHive implements INodeType {
 						if ('customFieldsUi' in filters) {
 							const customFields = (await prepareCustomFields.call(this, filters)) as IDataObject;
 							const searchQueries = buildCustomFieldSearch(customFields);
-							(_searchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+							_searchQuery['_and'] = (_searchQuery['_and'] as IQueryObject[]).concat(searchQueries);
 						}
 
 						for (const key of Object.keys(queryAttributs)) {
@@ -1120,7 +1122,9 @@ export class TheHive implements INodeType {
 						if ('customFieldsUi' in filters) {
 							const customFields = (await prepareCustomFields.call(this, filters)) as IDataObject;
 							const searchQueries = buildCustomFieldSearch(customFields);
-							(_countSearchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+							_countSearchQuery['_and'] = (_countSearchQuery['_and'] as IQueryObject[]).concat(
+								searchQueries,
+							);
 						}
 
 						for (const key of Object.keys(countQueryAttributs)) {
@@ -1291,7 +1295,7 @@ export class TheHive implements INodeType {
 						if ('customFieldsUi' in filters) {
 							const customFields = (await prepareCustomFields.call(this, filters)) as IDataObject;
 							const searchQueries = buildCustomFieldSearch(customFields);
-							(_searchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+							_searchQuery['_and'] = (_searchQuery['_and'] as IQueryObject[]).concat(searchQueries);
 						}
 
 						for (const key of Object.keys(queryAttributs)) {
@@ -1885,14 +1889,14 @@ export class TheHive implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 					continue;
 				}
 				throw error;

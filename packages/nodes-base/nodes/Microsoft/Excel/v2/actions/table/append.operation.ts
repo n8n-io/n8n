@@ -154,7 +154,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	//https://docs.microsoft.com/en-us/graph/api/table-post-rows?view=graph-rest-1.0&tabs=http
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	try {
 		// TODO: At some point it should be possible to use item dependent parameters.
@@ -265,8 +265,8 @@ export async function execute(
 		const rawData = options.rawData as boolean;
 		const dataProperty = (options.dataProperty as string) || 'data';
 
-		returnData.push(
-			...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+		returnData = returnData.concat(
+			prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 				columnsRow,
 				dataProperty,
 				rawData,
@@ -279,7 +279,7 @@ export async function execute(
 				this.helpers.returnJsonArray({ error: error.message }),
 				{ itemData },
 			);
-			returnData.push(...executionErrorData);
+			returnData = returnData.concat(executionErrorData);
 		} else {
 			throw error;
 		}

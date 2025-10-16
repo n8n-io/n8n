@@ -1,6 +1,6 @@
+import { ApplicationError } from '@n8n/errors';
 import { mock } from 'jest-mock-extended';
 import { MqttClient } from 'mqtt';
-import { ApplicationError } from '@n8n/errors';
 
 import { createClient, type MqttCredential } from '../GenericFunctions';
 

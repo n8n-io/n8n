@@ -67,7 +67,7 @@ export async function serviceNowRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 
 	const page = 100;
@@ -77,7 +77,7 @@ export async function serviceNowRequestAllItems(
 	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, {
 		resolveWithFullResponse: true,
 	});
-	returnData.push.apply(returnData, responseData.body.result as IDataObject[]);
+	returnData = returnData.concat(responseData.body.result as IDataObject[]);
 
 	const quantity = responseData.headers['x-total-count'];
 	const iterations = Math.round(quantity / page) + (quantity % page ? 1 : 0);
@@ -89,7 +89,7 @@ export async function serviceNowRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 
-		returnData.push.apply(returnData, responseData.body.result as IDataObject[]);
+		returnData = returnData.concat(responseData.body.result as IDataObject[]);
 	}
 
 	return returnData;

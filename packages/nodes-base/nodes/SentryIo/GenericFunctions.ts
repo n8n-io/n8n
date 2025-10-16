@@ -99,7 +99,7 @@ export async function sentryApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -113,7 +113,7 @@ export async function sentryApiRequestAllItems(
 		});
 		link = responseData.headers.link;
 		uri = getNext(link as string);
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 		const limit = query.limit as number | undefined;
 		if (limit && limit >= returnData.length) {
 			return;

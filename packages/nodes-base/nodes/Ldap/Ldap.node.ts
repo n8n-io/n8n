@@ -1,4 +1,4 @@
-import { Attribute, Change } from 'ldapts';
+import { Attribute, Change, type Entry } from 'ldapts';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -175,12 +175,12 @@ export class Ldap implements INodeType {
 					await client.unbind();
 				}
 
-				const objects = [];
+				let objects: Array<Entry[string]> = [];
 				for (const entry of results.searchEntries) {
 					if (typeof entry.objectClass === 'string') {
 						objects.push(entry.objectClass);
 					} else {
-						objects.push(...entry.objectClass);
+						objects = objects.concat(entry.objectClass);
 					}
 				}
 
@@ -231,7 +231,7 @@ export class Ldap implements INodeType {
 		const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 
 		const items = this.getInputData();
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		if (nodeDebug) {
 			this.logger.info(
@@ -411,8 +411,7 @@ export class Ldap implements INodeType {
 					}
 					resolveBinaryAttributes(results.searchEntries);
 
-					returnItems.push.apply(
-						returnItems,
+					returnItems = returnItems.concat(
 						results.searchEntries.map((result) => ({
 							json: result,
 							pairedItem: { item: itemIndex },

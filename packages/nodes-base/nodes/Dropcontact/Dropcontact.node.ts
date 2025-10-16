@@ -246,7 +246,7 @@ export class Dropcontact implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData: any;
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		if (resource === 'contact') {
 			if (operation === 'enrich') {
@@ -284,7 +284,7 @@ export class Dropcontact implements INodeType {
 								itemData: mapPairedItemsFrom(entryData),
 							},
 						);
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					} else {
 						throw new NodeApiError(this.getNode(), {
 							error: responseData.reason || 'invalid request',
@@ -312,7 +312,7 @@ export class Dropcontact implements INodeType {
 									itemData: mapPairedItemsFrom(entryData),
 								},
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason,
@@ -325,7 +325,7 @@ export class Dropcontact implements INodeType {
 								this.helpers.returnJsonArray(d),
 								{ itemData: { item: index } },
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						});
 					}
 				} else {
@@ -335,7 +335,7 @@ export class Dropcontact implements INodeType {
 							itemData: mapPairedItemsFrom(entryData),
 						},
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 
@@ -355,7 +355,7 @@ export class Dropcontact implements INodeType {
 								this.helpers.returnJsonArray({ error: responseData.reason || 'invalid request' }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason || 'invalid request',
@@ -366,7 +366,7 @@ export class Dropcontact implements INodeType {
 						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 		}

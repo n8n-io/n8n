@@ -54,7 +54,7 @@ export async function tapfiliateApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -64,7 +64,7 @@ export async function tapfiliateApiRequestAllItems(
 		responseData = await tapfiliateApiRequest.call(this, method, endpoint, body, query, '', {
 			resolveWithFullResponse: true,
 		});
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+		returnData = returnData.concat(responseData.body as IDataObject[]);
 		query.page++;
 	} while (responseData.headers.link.includes('next'));
 

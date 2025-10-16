@@ -119,7 +119,7 @@ export async function apiRequestAllItems(
 		query.page += 1;
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.items.push.apply(returnData.items, responseData[dataKey] as IDataObject[]);
+		returnData.items = returnData.items.concat(responseData[dataKey] as IDataObject[]);
 	} while (
 		responseData.total !== undefined &&
 		Math.ceil(responseData.total / query.per_page) > query.page

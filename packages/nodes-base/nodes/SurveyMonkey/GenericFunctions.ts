@@ -67,7 +67,7 @@ export async function surveyMonkeyRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
@@ -77,7 +77,7 @@ export async function surveyMonkeyRequestAllItems(
 	do {
 		responseData = await surveyMonkeyApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData.links.next;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData.links.next);
 
 	return returnData;

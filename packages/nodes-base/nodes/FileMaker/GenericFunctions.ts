@@ -85,10 +85,10 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions):
 }
 
 function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
-	const returnData: INodePropertyOptions[] = [];
+	let returnData: INodePropertyOptions[] = [];
 	for (const layout of layouts) {
 		if (layout.isFolder!) {
-			returnData.push(...parseLayouts(layout.folderLayoutNames!));
+			returnData = returnData.concat(parseLayouts(layout.folderLayoutNames!));
 		} else {
 			returnData.push({
 				name: layout.name,
@@ -185,10 +185,10 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 }
 
 function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
-	const returnData: INodePropertyOptions[] = [];
+	let returnData: INodePropertyOptions[] = [];
 	for (const script of scripts) {
 		if (script.isFolder!) {
-			returnData.push(...parseScriptsList(script.folderScriptNames!));
+			returnData = returnData.concat(parseScriptsList(script.folderScriptNames!));
 		} else if (script.name !== '-') {
 			returnData.push({
 				name: script.name,

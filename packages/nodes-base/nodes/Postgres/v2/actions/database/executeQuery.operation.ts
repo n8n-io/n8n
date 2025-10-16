@@ -96,10 +96,10 @@ export async function execute(
 								? [evaluatedExpression]
 								: stringToArray(evaluatedExpression);
 
-							if (evaluatedValues.length) values.push(...evaluatedValues);
+							if (evaluatedValues.length) values = values.concat(evaluatedValues);
 						}
 					} else {
-						values.push(...stringToArray(rawValues));
+						values = values.concat(stringToArray(rawValues));
 					}
 				} else {
 					const rawValues = rawReplacements

@@ -23,7 +23,7 @@ export default defineConfig(
 			'import-x/order': 'warn',
 			'import-x/extensions': 'warn',
 
-			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+			'n8n-local-rules/no-array-push-spread': 'error',
 
 			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
 

@@ -61,7 +61,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 async function getAllFiles(this: IExecuteFunctions, baseUrl: string, i: number) {
 	let hasMore = true;
 	let lastId: string | undefined = undefined;
-	const files: File[] = [];
+	let files: File[] = [];
 	while (hasMore) {
 		const response = (await apiRequest.call(this, 'GET', '/v1/files', {
 			qs: {
@@ -72,7 +72,7 @@ async function getAllFiles(this: IExecuteFunctions, baseUrl: string, i: number) 
 
 		hasMore = response.has_more;
 		lastId = response.last_id;
-		files.push(...response.data);
+		files = files.concat(response.data);
 	}
 
 	return files.map((file) => ({

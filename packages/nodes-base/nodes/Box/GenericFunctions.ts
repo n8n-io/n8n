@@ -56,7 +56,7 @@ export async function boxApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.limit = 100;
@@ -64,7 +64,7 @@ export async function boxApiRequestAllItems(
 	do {
 		responseData = await boxApiRequest.call(this, method, endpoint, body, query);
 		query.offset = (responseData.offset as number) + query.limit;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (responseData[propertyName].length !== 0);
 
 	return returnData;

@@ -153,7 +153,7 @@ export class GoogleCalendar implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		const hints: NodeExecutionHint[] = [];
@@ -252,8 +252,7 @@ export class GoogleCalendar implements INodeType {
 						if (additionalFields.attendees) {
 							body.attendees = [];
 							(additionalFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
+								body.attendees = body.attendees!.concat(
 									attendee
 										.split(',')
 										.map((a) => a.trim())
@@ -648,8 +647,7 @@ export class GoogleCalendar implements INodeType {
 						if (updateFields.attendees) {
 							body.attendees = [];
 							(updateFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
+								body.attendees = body.attendees!.concat(
 									attendee
 										.split(',')
 										.map((a) => a.trim())
@@ -679,8 +677,7 @@ export class GoogleCalendar implements INodeType {
 								});
 							}
 							attendees.forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
+								body.attendees = body.attendees!.concat(
 									attendee
 										.split(',')
 										.map((a) => a.trim())
@@ -789,7 +786,7 @@ export class GoogleCalendar implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (!this.continueOnFail()) {
 					throw error;
@@ -798,7 +795,7 @@ export class GoogleCalendar implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 			}

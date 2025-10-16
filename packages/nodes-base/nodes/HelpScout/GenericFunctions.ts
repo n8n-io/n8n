@@ -52,7 +52,7 @@ export async function helpscoutApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: undefined | string = undefined;
@@ -60,7 +60,7 @@ export async function helpscoutApiRequestAllItems(
 	do {
 		responseData = await helpscoutApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = get(responseData, '_links.next.href');
-		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
+		returnData = returnData.concat(get(responseData, propertyName) as IDataObject[]);
 		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length) {
 			return returnData;

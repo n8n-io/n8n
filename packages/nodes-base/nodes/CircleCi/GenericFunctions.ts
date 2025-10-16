@@ -55,13 +55,13 @@ export async function circleciApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await circleciApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 		query['page-token'] = responseData.next_page_token;
 	} while (responseData.next_page_token !== undefined && responseData.next_page_token !== null);
 	return returnData;

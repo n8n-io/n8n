@@ -124,13 +124,10 @@ export async function pgQuery(
 		return (await db.multi(pgp.helpers.concat(allQueries))).flat(1);
 	} else if (mode === 'transaction') {
 		return await db.tx(async (t) => {
-			const result: IDataObject[] = [];
+			let result: IDataObject[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(
-						result,
-						await t.any(allQueries[i].query, allQueries[i].values),
-					);
+					result = result.concat(await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -145,13 +142,10 @@ export async function pgQuery(
 		});
 	} else if (mode === 'independently') {
 		return await db.task(async (t) => {
-			const result: IDataObject[] = [];
+			let result: IDataObject[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(
-						result,
-						await t.any(allQueries[i].query, allQueries[i].values),
-					);
+					result = result.concat(await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -219,7 +213,7 @@ export async function pgQueryV2(
 			.flat();
 	} else if (mode === 'transaction') {
 		return await db.tx(async (t) => {
-			const result: INodeExecutionData[] = [];
+			let result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
@@ -227,7 +221,7 @@ export async function pgQueryV2(
 						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					result.push(...executionData);
+					result = result.concat(executionData);
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -243,7 +237,7 @@ export async function pgQueryV2(
 		});
 	} else if (mode === 'independently') {
 		return await db.task(async (t) => {
-			const result: INodeExecutionData[] = [];
+			let result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
@@ -251,7 +245,7 @@ export async function pgQueryV2(
 						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					result.push(...executionData);
+					result = result.concat(executionData);
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -411,13 +405,13 @@ export async function pgInsertV2(
 			.flat();
 	} else if (mode === 'transaction') {
 		return await db.tx(async (t) => {
-			const result: IDataObject[] = [];
+			let result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
-					result.push(
-						...this.helpers.constructExecutionMetaData(wrapData(insertResult as IDataObject[]), {
+					result = result.concat(
+						this.helpers.constructExecutionMetaData(wrapData(insertResult as IDataObject[]), {
 							itemData: { item: i },
 						}),
 					);
@@ -436,7 +430,7 @@ export async function pgInsertV2(
 		});
 	} else if (mode === 'independently') {
 		return await db.task(async (t) => {
-			const result: IDataObject[] = [];
+			let result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 				try {
@@ -448,7 +442,7 @@ export async function pgInsertV2(
 								itemData: { item: i },
 							},
 						);
-						result.push(...executionData);
+						result = result.concat(executionData);
 					}
 				} catch (err) {
 					if (!continueOnFail) {
@@ -545,12 +539,11 @@ export async function pgUpdate(
 				.join(' AND ');
 		if (mode === 'transaction') {
 			return await db.tx(async (t) => {
-				const result: IDataObject[] = [];
+				let result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						Array.prototype.push.apply(
-							result,
+						result = result.concat(
 							await t.any(
 								(pgp.helpers.update(itemCopy, cs) as string) +
 									pgp.as.format(where, itemCopy) +
@@ -571,12 +564,11 @@ export async function pgUpdate(
 			});
 		} else if (mode === 'independently') {
 			return await db.task(async (t) => {
-				const result: IDataObject[] = [];
+				let result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						Array.prototype.push.apply(
-							result,
+						result = result.concat(
 							await t.any(
 								(pgp.helpers.update(itemCopy, cs) as string) +
 									pgp.as.format(where, itemCopy) +
@@ -675,7 +667,7 @@ export async function pgUpdateV2(
 				.join(' AND ');
 		if (mode === 'transaction') {
 			return await db.tx(async (t) => {
-				const result: IDataObject[] = [];
+				let result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
@@ -688,7 +680,7 @@ export async function pgUpdateV2(
 							wrapData(transactionResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						result.push(...executionData);
+						result = result.concat(executionData);
 					} catch (err) {
 						if (!continueOnFail) throw err;
 						result.push({
@@ -703,7 +695,7 @@ export async function pgUpdateV2(
 			});
 		} else if (mode === 'independently') {
 			return await db.task(async (t) => {
-				const result: IDataObject[] = [];
+				let result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
@@ -716,7 +708,7 @@ export async function pgUpdateV2(
 							wrapData(independentResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						result.push(...executionData);
+						result = result.concat(executionData);
 					} catch (err) {
 						if (!continueOnFail) throw err;
 						result.push({

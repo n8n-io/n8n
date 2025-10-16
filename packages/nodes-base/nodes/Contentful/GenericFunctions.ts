@@ -52,7 +52,7 @@ export async function contentfulApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -62,7 +62,7 @@ export async function contentfulApiRequestAllItems(
 	do {
 		responseData = await contentfulApiRequest.call(this, method, resource, body, query);
 		query.skip = (query.skip + 1) * query.limit;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData = returnData.concat(responseData[propertyName] as IDataObject[]);
 	} while (returnData.length < responseData.total);
 
 	return returnData;

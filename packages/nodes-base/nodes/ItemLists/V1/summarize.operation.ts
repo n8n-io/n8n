@@ -482,7 +482,7 @@ function aggregationToArray(
 	fieldsToSplitBy: string[],
 	previousStage: IDataObject = {},
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	const splitFieldName = fieldsToSplitBy[0];
 	const isNext = fieldsToSplitBy[1];
@@ -498,8 +498,8 @@ function aggregationToArray(
 		return returnData;
 	} else {
 		for (const key of Object.keys(aggregationResult)) {
-			returnData.push(
-				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
+			returnData = returnData.concat(
+				aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
 					...previousStage,
 					[splitFieldName]: key,
 				}),

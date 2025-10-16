@@ -137,7 +137,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -192,7 +192,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 								responseData as IDataObject[],
 								prefix,
 							);
-							returnData.push.apply(returnData, data as unknown as IDataObject[]);
+							returnData = returnData.concat(data as unknown as IDataObject[]);
 						} else {
 							returnData.push(responseData as IDataObject);
 						}
@@ -511,9 +511,9 @@ export class MicrosoftOutlookV1 implements INodeType {
 								responseData as IDataObject[],
 								prefix,
 							);
-							returnData.push.apply(returnData, data as unknown as IDataObject[]);
+							returnData = returnData.concat(data as unknown as IDataObject[]);
 						} else {
-							returnData.push.apply(returnData, responseData as IDataObject[]);
+							returnData = returnData.concat(responseData as IDataObject[]);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -864,7 +864,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 							responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						returnData = returnData.concat(responseData as IDataObject[]);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -992,7 +992,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 							responseData = await microsoftApiRequest.call(this, 'GET', '/mailFolders', {}, qs);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						returnData = returnData.concat(responseData as IDataObject[]);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -1037,7 +1037,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 							);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						returnData = returnData.concat(responseData as IDataObject[]);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -1106,7 +1106,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 							responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						returnData = returnData.concat(responseData as IDataObject[]);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {

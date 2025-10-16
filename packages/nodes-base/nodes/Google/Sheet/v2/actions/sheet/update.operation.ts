@@ -314,7 +314,7 @@ export async function execute(
 		sheetData,
 	});
 
-	const updateData: ISheetUpdateData[] = [];
+	let updateData: ISheetUpdateData[] = [];
 
 	const mappedValues: IDataObject[] = [];
 
@@ -461,7 +461,7 @@ export async function execute(
 			});
 		}
 
-		updateData.push(...preparedData.updateData);
+		updateData = updateData.concat(preparedData.updateData);
 	}
 
 	if (updateData.length) {

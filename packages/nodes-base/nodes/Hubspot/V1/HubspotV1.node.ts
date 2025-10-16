@@ -920,7 +920,7 @@ export class HubspotV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -965,7 +965,7 @@ export class HubspotV1 implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
+					returnData = returnData.concat(responseData as INodeExecutionData[]);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -2713,7 +2713,7 @@ export class HubspotV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: (error as JsonObject).message } });

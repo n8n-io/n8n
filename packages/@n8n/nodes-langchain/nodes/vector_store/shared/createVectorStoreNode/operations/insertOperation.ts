@@ -28,8 +28,8 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 		| N8nBinaryLoader
 		| Array<Document<Record<string, unknown>>>;
 
-	const resultData: INodeExecutionData[] = [];
-	const documentsForEmbedding: Array<Document<Record<string, unknown>>> = [];
+	let resultData: INodeExecutionData[] = [];
+	let documentsForEmbedding: Array<Document<Record<string, unknown>>> = [];
 
 	// Process each input item
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -44,10 +44,10 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 		const processedDocuments = await processDocument(documentInput, itemData, itemIndex);
 
 		// Add the serialized documents to the result
-		resultData.push(...processedDocuments.serializedDocuments);
+		resultData = resultData.concat(processedDocuments.serializedDocuments);
 
 		// Add the processed documents to the documents to embedd
-		documentsForEmbedding.push(...processedDocuments.processedDocuments);
+		documentsForEmbedding = documentsForEmbedding.concat(processedDocuments.processedDocuments);
 
 		// For the version 1, we run the populateVectorStore(embedding and insert) function for each item
 		if (nodeVersion === 1) {

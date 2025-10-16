@@ -69,7 +69,7 @@ export async function awsApiRequestAllItems(
 	query: IDataObject = {},
 	headers: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
@@ -81,7 +81,7 @@ export async function awsApiRequestAllItems(
 			});
 			data.NextToken = responseData.NextToken;
 		}
-		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
+		returnData = returnData.concat(get(responseData, propertyName) as IDataObject[]);
 	} while (responseData.NextToken !== undefined);
 
 	return returnData;

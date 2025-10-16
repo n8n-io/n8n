@@ -56,11 +56,11 @@ export async function readSheet(
 		data,
 		headerRow: keyRowIndex,
 		firstDataRow: dataStartRowIndex,
-	} = prepareSheetData(sheetData, dataLocationOnSheetOptions as RangeDetectionOptions);
+	} = prepareSheetData(sheetData, dataLocationOnSheetOptions);
 
 	let responseData = [];
 
-	const lookupValues = this.getNodeParameter('filtersUI.values', itemIndex, []) as ILookupValues[];
+	let lookupValues = this.getNodeParameter('filtersUI.values', itemIndex, []) as ILookupValues[];
 
 	const inputData = data as string[][];
 
@@ -81,7 +81,7 @@ export async function readSheet(
 					[],
 				) as ILookupValues[];
 				if (itemLookupValues.length) {
-					lookupValues.push(...itemLookupValues);
+					lookupValues = lookupValues.concat(itemLookupValues);
 				}
 			}
 		}
@@ -106,8 +106,8 @@ export async function readSheet(
 		);
 	}
 
-	returnData.push(
-		...responseData.map((item) => {
+	returnData = returnData.concat(
+		responseData.map((item) => {
 			return {
 				json: item,
 				pairedItem: { item: itemIndex },

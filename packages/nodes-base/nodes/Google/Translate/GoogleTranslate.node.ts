@@ -190,7 +190,7 @@ export class GoogleTranslate implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-		const responseData: INodeExecutionData[] = [];
+		let responseData: INodeExecutionData[] = [];
 		for (let i = 0; i < length; i++) {
 			if (resource === 'language') {
 				if (operation === 'translate') {
@@ -209,7 +209,7 @@ export class GoogleTranslate implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					responseData.push(...executionData);
+					responseData = responseData.concat(executionData);
 				}
 			}
 		}

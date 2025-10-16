@@ -66,14 +66,14 @@ export async function harvestApiRequestAllItems(
 	body: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await harvestApiRequest.call(this, method, qs, uri, body, option);
 		qs.page = responseData.next_page;
-		returnData.push.apply(returnData, responseData[resource] as IDataObject[]);
+		returnData = returnData.concat(responseData[resource] as IDataObject[]);
 	} while (responseData.next_page);
 
 	return returnData;

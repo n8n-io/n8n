@@ -72,7 +72,7 @@ export async function mauticApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 	query.limit = 30;
@@ -81,7 +81,7 @@ export async function mauticApiRequestAllItems(
 	do {
 		responseData = await mauticApiRequest.call(this, method, endpoint, body, query);
 		const values = Object.values(responseData[propertyName] as IDataObject[]);
-		returnData.push.apply(returnData, values);
+		returnData = returnData.concat(values);
 		query.start += query.limit;
 	} while (
 		responseData.total !== undefined &&

@@ -1949,7 +1949,7 @@ export class Asana implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		const timezone = this.getTimezone();
 
 		const resource = this.getNodeParameter('resource', 0);
@@ -2458,8 +2458,8 @@ export class Asana implements INodeType {
 					}
 				}
 
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
+				returnData = returnData.concat(
+					this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{
 							itemData: { item: i },

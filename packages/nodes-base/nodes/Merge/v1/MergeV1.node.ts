@@ -204,14 +204,14 @@ export class MergeV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const mode = this.getNodeParameter('mode', 0) as string;
 
 		if (mode === 'append') {
 			// Simply appends the data
 			for (let i = 0; i < 2; i++) {
-				returnData.push.apply(returnData, this.getInputData(i));
+				returnData = returnData.concat(this.getInputData(i));
 			}
 		} else if (mode === 'mergeByIndex') {
 			// Merges data by index
@@ -463,9 +463,9 @@ export class MergeV1 implements INodeType {
 			const output = this.getNodeParameter('output', 0) as string;
 
 			if (output === 'input1') {
-				returnData.push.apply(returnData, this.getInputData(0));
+				returnData = returnData.concat(this.getInputData(0));
 			} else {
-				returnData.push.apply(returnData, this.getInputData(1));
+				returnData = returnData.concat(this.getInputData(1));
 			}
 		} else if (mode === 'wait') {
 			const pairedItem = generatePairedItemData(this.getInputData(0).length);
