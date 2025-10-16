@@ -943,7 +943,32 @@ export class ChatHubService {
 
 	async deleteAllSessions() {
 		const result = await this.sessionRepository.deleteAll();
-
 		return result;
+	}
+
+	/**
+	 * Updates the title of a session
+	 */
+	async updateSessionTitle(userId: string, sessionId: ChatSessionId, title: string) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+
+		if (!session) {
+			throw new NotFoundError('Session not found');
+		}
+
+		return await this.sessionRepository.updateChatTitle(sessionId, title);
+	}
+
+	/**
+	 * Deletes a session
+	 */
+	async deleteSession(userId: string, sessionId: ChatSessionId) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+
+		if (!session) {
+			throw new NotFoundError('Session not found');
+		}
+
+		await this.sessionRepository.deleteChatHubSession(sessionId);
 	}
 }

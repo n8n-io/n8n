@@ -27,7 +27,6 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
-	IExecutionResponse,
 	INodeUi,
 	IWorkflowDb,
 	NodeCreatorOpenSource,
@@ -35,6 +34,7 @@ import type {
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	Connection,
@@ -94,7 +94,7 @@ import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -103,7 +103,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useExecutionDebugging } from '@/features/executions/composables/useExecutionDebugging';
 import { useUsersStore } from '@/features/users/users.store';
 import { sourceControlEventBus } from '@/features/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';

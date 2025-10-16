@@ -16,7 +16,8 @@ import { useMessage } from '@/composables/useMessage';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@n8n/i18n';
-import type { IExecutionPushResponse, INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
+import type { IExecutionPushResponse } from '@/features/executions/executions.types';
 
 import { extractBotResponse, getInputKey, processFiles } from '@/features/logs/logs.utils';
 

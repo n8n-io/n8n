@@ -10,12 +10,8 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
-import type {
-	IExecutionResponse,
-	INodeUi,
-	IWorkflowDb,
-	WorkflowDataWithTemplateId,
-} from '@/Interface';
+import type { INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/history';
@@ -33,7 +29,7 @@ import {
 import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { waitFor } from '@testing-library/vue';

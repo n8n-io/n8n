@@ -1,4 +1,4 @@
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -24,7 +24,7 @@ import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
-} from '@/utils/executionUtils';
+} from '@/features/executions/executions.utils';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';

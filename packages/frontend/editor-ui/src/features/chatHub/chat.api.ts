@@ -8,6 +8,7 @@ import type {
 	ChatHubConversationResponse,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
+	ChatSessionId,
 } from '@n8n/api-types';
 import type { StructuredChunk } from './chat.types';
 
@@ -83,9 +84,28 @@ export const fetchConversationsApi = async (
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
+export const updateConversationTitleApi = async (
+	context: IRestApiContext,
+	conversationId: ChatSessionId,
+	title: string,
+): Promise<ChatHubConversationResponse> => {
+	const apiEndpoint = `/chat/conversations/${conversationId}/rename`;
+	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'POST', apiEndpoint, {
+		title,
+	});
+};
+
+export const deleteConversationApi = async (
+	context: IRestApiContext,
+	conversationId: ChatSessionId,
+): Promise<void> => {
+	const apiEndpoint = `/chat/conversations/${conversationId}`;
+	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
+};
+
 export const fetchSingleConversationApi = async (
 	context: IRestApiContext,
-	conversationId: string,
+	conversationId: ChatSessionId,
 ): Promise<ChatHubConversationResponse> => {
 	const apiEndpoint = `/chat/conversations/${conversationId}`;
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);

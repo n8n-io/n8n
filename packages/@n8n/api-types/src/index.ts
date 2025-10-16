@@ -20,6 +20,7 @@ export {
 	ChatHubSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
+	ChatHubChangeConversationTitleRequest,
 	type ChatMessageId,
 	type ChatSessionId,
 	type ChatHubMessageDto,
