@@ -1,7 +1,7 @@
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, RestController } from '@n8n/decorators';
 import { LicenseState } from '@n8n/backend-common';
-import { ProvisioningService } from '../provisioning.service.ee';
+import { ProvisioningService } from './provisioning.service.ee';
 import { Response } from 'express';
 
 @RestController('/sso/provisioning')

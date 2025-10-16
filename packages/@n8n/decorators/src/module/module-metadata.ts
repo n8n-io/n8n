@@ -4,7 +4,7 @@ import type { LicenseFlag, ModuleClass } from './module';
 
 type ModuleEntry = {
 	class: ModuleClass;
-	licenseFlag?: LicenseFlag;
+	licenseFlag?: LicenseFlag | LicenseFlag[];
 };
 
 @Service()
