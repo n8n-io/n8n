@@ -569,6 +569,45 @@ describe('ProjectSettings', () => {
 			const wrapper2 = renderComponent();
 			expect(wrapper2.getByTestId('members-page').textContent).toBe('0');
 		});
+
+		it('clears search when member count drops below threshold', async () => {
+			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
+
+			// Start with 10+ members
+			const mockProjectWith10Members: Project = {
+				...projectsStore.currentProject!,
+				relations: Array.from({ length: 10 }, (_, i) => ({
+					id: String(i + 1),
+					firstName: `User${i + 1}`,
+					lastName: 'Test',
+					email: `user${i + 1}@example.com`,
+					role: 'project:editor',
+				})),
+			};
+			projectsStore.currentProject = mockProjectWith10Members;
+
+			const wrapper = renderComponent();
+			await nextTick();
+
+			// Search input should be visible
+			const searchContainer = wrapper.getByTestId('project-members-search');
+			const searchInput = searchContainer.querySelector('input')!;
+
+			// Type search term and verify it filters
+			await userEvent.type(searchInput, 'User1');
+			await new Promise((r) => setTimeout(r, 350));
+			expect(searchInput.value).toBe('User1');
+
+			// Remove member via inline action to drop below threshold
+			emitters.projectMembersTable.emit('action', { action: 'remove', userId: '10' });
+			await nextTick();
+
+			// Search input should be hidden and search cleared
+			expect(wrapper.queryByTestId('project-members-search')).toBeNull();
+			// Members table should show all 9 members (not filtered by "User1")
+			expect(wrapper.getByTestId('members-count').textContent).toBe('9');
+			expect(removeSpy).toHaveBeenCalledWith('123', '10');
+		});
 	});
 
 	describe('Icon updates', () => {
