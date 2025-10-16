@@ -982,6 +982,11 @@ export class ChatHubService {
 		return activeMessageChain;
 	}
 
+	async deleteAllSessions() {
+		const result = await this.sessionRepository.deleteAll();
+		return result;
+	}
+
 	/**
 	 * Updates the title of a session
 	 */
