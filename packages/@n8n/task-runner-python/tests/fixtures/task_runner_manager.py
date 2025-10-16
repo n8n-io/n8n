@@ -9,6 +9,7 @@ from src.constants import (
     ENV_GRANT_TOKEN,
     ENV_HEALTH_CHECK_SERVER_ENABLED,
     ENV_HEALTH_CHECK_SERVER_PORT,
+    ENV_LAUNCHER_LOG_LEVEL,
     ENV_TASK_BROKER_URI,
     ENV_TASK_TIMEOUT,
 )
@@ -46,7 +47,7 @@ class TaskRunnerManager:
         env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
         env_vars[ENV_HEALTH_CHECK_SERVER_ENABLED] = "true"
         env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = "0"
-        env_vars["N8N_RUNNERS_LAUNCHER_LOG_LEVEL"] = "INFO"
+        env_vars[ENV_LAUNCHER_LOG_LEVEL] = "INFO"
         if self.graceful_shutdown_timeout is not None:
             env_vars[ENV_GRACEFUL_SHUTDOWN_TIMEOUT] = str(
                 self.graceful_shutdown_timeout
