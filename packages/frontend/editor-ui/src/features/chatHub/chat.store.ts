@@ -442,7 +442,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		isResponding,
 		streamingMessageId,
-		sessions,
 		fetchChatModels,
 		sendMessage,
 		editMessage,

@@ -357,7 +357,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 						:is-streaming="chatStore.streamingMessageId === message.id"
 						:min-height="
 							didSubmitInCurrentSession &&
-							message.role === 'assistant' &&
+							message.type === 'ai' &&
 							index === chatMessages.length - 1 &&
 							scrollContainerRef
 								? scrollContainerRef.offsetHeight - 100 /* padding-top */ - 200 /* padding-bottom */
