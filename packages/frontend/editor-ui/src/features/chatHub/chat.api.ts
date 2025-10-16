@@ -5,9 +5,14 @@ import type {
 	ChatModelsRequest,
 	ChatModelsResponse,
 	ChatHubConversationsResponse,
-	ChatHubMessagesResponse,
+	ChatHubConversationResponse,
+	ChatHubRegenerateMessageRequest,
+	ChatHubEditMessageRequest,
 } from '@n8n/api-types';
 import type { StructuredChunk } from './chat.types';
+
+// Workflows stream data as newline separated JSON objects (jsonl)
+const STREAM_SEPARATOR = '\n';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
@@ -17,7 +22,7 @@ export const fetchChatModelsApi = async (
 	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
-export function sendText(
+export function sendMessageApi(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
 	onMessageUpdated: (data: StructuredChunk) => void,
@@ -26,12 +31,48 @@ export function sendText(
 ) {
 	void streamRequest<StructuredChunk>(
 		ctx,
-		'/chat/send',
+		'/chat/conversations/send',
 		payload,
 		onMessageUpdated,
 		onDone,
 		onError,
-		'\n',
+		STREAM_SEPARATOR,
+	);
+}
+
+export function editMessageApi(
+	ctx: IRestApiContext,
+	payload: ChatHubEditMessageRequest,
+	onMessageUpdated: (data: StructuredChunk) => void,
+	onDone: () => void,
+	onError: (e: Error) => void,
+) {
+	void streamRequest<StructuredChunk>(
+		ctx,
+		'/chat/conversations/edit',
+		payload,
+		onMessageUpdated,
+		onDone,
+		onError,
+		STREAM_SEPARATOR,
+	);
+}
+
+export function regenerateMessageApi(
+	ctx: IRestApiContext,
+	payload: ChatHubRegenerateMessageRequest,
+	onMessageUpdated: (data: StructuredChunk) => void,
+	onDone: () => void,
+	onError: (e: Error) => void,
+) {
+	void streamRequest<StructuredChunk>(
+		ctx,
+		'/chat/conversations/regenerate',
+		payload,
+		onMessageUpdated,
+		onDone,
+		onError,
+		STREAM_SEPARATOR,
 	);
 }
 
@@ -42,10 +83,10 @@ export const fetchConversationsApi = async (
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
-export const fetchConversationMessagesApi = async (
+export const fetchSingleConversationApi = async (
 	context: IRestApiContext,
 	conversationId: string,
-): Promise<ChatHubMessagesResponse> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}/messages`;
-	return await makeRestApiRequest<ChatHubMessagesResponse>(context, 'GET', apiEndpoint);
+): Promise<ChatHubConversationResponse> => {
+	const apiEndpoint = `/chat/conversations/${conversationId}`;
+	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
 };

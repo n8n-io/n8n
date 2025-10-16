@@ -40,7 +40,7 @@ vi.mock('@/stores/posthog.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/users/users.store', () => ({
 	useUsersStore: () => ({
 		isCalloutDismissed: mocks.isCalloutDismissed,
 		setCalloutDismissed: mocks.setCalloutDismissed,

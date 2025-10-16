@@ -13,7 +13,7 @@ minimumReleaseAgeExclude:
   - eslint-plugin-storybook
 
 catalog:
-  '@n8n/typeorm': 0.3.20-13
+  '@n8n/typeorm': 0.3.20-14
   '@n8n_io/ai-assistant-sdk': 1.17.0
   '@langchain/core': 0.3.68
   '@langchain/openai': 0.6.7
@@ -46,11 +46,11 @@ catalog:
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  tsup: ^8.5.0
+  tsdown: ^0.15.6
   tsx: ^4.19.3
   simple-git: 3.28.0
   uuid: 10.0.0
-  vite: ^6.3.5
+  vite: npm:rolldown-vite@latest
   vite-plugin-dts: ^4.5.4
   vitest: ^3.1.3
   vitest-mock-extended: ^3.1.0
