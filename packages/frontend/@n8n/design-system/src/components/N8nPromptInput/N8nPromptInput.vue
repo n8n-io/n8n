@@ -268,7 +268,9 @@ async function handleKeyDown(event: KeyboardEvent) {
 		textValue.value = textValue.value.substring(0, start) + '\n' + textValue.value.substring(end);
 		// Set cursor position after the newline
 		await nextTick();
-		textarea.selectionStart = textarea.selectionEnd = start + 1;
+		if (textareaRef.value) {
+			textareaRef.value.selectionStart = textareaRef.value.selectionEnd = start + 1;
+		}
 	}
 }
 
