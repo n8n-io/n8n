@@ -257,8 +257,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessionId: string,
 		messageId: string,
 		chunk: string,
-		nodeId?: string,
-		runIndex?: number,
+		_nodeId?: string,
+		_runIndex?: number,
 	) {
 		// appendMessage(sessionId, chunk, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 		appendMessage(sessionId, messageId, chunk);
