@@ -26,6 +26,7 @@ import type {
 } from './interfaces';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
+import { object } from 'zod/v4';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -76,6 +77,13 @@ export class Expression {
 		}
 
 		let result = '';
+		if (value instanceof Object) {
+			try {
+				result = JSON.stringify(value, null, 2);
+			} catch {
+				return '[Unserializable Object]';
+			}
+		}
 		if (value instanceof Date) {
 			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
 			result = DateTime.fromJSDate(value, {
