@@ -1,11 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 import { promptCategorizationChain } from '@/chains/prompt-categorization';
-import {
-	WorkflowTechnique,
-	workflowUseCase,
-	type PromptCategorization,
-} from '@/types/categorization';
+import { WorkflowTechnique, type PromptCategorization } from '@/types/categorization';
 
 import {
 	parseToolResult,
@@ -50,7 +46,6 @@ describe('CategorizePromptTool', () => {
 	describe('invoke', () => {
 		it('should categorize a scraping prompt', async () => {
 			const mockCategorization: PromptCategorization = {
-				useCase: workflowUseCase.DATA_PROCESSING,
 				techniques: [
 					WorkflowTechnique.SCRAPING_AND_RESEARCH,
 					WorkflowTechnique.DATA_TRANSFORMATION,
@@ -92,7 +87,6 @@ describe('CategorizePromptTool', () => {
 
 		it('should categorize a chatbot prompt', async () => {
 			const mockCategorization: PromptCategorization = {
-				useCase: workflowUseCase.CUSTOMER_SUPPORT,
 				techniques: [WorkflowTechnique.CHATBOT, WorkflowTechnique.NOTIFICATION],
 				confidence: 0.85,
 			};
@@ -144,7 +138,6 @@ describe('CategorizePromptTool', () => {
 
 		it('should handle categorization with multiple techniques', async () => {
 			const mockCategorization: PromptCategorization = {
-				useCase: workflowUseCase.MARKETING_AUTOMATION,
 				techniques: [
 					WorkflowTechnique.SCHEDULING,
 					WorkflowTechnique.CONTENT_GENERATION,
