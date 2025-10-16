@@ -458,6 +458,13 @@ const filteredMembersData = computed(() => {
 const SEARCH_THRESHOLD = 10;
 const shouldShowSearch = computed(() => relationUsers.value.length >= SEARCH_THRESHOLD);
 
+// Clear search when input becomes hidden to avoid filtering with no way to clear
+watch(shouldShowSearch, (show) => {
+	if (!show && search.value) {
+		search.value = '';
+	}
+});
+
 const debouncedSearch = useDebounceFn(() => {
 	membersTableState.value.page = 0; // Reset to first page on search
 }, 300);
