@@ -314,6 +314,37 @@ export class DocumentDefaultDataLoader implements INodeType {
 						description:
 							'Metadata to add to each document. Could be used for filtering during retrieval',
 						placeholder: 'Add property',
+						options: [
+							{
+								name: 'metadataValues',
+								displayName: 'Fields to Set',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										required: true,
+									},
+									{
+										displayName: 'Value Type',
+										name: 'valueType',
+										type: 'options',
+										options: [
+											{ name: 'String', value: 'string' },
+											{ name: 'Number', value: 'number' },
+										],
+										default: 'string',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
 					},
 				],
 			},
