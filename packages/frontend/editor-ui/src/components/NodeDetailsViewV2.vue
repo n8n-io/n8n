@@ -740,7 +740,7 @@ onBeforeUnmount(() => {
 					:node-type-name="
 						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
 					"
-					:icon="getNodeIconSource(activeNodeType ?? activeNode.type)"
+					:icon="getNodeIconSource(activeNodeType ?? activeNode.type, activeNode)"
 					:docs-url="docsUrl"
 					@close="close"
 					@rename="onRename"

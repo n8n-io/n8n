@@ -459,7 +459,9 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
 );
 
-const iconSource = computed(() => getNodeIconSource(nodeType.value ?? node.value?.type));
+const iconSource = computed(() =>
+	getNodeIconSource(nodeType.value ?? node.value?.type, node.value ?? null),
+);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
