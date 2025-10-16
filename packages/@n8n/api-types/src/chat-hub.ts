@@ -127,20 +127,17 @@ export interface ChatHubMessageDto {
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
 	runIndex: number;
-
-	responseIds: ChatMessageId[];
-	retryIds: ChatMessageId[];
-	revisionIds: ChatMessageId[];
 }
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];
 
+export interface ChatHubConversationDto {
+	messages: Record<ChatMessageId, ChatHubMessageDto>;
+	rootIds: ChatMessageId[];
+	activeMessageChain: ChatMessageId[];
+}
+
 export interface ChatHubConversationResponse {
 	session: ChatHubSessionDto;
-
-	conversation: {
-		messages: Record<string, ChatHubMessageDto>;
-		rootIds: string[];
-		activeMessageChain: string[];
-	};
+	conversation: ChatHubConversationDto;
 }

@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import type { ChatHubMessageType } from '@n8n/api-types';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const i18n = useI18n();
 
-const { role, justCopied } = defineProps<{
-	role: 'user' | 'assistant';
+const { type, justCopied } = defineProps<{
+	type: ChatHubMessageType;
 	justCopied: boolean;
 }>();
 
@@ -52,7 +53,7 @@ function handleRegenerate() {
 			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />
 			<template #content>Edit</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="role === 'assistant'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="type === 'ai'" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="refresh-cw"
 				type="tertiary"

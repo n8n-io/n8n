@@ -160,8 +160,7 @@ class TaskAnalyzer:
             if len(cached_violations) == 0:
                 return
 
-            if len(cached_violations) > 0:
-                self._raise_security_error(cached_violations)
+            self._raise_security_error(cached_violations)
 
         tree = ast.parse(code)
 

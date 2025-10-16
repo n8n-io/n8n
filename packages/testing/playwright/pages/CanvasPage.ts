@@ -196,6 +196,10 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).dblclick();
 	}
 
+	getRenamePrompt(): Locator {
+		return this.page.locator('.rename-prompt');
+	}
+
 	/**
 	 * Get the names of all pinned nodes on the canvas.
 	 * @returns An array of node names.
@@ -414,6 +418,10 @@ export class CanvasPage extends BasePage {
 
 	getLoadingMask(): Locator {
 		return this.page.locator('.el-loading-mask');
+	}
+
+	getNodeViewLoader(): Locator {
+		return this.page.getByTestId('node-view-loader');
 	}
 
 	getWorkflowIdFromUrl(): string {
@@ -699,6 +707,14 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 	}
 
+	async rightClickCanvas(): Promise<void> {
+		await this.canvasBody().click({ button: 'right' });
+	}
+
+	getContextMenuItem(itemId: string): Locator {
+		return this.page.getByTestId(`context-menu-item-${itemId}`);
+	}
+
 	async clickContextMenuAction(actionText: string): Promise<void> {
 		await this.page.getByTestId('context-menu').getByText(actionText).click();
 	}
@@ -827,6 +843,14 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
 
+	getZoomInButton(): Locator {
+		return this.page.getByTestId('zoom-in-button');
+	}
+
+	getResetZoomButton(): Locator {
+		return this.page.getByTestId('reset-zoom-button');
+	}
+
 	async clickZoomInButton(): Promise<void> {
 		await this.clickByTestId('zoom-in-button');
 	}
@@ -841,7 +865,9 @@ export class CanvasPage extends BasePage {
 	 */
 	async getCanvasZoomLevel(): Promise<number> {
 		return await this.page.evaluate(() => {
-			const canvasViewport = document.querySelector('.vue-flow__viewport');
+			const canvasViewport = document.querySelector(
+				'.vue-flow__transformationpane.vue-flow__container',
+			);
 			if (canvasViewport) {
 				const transform = window.getComputedStyle(canvasViewport).transform;
 				if (transform && transform !== 'none') {
@@ -872,6 +898,22 @@ export class CanvasPage extends BasePage {
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
 		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+	}
+
+	getSuccessEdges(): Locator {
+		return this.page.locator('[data-edge-status="success"]');
+	}
+
+	getAllNodeSuccessIndicators(): Locator {
+		return this.page.getByTestId('canvas-node-status-success');
+	}
+
+	getCanvasHandlePlusWrapper(): Locator {
+		return this.page.getByTestId('canvas-handle-plus-wrapper');
+	}
+
+	getCanvasHandlePlus(): Locator {
+		return this.page.getByTestId('canvas-handle-plus');
 	}
 
 	stopExecutionWaitingForWebhookButton(): Locator {
@@ -942,6 +984,35 @@ export class CanvasPage extends BasePage {
 	getNodeInputHandles(nodeName: string): Locator {
 		return this.page.locator(
 			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"]`,
+		);
+	}
+
+	getNodeOutputHandle(nodeName: string, outputIndex = 0): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${outputIndex}"]`,
+		);
+	}
+
+	getNodeInputHandle(nodeName: string, inputIndex = 0): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-index="${inputIndex}"]`,
+		);
+	}
+
+	async connectNodesByDrag(
+		sourceNode: string,
+		targetNode: string,
+		sourceIndex = 0,
+		targetIndex = 0,
+	): Promise<void> {
+		const outputHandle = this.getNodeOutputHandle(sourceNode, sourceIndex);
+		const inputHandle = this.getNodeInputHandle(targetNode, targetIndex);
+		await outputHandle.dragTo(inputHandle);
+	}
+
+	getConnectionLabelBetweenNodes(sourceNode: string, targetNode: string): Locator {
+		return this.page.locator(
+			`[data-test-id="edge-label"][data-source-node-name="${sourceNode}"][data-target-node-name="${targetNode}"]`,
 		);
 	}
 

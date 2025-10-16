@@ -191,7 +191,7 @@ function openCommandBar(event: MouseEvent) {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<N8nTooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
+		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
 				type="tertiary"
