@@ -12,7 +12,7 @@ import { useRoute } from 'vue-router';
 const uiStore = useUIStore();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const route = useRoute();
-const { isCollapsible } = useChatHubSidebarState();
+const sidebar = useChatHubSidebarState();
 
 watch(
 	() => route.fullPath,
@@ -25,8 +25,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+	<ChatSidebarContent
+		v-if="sidebar.isStatic.value"
+		:class="$style.static"
+		:is-mobile-device="isMobileDevice"
+	/>
 	<ModalDrawer
-		v-if="isCollapsible"
+		v-else
 		direction="ltr"
 		width="min(240px, 80vw)"
 		:name="CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY"
@@ -38,7 +43,6 @@ onBeforeUnmount(() => {
 			<ChatSidebarContent :class="$style.inDrawer" :is-mobile-device="isMobileDevice" />
 		</template>
 	</ModalDrawer>
-	<ChatSidebarContent v-else :class="$style.static" :is-mobile-device="isMobileDevice" />
 </template>
 
 <style lang="scss" module>
@@ -58,5 +62,6 @@ onBeforeUnmount(() => {
 	width: 240px;
 	position: relative;
 	overflow: auto;
+	margin-right: -4px;
 }
 </style>

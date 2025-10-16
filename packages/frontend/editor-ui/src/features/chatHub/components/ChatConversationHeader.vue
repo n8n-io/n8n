@@ -4,6 +4,7 @@ import type { CredentialsMap } from '@/features/chatHub/chat.types';
 import CredentialSelectorModal from '@/features/chatHub/components/CredentialSelectorModal.vue';
 import ModelSelector from '@/features/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/chatHub/composables/useChatHubSidebarState';
+import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@n8n/api-types';
 import { N8nIconButton } from '@n8n/design-system';
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 const { selectedModel, credentials } = defineProps<{
 	selectedModel: ChatHubConversationModel | null;
@@ -30,6 +32,7 @@ const sidebar = useChatHubSidebarState();
 const chatStore = useChatStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const router = useRouter();
 
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
 
@@ -56,6 +59,12 @@ function onConfigure(provider: ChatHubProvider) {
 	uiStore.openModal('chatCredentialSelector');
 }
 
+function onNewChat() {
+	sidebar.toggleOpen(false);
+
+	void router.push({ name: CHAT_VIEW, force: true });
+}
+
 function onCredentialSelected(provider: ChatHubProvider, credentialsId: string) {
 	emit('selectCredentials', provider, credentialsId);
 }
@@ -68,11 +77,22 @@ function onCreateNewCredential(provider: ChatHubProvider) {
 <template>
 	<div :class="$style.component">
 		<N8nIconButton
-			v-if="sidebar.isCollapsible.value"
+			v-if="!sidebar.isStatic.value"
 			:class="$style.menuButton"
 			type="secondary"
 			icon="panel-left"
-			@click="sidebar.open"
+			text
+			icon-size="large"
+			@click="sidebar.toggleOpen(true)"
+		/>
+		<N8nIconButton
+			v-if="!sidebar.isStatic.value"
+			:class="$style.menuButton"
+			type="secondary"
+			icon="square-pen"
+			text
+			icon-size="large"
+			@click="onNewChat"
 		/>
 		<ModelSelector
 			:models="chatStore.models ?? null"
@@ -98,11 +118,11 @@ function onCreateNewCredential(provider: ChatHubProvider) {
 	padding: var(--spacing--4xs);
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--4xs);
 	border-bottom: var(--border);
 
 	&:has(.menuButton) {
-		padding-inline: var(--spacing--md);
+		padding-inline: var(--spacing--xs);
 	}
 }
 

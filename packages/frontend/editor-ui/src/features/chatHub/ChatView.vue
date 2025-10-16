@@ -9,7 +9,6 @@ import ChatConversationHeader from '@/features/chatHub/components/ChatConversati
 import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
-import { useChatHubSidebarState } from '@/features/chatHub/composables/useChatHubSidebarState';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
@@ -48,7 +47,6 @@ const sessionId = computed<string>(() =>
 const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
-const sidebar = useChatHubSidebarState();
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
 
@@ -276,7 +274,6 @@ function handleSelectCredentials(provider: ChatHubProvider, credentialsId: strin
 			{
 				[$style.isNewChat]: isNewChat,
 				[$style.isMobileDevice]: isMobileDevice,
-				[$style.isSidebarCollapsed]: sidebar.isCollapsed.value,
 			},
 		]"
 	>
@@ -363,10 +360,6 @@ function handleSelectCredentials(provider: ChatHubProvider, credentialsId: strin
 	&.isMobileDevice {
 		margin: 0;
 		border: none;
-	}
-
-	&:not(.isSidebarCollapsed) {
-		margin-left: 0;
 	}
 }
 
