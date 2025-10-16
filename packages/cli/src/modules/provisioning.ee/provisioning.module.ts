@@ -2,7 +2,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 
 @BackendModule({ name: 'provisioning', licenseFlag: ['feat:oidc', 'feat:saml', 'feat:ldap'] })
-export class ExternalSecretsModule implements ModuleInterface {
+export class ProvisioningModule implements ModuleInterface {
 	async init() {
 		await import('./provisioning.controller.ee');
 	}

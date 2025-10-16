@@ -29,7 +29,15 @@ export class LicenseState {
 	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
 		this.assertProvider();
 
-		return this.licenseProvider.isLicensed(feature);
+		if (typeof feature === 'string') return this.licenseProvider.isLicensed(feature);
+
+		for (const featureName of feature) {
+			if (this.licenseProvider.isLicensed(featureName)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
