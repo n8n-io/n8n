@@ -3672,5 +3672,48 @@ describe('dataTable', () => {
 				}
 			},
 		);
+		it.each<[string, string]>([
+			['a', 'a'],
+			['', '""'],
+			['[', '"["'],
+			['[0]', '"[0]"'],
+			['"', '"\\""'],
+		])('inserts json with weird keys %p, path %p', async (input, path) => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'c1', type: 'json' }],
+			});
+
+			// ACT
+			const rows = [{ c1: { [input]: 3 } }];
+			await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+			// ASSERT
+
+			{
+				const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
+					filter: {
+						type: 'and',
+						filters: [
+							{
+								columnName: 'c1',
+								condition: 'eq',
+								value: 3,
+								path,
+							},
+						],
+					},
+				});
+				expect(data).toEqual([
+					{
+						c1: { [input]: 3 },
+						id: 1,
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+					},
+				]);
+			}
+		});
 	});
 });

@@ -127,11 +127,13 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		return [...equalsConditions, ...nullConditions];
 	}
 
-	if (type === 'json') {
-		return allConditions;
-	}
-
 	const conditions: INodePropertyOptions[] = [];
+
+	if (type === 'json') {
+		conditions.push.apply(conditions, booleanConditions);
+		conditions.push.apply(conditions, equalsConditions);
+		conditions.push.apply(conditions, stringConditions);
+	}
 
 	if (type === 'boolean') {
 		conditions.push.apply(conditions, booleanConditions);

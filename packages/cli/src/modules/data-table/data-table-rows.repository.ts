@@ -36,6 +36,7 @@ import {
 	toSqliteGlobFromPercent,
 	toTableName,
 } from './utils/sql-utils';
+import { parsePath, toPostgresPath, toSQLitePath } from './utils/path-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -47,11 +48,10 @@ function resolvePath(
 	path?: string,
 ) {
 	if (path) {
+		const pathArray = parsePath(path);
 		if (dbType === 'postgres') {
-			const args = [ref, ...path.split('.').map((x) => `'${x}'`)];
-			const head = args.slice(0, -1).join('->');
-			const tail = args[args.length - 1];
-			const base = `${head}->>${tail}`;
+			const args = [ref, ...pathArray];
+			const base = toPostgresPath(args);
 			if (typeof value === 'number') {
 				return `(${base})::numeric`;
 			}
@@ -67,7 +67,8 @@ function resolvePath(
 			return `(${base})::text`;
 		}
 		if (dbType === 'sqlite') {
-			const base = `json_extract(${ref}, '$.${path}')`;
+			const path = toSQLitePath(pathArray);
+			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
 			if (typeof value === 'number') {
 				return `CAST(${base} as REAL)`;
 			}
