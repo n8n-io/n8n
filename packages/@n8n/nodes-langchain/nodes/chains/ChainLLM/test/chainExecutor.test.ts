@@ -1,4 +1,4 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
@@ -75,6 +75,26 @@ describe('chainExecutor', () => {
 			};
 			const parser = chainExecutor.getOutputParserForLLM(model as unknown as BaseChatModel);
 			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
+		});
+
+		it('should return NaiveJsonOutputParser for models with metadata output_format set to json', () => {
+			const model = mock<BaseChatModel>({
+				metadata: {
+					output_format: 'json',
+				},
+			});
+			const parser = chainExecutor.getOutputParserForLLM(model);
+			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
+		});
+
+		it('should return StringOutputParser for models with metadata output_format not set to json', () => {
+			const model = mock<BaseChatModel>({
+				metadata: {
+					output_format: 'text',
+				},
+			});
+			const parser = chainExecutor.getOutputParserForLLM(model);
+			expect(parser).toBeInstanceOf(StringOutputParser);
 		});
 	});
 
