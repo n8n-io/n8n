@@ -85,15 +85,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			}
 		}
 
-		// ...then from there, traverse down the most recent responses
 		if (!latest) {
 			return chain;
 		}
 
+		// ...and then walk back to the root following previousMessageId links
 		let current: ChatMessageId | null = latest;
 		const visited = new Set<ChatMessageId>();
 
-		// Traverse from the selected message back to the root...
 		while (current && !visited.has(current)) {
 			chain.unshift(current);
 			visited.add(current);
@@ -131,6 +130,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			const b = messagesGraph[second];
 
 			// TODO: Disabled for now, messages retried don't get this at the FE before reload
+			// TOOD: Do we even need runIndex at all?
 			// if (a.runIndex !== b.runIndex) {
 			// 	return a.runIndex - b.runIndex;
 			// }
@@ -210,8 +210,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
 
 		const messages = linkMessages(Object.values(conversation.messages));
+
+		// TOOD: Do we need 'state' column at all?
 		const latestMessage = Object.values(messages)
-			.filter((m) => m.state === 'active')
 			.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
 			.pop();
 
@@ -467,17 +468,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
 		}
 
-		const message: ChatMessage = conversation.messages[messageId];
-
-		// TODO: Do we want to persist this change to the backend?
-
-		for (const alternativeId of message.alternatives) {
-			const alternative = conversation.messages[alternativeId];
-			if (alternative) {
-				alternative.state = alternative.id === messageId ? 'active' : 'replaced';
-			}
-		}
-
+		// All we need to do is to switch active chain to one that includes the selected message.
+		// Rest of the messages that possibly follow that message will be automatically chosen
+		// from the branch that contains the latest message among messages descending from the selected one.
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
