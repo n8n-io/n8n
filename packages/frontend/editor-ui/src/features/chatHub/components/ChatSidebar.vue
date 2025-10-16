@@ -2,6 +2,7 @@
 import ModalDrawer from '@/components/ModalDrawer.vue';
 import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/constants';
 import ChatSidebarContent from '@/features/chatHub/components/ChatSidebarContent.vue';
+import { useChatHubSidebarState } from '@/features/chatHub/composables/useChatHubSidebarState';
 import { MOBILE_MEDIA_QUERY } from '@/features/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useMediaQuery } from '@vueuse/core';
@@ -11,6 +12,7 @@ import { useRoute } from 'vue-router';
 const uiStore = useUIStore();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const route = useRoute();
+const { isCollapsible } = useChatHubSidebarState();
 
 watch(
 	() => route.fullPath,
@@ -24,7 +26,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<ModalDrawer
-		v-if="isMobileDevice"
+		v-if="isCollapsible"
 		direction="ltr"
 		width="min(240px, 80vw)"
 		:name="CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY"

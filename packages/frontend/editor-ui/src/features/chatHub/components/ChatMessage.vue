@@ -10,7 +10,7 @@ import { ref, nextTick, watch, useTemplateRef, computed } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 import type { ChatHubMessageDto } from '@n8n/api-types';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
-import { useMarkdownOptions } from '@/features/chatHub/composables/useMarkdownOptions';
+import { useChatHubMarkdownOptions } from '@/features/chatHub/composables/useChatHubMarkdownOptions';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatHubMessageDto;
@@ -35,7 +35,7 @@ const clipboard = useClipboard();
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
 const justCopied = ref(false);
-const { markdownOptions, forceReRenderKey } = useMarkdownOptions();
+const { markdownOptions, forceReRenderKey } = useChatHubMarkdownOptions();
 
 const credentialTypeName = computed(() => {
 	if (message.type !== 'ai' || !message.provider) {

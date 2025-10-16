@@ -36,6 +36,7 @@ import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
 import { useUsersStore } from '@/features/users/users.store';
+import { useChatHubSidebarState } from '@/features/chatHub/composables/useChatHubSidebarState';
 
 const router = useRouter();
 const route = useRoute();
@@ -54,6 +55,7 @@ const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const sidebar = useChatHubSidebarState();
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
 
@@ -303,7 +305,11 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	<div
 		:class="[
 			$style.component,
-			{ [$style.isNewChat]: isNewChat, [$style.isMobileDevice]: isMobileDevice },
+			{
+				[$style.isNewChat]: isNewChat,
+				[$style.isMobileDevice]: isMobileDevice,
+				[$style.isSidebarCollapsed]: sidebar.isCollapsed.value,
+			},
 		]"
 	>
 		<N8nScrollArea
@@ -315,7 +321,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		>
 			<div :class="$style.floating">
 				<N8nIconButton
-					v-if="isMobileDevice"
+					v-if="sidebar.isCollapsible.value"
 					type="secondary"
 					icon="menu"
 					@click="uiStore.openModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY)"
@@ -400,6 +406,10 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 	&.isMobileDevice {
 		padding: 0;
+	}
+
+	&:not(.isSidebarCollapsed) {
+		padding-left: 0;
 	}
 }
 

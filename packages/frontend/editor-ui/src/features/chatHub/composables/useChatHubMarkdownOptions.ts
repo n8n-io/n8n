@@ -5,7 +5,7 @@ import { ref } from 'vue';
 const attemptedLanguages = new Set<string>();
 const hljsInstance = hljs.newInstance();
 
-export function useMarkdownOptions() {
+export function useChatHubMarkdownOptions() {
 	const forceReRenderKey = ref(0);
 	const throttledForceReRenderKey = useThrottle(forceReRenderKey, 100);
 
