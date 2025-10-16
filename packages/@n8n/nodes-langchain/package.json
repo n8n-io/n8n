@@ -46,7 +46,8 @@
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js",
+      "dist/credentials/Mem0Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
@@ -147,6 +148,7 @@
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
+      "dist/nodes/memory/MemoryMem0/MemoryMem0.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js"
     ]
@@ -222,6 +224,7 @@
     "langchain": "0.3.33",
     "lodash": "catalog:",
     "mammoth": "1.7.2",
+    "mem0ai": "^2.1.38",
     "mime-types": "2.1.35",
     "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
