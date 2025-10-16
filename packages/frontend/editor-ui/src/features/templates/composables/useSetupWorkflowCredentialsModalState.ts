@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { useCredentialSetupState } from './useCredentialSetupState';

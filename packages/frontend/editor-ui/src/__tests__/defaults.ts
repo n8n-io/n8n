@@ -137,6 +137,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	aiBuilder: {
 		enabled: false,
+		setup: false,
 	},
 	workflowHistory: {
 		pruneTime: 0,

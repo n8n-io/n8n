@@ -1,4 +1,4 @@
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { DefaultUserMiddlewareOptions, RBACPermissionCheck } from '@/types/rbac';
 
 export const isInstanceOwner: RBACPermissionCheck<DefaultUserMiddlewareOptions> = () =>

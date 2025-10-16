@@ -495,7 +495,7 @@ const onNodeExecute = () => {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-run-data-background);
+	background-color: var(--run-data--color--background);
 	display: flex;
 	flex-direction: column;
 

@@ -19,7 +19,8 @@ import { n8nLang } from '@/features/editors/plugins/codemirror/n8nLang';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	LUXON_RECOMMENDED_OPTIONS,

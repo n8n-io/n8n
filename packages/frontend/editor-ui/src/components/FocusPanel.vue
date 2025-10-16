@@ -38,7 +38,7 @@ import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
-import { useExecutionData } from '@/composables/useExecutionData';
+import { useExecutionData } from '@/features/executions/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/features/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
@@ -786,7 +786,7 @@ function onRenameNode(value: string) {
 				font-size: var(--font-size--2xs);
 
 				:global(.cm-editor) {
-					background-color: var(--color-code-background);
+					background-color: var(--code--color--background);
 					width: 100%;
 				}
 			}
@@ -817,8 +817,8 @@ function onRenameNode(value: string) {
 }
 
 .forceHover {
-	color: var(--color-button-secondary-hover-active-focus-font);
-	border-color: var(--color-button-secondary-hover-active-focus-border);
+	color: var(--button--color--text--secondary--hover-active-focus);
+	border-color: var(--button--border-color--secondary--hover-active-focus);
 	background-color: var(--color-button-secondary-hover-active-focus-background);
 }
 </style>

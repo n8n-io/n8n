@@ -1,10 +1,6 @@
 import { chatWithAssistant, replaceCode } from '@/api/ai';
-import {
-	type VIEWS,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	CREDENTIAL_EDIT_MODAL_KEY,
-	EDITABLE_CANVAS_VIEWS,
-} from '@/constants';
+import { type VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/features/assistant/assistant.types';
@@ -13,7 +9,7 @@ import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
@@ -29,7 +25,7 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useChatPanelStateStore } from './chatPanelState.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
 import type { WorkflowState } from '@/composables/useWorkflowState';
 
@@ -90,22 +86,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		return !sessionStarted || sessionExplicitlyEnded;
 	});
 
-	const isAssistantOpen = computed(
-		() =>
-			canShowAssistant.value &&
-			chatPanelStateStore.isOpen &&
-			chatPanelStateStore.activeMode === 'assistant',
-	);
-
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
-	const canShowAssistant = computed(
-		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
-	);
-
-	const canShowAssistantButtonsOnCanvas = computed(
-		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
-	);
 	const hideAssistantFloatingButton = computed(
 		() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) && !workflowsStore.activeNode(),
 	);
@@ -119,9 +101,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isFloatingButtonShown = computed(
 		() =>
-			canShowAssistantButtonsOnCanvas.value &&
-			!isAssistantOpen.value &&
-			!hideAssistantFloatingButton.value,
+			!chatPanelStateStore.isOpen &&
+			!hideAssistantFloatingButton.value &&
+			isAssistantEnabled.value &&
+			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	function resetAssistantChat() {
@@ -786,13 +769,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	return {
 		isAssistantEnabled,
-		canShowAssistantButtonsOnCanvas,
 		hideAssistantFloatingButton,
 		chatMessages,
 		unreadCount,
 		streaming,
-		isAssistantOpen,
-		canShowAssistant,
 		currentSessionId,
 		lastUnread,
 		isSessionEnded,

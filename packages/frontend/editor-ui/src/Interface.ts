@@ -3,42 +3,34 @@ import type { NotificationOptions as ElementNotificationOptions } from 'element-
 import type {
 	BannerName,
 	FrontendSettings,
-	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
-	ROLE,
 	Role,
 } from '@n8n/api-types';
+import type { ILogInStatus } from '@/features/users/users.types';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
-	ICredentialsDecrypted,
-	ICredentialsEncrypted,
-	ICredentialType,
 	IDataObject,
 	INode,
 	INodeIssues,
 	INodeParameters,
 	INodeTypeDescription,
 	IPinData,
-	IRunExecutionData,
 	IRunData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	WorkflowExecuteMode,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
-	ExecutionSummary,
 	FeatureFlags,
-	ExecutionStatus,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	INodeExecutionData,
 	NodeConnectionType,
 	StartNodeData,
-	AnnotationVote,
 	ITaskData,
 	ISourceData,
 	PublicInstalledPackage,
@@ -55,18 +47,17 @@ import type { ITag } from '@n8n/rest-api-client/api/tags';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
-	CREDENTIAL_EDIT_MODAL_KEY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
 } from '@/constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
-import type { IUser, IUserResponse } from '@n8n/rest-api-client/api/users';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -377,107 +368,8 @@ export interface IActivationError {
 	};
 }
 
-export interface IShareCredentialsPayload {
-	shareWithIds: string[];
-}
-
 export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
-}
-
-export interface ICredentialsResponse extends ICredentialsEncrypted {
-	id: string;
-	createdAt: Iso8601DateTimeString;
-	updatedAt: Iso8601DateTimeString;
-	sharedWithProjects?: ProjectSharingData[];
-	homeProject?: ProjectSharingData;
-	currentUserHasAccess?: boolean;
-	scopes?: Scope[];
-	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
-	isManaged: boolean;
-}
-
-export interface ICredentialsBase {
-	createdAt: Iso8601DateTimeString;
-	updatedAt: Iso8601DateTimeString;
-}
-
-export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
-	id: string;
-}
-
-export interface IExecutionBase {
-	id?: string;
-	finished: boolean;
-	mode: WorkflowExecuteMode;
-	status: ExecutionStatus;
-	retryOf?: string;
-	retrySuccessId?: string;
-	startedAt: Date | string;
-	createdAt: Date | string;
-	stoppedAt?: Date | string;
-	workflowId?: string; // To be able to filter executions easily //
-}
-
-export interface IExecutionFlatted extends IExecutionBase {
-	data: string;
-	workflowData: IWorkflowDb;
-}
-
-export interface IExecutionFlattedResponse extends IExecutionFlatted {
-	id: string;
-}
-
-export interface IExecutionPushResponse {
-	executionId?: string;
-	waitingForWebhook?: boolean;
-}
-
-export interface IExecutionResponse extends IExecutionBase {
-	id: string;
-	data?: IRunExecutionData;
-	workflowData: IWorkflowDb;
-	executedNode?: string;
-	triggerNode?: string;
-}
-
-export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
-
-export interface IExecutionsListResponse {
-	count: number;
-	results: ExecutionSummaryWithScopes[];
-	estimated: boolean;
-	concurrentExecutionsCount: number;
-}
-
-export interface IExecutionsCurrentSummaryExtended {
-	id: string;
-	status: ExecutionStatus;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	workflowId: string;
-}
-
-export interface IExecutionsStopData {
-	finished?: boolean;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	stoppedAt: Date;
-	status: ExecutionStatus;
-}
-
-export interface IExecutionDeleteFilter {
-	deleteBefore?: Date;
-	filters?: ExecutionsQueryFilter;
-	ids?: string[];
-}
-
-export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
-
-export interface IUserListAction {
-	label: string;
-	value: string;
-	guard?: (user: IUser) => boolean;
 }
 
 export const enum UserManagementAuthenticationMethod {
@@ -713,34 +605,12 @@ export interface INodeMetadata {
 	pristine: boolean;
 }
 
-export interface IUsedCredential {
-	id: string;
-	name: string;
-	credentialType: string;
-	currentUserHasAccess: boolean;
-	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
-}
-
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
 
 export interface CommunityPackageMap {
 	[name: string]: PublicInstalledPackage;
-}
-
-export interface ICredentialTypeMap {
-	[name: string]: ICredentialType;
-}
-
-export interface ICredentialMap {
-	[name: string]: ICredentialsResponse;
-}
-
-export interface ICredentialsState {
-	credentialTypes: ICredentialTypeMap;
-	credentials: ICredentialMap;
 }
 
 export interface ITagsState {
@@ -890,19 +760,6 @@ export interface IBounds {
 	maxY: number;
 }
 
-export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
-
-export interface IInviteResponse {
-	user: {
-		id: string;
-		email: string;
-		emailSent: boolean;
-		inviteAcceptUrl: string;
-		role: Role;
-	};
-	error?: string;
-}
-
 export interface ITab<Value extends string | number = string | number> {
 	value: Value;
 	label?: string;
@@ -964,38 +821,6 @@ export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
 	displayOptions?: IDisplayOptions;
-};
-
-export type ExecutionFilterMetadata = {
-	key: string;
-	value: string;
-	exactMatch?: boolean;
-};
-
-export type ExecutionFilterVote = AnnotationVote | 'all';
-
-export type ExecutionFilterType = {
-	status: string;
-	workflowId: string;
-	startDate: string | Date;
-	endDate: string | Date;
-	tags: string[];
-	annotationTags: string[];
-	vote: ExecutionFilterVote;
-	metadata: ExecutionFilterMetadata[];
-};
-
-export type ExecutionsQueryFilter = {
-	status?: ExecutionStatus[];
-	projectId?: string;
-	workflowId?: string;
-	finished?: boolean;
-	waitTill?: boolean;
-	metadata?: Array<{ key: string; value: string }>;
-	startedAfter?: string;
-	startedBefore?: string;
-	annotationTags?: string[];
-	vote?: ExecutionFilterVote;
 };
 
 export interface CloudPlanState {

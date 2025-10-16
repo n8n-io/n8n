@@ -8,7 +8,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/sso/sso.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -28,7 +28,7 @@ vi.mock('@/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
 }));
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/users/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),

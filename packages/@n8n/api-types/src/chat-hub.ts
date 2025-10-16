@@ -23,6 +23,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
 export const chatHubConversationModelSchema = z.object({
 	provider: chatHubProviderSchema,
 	model: z.string(),
+	workflowId: z.string().nullable().default(null),
 });
 
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
@@ -48,7 +49,22 @@ export type ChatModelsResponse = Record<
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
 	message: z.string(),
+	model: chatHubConversationModelSchema,
+	previousMessageId: z.string().uuid().nullable(),
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+}) {}
+
+export class ChatHubRegenerateMessageRequest extends Z.class({
+	retryId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
 		z.object({
@@ -58,41 +74,74 @@ export class ChatHubSendMessageRequest extends Z.class({
 	),
 }) {}
 
-/**
- * Chat message schema
- */
-export const chatHubMessageSchema = z.object({
-	id: z.string().uuid(),
-	conversationId: z.string().uuid(),
-	role: z.enum(['user', 'assistant']),
-	content: z.string(),
-	createdAt: z.string().datetime(),
-});
+export class ChatHubEditMessageRequest extends Z.class({
+	editId: z.string().uuid(),
+	message: z.string(),
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	replyId: z.string().uuid(),
+	model: chatHubConversationModelSchema,
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+}) {}
 
-export type ChatHubMessage = z.infer<typeof chatHubMessageSchema>;
-
-/**
- * Chat conversation schema
- */
-export const chatHubConversationSchema = z.object({
-	id: z.string().uuid(),
+export class ChatHubChangeConversationTitleRequest extends Z.class({
 	title: z.string(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
-});
+}) {}
 
-export type ChatHubConversation = z.infer<typeof chatHubConversationSchema>;
+export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
+export type ChatHubMessageState = 'active' | 'replaced';
 
-/**
- * Response schema for GET /conversations
- */
-export const chatHubConversationsResponseSchema = z.array(chatHubConversationSchema);
+export type ChatSessionId = string; // UUID
+export type ChatMessageId = string; // UUID
 
-export type ChatHubConversationsResponse = z.infer<typeof chatHubConversationsResponseSchema>;
+export interface ChatHubSessionDto {
+	id: ChatSessionId;
+	title: string;
+	ownerId: string;
+	lastMessageAt: string | null;
+	credentialId: string | null;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
 
-/**
- * Response schema for GET /conversations/:id/messages
- */
-export const chatHubMessagesResponseSchema = z.array(chatHubMessageSchema);
+export interface ChatHubMessageDto {
+	id: ChatMessageId;
+	sessionId: ChatSessionId;
+	type: ChatHubMessageType;
+	name: string;
+	content: string;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	executionId: number | null;
+	state: ChatHubMessageState;
+	createdAt: string;
+	updatedAt: string;
 
-export type ChatHubMessagesResponse = z.infer<typeof chatHubMessagesResponseSchema>;
+	previousMessageId: ChatMessageId | null;
+	turnId: ChatMessageId | null;
+	retryOfMessageId: ChatMessageId | null;
+	revisionOfMessageId: ChatMessageId | null;
+	runIndex: number;
+}
+
+export type ChatHubConversationsResponse = ChatHubSessionDto[];
+
+export interface ChatHubConversationDto {
+	messages: Record<ChatMessageId, ChatHubMessageDto>;
+	rootIds: ChatMessageId[];
+	activeMessageChain: ChatMessageId[];
+}
+
+export interface ChatHubConversationResponse {
+	session: ChatHubSessionDto;
+	conversation: ChatHubConversationDto;
+}

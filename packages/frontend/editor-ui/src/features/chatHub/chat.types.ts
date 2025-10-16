@@ -1,8 +1,15 @@
-import { chatHubProviderSchema } from '@n8n/api-types';
+import {
+	chatHubProviderSchema,
+	type ChatHubMessageDto,
+	type ChatMessageId,
+	type ChatHubSessionDto,
+	type ChatHubConversationDto,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 export interface UserMessage {
 	id: string;
+	key: string;
 	role: 'user';
 	type: 'message';
 	text: string;
@@ -10,6 +17,7 @@ export interface UserMessage {
 
 export interface AssistantMessage {
 	id: string;
+	key: string;
 	role: 'assistant';
 	type: 'message';
 	text: string;
@@ -17,13 +25,22 @@ export interface AssistantMessage {
 
 export interface ErrorMessage {
 	id: string;
+	key: string;
 	role: 'assistant';
 	type: 'error';
 	content: string;
 }
 
 export type StreamChunk = AssistantMessage | ErrorMessage;
-export type ChatMessage = UserMessage | AssistantMessage | ErrorMessage;
+
+export interface ChatMessage extends ChatHubMessageDto {
+	responses: ChatMessageId[];
+	alternatives: ChatMessageId[];
+}
+
+export interface ChatConversation extends ChatHubConversationDto {
+	messages: Record<ChatMessageId, ChatMessage>;
+}
 
 export interface StreamOutput {
 	messages: StreamChunk[];
@@ -62,5 +79,5 @@ export type CredentialsMap = z.infer<typeof credentialsMapSchema>;
 
 export interface GroupedConversations {
 	group: string;
-	sessions: Array<{ id: string; label: string }>;
+	sessions: ChatHubSessionDto[];
 }

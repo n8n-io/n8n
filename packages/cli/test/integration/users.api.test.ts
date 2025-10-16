@@ -1644,7 +1644,7 @@ describe('PATCH /users/:id/role', () => {
 
 	test('should change to existing custom role', async () => {
 		const customRole = 'custom:role';
-		await createRole({ slug: customRole, displayName: 'Custom Role', roleType: 'global' });
+		await createRole({ slug: customRole, displayName: 'Custom Role 1', roleType: 'global' });
 		const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
 			newRoleName: customRole,
 		});

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '../../builder.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -51,7 +51,7 @@ const loadingMessage = computed(() => {
 		return undefined;
 	}
 
-	return builderStore.assistantThinkingMessage;
+	return builderStore.builderThinkingMessage;
 });
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
@@ -60,10 +60,17 @@ const showExecuteMessage = computed(() => {
 			msg.type === 'workflow-updated' ||
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
+
+	// Check if there's an error message after the last workflow update
+	const hasErrorAfterUpdate = builderStore.chatMessages
+		.slice(builderUpdatedWorkflowMessageIndex + 1)
+		.some((msg) => msg.type === 'error');
+
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
-		builderUpdatedWorkflowMessageIndex > -1
+		builderUpdatedWorkflowMessageIndex > -1 &&
+		!hasErrorAfterUpdate
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
@@ -71,12 +78,8 @@ const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	// Only show suggestions when no messages in chat yet (blank state)
-	if (builderStore.chatMessages.length === 0) {
-		// Shuffle the suggestions to show them in random order
-		return shuffle(WORKFLOW_SUGGESTIONS);
-	}
-	return undefined;
+	// we don't show the suggestions if there are already messages
+	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
 });
 
 async function onUserMessage(content: string) {

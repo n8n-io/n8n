@@ -1,5 +1,5 @@
 import { watch, computed, ref, type ComputedRef } from 'vue';
-import { type IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';

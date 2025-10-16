@@ -8,7 +8,7 @@ import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useUIStore } from '@/stores/ui.store';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;

@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { waitingNodeTooltip } from '@/features/executions/executions.utils';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
@@ -675,11 +675,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 <style lang="scss" module>
 .runData {
-	background-color: var(--color-run-data-background);
+	background-color: var(--run-data--color--background);
 }
 
 .runDataV2 {
-	background-color: var(--color-ndvv2-run-data-background);
+	background-color: var(--ndvv2--run-data--color--background);
 }
 
 .mappedNode {

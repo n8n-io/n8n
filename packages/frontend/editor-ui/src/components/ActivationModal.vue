@@ -13,7 +13,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useStorage } from '@/composables/useStorage';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 

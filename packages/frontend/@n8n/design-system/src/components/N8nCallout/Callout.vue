@@ -80,9 +80,9 @@ const getIconSize = computed<IconSize>(() => {
 	border: var(--border-width) var(--border-style);
 	align-items: center;
 	line-height: var(--line-height--xl);
-	border-color: var(--color-callout-info-border);
-	background-color: var(--color-callout-info-background);
-	color: var(--color-callout-info-font);
+	border-color: var(--callout--border-color--info);
+	background-color: var(--callout--color--background--info);
+	color: var(--callout--color--text--info);
 
 	&.slim {
 		line-height: var(--line-height--xl);
@@ -90,7 +90,7 @@ const getIconSize = computed<IconSize>(() => {
 	}
 
 	a {
-		color: var(--color-secondary-link);
+		color: var(--link--color--secondary);
 		font-weight: var(--font-weight--medium);
 		text-decoration-line: underline;
 		text-decoration-style: solid;
@@ -118,42 +118,42 @@ const getIconSize = computed<IconSize>(() => {
 
 .info,
 .custom {
-	border-color: var(--color-callout-info-border);
-	background-color: var(--color-callout-info-background);
-	color: var(--color-callout-info-font);
+	border-color: var(--callout--border-color--info);
+	background-color: var(--callout--color--background--info);
+	color: var(--callout--color--text--info);
 
 	.icon {
-		color: var(--color-callout-info-icon);
+		color: var(--callout--icon-color--info);
 	}
 }
 
 .success {
-	border-color: var(--color-callout-success-border);
-	background-color: var(--color-callout-success-background);
-	color: var(--color-callout-success-font);
+	border-color: var(--callout--border-color--success);
+	background-color: var(--callout--color--background--success);
+	color: var(--callout--color--text--success);
 
 	.icon {
-		color: var(--color-callout-success-icon);
+		color: var(--callout--icon-color--success);
 	}
 }
 
 .warning {
-	border-color: var(--color-callout-warning-border);
-	background-color: var(--color-callout-warning-background);
-	color: var(--color-callout-warning-font);
+	border-color: var(--callout--border-color--warning);
+	background-color: var(--callout--color--background--warning);
+	color: var(--callout--color--text--warning);
 
 	.icon {
-		color: var(--color-callout-warning-icon);
+		color: var(--callout--icon-color--warning);
 	}
 }
 
 .danger {
-	border-color: var(--color-callout-danger-border);
-	background-color: var(--color-callout-danger-background);
-	color: var(--color-callout-danger-font);
+	border-color: var(--callout--border-color--danger);
+	background-color: var(--callout--color--background--danger);
+	color: var(--callout--color--text--danger);
 
 	.icon {
-		color: var(--color-callout-danger-icon);
+		color: var(--callout--icon-color--danger);
 	}
 }
 
@@ -165,12 +165,12 @@ const getIconSize = computed<IconSize>(() => {
 .secondary {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	border-color: var(--color-callout-secondary-border);
-	background-color: var(--color-callout-secondary-background);
-	color: var(--color-callout-secondary-font);
+	border-color: var(--callout--border-color--secondary);
+	background-color: var(--callout--color--background--secondary);
+	color: var(--callout--color--text--secondary);
 
 	.icon {
-		color: var(--color-callout-secondary-icon);
+		color: var(--callout--icon-color--secondary);
 	}
 }
 </style>
