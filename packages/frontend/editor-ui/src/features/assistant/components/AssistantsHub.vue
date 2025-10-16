@@ -2,8 +2,9 @@
 import { useBuilderStore } from '@/features/assistant/builder.store';
 import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useDebounce } from '@/composables/useDebounce';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
@@ -17,6 +18,7 @@ import HubSwitcher from '@/features/assistant/components/HubSwitcher.vue';
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
+const settingsStore = useSettingsStore();
 const route = useRoute();
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
@@ -29,6 +31,7 @@ const chatWidth = computed(() => chatPanelStore.width);
 const canToggleModes = computed(() => {
 	const currentRoute = route?.name;
 	return (
+		settingsStore.isAiAssistantEnabled &&
 		builderStore.isAIBuilderEnabled &&
 		currentRoute &&
 		BUILDER_ENABLED_VIEWS.includes(currentRoute as VIEWS)
@@ -92,6 +95,20 @@ const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
 	if (['sendChatMessage'].includes(name)) {
 		chatPanelStore.switchMode('builder');
+	}
+});
+
+// Set default mode based on which flags are enabled
+onMounted(() => {
+	// If toggle is not available (only one mode enabled), lock to the appropriate mode
+	if (!canToggleModes.value) {
+		if (builderStore.isAIBuilderEnabled) {
+			// Only builder is enabled, lock to builder mode
+			chatPanelStore.switchMode('builder');
+		} else if (settingsStore.isAiAssistantEnabled) {
+			// Only assistant is enabled, lock to assistant mode
+			chatPanelStore.switchMode('assistant');
+		}
 	}
 });
 
