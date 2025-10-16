@@ -29,10 +29,6 @@ export class LicenseState {
 	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
 		this.assertProvider();
 
-		if (Array.isArray(feature)) {
-			return feature.some(this.licenseProvider.isLicensed);
-		}
-
 		return this.licenseProvider.isLicensed(feature);
 	}
 

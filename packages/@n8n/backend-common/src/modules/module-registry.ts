@@ -108,7 +108,20 @@ export class ModuleRegistry {
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
 			const { licenseFlag, class: ModuleClass } = moduleEntry;
 
-			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
+			if (
+				licenseFlag &&
+				typeof licenseFlag === 'string' &&
+				!this.licenseState.isLicensed(licenseFlag)
+			) {
+				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
+				continue;
+			}
+
+			if (
+				licenseFlag &&
+				Array.isArray(licenseFlag) &&
+				!licenseFlag.some(this.licenseState.isLicensed)
+			) {
 				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
 				continue;
 			}
