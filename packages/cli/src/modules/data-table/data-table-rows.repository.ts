@@ -708,9 +708,11 @@ export class DataTableRowsRepository {
 		if (conditionsAndParams.length === 1) {
 			// Always use AND for a single filter
 			const [condition, params] = conditionsAndParams[0];
+			console.log('XXX', condition);
 			query.andWhere(condition, params);
 		} else {
 			for (const [condition, params] of conditionsAndParams) {
+				console.log('YYY', condition);
 				if (filterType === 'or') {
 					query.orWhere(condition, params);
 				} else {
