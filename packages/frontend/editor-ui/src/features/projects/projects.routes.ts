@@ -5,7 +5,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
-const CredentialsView = async () => await import('@/views/CredentialsView.vue');
+const CredentialsView = async () =>
+	await import('@/features/credentials/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
 const ProjectVariables = async () => await import('@/views/ProjectVariables.vue');

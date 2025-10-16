@@ -52,9 +52,8 @@ onBeforeUnmount(() => {
 }
 
 .static {
-	width: 200px;
+	width: 240px;
 	background-color: var(--color--background--light-3);
-	border-right: var(--border);
 	position: relative;
 	overflow: auto;
 }
