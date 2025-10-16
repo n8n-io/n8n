@@ -210,23 +210,28 @@ export const getConnectedTools = async (
 	)) as Array<Toolkit | Tool>;
 
 	// Get parent nodes to map toolkits to their source nodes
-	const parentNodes = ctx.getParentNodes(ctx.getNode().name, {
-		connectionType: NodeConnectionTypes.AiTool,
-		depth: 1,
-	});
+	const parentNodes =
+		'getParentNodes' in ctx
+			? ctx.getParentNodes(ctx.getNode().name, {
+					connectionType: NodeConnectionTypes.AiTool,
+					depth: 1,
+				})
+			: [];
 
 	const connectedTools = (toolkitConnections ?? []).flatMap((toolOrToolkit, index) => {
-		const sourceNode = parentNodes[index];
 		if (toolOrToolkit instanceof Toolkit) {
 			const tools = toolOrToolkit.getTools() as Tool[];
 			// Add metadata to each tool from the toolkit
 			return tools.map((tool) => {
+				const sourceNode = parentNodes[index] ?? tool.name;
+
 				tool.metadata ??= {};
 				tool.metadata.isFromToolkit = true;
 				tool.metadata.sourceNodeName = sourceNode?.name;
 				return tool;
 			});
 		} else {
+			const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
 			toolOrToolkit.metadata ??= {};
 			toolOrToolkit.metadata.isFromToolkit = false;
 			toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
