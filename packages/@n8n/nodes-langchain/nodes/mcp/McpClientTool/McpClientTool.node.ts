@@ -1,9 +1,7 @@
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type INodeType,
@@ -11,6 +9,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { transportSelect } from './descriptions';
 import { getTools } from './loadOptions';
@@ -24,6 +25,86 @@ import {
 	McpToolkit,
 	mcpToolToDynamicTool,
 } from './utils';
+
+/**
+ * Get node parameters for MCP client configuration
+ */
+function getNodeConfig(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	itemIndex: number,
+): {
+	authentication: McpAuthenticationOption;
+	timeout: number;
+	serverTransport: McpServerTransport;
+	endpointUrl: string;
+	mode: McpToolIncludeMode;
+	includeTools: string[];
+	excludeTools: string[];
+} {
+	const node = ctx.getNode();
+	const authentication = ctx.getNodeParameter(
+		'authentication',
+		itemIndex,
+	) as McpAuthenticationOption;
+	const timeout = ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number;
+
+	let serverTransport: McpServerTransport;
+	let endpointUrl: string;
+	if (node.typeVersion === 1) {
+		serverTransport = 'sse';
+		endpointUrl = ctx.getNodeParameter('sseEndpoint', itemIndex) as string;
+	} else {
+		serverTransport = ctx.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
+		endpointUrl = ctx.getNodeParameter('endpointUrl', itemIndex) as string;
+	}
+
+	const mode = ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode;
+	const includeTools = ctx.getNodeParameter('includeTools', itemIndex, []) as string[];
+	const excludeTools = ctx.getNodeParameter('excludeTools', itemIndex, []) as string[];
+
+	return {
+		authentication,
+		timeout,
+		serverTransport,
+		endpointUrl,
+		mode,
+		includeTools,
+		excludeTools,
+	};
+}
+
+/**
+ * Connect to MCP server and get filtered tools
+ */
+async function connectAndGetTools(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	config: ReturnType<typeof getNodeConfig>,
+) {
+	const node = ctx.getNode();
+	const { headers } = await getAuthHeaders(ctx, config.authentication);
+
+	const client = await connectMcpClient({
+		serverTransport: config.serverTransport,
+		endpointUrl: config.endpointUrl,
+		headers,
+		name: node.type,
+		version: node.typeVersion,
+	});
+
+	if (!client.ok) {
+		return { client, mcpTools: null, error: client.error };
+	}
+
+	const allTools = await getAllTools(client.result);
+	const mcpTools = getSelectedTools({
+		tools: allTools,
+		mode: config.mode,
+		includeTools: config.includeTools,
+		excludeTools: config.excludeTools,
+	});
+
+	return { client: client.result, mcpTools, error: null };
+}
 
 export class McpClientTool implements INodeType {
 	description: INodeTypeDescription = {
@@ -241,31 +322,8 @@ export class McpClientTool implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const authentication = this.getNodeParameter(
-			'authentication',
-			itemIndex,
-		) as McpAuthenticationOption;
 		const node = this.getNode();
-		const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
-
-		let serverTransport: McpServerTransport;
-		let endpointUrl: string;
-		if (node.typeVersion === 1) {
-			serverTransport = 'sse';
-			endpointUrl = this.getNodeParameter('sseEndpoint', itemIndex) as string;
-		} else {
-			serverTransport = this.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
-			endpointUrl = this.getNodeParameter('endpointUrl', itemIndex) as string;
-		}
-
-		const { headers } = await getAuthHeaders(this, authentication);
-		const client = await connectMcpClient({
-			serverTransport,
-			endpointUrl,
-			headers,
-			name: node.type,
-			version: node.typeVersion,
-		});
+		const config = getNodeConfig(this, itemIndex);
 
 		const setError = (message: string, description?: string): SupplyData => {
 			const error = new NodeOperationError(node, message, { itemIndex, description });
@@ -273,12 +331,12 @@ export class McpClientTool implements INodeType {
 			throw error;
 		};
 
-		if (!client.ok) {
-			this.logger.error('McpClientTool: Failed to connect to MCP Server', {
-				error: client.error,
-			});
+		const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
-			switch (client.error.type) {
+		if (error) {
+			this.logger.error('McpClientTool: Failed to connect to MCP Server', { error });
+
+			switch (error.type) {
 				case 'invalid_url':
 					return setError('Could not connect to your MCP server. The provided URL is invalid.');
 				case 'connection':
@@ -289,19 +347,7 @@ export class McpClientTool implements INodeType {
 
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
-		const mode = this.getNodeParameter('include', itemIndex) as McpToolIncludeMode;
-		const includeTools = this.getNodeParameter('includeTools', itemIndex, []) as string[];
-		const excludeTools = this.getNodeParameter('excludeTools', itemIndex, []) as string[];
-
-		const allTools = await getAllTools(client.result);
-		const mcpTools = getSelectedTools({
-			tools: allTools,
-			mode,
-			includeTools,
-			excludeTools,
-		});
-
-		if (!mcpTools.length) {
+		if (!mcpTools || !mcpTools.length) {
 			return setError(
 				'MCP Server returned no tools',
 				'Connected successfully to your MCP server but it returned an empty list of tools.',
@@ -312,7 +358,7 @@ export class McpClientTool implements INodeType {
 			logWrapper(
 				mcpToolToDynamicTool(
 					tool,
-					createCallTool(tool.name, client.result, timeout, (errorMessage) => {
+					createCallTool(tool.name, client, config.timeout, (errorMessage) => {
 						const error = new NodeOperationError(node, errorMessage, { itemIndex });
 						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
 						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
@@ -326,63 +372,26 @@ export class McpClientTool implements INodeType {
 
 		const toolkit = new McpToolkit(tools);
 
-		return { response: toolkit, closeFunction: async () => await client.result.close() };
+		return { response: toolkit, closeFunction: async () => await client.close() };
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const node = this.getNode();
-
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const item = items[itemIndex];
-			const mode = this.getNodeParameter('include', itemIndex) as McpToolIncludeMode;
-			const includeTools = this.getNodeParameter('includeTools', itemIndex, []) as string[];
-			const excludeTools = this.getNodeParameter('excludeTools', itemIndex, []) as string[];
+			const config = getNodeConfig(this, itemIndex);
 
-			const authentication = this.getNodeParameter(
-				'authentication',
-				itemIndex,
-			) as McpAuthenticationOption;
-			const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
-			let serverTransport: McpServerTransport;
-			let endpointUrl: string;
-			if (node.typeVersion === 1) {
-				serverTransport = 'sse';
-				endpointUrl = this.getNodeParameter('sseEndpoint', itemIndex) as string;
-			} else {
-				serverTransport = this.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
-				endpointUrl = this.getNodeParameter('endpointUrl', itemIndex) as string;
+			const { client, mcpTools, error } = await connectAndGetTools(this, config);
+
+			if (error) {
+				throw new NodeOperationError(node, error.error, { itemIndex });
 			}
 
-			const { headers } = await getAuthHeaders(this, authentication);
-			const client = await connectMcpClient({
-				serverTransport,
-				endpointUrl,
-				headers,
-				name: node.type,
-				version: node.typeVersion,
-			});
-
-			if (!client.ok) {
-				throw new NodeOperationError(node, client.error.error, {
-					itemIndex,
-				});
-			}
-
-			const allTools = await getAllTools(client.result);
-			const mcpTools = getSelectedTools({
-				tools: allTools,
-				mode,
-				includeTools,
-				excludeTools,
-			});
-
-			if (!mcpTools.length) {
-				throw new NodeOperationError(node, 'MCP Server returned no tools', {
-					itemIndex,
-				});
+			if (!mcpTools || !mcpTools.length) {
+				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
 			}
 
 			for (const tool of mcpTools) {
@@ -399,11 +408,10 @@ export class McpClientTool implements INodeType {
 						name: tool.name,
 						arguments: toolArguments,
 					};
-					params.name = tool.name;
-					const result = await client.result.callTool(params);
+					const result = await client.callTool(params);
 					returnData.push({
 						json: {
-							response: result.content,
+							response: result.content as IDataObject,
 						},
 						pairedItem: {
 							item: itemIndex,
