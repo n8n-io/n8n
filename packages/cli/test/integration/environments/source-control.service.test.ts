@@ -874,11 +874,19 @@ describe('SourceControlService', () => {
 				const credentialFiles = result.statusResult
 					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
 					.map((change) => change.file);
+
+				const projectFiles = result.statusResult
+					.filter((change) => change.type === 'project' && change.status !== 'deleted')
+					.map((change) => change.file);
+
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
+				expect(projectFiles).toHaveLength(2);
 
 				expect(gitService.push).toBeCalled();
-				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				expect(fsWriteFile).toBeCalledTimes(
+					workflowFiles.length + credentialFiles.length + projectFiles.length + 2,
+				); // folders + tags
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
