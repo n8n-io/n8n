@@ -1,10 +1,11 @@
 {
 	"extends": [
-		"@n8n/typescript-config/tsconfig.common.json",
-		"@n8n/typescript-config/tsconfig.backend.json"
+		"../../@n8n/typescript-config/tsconfig.common.json",
+		"../../@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
 		"baseUrl": ".",
+		"types": ["node", "jest", "jest-expect-message"],
 		"paths": {
 			"@utils/*": ["./utils/*"],
 			"@nodes-testing/*": ["../../core/nodes-testing/*"]
@@ -21,11 +22,9 @@
 		"nodes/**/*.json",
 		"test/**/*.ts",
 		"types/**/*.ts",
-		"utils/**/*.ts"
+		"utils/**/*.ts",
+		"../../../node_modules/jest-expect-message/types/index.d.ts"
 	],
-	"references": [
-		{ "path": "../../core/tsconfig.build.json" },
-		{ "path": "../../nodes-base/tsconfig.build.cjs.json" },
-		{ "path": "../../workflow/tsconfig.build.esm.json" }
-	]
+	"references": [],
+	"exclude": []
 }

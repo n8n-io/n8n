@@ -13,14 +13,15 @@ function makeAllPropertiesRequired(schema: JSONSchema7): JSONSchema7 {
 
 	// Handle object properties
 	if (schema.type === 'object' && schema.properties) {
-		const properties = Object.keys(schema.properties);
+		const properties = Object.keys(schema.properties as Record<string, JSONSchema7>);
 		if (properties.length > 0) {
 			schema.required = properties;
 		}
 
 		for (const key of properties) {
-			if (isPropertySchema(schema.properties[key])) {
-				makeAllPropertiesRequired(schema.properties[key]);
+			const prop = (schema.properties as Record<string, unknown>)[key];
+			if (isPropertySchema(prop)) {
+				makeAllPropertiesRequired(prop);
 			}
 		}
 	}
@@ -39,7 +40,20 @@ export function generateSchemaFromExample(
 ): JSONSchema7 {
 	const parsedExample = jsonParse<SchemaObject>(exampleJsonString);
 
-	const schema = generateJsonSchema(parsedExample) as JSONSchema7;
+	const generated = generateJsonSchema(parsedExample);
+
+	function isJsonSchema7(value: unknown): value is JSONSchema7 {
+		if (!value || typeof value !== 'object') return false;
+		// Basic shape checks to avoid unsafe casting
+		const obj = value as Record<string, unknown>;
+		return 'type' in obj || 'properties' in obj || 'items' in obj || '$schema' in obj;
+	}
+
+	if (!isJsonSchema7(generated)) {
+		throw new Error('Generated schema is not a valid JSONSchema7');
+	}
+
+	const schema = generated;
 
 	if (allFieldsRequired) {
 		return makeAllPropertiesRequired(schema);
