@@ -236,26 +236,7 @@ describe('N8nPromptInput', () => {
 			expect(render.emitted('submit')).toBeTruthy();
 		});
 
-		it('should insert newline on Shift+Enter', async () => {
-			const render = renderComponent({
-				props: {
-					modelValue: 'Test message',
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
-
-			// Should not emit submit
-			expect(render.emitted('submit')).toBeFalsy();
-			// Should have inserted a newline in the value
-			expect(render.emitted('update:modelValue')).toBeTruthy();
-		});
-
-		it('should insert newline on Ctrl+Enter', async () => {
+		it('should emit submit on Ctrl+Enter', async () => {
 			const render = renderComponent({
 				props: {
 					modelValue: 'Test message',
@@ -268,13 +249,10 @@ describe('N8nPromptInput', () => {
 			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
 			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
-			// Should not emit submit
-			expect(render.emitted('submit')).toBeFalsy();
-			// Should have inserted a newline in the value
-			expect(render.emitted('update:modelValue')).toBeTruthy();
+			expect(render.emitted('submit')).toBeTruthy();
 		});
 
-		it('should insert newline on Cmd+Enter', async () => {
+		it('should emit submit on Cmd+Enter', async () => {
 			const render = renderComponent({
 				props: {
 					modelValue: 'Test message',
@@ -286,6 +264,22 @@ describe('N8nPromptInput', () => {
 
 			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
 			await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+			expect(render.emitted('submit')).toBeTruthy();
+		});
+
+		it('should insert newline on Shift+Enter', async () => {
+			const render = renderComponent({
+				props: {
+					modelValue: 'Test message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
 
 			// Should not emit submit
 			expect(render.emitted('submit')).toBeFalsy();
