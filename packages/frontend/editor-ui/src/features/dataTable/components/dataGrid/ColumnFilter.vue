@@ -208,6 +208,7 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 		<N8nInput
 			v-if="filterType === 'json'"
 			v-model="inputPath"
+			data-test-id="json-path-input"
 			size="small"
 			:placeholder="i18n.baseText('dataTable.filters.path')"
 		/>
@@ -234,6 +235,7 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 			<N8nInput
 				v-else
 				v-model="inputValue"
+				data-test-id="single-input"
 				:type="filterType === 'number' ? 'number' : 'text'"
 				size="small"
 				:placeholder="i18n.baseText('dataTable.filters.placeholder')"
@@ -244,12 +246,14 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 			<template v-if="filterType === 'number'">
 				<N8nInput
 					v-model="inputValue"
+					data-test-id="number-input-first"
 					type="number"
 					size="small"
 					:placeholder="i18n.baseText('generic.from')"
 				/>
 				<N8nInput
 					v-model="inputValueTo"
+					data-test-id="number-input-second"
 					type="number"
 					size="small"
 					:placeholder="i18n.baseText('generic.to')"
@@ -262,7 +266,9 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 		</div>
 
 		<div class="ag-filter-buttons">
-			<N8nButton text size="small" @click="onReset">{{ i18n.baseText('generic.reset') }}</N8nButton>
+			<N8nButton data-test-id="reset-filter-button" text size="small" @click="onReset">{{
+				i18n.baseText('generic.reset')
+			}}</N8nButton>
 		</div>
 	</div>
 </template>

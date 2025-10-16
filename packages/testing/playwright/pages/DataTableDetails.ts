@@ -1,6 +1,3 @@
-import { expect } from '@playwright/test';
-import type { Locator } from '@playwright/test';
-
 import { BasePage } from './BasePage';
 
 export class DataTableDetails extends BasePage {
@@ -196,16 +193,21 @@ export class DataTableDetails extends BasePage {
 		await filterButton.click();
 	}
 
+	private get filterPanel() {
+		return this.page.locator('.ag-filter');
+	}
+
 	private async openFilterPanelAndWait(columnName: string) {
 		await this.openColumnFilter(columnName);
-		const filterPanel = this.page.locator('.ag-filter');
-		await filterPanel.waitFor({ state: 'visible' });
-		return filterPanel;
+		await this.filterPanel.waitFor({ state: 'visible' });
 	}
 
 	private async selectPickerOption(label: string) {
-		await this.page.locator('.ag-picker-field-icon').click();
-		await this.page.locator('.ag-select-list-item').filter({ hasText: label }).first().click();
+		await this.filterPanel.getByRole('combobox').first().click();
+		const option = this.page.getByRole('option', { name: label }).first();
+		await option.waitFor({ state: 'visible' });
+		// eslint-disable-next-line playwright/no-force-option
+		await option.click({ force: true });
 	}
 
 	private async selectFilterOperator(condition: 'equals' | 'greaterThan' | 'lessThan') {
@@ -214,27 +216,9 @@ export class DataTableDetails extends BasePage {
 		await this.selectPickerOption(label);
 	}
 
-	private async fillFilterValue(
-		filterPanel: Locator,
-		value: string,
-		type: 'text' | 'number' | 'date',
-	) {
-		let input: Locator;
-		if (type === 'number') {
-			input = filterPanel.locator('input[type="number"]').first();
-		} else if (type === 'text') {
-			input = filterPanel.locator('input[type="text"]').first();
-		} else {
-			input = filterPanel.locator('input').first();
-		}
-		await input.fill(value);
-		return input;
-	}
-
 	async clearColumnFilter(columnName: string) {
 		await this.openColumnFilter(columnName);
-		const filterPanel = this.page.locator('.ag-filter');
-		await filterPanel.locator('[data-ref="resetFilterButton"]').click();
+		await this.page.getByTestId('reset-filter-button').click();
 	}
 
 	async setTextFilter(columnName: string, value: string) {
@@ -243,8 +227,7 @@ export class DataTableDetails extends BasePage {
 		const filterPanel = this.page.locator('.ag-filter');
 		await filterPanel.waitFor({ state: 'visible' });
 
-		const filterInput = filterPanel.locator('input[type="text"]').first();
-		await filterInput.fill(value);
+		await filterPanel.getByTestId('single-input').fill(value);
 
 		await this.page.keyboard.press('Enter');
 	}
@@ -254,11 +237,9 @@ export class DataTableDetails extends BasePage {
 		value: string,
 		condition: 'equals' | 'greaterThan' | 'lessThan' = 'equals',
 	) {
-		const filterPanel = await this.openFilterPanelAndWait(columnName);
+		await this.openFilterPanelAndWait(columnName);
 		await this.selectFilterOperator(condition);
-		const filterInput = await this.fillFilterValue(filterPanel, value, 'number');
-		// Wait for the value to be set before pressing Enter
-		await expect(filterInput).toHaveValue(value);
+		await this.filterPanel.getByTestId('single-input').fill(value);
 		await this.page.keyboard.press('Enter');
 	}
 
@@ -272,9 +253,9 @@ export class DataTableDetails extends BasePage {
 		value: string,
 		condition: 'equals' | 'greaterThan' | 'lessThan' = 'equals',
 	) {
-		const filterPanel = await this.openFilterPanelAndWait(columnName);
+		await this.openFilterPanelAndWait(columnName);
 		await this.selectFilterOperator(condition);
-		await this.fillFilterValue(filterPanel, value, 'date');
+		await this.filterPanel.getByTestId('date-filter-input').first().locator('input').fill(value);
 		await this.page.keyboard.press('Enter');
 	}
 
