@@ -9,6 +9,8 @@ type RetrunData = {
 	sessionToken?: string;
 };
 
+export const envGetter = (key: string): string | undefined => process.env[key];
+
 export const credentialsResolver: Record<Resolvers, () => Promise<RetrunData | null>> = {
 	enviroment: getEnvironmentCredentials,
 	instanceMetadata: getInstanceMetadataCredentials,
@@ -51,9 +53,9 @@ export async function getSystemCredentials() {
 }
 
 async function getEnvironmentCredentials() {
-	const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-	const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-	const sessionToken = process.env.AWS_SESSION_TOKEN;
+	const accessKeyId = envGetter('AWS_ACCESS_KEY_ID');
+	const secretAccessKey = envGetter('AWS_SECRET_ACCESS_KEY');
+	const sessionToken = envGetter('AWS_SESSION_TOKEN');
 
 	if (accessKeyId && secretAccessKey) {
 		return {
@@ -161,12 +163,12 @@ async function getInstanceMetadataCredentials() {
  */
 async function getContainerMetadataCredentials() {
 	try {
-		const relativeUri = process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI;
+		const relativeUri = envGetter('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI');
 		if (!relativeUri) {
 			return null;
 		}
 
-		const authToken = process.env.AWS_CONTAINER_AUTHORIZATION_TOKEN;
+		const authToken = envGetter('AWS_CONTAINER_AUTHORIZATION_TOKEN');
 		const headers: Record<string, string> = {
 			'User-Agent': 'n8n-aws-credential',
 		};
@@ -210,13 +212,13 @@ async function getContainerMetadataCredentials() {
  * @see {@link https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html EKS Pod Identities}
  */
 async function getPodIdentityCredentials() {
-	const fullUri = process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI;
+	const fullUri = envGetter('AWS_CONTAINER_CREDENTIALS_FULL_URI');
 	if (!fullUri) {
 		return null;
 	}
 
 	try {
-		const authToken = process.env.AWS_CONTAINER_AUTHORIZATION_TOKEN;
+		const authToken = envGetter('AWS_CONTAINER_AUTHORIZATION_TOKEN');
 		const headers: Record<string, string> = {
 			'User-Agent': 'n8n-aws-credential',
 		};
