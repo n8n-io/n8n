@@ -40,11 +40,13 @@ export const useDataTableColumns = ({
 	onAddRowClick,
 	onAddColumn,
 	isTextEditorOpen,
+	onViewFullString,
 }: {
 	onDeleteColumn: (columnId: string) => void;
 	onAddRowClick: () => void;
 	onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 	isTextEditorOpen: Ref<boolean>;
+	onViewFullString: (value: string) => void;
 }) => {
 	const colDefs = ref<ColDef[]>([]);
 	const { mapToAGCellType } = useDataTableTypes();
@@ -69,7 +71,7 @@ export const useDataTableColumns = ({
 			cellDataType: mapToAGCellType(col.type),
 			cellClass: getCellClass,
 			valueGetter: createValueGetter(col),
-			cellRendererSelector: createCellRendererSelector(col),
+			cellRendererSelector: createCellRendererSelector(col, onViewFullString),
 			width: DEFAULT_COLUMN_WIDTH,
 		};
 

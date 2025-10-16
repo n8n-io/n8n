@@ -25,6 +25,7 @@ import {
 } from './columnUtils';
 import { ADD_ROW_ROW_ID, NULL_VALUE, EMPTY_VALUE } from '@/features/dataTable/constants';
 import NullEmptyCellRenderer from '@/features/dataTable/components/dataGrid/NullEmptyCellRenderer.vue';
+import StringCellRenderer from '@/features/dataTable/components/dataGrid/StringCellRenderer.vue';
 
 describe('columnUtils', () => {
 	let mockI18n: I18nClass;
@@ -170,9 +171,36 @@ describe('columnUtils', () => {
 			});
 		});
 
-		it('should return undefined for regular values', () => {
+		it('should return StringCellRenderer for string values', () => {
 			const col: DataTableColumn = { id: 'col1', name: 'test', type: 'string', index: 0 };
 			const params = { data: { test: 'value' } } as ICellRendererParams;
+			const onViewFullString = vi.fn();
+
+			const selector = createCellRendererSelector(col, onViewFullString);
+			const result = selector(params);
+			expect(result).toEqual({
+				component: StringCellRenderer,
+				params: { value: 'value', onViewFull: onViewFullString },
+			});
+		});
+
+		it('should return StringCellRenderer for large string values', () => {
+			const col: DataTableColumn = { id: 'col1', name: 'test', type: 'string', index: 0 };
+			const largeString = 'x'.repeat(2000000); // 2MB string
+			const params = { data: { test: largeString } } as ICellRendererParams;
+			const onViewFullString = vi.fn();
+
+			const selector = createCellRendererSelector(col, onViewFullString);
+			const result = selector(params);
+			expect(result).toEqual({
+				component: StringCellRenderer,
+				params: { value: largeString, onViewFull: onViewFullString },
+			});
+		});
+
+		it('should return undefined for non-string column types', () => {
+			const col: DataTableColumn = { id: 'col1', name: 'test', type: 'number', index: 0 };
+			const params = { data: { test: 123 } } as ICellRendererParams;
 
 			const selector = createCellRendererSelector(col);
 			expect(selector(params)).toBeUndefined();

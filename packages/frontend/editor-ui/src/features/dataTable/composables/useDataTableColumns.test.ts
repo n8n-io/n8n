@@ -53,6 +53,7 @@ describe('useDataTableColumns', () => {
 	const mockOnDeleteColumn = vi.fn();
 	const mockOnAddRowClick = vi.fn();
 	const mockOnAddColumn = vi.fn();
+	const mockOnViewFullString = vi.fn();
 	const isTextEditorOpen = ref(false);
 
 	beforeEach(() => {
@@ -65,6 +66,7 @@ describe('useDataTableColumns', () => {
 			onAddRowClick: mockOnAddRowClick,
 			onAddColumn: mockOnAddColumn,
 			isTextEditorOpen,
+			onViewFullString: mockOnViewFullString,
 		});
 	};
 

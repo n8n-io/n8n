@@ -10,6 +10,7 @@ import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-c
 import { n8nTheme } from '@/features/dataTable/components/dataGrid/n8nTheme';
 import { registerAgGridModulesOnce } from '@/features/dataTable/components/dataGrid/registerAgGridModulesOnce';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
+import ViewFullStringModal from '@/features/dataTable/components/dataGrid/ViewFullStringModal.vue';
 import {
 	DATA_TABLE_HEADER_HEIGHT,
 	DATA_TABLE_ROW_HEIGHT,
@@ -24,6 +25,8 @@ import { useDataTableOperations } from '@/features/dataTable/composables/useData
 import { useDataTableColumnFilters } from '@/features/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/dataTable/utils/filterMappings';
+import { useClipboard } from '@/composables/useClipboard';
+import { useToast } from '@/composables/useToast';
 
 import { ElPagination } from 'element-plus';
 registerAgGridModulesOnce();
@@ -39,6 +42,12 @@ const emit = defineEmits<{
 }>();
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
+const clipboard = useClipboard();
+const toast = useToast();
+
+// Modal state for viewing full string content
+const showFullStringModal = ref(false);
+const fullStringContent = ref('');
 
 const i18n = useI18n();
 const rowData = ref<DataTableRow[]>([]);
@@ -51,11 +60,25 @@ const agGrid = useAgGrid<DataTableRow>({
 	defaultColDef: GRID_FILTER_CONFIG.defaultColDef,
 });
 
+const onViewFullString = (value: string) => {
+	fullStringContent.value = value;
+	showFullStringModal.value = true;
+};
+
+const handleCopyFullString = async () => {
+	await clipboard.copy(fullStringContent.value);
+	toast.showMessage({
+		title: i18n.baseText('generic.copiedToClipboard'),
+		type: 'success',
+	});
+};
+
 const dataTableColumns = useDataTableColumns({
 	onDeleteColumn: onDeleteColumnFunction,
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
+	onViewFullString,
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
@@ -198,6 +221,11 @@ defineExpose({
 			@delete-selected="dataTableOperations.handleDeleteSelected"
 			@clear-selection="selection.handleClearSelection"
 		/>
+		<ViewFullStringModal
+			v-model="showFullStringModal"
+			:value="fullStringContent"
+			@copy="handleCopyFullString"
+		/>
 	</div>
 </template>
 
@@ -303,10 +331,17 @@ defineExpose({
 	:global(.ag-large-text-input) {
 		position: absolute;
 		min-width: 420px;
+		max-width: 600px;
 		padding: 0;
 
 		textarea {
 			padding-top: var(--spacing--2xs);
+			// Prevent large text from expanding indefinitely
+			max-height: 400px;
+			overflow-y: auto;
+			// Ensure text doesn't render as HTML
+			white-space: pre-wrap;
+			word-break: break-word;
 
 			&:where(:focus-within, :active) {
 				border: var(--grid--cell--border-color--editing);

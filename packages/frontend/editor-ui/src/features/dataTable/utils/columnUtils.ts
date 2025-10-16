@@ -19,6 +19,7 @@ import {
 	NUMBER_WITH_SPACES_REGEX,
 } from '@/features/dataTable/constants';
 import NullEmptyCellRenderer from '@/features/dataTable/components/dataGrid/NullEmptyCellRenderer.vue';
+import StringCellRenderer from '@/features/dataTable/components/dataGrid/StringCellRenderer.vue';
 import { isDataTableValue } from '@/features/dataTable/typeGuards';
 
 export const getCellClass = (params: CellClassParams): string => {
@@ -46,7 +47,8 @@ export const createValueGetter =
 	};
 
 export const createCellRendererSelector =
-	(col: DataTableColumn) => (params: ICellRendererParams) => {
+	(col: DataTableColumn, onViewFullString?: (value: string) => void) =>
+	(params: ICellRendererParams) => {
 		if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
 			return {};
 		}
@@ -64,6 +66,13 @@ export const createCellRendererSelector =
 			return {
 				component: NullEmptyCellRenderer,
 				params: { value: EMPTY_VALUE },
+			};
+		}
+		// Use StringCellRenderer for string values to handle large strings safely
+		if (col.type === 'string' && typeof rowValue === 'string') {
+			return {
+				component: StringCellRenderer,
+				params: { value: rowValue, onViewFull: onViewFullString },
 			};
 		}
 		return undefined;

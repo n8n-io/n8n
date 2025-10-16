@@ -45,3 +45,7 @@ export const NUMBER_DECIMAL_SEPARATOR = '.';
 // Allows 1-2 digit month/day/time parts (e.g., 2025-1-1 2:3:4)
 export const LOOSE_DATE_REGEX =
 	/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})(?:[ T]([0-9]{1,2}):([0-9]{1,2})(?::([0-9]{1,2}))?)?$/;
+
+// String cell rendering thresholds
+export const LARGE_STRING_THRESHOLD = 1000; // chars
+export const MAX_DISPLAY_STRING_LENGTH = 300; // chars displayed in cell
