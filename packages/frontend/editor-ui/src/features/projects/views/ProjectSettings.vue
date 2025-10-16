@@ -564,7 +564,7 @@ onMounted(() => {
 						i18n.baseText('projects.settings.projectMembers')
 					}}</label>
 				</h3>
-				<div :class="[relationUsers.length > 0 ? $style.membersInputRow : '', 'mb-s']">
+				<div :class="[$style.membersInputRow, 'mb-s']">
 					<N8nUserSelect
 						id="projectMembers"
 						:class="$style.userSelect"
