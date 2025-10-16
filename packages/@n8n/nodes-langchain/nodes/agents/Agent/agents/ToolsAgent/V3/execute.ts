@@ -57,7 +57,7 @@ async function createEngineRequests(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
-	outputParser?: N8nOutputParser,
+	tools: Array<DynamicStructuredTool | Tool>,
 ) {
 	const connectedSubnodes = ctx.getParentNodes(ctx.getNode().name, {
 		connectionType: NodeConnectionTypes.AiTool,
@@ -65,7 +65,6 @@ async function createEngineRequests(
 	});
 
 	// Build a map of tool names to their source nodes from metadata
-	const tools = await getTools(ctx, outputParser);
 	const toolToNodeMap = new Map<string, string>();
 	for (const tool of tools) {
 		if (tool.metadata?.isFromToolkit && tool.metadata?.sourceNodeName) {
@@ -496,12 +495,7 @@ export async function toolsAgentExecute(
 
 				// If result contains tool calls, build the request object like the normal flow
 				if (result.toolCalls && result.toolCalls.length > 0) {
-					const actions = await createEngineRequests(
-						this,
-						result.toolCalls,
-						itemIndex,
-						outputParser,
-					);
+					const actions = await createEngineRequests(this, result.toolCalls, itemIndex, tools);
 
 					return {
 						actions,
@@ -551,7 +545,7 @@ export async function toolsAgentExecute(
 				}
 
 				// If response contains tool calls, we need to return this in the right format
-				const actions = await createEngineRequests(this, modelResponse, itemIndex, outputParser);
+				const actions = await createEngineRequests(this, modelResponse, itemIndex, tools);
 
 				return {
 					actions,
