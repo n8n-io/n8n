@@ -9,7 +9,8 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useExecutionCommands } from './useExecutionCommands';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -71,7 +71,7 @@ vi.mock('@n8n/permissions', () => ({
 	})),
 }));
 
-vi.mock('@/utils/executionUtils', async (importOriginal) => ({
+vi.mock('@/features/executions/executions.utils', async (importOriginal) => ({
 	...(await importOriginal()),
 	executionRetryMessage: vi.fn((status: string) => ({
 		title: `Execution ${status}`,

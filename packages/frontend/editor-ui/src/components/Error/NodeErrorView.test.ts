@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
