@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useInstallNode } from '@/composables/useInstallNode';
+import { useInstallNode } from '@/features/communityNodes/composables/useInstallNode';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useUsersStore } from '@/features/users/users.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';

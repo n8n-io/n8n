@@ -38,7 +38,7 @@ import { type INodeTypeDescription } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({

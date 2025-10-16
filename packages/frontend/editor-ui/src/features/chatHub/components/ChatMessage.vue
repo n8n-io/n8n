@@ -7,8 +7,6 @@ import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
 import { ref, nextTick, watch } from 'vue';
 import { useTemplateRef } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
@@ -28,16 +26,18 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
-const toast = useToast();
-const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
+const justCopied = ref(false);
 
 async function handleCopy() {
 	const text = messageText(message);
 	await clipboard.copy(text);
-	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	justCopied.value = true;
+	setTimeout(() => {
+		justCopied.value = false;
+	}, 1000);
 }
 
 function handleEdit() {
@@ -110,6 +110,7 @@ watch(
 				[$style.compact]: compact,
 			},
 		]"
+		:data-message-id="message.id"
 	>
 		<div :class="$style.avatar">
 			<N8nIcon :icon="message.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
@@ -131,7 +132,7 @@ watch(
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Save
+						Send
 					</N8nButton>
 				</div>
 			</div>
@@ -148,6 +149,7 @@ watch(
 				<ChatMessageActions
 					v-else
 					:role="message.role"
+					:just-copied="justCopied"
 					:class="$style.actions"
 					@copy="handleCopy"
 					@edit="handleEdit"
@@ -193,8 +195,8 @@ watch(
 	max-width: fit-content;
 
 	.user & {
-		padding: var(--spacing--md);
-		border-radius: var(--radius--lg);
+		padding: var(--spacing--4xs) var(--spacing--md);
+		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 	}
 
@@ -224,6 +226,25 @@ watch(
 			padding: var(--chat--spacing);
 			background: var(--chat--message--pre--background);
 			border-radius: var(--chat--border-radius);
+		}
+
+		table {
+			width: 100%;
+			border-bottom: var(--border);
+			border-top: var(--border);
+			border-width: 2px;
+			margin-bottom: 1em;
+			border-color: var(--color--text--shade-1);
+		}
+
+		th,
+		td {
+			padding: 0.25em 1em 0.25em 0;
+		}
+
+		th {
+			border-bottom: var(--border);
+			border-color: var(--color--text--shade-1);
 		}
 	}
 }
