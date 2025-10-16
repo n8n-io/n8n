@@ -1,6 +1,8 @@
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
@@ -14,10 +16,82 @@ import {
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
+import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
 import { OAuthRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
-import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+/**
+ * OAuth 2.0 Authorization Server Metadata - Based on actual response
+ */
+
+interface OAuthAuthorizationServerMetadata {
+	/** The authorization server's identifier */
+	issuer: string;
+
+	/** URL of the authorization server's authorization endpoint */
+	authorization_endpoint: string;
+
+	/** URL of the authorization server's token endpoint */
+	token_endpoint: string;
+
+	/** URL of the authorization server's dynamic client registration endpoint */
+	registration_endpoint: string;
+
+	/** Array of OAuth 2.0 response_type values supported */
+	response_types_supported: string[];
+
+	/** Array of OAuth 2.0 response_mode values supported */
+	response_modes_supported: string[];
+
+	/** Array of OAuth 2.0 grant type values supported */
+	grant_types_supported: string[];
+
+	/** Array of client authentication methods supported by the token endpoint */
+	token_endpoint_auth_methods_supported: string[];
+
+	/** URL of the authorization server's OAuth 2.0 revocation endpoint */
+	revocation_endpoint: string;
+
+	/** Array of PKCE code challenge methods supported */
+	code_challenge_methods_supported: string[];
+}
+
+/**
+ * Response types from the actual server
+ */
+export type OAuth2ResponseType = 'code';
+
+/**
+ * Response modes from the actual server
+ */
+export type OAuth2ResponseMode = 'query';
+
+/**
+ * Grant types from the actual server
+ */
+export type OAuth2GrantType = 'authorization_code' | 'refresh_token';
+
+/**
+ * Client authentication methods from the actual server
+ */
+export type OAuth2ClientAuthMethod = 'client_secret_basic' | 'client_secret_post' | 'none';
+
+/**
+ * PKCE code challenge methods from the actual server
+ */
+export type PKCECodeChallengeMethod = 'plain' | 'S256';
+
+/**
+ * Example usage:
+ *
+ * const metadata: OAuthAuthorizationServerMetadata = await fetch('/.well-known/oauth-authorization-server')
+ *   .then(res => res.json());
+ *
+ * // This server supports PKCE with both plain and S256
+ * console.log(metadata.code_challenge_methods_supported); // ["plain", "S256"]
+ */
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -48,6 +122,60 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			additionalData,
 		);
 
+		const toUpdate: ICredentialDataDecryptedObject = {};
+
+		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
+			const serverUrl = new URL(oauthCredentials.serverUrl);
+			// TODO: Check if `.origin` is correct
+			// TODO: Check if we should use `fetch` or `axios`
+			const response = await fetch(`${serverUrl.origin}/.well-known/oauth-authorization-server`);
+			const data = (await response.json()) as OAuthAuthorizationServerMetadata;
+			const { authorization_endpoint, token_endpoint, registration_endpoint } = data;
+			if (!authorization_endpoint || !token_endpoint || !registration_endpoint) {
+				throw new Error(
+					'The OAuth2 server does not support dynamic client registration. Missing endpoints in metadata.',
+				);
+			}
+
+			oauthCredentials.authUrl = authorization_endpoint;
+			oauthCredentials.accessTokenUrl = token_endpoint;
+			toUpdate.authUrl = authorization_endpoint;
+			toUpdate.accessTokenUrl = token_endpoint;
+
+			const instanceBaseUrl = Container.get(UrlService).getInstanceBaseUrl();
+			const restEndpoint = Container.get(GlobalConfig).endpoints.rest;
+			// TODO: Check if we should use `fetch` or `axios`
+			const registerResult = await fetch(registration_endpoint, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					redirect_uris: [`${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`],
+					token_endpoint_auth_method: 'none',
+					grant_types: ['authorization_code', 'refresh_token'],
+					response_types: ['code'],
+					client_name: 'n8n',
+					client_uri: 'https://n8n.io/',
+				}),
+			}).then(
+				async (res) =>
+					(await res.json()) as {
+						client_id: string;
+						client_secret?: string;
+					},
+			);
+
+			const { client_id } = registerResult;
+			oauthCredentials.clientId = client_id;
+			// TODO: check if this can be returned from the server
+			oauthCredentials.grantType = 'pkce';
+			oauthCredentials.authentication = 'body';
+			toUpdate.clientId = client_id;
+			toUpdate.grantType = 'pkce';
+			toUpdate.authentication = 'body';
+		}
+
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const [csrfSecret, state] = this.createCsrfState(
 			credential.id,
@@ -65,7 +193,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const toUpdate: ICredentialDataDecryptedObject = { csrfSecret };
+		toUpdate.csrfSecret = csrfSecret;
 		if (oauthCredentials.grantType === 'pkce') {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -104,6 +232,17 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 			const [credential, decryptedDataOriginal, oauthCredentials] =
 				await this.resolveCredential<OAuth2CredentialData>(req);
+
+			// FIXME: hack
+			if (decryptedDataOriginal.useDynamicClientRegistration) {
+				Object.assign(oauthCredentials, {
+					clientId: decryptedDataOriginal.clientId,
+					authUrl: decryptedDataOriginal.authUrl,
+					accessTokenUrl: decryptedDataOriginal.accessTokenUrl,
+					grantType: decryptedDataOriginal.grantType || 'pkce',
+					authentication: decryptedDataOriginal.authentication || 'body',
+				});
+			}
 
 			let options: Partial<ClientOAuth2Options> = {};
 

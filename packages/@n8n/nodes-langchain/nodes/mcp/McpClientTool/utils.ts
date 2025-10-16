@@ -3,7 +3,6 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 import { Toolkit } from 'langchain/agents';
 import {
 	createResultError,
@@ -13,6 +12,8 @@ import {
 	type Result,
 } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type {
 	McpAuthenticationOption,
@@ -234,6 +235,16 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
+		}
+		case 'oAuth2Api': {
+			// TODO: Implement refresh mechanism
+			const result = await ctx
+				.getCredentials<{ oauthTokenData: { access_token: string } }>('oAuth2Api')
+				.catch(() => null);
+
+			if (!result) return {};
+
+			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
 		}
 		case 'none':
 		default: {

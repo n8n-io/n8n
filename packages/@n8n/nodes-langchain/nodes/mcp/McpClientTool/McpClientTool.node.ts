@@ -1,5 +1,3 @@
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -8,6 +6,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { transportSelect } from './descriptions';
 import { getTools } from './loadOptions';
@@ -69,6 +70,15 @@ export class McpClientTool implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['headerAuth'],
+					},
+				},
+			},
+			{
+				name: 'oAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2Api'],
 					},
 				},
 			},
@@ -136,6 +146,10 @@ export class McpClientTool implements INodeType {
 						name: 'None',
 						value: 'none',
 					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2Api',
+					},
 				],
 				default: 'none',
 				description: 'The way to authenticate with your endpoint',
@@ -147,7 +161,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
+						authentication: ['headerAuth', 'bearerAuth', 'oAuth2Api'],
 					},
 				},
 			},
