@@ -102,7 +102,7 @@ export class WorkflowBuilderAgent {
 
 	private formatWorkflowValidation(validation: ProgrammaticEvaluationResult | null): string {
 		if (!validation) {
-			return 'No validation results available.';
+			return 'EMPTY';
 		}
 
 		const categories: Array<[string, ProgrammaticViolation[]]> = [
@@ -124,7 +124,7 @@ export class WorkflowBuilderAgent {
 			}
 		}
 
-		const summaryLines = [`Overall score: ${Math.round(validation.overallScore * 100)}%`];
+		const summaryLines = ['Workflow Validation Summary:'];
 
 		if (violationLines.length === 0) {
 			summaryLines.push('No validation violations detected.');
@@ -174,7 +174,6 @@ export class WorkflowBuilderAgent {
 				instanceUrl: this.instanceUrl,
 				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 				workflowValidation: this.formatWorkflowValidation(state.workflowValidation),
-
 			});
 			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 			const executionData = state.workflowContext?.executionData ?? {};

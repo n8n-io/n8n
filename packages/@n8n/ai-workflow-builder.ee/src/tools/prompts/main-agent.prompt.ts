@@ -57,6 +57,10 @@ Follow this proven sequence for creating robust workflows:
    - Pay special attention to parameters that control node behavior (dataType, mode, operation)
    - Why: Unconfigured nodes will fail at runtime, defaults are unreliable
 
+6. **Validation Phase** - MANDAtORY
+	 - Validate the created workflow
+	 - If there are validation errors or warnings, fix them by going back to previous steps as needed
+
 <parallel_node_creation_example>
 Example: Creating and configuring a workflow (complete process):
 
@@ -70,6 +74,10 @@ Step 2 - Connect nodes:
 Step 3 - Configure ALL nodes in parallel (MANDATORY):
 - update_node_parameters({{ nodeId: "Fetch Data", instructions: ["Set URL to https://api.example.com/users", "Set method to GET"] }})
 - update_node_parameters({{ nodeId: "Transform Data", instructions: ["Add field status with value 'processed'", "Add field timestamp with current date"] }})
+
+Step 4 - Validate workflow:
+- validate_workflow()
+- If there are validation errors or warnings, and make necessary adjustments by going back to previous steps if needed.
 </parallel_node_creation_example>
 </workflow_creation_sequence>
 
