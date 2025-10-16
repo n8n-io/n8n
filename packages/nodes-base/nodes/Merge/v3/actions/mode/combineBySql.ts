@@ -17,6 +17,47 @@ import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
 
+function disableAlasqlFileAccess() {
+	const disabledFunction = () => {
+		throw new Error('File access operations are disabled for security reasons');
+	};
+
+	// Cast alasql to any to access internal properties
+	const alasqlAny = alasql as any;
+
+	// Disable file reading functions that could be used to access the file system
+	if (alasqlAny.fn) {
+		alasqlAny.fn.FILE = disabledFunction;
+		alasqlAny.fn.JSON = disabledFunction;
+		alasqlAny.fn.TXT = disabledFunction;
+		alasqlAny.fn.CSV = disabledFunction;
+		alasqlAny.fn.XLSX = disabledFunction;
+		alasqlAny.fn.XLS = disabledFunction;
+		alasqlAny.fn.LOAD = disabledFunction;
+		alasqlAny.fn.SAVE = disabledFunction;
+	}
+
+	// Also disable the FROM handlers which are used for file operations
+	if (alasqlAny.from) {
+		alasqlAny.from.FILE = disabledFunction;
+		alasqlAny.from.JSON = disabledFunction;
+		alasqlAny.from.TXT = disabledFunction;
+		alasqlAny.from.CSV = disabledFunction;
+		alasqlAny.from.XLSX = disabledFunction;
+		alasqlAny.from.XLS = disabledFunction;
+	}
+
+	// Override the engines that handle file operations
+	if (alasqlAny.engines) {
+		alasqlAny.engines.FILE = disabledFunction;
+		alasqlAny.engines.JSON = disabledFunction;
+		alasqlAny.engines.TXT = disabledFunction;
+		alasqlAny.engines.CSV = disabledFunction;
+		alasqlAny.engines.XLSX = disabledFunction;
+		alasqlAny.engines.XLS = disabledFunction;
+	}
+}
+
 type OperationOptions = {
 	emptyQueryResult: 'success' | 'empty';
 };
@@ -147,6 +188,8 @@ export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
 ): Promise<INodeExecutionData[][]> {
+	disableAlasqlFileAccess();
+
 	const node = this.getNode();
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
