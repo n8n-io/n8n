@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ChatMessage } from '@/features/chatHub/chat.types';
 import { N8nIcon, N8nInput, N8nButton } from '@n8n/design-system';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
@@ -7,14 +6,12 @@ import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
-import { ref, nextTick, watch } from 'vue';
-import { useTemplateRef } from 'vue';
+import { ref, nextTick, watch, useTemplateRef } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
+import type { ChatHubMessageDto } from '@n8n/api-types';
 
 const { message, compact, isEditing, isStreaming } = defineProps<{
-	message: ChatMessage;
+	message: ChatHubMessageDto;
 	compact: boolean;
 	isEditing: boolean;
 	isStreaming: boolean;
@@ -23,21 +20,23 @@ const { message, compact, isEditing, isStreaming } = defineProps<{
 const emit = defineEmits<{
 	startEdit: [];
 	cancelEdit: [];
-	update: [message: ChatMessage];
-	regenerate: [message: ChatMessage];
+	update: [message: ChatHubMessageDto];
+	regenerate: [message: ChatHubMessageDto];
 }>();
 
 const clipboard = useClipboard();
-const toast = useToast();
-const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
+const justCopied = ref(false);
 
 async function handleCopy() {
-	const text = messageText(message);
+	const text = message.content;
 	await clipboard.copy(text);
-	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	justCopied.value = true;
+	setTimeout(() => {
+		justCopied.value = false;
+	}, 1000);
 }
 
 function handleEdit() {
@@ -49,19 +48,15 @@ function handleCancelEdit() {
 }
 
 function handleConfirmEdit() {
-	if (message.type === 'error' || !editedText.value.trim()) {
+	if (message.type === 'ai' || !editedText.value.trim()) {
 		return;
 	}
 
-	emit('update', { ...message, text: editedText.value });
+	emit('update', { ...message, content: editedText.value });
 }
 
 function handleRegenerate() {
 	emit('regenerate', message);
-}
-
-function messageText(msg: ChatMessage) {
-	return msg.type === 'message' ? msg.text : `**Error:** ${msg.content}`;
 }
 
 const markdownOptions = {
@@ -90,7 +85,7 @@ watch(
 	() => isEditing,
 	async (editing) => {
 		if (editing) {
-			editedText.value = messageText(message);
+			editedText.value = message.content;
 			await nextTick();
 			textareaRef.value?.focus();
 		} else {
@@ -105,14 +100,15 @@ watch(
 	<div
 		:class="[
 			$style.message,
-			message.role === 'user' ? $style.user : $style.assistant,
+			message.type === 'human' ? $style.user : $style.assistant,
 			{
 				[$style.compact]: compact,
 			},
 		]"
+		:data-message-id="message.id"
 	>
 		<div :class="$style.avatar">
-			<N8nIcon :icon="message.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
+			<N8nIcon :icon="message.type === 'human' ? 'user' : 'sparkles'" width="20" height="20" />
 		</div>
 		<div :class="$style.content">
 			<div v-if="isEditing" :class="$style.editContainer">
@@ -131,7 +127,7 @@ watch(
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Save
+						Send
 					</N8nButton>
 				</div>
 			</div>
@@ -139,7 +135,7 @@ watch(
 				<div :class="$style.chatMessage">
 					<VueMarkdown
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-						:source="messageText(message)"
+						:source="message.content"
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>
@@ -147,7 +143,8 @@ watch(
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:role="message.role"
+					:type="message.type"
+					:just-copied="justCopied"
 					:class="$style.actions"
 					@copy="handleCopy"
 					@edit="handleEdit"
@@ -193,8 +190,8 @@ watch(
 	max-width: fit-content;
 
 	.user & {
-		padding: var(--spacing--md);
-		border-radius: var(--radius--lg);
+		padding: var(--spacing--4xs) var(--spacing--md);
+		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 	}
 
@@ -224,6 +221,25 @@ watch(
 			padding: var(--chat--spacing);
 			background: var(--chat--message--pre--background);
 			border-radius: var(--chat--border-radius);
+		}
+
+		table {
+			width: 100%;
+			border-bottom: var(--border);
+			border-top: var(--border);
+			border-width: 2px;
+			margin-bottom: 1em;
+			border-color: var(--color--text--shade-1);
+		}
+
+		th,
+		td {
+			padding: 0.25em 1em 0.25em 0;
+		}
+
+		th {
+			border-bottom: var(--border);
+			border-color: var(--color--text--shade-1);
 		}
 	}
 }

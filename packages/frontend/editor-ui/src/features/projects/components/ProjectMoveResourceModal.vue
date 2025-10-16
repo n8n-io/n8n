@@ -5,9 +5,13 @@ import ProjectMoveSuccessToastMessage from './ProjectMoveSuccessToastMessage.vue
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
-import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
+import type { IWorkflowDb } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '../projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

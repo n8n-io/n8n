@@ -29,7 +29,7 @@ import {
 
 import type { CodeNodeLanguageOption } from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
-import CredentialsSelect from '@/components/CredentialsSelect.vue';
+import CredentialsSelect from '@/features/credentials/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
@@ -70,7 +70,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/event-bus';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';

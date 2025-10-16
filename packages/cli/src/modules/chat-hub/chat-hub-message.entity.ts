@@ -184,7 +184,7 @@ export class ChatHubMessage extends WithTimestamps {
 	revisions?: Array<Relation<ChatHubMessage>>;
 
 	/**
-	 * State of the message, e.g. 'active', 'superseded', 'hidden', 'deleted'.
+	 * State of the message, e.g. 'active', 'superseded'.
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'active' })
 	state: ChatHubMessageState;

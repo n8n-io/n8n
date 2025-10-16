@@ -3,6 +3,7 @@ import Node from '@/features/canvas/components/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
@@ -41,6 +42,7 @@ const props = defineProps<{
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
 const telemetry = useTelemetry();
+const toast = useToast();
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
@@ -56,13 +58,17 @@ const manualAsyncConfiguration = {
 	immediate: false,
 } as const;
 
+const isClosed = ref(false);
+
 const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
 		try {
 			const { workflowId } = props.data;
 			const { content: workflow } = await sourceControlStore.getRemoteWorkflow(workflowId);
 			return { workflow, remote: true };
-		} catch {
+		} catch (error) {
+			toast.showError(error, i18n.baseText('generic.error'));
+			handleBeforeClose();
 			return { workflow: undefined, remote: true };
 		}
 	},
@@ -76,19 +82,15 @@ const local = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefi
 			const { workflowId } = props.data;
 			const workflow = await workflowsStore.fetchWorkflow(workflowId);
 			return { workflow, remote: false };
-		} catch {
+		} catch (error) {
+			toast.showError(error, i18n.baseText('generic.error'));
+			handleBeforeClose();
 			return { workflow: undefined, remote: false };
 		}
 	},
 	undefined,
 	manualAsyncConfiguration,
 );
-
-useAsyncState(async () => {
-	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded()]);
-	await Promise.all([remote.execute(), local.execute()]);
-	return true;
-}, false);
 
 const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote : local));
 
@@ -301,6 +303,9 @@ const nodeDiffs = computed(() => {
 });
 
 function handleBeforeClose() {
+	if (isClosed.value) return;
+	isClosed.value = true;
+
 	selectedDetailId.value = undefined;
 
 	// Check if we have history to go back to avoid empty navigation issues
@@ -325,8 +330,11 @@ function handleEscapeKey(event: KeyboardEvent) {
 	}
 }
 
-onMounted(() => {
+onMounted(async () => {
 	document.addEventListener('keydown', handleEscapeKey, true);
+	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	void remote.execute();
+	void local.execute();
 });
 
 onUnmounted(() => {
@@ -348,7 +356,7 @@ const isSourceWorkflowNew = computed(() => {
 	return !sourceExists && targetExists;
 });
 
-onNodeClick((nodeId) => {
+onNodeClick((nodeId: string) => {
 	const node = nodesDiff.value.get(nodeId);
 	if (!node) {
 		return;

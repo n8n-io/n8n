@@ -25,7 +25,7 @@ import {
 	createTestLogTreeCreationContext,
 } from './__test__/data';
 import type { LogEntrySelection } from './logs.types';
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 

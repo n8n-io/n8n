@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { waitingNodeTooltip } from '@/features/executions/executions.utils';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,

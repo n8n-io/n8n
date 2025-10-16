@@ -24,7 +24,7 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/usage/usage.constants';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/components/SuggestedWorkflowCard.vue';
 import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
@@ -55,7 +55,7 @@ import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl
 import { useTagsStore } from '@/stores/tags.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsageStore } from '@/stores/usage.store';
+import { useUsageStore } from '@/features/usage/usage.store';
 import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {

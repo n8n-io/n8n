@@ -287,8 +287,6 @@ describe('AI Assistant store', () => {
 
 		setAssistantEnabled(false);
 		expect(assistantStore.isAssistantEnabled).toBe(false);
-		expect(assistantStore.canShowAssistant).toBe(false);
-		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
 	});
 
 	it('should show assistant if all conditions are met', () => {
@@ -296,8 +294,6 @@ describe('AI Assistant store', () => {
 
 		setAssistantEnabled(true);
 		expect(assistantStore.isAssistantEnabled).toBe(true);
-		expect(assistantStore.canShowAssistant).toBe(true);
-		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
 	});
 
 	it('should not show assistant if on a settings page', () => {
@@ -306,8 +302,6 @@ describe('AI Assistant store', () => {
 
 		setAssistantEnabled(true);
 		expect(assistantStore.isAssistantEnabled).toBe(true);
-		expect(assistantStore.canShowAssistant).toBe(false);
-		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
 	});
 
 	[VIEWS.PROJECTS_CREDENTIALS, VIEWS.TEMPLATE_SETUP, VIEWS.CREDENTIALS].forEach((view) => {
@@ -317,8 +311,6 @@ describe('AI Assistant store', () => {
 
 			setAssistantEnabled(true);
 			expect(assistantStore.isAssistantEnabled).toBe(true);
-			expect(assistantStore.canShowAssistant).toBe(true);
-			expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
 		});
 	});
 
@@ -344,7 +336,6 @@ describe('AI Assistant store', () => {
 			const assistantStore = useAssistantStore();
 
 			setAssistantEnabled(true);
-			expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
 			expect(assistantStore.hideAssistantFloatingButton).toBe(false);
 		});
 	});
@@ -359,7 +350,6 @@ describe('AI Assistant store', () => {
 			const assistantStore = useAssistantStore();
 
 			setAssistantEnabled(true);
-			expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
 			expect(assistantStore.hideAssistantFloatingButton).toBe(true);
 		});
 	});
