@@ -455,7 +455,8 @@ const filteredMembersData = computed(() => {
 	return { items: filtered, count: filtered.length };
 });
 
-const shouldShowSearch = computed(() => relationUsers.value.length >= 10);
+const SEARCH_THRESHOLD = 10;
+const shouldShowSearch = computed(() => relationUsers.value.length >= SEARCH_THRESHOLD);
 
 const debouncedSearch = useDebounceFn(() => {
 	membersTableState.value.page = 0; // Reset to first page on search
@@ -556,7 +557,7 @@ onMounted(() => {
 						i18n.baseText('projects.settings.projectMembers')
 					}}</label>
 				</h3>
-				<div v-if="relationUsers.length > 0" :class="$style.membersInputRow">
+				<div :class="[relationUsers.length > 0 ? $style.membersInputRow : '', 'mb-s']">
 					<N8nUserSelect
 						id="projectMembers"
 						:class="$style.userSelect"
@@ -585,22 +586,6 @@ onMounted(() => {
 						</template>
 					</N8nInput>
 				</div>
-				<N8nUserSelect
-					v-else
-					id="projectMembers"
-					:class="$style.userSelect"
-					class="mb-s"
-					size="large"
-					:users="usersList"
-					:current-user-id="usersStore.currentUser?.id"
-					:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
-					data-test-id="project-members-select"
-					@update:model-value="onAddMember"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nUserSelect>
 				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
 					<ProjectMembersTable
 						v-model:table-options="membersTableState"
@@ -618,12 +603,12 @@ onMounted(() => {
 			</fieldset>
 			<fieldset>
 				<h3 class="mb-xs">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
-				<small>{{ i18n.baseText('projects.settings.danger.message') }}</small>
-				<br />
+				<small :class="$style.danger">{{
+					i18n.baseText('projects.settings.danger.message')
+				}}</small>
 				<N8nButton
 					type="tertiary"
 					native-type="button"
-					class="mt-s"
 					data-test-id="project-settings-delete-button"
 					@click.stop.prevent="onDelete"
 					>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton
@@ -736,5 +721,10 @@ onMounted(() => {
 /* Ensure textarea uses regular UI font, not monospace */
 .projectDescriptionInput :global(textarea) {
 	font-family: var(--font-family);
+}
+
+.danger {
+	display: block;
+	padding-bottom: var(--spacing--l);
 }
 </style>
