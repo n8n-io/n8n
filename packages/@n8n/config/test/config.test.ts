@@ -348,6 +348,9 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		aiBuilder: {
+			apiKey: '',
+		},
 		tags: {
 			disabled: false,
 		},

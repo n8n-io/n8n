@@ -1,5 +1,5 @@
 import { h, nextTick } from 'vue';
-import { RouterLink } from 'vue-router';
+import type { Router } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -46,36 +46,50 @@ const pushStatusPriority: StatusPriority = {
 export const getPushPriorityByStatus = (status: SourceControlledFileStatus) =>
 	pushStatusPriority[status] ?? 0;
 
-const variablesToast = {
-	title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
-	message: h(
-		RouterLink,
-		{
-			to: { name: VIEWS.VARIABLES, query: { incomplete: 'true' } },
-			onClick: () => {
-				telemetry.track('User clicked review variables');
+const createVariablesToast = (router: Router) => {
+	const route = { name: VIEWS.VARIABLES, query: { incomplete: 'true' } };
+	const { href } = router.resolve(route);
+
+	return {
+		title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
+		message: h(
+			'a',
+			{
+				href,
+				onClick: (e: MouseEvent) => {
+					e.preventDefault();
+					telemetry.track('User clicked review variables');
+					void router.push(route);
+				},
 			},
-		},
-		() => i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
-	),
-	type: 'info' as const,
-	duration: 0,
+			i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
+		),
+		type: 'info' as const,
+		duration: 0,
+	};
 };
 
-const credentialsToast = {
-	title: i18n.baseText('settings.sourceControl.pull.upToDate.credentials.title'),
-	message: h(
-		RouterLink,
-		{
-			to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } },
-			onClick: () => {
-				telemetry.track('User clicked review credentials');
+const createCredentialsToast = (router: Router) => {
+	const route = { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } };
+	const { href } = router.resolve(route);
+
+	return {
+		title: i18n.baseText('settings.sourceControl.pull.upToDate.credentials.title'),
+		message: h(
+			'a',
+			{
+				href,
+				onClick: (e: MouseEvent) => {
+					e.preventDefault();
+					telemetry.track('User clicked review credentials');
+					void router.push(route);
+				},
 			},
-		},
-		() => i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
-	),
-	type: 'info' as const,
-	duration: 0,
+			i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
+		),
+		type: 'info' as const,
+		duration: 0,
+	};
 };
 
 const pullMessage = ({
@@ -126,6 +140,7 @@ const pullMessage = ({
 export const notifyUserAboutPullWorkFolderOutcome = async (
 	files: SourceControlledFile[],
 	toast: ReturnType<typeof useToast>,
+	router: Router,
 ) => {
 	if (!files?.length) {
 		toast.showMessage({
@@ -139,8 +154,8 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 	const { credential, tags, variables, workflow, folders } = groupBy(files, 'type');
 
 	const toastMessages = [
-		...(variables?.length ? [variablesToast] : []),
-		...(credential?.length ? [credentialsToast] : []),
+		...(variables?.length ? [createVariablesToast(router)] : []),
+		...(credential?.length ? [createCredentialsToast(router)] : []),
 		{
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
 			message: pullMessage({ credential, tags, variables, workflow, folders }),
@@ -155,7 +170,6 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		 * Credentials
 		 * Variables
 		 */
-		//
 		toast.showToast(message);
 		await nextTick();
 	}
