@@ -15,6 +15,18 @@ const paths = {
 
 const N8N_ENCRYPTION_KEY = 'very-secret-encryption-key';
 
+/**
+ * Discovers runner services in the docker-compose setup, where the name matches exactly `runners` or ends with `_runners`
+ */
+async function discoverRunnerServices(dockerComposeClient) {
+	const result = await dockerComposeClient.$('config', '--services');
+
+	return result.stdout
+		.trim()
+		.split('\n')
+		.filter((service) => service === 'runners' || service.endsWith('_runners'));
+}
+
 async function main() {
 	const [n8nSetupToUse] = argv._;
 	validateN8nSetup(n8nSetupToUse);
@@ -83,7 +95,8 @@ async function main() {
 	}
 
 	try {
-		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n');
+		const runnerServices = await discoverRunnerServices(dockerComposeClient);
+		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n', ...runnerServices);
 
 		const tags = Object.entries({
 			Env: envTag,
