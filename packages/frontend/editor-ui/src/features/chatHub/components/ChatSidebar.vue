@@ -49,11 +49,11 @@ onBeforeUnmount(() => {
 .inDrawer,
 .static {
 	height: 100%;
+	background-color: var(--color--background--light-2);
 }
 
 .static {
 	width: 240px;
-	background-color: var(--color--background--light-3);
 	position: relative;
 	overflow: auto;
 }

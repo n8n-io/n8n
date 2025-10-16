@@ -395,8 +395,8 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 <style lang="scss" module>
 .component {
 	width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) 0;
-	background-color: var(--color--background--light-3);
+	padding: var(--spacing--4xs);
+	background-color: var(--color--background--light-2);
 
 	&.isMobileDevice {
 		padding: 0;
@@ -406,7 +406,6 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 .scrollArea {
 	border: var(--border);
 	border-radius: var(--radius);
-	background-color: var(--color--background--light-2);
 
 	.isMobileDevice & {
 		border: none;

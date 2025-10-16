@@ -150,6 +150,7 @@ defineExpose({
 		resize: none;
 		padding: 16px 16px 48px;
 		box-shadow: 0 10px 24px 0 #0000002e;
+		background-color: var(--color--background--light-3);
 	}
 }
 

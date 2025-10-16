@@ -268,6 +268,8 @@ watch(
 
 .textarea textarea {
 	font-family: inherit;
+	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--lg);
 }
 
 .editActions {
