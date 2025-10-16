@@ -219,13 +219,14 @@ class TaskExecutor:
             compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
 
             filtered_builtins = TaskExecutor._filter_builtins(security_config)
+            custom_print = TaskExecutor._create_custom_print(print_args)
 
             result = []
             for index, item in enumerate(items):
                 globals = {
                     "__builtins__": filtered_builtins,
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_args),
+                    "print": custom_print,
                 }
 
                 exec(compiled_code, globals)
