@@ -18,7 +18,7 @@ const categorizePromptSchema = z.object({
 function buildCategorizationMessage(categorization: PromptCategorization): string {
 	const parts: string[] = [];
 
-	parts.push('Prompt categorized:');
+	parts.push('Prompt categorized');
 
 	if (categorization.techniques.length > 0) {
 		parts.push(`- Techniques: ${categorization.techniques.join(', ')}`);

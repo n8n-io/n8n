@@ -67,8 +67,7 @@ describe('CategorizePromptTool', () => {
 			const content = parseToolResult<ParsedToolContent>(result);
 			const message = content.update.messages[0]?.kwargs.content;
 
-			expectToolSuccess(content, 'Prompt categorized successfully');
-			expect(message).toContain('Use case: data_processing');
+			expectToolSuccess(content, 'Prompt categorized');
 			expect(message).toContain('Techniques: scraping_and_research, data_transformation');
 			expect(message).toContain('Confidence: 90%');
 
@@ -105,8 +104,7 @@ describe('CategorizePromptTool', () => {
 			const content = parseToolResult<ParsedToolContent>(result);
 			const message = content.update.messages[0]?.kwargs.content;
 
-			expectToolSuccess(content, 'Prompt categorized successfully');
-			expect(message).toContain('Use case: customer_support');
+			expectToolSuccess(content, 'Prompt categorized');
 			expect(message).toContain('Techniques: chatbot, notification');
 			expect(message).toContain('Confidence: 85%');
 		});
@@ -131,9 +129,8 @@ describe('CategorizePromptTool', () => {
 			const content = parseToolResult<ParsedToolContent>(result);
 			const message = content.update.messages[0]?.kwargs.content;
 
-			expectToolSuccess(content, 'Prompt categorized successfully');
+			expectToolSuccess(content, 'Prompt categorized');
 			expect(message).toContain('Techniques: data_transformation');
-			expect(message).not.toContain('Use case:');
 		});
 
 		it('should handle categorization with multiple techniques', async () => {
@@ -162,8 +159,7 @@ describe('CategorizePromptTool', () => {
 			const content = parseToolResult<ParsedToolContent>(result);
 			const message = content.update.messages[0]?.kwargs.content;
 
-			expectToolSuccess(content, 'Prompt categorized successfully');
-			expect(message).toContain('marketing_automation');
+			expectToolSuccess(content, 'Prompt categorized');
 			expect(message).toContain('scheduling');
 			expect(message).toContain('content_generation');
 			expect(message).toContain('notification');
