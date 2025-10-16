@@ -5,7 +5,6 @@ import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
-	DEBUG_PAYWALL_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
@@ -33,6 +32,7 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	VARIABLE_MODAL_KEY,
 } from '@/constants';
+import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/executions/executions.constants';
 import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
@@ -70,7 +70,7 @@ import CommunityPlusEnrollmentModal from '@/features/usage/components/CommunityP
 import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
-import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import DebugPaywallModal from '@/features/executions/components/DebugPaywallModal.vue';
 import DeleteFolderModal from '@/features/folders/components/DeleteFolderModal.vue';
 import MoveToFolderModal from '@/features/folders/components/MoveToFolderModal.vue';
 import DeleteUserModal from '@/features/users/components/DeleteUserModal.vue';

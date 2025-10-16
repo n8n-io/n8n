@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useToast } from '@/composables/useToast';
@@ -10,7 +10,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
-import { executionRetryMessage } from '@/utils/executionUtils';
+import { executionRetryMessage } from '@/features/executions/executions.utils';
 import type { ExecutionSummary, AnnotationVote } from 'n8n-workflow';
 import type { CommandGroup, CommandBarItem } from '../types';
 

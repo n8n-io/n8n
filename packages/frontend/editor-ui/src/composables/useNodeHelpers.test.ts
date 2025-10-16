@@ -19,6 +19,15 @@ import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { injectWorkflowState, useWorkflowState } from './useWorkflowState';
+
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
+	return {
+		...actual,
+		injectWorkflowState: vi.fn(),
+	};
+});
 
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
@@ -27,6 +36,23 @@ describe('useNodeHelpers()', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('initialization', () => {
+		it('should use provided workflowState and not inject', () => {
+			const workflowState = useWorkflowState();
+			vi.clearAllMocks();
+
+			useNodeHelpers({ workflowState });
+
+			expect(injectWorkflowState).not.toBeCalled();
+		});
+
+		it('should create workflowState if not provided', () => {
+			useNodeHelpers();
+
+			expect(injectWorkflowState).toBeCalled();
+		});
 	});
 
 	describe('isNodeExecutable()', () => {
