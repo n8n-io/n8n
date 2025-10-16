@@ -240,7 +240,7 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<{ response: string | IDataObject | INodeExecutionData[]; subExecutionId: string }> {
+	): Promise<{ response: IDataObject | INodeExecutionData[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
 			receivedData = await context.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
@@ -280,7 +280,7 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<string | IDataObject | INodeExecutionData[]> {
+	): Promise<IDataObject | INodeExecutionData[]> {
 		const source = context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = context.getWorkflowDataProxy(0);
 
