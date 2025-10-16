@@ -34,33 +34,6 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			default: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
 		},
 		{
-			displayName: 'Microsoft Graph API Base URL',
-			name: 'baseUrl',
-			type: 'options',
-			options: [
-				{
-					name: 'Global (https://graph.microsoft.com)',
-					value: 'https://graph.microsoft.com',
-				},
-				{
-					name: 'US Government (https://graph.microsoft.us)',
-					value: 'https://graph.microsoft.us',
-				},
-				{
-					name: 'US Government DOD (https://dod-graph.microsoft.us)',
-					value: 'https://dod-graph.microsoft.us',
-				},
-				{
-					name: 'China (https://microsoftgraph.chinacloudapi.cn)',
-					value: 'https://microsoftgraph.chinacloudapi.cn',
-				},
-			],
-			default: 'https://graph.microsoft.com',
-			required: true,
-			description:
-				'The base URL for the Microsoft Graph API. Select the correct endpoint for your cloud environment.',
-		},
-		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
