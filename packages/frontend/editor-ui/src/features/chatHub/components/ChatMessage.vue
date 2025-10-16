@@ -2,7 +2,6 @@
 import type { ChatMessage } from '@/features/chatHub/chat.types';
 import { N8nIcon, N8nInput, N8nButton } from '@n8n/design-system';
 import VueMarkdown from 'vue-markdown-render';
-import hljs from 'highlight.js/lib/core';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import ChatMessageActions from './ChatMessageActions.vue';
@@ -10,6 +9,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { ref, nextTick, watch } from 'vue';
 import { useTemplateRef } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
+import { useMarkdownOptions } from '@/features/chatHub/composables/useMarkdownOptions';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -68,18 +68,7 @@ function messageText(msg: ChatMessage) {
 	return msg.type === 'message' ? msg.text : `**Error:** ${msg.content}`;
 }
 
-const markdownOptions = {
-	highlight(str: string, lang: string) {
-		if (lang && hljs.getLanguage(lang)) {
-			try {
-				return hljs.highlight(str, { language: lang }).value;
-			} catch {}
-		}
-
-		return ''; // use external default escaping
-	},
-};
-
+const { markdownOptions, forceReRenderKey } = useMarkdownOptions();
 const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	vueMarkdownItInstance.use(markdownLink, {
 		attrs: {
@@ -143,6 +132,7 @@ watch(
 			<template v-else>
 				<div :class="$style.chatMessage">
 					<VueMarkdown
+						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="messageText(message)"
 						:options="markdownOptions"
@@ -263,8 +253,8 @@ watch(
 	gap: var(--spacing--2xs);
 }
 
-.textarea {
-	width: 100%;
+.textarea textarea {
+	font-family: inherit;
 }
 
 .editActions {
