@@ -620,11 +620,15 @@ export class DataTableRowsRepository {
 			this.dataSource.manager,
 			trx,
 			async (em) => {
+				console.log('NNN');
 				const [countQuery, query] = this.getManyQuery(dataTableId, dto, em);
+				console.log('MMM');
 				const data: DataTableRowsReturn = await query.select('*').getRawMany();
+				console.log('OOO');
 				const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 					count: number | string | null;
 				}>();
+				console.log('PPP');
 				const count =
 					typeof countResult?.count === 'number'
 						? countResult.count
