@@ -114,9 +114,9 @@ test.describe('Projects', () => {
 			// Initially should have only the owner (current user)
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 
-			// Verify save/cancel buttons are not visible initially (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
+			// Verify save/cancel buttons are disabled initially (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
 
 			// Delete button should always be visible
 			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
@@ -193,30 +193,6 @@ test.describe('Projects', () => {
 			await expect(currentUserRow.getByText('Admin')).toBeVisible();
 		});
 
-		test('should handle member search functionality when search input is used', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Search Test Project');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Search Test Project');
-
-			// Verify search input is visible
-			const searchInput = n8n.page.getByTestId('project-members-search');
-			await expect(searchInput).toBeVisible();
-
-			// Test search functionality - enter search term
-			await searchInput.fill('nonexistent');
-
-			// Since we only have the owner, searching for nonexistent should show no filtered results
-			// But the table structure should still be present
-			await expect(searchInput).toHaveValue('nonexistent');
-
-			// Clear search
-			await n8n.projectSettings.clearMemberSearch();
-			await expect(searchInput).toHaveValue('');
-		});
-
 		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
 			// Create a new project
 			const { projectId } = await n8n.projectComposer.createProject('Validation Test');
@@ -247,9 +223,9 @@ test.describe('Projects', () => {
 			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await expect(n8n.projectSettings.getTitle()).toHaveText('Unsaved Changes Test');
 
-			// Initially, save and cancel buttons should not be visible (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
+			// Initially, save and cancel buttons should be disabled (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
 
 			// Make a change to the project name
 			await n8n.projectSettings.fillProjectName('Modified Name');
@@ -258,15 +234,12 @@ test.describe('Projects', () => {
 			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeEnabled();
 			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeEnabled();
 
-			// Unsaved changes message should be visible
-			await expect(n8n.page.getByText('You have unsaved changes')).toBeVisible();
-
 			// Cancel changes
 			await n8n.projectSettings.clickCancelButton();
 
-			// Buttons should not be visible again (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
+			// Buttons should be disabled again (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
 		});
 
 		test('should display delete project section with warning @auth:owner', async ({ n8n }) => {

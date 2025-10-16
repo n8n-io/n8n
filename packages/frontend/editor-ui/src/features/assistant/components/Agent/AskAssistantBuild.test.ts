@@ -7,6 +7,7 @@ interface VueComponentInstance {
 		setupState?: {
 			onUserMessage?: (message: string) => Promise<void>;
 			showAskOwnerTooltip?: boolean;
+			showExecuteMessage?: boolean;
 		};
 	};
 }
@@ -19,6 +20,17 @@ vi.mock('@/composables/useWorkflowSaving', () => ({
 		getWorkflowDataToSave: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
+	}),
+}));
+
+// Mock ExecuteMessage component
+vi.mock('./ExecuteMessage.vue', () => ({
+	default: defineComponent({
+		name: 'ExecuteMessage',
+		emits: ['workflow-executed'],
+		setup() {
+			return () => h('div', { 'data-test-id': 'execute-message-component' }, 'Execute and refine');
+		},
 	}),
 }));
 
@@ -36,7 +48,7 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 			'showAskOwnerTooltip',
 		],
 		emits: ['message', 'feedback', 'stop', 'upgrade-click'],
-		setup(props, { emit, expose }) {
+		setup(props, { emit, expose, slots }) {
 			const feedbackText = { value: '' };
 
 			const sendMessage = (message: string) => {
@@ -44,7 +56,7 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 			};
 			expose({ sendMessage });
 
-			// Create a more realistic mock that includes rating buttons when needed
+			// Create a more realistic mock that includes rating buttons and slots when needed
 			return () => {
 				const lastMessage = props.messages?.[props.messages.length - 1];
 				const showRating = lastMessage?.showRating;
@@ -74,6 +86,8 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 								}),
 							]
 						: null,
+					// Render messagesFooter slot if it exists
+					slots.messagesFooter?.(),
 				]);
 			};
 		},
@@ -1115,6 +1129,175 @@ describe('AskAssistantBuild', () => {
 			// Verify second generation also saved
 			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(2);
 			expect(builderStore.initialGeneration).toBe(false);
+		});
+	});
+
+	describe('Execute and refine section visibility', () => {
+		it('should hide ExecuteMessage component when there is an error after workflow update', async () => {
+			// Setup: workflow with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { queryByTestId } = renderComponent();
+
+			// Simulate workflow update message followed by error
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create a workflow' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'workflow-updated',
+						codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+					},
+					{ id: '3', role: 'assistant', type: 'error', content: 'An error occurred' },
+				],
+			});
+
+			await flushPromises();
+
+			// Verify the ExecuteMessage component should NOT be rendered
+			expect(queryByTestId('execute-message-component')).not.toBeInTheDocument();
+		});
+
+		it('should show ExecuteMessage component when there is NO error after workflow update', async () => {
+			// Setup: workflow with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { queryByTestId } = renderComponent();
+
+			// Simulate workflow update message WITHOUT error
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create a workflow' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'workflow-updated',
+						codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+					},
+					{ id: '3', role: 'assistant', type: 'text', content: 'Workflow created successfully' },
+				],
+			});
+
+			await flushPromises();
+
+			// Verify the ExecuteMessage component SHOULD be rendered
+			expect(queryByTestId('execute-message-component')).toBeInTheDocument();
+		});
+
+		it('should show ExecuteMessage component when error occurs BEFORE workflow update', async () => {
+			// Setup: workflow with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { queryByTestId } = renderComponent();
+
+			// Simulate error BEFORE workflow update
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create a workflow' },
+					{ id: '2', role: 'assistant', type: 'error', content: 'Initial error' },
+					{
+						id: '3',
+						role: 'assistant',
+						type: 'workflow-updated',
+						codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+					},
+					{ id: '4', role: 'assistant', type: 'text', content: 'Recovered and created workflow' },
+				],
+			});
+
+			await flushPromises();
+
+			// Verify the ExecuteMessage component SHOULD be rendered because error was before workflow update
+			expect(queryByTestId('execute-message-component')).toBeInTheDocument();
+		});
+
+		it('should hide ExecuteMessage component when using update_node_parameters tool followed by error', async () => {
+			// Setup: workflow with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { queryByTestId } = renderComponent();
+
+			// Simulate update_node_parameters tool call followed by error
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Update the HTTP node parameters' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'tool',
+						toolName: 'update_node_parameters',
+						status: 'completed',
+						updates: [],
+					},
+					{ id: '3', role: 'assistant', type: 'error', content: 'Failed to update parameters' },
+				],
+			});
+
+			await flushPromises();
+
+			// Verify the ExecuteMessage component should NOT be rendered
+			expect(queryByTestId('execute-message-component')).not.toBeInTheDocument();
 		});
 	});
 

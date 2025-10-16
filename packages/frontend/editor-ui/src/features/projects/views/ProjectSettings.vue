@@ -455,6 +455,16 @@ const filteredMembersData = computed(() => {
 	return { items: filtered, count: filtered.length };
 });
 
+const SEARCH_THRESHOLD = 10;
+const shouldShowSearch = computed(() => relationUsers.value.length >= SEARCH_THRESHOLD);
+
+// Clear search when input becomes hidden to avoid filtering with no way to clear
+watch(shouldShowSearch, (show) => {
+	if (!show && search.value) {
+		search.value = '';
+	}
+});
+
 const debouncedSearch = useDebounceFn(() => {
 	membersTableState.value.page = 0; // Reset to first page on search
 }, 300);
@@ -482,9 +492,29 @@ onMounted(() => {
 	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
-			<N8nText tag="h1" size="xlarge" class="pt-xs pb-m">
-				{{ i18n.baseText('projects.settings.info') }}
-			</N8nText>
+			<div :class="$style.headerRow">
+				<N8nText tag="h1" size="xlarge" class="pt-xs pb-m">
+					{{ i18n.baseText('projects.settings.info') }}
+				</N8nText>
+				<div :class="$style.headerButtons">
+					<N8nButton
+						type="secondary"
+						native-type="button"
+						:disabled="!isDirty"
+						class="mr-2xs"
+						data-test-id="project-settings-cancel-button"
+						@click.stop.prevent="onCancel"
+						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
+					>
+					<N8nButton
+						:disabled="!isValid || !isDirty"
+						type="primary"
+						data-test-id="project-settings-save-button"
+						@click.stop.prevent="onSubmit"
+						>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
+					>
+				</div>
+			</div>
 		</div>
 		<form @submit.prevent="onSubmit">
 			<fieldset>
@@ -528,50 +558,29 @@ onMounted(() => {
 					@validate="isValid = $event"
 				/>
 			</fieldset>
-			<fieldset v-if="isDirty" :class="$style.buttons">
-				<div>
-					<small class="mr-2xs">{{
-						i18n.baseText('projects.settings.message.unsavedChanges')
-					}}</small>
-					<N8nButton
-						type="secondary"
-						native-type="button"
-						class="mr-2xs"
-						data-test-id="project-settings-cancel-button"
-						@click.stop.prevent="onCancel"
-						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
-					>
-				</div>
-				<N8nButton
-					:disabled="!isValid"
-					type="primary"
-					data-test-id="project-settings-save-button"
-					>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
-				>
-			</fieldset>
 			<fieldset>
 				<h3>
 					<label for="projectMembers">{{
 						i18n.baseText('projects.settings.projectMembers')
 					}}</label>
 				</h3>
-				<N8nUserSelect
-					id="projectMembers"
-					:class="$style.userSelect"
-					class="mb-s"
-					size="large"
-					:users="usersList"
-					:current-user-id="usersStore.currentUser?.id"
-					:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
-					data-test-id="project-members-select"
-					@update:model-value="onAddMember"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nUserSelect>
-				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
+				<div :class="[$style.membersInputRow, 'mb-s']">
+					<N8nUserSelect
+						id="projectMembers"
+						:class="$style.userSelect"
+						size="large"
+						:users="usersList"
+						:current-user-id="usersStore.currentUser?.id"
+						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
+						data-test-id="project-members-select"
+						@update:model-value="onAddMember"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nUserSelect>
 					<N8nInput
+						v-if="shouldShowSearch"
 						:class="$style.search"
 						:model-value="search"
 						:placeholder="i18n.baseText('projects.settings.members.search.placeholder')"
@@ -583,6 +592,8 @@ onMounted(() => {
 							<N8nIcon icon="search" />
 						</template>
 					</N8nInput>
+				</div>
+				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
 					<ProjectMembersTable
 						v-model:table-options="membersTableState"
 						data-test-id="project-members-table"
@@ -598,13 +609,14 @@ onMounted(() => {
 				</div>
 			</fieldset>
 			<fieldset>
-				<h3 class="mb-xs">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
-				<small>{{ i18n.baseText('projects.settings.danger.message') }}</small>
-				<br />
+				<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
+				<small :class="$style.danger">{{
+					i18n.baseText('projects.settings.danger.message')
+				}}</small>
 				<N8nButton
 					type="tertiary"
+					size="large"
 					native-type="button"
-					class="mt-s"
 					data-test-id="project-settings-delete-button"
 					@click.stop.prevent="onDelete"
 					>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton
@@ -664,14 +676,29 @@ onMounted(() => {
 	padding: var(--spacing--lg) var(--spacing--2xl) 0;
 }
 
+.headerRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--spacing--md);
+}
+
+.headerButtons {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .upgrade {
 	cursor: pointer;
 }
 
-.buttons {
+.membersInputRow {
 	display: flex;
-	justify-content: flex-start;
+	justify-content: space-between;
 	align-items: center;
+	gap: var(--spacing--md);
+	margin-bottom: var(--spacing--sm);
 }
 
 .membersTableContainer {
@@ -679,8 +706,8 @@ onMounted(() => {
 }
 
 .search {
-	max-width: var(--project-field-width);
-	margin-bottom: var(--spacing--sm);
+	max-width: 300px;
+	flex-shrink: 0;
 }
 
 .projectName {
@@ -702,5 +729,10 @@ onMounted(() => {
 /* Ensure textarea uses regular UI font, not monospace */
 .projectDescriptionInput :global(textarea) {
 	font-family: var(--font-family);
+}
+
+.danger {
+	display: block;
+	padding-bottom: var(--spacing--lg);
 }
 </style>

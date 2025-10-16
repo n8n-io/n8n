@@ -3170,7 +3170,6 @@
 	"projects.settings.name": "Icon and name",
 	"projects.settings.description": "Description",
 	"projects.settings.projectMembers": "Project members",
-	"projects.settings.message.unsavedChanges": "You have unsaved changes",
 	"projects.settings.danger.message": "When deleting a project, you can also choose to move all workflows and credentials to another project.",
 	"projects.settings.danger.title": "Danger zone",
 	"projects.settings.danger.deleteProject": "Delete this project",
