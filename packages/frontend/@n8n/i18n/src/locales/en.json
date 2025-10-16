@@ -262,6 +262,7 @@
 	"binaryDataDisplay.backToList": "Back to list",
 	"binaryDataDisplay.backToOverviewPage": "Back to overview page",
 	"binaryDataDisplay.noDataFoundToDisplay": "No data found to display",
+	"binaryDataDisplay.noCsvDataToDisplay": "No CSV data to display",
 	"binaryDataDisplay.yourBrowserDoesNotSupport": "Your browser does not support the video element. Kindly update it to latest version.",
 	"chat.hide": "Hide chat",
 	"chat.open": "Open chat",
