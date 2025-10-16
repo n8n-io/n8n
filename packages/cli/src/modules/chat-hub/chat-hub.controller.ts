@@ -5,10 +5,11 @@ import {
 	ChatHubConversationResponse,
 	ChatHubEditMessageRequest,
 	ChatHubRegenerateMessageRequest,
+	ChatHubChangeConversationTitleRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Post, Body, GlobalScope, Get } from '@n8n/decorators';
+import { RestController, Post, Body, GlobalScope, Get, Delete } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
@@ -183,5 +184,26 @@ export class ChatHubController {
 
 			if (!res.writableEnded) res.end();
 		}
+	}
+
+	@Post('/conversations/:id/rename')
+	@GlobalScope('chatHub:message')
+	async updateConversationTitle(
+		req: AuthenticatedRequest<{ id: string }>,
+		_res: Response,
+		@Body payload: ChatHubChangeConversationTitleRequest,
+	): Promise<ChatHubConversationResponse> {
+		await this.chatService.updateSessionTitle(req.user.id, req.params.id, payload.title);
+
+		return await this.chatService.getConversation(req.user.id, req.params.id);
+	}
+
+	@Delete('/conversations/:id')
+	@GlobalScope('chatHub:message')
+	async deleteConversation(
+		req: AuthenticatedRequest<{ id: string }>,
+		_res: Response,
+	): Promise<void> {
+		await this.chatService.deleteSession(req.user.id, req.params.id);
 	}
 }
