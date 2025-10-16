@@ -10,18 +10,14 @@ import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 import { useChatStore } from './chat.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
-import {
-	type ChatMessage as ChatMessageType,
-	credentialsMapSchema,
-	type CredentialsMap,
-	type Suggestion,
-} from './chat.types';
+import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
 import {
 	chatHubConversationModelSchema,
 	type ChatHubProvider,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
+	type ChatHubMessageDto,
 } from '@n8n/api-types';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import {
@@ -113,7 +109,7 @@ const mergedCredentials = computed(() => ({
 	...selectedCredentials.value,
 }));
 
-const chatMessages = computed(() => chatStore.messagesBySession[sessionId.value] ?? []);
+const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const isNewChat = computed(() => route.name === CHAT_VIEW);
 const inputPlaceholder = computed(() => {
 	if (!selectedModel.value) {
@@ -192,7 +188,7 @@ watch(
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
 
-		if (!isNew && !chatStore.messagesBySession[id]) {
+		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
 			} catch (error) {
@@ -277,8 +273,8 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleEditMessage(message: ChatMessageType) {
-	if (chatStore.isResponding || message.type === 'error' || !selectedModel.value) {
+function handleEditMessage(message: ChatHubMessageDto) {
+	if (chatStore.isResponding || message.type !== 'human' || !selectedModel.value) {
 		return;
 	}
 
@@ -288,7 +284,7 @@ function handleEditMessage(message: ChatMessageType) {
 		return;
 	}
 
-	chatStore.editMessage(sessionId.value, message.id, message.text, selectedModel.value, {
+	chatStore.editMessage(sessionId.value, message.id, message.content, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -297,8 +293,8 @@ function handleEditMessage(message: ChatMessageType) {
 	editingMessageId.value = undefined;
 }
 
-function handleRegenerateMessage(message: ChatMessageType) {
-	if (chatStore.isResponding || message.type === 'error' || !selectedModel.value) {
+function handleRegenerateMessage(message: ChatHubMessageDto) {
+	if (chatStore.isResponding || message.type !== 'ai' || !selectedModel.value) {
 		return;
 	}
 

@@ -219,12 +219,15 @@ class TaskExecutor:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
             compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
 
+            filtered_builtins = TaskExecutor._filter_builtins(security_config)
+            custom_print = TaskExecutor._create_custom_print(print_args)
+
             result = []
             for index, item in enumerate(items):
                 globals = {
-                    "__builtins__": TaskExecutor._filter_builtins(security_config),
+                    "__builtins__": filtered_builtins,
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_args),
+                    "print": custom_print,
                 }
 
                 exec(compiled_code, globals)
@@ -252,7 +255,7 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
-    
+
     @staticmethod
     def _extract_json_data_per_item(user_output):
         if not isinstance(user_output, dict):
@@ -427,11 +430,12 @@ class TaskExecutor:
             safe_modules.update(security_config.external_allow)
 
         # keep modules marked as safe and submodules of those
+        safe_prefixes = [safe + "." for safe in safe_modules]
         modules_to_remove = [
             name
             for name in sys.modules.keys()
             if name not in safe_modules
-            and not any(name.startswith(safe + ".") for safe in safe_modules)
+            and not any(name.startswith(prefix) for prefix in safe_prefixes)
         ]
 
         for module_name in modules_to_remove:
