@@ -54,39 +54,20 @@ type ToolCallRequest = {
 };
 
 async function createEngineRequests(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
 	tools: Array<DynamicStructuredTool | Tool>,
 ) {
-	const connectedSubnodes = ctx.getParentNodes(ctx.getNode().name, {
-		connectionType: NodeConnectionTypes.AiTool,
-		depth: 1,
-	});
-
-	// Build a map of tool names to their source nodes from metadata
-	const toolToNodeMap = new Map<string, string>();
-	for (const tool of tools) {
-		if (tool.metadata?.isFromToolkit && tool.metadata?.sourceNodeName) {
-			toolToNodeMap.set(tool.name, tool.metadata.sourceNodeName as string);
-		}
-	}
-
 	return toolCalls.map((toolCall) => {
 		// First try to get from metadata (for toolkit tools)
-		let nodeName = toolToNodeMap.get(toolCall.tool);
-		const isFromToolkit = !!nodeName;
+		const foundTool = tools.find((tool) => tool.name === toolCall.tool);
 
-		// Fall back to the old method for non-toolkit tools
-		if (!nodeName) {
-			nodeName =
-				connectedSubnodes.find(
-					(node: { name: string }) => nodeNameToToolName(node.name) === toolCall.tool,
-				)?.name ?? toolCall.tool;
-		}
+		if (!foundTool) return;
+
+		const nodeName = foundTool.metadata?.sourceNodeName;
 
 		// For toolkit tools, include the tool name so the node knows which tool to execute
-		const input = isFromToolkit
+		const input = foundTool.metadata?.isFromToolkit
 			? { ...toolCall.toolInput, tool: toolCall.tool }
 			: toolCall.toolInput;
 
@@ -495,7 +476,7 @@ export async function toolsAgentExecute(
 
 				// If result contains tool calls, build the request object like the normal flow
 				if (result.toolCalls && result.toolCalls.length > 0) {
-					const actions = await createEngineRequests(this, result.toolCalls, itemIndex, tools);
+					const actions = await createEngineRequests(result.toolCalls, itemIndex, tools);
 
 					return {
 						actions,
@@ -545,7 +526,7 @@ export async function toolsAgentExecute(
 				}
 
 				// If response contains tool calls, we need to return this in the right format
-				const actions = await createEngineRequests(this, modelResponse, itemIndex, tools);
+				const actions = await createEngineRequests(modelResponse, itemIndex, tools);
 
 				return {
 					actions,

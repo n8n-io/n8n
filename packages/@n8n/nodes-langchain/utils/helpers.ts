@@ -216,20 +216,20 @@ export const getConnectedTools = async (
 	});
 
 	const connectedTools = (toolkitConnections ?? []).flatMap((toolOrToolkit, index) => {
+		const sourceNode = parentNodes[index];
 		if (toolOrToolkit instanceof Toolkit) {
 			const tools = toolOrToolkit.getTools() as Tool[];
-			// Get the source node for this toolkit
-			const sourceNode = parentNodes[index];
-
 			// Add metadata to each tool from the toolkit
 			return tools.map((tool) => {
-				if (!tool.metadata) {
-					tool.metadata = {};
-				}
+				tool.metadata ??= {};
 				tool.metadata.isFromToolkit = true;
 				tool.metadata.sourceNodeName = sourceNode?.name;
 				return tool;
 			});
+		} else {
+			toolOrToolkit.metadata ??= {};
+			toolOrToolkit.metadata.isFromToolkit = false;
+			toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
 		}
 
 		return toolOrToolkit;
