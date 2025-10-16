@@ -9,6 +9,8 @@ import {
 	regenerateMessageApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
+	updateConversationTitleApi,
+	deleteConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -272,20 +274,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
-	async function renameSession(sessionId: string, name: string) {
-		// Optimistic update
-		sessions.value = sessions.value.map((session) =>
-			session.id === sessionId ? { ...session, title: name } : session,
-		);
+	async function renameSession(sessionId: ChatSessionId, title: string) {
+		const updated = await updateConversationTitleApi(rootStore.restApiContext, sessionId, title);
 
-		// TODO: call the endpoint
+		sessions.value = sessions.value.map((session) =>
+			session.id === sessionId ? updated.session : session,
+		);
 	}
 
-	async function deleteSession(sessionId: string) {
-		// Optimistic update
-		sessions.value = sessions.value.filter((session) => session.id !== sessionId);
+	async function deleteSession(sessionId: ChatSessionId) {
+		await deleteConversationApi(rootStore.restApiContext, sessionId);
 
-		// TODO: call the endpoint
+		sessions.value = sessions.value.filter((session) => session.id !== sessionId);
 	}
 
 	return {
