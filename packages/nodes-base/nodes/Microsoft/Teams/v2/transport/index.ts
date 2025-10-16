@@ -23,6 +23,7 @@ export async function microsoftApiRequest(
 	// Only try to get node parameter in IExecuteFunctions context
 	let nodeBaseParam = '';
 	try {
+		// Check if this is an IExecuteFunctions context by checking for getNodeParameter method
 		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
 			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
 		}
