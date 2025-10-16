@@ -24,7 +24,7 @@ const greetings = computed(
 
 <template>
 	<div :class="[$style.starter, { [$style.isMobileDevice]: isMobileDevice }]">
-		<Logo size="large" :release-channel="settingsStore.settings.releaseChannel" />
+		<Logo size="large" collapsed :release-channel="settingsStore.settings.releaseChannel" />
 
 		<div :class="$style.header">
 			<N8nHeading tag="h2" bold size="xlarge">

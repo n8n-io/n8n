@@ -181,28 +181,34 @@ onMounted(async () => {
 });
 
 function onSubmit(message: string) {
-	if (!message.trim() || chatStore.isResponding || !selectedModel.value) {
+	if (!message.trim() || chatStore.isResponding) {
 		return;
 	}
 
-	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
-
-	if (!credentialsId) {
-		return;
-	}
+	const credentialsId = selectedModel.value
+		? mergedCredentials.value[selectedModel.value.provider]
+		: undefined;
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(sessionId.value, message, selectedModel.value, {
-		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId,
-			name: '',
-		},
-	});
+	chatStore.sendMessage(
+		sessionId.value,
+		message,
+		selectedModel.value,
+		selectedModel.value && credentialsId
+			? {
+					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+						id: credentialsId,
+						name: '',
+					},
+				}
+			: null,
+	);
 
 	inputRef.value?.setText('');
 
 	if (isNewSession.value) {
+		// TODO: this should not happen when submit fails
 		void router.push({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId.value } });
 	}
 }

@@ -290,8 +290,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
-		model: ChatHubConversationModel,
-		credentials: ChatHubSendMessageRequest['credentials'],
+		model: ChatHubConversationModel | null,
+		credentials: ChatHubSendMessageRequest['credentials'] | null,
 	) {
 		const messageId = uuidv4();
 		const replyId = uuidv4();
@@ -321,6 +321,31 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			responses: [],
 			alternatives: [],
 		});
+
+		if (!model || !credentials) {
+			addMessage(sessionId, {
+				id: replyId,
+				sessionId,
+				type: 'ai',
+				name: 'AI',
+				content: '**ERROR:** Select a model to start a conversation.',
+				provider: null,
+				model: null,
+				workflowId: null,
+				executionId: null,
+				state: 'active',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				previousMessageId: messageId,
+				turnId: null,
+				retryOfMessageId: null,
+				revisionOfMessageId: null,
+				runIndex: 0,
+				responses: [],
+				alternatives: [],
+			});
+			return;
+		}
 
 		sendMessageApi(
 			rootStore.restApiContext,
