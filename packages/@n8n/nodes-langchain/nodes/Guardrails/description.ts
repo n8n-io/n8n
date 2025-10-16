@@ -11,7 +11,7 @@ const THRESHOLD_OPTION: INodeProperties = {
 	displayName: 'Threshold',
 	name: 'threshold',
 	type: 'number',
-	default: 0.5,
+	default: '',
 	description: 'Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)',
 };
 

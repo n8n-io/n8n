@@ -9,6 +9,7 @@ export class Guardrails implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const model = await getChatModel.call(this);
+		const violationBehavior = this.getNodeParameter('violationBehavior', 0) as string;
 
 		const failedItems: INodeExecutionData[] = [];
 		const passedItems: INodeExecutionData[] = [];
@@ -30,6 +31,9 @@ export class Guardrails implements INodeType {
 			}
 		}
 
-		return [passedItems, failedItems];
+		if (violationBehavior === 'routeToFailOutput') {
+			return [passedItems, failedItems];
+		}
+		return [passedItems];
 	}
 }
