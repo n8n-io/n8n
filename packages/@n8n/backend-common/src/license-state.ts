@@ -167,6 +167,12 @@ export class LicenseState {
 		return this.isLicensed('feat:workflowDiffs');
 	}
 
+	isProvisioningLicensed() {
+		return (
+			this.isLicensed('feat:saml') || this.isLicensed('feat:oidc') || this.isLicensed('feat:ldap')
+		);
+	}
+
 	// --------------------
 	//      integers
 	// --------------------

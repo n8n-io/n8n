@@ -1,0 +1,52 @@
+import type { LicenseState } from '@n8n/backend-common';
+import { mock } from 'jest-mock-extended';
+
+import { ProvisioningController } from '../provisioning.controller.ee';
+import { ProvisioningService } from '@/provisioning.ee/provisioning.service.ee';
+import { Response } from 'express';
+import { AuthenticatedRequest } from '@n8n/db';
+import { ProvisioningConfigDto } from '@n8n/api-types';
+
+const provisioningService = mock<ProvisioningService>();
+const licenseState = mock<LicenseState>();
+
+const controller = new ProvisioningController(provisioningService, licenseState);
+
+describe('ProvisioningController', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	describe('getConfig', () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>({
+			json: jest.fn().mockReturnThis(),
+			status: jest.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.getConfig(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should return the provisioning config', async () => {
+			const configResponse: ProvisioningConfigDto = {
+				scopesProvisionInstanceRole: true,
+				scopesProvisionProjectRoles: true,
+				scopesProvisioningFrequency: 'every_login',
+				scopesName: 'n8n_test_scope',
+				scopesInstanceRoleClaimName: 'n8n_test_instance_role',
+				scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			provisioningService.getConfig.mockResolvedValue(configResponse);
+
+			const config = await controller.getConfig(req, res);
+
+			expect(config).toEqual(configResponse);
+		});
+	});
+});
