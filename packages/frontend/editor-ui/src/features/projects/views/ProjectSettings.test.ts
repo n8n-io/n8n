@@ -8,7 +8,6 @@ import {
 	type MockedStore,
 	useEmitters,
 	type Emitter,
-	waitAllPromises,
 } from '@/__tests__/utils';
 import ProjectSettings from './ProjectSettings.vue';
 import { useProjectsStore } from '../projects.store';
@@ -288,7 +287,7 @@ describe('ProjectSettings', () => {
 		await nextTick();
 
 		await userEvent.click(r1.getByTestId('project-settings-delete-confirm-button'));
-		await waitAllPromises();
+		await nextTick();
 		expect(projectsStore.deleteProject).toHaveBeenCalledWith('123', expect.any(String));
 		expect(mockRouterPush).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 
@@ -307,7 +306,7 @@ describe('ProjectSettings', () => {
 		await userEvent.click(deleteButton2);
 		await nextTick();
 		await userEvent.click(r2.getByTestId('project-settings-delete-confirm-button'));
-		await waitAllPromises();
+		await nextTick();
 		expect(projectsStore.deleteProject).toHaveBeenCalledWith('123', undefined);
 	});
 
@@ -436,19 +435,93 @@ describe('ProjectSettings', () => {
 				expect.objectContaining({ project_id: '123', target_user_id: '2' }),
 			);
 		});
-		it('filters members via search and saves', async () => {
-			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId, queryByTestId } = renderComponent();
+		it('filters members by search term', async () => {
+			// Set up project with 10+ members to make search visible
+			const mockProjectWith10Members: Project = {
+				...projectsStore.currentProject!,
+				relations: [
+					{
+						id: '1',
+						firstName: 'Alice',
+						lastName: 'Smith',
+						email: 'alice@example.com',
+						role: 'project:editor',
+					},
+					{
+						id: '2',
+						firstName: 'Bob',
+						lastName: 'Johnson',
+						email: 'bob@example.com',
+						role: 'project:editor',
+					},
+					{
+						id: '3',
+						firstName: 'Charlie',
+						lastName: 'Williams',
+						email: 'charlie@example.com',
+						role: 'project:editor',
+					},
+					...Array.from({ length: 7 }, (_, i) => ({
+						id: String(i + 4),
+						firstName: `User${i + 4}`,
+						lastName: 'Test',
+						email: `user${i + 4}@example.com`,
+						role: 'project:editor',
+					})),
+				],
+			};
+			// Also add these users to usersById so relationUsers computed can find them
+			usersStore.allUsers = [
+				createUser({ id: '1', firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com' }),
+				createUser({ id: '2', firstName: 'Bob', lastName: 'Johnson', email: 'bob@example.com' }),
+				createUser({
+					id: '3',
+					firstName: 'Charlie',
+					lastName: 'Williams',
+					email: 'charlie@example.com',
+				}),
+				...Array.from({ length: 7 }, (_, i) =>
+					createUser({
+						id: String(i + 4),
+						firstName: `User${i + 4}`,
+						lastName: 'Test',
+						email: `user${i + 4}@example.com`,
+					}),
+				),
+			];
+			usersStore.usersById = Object.fromEntries(usersStore.allUsers.map((u) => [u.id, u]));
+			projectsStore.currentProject = mockProjectWith10Members;
+
+			const wrapper = renderComponent();
 			await nextTick();
-			expect(getByTestId('members-count').textContent).toBe('1');
-			// Search input only appears with 10+ members, so it shouldn't be visible with 1 member
-			expect(queryByTestId('project-members-search')).toBeNull();
-			// Make a minor change to mark the form dirty so save is enabled
-			const nameInput = getByTestId('project-settings-name-input');
-			await userEvent.type(nameInput.querySelector('input')!, ' ');
-			await userEvent.click(getByTestId('project-settings-save-button'));
+
+			// Search input should be visible with 10+ members
+			const searchContainer = wrapper.getByTestId('project-members-search');
+			const searchInput = searchContainer.querySelector('input')!;
+
+			// Initially should show all 10 members
+			expect(wrapper.getByTestId('members-count').textContent).toBe('10');
+
+			// Search for "Alice"
+			await userEvent.type(searchInput, 'Alice');
 			await nextTick();
-			expect(updateSpy).toHaveBeenCalled();
+
+			// Should now show only 1 member (Alice)
+			expect(wrapper.getByTestId('members-count').textContent).toBe('1');
+
+			// Clear search
+			await userEvent.clear(searchInput);
+			await nextTick();
+
+			// Should show all 10 members again
+			expect(wrapper.getByTestId('members-count').textContent).toBe('10');
+
+			// Search by email domain
+			await userEvent.type(searchInput, 'bob@');
+			await nextTick();
+
+			// Should show only Bob
+			expect(wrapper.getByTestId('members-count').textContent).toBe('1');
 		});
 
 		it('inline role change saves immediately with telemetry', async () => {
@@ -563,7 +636,7 @@ describe('ProjectSettings', () => {
 			const searchContainer = wrapper.getByTestId('project-members-search');
 			const searchInput = searchContainer.querySelector('input')!;
 			await userEvent.type(searchInput, 'john');
-			await new Promise((r) => setTimeout(r, 350));
+			await nextTick();
 			// unmount first to avoid duplicate elements
 			wrapper.unmount();
 			const wrapper2 = renderComponent();
@@ -595,7 +668,7 @@ describe('ProjectSettings', () => {
 
 			// Type search term and verify it filters
 			await userEvent.type(searchInput, 'User1');
-			await new Promise((r) => setTimeout(r, 350));
+			await nextTick();
 			expect(searchInput.value).toBe('User1');
 
 			// Remove member via inline action to drop below threshold
@@ -617,7 +690,6 @@ describe('ProjectSettings', () => {
 			await nextTick();
 			emitters.n8nIconPicker.emit('update:model-value', { type: 'icon', value: 'zap' });
 			await nextTick();
-			await waitAllPromises();
 			expect(updateSpy).toHaveBeenCalled();
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});

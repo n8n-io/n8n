@@ -193,30 +193,6 @@ test.describe('Projects', () => {
 			await expect(currentUserRow.getByText('Admin')).toBeVisible();
 		});
 
-		test('should handle member search functionality when search input is used', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Search Test Project');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Search Test Project');
-
-			// Verify search input is visible
-			const searchInput = n8n.page.getByTestId('project-members-search');
-			await expect(searchInput).toBeVisible();
-
-			// Test search functionality - enter search term
-			await searchInput.fill('nonexistent');
-
-			// Since we only have the owner, searching for nonexistent should show no filtered results
-			// But the table structure should still be present
-			await expect(searchInput).toHaveValue('nonexistent');
-
-			// Clear search
-			await n8n.projectSettings.clearMemberSearch();
-			await expect(searchInput).toHaveValue('');
-		});
-
 		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
 			// Create a new project
 			const { projectId } = await n8n.projectComposer.createProject('Validation Test');
