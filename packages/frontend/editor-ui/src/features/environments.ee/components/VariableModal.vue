@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { VARIABLE_MODAL_KEY } from '@/constants';
+import { VARIABLE_MODAL_KEY } from '../environments.constants';
 import { computed, reactive, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -16,8 +16,8 @@ import {
 	N8nIcon,
 } from '@n8n/design-system';
 import type { Rule, RuleGroup } from '@/Interface';
-import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
-import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
+import type { EnvironmentVariable } from '../environments.types';
+import { useEnvironmentsStore } from '../environments.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
