@@ -485,7 +485,7 @@ export class WorkflowBuilderAgentClaude {
 					'mcp__workflow-builder__get_node_details',
 					'mcp__workflow-builder__get_workflow_context',
 				],
-				model: 'sonnet',
+				model: 'haiku-4-5-20251001u',
 			},
 
 			builder: {
@@ -497,7 +497,7 @@ export class WorkflowBuilderAgentClaude {
 					'mcp__workflow-builder__connect_nodes',
 					'mcp__workflow-builder__get_workflow_context',
 				],
-				model: 'sonnet',
+				model: 'haiku-4-5-20251001u',
 			},
 
 			configurator: {
@@ -508,7 +508,7 @@ export class WorkflowBuilderAgentClaude {
 					'mcp__workflow-builder__set_node_parameters',
 					'mcp__workflow-builder__get_workflow_context',
 				],
-				model: 'sonnet',
+				model: 'haiku-4-5-20251001u',
 			},
 		};
 	}
