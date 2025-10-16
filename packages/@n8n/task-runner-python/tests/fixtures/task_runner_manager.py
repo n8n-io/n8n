@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -16,7 +17,6 @@ from tests.fixtures.test_constants import (
     GRACEFUL_SHUTDOWN_TIMEOUT,
     TASK_TIMEOUT,
 )
-from tests.integration.test_port import find_free_port
 
 
 class TaskRunnerManager:
@@ -34,7 +34,7 @@ class TaskRunnerManager:
         self.subprocess: asyncio.subprocess.Process | None = None
         self.stdout_buffer: list[str] = []
         self.stderr_buffer: list[str] = []
-        self.health_check_port = find_free_port()
+        self.health_check_port: int | None = None
 
     async def start(self):
         project_root = Path(__file__).parent.parent.parent
@@ -45,7 +45,7 @@ class TaskRunnerManager:
         env_vars[ENV_TASK_BROKER_URI] = self.task_broker_url
         env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
         env_vars[ENV_HEALTH_CHECK_SERVER_ENABLED] = "true"
-        env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = str(self.health_check_port)
+        env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = "0"
         if self.graceful_shutdown_timeout is not None:
             env_vars[ENV_GRACEFUL_SHUTDOWN_TIMEOUT] = str(
                 self.graceful_shutdown_timeout
@@ -64,6 +64,8 @@ class TaskRunnerManager:
 
         asyncio.create_task(self._read_stdout())
         asyncio.create_task(self._read_stderr())
+
+        await self._wait_for_health_check_port()
 
     def is_running(self) -> bool:
         return self.subprocess is not None and self.subprocess.returncode is None
@@ -103,3 +105,21 @@ class TaskRunnerManager:
             if not line:
                 break
             self.stderr_buffer.append(line.decode().strip())
+
+    async def _wait_for_health_check_port(self, timeout: float = 5.0):
+        pattern = re.compile(r"Health check server listening on .+, port (\d+)")
+        start_time = asyncio.get_running_loop().time()
+
+        while asyncio.get_running_loop().time() - start_time < timeout:
+            for line in self.stdout_buffer:
+                match = pattern.search(line)
+                if match:
+                    self.health_check_port = int(match.group(1))
+                    return
+
+            await asyncio.sleep(0.1)
+
+        raise TimeoutError(
+            f"Failed to detect health check port within {timeout}s. "
+            f"Stdout: {self.stdout_buffer}"
+        )
