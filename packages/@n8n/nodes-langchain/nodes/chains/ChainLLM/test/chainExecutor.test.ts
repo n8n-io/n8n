@@ -1,4 +1,4 @@
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
