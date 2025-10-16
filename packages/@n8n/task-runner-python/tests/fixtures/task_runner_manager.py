@@ -46,6 +46,7 @@ class TaskRunnerManager:
         env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
         env_vars[ENV_HEALTH_CHECK_SERVER_ENABLED] = "true"
         env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = "0"
+        env_vars["N8N_RUNNERS_LAUNCHER_LOG_LEVEL"] = "INFO"
         if self.graceful_shutdown_timeout is not None:
             env_vars[ENV_GRACEFUL_SHUTDOWN_TIMEOUT] = str(
                 self.graceful_shutdown_timeout
