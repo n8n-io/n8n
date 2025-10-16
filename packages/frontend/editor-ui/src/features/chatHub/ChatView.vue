@@ -323,7 +323,6 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 				<ModelSelector
 					:models="chatStore.models ?? null"
 					:selected-model="selectedModel"
-					:disabled="chatStore.isResponding"
 					:credentials-name="credentialsName"
 					@change="onModelChange"
 					@configure="onConfigure"
