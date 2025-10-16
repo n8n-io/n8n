@@ -21,7 +21,7 @@ export async function oracleDBConnectionTest(
 		const conn = await pool.getConnection();
 		await conn.close();
 	} catch (error) {
-		const message = error.message as string;
+		const message = error instanceof Error ? error.message : String(error);
 		return {
 			status: 'Error',
 			message,

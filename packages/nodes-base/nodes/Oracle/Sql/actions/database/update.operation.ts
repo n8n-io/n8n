@@ -104,14 +104,8 @@ export async function execute(
 			'columns.matchingColumns',
 			0,
 		) as string[];
-		const matchValues: string[] = [];
 
-		columnsToMatchOn.forEach((column) => {
-			matchValues.push(column);
-			matchValues.push(item[column] as string);
-		});
 		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
-
 		if (!updateColumns.length) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -183,12 +177,6 @@ export async function execute(
 				'columns.matchingColumns',
 				index,
 			) as string[];
-			const matchValues: string[] = [];
-
-			columnsToMatchOn.forEach((column) => {
-				matchValues.push(column);
-				matchValues.push(item[column] as string);
-			});
 
 			const columnMetaDataObject = getColumnMap(tableSchema);
 			const updateColumns = Object.keys(item).filter(

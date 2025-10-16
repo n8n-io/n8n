@@ -305,11 +305,11 @@ export function prepareErrorItem(
 	items: INodeExecutionData[],
 	error: IDataObject | NodeOperationError | Error,
 	index: number,
-) {
+): INodeExecutionData {
 	return {
 		json: { message: error.message, item: { ...items[index].json }, error: { ...error } },
 		pairedItem: { item: index },
-	} as INodeExecutionData;
+	};
 }
 
 function parseOracleError(node: INode, error: oracledb.DBError, itemIndex: number = 0) {
@@ -634,7 +634,7 @@ export const configureTableSchemaUpdater = (
 };
 
 export function getColumnMap(tableSchema: ColumnInfo[]) {
-	const columnMetaDataObject: ColumnMap = tableSchema.reduce(
+	const columnMetaDataObject = tableSchema.reduce<ColumnMap>(
 		(acc, { columnName, dataType, isNullable, maxSize }) => {
 			acc[columnName] = {
 				type: dataType.toUpperCase(),
@@ -643,7 +643,7 @@ export function getColumnMap(tableSchema: ColumnInfo[]) {
 			};
 			return acc;
 		},
-		{} as ColumnMap,
+		{},
 	);
 
 	return columnMetaDataObject;
@@ -708,12 +708,14 @@ export function checkItemAgainstSchema(
 	index: number = 0,
 ) {
 	for (const key of columns) {
-		if (schema[key] === undefined) {
+		const columnDef = schema[key];
+
+		if (!columnDef) {
 			throw new NodeOperationError(node, `Column '${key}' does not exist in selected table`, {
 				itemIndex: index,
 			});
 		}
-		if (item[key] === null && !(schema[key] as IDataObject)?.nullable) {
+		if (item[key] === null && !columnDef.nullable) {
 			throw new NodeOperationError(node, `Column '${key}' is not nullable`, {
 				itemIndex: index,
 			});

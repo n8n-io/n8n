@@ -12,7 +12,6 @@ import { updateDisplayOptions } from '@utils/utilities';
 import type {
 	ColumnInfo,
 	ColumnMap,
-	QueryMode,
 	OracleDBNodeOptions,
 	QueriesRunner,
 	QueryWithValues,
@@ -192,7 +191,7 @@ export async function execute(
 	nodeOptions: OracleDBNodeOptions,
 	pool: oracleDBTypes.Pool,
 ): Promise<INodeExecutionData[]> {
-	const stmtBatching = (nodeOptions.stmtBatching as QueryMode) || 'single';
+	const stmtBatching = nodeOptions.stmtBatching ?? 'single';
 	const queries: QueryWithValues[] = [];
 	let item: IDataObject = {};
 
