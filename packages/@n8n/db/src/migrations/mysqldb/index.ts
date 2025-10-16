@@ -1,7 +1,6 @@
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
-import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -49,6 +48,7 @@ import { CreateTestMetricTable1732271325258 } from './1732271325258-CreateTestMe
 import { AddStatsColumnsToTestRun1736172058779 } from './1736172058779-AddStatsColumnsToTestRun';
 import { FixTestDefinitionPrimaryKey1739873751194 } from './1739873751194-FixTestDefinitionPrimaryKey';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { AddWorkflowVersionColumn1760534361774 } from './1760534361774-AddWorkflowVersionColumn';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -105,6 +105,7 @@ import { CreateChatHubTables1760019379982 } from '../common/1760019379982-Create
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -213,4 +214,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateChatHubTables1760019379982,
 	UniqueRoleNames1760020838000,
 	CreateWorkflowDependencyTable1760314000000,
+	AddWorkflowVersionColumn1760534361774,
 ];
