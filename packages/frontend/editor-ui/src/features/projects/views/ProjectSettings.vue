@@ -602,12 +602,13 @@ onMounted(() => {
 				</div>
 			</fieldset>
 			<fieldset>
-				<h3 class="mb-xs">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
+				<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 				<small :class="$style.danger">{{
 					i18n.baseText('projects.settings.danger.message')
 				}}</small>
 				<N8nButton
 					type="tertiary"
+					size="large"
 					native-type="button"
 					data-test-id="project-settings-delete-button"
 					@click.stop.prevent="onDelete"
@@ -725,6 +726,6 @@ onMounted(() => {
 
 .danger {
 	display: block;
-	padding-bottom: var(--spacing--l);
+	padding-bottom: var(--spacing--lg);
 }
 </style>
