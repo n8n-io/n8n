@@ -11964,37 +11964,6 @@
 		"type": "node"
 	},
 	{
-		"uuid": "3defba5a-5605-48ee-917f-4c6c47616bbf",
-		"key": "@n8n/n8n-nodes-langchain.lmOllama",
-		"subcategory": "*",
-		"properties": {
-			"displayName": "Ollama Model",
-			"defaults": {
-				"name": "Ollama Model"
-			},
-			"description": "Language Model Ollama",
-			"name": "@n8n/n8n-nodes-langchain.lmOllama",
-			"group": ["transform"],
-			"iconUrl": "icons/@n8n/n8n-nodes-langchain/dist/nodes/llms/LMOllama/ollama.svg",
-			"outputs": ["ai_languageModel"],
-			"codex": {
-				"categories": ["AI"],
-				"subcategories": {
-					"AI": ["Language Models", "Root Nodes"],
-					"Language Models": ["Text Completion Models"]
-				},
-				"resources": {
-					"primaryDocumentation": [
-						{
-							"url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmollama/"
-						}
-					]
-				}
-			}
-		},
-		"type": "node"
-	},
-	{
 		"uuid": "738a3e23-fd1e-4dc2-b7d6-c6fa481971dd",
 		"key": "@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference",
 		"subcategory": "*",

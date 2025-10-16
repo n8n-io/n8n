@@ -48,7 +48,7 @@ export function getInputs(
 			filter: {
 				excludedNodes: [
 					'@n8n/n8n-nodes-langchain.lmCohere',
-					'@n8n/n8n-nodes-langchain.lmOllama',
+					'@n8n/n8n-nodes-langchain.lmChatOllama',
 					'n8n/n8n-nodes-langchain.lmOpenAi',
 					'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
 				],
@@ -61,7 +61,7 @@ export function getInputs(
 			filter: {
 				excludedNodes: [
 					'@n8n/n8n-nodes-langchain.lmCohere',
-					'@n8n/n8n-nodes-langchain.lmOllama',
+					'@n8n/n8n-nodes-langchain.lmChatOllama',
 					'n8n/n8n-nodes-langchain.lmOpenAi',
 					'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
 				],

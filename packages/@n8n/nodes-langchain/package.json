@@ -92,7 +92,6 @@
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
-      "dist/nodes/llms/LMOllama/LmOllama.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
