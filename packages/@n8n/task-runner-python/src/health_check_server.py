@@ -20,8 +20,9 @@ class HealthCheckServer:
             self.server = await asyncio.start_server(
                 self._handle_request, config.host, config.port
             )
+            actual_port = self.server.sockets[0].getsockname()[1] # for OS-assigned port in tests 
             self.logger.info(
-                f"Health check server listening on {config.host}, port {config.port}"
+                f"Health check server listening on {config.host}, port {actual_port}"
             )
         except OSError as e:
             if e.errno == errno.EADDRINUSE:
