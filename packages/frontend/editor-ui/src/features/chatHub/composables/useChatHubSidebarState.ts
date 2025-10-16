@@ -9,6 +9,10 @@ export function useChatHubSidebarState() {
 	const uiStore = useUIStore();
 	const isCollapsible = computed(() => isMobileDevice.value);
 
+	function open() {
+		uiStore.openModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY);
+	}
+
 	return {
 		isCollapsible,
 		isCollapsed: computed(
@@ -16,5 +20,6 @@ export function useChatHubSidebarState() {
 				isCollapsible.value &&
 				uiStore.isModalActiveById[CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY] !== true,
 		),
+		open,
 	};
 }

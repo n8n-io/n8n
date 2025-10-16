@@ -89,7 +89,7 @@ function onSelect(id: string) {
 			/>
 		</template>
 
-		<N8nButton :class="$style.dropdownButton" type="secondary">
+		<N8nButton :class="$style.dropdownButton" type="secondary" text>
 			<CredentialIcon
 				v-if="selectedModel"
 				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
@@ -114,6 +114,9 @@ function onSelect(id: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+
+	/* disable underline */
+	text-decoration: none !important;
 }
 
 .selected {

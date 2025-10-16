@@ -1,49 +1,43 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { v4 as uuidv4 } from 'uuid';
-
-import { N8nScrollArea, N8nIconButton } from '@n8n/design-system';
-import ModelSelector from './components/ModelSelector.vue';
-import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
-
-import { useChatStore } from './chat.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUIStore } from '@/stores/ui.store';
-import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import { useToast } from '@/composables/useToast';
 import {
-	chatHubConversationModelSchema,
-	type ChatHubProvider,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-	type ChatHubConversationModel,
-	chatHubProviderSchema,
-	type ChatHubMessageDto,
-} from '@n8n/api-types';
-import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
-import {
-	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
-	CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY,
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 } from '@/constants';
+import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
+import ChatConversationHeader from '@/features/chatHub/components/ChatConversationHeader.vue';
+import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
+import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
+import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
+import { useChatHubSidebarState } from '@/features/chatHub/composables/useChatHubSidebarState';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
 } from '@/features/chatHub/constants';
-import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
-import { useToast } from '@/composables/useToast';
-import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
-import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
-import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/users/users.store';
-import { useChatHubSidebarState } from '@/features/chatHub/composables/useChatHubSidebarState';
+import {
+	chatHubConversationModelSchema,
+	type ChatHubProvider,
+	chatHubProviderSchema,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubConversationModel,
+	type ChatHubMessageDto,
+} from '@n8n/api-types';
+import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
+import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { v4 as uuidv4 } from 'uuid';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useChatStore } from './chat.store';
+import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
 const credentialsStore = useCredentialsStore();
-const uiStore = useUIStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 
@@ -54,7 +48,6 @@ const sessionId = computed<string>(() =>
 const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
 const sidebar = useChatHubSidebarState();
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
@@ -130,14 +123,6 @@ const inputPlaceholder = computed(() => {
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 
-const credentialsName = computed(() =>
-	selectedModel.value
-		? credentialsStore.getCredentialById(
-				mergedCredentials.value[selectedModel.value.provider] ?? '',
-			)?.name
-		: undefined,
-);
-
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
 		top: scrollableRef.value?.scrollHeight,
@@ -196,31 +181,6 @@ onMounted(async () => {
 		credentialsStore.fetchAllCredentials(),
 	]);
 });
-
-function onModelChange(selection: ChatHubConversationModel) {
-	selectedModel.value = selection;
-}
-
-function onConfigure(provider: ChatHubProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0) {
-		uiStore.openNewCredential(credentialType);
-		return;
-	}
-
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
-}
-
-function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
-	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialId };
-}
-
-function onCreateNewCredential(provider: ChatHubProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
-}
 
 function onSubmit(message: string) {
 	if (!message.trim() || chatStore.isResponding || !selectedModel.value) {
@@ -299,6 +259,14 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		},
 	});
 }
+
+function handleSelectModel(selection: ChatHubConversationModel) {
+	selectedModel.value = selection;
+}
+
+function handleSelectCredentials(provider: ChatHubProvider, credentialsId: string) {
+	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialsId };
+}
 </script>
 
 <template>
@@ -312,6 +280,13 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 			},
 		]"
 	>
+		<ChatConversationHeader
+			:selected-model="selectedModel"
+			:credentials="mergedCredentials"
+			@select-model="handleSelectModel"
+			@select-credentials="handleSelectCredentials"
+		/>
+
 		<N8nScrollArea
 			type="hover"
 			:enable-vertical-scroll="true"
@@ -319,31 +294,6 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 			as-child
 			:class="$style.scrollArea"
 		>
-			<div :class="$style.floating">
-				<N8nIconButton
-					v-if="sidebar.isCollapsible.value"
-					type="secondary"
-					icon="menu"
-					@click="uiStore.openModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY)"
-				/>
-				<ModelSelector
-					:models="chatStore.models ?? null"
-					:selected-model="selectedModel"
-					:credentials-name="credentialsName"
-					@change="onModelChange"
-					@configure="onConfigure"
-				/>
-			</div>
-
-			<CredentialSelectorModal
-				v-if="credentialSelectorProvider"
-				:key="credentialSelectorProvider"
-				:provider="credentialSelectorProvider"
-				:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
-				@select="onCredentialSelected"
-				@create-new="onCreateNewCredential"
-			/>
-
 			<div :class="$style.scrollable" ref="scrollable">
 				<ChatStarter
 					v-if="isNewChat"
@@ -365,7 +315,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 							message.type === 'ai' &&
 							index === chatMessages.length - 1 &&
 							scrollContainerRef
-								? scrollContainerRef.offsetHeight - 100 /* padding-top */ - 200 /* padding-bottom */
+								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
 						@start-edit="handleStartEditMessage(message.id)"
@@ -400,30 +350,29 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 <style lang="scss" module>
 .component {
+	margin: var(--spacing--4xs);
 	width: 100%;
-	padding: var(--spacing--4xs);
 	background-color: var(--color--background--light-2);
+	border: var(--border);
+	border-radius: var(--radius);
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	overflow: hidden;
 
 	&.isMobileDevice {
-		padding: 0;
+		margin: 0;
+		border: none;
 	}
 
 	&:not(.isSidebarCollapsed) {
-		padding-left: 0;
+		margin-left: 0;
 	}
 }
 
 .scrollArea {
-	border: var(--border);
-	border-radius: var(--radius);
-
-	.isMobileDevice & {
-		border: none;
-	}
-
-	& [data-reka-scroll-area-viewport] {
-		scroll-padding-top: 100px;
-	}
+	flex-grow: 1;
+	flex-shrink: 1;
 }
 
 .scrollable {
@@ -444,7 +393,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 .starter {
 	.isMobileDevice & {
-		padding-top: 100px;
+		padding-top: 30px;
 		padding-bottom: 200px;
 	}
 }
@@ -457,7 +406,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding-top: 100px;
+	padding-top: 30px;
 	padding-bottom: 200px;
 	padding-inline: 64px;
 
@@ -489,17 +438,6 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	.isMobileDevice & {
 		padding-inline: var(--spacing--md);
 	}
-}
-
-.floating {
-	position: absolute;
-	padding: var(--spacing--xs);
-	top: 0;
-	left: 0;
-	z-index: 100;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
 }
 
 .scrollToBottomButton {
