@@ -2,6 +2,8 @@
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
+import { ElCol } from 'element-plus';
+import { N8nButton, N8nHeading } from '@n8n/design-system';
 type Props = {
 	titleLocaleKey: BaseTextKey;
 	descriptionLocaleKey: BaseTextKey;

@@ -22,7 +22,7 @@ async def test_print_basic_types(broker, manager):
         print("Multiple", "args", 123, False)
         return [{"printed": "ok"}]
     """)
-    task_settings = create_task_settings(code=code, node_mode="all_items", can_log=True)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
     await broker.send_task(task_id=task_id, task_settings=task_settings)
 
     done_msg = await wait_for_task_done(broker, task_id, timeout=5.0)
@@ -62,7 +62,7 @@ async def test_print_complex_types(broker, manager):
         print({"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]})
         return [{"result": "success"}]
     """)
-    task_settings = create_task_settings(code=code, node_mode="all_items", can_log=True)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
     await broker.send_task(task_id=task_id, task_settings=task_settings)
 
     result_msg = await wait_for_task_done(broker, task_id, timeout=5.0)
@@ -99,7 +99,7 @@ async def test_print_edge_cases(broker, manager):
         print("x" * 1_000)
         return [{"test": "complete"}]
     """)
-    task_settings = create_task_settings(code=code, node_mode="all_items", can_log=True)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
 
     await broker.send_task(task_id=task_id, task_settings=task_settings)
 

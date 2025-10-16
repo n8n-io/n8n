@@ -1,4 +1,5 @@
 import Build from './commands/build';
+import CloudSupport from './commands/cloud-support';
 import Dev from './commands/dev';
 import Lint from './commands/lint';
 import New from './commands/new';
@@ -12,4 +13,6 @@ export const commands = {
 	prerelease: Prerelease,
 	release: Release,
 	lint: Lint,
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'cloud-support': CloudSupport,
 };

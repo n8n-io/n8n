@@ -13,13 +13,16 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import type { INodeUi, IUsedCredential } from '@/Interface';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { INodeUi } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
+import { ElSwitch } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	isArchived: boolean;
 	workflowActive: boolean;
@@ -132,7 +135,8 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
 });
 
-async function activeChanged(newActiveState: boolean) {
+async function activeChanged(newActiveState: string | number | boolean) {
+	const boolValue = typeof newActiveState === 'boolean' ? newActiveState : Boolean(newActiveState);
 	if (!isWorkflowActive.value) {
 		const conflictData = await workflowHelpers.checkConflictingWebhooks(props.workflowId);
 
@@ -153,10 +157,7 @@ async function activeChanged(newActiveState: boolean) {
 		}
 	}
 
-	const newState = await workflowActivate.updateWorkflowActivation(
-		props.workflowId,
-		newActiveState,
-	);
+	const newState = await workflowActivate.updateWorkflowActivation(props.workflowId, boolValue);
 
 	emit('update:workflowActive', { id: props.workflowId, active: newState });
 }
@@ -270,7 +271,7 @@ watch(
 
 <style lang="scss" module>
 .activeStatusText {
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing--2xs);
 	box-sizing: border-box;
 	display: inline-block;
 	text-align: right;
@@ -286,7 +287,7 @@ watch(
 
 .could-not-be-started {
 	display: inline-block;
-	color: var(--color-text-danger);
+	color: var(--color--text--danger);
 	margin-left: 0.5em;
 }
 </style>

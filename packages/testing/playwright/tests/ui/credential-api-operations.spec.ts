@@ -15,25 +15,25 @@ test.describe('Credential API Operations', () => {
 			};
 
 			const { credentialId, createdCredential } =
-				await api.credentialApi.createCredentialFromDefinition(credentialData);
+				await api.credentials.createCredentialFromDefinition(credentialData);
 
 			expect(credentialId).toBeTruthy();
 			expect(createdCredential.type).toBe('httpBasicAuth');
 			expect(createdCredential.name).toContain('Test HTTP Basic Auth (Test');
 
-			const retrievedCredential = await api.credentialApi.getCredential(credentialId);
+			const retrievedCredential = await api.credentials.getCredential(credentialId);
 			expect(retrievedCredential.id).toBe(credentialId);
 			expect(retrievedCredential.type).toBe('httpBasicAuth');
 			expect(retrievedCredential.name).toBe(createdCredential.name);
 
-			const credentialWithData = await api.credentialApi.getCredential(credentialId, {
+			const credentialWithData = await api.credentials.getCredential(credentialId, {
 				includeData: true,
 			});
 			expect(credentialWithData.data).toBeDefined();
 			expect(credentialWithData.data?.user).toBe('test_user');
 
 			const updatedName = 'Updated HTTP Basic Auth';
-			const updatedCredential = await api.credentialApi.updateCredential(credentialId, {
+			const updatedCredential = await api.credentials.updateCredential(credentialId, {
 				name: updatedName,
 				data: {
 					user: 'updated_user',
@@ -42,47 +42,47 @@ test.describe('Credential API Operations', () => {
 			});
 			expect(updatedCredential.name).toBe(updatedName);
 
-			const verifyUpdated = await api.credentialApi.getCredential(credentialId, {
+			const verifyUpdated = await api.credentials.getCredential(credentialId, {
 				includeData: true,
 			});
 			expect(verifyUpdated.name).toBe(updatedName);
 			expect(verifyUpdated.data?.user).toBe('updated_user');
 
-			const deleteResult = await api.credentialApi.deleteCredential(credentialId);
+			const deleteResult = await api.credentials.deleteCredential(credentialId);
 			expect(deleteResult).toBe(true);
 
-			await expect(api.credentialApi.getCredential(credentialId)).rejects.toThrow();
+			await expect(api.credentials.getCredential(credentialId)).rejects.toThrow();
 		});
 	});
 
 	test.describe('Credential Listing', () => {
 		test('should list credentials with different query options', async ({ api }) => {
-			const credential1 = await api.credentialApi.createCredentialFromDefinition({
+			const credential1 = await api.credentials.createCredentialFromDefinition({
 				name: 'First Test Credential',
 				type: 'httpBasicAuth',
 				data: { user: 'user1', password: 'pass1' },
 			});
 
-			const credential2 = await api.credentialApi.createCredentialFromDefinition({
+			const credential2 = await api.credentials.createCredentialFromDefinition({
 				name: 'Second Test Credential',
 				type: 'httpHeaderAuth',
 				data: { name: 'Authorization', value: 'Bearer token' },
 			});
 
-			const allCredentials = await api.credentialApi.getCredentials();
+			const allCredentials = await api.credentials.getCredentials();
 			expect(allCredentials.length).toBeGreaterThanOrEqual(2);
 
 			const createdIds = [credential1.credentialId, credential2.credentialId];
 			const foundCredentials = allCredentials.filter((c) => createdIds.includes(c.id));
 			expect(foundCredentials).toHaveLength(2);
 
-			const credentialsWithScopes = await api.credentialApi.getCredentials({
+			const credentialsWithScopes = await api.credentials.getCredentials({
 				includeScopes: true,
 			});
 			expect(credentialsWithScopes[0].scopes).toBeDefined();
 			expect(Array.isArray(credentialsWithScopes[0].scopes)).toBe(true);
 
-			const credentialsWithData = await api.credentialApi.getCredentials({
+			const credentialsWithData = await api.credentials.getCredentials({
 				includeData: true,
 			});
 			const foundWithData = credentialsWithData.filter((c) => createdIds.includes(c.id));
@@ -98,14 +98,14 @@ test.describe('Credential API Operations', () => {
 
 			const project = await api.projects.createProject('Test Project for Credentials');
 
-			const credential = await api.credentialApi.createCredentialFromDefinition({
+			const credential = await api.credentials.createCredentialFromDefinition({
 				name: 'Project Credential',
 				type: 'httpBasicAuth',
 				data: { user: 'user', password: 'pass' },
 				projectId: project.id,
 			});
 
-			const projectCredentials = await api.credentialApi.getCredentialsForWorkflow({
+			const projectCredentials = await api.credentials.getCredentialsForWorkflow({
 				projectId: project.id,
 			});
 
@@ -124,22 +124,22 @@ test.describe('Credential API Operations', () => {
 			const sourceProject = await api.projects.createProject('Source Project');
 			const destinationProject = await api.projects.createProject('Destination Project');
 
-			const credential = await api.credentialApi.createCredentialFromDefinition({
+			const credential = await api.credentials.createCredentialFromDefinition({
 				name: 'Transfer Test Credential',
 				type: 'httpBasicAuth',
 				data: { user: 'user', password: 'pass' },
 				projectId: sourceProject.id,
 			});
 
-			const sourceCredentials = await api.credentialApi.getCredentialsForWorkflow({
+			const sourceCredentials = await api.credentials.getCredentialsForWorkflow({
 				projectId: sourceProject.id,
 			});
 			const foundInSource = sourceCredentials.find((c) => c.id === credential.credentialId);
 			expect(foundInSource).toBeDefined();
 
-			await api.credentialApi.transferCredential(credential.credentialId, destinationProject.id);
+			await api.credentials.transferCredential(credential.credentialId, destinationProject.id);
 
-			const destinationCredentials = await api.credentialApi.getCredentialsForWorkflow({
+			const destinationCredentials = await api.credentials.getCredentialsForWorkflow({
 				projectId: destinationProject.id,
 			});
 			const foundInDestination = destinationCredentials.find(
@@ -147,7 +147,7 @@ test.describe('Credential API Operations', () => {
 			);
 			expect(foundInDestination).toBeDefined();
 
-			const sourceCredentialsAfter = await api.credentialApi.getCredentialsForWorkflow({
+			const sourceCredentialsAfter = await api.credentials.getCredentialsForWorkflow({
 				projectId: sourceProject.id,
 			});
 			const stillInSource = sourceCredentialsAfter.find((c) => c.id === credential.credentialId);
@@ -166,27 +166,27 @@ test.describe('Credential API Operations', () => {
 				},
 			};
 
-			const { credentialId } = await api.credentialApi.createCredentialFromDefinition(originalData);
+			const { credentialId } = await api.credentials.createCredentialFromDefinition(originalData);
 
-			const afterCreate = await api.credentialApi.getCredential(credentialId, {
+			const afterCreate = await api.credentials.getCredential(credentialId, {
 				includeData: true,
 			});
 			expect(afterCreate.data?.user).toBe('persistent_user');
 
-			await api.credentialApi.updateCredential(credentialId, {
+			await api.credentials.updateCredential(credentialId, {
 				data: {
 					user: 'updated_persistent_user',
 					password: 'updated_persistent_password',
 				},
 			});
 
-			const afterUpdate = await api.credentialApi.getCredential(credentialId, {
+			const afterUpdate = await api.credentials.getCredential(credentialId, {
 				includeData: true,
 			});
 			expect(afterUpdate.data?.user).toBe('updated_persistent_user');
 			expect(afterUpdate.data?.password).toBeDefined();
 
-			const allCredentials = await api.credentialApi.getCredentials();
+			const allCredentials = await api.credentials.getCredentials();
 			const foundCredential = allCredentials.find((c) => c.id === credentialId);
 			expect(foundCredential).toBeDefined();
 			expect(foundCredential!.type).toBe('httpBasicAuth');

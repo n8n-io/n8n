@@ -5,7 +5,10 @@ import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { computed, onMounted } from 'vue';
 import type { OpenTemplateElement } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import NodeIcon from '@/components/NodeIcon.vue';
 
+import { N8nCard, N8nHeading, N8nLink, N8nNodeCreatorNode } from '@n8n/design-system';
+import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 const nodeTypesStore = useNodeTypesStore();
 
 const i18n = useI18n();
@@ -121,8 +124,8 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-start;
-	gap: var(--spacing-m);
-	padding-bottom: var(--spacing-l);
+	gap: var(--spacing--md);
+	padding-bottom: var(--spacing--lg);
 }
 
 .header {
@@ -134,13 +137,13 @@ onMounted(async () => {
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 }
 
 .grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	width: 100%;
 	box-sizing: border-box;
 
@@ -148,7 +151,7 @@ onMounted(async () => {
 	align-content: start;
 	grid-auto-rows: auto;
 
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .card {
@@ -162,8 +165,8 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	gap: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
 }
 
 .templateLink {

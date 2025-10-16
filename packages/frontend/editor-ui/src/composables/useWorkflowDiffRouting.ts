@@ -2,11 +2,11 @@ import { watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/stores/ui.store';
+import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import {
-	WORKFLOW_DIFF_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
-} from '@/constants';
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+} from '@/features/sourceControl.ee/sourceControl.constants';
 
 /**
  * Composable that handles source control modal state based on URL query parameters

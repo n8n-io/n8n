@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import CommunityNodeInstallHint from '../Panel/CommunityNodeInstallHint.vue';
+import CommunityNodeInstallHint from '@/features/communityNodes/components/nodeCreator/CommunityNodeInstallHint.vue';
 import { N8nButton } from '@n8n/design-system';
-
 export interface Props {
 	isPreview: boolean;
 }
@@ -33,6 +32,6 @@ const i18n = useI18n();
 
 <style lang="scss" module>
 .marginLeft {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 </style>

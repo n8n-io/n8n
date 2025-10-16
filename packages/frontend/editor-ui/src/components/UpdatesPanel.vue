@@ -7,6 +7,7 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 const versionsStore = useVersionsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -84,7 +85,7 @@ const i18n = useI18n();
 	font-size: 24px;
 	line-height: 24px;
 	color: $updates-panel-text-color;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 
 .description {
@@ -96,7 +97,7 @@ const i18n = useI18n();
 		font-size: 16px;
 		line-height: 22px;
 		color: $updates-panel-description-text-color;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 		margin: 0 0 16px;
 	}
 
@@ -110,7 +111,7 @@ const i18n = useI18n();
 	}
 
 	.link:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		text-decoration: none;
 	}
 }

@@ -8,5 +8,5 @@ export const DRY_RUN = {
 	type: 'boolean',
 	default: false,
 	description:
-		'Whether the operation should only be simulated, returning the rows that would have been affected',
+		'Whether the operation simulates and returns affected rows in their "before" and "after" states',
 } satisfies INodeProperties;

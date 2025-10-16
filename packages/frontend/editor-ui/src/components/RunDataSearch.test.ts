@@ -14,8 +14,8 @@ describe('RunDataSearch', () => {
 	});
 
 	it.each([
-		{ prop: '/', typed: '/' },
-		{ prop: 'ctrl+f', typed: '{Control>}f' },
+		{ prop: '/' as const, typed: '/' },
+		{ prop: 'ctrl+f' as const, typed: '{Control>}f' },
 	])(
 		'should be focused on keyboard event $typed when shortcut prop is $prop',
 		async ({ prop, typed }) => {
@@ -34,8 +34,16 @@ describe('RunDataSearch', () => {
 
 	it.each([
 		{ prop: undefined, typed: '/', description: 'shortcut prop is undefined' },
-		{ prop: '/', typed: '{Control>}f', description: 'shortcut prop is / but key event is Ctrl+F' },
-		{ prop: 'ctrl+f', typed: '/', description: 'shortcut prop is ctrl+f but key event is /' },
+		{
+			prop: '/' as const,
+			typed: '{Control>}f',
+			description: 'shortcut prop is / but key event is Ctrl+F',
+		},
+		{
+			prop: 'ctrl+f' as const,
+			typed: '/',
+			description: 'shortcut prop is ctrl+f but key event is /',
+		},
 	])('should not be focused on keyboard shortcut when $description', async ({ prop, typed }) => {
 		const { emitted } = renderComponent({
 			pinia,

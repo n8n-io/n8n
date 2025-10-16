@@ -13,10 +13,12 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useStorage } from '@/composables/useStorage';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
+import { ElCheckbox } from 'element-plus';
+import { N8nButton, N8nText } from '@n8n/design-system';
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
@@ -84,9 +86,10 @@ const showSettings = async () => {
 	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 };
 
-const handleCheckboxChange = (checkboxValue: boolean) => {
-	checked.value = checkboxValue;
-	useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value = checkboxValue.toString();
+const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
+	const boolValue = typeof checkboxValue === 'boolean' ? checkboxValue : Boolean(checkboxValue);
+	checked.value = boolValue;
+	useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value = boolValue.toString();
 };
 </script>
 
@@ -128,14 +131,14 @@ const handleCheckboxChange = (checkboxValue: boolean) => {
 
 <style lang="scss" module>
 .spaced {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .footer {
 	text-align: right;
 
 	> * {
-		margin-left: var(--spacing-s);
+		margin-left: var(--spacing--sm);
 	}
 }
 </style>

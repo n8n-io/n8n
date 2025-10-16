@@ -11,6 +11,8 @@ import type {
 	ResourceLocatorModes,
 } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
+import DraggableTarget from '@/components/DraggableTarget.vue';
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '@/components/ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';
@@ -18,7 +20,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowResourceLocatorDropdown } from './useWorkflowResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_TRIGGER_ID, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
@@ -26,6 +28,7 @@ import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import { useToast } from '@/composables/useToast';
 
+import { N8nIcon, N8nInput, N8nLink, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;

@@ -88,6 +88,20 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'workflow-activated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
+	'workflow-deactivated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
@@ -408,6 +422,7 @@ export type RelayEventMap = {
 		readOnlyInstance: boolean;
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
+		connectionType: 'ssh' | 'https';
 	};
 
 	'source-control-user-started-pull-ui': {
@@ -462,7 +477,13 @@ export type RelayEventMap = {
 
 	// #region Variable
 
-	'variable-created': {};
+	'variable-created': {
+		projectId?: string;
+	};
+
+	'variable-updated': {
+		projectId?: string;
+	};
 
 	// #endregion
 

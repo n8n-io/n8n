@@ -1,5 +1,6 @@
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -93,4 +94,18 @@ export class AzureStorageSharedKeyApi implements ICredentialType {
 
 		return requestOptions;
 	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/',
+			headers: {
+				'x-ms-date': '={{ new Date().toUTCString() }}',
+				'x-ms-version': '2021-12-02',
+			},
+			qs: {
+				comp: 'list',
+			},
+		},
+	};
 }

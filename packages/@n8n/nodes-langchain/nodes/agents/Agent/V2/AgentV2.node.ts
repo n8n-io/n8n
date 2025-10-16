@@ -9,9 +9,9 @@ import type {
 
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
-import { getInputs } from './utils';
 import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
+import { getInputs } from '../utils';
 
 export class AgentV2 implements INodeType {
 	description: INodeTypeDescription;
