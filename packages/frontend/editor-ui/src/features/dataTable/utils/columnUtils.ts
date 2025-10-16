@@ -20,6 +20,7 @@ import {
 } from '@/features/dataTable/constants';
 import NullEmptyCellRenderer from '@/features/dataTable/components/dataGrid/NullEmptyCellRenderer.vue';
 import { isDataTableValue } from '@/features/dataTable/typeGuards';
+import isEqual from 'lodash/isEqual';
 
 export const getCellClass = (params: CellClassParams): string => {
 	if (params.data?.id === ADD_ROW_ROW_ID) {
@@ -33,11 +34,11 @@ export const getCellClass = (params: CellClassParams): string => {
 
 export const createValueGetter =
 	(col: DataTableColumn) => (params: ValueGetterParams<DataTableRow>) => {
-		if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
+		const value = params.data?.[col.name];
+		if (value === null || value === undefined) {
 			return null;
 		}
 		if (col.type === 'date') {
-			const value = params.data?.[col.name];
 			if (typeof value === 'string') {
 				return new Date(value);
 			}
@@ -102,6 +103,9 @@ export const createJsonValueSetter =
 			originalValue = null;
 		}
 		if (!isDataTableValue(params.newValue)) {
+			return false;
+		}
+		if (isEqual(params.newValue, originalValue)) {
 			return false;
 		}
 		params.data[col.name] = params.newValue;

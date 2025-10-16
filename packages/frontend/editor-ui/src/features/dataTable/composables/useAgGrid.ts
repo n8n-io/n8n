@@ -12,6 +12,7 @@ import type {
 } from 'ag-grid-community';
 import { useClipboard } from '@/composables/useClipboard';
 import { onClickOutside } from '@vueuse/core';
+import { jsonParse } from 'n8n-workflow';
 
 export type UseAgGridOptions = {
 	gridContainerRef: Ref<HTMLElement | null>;
@@ -63,6 +64,10 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 			} else if (data.toLowerCase() === 'false') {
 				row.setDataValue(focusedCell.column.getColId(), false);
 			}
+		} else if (colDef.cellDataType === 'object') {
+			try {
+				row.setDataValue(focusedCell.column.getColId(), data ? jsonParse(data) : null);
+			} catch {}
 		}
 	};
 
@@ -154,10 +159,17 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		}
 		const row = params.api.getDisplayedRowAtIndex(focused.rowIndex);
 		const colDef = focused.column.getColDef();
-		if (row?.data && colDef.field) {
-			const rawValue = row.data[colDef.field];
-			const text = rawValue === null || rawValue === undefined ? '' : String(rawValue);
-			await copyToClipboard(text);
+		if (!row?.data || !colDef.field) {
+			return;
+		}
+
+		const rawValue = row.data[colDef.field];
+		if (rawValue === null || rawValue === undefined) {
+			void copyToClipboard('');
+		} else if (colDef.cellDataType === 'object') {
+			void copyToClipboard(JSON.stringify(rawValue));
+		} else {
+			void copyToClipboard(String(rawValue));
 		}
 	};
 
@@ -217,6 +229,8 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 
 	onClickOutside(gridContainerRef, () => {
 		resetLastFocusedCell();
+		// TODO: this doesn't really work if the grid is short and the click is within the grid min-width
+		initializedGridApi.value.stopEditing();
 		initializedGridApi.value.clearFocusedCell();
 	});
 
