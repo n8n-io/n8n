@@ -556,7 +556,7 @@ importers:
         version: link:../permissions
       '@n8n/typeorm':
         specifier: 'catalog:'
-        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(pg@8.12.0)(sqlite3@5.1.7)
+        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(sqlite3@5.1.7)
       jest-mock-extended:
         specifier: ^3.0.4
         version: 3.0.4(jest@29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@types/node@20.19.21)(typescript@5.9.2)))(typescript@5.9.2)
@@ -719,7 +719,7 @@ importers:
         version: link:../permissions
       '@n8n/typeorm':
         specifier: 'catalog:'
-        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(pg@8.12.0)(sqlite3@5.1.7)
+        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(sqlite3@5.1.7)
       class-validator:
         specifier: 0.14.0
         version: 0.14.0
@@ -1184,7 +1184,7 @@ importers:
         version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 'catalog:'
-        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(pg@8.12.0)(sqlite3@5.1.7)
+        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(sqlite3@5.1.7)
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1553,7 +1553,7 @@ importers:
         version: link:../@n8n/task-runner
       '@n8n/typeorm':
         specifier: 'catalog:'
-        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(pg@8.12.0)(sqlite3@5.1.7)
+        version: 0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(sqlite3@5.1.7)
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
         version: 1.17.0
@@ -3070,6 +3070,9 @@ importers:
       nodemailer:
         specifier: 6.9.9
         version: 6.9.9
+      oracledb:
+        specifier: 6.9.0
+        version: 6.9.0
       otpauth:
         specifier: 9.1.1
         version: 9.1.1
@@ -3194,6 +3197,9 @@ importers:
       '@types/nodemailer':
         specifier: ^6.4.14
         version: 6.4.14
+      '@types/oracledb':
+        specifier: ^6.9.1
+        version: 6.9.1
       '@types/promise-ftp':
         specifier: ^1.3.4
         version: 1.3.4
@@ -8175,6 +8181,9 @@ packages:
 
   '@types/nodemailer@6.4.14':
     resolution: {integrity: sha512-fUWthHO9k9DSdPCSPRqcu6TWhYyxTBg382vlNIttSe9M7XfsT06y0f24KHXtbnijPGGRIcVvdKHTNikOI6qiHA==}
+
+  '@types/oracledb@6.9.1':
+    resolution: {integrity: sha512-rXDnApyfaki0dvHuqzQvfirK6yHbtEO5nJ4CXKHrZYdwNAx4PjddqoCXdN1dZaEnZxXFwCy9xEWyIemL8EI/NQ==}
 
   '@types/pg-pool@2.0.6':
     resolution: {integrity: sha512-TaAUE5rq2VQYxab5Ts7WZhKNmuN78Q6PiFonTDdpbx8a1H0M1vhy3rhiMjl+e2iHmogyMw7jZF4FrE6eJUy5HQ==}
@@ -14585,6 +14594,10 @@ packages:
   ora@5.4.1:
     resolution: {integrity: sha512-5b6Y85tPxZZ7QytO+BQzysW31HJku27cRIlkbAXaNx+BdcVi+LlRFmVXzeF6a7JCwJpyw5c4b+YSVImQIrBpuQ==}
     engines: {node: '>=10'}
+
+  oracledb@6.9.0:
+    resolution: {integrity: sha512-NwPbIGPv6m0GTFSbyy4/5WEjsKMiiJRxztLmYUcfD3oyh/uXdmVmKOwEWr84wFwWJ/0wQrYQh4PjnzvShibRaA==}
+    engines: {node: '>=14.17'}
 
   os-browserify@0.3.0:
     resolution: {integrity: sha512-gjcpUc3clBf9+210TRaDWbf+rZZZEshZ+DlXMRCeAjp0xhTrnQsKHypIy1J3d5hKdUzj69t708EHtU8P6bUn0A==}
@@ -21841,7 +21854,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(pg@8.12.0)(sqlite3@5.1.7)':
+  '@n8n/typeorm@0.3.20-14(@sentry/node@9.42.1)(mysql2@3.15.0)(oracledb@6.9.0)(pg@8.12.0)(sqlite3@5.1.7)':
     dependencies:
       app-root-path: 3.1.0
       async-mutex: 0.5.0
@@ -21859,6 +21872,7 @@ snapshots:
     optionalDependencies:
       '@sentry/node': 9.42.1
       mysql2: 3.15.0
+      oracledb: 6.9.0
       pg: 8.12.0
       sqlite3: 5.1.7
     transitivePeerDependencies:
@@ -24104,6 +24118,10 @@ snapshots:
   '@types/nodemailer@6.4.14':
     dependencies:
       '@types/node': 20.17.57
+
+  '@types/oracledb@6.9.1':
+    dependencies:
+      '@types/node': 20.19.11
 
   '@types/pg-pool@2.0.6':
     dependencies:
@@ -32278,6 +32296,8 @@ snapshots:
       log-symbols: 4.1.0
       strip-ansi: 6.0.1
       wcwidth: 1.0.1
+
+  oracledb@6.9.0: {}
 
   os-browserify@0.3.0: {}
 
