@@ -23,6 +23,26 @@ const modelField: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
 		{
+			name: 'Claude Sonnet 4.5',
+			value: 'claude-sonnet-4-5-20250929',
+		},
+		{
+			name: 'Claude Sonnet 4',
+			value: 'claude-sonnet-4-20250514',
+		},
+		{
+			name: 'Claude Opus 4.1',
+			value: 'claude-opus-4-1-20250805',
+		},
+		{
+			name: 'Claude Opus 4',
+			value: 'claude-opus-4-20250514',
+		},
+		{
+			name: 'Claude Haiku 4.5',
+			value: 'claude-haiku-4-5-20251001',
+		},
+		{
 			name: 'Claude 3.5 Sonnet(20241022)',
 			value: 'claude-3-5-sonnet-20241022',
 		},
@@ -152,8 +172,8 @@ export class LmChatAnthropic implements INodeType {
 				type: 'resourceLocator',
 				default: {
 					mode: 'list',
-					value: 'claude-sonnet-4-20250514',
-					cachedResultName: 'Claude 4 Sonnet',
+					value: 'claude-sonnet-4-5-20250929',
+					cachedResultName: 'Claude Sonnet 4.5',
 				},
 				required: true,
 				modes: [
