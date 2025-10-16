@@ -225,10 +225,9 @@ export function awsGetSignInOptionsAndUpdateRequest(
  * Retrieves AWS credentials from various system sources following the AWS credential chain.
  * Attempts to get credentials in the following order:
  * 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
- * 2. AWS Profile (AWS_PROFILE) - currently logs warning as not implemented
- * 3. EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
- * 4. ECS/Fargate container metadata (AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
- * 5. EC2 instance metadata service
+ * 2. EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
+ * 3. ECS/Fargate container metadata (AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
+ * 4. EC2 instance metadata service
  *
  * @returns Promise resolving to credentials object or null if no credentials found
  *
@@ -257,16 +256,7 @@ async function getSystemCredentials(): Promise<{
 		};
 	}
 
-	// 2. Check for AWS_PROFILE environment variable
-	// if (process.env.AWS_PROFILE) {
-	// 	// Note: In a real implementation, you might want to use AWS SDK to load credentials from profile
-	// 	// For now, we'll just indicate that profile-based credentials are supported
-	// 	console.warn(
-	// 		'AWS_PROFILE is set but profile-based credential loading is not implemented in this credential. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or use instance/container role.',
-	// 	);
-	// }
-
-	// 3. Try to get credentials from EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
+	// 2. Try to get credentials from EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
 	try {
 		const podIdentityCredentials = await getPodIdentityCredentials();
 		if (podIdentityCredentials) {
@@ -276,7 +266,7 @@ async function getSystemCredentials(): Promise<{
 		console.debug('Failed to get credentials from EKS Pod Identity:', error);
 	}
 
-	// 4. Try to get credentials from container metadata service (ECS/Fargate)
+	// 3. Try to get credentials from container metadata service (ECS/Fargate)
 	try {
 		const containerCredentials = await getContainerMetadataCredentials();
 		if (containerCredentials) {
@@ -286,7 +276,7 @@ async function getSystemCredentials(): Promise<{
 		console.debug('Failed to get credentials from container metadata:', error);
 	}
 
-	// 5. Try to get credentials from instance metadata service (EC2)
+	// 4. Try to get credentials from instance metadata service (EC2)
 	try {
 		const instanceCredentials = await getInstanceMetadataCredentials();
 		if (instanceCredentials) {
@@ -300,9 +290,10 @@ async function getSystemCredentials(): Promise<{
 }
 
 /**
- * Retrieves AWS credentials from EC2 instance metadata service.
+ * Retrieves AWS credentials from EC2 instance metadata service (IMDSv2-aware).
  * This function is used when running on an EC2 instance with an attached IAM role.
- * It makes HTTP requests to the instance metadata service at 169.254.169.254.
+ * It first attempts to obtain an IMDSv2 session token and includes it in all metadata requests.
+ * Falls back to IMDSv1 if IMDSv2 is unavailable (older or less restricted environments).
  *
  * @returns Promise resolving to credentials object or null if not running on EC2 or no role attached
  *
@@ -314,34 +305,50 @@ async function getInstanceMetadataCredentials(): Promise<{
 	sessionToken: string;
 } | null> {
 	try {
-		const response = await fetch(
-			'http://169.254.169.254/latest/meta-data/iam/security-credentials/',
-			{
-				method: 'GET',
+		const baseUrl = 'http://169.254.169.254/latest';
+		const headers: Record<string, string> = {
+			'User-Agent': 'n8n-aws-credential',
+		};
+
+		// Try to obtain an IMDSv2 token
+		try {
+			const tokenResponse = await fetch(`${baseUrl}/api/token`, {
+				method: 'PUT',
 				headers: {
+					'X-aws-ec2-metadata-token-ttl-seconds': '21600',
 					'User-Agent': 'n8n-aws-credential',
 				},
 				signal: AbortSignal.timeout(2000),
-			},
-		);
+			});
 
-		if (!response.ok) {
+			if (tokenResponse.ok) {
+				const token = await tokenResponse.text();
+				headers['X-aws-ec2-metadata-token'] = token;
+			}
+		} catch {
+			// IMDSv2 may be disabled; continue with IMDSv1
+		}
+
+		const roleResponse = await fetch(`${baseUrl}/meta-data/iam/security-credentials/`, {
+			method: 'GET',
+			headers,
+			signal: AbortSignal.timeout(2000),
+		});
+
+		if (!roleResponse.ok) {
 			return null;
 		}
 
-		const roleName = await response.text();
+		const roleName = (await roleResponse.text()).trim();
 		if (!roleName) {
 			return null;
 		}
 
-		// Get credentials for the role
 		const credentialsResponse = await fetch(
-			`http://169.254.169.254/latest/meta-data/iam/security-credentials/${roleName}`,
+			`${baseUrl}/meta-data/iam/security-credentials/${roleName}`,
 			{
 				method: 'GET',
-				headers: {
-					'User-Agent': 'n8n-aws-credential',
-				},
+				headers,
 				signal: AbortSignal.timeout(2000),
 			},
 		);
@@ -351,6 +358,10 @@ async function getInstanceMetadataCredentials(): Promise<{
 		}
 
 		const credentialsData = await credentialsResponse.json();
+
+		if (!credentialsData?.AccessKeyId || !credentialsData?.SecretAccessKey) {
+			return null;
+		}
 
 		return {
 			accessKeyId: credentialsData.AccessKeyId,
@@ -366,6 +377,8 @@ async function getInstanceMetadataCredentials(): Promise<{
  * Retrieves AWS credentials from ECS/Fargate container metadata service.
  * This function is used when running in an ECS task or Fargate container with a task role.
  * It uses the AWS_CONTAINER_CREDENTIALS_RELATIVE_URI environment variable to fetch credentials.
+ * When AWS_CONTAINER_AUTHORIZATION_TOKEN is available, it includes the Authorization header
+ * as required by AWS for container credential endpoints.
  *
  * @returns Promise resolving to credentials object or null if not running in ECS/Fargate or no task role
  *
@@ -382,11 +395,18 @@ async function getContainerMetadataCredentials(): Promise<{
 			return null;
 		}
 
+		const authToken = process.env.AWS_CONTAINER_AUTHORIZATION_TOKEN;
+		const headers: Record<string, string> = {
+			'User-Agent': 'n8n-aws-credential',
+		};
+
+		if (authToken) {
+			headers.Authorization = `Bearer ${authToken}`;
+		}
+
 		const response = await fetch(`http://169.254.170.2${relativeUri}`, {
 			method: 'GET',
-			headers: {
-				'User-Agent': 'n8n-aws-credential',
-			},
+			headers,
 			signal: AbortSignal.timeout(2000),
 		});
 
@@ -410,6 +430,8 @@ async function getContainerMetadataCredentials(): Promise<{
  * Retrieves AWS credentials from EKS Pod Identity service.
  * This function is used when running in an EKS pod with Pod Identity configured.
  * It uses the AWS_CONTAINER_CREDENTIALS_FULL_URI environment variable to fetch credentials.
+ * When AWS_CONTAINER_AUTHORIZATION_TOKEN is available, it includes the Authorization header
+ * as required by AWS for Pod Identity credential endpoints.
  *
  * @returns Promise resolving to credentials object or null if not running with EKS Pod Identity
  *
@@ -426,11 +448,18 @@ async function getPodIdentityCredentials(): Promise<{
 	}
 
 	try {
+		const authToken = process.env.AWS_CONTAINER_AUTHORIZATION_TOKEN;
+		const headers: Record<string, string> = {
+			'User-Agent': 'n8n-aws-credential',
+		};
+
+		if (authToken) {
+			headers.Authorization = `Bearer ${authToken}`;
+		}
+
 		const response = await fetch(fullUri, {
 			method: 'GET',
-			headers: {
-				'User-Agent': 'n8n-aws-credential',
-			},
+			headers,
 			signal: AbortSignal.timeout(2000),
 		});
 

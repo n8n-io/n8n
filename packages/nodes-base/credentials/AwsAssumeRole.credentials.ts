@@ -27,35 +27,6 @@ export class AwsAssumeRole implements ICredentialType {
 	properties: INodeProperties[] = [
 		awsRegionProperty,
 		{
-			displayName: 'Role ARN',
-			name: 'roleArn',
-			description: 'The ARN of the role to assume (e.g., arn:aws:iam::123456789012:role/MyRole)',
-			type: 'string',
-			required: true,
-			default: '',
-			placeholder: 'arn:aws:iam::123456789012:role/MyRole',
-		},
-		{
-			displayName: 'External ID',
-			name: 'externalId',
-			description:
-				"External ID for cross-account role assumption (should be required by your role's trust policy)",
-			type: 'string',
-			required: true,
-			default: '',
-			typeOptions: {
-				password: true,
-			},
-		},
-		{
-			displayName: 'Role Session Name',
-			name: 'roleSessionName',
-			description: 'Name for the role session',
-			type: 'string',
-			required: true,
-			default: 'n8n-session',
-		},
-		{
 			displayName: 'Use System Credentials',
 			name: 'useSystemCredentialsForRole',
 			description:
@@ -121,6 +92,36 @@ export class AwsAssumeRole implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+		},
+
+		{
+			displayName: 'Role ARN',
+			name: 'roleArn',
+			description: 'The ARN of the role to assume (e.g., arn:aws:iam::123456789012:role/MyRole)',
+			type: 'string',
+			required: true,
+			default: '',
+			placeholder: 'arn:aws:iam::123456789012:role/MyRole',
+		},
+		{
+			displayName: 'External ID',
+			name: 'externalId',
+			description:
+				"External ID for cross-account role assumption (should be required by your role's trust policy)",
+			type: 'string',
+			required: true,
+			default: '',
+			typeOptions: {
+				password: true,
+			},
+		},
+		{
+			displayName: 'Role Session Name',
+			name: 'roleSessionName',
+			description: 'Name for the role session',
+			type: 'string',
+			required: true,
+			default: 'n8n-session',
 		},
 		...awsCustomEndpoints,
 	];
