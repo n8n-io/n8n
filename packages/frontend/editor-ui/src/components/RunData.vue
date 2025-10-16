@@ -65,7 +65,7 @@ import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
-import ViewSubExecution from './ViewSubExecution.vue';
+import ViewSubExecution from '@/features/executions/components/ViewSubExecution.vue';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
 import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
@@ -73,7 +73,7 @@ import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
-import { hasTrimmedRunData } from '@/utils/executionUtils';
+import { hasTrimmedRunData } from '@/features/executions/executions.utils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import { type SearchShortcut } from '@/features/canvas/canvas.types';
 

@@ -88,14 +88,6 @@ spy.mockImplementation(
 		}) as unknown as Telemetry,
 );
 
-const setAssistantEnabled = (enabled: boolean) => {
-	settingsStore.setSettings(
-		merge({}, defaultSettings, {
-			aiAssistant: { enabled, setup: true },
-		}),
-	);
-};
-
 const currentRouteName = ENABLED_VIEWS[0];
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn(() =>
@@ -287,7 +279,7 @@ describe('AI Builder store', () => {
 		builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
 
 		// Initially shows "aiAssistant.thinkingSteps.thinking" from prepareForStreaming
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// First tool starts
 		onMessageCallback({
@@ -304,7 +296,7 @@ describe('AI Builder store', () => {
 		});
 
 		// Should show "aiAssistant.thinkingSteps.thinking"
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Second tool starts (different toolCallId)
 		onMessageCallback({
@@ -321,7 +313,7 @@ describe('AI Builder store', () => {
 		});
 
 		// Still showing "aiAssistant.thinkingSteps.thinking" with multiple tools
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// First tool completes
 		onMessageCallback({
@@ -338,7 +330,7 @@ describe('AI Builder store', () => {
 		});
 
 		// Still "aiAssistant.thinkingSteps.thinking" because second tool is still running
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Second tool completes
 		onMessageCallback({
@@ -355,14 +347,14 @@ describe('AI Builder store', () => {
 		});
 
 		// Now should show "aiAssistant.thinkingSteps.thinking" because all tools completed
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Call onDone to stop streaming
 		onDoneCallback();
 
 		// Message should persist after streaming ends
 		expect(builderStore.streaming).toBe(false);
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		vi.useRealTimers();
 	});
@@ -404,12 +396,12 @@ describe('AI Builder store', () => {
 
 		// Should show "aiAssistant.thinkingSteps.thinking" when tool completes
 		await vi.waitFor(() =>
-			expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking'),
+			expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking'),
 		);
 
 		// Should still show "aiAssistant.thinkingSteps.thinking" after workflow-updated
 		await vi.waitFor(() => expect(builderStore.chatMessages).toHaveLength(3)); // user + tool + workflow
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Verify streaming has ended
 		expect(builderStore.streaming).toBe(false);
@@ -441,25 +433,7 @@ describe('AI Builder store', () => {
 
 		builderStore.resetBuilderChat();
 		expect(builderStore.chatMessages).toEqual([]);
-		expect(builderStore.assistantThinkingMessage).toBeUndefined();
-	});
-
-	it('should not show builder if disabled in settings', () => {
-		const builderStore = useBuilderStore();
-
-		setAssistantEnabled(false);
-		expect(builderStore.isAssistantEnabled).toBe(false);
-		expect(builderStore.canShowAssistant).toBe(false);
-		expect(builderStore.canShowAssistantButtonsOnCanvas).toBe(false);
-	});
-
-	it('should show builder if all conditions are met', () => {
-		const builderStore = useBuilderStore();
-
-		setAssistantEnabled(true);
-		expect(builderStore.isAssistantEnabled).toBe(true);
-		expect(builderStore.canShowAssistant).toBe(true);
-		expect(builderStore.canShowAssistantButtonsOnCanvas).toBe(true);
+		expect(builderStore.builderThinkingMessage).toBeUndefined();
 	});
 
 	describe('isAIBuilderEnabled computed property', () => {
@@ -737,7 +711,7 @@ describe('AI Builder store', () => {
 
 			// Verify streaming state was reset
 			expect(builderStore.streaming).toBe(false);
-			expect(builderStore.assistantThinkingMessage).toBeUndefined();
+			expect(builderStore.builderThinkingMessage).toBeUndefined();
 		});
 
 		it('should abort previous request when sending new message', () => {

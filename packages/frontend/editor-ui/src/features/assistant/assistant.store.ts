@@ -86,22 +86,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		return !sessionStarted || sessionExplicitlyEnded;
 	});
 
-	const isAssistantOpen = computed(
-		() =>
-			canShowAssistant.value &&
-			chatPanelStateStore.isOpen &&
-			chatPanelStateStore.activeMode === 'assistant',
-	);
-
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
-	const canShowAssistant = computed(
-		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
-	);
-
-	const canShowAssistantButtonsOnCanvas = computed(
-		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
-	);
 	const hideAssistantFloatingButton = computed(
 		() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) && !workflowsStore.activeNode(),
 	);
@@ -115,9 +101,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isFloatingButtonShown = computed(
 		() =>
-			canShowAssistantButtonsOnCanvas.value &&
-			!isAssistantOpen.value &&
-			!hideAssistantFloatingButton.value,
+			!chatPanelStateStore.isOpen &&
+			!hideAssistantFloatingButton.value &&
+			isAssistantEnabled.value &&
+			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	function resetAssistantChat() {
@@ -782,13 +769,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	return {
 		isAssistantEnabled,
-		canShowAssistantButtonsOnCanvas,
 		hideAssistantFloatingButton,
 		chatMessages,
 		unreadCount,
 		streaming,
-		isAssistantOpen,
-		canShowAssistant,
 		currentSessionId,
 		lastUnread,
 		isSessionEnded,

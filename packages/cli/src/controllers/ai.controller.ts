@@ -63,6 +63,7 @@ export class AiController {
 						currentWorkflow: workflowContext.currentWorkflow,
 						executionData: workflowContext.executionData,
 						executionSchema: workflowContext.executionSchema,
+						expressionValues: workflowContext.expressionValues,
 					},
 					useDeprecatedCredentials,
 				},

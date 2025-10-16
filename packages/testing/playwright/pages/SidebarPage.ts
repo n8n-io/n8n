@@ -70,6 +70,10 @@ export class SidebarPage {
 		await this.page.getByTestId('about').click();
 	}
 
+	async openAboutModalViaShortcut(): Promise<void> {
+		await this.page.keyboard.press('Alt+Meta+o');
+	}
+
 	async closeAboutModal(): Promise<void> {
 		await this.page.getByTestId('close-about-modal-button').click();
 	}

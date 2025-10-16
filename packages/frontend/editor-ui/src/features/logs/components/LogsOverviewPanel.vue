@@ -5,7 +5,7 @@ import LogsViewExecutionSummary from '@/features/logs/components/LogsViewExecuti
 import { useClearExecutionButtonVisible } from '@/features/logs/composables/useClearExecutionButtonVisible';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 import { getSubtreeTotalConsumedTokens, getTotalConsumedTokens } from '@/features/logs/logs.utils';
-import { type IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { getScrollbarWidth } from '@/utils/htmlUtils';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';

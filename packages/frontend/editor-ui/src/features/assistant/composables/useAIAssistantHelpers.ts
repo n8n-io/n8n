@@ -288,6 +288,132 @@ export const useAIAssistantHelpers = () => {
 	});
 
 	/**
+	 * Extract all expressions from workflow nodes and resolve them to their values.
+	 * Trims resolved values to ~200 characters to avoid token overload.
+	 * @param workflow The workflow to extract expressions from
+	 * @param executionData Optional execution data to filter only nodes that have executed
+	 * @returns Record mapping node names to arrays of expression/value pairs
+	 */
+	function extractExpressionsFromWorkflow(
+		workflow: IWorkflowDb,
+		executionData?: IRunExecutionData['resultData'],
+	): Record<string, ChatRequest.ExpressionValue[]> {
+		const MAX_VALUE_LENGTH = 200;
+		const MAX_EXPRESSION_LENGTH = 500;
+		const expressionsByNode: Record<string, ChatRequest.ExpressionValue[]> = {};
+
+		if (!workflow.nodes || workflow.nodes.length === 0) {
+			return expressionsByNode;
+		}
+
+		// If execution data is provided, create a set of executed node names for efficient lookup
+		const executedNodeNames = executionData?.runData
+			? new Set(Object.keys(executionData.runData))
+			: null;
+
+		// Helper to trim long values - preserves type for primitives, stringifies and trims objects/arrays
+		const trimValue = (value: unknown): unknown => {
+			if (value === undefined) {
+				return '<EMPTY>';
+			}
+
+			// For string primitives, check string length
+			if (typeof value === 'string') {
+				if (value.length <= MAX_VALUE_LENGTH) {
+					return value;
+				}
+				return value.substring(0, MAX_VALUE_LENGTH) + '... [truncated]';
+			}
+
+			// For non-string primitives (number, boolean, null), return as-is
+			if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+				return value;
+			}
+
+			// For objects and arrays, stringify and trim if needed
+			try {
+				const stringified = JSON.stringify(value);
+				if (stringified.length <= MAX_VALUE_LENGTH) {
+					return value; // Return original value, not stringified
+				}
+				// If too long, return truncated string representation
+				return stringified.substring(0, MAX_VALUE_LENGTH) + '... [truncated]';
+			} catch {
+				return '<Could not serialize value>';
+			}
+		};
+
+		// Extract expressions from all nodes (or only executed nodes if execution data provided)
+		for (const node of workflow.nodes) {
+			if (!node.parameters) continue;
+
+			// Skip nodes that haven't executed (if execution data is provided)
+			if (executedNodeNames && !executedNodeNames.has(node.name)) {
+				continue;
+			}
+
+			const nodeExpressions: ChatRequest.ExpressionValue[] = [];
+
+			// Helper to recursively find and resolve expressions from parameters
+			// Uses a WeakSet to track visited objects and prevent infinite recursion on cycles
+			const extractExpressions = (params: unknown, visited = new WeakSet<object>()): void => {
+				if (typeof params === 'string' && params.startsWith('=')) {
+					// Skip static strings like "=Static string" that don't contain expressions
+					// Only process strings that contain {{ }} expression syntax
+					if (!params.includes('{{') || !params.includes('}}')) {
+						return;
+					}
+
+					// This is an expression - resolve it with node context
+					let resolved: unknown;
+					try {
+						resolved = workflowHelpers.resolveExpression(params, undefined, {
+							contextNodeName: node.name,
+						});
+					} catch (error) {
+						resolved = `Error in expression: "${error instanceof Error ? error.message : String(error)}"`;
+					}
+
+					// Trim expression string if too long
+					const trimmedExpression =
+						params.length > MAX_EXPRESSION_LENGTH
+							? params.substring(0, MAX_EXPRESSION_LENGTH) + '... [truncated]'
+							: params;
+
+					nodeExpressions.push({
+						expression: trimmedExpression,
+						resolvedValue: trimValue(resolved),
+						nodeType: node.type,
+					});
+				} else if (Array.isArray(params)) {
+					// Check if we've already visited this array to prevent cycles
+					if (visited.has(params)) {
+						return;
+					}
+					visited.add(params);
+					params.forEach((item) => extractExpressions(item, visited));
+				} else if (typeof params === 'object' && params !== null) {
+					// Check if we've already visited this object to prevent cycles
+					if (visited.has(params)) {
+						return;
+					}
+					visited.add(params);
+					Object.values(params).forEach((value) => extractExpressions(value, visited));
+				}
+			};
+
+			extractExpressions(node.parameters);
+
+			// Only add to map if node has expressions
+			if (nodeExpressions.length > 0) {
+				expressionsByNode[node.name] = nodeExpressions;
+			}
+		}
+
+		return expressionsByNode;
+	}
+
+	/**
 	 * Reduces AI Assistant request payload size to make it fit the specified content length.
 	 * If, after two passes, the payload is still too big, throws an error'
 	 * @param payload The request payload to trim
@@ -362,5 +488,6 @@ export const useAIAssistantHelpers = () => {
 		simplifyResultData,
 		simplifyWorkflowForAssistant,
 		trimPayloadSize: trimPayloadToSize,
+		extractExpressionsFromWorkflow,
 	};
 };
