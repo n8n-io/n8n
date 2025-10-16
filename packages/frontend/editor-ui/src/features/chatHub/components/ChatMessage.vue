@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ChatMessage } from '@/features/chatHub/chat.types';
 import { N8nIcon, N8nInput, N8nButton } from '@n8n/design-system';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
@@ -58,10 +57,6 @@ function handleConfirmEdit() {
 
 function handleRegenerate() {
 	emit('regenerate', message);
-}
-
-function messageText(msg: ChatMessage) {
-	return msg.type === 'message' ? msg.text : `**Error:** ${msg.content}`;
 }
 
 const markdownOptions = {

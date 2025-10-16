@@ -897,7 +897,7 @@ export class ChatHubService {
 		};
 	}
 
-	private buildMessagesGraph(messages: ChatHubMessage[]) {
+	buildMessagesGraph(messages: ChatHubMessage[]) {
 		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
 
 		for (const message of messages) {
@@ -920,45 +920,9 @@ export class ChatHubService {
 				retryOfMessageId: message.retryOfMessageId,
 				revisionOfMessageId: message.revisionOfMessageId,
 				runIndex: message.runIndex,
-
-				responseIds: [],
-				retryIds: [],
-				revisionIds: [],
 			};
 		}
 
-		for (const node of Object.values(messagesGraph)) {
-			if (node.previousMessageId && messagesGraph[node.previousMessageId]) {
-				messagesGraph[node.previousMessageId].responseIds.push(node.id);
-			}
-			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
-				messagesGraph[node.retryOfMessageId].retryIds.push(node.id);
-			}
-			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
-				messagesGraph[node.revisionOfMessageId].revisionIds.push(node.id);
-			}
-		}
-
-		const sortByRunThenTime = (first: ChatMessageId, second: ChatMessageId) => {
-			const a = messagesGraph[first];
-			const b = messagesGraph[second];
-
-			if (a.runIndex !== b.runIndex) {
-				return a.runIndex - b.runIndex;
-			}
-
-			if (a.createdAt !== b.createdAt) {
-				return a.createdAt < b.createdAt ? -1 : 1;
-			}
-
-			return a.id < b.id ? -1 : 1;
-		};
-
-		for (const node of Object.values(messagesGraph)) {
-			node.responseIds.sort(sortByRunThenTime);
-			node.retryIds.sort(sortByRunThenTime);
-			node.revisionIds.sort(sortByRunThenTime);
-		}
 		return messagesGraph;
 	}
 

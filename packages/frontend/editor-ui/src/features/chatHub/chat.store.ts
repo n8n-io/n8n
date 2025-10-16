@@ -16,12 +16,11 @@ import type {
 	ChatHubSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubSessionDto,
-	ChatHubConversationDto,
 	ChatMessageId,
 	ChatSessionId,
 	ChatHubMessageDto,
 } from '@n8n/api-types';
-import type { StructuredChunk, CredentialsMap } from './chat.types';
+import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -30,20 +29,20 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const ongoingStreaming = ref<{ messageId: ChatMessageId; replyToMessageId: ChatMessageId }>();
 	const isResponding = computed(() => ongoingStreaming.value !== undefined);
 
-	const conversationsBySession = ref<Map<ChatSessionId, ChatHubConversationDto>>(new Map());
+	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 	const sessions = ref<ChatHubSessionDto[]>([]);
 
-	const getConversation = (sessionId: ChatSessionId): ChatHubConversationDto | undefined =>
+	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
 		conversationsBySession.value.get(sessionId);
 
-	const getActiveMessages = (sessionId: ChatSessionId): ChatHubMessageDto[] => {
+	const getActiveMessages = (sessionId: ChatSessionId): ChatMessage[] => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
 		return conversation.activeMessageChain.map((id) => conversation.messages[id]).filter(Boolean);
 	};
 
-	function ensureConversation(sessionId: ChatSessionId): ChatHubConversationDto {
+	function ensureConversation(sessionId: ChatSessionId): ChatConversation {
 		if (!conversationsBySession.value.has(sessionId)) {
 			conversationsBySession.value.set(sessionId, {
 				messages: {},
@@ -60,10 +59,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return conversation;
 	}
 
-	function computeActiveChain(
-		conversation: ChatHubConversationDto,
-		lastMessageId: ChatMessageId | null,
-	) {
+	function computeActiveChain(conversation: ChatConversation, lastMessageId: ChatMessageId | null) {
 		const messages = conversation.messages;
 		const chain: ChatMessageId[] = [];
 
@@ -83,27 +79,109 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return chain;
 	}
 
-	function addMessage(sessionId: ChatSessionId, message: ChatHubMessageDto) {
+	function computeAlternativesAndResponses(messages: ChatHubMessageDto[]) {
+		const messagesGraph: Record<ChatMessageId, ChatMessage> = {};
+
+		for (const message of messages) {
+			messagesGraph[message.id] = {
+				...message,
+				responses: [],
+				alternatives: [],
+			};
+		}
+
+		for (const node of Object.values(messagesGraph)) {
+			if (node.previousMessageId && messagesGraph[node.previousMessageId]) {
+				messagesGraph[node.previousMessageId].responses.push(node.id);
+			}
+			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
+				// Add current node as an alternative to the original message
+				messagesGraph[node.retryOfMessageId].alternatives.push(node.id);
+			}
+			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
+				// Add current node as an alternative to the original message
+				messagesGraph[node.revisionOfMessageId].alternatives.push(node.id);
+			}
+		}
+
+		const sortByRunThenTime = (first: ChatMessageId, second: ChatMessageId) => {
+			const a = messagesGraph[first];
+			const b = messagesGraph[second];
+
+			if (a.runIndex !== b.runIndex) {
+				return a.runIndex - b.runIndex;
+			}
+
+			if (a.createdAt !== b.createdAt) {
+				return a.createdAt < b.createdAt ? -1 : 1;
+			}
+
+			return a.id < b.id ? -1 : 1;
+		};
+
+		// Second pass: Add cross-links for alternatives
+		for (const node of Object.values(messagesGraph)) {
+			if (!node.alternatives.includes(node.id)) {
+				node.alternatives.push(node.id);
+			}
+
+			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
+				node.alternatives.push(node.retryOfMessageId);
+				for (const other of messagesGraph[node.retryOfMessageId].alternatives) {
+					if (other !== node.id && !node.alternatives.includes(other)) {
+						node.alternatives.push(other);
+					}
+				}
+			}
+
+			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
+				node.alternatives.push(node.revisionOfMessageId);
+				for (const other of messagesGraph[node.revisionOfMessageId].alternatives) {
+					if (other !== node.id && !node.alternatives.includes(other)) {
+						node.alternatives.push(other);
+					}
+				}
+			}
+
+			node.responses.sort(sortByRunThenTime);
+			node.alternatives.sort(sortByRunThenTime);
+		}
+
+		return messagesGraph;
+	}
+
+	function addMessage(sessionId: ChatSessionId, message: ChatMessage) {
 		const conversation = ensureConversation(sessionId);
+
+		// if (message.previousMessageId) {
+		// 	if (!conversation.messages[message.previousMessageId].responses.includes(message.id)) {
+		// 		conversation.messages[message.previousMessageId].responses.push(message.id);
+		// 	}
+		// }
+
+		// if (message.retryOfMessageId) {
+		// 	if (!conversation.messages[message.retryOfMessageId].alternatives.includes(message.id)) {
+		// 		conversation.messages[message.retryOfMessageId].alternatives.push(message.id);
+		// 	}
+
+		// 	for (const other of Object.values(conversation.messages)) {
+		// 		if (other.retryOfMessageId === message.retryOfMessageId && other.id !== message.id) {
+		// 			other.state = 'replaced';
+		// 			message.alternatives.push(other.id);
+		// 		}
+		// 	}
+		// }
+
+		// if (message.revisionOfMessageId) {
+		// 	if (!conversation.messages[message.revisionOfMessageId].alternatives.includes(message.id)) {
+		// 		conversation.messages[message.revisionOfMessageId].alternatives.push(message.id);
+		// 	}
+		// }
+
 		conversation.messages[message.id] = message;
 
-		if (message.previousMessageId) {
-			if (!conversation.messages[message.previousMessageId].responseIds.includes(message.id)) {
-				conversation.messages[message.previousMessageId].responseIds.push(message.id);
-			}
-		}
-
-		if (message.retryOfMessageId) {
-			if (!conversation.messages[message.retryOfMessageId].retryIds.includes(message.id)) {
-				conversation.messages[message.retryOfMessageId].retryIds.push(message.id);
-			}
-		}
-
-		if (message.revisionOfMessageId) {
-			if (!conversation.messages[message.revisionOfMessageId].revisionIds.includes(message.id)) {
-				conversation.messages[message.revisionOfMessageId].revisionIds.push(message.id);
-			}
-		}
+		// TODO: Recomputing the entire graph shouldn't be needed here, we could just
+		conversation.messages = computeAlternativesAndResponses(Object.values(conversation.messages));
 
 		conversation.activeMessageChain = computeActiveChain(conversation, message.id);
 	}
@@ -134,7 +212,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function fetchMessages(sessionId: string) {
 		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
 
-		conversationsBySession.value.set(sessionId, conversation);
+		const messages = computeAlternativesAndResponses(Object.values(conversation.messages));
+
+		conversationsBySession.value.set(sessionId, {
+			...conversation,
+			messages,
+		});
 	}
 
 	function onBeginMessage(
@@ -165,9 +248,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			retryOfMessageId,
 			revisionOfMessageId: null,
 			runIndex: 0,
-			responseIds: [],
-			retryIds: [],
-			revisionIds: [],
+			responses: [],
+			alternatives: [],
 		});
 	}
 
@@ -263,9 +345,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			retryOfMessageId: null,
 			revisionOfMessageId: null,
 			runIndex: 0,
-			responseIds: [],
-			retryIds: [],
-			revisionIds: [],
+			responses: [],
+			alternatives: [],
 		});
 
 		sendMessageApi(
@@ -316,9 +397,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			retryOfMessageId: null,
 			revisionOfMessageId: editId,
 			runIndex: 0,
-			responseIds: [],
-			retryIds: [],
-			revisionIds: [],
+			responses: [],
+			alternatives: [],
 		});
 
 		editMessageApi(
@@ -390,10 +470,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	return {
 		models,
+		sessions,
+		conversationsBySession,
 		loadingModels,
 		isResponding,
 		ongoingStreaming,
-		sessions,
 		fetchChatModels,
 		sendMessage,
 		editMessage,
