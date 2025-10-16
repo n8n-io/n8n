@@ -867,8 +867,9 @@ export class ChatHubService {
 		}
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
-		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
-			this.buildMessagesGraph(messages);
+		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = Object.fromEntries(
+			messages.map((m) => [m.id, this.convertToDto(m)]),
+		);
 
 		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
 		const activeMessages = messages.filter((m) => m.state === 'active');
@@ -897,33 +898,27 @@ export class ChatHubService {
 		};
 	}
 
-	buildMessagesGraph(messages: ChatHubMessage[]) {
-		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
+	convertToDto(message: ChatHubMessage): ChatHubMessageDto {
+		return {
+			id: message.id,
+			sessionId: message.sessionId,
+			type: message.type,
+			name: message.name,
+			content: message.content,
+			provider: message.provider,
+			model: message.model,
+			workflowId: message.workflowId,
+			executionId: message.executionId,
+			state: message.state,
+			createdAt: message.createdAt.toISOString(),
+			updatedAt: message.updatedAt.toISOString(),
 
-		for (const message of messages) {
-			messagesGraph[message.id] = {
-				id: message.id,
-				sessionId: message.sessionId,
-				type: message.type,
-				name: message.name,
-				content: message.content,
-				provider: message.provider,
-				model: message.model,
-				workflowId: message.workflowId,
-				executionId: message.executionId,
-				state: message.state,
-				createdAt: message.createdAt.toISOString(),
-				updatedAt: message.updatedAt.toISOString(),
-
-				previousMessageId: message.previousMessageId,
-				turnId: message.turnId,
-				retryOfMessageId: message.retryOfMessageId,
-				revisionOfMessageId: message.revisionOfMessageId,
-				runIndex: message.runIndex,
-			};
-		}
-
-		return messagesGraph;
+			previousMessageId: message.previousMessageId,
+			turnId: message.turnId,
+			retryOfMessageId: message.retryOfMessageId,
+			revisionOfMessageId: message.revisionOfMessageId,
+			runIndex: message.runIndex,
+		};
 	}
 
 	/**
