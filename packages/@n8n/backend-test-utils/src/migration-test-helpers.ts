@@ -91,6 +91,17 @@ export async function initDbUpToMigration(beforeMigrationName: string): Promise<
 }
 
 /**
+ * Undo the last single migration down.
+ * Useful for testing the down path of a specific migration after inserting test data.
+ */
+export async function undoLastSingleMigration(): Promise<void> {
+	const dataSource = Container.get(DataSource);
+	await dataSource.undoLastMigration({
+		transaction: 'each',
+	});
+}
+
+/**
  * Run a single migration by name.
  * Useful for testing a specific migration after inserting test data.
  *

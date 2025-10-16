@@ -125,13 +125,12 @@ function itemComparator(a: Item, b: Item) {
 	min-width: max-content;
 	border-radius: var(--radius);
 	font-size: small;
-	background-color: var(--color-ndv-background);
-	color: var(--text-color-dark);
+	color: var(--color--text--shade-1);
 
 	cursor: pointer;
 
 	:hover {
-		color: var(--text-color-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 

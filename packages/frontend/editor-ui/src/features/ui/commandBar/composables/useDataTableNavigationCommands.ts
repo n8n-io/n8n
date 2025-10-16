@@ -5,9 +5,12 @@ import debounce from 'lodash/debounce';
 import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/dataTable/constants';
-import type { CommandGroup, CommandBarItem } from '../commandBar.types';
+import type { CommandBarItem } from '../types';
 import type { DataTable } from '@/features/dataTable/dataTable.types';
 import { N8nIcon } from '@n8n/design-system';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import CommandBarItemTitle from '@/features/ui/commandBar/components/CommandBarItemTitle.vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	OPEN_DATA_TABLE: 'open-data-table',
@@ -18,22 +21,27 @@ export function useDataTableNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
-}): CommandGroup {
+}) {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const dataTableStore = useDataTableStore();
 	const projectsStore = useProjectsStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const router = useRouter();
 	const route = useRoute();
 
 	const dataTableResults = ref<DataTable[]>([]);
+	const isLoading = ref(false);
+	const hasDataFetched = ref(false);
 
 	const currentProjectId = computed(() => {
 		return typeof route.params.projectId === 'string'
 			? route.params.projectId
 			: personalProjectId.value;
 	});
+
+	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
@@ -47,20 +55,15 @@ export function useDataTableNavigationCommands(options: {
 		});
 	}
 
-	const fetchDataTables = debounce(async (query: string) => {
+	const fetchDataTablesImpl = async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
 
-			if (!currentProjectId.value) {
-				dataTableResults.value = [];
-				return;
+			// Only fetch data from API on the first call
+			if (!hasDataFetched.value) {
+				await dataTableStore.fetchDataTables('', 1, 1000);
+				hasDataFetched.value = true;
 			}
-
-			await dataTableStore.fetchDataTables(
-				currentProjectId.value,
-				1,
-				100, // TODO: pagination/lazy loading
-			);
 
 			const trimmedLower = trimmed.toLowerCase();
 			const filtered = dataTableStore.dataTables.filter((dataTable) =>
@@ -70,81 +73,88 @@ export function useDataTableNavigationCommands(options: {
 			dataTableResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
 			dataTableResults.value = [];
+		} finally {
+			isLoading.value = false;
 		}
-	}, 300);
-
-	const getDataTableTitle = (dataTable: DataTable, includeOpenDataTablePrefix: boolean) => {
-		let prefix = '';
-		if (dataTable.project && dataTable.project.type === 'personal') {
-			prefix = includeOpenDataTablePrefix
-				? i18n.baseText('commandBar.dataTables.openPrefixPersonal')
-				: i18n.baseText('commandBar.dataTables.prefixPersonal');
-		} else {
-			prefix = includeOpenDataTablePrefix
-				? i18n.baseText('commandBar.dataTables.openPrefixProject', {
-						interpolate: { projectName: dataTable.project?.name ?? '' },
-					})
-				: i18n.baseText('commandBar.dataTables.prefixProject', {
-						interpolate: { projectName: dataTable.project?.name ?? '' },
-					});
-		}
-		return prefix + (dataTable.name || i18n.baseText('commandBar.dataTables.unnamed'));
 	};
 
-	const createDataTableCommand = (
-		dataTable: DataTable,
-		includeOpenDataTablePrefix: boolean,
-	): CommandBarItem => {
+	const fetchDataTablesDebounced = debounce(fetchDataTablesImpl, 300);
+
+	const getDataTableProjectSuffix = (dataTable: DataTable) => {
+		if (dataTable.project && dataTable.project.type === 'personal') {
+			return i18n.baseText('projects.menu.personal');
+		}
+		return dataTable.project?.name ?? '';
+	};
+
+	const createDataTableCommand = (dataTable: DataTable): CommandBarItem => {
+		// Add data table name to keywords since we're using a custom component for the title
+		const keywords = [dataTable.name];
+
 		return {
 			id: dataTable.id,
-			title: getDataTableTitle(dataTable, includeOpenDataTablePrefix),
+			title: {
+				component: CommandBarItemTitle,
+				props: {
+					title: dataTable.name,
+					suffix: getDataTableProjectSuffix(dataTable),
+					actionText: i18n.baseText('generic.open'),
+				},
+			},
 			section: i18n.baseText('commandBar.sections.dataTables'),
+			keywords,
 			handler: () => {
-				const targetRoute = router.resolve({
+				void router.push({
 					name: DATA_TABLE_DETAILS,
 					params: {
 						projectId: dataTable.projectId,
 						id: dataTable.id,
 					},
 				});
-				window.location.href = targetRoute.fullPath;
 			},
 		};
 	};
 
 	const openDataTableCommands = computed<CommandBarItem[]>(() => {
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, false));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
 	});
 
 	const rootDataTableItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, true));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
-		return [
-			{
-				id: ITEM_ID.CREATE_DATA_TABLE,
-				title: i18n.baseText('commandBar.dataTables.create', {
-					interpolate: { projectName: currentProjectName.value },
-				}),
-				section: i18n.baseText('commandBar.sections.dataTables'),
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'plus',
-					},
-				},
-				handler: () => {
-					if (!currentProjectId.value) return;
-					void router.push({
-						name: PROJECT_DATA_TABLES,
-						params: { projectId: currentProjectId.value, new: 'new' },
-					});
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			getResourcePermissions(homeProject.value?.scopes).dataTable.create;
+
+		const newDataTableCommand: CommandBarItem = {
+			id: ITEM_ID.CREATE_DATA_TABLE,
+			title: i18n.baseText('commandBar.dataTables.create', {
+				interpolate: { projectName: currentProjectName.value },
+			}),
+			section: i18n.baseText('commandBar.sections.dataTables'),
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'table',
+					color: 'text-light',
 				},
 			},
+			handler: () => {
+				if (!currentProjectId.value) return;
+				void router.push({
+					name: PROJECT_DATA_TABLES,
+					params: { projectId: currentProjectId.value, new: 'new' },
+				});
+			},
+		};
+
+		return [
+			...(hasCreatePermission ? [newDataTableCommand] : []),
 			{
 				id: ITEM_ID.OPEN_DATA_TABLE,
 				title: i18n.baseText('commandBar.dataTables.open'),
@@ -153,7 +163,8 @@ export function useDataTableNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'arrow-right',
+						icon: 'table',
+						color: 'text-light',
 					},
 				},
 				children: openDataTableCommands.value,
@@ -163,11 +174,13 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	function onCommandBarChange(query: string) {
-		lastQuery.value = query;
-
 		const trimmed = query.trim();
-		if (trimmed.length > 2 || activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE) {
-			void fetchDataTables(trimmed);
+		const isInDataTableParent = activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+
+		if (isInDataTableParent || isRootWithQuery) {
+			isLoading.value = isInDataTableParent;
+			void fetchDataTablesDebounced(trimmed);
 		}
 	}
 
@@ -175,9 +188,11 @@ export function useDataTableNavigationCommands(options: {
 		activeNodeId.value = to;
 
 		if (to === ITEM_ID.OPEN_DATA_TABLE) {
-			void fetchDataTables('');
+			isLoading.value = true;
+			void fetchDataTablesImpl('');
 		} else if (to === null) {
 			dataTableResults.value = [];
+			hasDataFetched.value = false;
 		}
 	}
 
@@ -187,5 +202,6 @@ export function useDataTableNavigationCommands(options: {
 			onCommandBarChange,
 			onCommandBarNavigateTo,
 		},
+		isLoading,
 	};
 }

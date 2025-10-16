@@ -3,11 +3,11 @@ import { faker } from '@faker-js/faker';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createPinia, setActivePinia } from 'pinia';
 import * as dataTableApi from '@/features/dataTable/dataTable.api';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { DataTable } from '@/features/dataTable/dataTable.types';
 
-vi.mock('@/stores/projects.store');
+vi.mock('@/features/projects/projects.store');
 vi.mock('@/stores/settings.store');
 
 function createTable(data: Partial<DataTable>) {

@@ -57,15 +57,30 @@ const size = computed((): { height: string; width: string } => {
 	};
 });
 
+// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
+const colorMap: Record<IconColor, string> = {
+	primary: '--color--primary',
+	secondary: '--color--secondary',
+	'text-dark': '--color--text--shade-1',
+	'text-base': '--color--text',
+	'text-light': '--color--text--tint-1',
+	'text-xlight': '--color--text--tint-3',
+	danger: '--color--danger',
+	success: '--color--success',
+	warning: '--color--warning',
+	'foreground-dark': '--color--foreground--shade-1',
+	'foreground-xdark': '--color--foreground--shade-2',
+};
+
 const styles = computed(() => {
 	const stylesToApply: Record<string, string> = {};
 
 	if (props.color) {
-		stylesToApply.color = `var(--color-${props.color})`;
+		stylesToApply.color = `var(${colorMap[props.color]})`;
 	}
 
 	if (props.strokeWidth) {
-		stylesToApply['--n8n-icon-stroke-width'] = `${props.strokeWidth}px`;
+		stylesToApply['--icon--stroke-width'] = `${props.strokeWidth}px`;
 	}
 
 	return stylesToApply;
@@ -97,7 +112,7 @@ const styles = computed(() => {
 .strokeWidth {
 	rect,
 	path {
-		stroke-width: var(--n8n-icon-stroke-width);
+		stroke-width: var(--icon--stroke-width);
 	}
 }
 

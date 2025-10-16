@@ -5,7 +5,7 @@ export class CircleCiApi implements ICredentialType {
 
 	displayName = 'CircleCI API';
 
-	documentationUrl = 'circleCi';
+	documentationUrl = 'circleci';
 
 	properties: INodeProperties[] = [
 		{

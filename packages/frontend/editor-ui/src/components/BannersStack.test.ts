@@ -11,7 +11,7 @@ import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 
 let uiStore: ReturnType<typeof useUIStore>;
 

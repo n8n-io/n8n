@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import type { MemorySaver } from '@langchain/langgraph';
@@ -28,10 +28,15 @@ import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
+import {
+	applyCacheControlMarkers,
+	cleanStaleWorkflowContext,
+	findUserToolMessageIndices,
+} from './utils/cache-control/helpers';
 import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
-import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
+import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -114,13 +119,43 @@ export class WorkflowBuilderAgent {
 				});
 			}
 
+			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
+
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
-				workflowJSON: trimWorkflowJSON(state.workflowJSON),
-				executionData: state.workflowContext?.executionData ?? {},
-				executionSchema: state.workflowContext?.executionSchema ?? [],
 				instanceUrl: this.instanceUrl,
+				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 			});
+			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+			const executionData = state.workflowContext?.executionData ?? {};
+			const executionSchema = state.workflowContext?.executionSchema ?? [];
+
+			const workflowContext = [
+				'',
+				'<current_workflow_json>',
+				JSON.stringify(trimmedWorkflow, null, 2),
+				'</current_workflow_json>',
+				'<trimmed_workflow_json_note>',
+				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+				'Use get_node_parameter tool to get full details when needed.',
+				'</trimmed_workflow_json_note>',
+				'',
+				'<current_simplified_execution_data>',
+				JSON.stringify(executionData, null, 2),
+				'</current_simplified_execution_data>',
+				'',
+				'<current_execution_nodes_schemas>',
+				JSON.stringify(executionSchema, null, 2),
+				'</current_execution_nodes_schemas>',
+			].join('\n');
+
+			// Optimize prompts for Anthropic's caching by:
+			// 1. Finding all user/tool message positions (cache breakpoints)
+			// 2. Removing stale workflow context from old messages
+			// 3. Adding current workflow context and cache markers to recent messages
+			const userToolIndices = findUserToolMessageIndices(prompt.messages);
+			cleanStaleWorkflowContext(prompt.messages, userToolIndices);
+			applyCacheControlMarkers(prompt.messages, userToolIndices, workflowContext);
 
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
@@ -136,22 +171,14 @@ export class WorkflowBuilderAgent {
 		};
 
 		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
-			const tokenUsage = extractLastTokenUsage(messages);
+			// Estimate the current conversation size by counting tokens in all messages
+			// This is more accurate than using the last API call's token usage,
+			// because the conversation may have grown since the last call
+			const estimatedTokens = estimateTokenCountFromMessages(messages);
 
-			if (!tokenUsage) {
-				this.logger?.debug('No token usage metadata found');
-				return false;
-			}
+			const shouldCompact = estimatedTokens > this.autoCompactThresholdTokens;
 
-			const tokensUsed = tokenUsage.input_tokens + tokenUsage.output_tokens;
-
-			this.logger?.debug('Token usage', {
-				inputTokens: tokenUsage.input_tokens,
-				outputTokens: tokenUsage.output_tokens,
-				totalTokens: tokensUsed,
-			});
-
-			return tokensUsed > this.autoCompactThresholdTokens;
+			return shouldCompact;
 		};
 
 		const shouldModifyState = (state: typeof WorkflowState.State) => {
@@ -229,10 +256,6 @@ export class WorkflowBuilderAgent {
 			const { messages, previousSummary } = state;
 			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
-
-			this.logger?.debug('Compacting conversation history', {
-				isAutoCompact,
-			});
 
 			const compactedMessages = await conversationCompactChain(
 				this.llmSimpleTask,

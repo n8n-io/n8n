@@ -6,7 +6,7 @@ import EvaluationRootView from './EvaluationsRootView.vue';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useEvaluationStore } from '../evaluation.store';
-import { useUsageStore } from '@/stores/usage.store';
+import { useUsageStore } from '@/features/usage/usage.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';

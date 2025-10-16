@@ -2,11 +2,12 @@
 import { ref, computed } from 'vue';
 import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import Modal from '@/components/Modal.vue';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import type { ICredentialsResponse } from '@/Interface';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubProvider } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/chatHub/constants';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
 const props = defineProps<{
 	provider: ChatHubProvider;
@@ -57,7 +58,14 @@ function onCancel() {
 		min-height="250px"
 	>
 		<template #header>
-			<h2 :class="$style.title">Select {{ providerDisplayNames[provider] }} Credential</h2>
+			<div :class="$style.header">
+				<CredentialIcon
+					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[provider]"
+					:size="24"
+					:class="$style.icon"
+				/>
+				<h2 :class="$style.title">Select {{ providerDisplayNames[provider] }} Credential</h2>
+			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
@@ -68,7 +76,6 @@ function onCancel() {
 					:model-value="selectedCredentialId"
 					size="large"
 					placeholder="Select credential..."
-					data-test-id="credential-select"
 					@update:model-value="onCredentialSelect"
 				>
 					<N8nOption
@@ -118,5 +125,16 @@ function onCancel() {
 .footerRight {
 	display: flex;
 	gap: var(--spacing--2xs);
+}
+
+.header {
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
+}
+
+.icon {
+	flex-shrink: 0;
+	flex-grow: 0;
 }
 </style>
