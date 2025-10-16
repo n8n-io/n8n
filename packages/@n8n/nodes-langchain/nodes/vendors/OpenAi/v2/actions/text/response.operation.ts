@@ -710,9 +710,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		item.type === 'function_call' || item.type === 'reasoning';
 
 	let toolCalls = response.output.filter(isToolRelatedCall);
+
+	const hasFunctionCall = () => toolCalls.some((item) => item.type === 'function_call');
+
 	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
-	while (toolCalls.length) {
+	while (toolCalls.length && hasFunctionCall()) {
 		if (abortSignal?.aborted || (maxToolsIterations > 0 && currentIteration > maxToolsIterations)) {
 			break;
 		}
