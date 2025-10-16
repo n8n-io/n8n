@@ -38,14 +38,6 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-
 import { ChatHubMessage } from './chat-hub-message.entity';
 import type {
 	HumanMessagePayload,
@@ -56,6 +48,14 @@ import type {
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
+
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -348,10 +348,22 @@ export class ChatHubService {
 
 		const session = await this.getChatSession(user, sessionId, selectedModel, true, message);
 
+		// Ensure that the previous message exists in the session
+		if (payload.previousMessageId) {
+			const previousMessage = await this.messageRepository.getOneById(
+				payload.previousMessageId,
+				sessionId,
+			);
+			if (!previousMessage) {
+				throw new BadRequestError('The previous message does not exist in the session');
+			}
+		}
+
+		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+		const history = this.buildMessageHistory(messages, payload.previousMessageId);
+
 		const turnId = messageId;
 		await this.saveHumanMessage(payload, user, turnId, payload.previousMessageId, selectedModel);
-
-		const history = session.messages ?? [];
 
 		const workflow = await this.createChatWorkflow(
 			user,
@@ -376,31 +388,26 @@ export class ChatHubService {
 
 	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
 		const { sessionId, editId, messageId, message, replyId } = payload;
-
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
 		const session = await this.getChatSession(user, sessionId, selectedModel);
-		const messages = session.messages ?? [];
 		const messageToEdit = await this.getChatMessage(session.id, editId);
 
 		if (messageToEdit.type !== 'human') {
 			throw new BadRequestError('Can only edit human messages');
 		}
 
-		const historyIds = messageToEdit.previousMessageId
-			? this.buildActiveMessageChain(messages, messageToEdit.previousMessageId)
-			: [];
-
-		const history = historyIds.flatMap((id) => {
-			return messages.find((m) => m.id === id) ?? [];
-		});
+		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+		const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
 
 		// If the message to edit isn't the original message, we want to point to the original message
 		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-		const otherRuns = messages.filter((m) => m.revisionOfMessageId === revisionOfMessageId);
+		const otherRuns = (session.messages ?? []).filter(
+			(m) => m.revisionOfMessageId === revisionOfMessageId,
+		);
 		const runIndex = otherRuns.length + 1;
 
 		await this.messageRepository.updateChatMessage(revisionOfMessageId, { state: 'replaced' });
@@ -451,20 +458,14 @@ export class ChatHubService {
 		};
 
 		const session = await this.getChatSession(user, sessionId, selectedModel);
-		const messages = session.messages ?? [];
 		const messageToRetry = await this.getChatMessage(session.id, retryId);
 
 		if (messageToRetry.type !== 'ai') {
 			throw new BadRequestError('Can only retry AI messages');
 		}
 
-		const historyIds = messageToRetry.previousMessageId
-			? this.buildActiveMessageChain(messages, messageToRetry.previousMessageId)
-			: [];
-
-		const history = historyIds.flatMap((id) => {
-			return messages.find((m) => m.id === id) ?? [];
-		});
+		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+		const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
 
 		const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
 		if (!lastHumanMessage) {
@@ -489,7 +490,9 @@ export class ChatHubService {
 
 		// If the message being retried is itself a retry, we want to point to the original message
 		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
-		const otherRuns = messages.filter((m) => m.retryOfMessageId === retryOfMessageId);
+		const otherRuns = (session.messages ?? []).filter(
+			(m) => m.retryOfMessageId === retryOfMessageId,
+		);
 		const runIndex = otherRuns.length + 1;
 
 		await this.messageRepository.updateChatMessage(retryOfMessageId, { state: 'replaced' });
@@ -867,15 +870,6 @@ export class ChatHubService {
 		}
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
-		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = Object.fromEntries(
-			messages.map((m) => [m.id, this.convertMessageToDto(m)]),
-		);
-
-		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
-		const activeMessages = messages.filter((m) => m.state === 'active');
-		const latest = activeMessages[activeMessages.length - 1]; // Messages are sorted by createdAt
-
-		const activeMessageChain = latest ? this.buildActiveMessageChain(messages, latest.id) : [];
 
 		return {
 			session: {
@@ -891,9 +885,7 @@ export class ChatHubService {
 				updatedAt: session.updatedAt.toISOString(),
 			},
 			conversation: {
-				messages: messagesGraph,
-				rootIds,
-				activeMessageChain,
+				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),
 			},
 		};
 	}
@@ -922,23 +914,27 @@ export class ChatHubService {
 	}
 
 	/**
-	 * Build the active message chain ending to the message with ID `lastMessageId`
+	 * Build the message history chain ending to the message with ID `lastMessageId`
 	 */
-	private buildActiveMessageChain(messages: ChatHubMessage[], lastMessageId: ChatMessageId) {
-		const nodes = new Map(messages.map((m) => [m.id, m]));
+	private buildMessageHistory(
+		messages: Record<ChatMessageId, ChatHubMessage>,
+		lastMessageId: ChatMessageId | null,
+	) {
+		if (!lastMessageId) return [];
 
 		const visited = new Set<string>();
-		const activeMessageChain = [];
+		const historyIds = [];
 
 		let current: ChatMessageId | null = lastMessageId;
 
 		while (current && !visited.has(current)) {
-			activeMessageChain.unshift(current);
+			historyIds.unshift(current);
 			visited.add(current);
-			current = nodes.get(current)?.previousMessageId ?? null;
+			current = messages[current]?.previousMessageId ?? null;
 		}
 
-		return activeMessageChain;
+		const history = historyIds.flatMap((id) => messages[id] ?? []);
+		return history;
 	}
 
 	async deleteAllSessions() {

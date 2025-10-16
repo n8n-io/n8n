@@ -46,7 +46,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (!conversationsBySession.value.has(sessionId)) {
 			conversationsBySession.value.set(sessionId, {
 				messages: {},
-				rootIds: [],
 				activeMessageChain: [],
 			});
 		}
@@ -59,17 +58,42 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return conversation;
 	}
 
-	function computeActiveChain(conversation: ChatConversation, lastMessageId: ChatMessageId | null) {
-		const messages = conversation.messages;
+	function computeActiveChain(
+		messages: Record<ChatMessageId, ChatMessage>,
+		messageId: ChatMessageId | null,
+	) {
 		const chain: ChatMessageId[] = [];
 
-		if (!lastMessageId) {
+		if (!messageId) {
 			return chain;
 		}
+
+		let id: ChatMessageId | undefined;
+
+		// Find the most recent descendant message starting from messageId...
+		const stack = [messageId];
+		let latest: ChatMessageId | null = null;
+
+		while ((id = stack.pop())) {
+			const message: ChatMessage = messages[id];
+			if (!latest || message.createdAt > messages[latest].createdAt) {
+				latest = id;
+			}
+
+			for (const responseId of message.responses) {
+				stack.push(responseId);
+			}
+		}
+
+		// ...then from there, traverse down the most recent responses
+		if (!latest) {
+			return chain;
+		}
+
+		let current: ChatMessageId | null = latest;
 		const visited = new Set<ChatMessageId>();
 
-		let current: ChatMessageId | null = lastMessageId;
-
+		// Traverse from the selected message back to the root...
 		while (current && !visited.has(current)) {
 			chain.unshift(current);
 			visited.add(current);
@@ -79,7 +103,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return chain;
 	}
 
-	function computeAlternativesAndResponses(messages: ChatHubMessageDto[]) {
+	function linkMessages(messages: ChatHubMessageDto[]) {
 		const messagesGraph: Record<ChatMessageId, ChatMessage> = {};
 
 		for (const message of messages) {
@@ -106,9 +130,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			const a = messagesGraph[first];
 			const b = messagesGraph[second];
 
-			if (a.runIndex !== b.runIndex) {
-				return a.runIndex - b.runIndex;
-			}
+			// TODO: Disabled for now, messages retried don't get this at the FE before reload
+			// if (a.runIndex !== b.runIndex) {
+			// 	return a.runIndex - b.runIndex;
+			// }
 
 			if (a.createdAt !== b.createdAt) {
 				return a.createdAt < b.createdAt ? -1 : 1;
@@ -153,10 +178,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		conversation.messages[message.id] = message;
 
-		// TODO: Recomputing the entire graph shouldn't be needed here, we could just
-		conversation.messages = computeAlternativesAndResponses(Object.values(conversation.messages));
-
-		conversation.activeMessageChain = computeActiveChain(conversation, message.id);
+		// TODO: Recomputing the entire graph shouldn't be needed here
+		conversation.messages = linkMessages(Object.values(conversation.messages));
+		conversation.activeMessageChain = computeActiveChain(conversation.messages, message.id);
 	}
 
 	function appendMessage(sessionId: ChatSessionId, messageId: ChatMessageId, chunk: string) {
@@ -185,11 +209,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function fetchMessages(sessionId: string) {
 		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
 
-		const messages = computeAlternativesAndResponses(Object.values(conversation.messages));
+		const messages = linkMessages(Object.values(conversation.messages));
+		const latestMessage = Object.values(messages)
+			.filter((m) => m.state === 'active')
+			.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+			.pop();
 
 		conversationsBySession.value.set(sessionId, {
-			...conversation,
 			messages,
+			activeMessageChain: computeActiveChain(messages, latestMessage?.id ?? null),
 		});
 	}
 
@@ -303,7 +331,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: null,
+			model: model.model,
 			workflowId: null,
 			executionId: null,
 			state: 'active',
@@ -433,6 +461,26 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: call the endpoint
 	}
 
+	function switchAlternative(sessionId: ChatSessionId, messageId: ChatMessageId) {
+		const conversation = getConversation(sessionId);
+		if (!conversation?.messages[messageId]) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		const message: ChatMessage = conversation.messages[messageId];
+
+		// TODO: Do we want to persist this change to the backend?
+
+		for (const alternativeId of message.alternatives) {
+			const alternative = conversation.messages[alternativeId];
+			if (alternative) {
+				alternative.state = alternative.id === messageId ? 'active' : 'replaced';
+			}
+		}
+
+		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
+	}
+
 	return {
 		models,
 		sessions,
@@ -450,5 +498,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		deleteSession,
 		getConversation,
 		getActiveMessages,
+		switchAlternative,
 	};
 });
