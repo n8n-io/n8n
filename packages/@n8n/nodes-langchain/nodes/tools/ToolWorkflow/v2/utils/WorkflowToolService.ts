@@ -160,6 +160,8 @@ export class WorkflowToolService {
 						};
 					}
 
+					// If manualLogging is enabled we've been called by the AgentExecutor
+					// and have to return a stringified response.
 					if (manualLogging) {
 						void context.addOutputData(
 							NodeConnectionTypes.AiTool,
@@ -167,9 +169,13 @@ export class WorkflowToolService {
 							[responseData],
 							metadata,
 						);
+
+						return processedResponse;
 					}
 
-					return processedResponse;
+					// If manualLogging is false we've been called by the engine and need
+					// the structured response.
+					return responseData;
 				} catch (error) {
 					// Check if error is due to cancellation
 					if (abortSignal?.aborted) {
