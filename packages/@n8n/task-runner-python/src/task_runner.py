@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from typing import Dict, Optional, Any, Callable, Awaitable
 from urllib.parse import urlparse
 import websockets
@@ -57,10 +58,10 @@ from src.task_analyzer import TaskAnalyzer
 from src.config.security_config import SecurityConfig
 
 
+@dataclass
 class TaskOffer:
-    def __init__(self, offer_id: str, valid_until: float):
-        self.offer_id = offer_id
-        self.valid_until = valid_until
+    offer_id: str
+    valid_until: float
 
     @property
     def has_expired(self) -> bool:
