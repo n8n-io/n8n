@@ -306,21 +306,18 @@ describe('useAgGrid', () => {
 	});
 
 	describe('handleCopyFocusedCell', () => {
-		it('should copy cell value to clipboard', async () => {
-			const mockCopy = vi.fn();
-			vi.mocked(useClipboard).mockReturnValue({
-				copy: mockCopy,
-				onPaste: ref(null),
-				copied: computed(() => false),
-				isSupported: ref(true),
-				text: computed(() => ''),
-			});
+		const mockCopy = vi.fn();
+		vi.mocked(useClipboard).mockReturnValue({
+			copy: mockCopy,
+			onPaste: ref(null),
+			copied: computed(() => false),
+			isSupported: ref(true),
+			text: computed(() => ''),
+		});
 
-			const { onGridReady, handleCopyFocusedCell } = createComposable();
-			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
-
+		const getKeydownEvent = (field: string, value: unknown, dataType?: unknown) => {
 			const mockColumn = {
-				getColDef: () => ({ field: 'name' }),
+				getColDef: () => ({ field, cellDataType: dataType }),
 			} as unknown as Column;
 
 			mockGridApi.getFocusedCell = vi.fn(() => ({
@@ -331,47 +328,42 @@ describe('useAgGrid', () => {
 			mockGridApi.getDisplayedRowAtIndex = vi.fn(
 				() =>
 					({
-						data: { name: 'John Doe' },
+						data: { [field]: value },
 					}) as unknown as IRowNode,
 			);
 
-			const event = {
+			return {
 				api: mockGridApi as GridApi,
 			} as unknown as CellKeyDownEvent;
+		};
 
-			await handleCopyFocusedCell(event);
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should copy cell value to clipboard', async () => {
+			const { onGridReady, handleCopyFocusedCell } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			await handleCopyFocusedCell(getKeydownEvent('name', 'John Doe'));
 
 			expect(mockCopy).toHaveBeenCalledWith('John Doe');
 		});
 
 		it('should copy empty string for null values', async () => {
-			const mockCopy = vi.fn();
-			vi.mocked(useClipboard).mockReturnValue({
-				copy: mockCopy,
-				onPaste: ref(null),
-				copied: computed(() => false),
-				isSupported: ref(true),
-				text: computed(() => ''),
-			});
-
 			const { onGridReady, handleCopyFocusedCell } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColDef: () => ({ field: 'name' }),
-			} as unknown as Column;
+			await handleCopyFocusedCell(getKeydownEvent('name', null));
 
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(
-				() =>
-					({
-						data: { name: null },
-					}) as unknown as IRowNode,
-			);
+			expect(mockCopy).toHaveBeenCalledWith('');
+		});
+
+		it('should copy JSON string for object values', async () => {
+			const { onGridReady, handleCopyFocusedCell } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			await handleCopyFocusedCell(getKeydownEvent('obj', { foo: 'bar' }, 'object'));
 
 			const event = {
 				api: mockGridApi as GridApi,
@@ -379,19 +371,10 @@ describe('useAgGrid', () => {
 
 			await handleCopyFocusedCell(event);
 
-			expect(mockCopy).toHaveBeenCalledWith('');
+			expect(mockCopy).toHaveBeenCalledWith('{"foo":"bar"}');
 		});
 
 		it('should not copy if no cell is focused', async () => {
-			const mockCopy = vi.fn();
-			vi.mocked(useClipboard).mockReturnValue({
-				copy: mockCopy,
-				onPaste: ref(null),
-				copied: computed(() => false),
-				isSupported: ref(true),
-				text: computed(() => ''),
-			});
-
 			const { onGridReady, handleCopyFocusedCell } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
@@ -408,13 +391,14 @@ describe('useAgGrid', () => {
 	});
 
 	describe('onClipboardPaste', () => {
-		it('should paste text data to text cell', () => {
-			const { onGridReady } = createComposable();
-			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
 
+		const mockFocusedCellAndRow = (colId: string, cellDataType: unknown) => {
 			const mockColumn = {
-				getColId: () => 'name',
-				getColDef: () => ({ cellDataType: 'text' }),
+				getColId: () => colId,
+				getColDef: () => ({ cellDataType }),
 			} as unknown as Column;
 
 			const mockRow = {
@@ -428,6 +412,15 @@ describe('useAgGrid', () => {
 			}));
 			mockGridApi.getEditingCells = vi.fn(() => []);
 			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+
+			return { mockRow };
+		};
+
+		it('should paste text data to text cell', () => {
+			const { onGridReady } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			const { mockRow } = mockFocusedCellAndRow('name', 'text');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -441,22 +434,7 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'age',
-				getColDef: () => ({ cellDataType: 'number' }),
-			} as unknown as Column;
-
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+			const { mockRow } = mockFocusedCellAndRow('age', 'number');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -466,26 +444,39 @@ describe('useAgGrid', () => {
 			expect(mockRow.setDataValue).toHaveBeenCalledWith('age', 42);
 		});
 
+		it('should paste valid JSON to object cell', () => {
+			const { onGridReady } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			const { mockRow } = mockFocusedCellAndRow('obj', 'object');
+
+			const mockUseClipboard = vi.mocked(useClipboard);
+			const onPasteCallback =
+				mockUseClipboard.mock.calls[mockUseClipboard.mock.calls.length - 1]?.[0]?.onPaste;
+			onPasteCallback?.('{"foo":"bar"}');
+
+			expect(mockRow.setDataValue).toHaveBeenCalledWith('obj', { foo: 'bar' });
+		});
+
+		it('should not paste invalid JSON to object cell', () => {
+			const { onGridReady } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			const { mockRow } = mockFocusedCellAndRow('obj', 'object');
+
+			const mockUseClipboard = vi.mocked(useClipboard);
+			const onPasteCallback =
+				mockUseClipboard.mock.calls[mockUseClipboard.mock.calls.length - 1]?.[0]?.onPaste;
+			onPasteCallback?.('not a JSON');
+
+			expect(mockRow.setDataValue).not.toHaveBeenCalled();
+		});
+
 		it('should not paste invalid number to number cell', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'age',
-				getColDef: () => ({ cellDataType: 'number' }),
-			} as unknown as Column;
-
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+			const { mockRow } = mockFocusedCellAndRow('age', 'number');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -499,22 +490,7 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'createdAt',
-				getColDef: () => ({ cellDataType: 'date' }),
-			} as unknown as Column;
-
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+			const { mockRow } = mockFocusedCellAndRow('createdAt', 'date');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -528,22 +504,7 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'createdAt',
-				getColDef: () => ({ cellDataType: 'date' }),
-			} as unknown as Column;
-
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+			const { mockRow } = mockFocusedCellAndRow('createdAt', 'date');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -557,22 +518,7 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'active',
-				getColDef: () => ({ cellDataType: 'boolean' }),
-			} as unknown as Column;
-
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+			const { mockRow } = mockFocusedCellAndRow('active', 'boolean');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -586,22 +532,7 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'active',
-				getColDef: () => ({ cellDataType: 'boolean' }),
-			} as unknown as Column;
-
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+			const { mockRow } = mockFocusedCellAndRow('active', 'boolean');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -615,22 +546,7 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'active',
-				getColDef: () => ({ cellDataType: 'boolean' }),
-			} as unknown as Column;
-
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+			const { mockRow } = mockFocusedCellAndRow('active', 'boolean');
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -644,13 +560,8 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
+			const { mockRow } = mockFocusedCellAndRow('name', 'text');
 			mockGridApi.getFocusedCell = vi.fn(() => null);
-			mockGridApi.getEditingCells = vi.fn(() => []);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -664,22 +575,9 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'name',
-				getColDef: () => ({ cellDataType: 'text' }),
-			} as unknown as Column;
+			const { mockRow } = mockFocusedCellAndRow('name', 'text');
 
-			const mockRow = {
-				setDataValue: vi.fn(),
-			};
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
 			mockGridApi.getEditingCells = vi.fn(() => [{ rowIndex: 0, colId: 'name', rowPinned: null }]);
-			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
 
 			const mockUseClipboard = vi.mocked(useClipboard);
 			const onPasteCallback =
@@ -693,17 +591,7 @@ describe('useAgGrid', () => {
 			const { onGridReady } = createComposable();
 			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
 
-			const mockColumn = {
-				getColId: () => 'name',
-				getColDef: () => ({ cellDataType: 'text' }),
-			} as unknown as Column;
-
-			mockGridApi.getFocusedCell = vi.fn(() => ({
-				rowIndex: 0,
-				column: mockColumn,
-				rowPinned: null,
-			}));
-			mockGridApi.getEditingCells = vi.fn(() => []);
+			mockFocusedCellAndRow('name', 'text');
 			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => undefined);
 
 			const mockUseClipboard = vi.mocked(useClipboard);
