@@ -254,7 +254,7 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
-    
+
     @staticmethod
     def _extract_json_data_per_item(user_output):
         if not isinstance(user_output, dict):
@@ -429,11 +429,12 @@ class TaskExecutor:
             safe_modules.update(security_config.external_allow)
 
         # keep modules marked as safe and submodules of those
+        safe_prefixes = [safe + "." for safe in safe_modules]
         modules_to_remove = [
             name
             for name in sys.modules.keys()
             if name not in safe_modules
-            and not any(name.startswith(safe + ".") for safe in safe_modules)
+            and not any(name.startswith(prefix) for prefix in safe_prefixes)
         ]
 
         for module_name in modules_to_remove:
