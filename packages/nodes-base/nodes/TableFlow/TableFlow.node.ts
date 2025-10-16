@@ -56,7 +56,6 @@ export class TableFlow implements INodeType {
 						value: 'create or update',
 						action: 'Create or update a record',
 					},
-					{ name: 'Delete', value: 'delete', action: 'Delete a record' },
 					{ name: 'Get', value: 'get', action: 'Get a record' },
 				],
 				default: 'create',
@@ -71,7 +70,7 @@ export class TableFlow implements INodeType {
 				default: '',
 				required: true,
 				displayOptions: {
-					show: { operation: ['create', 'create or update', 'delete', 'get'] },
+					show: { operation: ['create', 'create or update', 'get'] },
 				},
 			},
 

@@ -13,7 +13,7 @@
 The **TableFlow** node allows you to connect n8n with the [TableFlow API](https://www.tableflow.tech).
 It enables you to automate data import, synchronization, and table management workflows directly within n8n.
 
-Use it to create, update, or fetch data from TableFlow tables — or trigger imports and transformations programmatically.
+Use it to create, update, or fetch data from TableFlow tables — or trigger and transformations programmatically.
 
 ---
 
@@ -21,14 +21,14 @@ Use it to create, update, or fetch data from TableFlow tables — or trigger imp
 
 ### **TableFlow API**
 
-This node requires a **TableFlow API Key**.
+This node requires a **TableFlow Access Token**.
 
 1. Log in to your [TableFlow Dashboard](https://www.tableflow.tech).
-2. Go to **Settings → API Keys**.
-3. Generate and copy a new key.
+2. Go to **Settings → Access Token**.
+3. Generate and copy a new token.
 4. In n8n, add new credentials:
    - **Name:** TableFlow API
-   - **API Key:** your_key_here
+   - **Access Token:** your_token_here
 
 Credentials are stored securely and shared across TableFlow operations.
 
