@@ -705,4 +705,411 @@ describe('getStatus', () => {
 			});
 		});
 	});
+
+	describe('detect owner changes', () => {
+		describe('credentials', () => {
+			const mockCredentials = {
+				withOwner: {
+					id: 'cred1',
+					name: 'Test Credential',
+					type: 'testApi',
+					data: {},
+					filename: '/mock/n8n/git/credentials/cred1.json',
+					ownedBy: {
+						type: 'personal' as const,
+						projectId: 'project1',
+						projectName: 'Project 1',
+					},
+				} as StatusExportableCredential,
+				withDifferentOwner: {
+					id: 'cred1',
+					name: 'Test Credential',
+					type: 'testApi',
+					data: {},
+					filename: '/mock/n8n/git/credentials/cred1.json',
+					ownedBy: {
+						type: 'personal' as const,
+						projectId: 'project2',
+						projectName: 'Project 2',
+					},
+				} as StatusExportableCredential,
+			};
+
+			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+
+			it('should detect credential as modified when owner changes', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([
+					mockCredentials.withDifferentOwner,
+				]);
+				sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([
+					mockCredentials.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.credModifiedInEither).toHaveLength(1);
+				expect(result.credModifiedInEither[0]).toMatchObject({
+					id: mockCredentials.withOwner.id,
+					name: mockCredentials.withDifferentOwner.name,
+					type: mockCredentials.withOwner.type,
+				});
+			});
+
+			it('should not detect change when there is no change', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([
+					mockCredentials.withOwner,
+				]);
+				sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([
+					mockCredentials.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.credModifiedInEither).toHaveLength(0);
+				expect(result.sourceControlledFiles.filter((f) => f.type === 'credential')).toHaveLength(0);
+			});
+
+			it('should correctly populate owner field in sourceControlledFiles for modified credentials', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([
+					mockCredentials.withDifferentOwner,
+				]);
+				sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([
+					mockCredentials.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) {
+					fail('Expected result to be an array.');
+				}
+
+				const credentialFile = result.find((f) => f.type === 'credential');
+				expect(credentialFile).toBeDefined();
+				expect(credentialFile?.owner).toEqual(mockCredentials.withOwner.ownedBy);
+				expect(credentialFile?.status).toBe('modified');
+				expect(credentialFile?.conflict).toBe(true);
+			});
+
+			it('should detect modifications when both name/type and owner change', async () => {
+				// ARRANGE
+				const remoteCredential = {
+					...mockCredentials.withDifferentOwner,
+					name: 'Different Name',
+					type: 'differentApi',
+				};
+
+				sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([
+					remoteCredential,
+				]);
+				sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([
+					mockCredentials.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.credModifiedInEither).toHaveLength(1);
+				expect(result.credModifiedInEither[0]).toMatchObject({
+					id: mockCredentials.withOwner.id,
+					name: remoteCredential.name,
+					type: mockCredentials.withOwner.type,
+				});
+			});
+		});
+
+		describe('workflows', () => {
+			const mockWorkflows = {
+				withOwner: {
+					id: 'wf1',
+					name: 'Test Workflow',
+					versionId: 'version1',
+					filename: 'workflows/wf1.json',
+					parentFolderId: 'folder1',
+					updatedAt: '2023-07-10T10:10:59.000Z',
+					owner: {
+						type: 'personal' as const,
+						projectId: 'project1',
+						projectName: 'Project 1',
+					},
+				},
+				withDifferentOwner: {
+					id: 'wf1',
+					name: 'Test Workflow',
+					versionId: 'version1',
+					filename: 'workflows/wf1.json',
+					parentFolderId: 'folder1',
+					updatedAt: '2023-07-10T10:10:59.000Z',
+					owner: {
+						type: 'team' as const,
+						projectId: 'team1',
+						projectName: 'Team 1',
+					},
+				},
+			};
+
+			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+
+			it('should detect workflow as modified when owner changes', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([
+					mockWorkflows.withDifferentOwner,
+				]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([
+					mockWorkflows.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.wfModifiedInEither).toHaveLength(1);
+				expect(result.wfModifiedInEither[0]).toMatchObject({
+					id: mockWorkflows.withOwner.id,
+					versionId: mockWorkflows.withDifferentOwner.versionId,
+				});
+			});
+
+			it('should not detect workflow as modified when versionId, parentFolderId, and owner are the same', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([
+					mockWorkflows.withOwner,
+				]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([
+					mockWorkflows.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.wfModifiedInEither).toHaveLength(0);
+				expect(result.sourceControlledFiles.filter((f) => f.type === 'workflow')).toHaveLength(0);
+			});
+
+			it('should correctly populate owner field in sourceControlledFiles for modified workflows', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([
+					mockWorkflows.withDifferentOwner,
+				]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([
+					mockWorkflows.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) {
+					fail('Expected result to be an array.');
+				}
+
+				const workflowFile = result.find((f) => f.type === 'workflow');
+				expect(workflowFile).toBeDefined();
+				expect(workflowFile?.owner).toEqual(mockWorkflows.withOwner.owner);
+				expect(workflowFile?.status).toBe('modified');
+				expect(workflowFile?.conflict).toBe(true);
+			});
+
+			it('should detect modifications when both versionId/parentFolderId and owner change', async () => {
+				// ARRANGE
+				const remoteWorkflow = {
+					...mockWorkflows.withDifferentOwner,
+					versionId: 'version2',
+					parentFolderId: 'folder2',
+				};
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remoteWorkflow]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([
+					mockWorkflows.withOwner,
+				]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.wfModifiedInEither).toHaveLength(1);
+				expect(result.wfModifiedInEither[0]).toMatchObject({
+					id: mockWorkflows.withOwner.id,
+					versionId: remoteWorkflow.versionId,
+				});
+			});
+		});
+
+		describe('folders', () => {
+			const mockFolders = {
+				withProject: {
+					id: 'folder1',
+					name: 'Test Folder',
+					homeProjectId: 'project1',
+					parentFolderId: null,
+					createdAt: '2023-07-10T10:10:59.000Z',
+					updatedAt: '2023-07-10T10:10:59.000Z',
+				},
+				withDifferentProject: {
+					id: 'folder1',
+					name: 'Test Folder',
+					homeProjectId: 'project2',
+					parentFolderId: null,
+					createdAt: '2023-07-10T10:10:59.000Z',
+					updatedAt: '2023-07-10T10:10:59.000Z',
+				},
+			};
+
+			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+
+			it('should detect folder as modified when homeProjectId changes', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [mockFolders.withDifferentProject],
+				});
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [mockFolders.withProject],
+				});
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.foldersModifiedInEither).toHaveLength(1);
+				expect(result.foldersModifiedInEither[0]).toMatchObject({
+					id: mockFolders.withProject.id,
+					homeProjectId: mockFolders.withDifferentProject.homeProjectId,
+				});
+			});
+
+			it('should not detect folder as modified when name, parentFolderId, and homeProjectId are the same', async () => {
+				// ARRANGE
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [mockFolders.withProject],
+				});
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [mockFolders.withProject],
+				});
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.foldersModifiedInEither).toHaveLength(0);
+				expect(result.sourceControlledFiles.filter((f) => f.type === 'folders')).toHaveLength(0);
+			});
+
+			it('should detect modifications when both name/parentFolderId and homeProjectId change', async () => {
+				// ARRANGE
+				const remoteFolder = {
+					...mockFolders.withDifferentProject,
+					name: 'Different Folder Name',
+					parentFolderId: 'parent1',
+				};
+
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [remoteFolder],
+				});
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [mockFolders.withProject],
+				});
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) {
+					fail('Expected result to be an object.');
+				}
+
+				expect(result.foldersModifiedInEither).toHaveLength(1);
+				expect(result.foldersModifiedInEither[0]).toMatchObject({
+					id: mockFolders.withProject.id,
+					name: remoteFolder.name,
+					homeProjectId: remoteFolder.homeProjectId,
+				});
+			});
+		});
+	});
 });

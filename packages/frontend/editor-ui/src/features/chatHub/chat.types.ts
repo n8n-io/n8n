@@ -1,4 +1,4 @@
-import { chatHubProviderSchema } from '@n8n/api-types';
+import { chatHubProviderSchema, type ChatHubSessionDto } from '@n8n/api-types';
 import { z } from 'zod';
 
 export interface UserMessage {
@@ -65,5 +65,5 @@ export type CredentialsMap = z.infer<typeof credentialsMapSchema>;
 
 export interface GroupedConversations {
 	group: string;
-	sessions: Array<{ id: string; label: string }>;
+	sessions: ChatHubSessionDto[];
 }

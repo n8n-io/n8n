@@ -67,6 +67,9 @@ const toBracketNotation = (input: string): string => {
 };
 
 const pythonInsert = (value: string, mode: CodeExecutionMode): string => {
+	// Python supports only direct parent node references
+	if (value.includes('$(')) return '';
+
 	const base =
 		mode === 'runOnceForAllItems'
 			? value.replace('$json', '_items[0]["json"]')

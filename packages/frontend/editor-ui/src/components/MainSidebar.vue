@@ -27,6 +27,7 @@ import {
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
+import { EXTERNAL_LINKS } from '@/constants/externalLinks';
 import { CHAT_VIEW } from '@/features/chatHub/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -34,7 +35,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
@@ -215,7 +216,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
-					href: 'https://www.youtube.com/watch?v=4cQWJViybAQ',
+					href: EXTERNAL_LINKS.QUICKSTART_VIDEO,
 					target: '_blank',
 				},
 			},
@@ -224,7 +225,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'book',
 				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
-					href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
+					href: EXTERNAL_LINKS.DOCUMENTATION,
 					target: '_blank',
 				},
 			},
@@ -233,7 +234,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'users',
 				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
-					href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
+					href: EXTERNAL_LINKS.FORUM,
 					target: '_blank',
 				},
 			},
@@ -242,7 +243,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'graduation-cap',
 				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
-					href: 'https://docs.n8n.io/courses/',
+					href: EXTERNAL_LINKS.COURSES,
 					target: '_blank',
 				},
 			},
