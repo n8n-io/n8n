@@ -1817,9 +1817,7 @@ watch(
 		};
 
 		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled &&
-			builderStore.isAssistantEnabled &&
-			builderStore.assistantMessages.length === 0
+			builderStore.isAIBuilderEnabled && builderStore.assistantMessages.length === 0
 				? [choicePromptItem]
 				: [addNodesItem];
 	},
