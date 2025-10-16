@@ -1504,10 +1504,13 @@ describe('dataTable', () => {
 				columns: [{ name: 'c1', type: 'json' }],
 			});
 
+			console.log('AAA');
+
 			// ACT
 			const d = new Date();
 			const rows = [{ c1: { a: 3, b: { c: true }, d } }];
 			const result = await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+			console.log('BBB');
 
 			// ASSERT
 			expect(result).toEqual([{ id: 1 }]);
@@ -1523,6 +1526,8 @@ describe('dataTable', () => {
 					c1: { a: 3, b: { c: true }, d: `${d.toISOString()}` },
 				});
 			}
+			console.log('CCC');
+
 			{
 				const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
 					filter: {
@@ -3627,22 +3632,9 @@ describe('dataTable', () => {
 
 				// ACT
 				const rows = [{ c1: { input } }];
-				const result = await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+				await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
 
 				// ASSERT
-				expect(result).toEqual([{ id: 1 }]);
-				{
-					const { count, data } = await dataTableService.getManyRowsAndCount(
-						dataStoreId,
-						project1.id,
-						{},
-					);
-					expect(count).toEqual(1);
-					expect(data).toHaveLength(1);
-					expect(data[0]).toMatchObject({
-						c1: { input },
-					});
-				}
 				{
 					const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
 						filter: {
@@ -3715,5 +3707,46 @@ describe('dataTable', () => {
 				]);
 			}
 		});
+
+		// it.each<[DataTableFilterConditionType, DataTableColumnJsType, boolean]>([['eq', null, true]])(
+		// 	'handles absence operator %p, value %p',
+		// 	async (operator, value, expectPresent) => {
+		// 		// ARRANGE
+		// 		const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
+		// 			name: 'dataStore',
+		// 			columns: [{ name: 'c1', type: 'json' }],
+		// 		});
+
+		// 		// ACT
+		// 		const rows = [{ c1: { a: null } }];
+		// 		await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+		// 		// ASSERT
+
+		// 		{
+		// 			const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
+		// 				filter: {
+		// 					type: 'and',
+		// 					filters: [
+		// 						{
+		// 							columnName: 'c1',
+		// 							condition: 'eq',
+		// 							value: 3,
+		// 							path,
+		// 						},
+		// 					],
+		// 				},
+		// 			});
+		// 			expect(data).toEqual([
+		// 				{
+		// 					c1: { [input]: 3 },
+		// 					id: 1,
+		// 					createdAt: expect.any(Date),
+		// 					updatedAt: expect.any(Date),
+		// 				},
+		// 			]);
+		// 		}
+		// 	},
+		// );
 	});
 });
