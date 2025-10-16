@@ -39,6 +39,7 @@ export const useDataTableColumnFilters = ({
 
 			switch (filter.filterType) {
 				case 'text':
+				case 'boolean':
 					allFilters.push(processTextFilter(filter, colField));
 					break;
 				case 'number':

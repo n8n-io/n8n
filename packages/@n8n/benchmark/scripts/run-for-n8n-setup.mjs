@@ -35,6 +35,7 @@ async function main() {
 	const envTag = argv.env || 'local';
 	const vus = argv.vus;
 	const duration = argv.duration;
+	const scenarioFilter = argv.scenarioFilter;
 
 	const hasN8nLicense = !!n8nLicenseCert || !!n8nLicenseActivationKey;
 	if (n8nSetupToUse === 'scaling-multi-main' && !hasN8nLicense) {
@@ -94,6 +95,7 @@ async function main() {
 
 		const cliArgs = flagsObjectToCliArgs({
 			scenarioNamePrefix: n8nSetupToUse,
+			scenarioFilter,
 			vus,
 			duration,
 			tags,

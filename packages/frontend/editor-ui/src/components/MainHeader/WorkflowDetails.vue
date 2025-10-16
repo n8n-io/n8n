@@ -17,12 +17,12 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	PROJECT_MOVE_RESOURCE_MODAL,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
 import { ResourceType } from '@/features/projects/projects.utils';
 
 import { useProjectsStore } from '@/features/projects/projects.store';
@@ -30,7 +30,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 

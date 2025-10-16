@@ -4,7 +4,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/features/projects/projects.types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import debounce from 'lodash/debounce';
 import { VIEWS } from '@/constants';

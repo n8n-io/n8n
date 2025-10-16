@@ -42,9 +42,9 @@ const SettingsView = async () => await import('./views/SettingsView.vue');
 const SettingsLdapView = async () => await import('@/features/sso/views/SettingsLdapView.vue');
 const SettingsPersonalView = async () =>
 	await import('@/features/auth/views/SettingsPersonalView.vue');
-const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
+const SettingsUsersView = async () => await import('@/features/users/views/SettingsUsersView.vue');
 const SettingsCommunityNodesView = async () =>
-	await import('./views/SettingsCommunityNodesView.vue');
+	await import('@/features/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () => await import('@/features/apiKeys/views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () =>
 	await import('@/features/logStreaming.ee/views/SettingsLogStreamingView.vue');
@@ -61,10 +61,11 @@ const TemplatesSearchView = async () =>
 	await import('@/features/templates/views/TemplatesSearchView.vue');
 const VariablesView = async () =>
 	await import('@/features/environments.ee/views/VariablesView.vue');
-const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
+const SettingsUsageAndPlan = async () =>
+	await import('@/features/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/sso/views/SettingsSso.vue');
 const SignoutView = async () => await import('@/features/auth/views/SignoutView.vue');
-const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
+const SamlOnboarding = async () => await import('@/features/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>

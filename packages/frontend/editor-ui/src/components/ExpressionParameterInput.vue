@@ -281,14 +281,15 @@ defineExpose({ focus, select });
 	padding: 3px;
 	line-height: 9px;
 	border: var(--input--border-color, var(--border-color))
-		var(--input--border-style, var(--border-style)) var(--input-border-width, var(--border-width));
+		var(--input--border-style, var(--border-style)) var(--input--border-width, var(--border-width));
 	cursor: pointer;
 	border-radius: 0;
 	border-top-left-radius: var(--radius);
 
 	&:hover {
 		border: var(--input--border-color, var(--border-color))
-			var(--input--border-style, var(--border-style)) var(--input-border-width, var(--border-width));
+			var(--input--border-style, var(--border-style))
+			var(--input--border-width, var(--border-width));
 	}
 
 	svg {

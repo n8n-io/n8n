@@ -44,7 +44,7 @@ defineExpose({
 </script>
 
 <template>
-	<div ref="wrapperRef" class="data-table-date-filter-wrapper">
+	<div ref="wrapperRef" data-test-id="date-filter-input" class="data-table-date-filter-wrapper">
 		<ElDatePicker
 			ref="pickerRef"
 			v-model="dateValueComputed"

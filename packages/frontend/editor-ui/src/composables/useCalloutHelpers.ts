@@ -3,7 +3,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNDVStore } from '@/stores/ndv.store';

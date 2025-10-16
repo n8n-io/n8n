@@ -33,7 +33,6 @@ import {
 import * as workflowUtils from 'n8n-workflow/common';
 
 import type {
-	ICredentialsResponse,
 	IExecutionResponse,
 	INodeTypesMaxCount,
 	INodeUi,
@@ -41,6 +40,7 @@ import type {
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 
