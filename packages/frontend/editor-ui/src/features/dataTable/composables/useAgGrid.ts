@@ -229,6 +229,7 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 
 	onClickOutside(gridContainerRef, () => {
 		resetLastFocusedCell();
+		initializedGridApi.value.stopEditing();
 		initializedGridApi.value.clearFocusedCell();
 	});
 
