@@ -242,7 +242,8 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isSubmitKey = event.key === 'Enter' && (event.ctrlKey || event.metaKey || event.shiftKey);
+	const isSubmitKey = event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey;
+	const isNewlineKey = event.key === 'Enter' && (event.ctrlKey || event.metaKey || event.shiftKey);
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
 	if (atMaxLength && isPrintableChar && !isDeletionKey) {
@@ -250,12 +251,24 @@ async function handleKeyDown(event: KeyboardEvent) {
 		return;
 	}
 
-	// Submit on Ctrl/Cmd+Enter. If send disabled, don't submit.
+	// Submit on plain Enter. If send disabled, don't submit.
 	if (isSubmitKey) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();
 		}
+	}
+
+	// Insert newline on Shift/Ctrl/Cmd+Enter
+	if (isNewlineKey) {
+		event.preventDefault();
+		const textarea = event.target as HTMLTextAreaElement;
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		textValue.value = textValue.value.substring(0, start) + '\n' + textValue.value.substring(end);
+		// Set cursor position after the newline
+		await nextTick();
+		textarea.selectionStart = textarea.selectionEnd = start + 1;
 	}
 }
 
