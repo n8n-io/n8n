@@ -1,5 +1,5 @@
 import { captor, mock } from 'jest-mock-extended';
-import type { MqttClient, OnMessageCallback } from 'mqtt';
+import type { MqttClient, OnMessageCallback, IPublishPacket } from 'mqtt';
 import { returnJsonArray } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
 
@@ -25,84 +25,37 @@ describe('MQTT Trigger Node', () => {
 		jest.clearAllMocks();
 
 		triggerFunctions.getCredentials.calledWith('mqtt').mockResolvedValue(credentials);
-		triggerFunctions.getNodeParameter.calledWith('topics').mockReturnValue(topic);
+		triggerFunctions.getNodeParameter.calledWith('topic').mockReturnValue(topic);
+		triggerFunctions.getNodeParameter.calledWith('options', {}).mockReturnValue({});
 	});
 
-	it('should emit in manual mode', async () => {
-		triggerFunctions.getMode.mockReturnValue('manual');
-		triggerFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-
+	it('should subscribe to topic and handle messages', async () => {
 		const response = await new MqttTrigger().trigger.call(triggerFunctions);
-		expect(response.manualTriggerFunction).toBeDefined();
 		expect(response.closeFunction).toBeDefined();
 
 		expect(triggerFunctions.getCredentials).toHaveBeenCalledTimes(1);
 		expect(triggerFunctions.getNodeParameter).toHaveBeenCalledTimes(2);
 
-		// manually trigger the node, like Workflow.runNode does
-		const triggerPromise = response.manualTriggerFunction!();
-
 		const mockMqttClient = await createClient(mock());
-		expect(mockMqttClient.on).not.toHaveBeenCalled();
-
 		const onMessageCaptor = captor<OnMessageCallback>();
-		expect(mockMqttClient.once).toHaveBeenCalledWith('message', onMessageCaptor);
-		expect(mockMqttClient.subscribeAsync).toHaveBeenCalledWith({ [topic]: { qos: 0 } });
+		expect(mockMqttClient.on).toHaveBeenCalledWith('message', onMessageCaptor);
+		expect(mockMqttClient.subscribe).toHaveBeenCalledWith(topic, { qos: 0 }, expect.any(Function));
 		expect(triggerFunctions.emit).not.toHaveBeenCalled();
 
 		// simulate a message
 		const onMessage = onMessageCaptor.value;
-		onMessage('test/topic', payload, mock());
+		onMessage(topic, payload, mock<IPublishPacket>());
 		expect(triggerFunctions.emit).toHaveBeenCalledWith([
 			[{ json: { message: '{"testing": true}', topic } }],
 		]);
 
-		// wait for the promise to resolve
-		await new Promise((resolve) => setImmediate(resolve));
-		await expect(triggerPromise).resolves.toEqual(undefined);
-
-		expect(mockMqttClient.endAsync).not.toHaveBeenCalled();
 		await response.closeFunction!();
-		expect(mockMqttClient.endAsync).toHaveBeenCalledTimes(1);
-	});
-
-	it('should emit in trigger mode', async () => {
-		triggerFunctions.getMode.mockReturnValue('trigger');
-		triggerFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-
-		const response = await new MqttTrigger().trigger.call(triggerFunctions);
-		expect(response.manualTriggerFunction).toBeDefined();
-		expect(response.closeFunction).toBeDefined();
-
-		expect(triggerFunctions.getCredentials).toHaveBeenCalledTimes(1);
-		expect(triggerFunctions.getNodeParameter).toHaveBeenCalledTimes(2);
-
-		const mockMqttClient = await createClient(mock());
-		expect(mockMqttClient.once).not.toHaveBeenCalled();
-
-		const onMessageCaptor = captor<OnMessageCallback>();
-		expect(mockMqttClient.on).toHaveBeenCalledWith('message', onMessageCaptor);
-		expect(mockMqttClient.subscribeAsync).toHaveBeenCalledWith({ [topic]: { qos: 0 } });
-		expect(triggerFunctions.emit).not.toHaveBeenCalled();
-
-		// simulate a message
-		const onMessage = onMessageCaptor.value;
-		onMessage('test/topic', payload, mock());
-		expect(triggerFunctions.emit).toHaveBeenCalledWith(
-			[[{ json: { message: '{"testing": true}', topic } }]],
-			undefined,
-			undefined,
-		);
-
-		expect(mockMqttClient.endAsync).not.toHaveBeenCalled();
-		await response.closeFunction!();
-		expect(mockMqttClient.endAsync).toHaveBeenCalledTimes(1);
+		expect(mockMqttClient.end).toHaveBeenCalledTimes(1);
 	});
 
 	it('should parse JSON messages when configured', async () => {
-		triggerFunctions.getMode.mockReturnValue('trigger');
-		triggerFunctions.getNodeParameter.calledWith('options').mockReturnValue({
-			jsonParseBody: true,
+		triggerFunctions.getNodeParameter.calledWith('options', {}).mockReturnValue({
+			parseJson: true,
 		});
 
 		await new MqttTrigger().trigger.call(triggerFunctions);
@@ -113,11 +66,76 @@ describe('MQTT Trigger Node', () => {
 
 		// simulate a message
 		const onMessage = onMessageCaptor.value;
-		onMessage('test/topic', payload, mock());
-		expect(triggerFunctions.emit).toHaveBeenCalledWith(
-			[[{ json: { message: { testing: true }, topic } }]],
-			undefined,
-			undefined,
-		);
+		onMessage(topic, payload, mock<IPublishPacket>());
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([[{ json: { testing: true, topic } }]]);
+	});
+
+	it('should handle non-JSON messages when parseJson is true', async () => {
+		triggerFunctions.getNodeParameter.calledWith('options', {}).mockReturnValue({
+			parseJson: true,
+		});
+
+		await new MqttTrigger().trigger.call(triggerFunctions);
+
+		const mockMqttClient = await createClient(mock());
+		const onMessageCaptor = captor<OnMessageCallback>();
+		expect(mockMqttClient.on).toHaveBeenCalledWith('message', onMessageCaptor);
+
+		// simulate a non-JSON message
+		const onMessage = onMessageCaptor.value;
+		onMessage(topic, Buffer.from('plain text'), mock<IPublishPacket>());
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([
+			[{ json: { message: 'plain text', topic } }],
+		]);
+	});
+
+	it('should handle QoS levels', async () => {
+		triggerFunctions.getNodeParameter.calledWith('options', {}).mockReturnValue({
+			qos: 2,
+		});
+
+		await new MqttTrigger().trigger.call(triggerFunctions);
+
+		const mockMqttClient = await createClient(mock());
+		expect(mockMqttClient.subscribe).toHaveBeenCalledWith(topic, { qos: 2 }, expect.any(Function));
+	});
+
+	it('should handle client errors', async () => {
+		await new MqttTrigger().trigger.call(triggerFunctions);
+
+		const mockMqttClient = await createClient(mock());
+		const onErrorCaptor = captor<(error: Error) => void>();
+		expect(mockMqttClient.on).toHaveBeenCalledWith('error', onErrorCaptor);
+
+		// simulate an error
+		const onError = onErrorCaptor.value;
+		onError(new Error('Connection error'));
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([[{ json: { error: 'Connection error' } }]]);
+	});
+
+	it('should handle reconnection', async () => {
+		await new MqttTrigger().trigger.call(triggerFunctions);
+
+		const mockMqttClient = await createClient(mock());
+		const onReconnectCaptor = captor<() => void>();
+		expect(mockMqttClient.on).toHaveBeenCalledWith('reconnect', onReconnectCaptor);
+
+		// simulate reconnection
+		const onReconnect = onReconnectCaptor.value;
+		onReconnect();
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([[{ json: { status: 'reconnecting' } }]]);
+	});
+
+	it('should handle disconnection', async () => {
+		await new MqttTrigger().trigger.call(triggerFunctions);
+
+		const mockMqttClient = await createClient(mock());
+		const onCloseCaptor = captor<() => void>();
+		expect(mockMqttClient.on).toHaveBeenCalledWith('close', onCloseCaptor);
+
+		// simulate disconnection
+		const onClose = onCloseCaptor.value;
+		onClose();
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([[{ json: { status: 'disconnected' } }]]);
 	});
 });
