@@ -29,7 +29,7 @@ const INFINITE_CREDITS = -1;
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
-	maxLength: 1000,
+	maxLength: 5000,
 	maxLinesBeforeScroll: 6,
 	minLines: 1,
 	streaming: false,
