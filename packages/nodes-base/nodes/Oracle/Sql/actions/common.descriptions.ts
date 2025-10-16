@@ -63,7 +63,7 @@ export const optionsCollection: INodeProperties[] = [
 								default: '',
 								description: 'A bind variable placeholder identifier or numeral',
 								placeholder:
-									'e.g. dept_id`` and ``dept_name`` are the two bind variables placeholders in this SQL statement',
+									'e.g. ``dept_id`` and ``dept_name`` are the two bind variables placeholders in this SQL statement',
 								required: true,
 							},
 							{
@@ -277,7 +277,7 @@ export const optionsCollection: INodeProperties[] = [
 				},
 				default: [],
 				displayOptions: {
-					show: { '/operation': ['insert', 'select', 'update'] },
+					show: { '/operation': ['insert', 'select', 'update', 'upsert'] },
 				},
 			},
 			{

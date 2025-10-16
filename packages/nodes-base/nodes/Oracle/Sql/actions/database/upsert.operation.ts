@@ -69,7 +69,7 @@ const displayOptions = {
 	},
 };
 
-function getQueryAndoutputColumns(
+function getQueryAndOutputColumns(
 	ctx: IExecuteFunctions,
 	items: INodeExecutionData[],
 	item: IDataObject,
@@ -218,7 +218,7 @@ export async function execute(
 			item = this.getNodeParameter('columns.value', 0) as IDataObject;
 		}
 
-		const [query, outputColumns] = getQueryAndoutputColumns(
+		const [query, outputColumns] = getQueryAndOutputColumns(
 			this,
 			items,
 			item,
@@ -256,7 +256,7 @@ export async function execute(
 			}
 
 			const bindParams: oracleDBTypes.BindParameter[] = []; // bindParameters
-			const [query, outputColumns] = getQueryAndoutputColumns(
+			const [query, outputColumns] = getQueryAndOutputColumns(
 				this,
 				items,
 				item,
