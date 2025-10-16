@@ -89,6 +89,10 @@ export class ChatHubEditMessageRequest extends Z.class({
 	),
 }) {}
 
+export class ChatHubChangeConversationTitleRequest extends Z.class({
+	title: z.string(),
+}) {}
+
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
 export type ChatHubMessageState = 'active' | 'replaced';
 

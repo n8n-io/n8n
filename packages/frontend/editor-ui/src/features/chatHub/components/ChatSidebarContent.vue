@@ -53,8 +53,12 @@ function handleCancelRename() {
 }
 
 async function handleConfirmRename(sessionId: string, newLabel: string) {
-	await chatStore.renameSession(sessionId, newLabel);
-	renamingSessionId.value = undefined;
+	try {
+		await chatStore.renameSession(sessionId, newLabel);
+		renamingSessionId.value = undefined;
+	} catch (error) {
+		toast.showError(error, 'Could not update the conversation title.');
+	}
 }
 
 async function handleDeleteSession(sessionId: string) {
@@ -71,8 +75,16 @@ async function handleDeleteSession(sessionId: string) {
 		return;
 	}
 
-	await chatStore.deleteSession(sessionId);
-	toast.showMessage({ type: 'success', title: 'Conversation is deleted' });
+	try {
+		await chatStore.deleteSession(sessionId);
+		toast.showMessage({ type: 'success', title: 'Conversation is deleted' });
+
+		if (sessionId === currentSessionId.value) {
+			void router.push({ name: CHAT_VIEW });
+		}
+	} catch (error) {
+		toast.showError(error, 'Could not delete the conversation');
+	}
 }
 
 onMounted(async () => {
