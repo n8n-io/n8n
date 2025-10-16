@@ -206,9 +206,7 @@ describe('dataObjectToApiInput', () => {
 describe('buildGetManyFilter', () => {
 	describe('isEmpty/isNotEmpty translation', () => {
 		it('should translate isEmpty to eq with null value', () => {
-			const fieldEntries = [
-				{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' },
-			];
+			const fieldEntries: FieldEntry[] = [{ keyName: 'name (string)', condition: 'isEmpty' }];
 
 			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { name: 'string' }, mockNode);
 
@@ -225,9 +223,7 @@ describe('buildGetManyFilter', () => {
 		});
 
 		it('should translate isNotEmpty to neq with null value', () => {
-			const fieldEntries = [
-				{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
-			];
+			const fieldEntries: FieldEntry[] = [{ keyName: 'email (string)', condition: 'isNotEmpty' }];
 
 			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION, { email: 'string' }, mockNode);
 
@@ -244,10 +240,10 @@ describe('buildGetManyFilter', () => {
 		});
 
 		it('should handle mixed conditions including isEmpty/isNotEmpty', () => {
-			const fieldEntries = [
-				{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
-				{ keyName: 'email', condition: 'isEmpty' as const, keyValue: 'ignored' },
-				{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'name (string)', condition: 'eq', keyValue: 'John' },
+				{ keyName: 'email (string)', condition: 'isEmpty' },
+				{ keyName: 'phone (string)', condition: 'isNotEmpty' },
 			];
 
 			const result = buildGetManyFilter(
@@ -286,8 +282,8 @@ describe('buildGetManyFilter', () => {
 
 	describe('isTrue/isFalse translation', () => {
 		it('should translate isTrue to eq with true value', () => {
-			const fieldEntries = [
-				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'isActive (boolean)', condition: 'isTrue' as const },
 			];
 
 			const result = buildGetManyFilter(
@@ -310,9 +306,7 @@ describe('buildGetManyFilter', () => {
 		});
 
 		it('should translate isFalse to eq with false value', () => {
-			const fieldEntries = [
-				{ keyName: 'email', condition: 'isFalse' as const, keyValue: 'ignored' },
-			];
+			const fieldEntries: FieldEntry[] = [{ keyName: 'email (string)', condition: 'isFalse' }];
 
 			const result = buildGetManyFilter(
 				fieldEntries,
@@ -334,10 +328,10 @@ describe('buildGetManyFilter', () => {
 		});
 
 		it('should handle mixed conditions including isTrue/isFalse', () => {
-			const fieldEntries = [
-				{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
-				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
-				{ keyName: 'isDeleted', condition: 'isFalse' as const, keyValue: 'ignored' },
+			const fieldEntries: FieldEntry[] = [
+				{ keyName: 'name (string)', condition: 'eq', keyValue: 'John' },
+				{ keyName: 'isActive (boolean)', condition: 'isTrue' },
+				{ keyName: 'isDeleted (boolean)', condition: 'isFalse' },
 			];
 
 			const result = buildGetManyFilter(
@@ -375,9 +369,9 @@ describe('buildGetManyFilter', () => {
 	});
 
 	it('should handle other conditions', () => {
-		const fieldEntries = [
-			{ keyName: 'age', condition: 'gt' as const, keyValue: 18 },
-			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
+		const fieldEntries: FieldEntry[] = [
+			{ keyName: 'age (number)', condition: 'gt', keyValue: 18 },
+			{ keyName: 'name (string)', condition: 'like', keyValue: '%john%' },
 		];
 
 		const result = buildGetManyFilter(
@@ -411,7 +405,7 @@ describe('buildGetManyFilter', () => {
 		it('should pass Date objects through unchanged', () => {
 			const testDate = new Date('2025-10-06T08:14:42.274Z');
 			const fieldEntries: FieldEntry[] = [
-				{ keyName: 'createdAt', condition: 'lte', keyValue: testDate },
+				{ keyName: 'createdAt (date)', condition: 'lte', keyValue: testDate },
 			];
 
 			const result = buildGetManyFilter(
@@ -436,7 +430,7 @@ describe('buildGetManyFilter', () => {
 		it('should convert ISO date strings to Date objects', () => {
 			const dateString = '2025-10-06T08:14:42.274Z';
 			const fieldEntries: FieldEntry[] = [
-				{ keyName: 'createdAt', condition: 'lte', keyValue: dateString },
+				{ keyName: 'createdAt (date)', condition: 'lte', keyValue: dateString },
 			];
 
 			const result = buildGetManyFilter(
@@ -453,7 +447,7 @@ describe('buildGetManyFilter', () => {
 		it('should throw an Error for invalid date strings', () => {
 			const invalidDateString = 'invalid-date';
 			const fieldEntries: FieldEntry[] = [
-				{ keyName: 'createdAt', condition: 'lte', keyValue: invalidDateString },
+				{ keyName: 'createdAt (date)', condition: 'lte', keyValue: invalidDateString },
 			];
 
 			expect(() =>
