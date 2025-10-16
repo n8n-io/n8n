@@ -12,7 +12,7 @@ import {
 
 import { getTools } from './loadOptions';
 import { McpClientTool } from './McpClientTool.node';
-import { McpToolkit } from './utils';
+import { McpToolkit, ManagedMcpClient } from './utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -227,7 +227,10 @@ describe('McpClientTool', () => {
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
-				eventSourceInit: { fetch: expect.any(Function) },
+				eventSourceInit: {
+					fetch: expect.any(Function),
+					withCredentials: false,
+				},
 				requestInit: { headers: { 'my-header': 'header-value' } },
 			});
 
@@ -276,7 +279,10 @@ describe('McpClientTool', () => {
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
-				eventSourceInit: { fetch: expect.any(Function) },
+				eventSourceInit: {
+					fetch: expect.any(Function),
+					withCredentials: false,
+				},
 				requestInit: { headers: { Authorization: 'Bearer my-token' } },
 			});
 
@@ -403,6 +409,38 @@ describe('McpClientTool', () => {
 				expect.any(Object), // schema
 				expect.objectContaining({ timeout: 200 }),
 			); // options
+		});
+	});
+
+	describe('ManagedMcpClient', () => {
+		let mockClient: any;
+		let managedClient: ManagedMcpClient;
+
+		beforeEach(() => {
+			mockClient = {
+				connect: jest.fn(),
+				close: jest.fn(),
+			};
+			managedClient = new ManagedMcpClient(mockClient);
+		});
+
+		it('should track connection state correctly', () => {
+			expect(managedClient.isConnectionActive()).toBe(true);
+			expect(managedClient.shouldReconnect()).toBe(true);
+		});
+
+		it('should prevent multiple close calls', async () => {
+			await managedClient.close();
+			await managedClient.close();
+
+			expect(managedClient.isConnectionActive()).toBe(false);
+		});
+
+		it('should handle close errors gracefully', async () => {
+			mockClient.close = jest.fn().mockRejectedValue(new Error('Close failed'));
+
+			await expect(managedClient.close()).resolves.not.toThrow();
+			expect(managedClient.isConnectionActive()).toBe(false);
 		});
 	});
 });
