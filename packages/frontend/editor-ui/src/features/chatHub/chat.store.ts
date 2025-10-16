@@ -95,11 +95,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				messagesGraph[node.previousMessageId].responses.push(node.id);
 			}
 			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
-				// Add current node as an alternative to the original message
 				messagesGraph[node.retryOfMessageId].alternatives.push(node.id);
 			}
 			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
-				// Add current node as an alternative to the original message
 				messagesGraph[node.revisionOfMessageId].alternatives.push(node.id);
 			}
 		}
@@ -153,31 +151,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function addMessage(sessionId: ChatSessionId, message: ChatMessage) {
 		const conversation = ensureConversation(sessionId);
 
-		// if (message.previousMessageId) {
-		// 	if (!conversation.messages[message.previousMessageId].responses.includes(message.id)) {
-		// 		conversation.messages[message.previousMessageId].responses.push(message.id);
-		// 	}
-		// }
-
-		// if (message.retryOfMessageId) {
-		// 	if (!conversation.messages[message.retryOfMessageId].alternatives.includes(message.id)) {
-		// 		conversation.messages[message.retryOfMessageId].alternatives.push(message.id);
-		// 	}
-
-		// 	for (const other of Object.values(conversation.messages)) {
-		// 		if (other.retryOfMessageId === message.retryOfMessageId && other.id !== message.id) {
-		// 			other.state = 'replaced';
-		// 			message.alternatives.push(other.id);
-		// 		}
-		// 	}
-		// }
-
-		// if (message.revisionOfMessageId) {
-		// 	if (!conversation.messages[message.revisionOfMessageId].alternatives.includes(message.id)) {
-		// 		conversation.messages[message.revisionOfMessageId].alternatives.push(message.id);
-		// 	}
-		// }
-
 		conversation.messages[message.id] = message;
 
 		// TODO: Recomputing the entire graph shouldn't be needed here, we could just
@@ -229,7 +202,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		_runIndex?: number,
 	) {
 		ongoingStreaming.value = { messageId, replyToMessageId };
-		// addAiMessage(sessionId, '', messageId, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 		addMessage(sessionId, {
 			id: messageId,
 			sessionId,
@@ -260,7 +232,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		_nodeId?: string,
 		_runIndex?: number,
 	) {
-		// appendMessage(sessionId, chunk, `${messageId}-${nodeId}-${runIndex ?? 0}`);
 		appendMessage(sessionId, messageId, chunk);
 	}
 
@@ -300,8 +271,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				onEndMessage(messageId, nodeId, runIndex);
 				break;
 		}
-
-		// addAssistantMessages(response.messages);
 	}
 
 	async function onStreamDone() {
@@ -431,10 +400,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (!previousMessageId) {
 			throw new Error('No previous message to base regeneration on');
 		}
-
-		// TODO: remove descendants of the message being retried
-		// or better yet, turn the frontend chat into a graph and
-		// maintain the visible active chain, and this would just switch to that branch.
 
 		regenerateMessageApi(
 			rootStore.restApiContext,
