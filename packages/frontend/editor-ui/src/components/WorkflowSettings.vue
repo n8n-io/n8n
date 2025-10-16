@@ -35,7 +35,7 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
-const { isEligibleForMcpAccess } = useMcp();
+const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow } = useMcp();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -392,6 +392,10 @@ const saveSettings = async () => {
 		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
 		error_workflow: workflowSettings.value.errorWorkflow ?? '',
 	});
+
+	if (isMCPEnabled.value && workflowSettings.value.availableInMCP) {
+		trackMcpAccessEnabledForWorkflow(workflowId.value);
+	}
 };
 
 const toggleTimeout = () => {

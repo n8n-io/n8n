@@ -110,7 +110,7 @@ defineExpose({
 		border-radius: 16px !important;
 		resize: none;
 		padding: 16px;
-		box-shadow: 0px 10px 24px 0px #0000002e;
+		box-shadow: 0 10px 24px 0 #0000002e;
 	}
 }
 

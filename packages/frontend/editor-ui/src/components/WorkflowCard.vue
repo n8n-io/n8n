@@ -35,6 +35,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
+import { useMcp } from '@/features/mcpAccess/composables/useMcp';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -91,6 +92,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
+const mcp = useMcp();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -332,6 +334,7 @@ async function toggleMCPAccess(enabled: boolean) {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
 		mcpToggleStatus.value = enabled;
+		mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
 		return;

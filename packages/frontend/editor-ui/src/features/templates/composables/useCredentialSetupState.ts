@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 import { computed, ref } from 'vue';
-import type { ICredentialsResponse } from '@/Interface';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';

@@ -17,7 +17,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/constants';
 
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
@@ -30,7 +30,7 @@ import NodeActionsList from '@/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/communityNodes/composables/useInstalledCommunityPackage';
-import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -38,7 +38,7 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import NodeStorageLimitCallout from '@/features/dataTable/components/NodeStorageLimitCallout.vue';
 import NodeTitle from '@/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/models/history';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
