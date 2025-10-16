@@ -868,7 +868,7 @@ export class ChatHubService {
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = Object.fromEntries(
-			messages.map((m) => [m.id, this.convertToDto(m)]),
+			messages.map((m) => [m.id, this.convertMessageToDto(m)]),
 		);
 
 		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
@@ -898,7 +898,7 @@ export class ChatHubService {
 		};
 	}
 
-	convertToDto(message: ChatHubMessage): ChatHubMessageDto {
+	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {
 		return {
 			id: message.id,
 			sessionId: message.sessionId,
