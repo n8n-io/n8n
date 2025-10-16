@@ -3,80 +3,105 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 
 import {
-	workflowTechnique,
-	workflowUseCase,
-	TECHNIQUE_DESCRIPTIONS,
-	USE_CASE_DESCRIPTIONS,
+	WorkflowTechnique,
+	TechniqueDescription,
 	type PromptCategorization,
 } from '@/types/categorization';
 
-const promptCategorizationTemplate = PromptTemplate.fromTemplate(
-	`You are an expert at analyzing workflow automation requests and categorizing them based on common patterns.
+const examplePrompts = [
+	{
+		prompt: 'Monitor social channels for product mentions and auto-respond with campaign messages',
+		techniques: [
+			WorkflowTechnique.MONITORING,
+			WorkflowTechnique.CHATBOT,
+			WorkflowTechnique.CONTENT_GENERATION,
+			WorkflowTechnique.NOTIFICATION,
+		],
+	},
+	{
+		prompt: 'Collect partner referral submissions and verify client instances via BigQuery',
+		techniques: [
+			WorkflowTechnique.FORM_INPUT,
+			WorkflowTechnique.ENRICHMENT,
+			WorkflowTechnique.TRIAGE,
+			WorkflowTechnique.HUMAN_IN_THE_LOOP,
+			WorkflowTechnique.NOTIFICATION,
+		],
+	},
+	{
+		prompt: 'Scrape competitor pricing pages weekly and generate a summary report of changes',
+		techniques: [
+			WorkflowTechnique.SCHEDULING,
+			WorkflowTechnique.SCRAPING_AND_RESEARCH,
+			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_ANALYSIS,
+			WorkflowTechnique.DATA_TRANSFORMATION,
+		],
+	},
+	{
+		prompt: 'Process uploaded PDF contracts to extract client details and update CRM records',
+		techniques: [
+			WorkflowTechnique.DOCUMENT_PROCESSING,
+			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_TRANSFORMATION,
+			WorkflowTechnique.ENRICHMENT,
+		],
+	},
+	{
+		prompt: 'Build a searchable internal knowledge base from past support tickets',
+		techniques: [
+			WorkflowTechnique.DATA_TRANSFORMATION,
+			WorkflowTechnique.DATA_ANALYSIS,
+			WorkflowTechnique.KNOWLEDGE_BASE,
+			WorkflowTechnique.CONTENT_GENERATION,
+		],
+	},
+];
 
-Analyze the following user prompt and identify:
-1. The primary use case (if clearly identifiable)
-2. The workflow techniques required to fulfill the request
+function formatExamplePrompts() {
+	return examplePrompts
+		.map((example) => `- ${example.prompt} → ${example.techniques.join(',')}`)
+		.join('\n');
+}
+
+const promptCategorizationTemplate = PromptTemplate.fromTemplate(
+	`Analyze the following user prompt and identify the workflow techniques required to fulfill the request.
+Be specific and identify all relevant techniques.
 
 <user_prompt>
 {userPrompt}
 </user_prompt>
 
-## Available Workflow Techniques
-
+<workflow_techniques>
 {techniques}
+</workflow_techniques>
 
-## Available Use Cases
+The following prompt categorization examples show a prompt → techniques involved to provide a sense
+of how the categorization should be carried out.
+<example_categorization>
+${formatExamplePrompts()}
+</example_categorization>
 
-{useCases}
-
-## Instructions
-
-- **Techniques**: Select ALL techniques that apply to this workflow. Most workflows use multiple techniques.
-- **Use Case**: Select the most appropriate use case, or use "other" if none fit well.
-- **Confidence**: Rate your confidence in this categorization from 0.0 to 1.0.
-
-Be specific and identify all relevant techniques. For example, a chatbot that enriches leads would include both "chatbot" and "enrichment" techniques.
+Select ALL techniques that apply to this workflow. Most workflows use multiple techniques.
+Rate your confidence in this categorization from 0.0 to 1.0.
 `,
 );
 
-/**
- * Create formatted technique list for the prompt
- */
 function formatTechniqueList(): string {
-	return Object.entries(TECHNIQUE_DESCRIPTIONS)
+	return Object.entries(TechniqueDescription)
 		.map(([key, description]) => `- **${key}**: ${description}`)
 		.join('\n');
 }
 
-/**
- * Create formatted use case list for the prompt
- */
-function formatUseCaseList(): string {
-	return Object.entries(USE_CASE_DESCRIPTIONS)
-		.map(([key, description]) => `- **${key}**: ${description}`)
-		.join('\n');
-}
-
-/**
- * Chain for categorizing user prompts into a prompt category
- * @param llm - The language model to use for categorization
- * @param userPrompt - The user's workflow request to categorize
- * @returns Categorization result with use case, techniques, and confidence
- */
 export async function promptCategorizationChain(
 	llm: BaseChatModel,
 	userPrompt: string,
 ): Promise<PromptCategorization> {
-	// Define the schema for structured output
 	const categorizationSchema = z.object({
 		techniques: z
-			.array(z.nativeEnum(workflowTechnique))
+			.array(z.nativeEnum(WorkflowTechnique))
 			.min(1)
 			.describe('One or more workflow techniques identified in the prompt'),
-		useCase: z
-			.nativeEnum(workflowUseCase)
-			.optional()
-			.describe('The primary use case if clearly identifiable'),
 		confidence: z
 			.number()
 			.min(0)
@@ -89,7 +114,6 @@ export async function promptCategorizationChain(
 	const prompt = await promptCategorizationTemplate.invoke({
 		userPrompt,
 		techniques: formatTechniqueList(),
-		useCases: formatUseCaseList(),
 	});
 
 	const structuredOutput = (await modelWithStructure.invoke(prompt)) as z.infer<
@@ -98,7 +122,6 @@ export async function promptCategorizationChain(
 
 	return {
 		techniques: structuredOutput.techniques,
-		useCase: structuredOutput.useCase,
 		confidence: structuredOutput.confidence,
 	};
 }

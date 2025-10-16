@@ -2,7 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 import { promptCategorizationChain } from '@/chains/prompt-categorization';
 import {
-	workflowTechnique,
+	WorkflowTechnique,
 	workflowUseCase,
 	type PromptCategorization,
 } from '@/types/categorization';
@@ -52,8 +52,8 @@ describe('CategorizePromptTool', () => {
 			const mockCategorization: PromptCategorization = {
 				useCase: workflowUseCase.DATA_PROCESSING,
 				techniques: [
-					workflowTechnique.SCRAPING_AND_RESEARCH,
-					workflowTechnique.DATA_TRANSFORMATION,
+					WorkflowTechnique.SCRAPING_AND_RESEARCH,
+					WorkflowTechnique.DATA_TRANSFORMATION,
 				],
 				confidence: 0.9,
 			};
@@ -93,7 +93,7 @@ describe('CategorizePromptTool', () => {
 		it('should categorize a chatbot prompt', async () => {
 			const mockCategorization: PromptCategorization = {
 				useCase: workflowUseCase.CUSTOMER_SUPPORT,
-				techniques: [workflowTechnique.CHATBOT, workflowTechnique.NOTIFICATION],
+				techniques: [WorkflowTechnique.CHATBOT, WorkflowTechnique.NOTIFICATION],
 				confidence: 0.85,
 			};
 
@@ -119,7 +119,7 @@ describe('CategorizePromptTool', () => {
 
 		it('should handle categorization without use case', async () => {
 			const mockCategorization: PromptCategorization = {
-				techniques: [workflowTechnique.DATA_TRANSFORMATION],
+				techniques: [WorkflowTechnique.DATA_TRANSFORMATION],
 				confidence: 0.7,
 			};
 
@@ -146,10 +146,10 @@ describe('CategorizePromptTool', () => {
 			const mockCategorization: PromptCategorization = {
 				useCase: workflowUseCase.MARKETING_AUTOMATION,
 				techniques: [
-					workflowTechnique.SCHEDULING,
-					workflowTechnique.CONTENT_GENERATION,
-					workflowTechnique.NOTIFICATION,
-					workflowTechnique.DATA_ANALYSIS,
+					WorkflowTechnique.SCHEDULING,
+					WorkflowTechnique.CONTENT_GENERATION,
+					WorkflowTechnique.NOTIFICATION,
+					WorkflowTechnique.DATA_ANALYSIS,
 				],
 				confidence: 0.95,
 			};

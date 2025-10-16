@@ -11,24 +11,14 @@ import type { PromptCategorization } from '@/types/categorization';
 import type { CategorizePromptOutput } from '@/types/tools';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
-/**
- * Schema for categorizing prompts
- */
 const categorizePromptSchema = z.object({
 	prompt: z.string().min(1).describe('The user prompt to categorize'),
 });
 
-/**
- * Build a human-readable message from categorization results
- */
 function buildCategorizationMessage(categorization: PromptCategorization): string {
 	const parts: string[] = [];
 
-	parts.push('Prompt categorized successfully:');
-
-	if (categorization.useCase) {
-		parts.push(`- Use case: ${categorization.useCase}`);
-	}
+	parts.push('Prompt categorized:');
 
 	if (categorization.techniques.length > 0) {
 		parts.push(`- Techniques: ${categorization.techniques.join(', ')}`);
@@ -46,9 +36,6 @@ export const CATEGORIZE_PROMPT_TOOL: BuilderToolBase = {
 	displayTitle: 'Categorizing prompt',
 };
 
-/**
- * Factory function to create the categorize prompt tool
- */
 export function createCategorizePromptTool(llm: BaseChatModel, logger?: Logger): BuilderTool {
 	const dynamicTool = tool(
 		async (input, config) => {
@@ -67,11 +54,9 @@ export function createCategorizePromptTool(llm: BaseChatModel, logger?: Logger):
 				logger?.debug('Categorizing user prompt using LLM...');
 				reporter.progress('Analyzing prompt to identify use case and techniques...');
 
-				// Use the categorization chain to analyze the prompt
 				const categorization = await promptCategorizationChain(llm, prompt);
 
 				logger?.debug('Prompt categorized', {
-					useCase: categorization.useCase,
 					techniques: categorization.techniques,
 					confidence: categorization.confidence,
 				});
@@ -111,11 +96,10 @@ export function createCategorizePromptTool(llm: BaseChatModel, logger?: Logger):
 This helps understand what type of workflow the user wants to build and which automation patterns will be needed.
 
 Use this tool when you receive an initial workflow request to:
-- Identify the primary use case (e.g., lead enrichment, customer support)
 - Detect required techniques (e.g., scraping, data transformation, notifications)
 - Better understand the user's needs and context
 
-The categorization helps you provide more relevant guidance and select appropriate nodes.`,
+The categorization allows retrieving relevant best practice documentation to improve workflow structure and node selection.`,
 			schema: categorizePromptSchema,
 		},
 	);
