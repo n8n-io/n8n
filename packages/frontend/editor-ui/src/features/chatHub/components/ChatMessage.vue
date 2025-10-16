@@ -11,15 +11,15 @@ import { ref, nextTick, watch } from 'vue';
 import { useTemplateRef } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 
-const { message, compact, isEditing, isStreaming, bottomSpacerHeight } = defineProps<{
+const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
 	isEditing: boolean;
 	isStreaming: boolean;
 	/**
-	 * The bottom spacer allows scrolling user's prompt to the top while generating response
+	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
-	bottomSpacerHeight?: number;
+	minHeight?: number;
 }>();
 
 const emit = defineEmits<{
@@ -114,16 +114,12 @@ watch(
 				[$style.compact]: compact,
 			},
 		]"
+		:style="minHeight ? { minHeight: `${minHeight}px` } : undefined"
 	>
 		<div :class="$style.avatar">
 			<N8nIcon :icon="message.role === 'user' ? 'user' : 'sparkles'" width="20" height="20" />
 		</div>
 		<div :class="$style.content">
-			<div
-				v-if="bottomSpacerHeight"
-				:class="$style.bottomSpacer"
-				:style="{ height: `${bottomSpacerHeight - 100}px` }"
-			/>
 			<div v-if="isEditing" :class="$style.editContainer">
 				<N8nInput
 					ref="textarea"
@@ -190,13 +186,6 @@ watch(
 		position: static;
 		margin-bottom: var(--spacing--xs);
 	}
-}
-
-.bottomSpacer {
-	position: absolute;
-	top: 0;
-	width: 1px;
-	pointer-events: none;
 }
 
 .content {

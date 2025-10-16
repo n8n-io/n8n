@@ -353,15 +353,18 @@ function handleRegenerateMessage(message: ChatMessageType) {
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
-						v-for="message in chatMessages"
+						v-for="(message, index) in chatMessages"
 						:key="message.id"
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
 						:is-streaming="chatStore.streamingMessageId === message.id"
-						:bottom-spacer-height="
-							didSubmitInCurrentSession && message.role === 'user'
-								? scrollContainerRef?.offsetHeight
+						:min-height="
+							didSubmitInCurrentSession &&
+							message.role === 'assistant' &&
+							index === chatMessages.length - 1 &&
+							scrollContainerRef
+								? scrollContainerRef.offsetHeight - 100 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
 						@start-edit="handleStartEditMessage(message.id)"
