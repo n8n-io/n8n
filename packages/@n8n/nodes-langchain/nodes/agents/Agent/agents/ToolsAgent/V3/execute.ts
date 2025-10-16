@@ -53,27 +53,54 @@ type ToolCallRequest = {
 	messageLog?: unknown[];
 };
 
-function createEngineRequests(
+async function createEngineRequests(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
+	outputParser?: N8nOutputParser,
 ) {
 	const connectedSubnodes = ctx.getParentNodes(ctx.getNode().name, {
 		connectionType: NodeConnectionTypes.AiTool,
 		depth: 1,
 	});
-	return toolCalls.map((toolCall) => ({
-		nodeName:
-			connectedSubnodes.find(
-				(node: { name: string }) => nodeNameToToolName(node.name) === toolCall.tool,
-			)?.name ?? toolCall.tool,
-		input: toolCall.toolInput,
-		type: NodeConnectionTypes.AiTool,
-		id: toolCall.toolCallId,
-		metadata: {
-			itemIndex,
-		},
-	}));
+
+	// Build a map of tool names to their source nodes from metadata
+	const tools = await getTools(ctx, outputParser);
+	const toolToNodeMap = new Map<string, string>();
+	for (const tool of tools) {
+		if (tool.metadata?.isFromToolkit && tool.metadata?.sourceNodeName) {
+			toolToNodeMap.set(tool.name, tool.metadata.sourceNodeName as string);
+		}
+	}
+
+	return toolCalls.map((toolCall) => {
+		// First try to get from metadata (for toolkit tools)
+		let nodeName = toolToNodeMap.get(toolCall.tool);
+		const isFromToolkit = !!nodeName;
+
+		// Fall back to the old method for non-toolkit tools
+		if (!nodeName) {
+			nodeName =
+				connectedSubnodes.find(
+					(node: { name: string }) => nodeNameToToolName(node.name) === toolCall.tool,
+				)?.name ?? toolCall.tool;
+		}
+
+		// For toolkit tools, include the tool name so the node knows which tool to execute
+		const input = isFromToolkit
+			? { ...toolCall.toolInput, tool: toolCall.tool }
+			: toolCall.toolInput;
+
+		return {
+			nodeName,
+			input,
+			type: NodeConnectionTypes.AiTool,
+			id: toolCall.toolCallId,
+			metadata: {
+				itemIndex,
+			},
+		};
+	});
 }
 
 /**
@@ -469,7 +496,12 @@ export async function toolsAgentExecute(
 
 				// If result contains tool calls, build the request object like the normal flow
 				if (result.toolCalls && result.toolCalls.length > 0) {
-					const actions = createEngineRequests(this, result.toolCalls, itemIndex);
+					const actions = await createEngineRequests(
+						this,
+						result.toolCalls,
+						itemIndex,
+						outputParser,
+					);
 
 					return {
 						actions,
@@ -519,7 +551,7 @@ export async function toolsAgentExecute(
 				}
 
 				// If response contains tool calls, we need to return this in the right format
-				const actions = createEngineRequests(this, modelResponse, itemIndex);
+				const actions = await createEngineRequests(this, modelResponse, itemIndex, outputParser);
 
 				return {
 					actions,

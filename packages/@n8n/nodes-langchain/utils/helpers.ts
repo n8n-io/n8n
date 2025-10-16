@@ -204,12 +204,32 @@ export const getConnectedTools = async (
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
 ) => {
-	const connectedTools = (
-		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<Toolkit | Tool>) ??
-		[]
-	).flatMap((toolOrToolkit) => {
+	const toolkitConnections = (await ctx.getInputConnectionData(
+		NodeConnectionTypes.AiTool,
+		0,
+	)) as Array<Toolkit | Tool>;
+
+	// Get parent nodes to map toolkits to their source nodes
+	const parentNodes = ctx.getParentNodes(ctx.getNode().name, {
+		connectionType: NodeConnectionTypes.AiTool,
+		depth: 1,
+	});
+
+	const connectedTools = (toolkitConnections ?? []).flatMap((toolOrToolkit, index) => {
 		if (toolOrToolkit instanceof Toolkit) {
-			return toolOrToolkit.getTools() as Tool[];
+			const tools = toolOrToolkit.getTools() as Tool[];
+			// Get the source node for this toolkit
+			const sourceNode = parentNodes[index];
+
+			// Add metadata to each tool from the toolkit
+			return tools.map((tool) => {
+				if (!tool.metadata) {
+					tool.metadata = {};
+				}
+				tool.metadata.isFromToolkit = true;
+				tool.metadata.sourceNodeName = sourceNode?.name;
+				return tool;
+			});
 		}
 
 		return toolOrToolkit;
