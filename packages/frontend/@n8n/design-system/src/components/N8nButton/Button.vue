@@ -63,6 +63,7 @@ const classes = computed(() => {
 		:disabled="isDisabled"
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
+		:aria-label="ariaLabel"
 		:href="href"
 		aria-live="polite"
 		v-bind="{

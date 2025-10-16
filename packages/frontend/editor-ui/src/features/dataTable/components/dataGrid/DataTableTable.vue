@@ -140,6 +140,7 @@ watch(currentFilterJSON, async () => {
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
 	addColumn: dataTableOperations.onAddColumn,
+	refreshData: fetchDataTableRowsFunction,
 });
 </script>
 

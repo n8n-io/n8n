@@ -5,7 +5,7 @@ import { useDataTableStore } from '@/features/dataTable/dataTable.store';
 import { useToast } from '@/composables/useToast';
 import { useRouter } from 'vue-router';
 import type { DataTable } from '@/features/dataTable/dataTable.types';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, fireEvent } from '@testing-library/vue';
 
 vi.mock('@/composables/useToast');
 vi.mock('vue-router');
@@ -56,6 +56,8 @@ const DEFAULT_DATA_TABLE: DataTable = {
 	projectId: 'proj1',
 };
 
+const mockRefresh = vi.fn().mockResolvedValue(DEFAULT_DATA_TABLE);
+
 const renderComponent = createComponentRenderer(DataTableDetailsView, {
 	props: {
 		id: 'ds1',
@@ -64,7 +66,15 @@ const renderComponent = createComponentRenderer(DataTableDetailsView, {
 	global: {
 		stubs: {
 			DataTableBreadcrumbs: true,
-			DataTableTable: true,
+			DataTableTable: {
+				template: '<div data-testid="data-table-table"><slot /></div>',
+				methods: {
+					addColumn: vi.fn(),
+					addRow: vi.fn(),
+					refreshData: mockRefresh,
+				},
+				data: () => ({ gridData: [] }),
+			},
 		},
 	},
 });
@@ -130,7 +140,7 @@ describe('DataTableDetailsView', () => {
 
 			await waitFor(() => {
 				expect(container.querySelector('data-table-breadcrumbs-stub')).toBeInTheDocument();
-				expect(container.querySelector('data-table-table-stub')).toBeInTheDocument();
+				expect(container.querySelector('[data-testid="data-table-table"]')).toBeInTheDocument();
 			});
 		});
 
@@ -179,6 +189,25 @@ describe('DataTableDetailsView', () => {
 				);
 				expect(mockRouter.push).toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('Actions', () => {
+		it('should handle refresh action', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+
+			const { findByRole } = renderComponent({ pinia });
+
+			const refreshButton = await findByRole('button', { name: 'refresh' });
+
+			expect(refreshButton).toBeInTheDocument();
+			expect(dataTableStore.fetchOrFindDataTable).toHaveBeenCalledTimes(1);
+
+			await fireEvent.click(refreshButton);
+
+			expect(mockRefresh).toHaveBeenCalledTimes(1);
 		});
 	});
 });

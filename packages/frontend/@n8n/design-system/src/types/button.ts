@@ -37,6 +37,7 @@ export interface IconButtonProps {
 }
 
 export interface ButtonProps extends IconButtonProps {
+	ariaLabel?: string;
 	block?: boolean;
 	element?: ButtonElement;
 	href?: string;
