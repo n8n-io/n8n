@@ -399,7 +399,7 @@ describe('Google Sheet - Append or Update', () => {
 		]);
 
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 4.5 }));
-		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, _itemIndex, fallback) => {
 			const params: Record<string, any> = {
 				'options.cellFormat': 'USER_ENTERED',
 				options: {},
@@ -441,7 +441,7 @@ describe('Google Sheet - Append or Update', () => {
 		]);
 
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 4.5 }));
-		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, _itemIndex, fallback) => {
 			const params: Record<string, any> = {
 				'options.cellFormat': 'USER_ENTERED',
 				options: { useAppend: true },
@@ -488,7 +488,7 @@ describe('Google Sheet - Append or Update', () => {
 		]);
 
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 4.5 }));
-		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, _itemIndex, fallback) => {
 			const params: Record<string, any> = {
 				'options.cellFormat': 'USER_ENTERED',
 				options: {},
@@ -517,7 +517,7 @@ describe('Google Sheet - Append or Update', () => {
 		]);
 
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 4.5 }));
-		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, _itemIndex, fallback) => {
 			const params: Record<string, any> = {
 				'options.cellFormat': 'USER_ENTERED',
 				options: {},
@@ -613,7 +613,7 @@ describe('Google Sheet - Append or Update', () => {
 		]);
 
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 4.5 }));
-		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, _itemIndex, fallback) => {
 			const params: Record<string, any> = {
 				'options.cellFormat': 'USER_ENTERED',
 				options: { valueRenderMode: 'FORMATTED_VALUE' },
@@ -666,7 +666,7 @@ describe('Google Sheet - Append or Update', () => {
 		]);
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName, _itemIndex, fallback) => {
 			const params: Record<string, any> = {
 				'options.cellFormat': 'USER_ENTERED',
 				options: {},
