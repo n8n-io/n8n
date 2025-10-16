@@ -27,11 +27,12 @@ export type FilterOperation =
 	| 'lessThanOrEqual'
 	| 'greaterThan'
 	| 'greaterThanOrEqual'
-	| 'between';
+	| 'between'
+	| 'empty';
 
 export type FilterModel = {
 	[colId: string]: {
-		filterType?: 'text' | 'number' | 'date' | 'json';
+		filterType?: 'text' | 'boolean' | 'number' | 'date' | 'json';
 		filter?: string | number;
 		filterTo?: string | number;
 		type: FilterOperation;

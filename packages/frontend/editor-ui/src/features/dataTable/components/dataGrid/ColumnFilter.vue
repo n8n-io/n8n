@@ -28,8 +28,8 @@ const filterType = computed(() => {
 	return mapToDataTableColumnType(props.params.colDef.cellDataType);
 });
 
-type GridFilterOption = { displayKey: string; displayName: string };
-type FilterOption = { key: string; label: string };
+type GridFilterOption = { displayKey: FilterOperation; displayName: string };
+type FilterOption = { key: FilterOperation; label: string };
 
 const availableOptions = computed<FilterOption[]>(() => {
 	const opts = props.params.colDef.filterParams?.filterOptions as GridFilterOption[];
@@ -44,8 +44,8 @@ const availableOptions = computed<FilterOption[]>(() => {
 	});
 });
 
-const selectedType = ref<string>(availableOptions.value[0]?.key ?? 'contains');
-const numberOfInputs = computed(() => inferInputsForKey(selectedType.value));
+const selectedOperation = ref<FilterOperation>(availableOptions.value[0]?.key ?? 'contains');
+const numberOfInputs = computed(() => inferInputsForKey(selectedOperation.value));
 
 const inputValue = ref<string>('');
 const inputValueTo = ref<string>('');
@@ -95,7 +95,8 @@ function inferInputsForKey(key: FilterOperation): 0 | 1 | 2 {
 		key === 'isEmpty' ||
 		key === 'notEmpty' ||
 		key === 'true' ||
-		key === 'false'
+		key === 'false' ||
+		key === 'empty'
 	)
 		return 0;
 	return 1;
@@ -112,9 +113,8 @@ defineExpose({
 
 function buildModel(): ColumnFilterModel {
 	const kind = filterType.value;
-	const type = selectedType.value;
-	const selected = availableOptions.value.find((o) => o.key === type);
-	if (!selected || selected.key === 'empty') return null;
+	const operation = selectedOperation.value;
+	if (!operation || operation === 'empty') return null;
 	if (
 		inputValue.value === '' &&
 		inputValueTo.value === '' &&
@@ -128,20 +128,20 @@ function buildModel(): ColumnFilterModel {
 		if (inputValue.value === '' && numberOfInputs.value > 0) return null;
 		return {
 			filterType: 'json',
-			type,
+			type: operation,
 			filter: numberOfInputs.value > 0 ? inputValue.value : undefined,
 			path: inputPath.value,
 		} as ColumnFilterModel;
 	}
 
 	if (numberOfInputs.value === 0) {
-		return { filterType: kind, type } as ColumnFilterModel;
+		return { filterType: kind, type: operation } as ColumnFilterModel;
 	}
 
-	if (kind === 'string' || kind === 'boolean') {
+	if (kind === 'string') {
 		return {
 			filterType: 'text',
-			type,
+			type: operation,
 			filter: inputValue.value,
 			path: inputPath.value,
 		} as ColumnFilterModel;
@@ -152,27 +152,36 @@ function buildModel(): ColumnFilterModel {
 			if (inputValue.value === '') return null;
 			const n = Number(inputValue.value);
 			if (Number.isNaN(n)) return null;
-			return { filterType: 'number', type, filter: n } as ColumnFilterModel;
+			return { filterType: 'number', type: operation, filter: n } as ColumnFilterModel;
 		}
 		if (numberOfInputs.value === 2) {
 			if (inputValue.value === '' || inputValueTo.value === '') return null;
 			const from = Number(inputValue.value);
 			const to = Number(inputValueTo.value);
 			if (Number.isNaN(from) || Number.isNaN(to)) return null;
-			return { filterType: 'number', type, filter: from, filterTo: to } as ColumnFilterModel;
+			return {
+				filterType: 'number',
+				type: operation,
+				filter: from,
+				filterTo: to,
+			} as ColumnFilterModel;
 		}
 	}
 
 	if (kind === 'date') {
 		if (numberOfInputs.value === 1) {
 			if (inputValue.value === '') return null;
-			return { filterType: 'date', type, dateFrom: inputValue.value } as ColumnFilterModel;
+			return {
+				filterType: 'date',
+				type: operation,
+				dateFrom: inputValue.value,
+			} as ColumnFilterModel;
 		}
 		if (numberOfInputs.value === 2) {
 			if (inputValue.value === '' || inputValueTo.value === '') return null;
 			return {
 				filterType: 'date',
-				type,
+				type: operation,
 				dateFrom: inputValue.value,
 				dateTo: inputValueTo.value,
 			} as ColumnFilterModel;
@@ -185,13 +194,13 @@ function buildModel(): ColumnFilterModel {
 function onReset() {
 	inputValue.value = '';
 	inputValueTo.value = '';
-	selectedType.value = availableOptions.value[0]?.key;
+	selectedOperation.value = availableOptions.value[0]?.key;
 	singleDatePicker.value?.setDate?.(null);
 	startDatePicker.value?.setDate?.(null);
 	endDatePicker.value?.setDate?.(null);
 }
 
-watch([selectedType, inputValue, inputValueTo, filterType, inputPath], updateModel);
+watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], updateModel);
 </script>
 
 <template>
@@ -203,7 +212,7 @@ watch([selectedType, inputValue, inputValueTo, filterType, inputPath], updateMod
 			:placeholder="i18n.baseText('dataTable.filters.path')"
 		/>
 		<N8nSelect
-			v-model="selectedType"
+			v-model="selectedOperation"
 			size="small"
 			:popper-append-to-body="false"
 			popper-class="ag-custom-component-popup"
