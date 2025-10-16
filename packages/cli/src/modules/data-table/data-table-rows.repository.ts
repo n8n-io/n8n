@@ -50,8 +50,7 @@ function resolvePath(
 	if (path) {
 		const pathArray = parsePath(path);
 		if (dbType === 'postgres') {
-			const args = [ref, ...pathArray];
-			const base = toPostgresPath(args);
+			const base = `${ref}->${toPostgresPath(pathArray)}`;
 			if (typeof value === 'number') {
 				return `(${base})::numeric`;
 			}
@@ -65,8 +64,9 @@ function resolvePath(
 			// by converting to text by default we end up with `true` for an equals NULL check
 			// both for cases where the key exists and is literally NULL and where it doesn't exist
 			return `(${base})::text`;
-		}
-		if (dbType === 'sqlite') {
+		} else {
+			// maybe it just works for MariaDB and MySQL lol
+			// if (dbType === 'sqlite' || dbType === 'sqlite-pooled') {
 			const path = toSQLitePath(pathArray);
 			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
 			if (typeof value === 'number') {
@@ -83,7 +83,7 @@ function resolvePath(
 			}
 			return base;
 		}
-		return;
+		return ref;
 	}
 	return ref;
 }
