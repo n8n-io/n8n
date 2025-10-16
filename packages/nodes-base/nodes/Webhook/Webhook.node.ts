@@ -264,12 +264,53 @@ export class Webhook extends Node {
 			await req.readRawBody();
 		}
 
+		// Defensive parsing: ensure req.body is parsed when Content-Type indicates JSON
+		let parsedBody: any = req.body;
+
+		try {
+			const contentType = (req.headers['content-type'] || '').toLowerCase();
+			// Enhanced JSON detection: handle all JSON content types
+			const isJsonContent =
+				contentType.includes('application/json') ||
+				contentType.includes('application/ld+json') ||
+				contentType.includes('application/vnd.api+json') ||
+				contentType.includes('application/hal+json');
+
+			// If body arrived as a string but content-type is JSON, try parsing it
+			if (typeof parsedBody === 'string' && isJsonContent) {
+				// Add size check for large payloads (10MB limit)
+				if (parsedBody.length > 10 * 1024 * 1024) {
+					resp.writeHead(413, { 'Content-Type': 'application/json' });
+					resp.end(
+						JSON.stringify({
+							error: 'Payload too large',
+							message: 'Request body exceeds 10MB limit for JSON parsing',
+						}),
+					);
+					return { noWebhookResponse: true };
+				}
+				parsedBody = JSON.parse(parsedBody);
+			}
+		} catch (error) {
+			// Return a 400 with clear guidance - webhook received invalid JSON
+			resp.writeHead(400, { 'Content-Type': 'application/json' });
+			resp.end(
+				JSON.stringify({
+					error: 'Invalid JSON body sent to webhook',
+					message:
+						'Webhook could not parse the request body as JSON. Please send valid JSON and set Content-Type: application/json, or send raw text and handle parsing downstream.',
+					details: String(error),
+				}),
+			);
+			return { noWebhookResponse: true };
+		}
+
 		const response: INodeExecutionData = {
 			json: {
 				headers: req.headers,
 				params: req.params,
 				query: req.query,
-				body: req.body,
+				body: parsedBody, // Now guaranteed to be parsed object
 			},
 			binary: options.rawBody
 				? {
