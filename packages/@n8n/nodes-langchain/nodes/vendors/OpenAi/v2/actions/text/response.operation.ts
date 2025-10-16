@@ -715,6 +715,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
+	// make sure there's actually a function call to answer
 	while (toolCalls.length && hasFunctionCall()) {
 		if (abortSignal?.aborted || (maxToolsIterations > 0 && currentIteration > maxToolsIterations)) {
 			break;
