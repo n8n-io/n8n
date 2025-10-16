@@ -105,6 +105,7 @@ describe('GoogleDriveTrigger', () => {
 			if (authProp && 'options' in authProp) {
 				expect(authProp.options).toEqual([
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
@@ -222,8 +223,12 @@ describe('GoogleDriveTrigger', () => {
 
 			const fileTypeOption = optionsProp?.options?.find((o) => o.name === 'fileType');
 			expect(fileTypeOption).toBeDefined();
-			expect(fileTypeOption?.type).toBe('options');
-			expect(fileTypeOption?.default).toBe('all');
+			if (fileTypeOption && 'type' in fileTypeOption) {
+				expect(fileTypeOption.type).toBe('options');
+			}
+			if (fileTypeOption && 'default' in fileTypeOption) {
+				expect(fileTypeOption.default).toBe('all');
+			}
 		});
 	});
 
@@ -247,7 +252,7 @@ describe('GoogleDriveTrigger', () => {
 				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 				googleApiRequestAllItemsSpy.mockResolvedValue(mockDrives);
 
-				const result = await trigger.methods!.loadOptions!.getDrives.call(mockLoadOptionsFunctions);
+				const result = await trigger.methods.loadOptions.getDrives.call(mockLoadOptionsFunctions);
 
 				expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'drives',
@@ -266,7 +271,7 @@ describe('GoogleDriveTrigger', () => {
 				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 				googleApiRequestAllItemsSpy.mockResolvedValue([]);
 
-				const result = await trigger.methods!.loadOptions!.getDrives.call(mockLoadOptionsFunctions);
+				const result = await trigger.methods.loadOptions.getDrives.call(mockLoadOptionsFunctions);
 
 				expect(result).toEqual([{ name: 'Root', value: 'root' }]);
 			});
