@@ -105,7 +105,7 @@ export class AIAssistantPage extends BasePage {
 	) {
 		await this.getChatInput().pressSequentially(message, { delay: 20 });
 		if (method === 'enter-key') {
-			await this.getChatInput().press('Shift+Enter');
+			await this.getChatInput().press('Enter');
 		} else {
 			await this.getSendMessageButton().click();
 		}
