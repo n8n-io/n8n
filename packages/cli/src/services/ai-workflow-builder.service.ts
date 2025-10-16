@@ -83,6 +83,13 @@ export class WorkflowBuilderService {
 		return sessions;
 	}
 
+	async getSessionsMetadata(workflowId: string | undefined, user: IUser) {
+		const service = await this.getService();
+		const sessions = await service.getSessions(workflowId, user);
+		const hasMessages = sessions.sessions.length > 0 && sessions.sessions[0].messages.length > 0;
+		return { hasMessages };
+	}
+
 	async getBuilderInstanceCredits(user: IUser) {
 		const service = await this.getService();
 		return await service.getBuilderInstanceCredits(user);

@@ -128,7 +128,7 @@ const menuHeight = computed(() => {
 	font-weight: var(--font-weight--bold);
 	font-size: var(--font-size--3xs);
 	z-index: 999;
-	border: var(--border-width) var(--border-style) var(--color-info-tint-1);
+	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
 	border-radius: 50%;
 }
 .groupContainer {

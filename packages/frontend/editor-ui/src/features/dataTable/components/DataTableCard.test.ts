@@ -3,7 +3,7 @@ import DataTableCard from '@/features/dataTable/components/DataTableCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { DataTableResource } from '@/features/dataTable/types';
 
-vi.mock('@/stores/projects.store');
+vi.mock('@/features/projects/projects.store');
 
 vi.mock('vue-router', async () => {
 	const { reactive } = await import('vue');

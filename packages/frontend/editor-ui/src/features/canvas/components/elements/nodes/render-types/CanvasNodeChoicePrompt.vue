@@ -107,7 +107,7 @@ async function onBuildWithAIClick() {
 	border-radius: var(--radius--lg);
 
 	&.highlighted {
-		box-shadow: 0 0 0 7px var(--color-canvas-selected);
+		box-shadow: 0 0 0 7px var(--canvas--color--selected);
 	}
 }
 

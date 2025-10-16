@@ -337,6 +337,12 @@ class TaskRunner:
             response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
             await self._send_message(response)
 
+        except SyntaxError as e:
+            self.logger.warning(f"Task {task_id} failed syntax validation")
+            error = {"message": str(e)}
+            response = RunnerTaskError(task_id=task_id, error=error)
+            await self._send_message(response)
+
         except Exception as e:
             self.logger.error(f"Task {task_id} failed", exc_info=True)
             error = {

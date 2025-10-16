@@ -319,7 +319,7 @@ input[type='checkbox'] + label {
 }
 
 .sticky {
-	color: var(--color-sticky-font);
+	color: var(--sticky--color--text);
 	overflow-wrap: break-word;
 
 	h1,
@@ -328,7 +328,7 @@ input[type='checkbox'] + label {
 	h4,
 	h5,
 	h6 {
-		color: var(--color-sticky-font);
+		color: var(--sticky--color--text);
 	}
 
 	h1,
@@ -381,14 +381,14 @@ input[type='checkbox'] + label {
 	}
 
 	pre > code {
-		background-color: var(--color-sticky-code-background);
-		color: var(--color-sticky-code-font);
+		background-color: var(--sticky--code--color--background);
+		color: var(--sticky--code--color--text);
 	}
 
 	pre > code,
 	li > code,
 	p > code {
-		color: var(--color-sticky-code-font);
+		color: var(--sticky--code--color--text);
 	}
 
 	a {
