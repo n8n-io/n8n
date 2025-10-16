@@ -15,7 +15,11 @@ import { Builder } from 'xml2js';
 import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
-import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import {
+	awsApiRequestREST,
+	awsApiRequestRESTAllItems,
+	generatePresignedUrl,
+} from './GenericFunctions';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -658,6 +662,59 @@ export class AwsS3V2 implements INodeType {
 						);
 
 						returnData.push(items[i]);
+					}
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
+					if (operation === 'getPresignedUrl') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
+						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+						const expirationTime = this.getNodeParameter('expirationTime', i) as number;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						// Get the bucket region
+						let region = await awsApiRequestREST.call(this, servicePath, 'GET', basePath, '', {
+							location: '',
+						});
+
+						region = region.LocationConstraint._;
+
+						// Prepare query parameters for the presigned URL
+						const presignedQuery: IDataObject = {};
+
+						if (additionalFields.responseContentType) {
+							presignedQuery['response-content-type'] =
+								additionalFields.responseContentType as string;
+						}
+
+						if (additionalFields.responseContentDisposition) {
+							presignedQuery['response-content-disposition'] =
+								additionalFields.responseContentDisposition as string;
+						}
+
+						// Generate the presigned URL
+						const presignedUrl = await generatePresignedUrl.call(
+							this,
+							bucketName,
+							fileKey,
+							expirationTime,
+							presignedQuery,
+							region as string,
+						);
+
+						responseData = {
+							presignedUrl,
+							bucket: bucketName,
+							fileKey,
+							expiresIn: expirationTime,
+							expiresAt: new Date(Date.now() + expirationTime * 1000).toISOString(),
+						};
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html
 					if (operation === 'delete') {
