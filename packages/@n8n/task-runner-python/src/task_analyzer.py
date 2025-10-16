@@ -1,6 +1,5 @@
 import ast
 import hashlib
-from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
@@ -14,7 +13,7 @@ from src.constants import (
     BLOCKED_ATTRIBUTES,
 )
 
-CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
+CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
@@ -23,7 +22,7 @@ class SecurityValidator(ast.NodeVisitor):
     """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
 
     def __init__(self, security_config: SecurityConfig):
-        self.checked_modules: Set[str] = set()
+        self.checked_modules: set[str] = set()
         self.violations: list[str] = []
         self.security_config = security_config
 
