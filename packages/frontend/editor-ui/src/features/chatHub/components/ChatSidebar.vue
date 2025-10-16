@@ -62,6 +62,6 @@ onBeforeUnmount(() => {
 	width: 240px;
 	position: relative;
 	overflow: auto;
-	margin-right: -4px;
+	margin-right: calc(-1 * var(--spacing--4xs));
 }
 </style>

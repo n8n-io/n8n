@@ -115,7 +115,10 @@ function onCreateNewCredential(provider: ChatHubProvider) {
 
 <style lang="scss" module>
 .component {
-	padding: var(--spacing--4xs);
+	padding-inline: var(--spacing--4xs);
+	height: 56px;
+	flex-grow: 0;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);

@@ -143,13 +143,17 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
+	padding-block: var(--spacing--4xs);
 }
 
 .header {
+	height: 56px;
+	flex-grow: 0;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--md) var(--spacing--2xs);
+	padding-inline: var(--spacing--2xs);
 	gap: var(--spacing--2xs);
 }
 
