@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ExecutionFilterType } from '@/Interface';
+import type { ExecutionFilterType } from '../executions.types';
 import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
 import GlobalExecutionsList from '../components/global/GlobalExecutionsList.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';

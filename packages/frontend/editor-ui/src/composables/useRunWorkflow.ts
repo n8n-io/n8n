@@ -1,10 +1,9 @@
+import type { IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsStopData,
-	IStartRunData,
-	IWorkflowDb,
-} from '@/Interface';
+} from '@/features/executions/executions.types';
 
 import type {
 	IRunData,

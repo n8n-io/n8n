@@ -7,12 +7,12 @@ import type {
 	AddedNode,
 	AddedNodeConnection,
 	AddedNodesAndConnections,
-	IExecutionResponse,
 	INodeUi,
 	IWorkflowDb,
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';

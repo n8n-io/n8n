@@ -70,7 +70,7 @@ import CommunityPlusEnrollmentModal from '@/features/usage/components/CommunityP
 import ContactPromptModal from '@/components/ContactPromptModal.vue';
 import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
-import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import DebugPaywallModal from '@/features/executions/components/DebugPaywallModal.vue';
 import DeleteFolderModal from '@/features/folders/components/DeleteFolderModal.vue';
 import MoveToFolderModal from '@/features/folders/components/MoveToFolderModal.vue';
 import DeleteUserModal from '@/features/users/components/DeleteUserModal.vue';

@@ -1,4 +1,4 @@
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';

@@ -33,7 +33,8 @@ const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const LogsPanel = async () => await import('@/features/logs/components/LogsPanel.vue');
 const DemoFooter = async () => await import('@/features/logs/components/DemoFooter.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
-const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
+const WorkflowExecutionsView = async () =>
+	await import('@/features/executions/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
 	await import('@/features/executions/components/workflow/WorkflowExecutionsLandingPage.vue');
 const WorkflowExecutionsPreview = async () =>

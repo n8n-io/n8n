@@ -12,19 +12,21 @@ import {
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
-	IExecutionPushResponse,
-	IExecutionResponse,
-	IExecutionsListResponse,
 	INodeMetadata,
 	INodeUi,
 	IStartRunData,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
-	IExecutionFlattedResponse,
 	WorkflowListResource,
 	WorkflowValidationIssue,
 } from '@/Interface';
+import type {
+	IExecutionPushResponse,
+	IExecutionResponse,
+	IExecutionsListResponse,
+	IExecutionFlattedResponse,
+} from '@/features/executions/executions.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {

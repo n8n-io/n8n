@@ -9,7 +9,8 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
+import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useExecutionsStore } from '../../executions.store';

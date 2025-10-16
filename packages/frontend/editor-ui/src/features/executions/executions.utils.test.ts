@@ -7,7 +7,7 @@ import {
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 	findTriggerNodeToAutoSelect,
-} from './execution.utils';
+} from './executions.utils';
 import type {
 	INode,
 	IRunData,

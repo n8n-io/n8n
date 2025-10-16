@@ -10,12 +10,8 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
-import type {
-	IExecutionResponse,
-	INodeUi,
-	IWorkflowDb,
-	WorkflowDataWithTemplateId,
-} from '@/Interface';
+import type { INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/history';

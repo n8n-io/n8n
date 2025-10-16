@@ -17,7 +17,7 @@ import {
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '@/Interface';
+import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({

@@ -27,7 +27,6 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
-	IExecutionResponse,
 	INodeUi,
 	IWorkflowDb,
 	NodeCreatorOpenSource,
@@ -35,6 +34,7 @@ import type {
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	Connection,

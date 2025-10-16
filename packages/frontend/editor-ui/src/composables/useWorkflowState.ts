@@ -4,13 +4,15 @@ import {
 	WorkflowStateKey,
 } from '@/constants';
 import type {
-	IExecutionResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/executions/executions.types';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
