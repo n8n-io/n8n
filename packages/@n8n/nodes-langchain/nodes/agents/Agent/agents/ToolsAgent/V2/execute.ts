@@ -10,7 +10,7 @@ import {
 	createToolCallingAgent,
 } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
-import { DynamicStructuredTool, type Tool } from 'langchain/tools';
+import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
@@ -34,37 +34,6 @@ import {
 import { SYSTEM_MESSAGE } from '../prompt';
 
 /**
- * Wraps tools to ensure they always return strings
- */
-function wrapToolsWithStringify(
-	tools: Array<DynamicStructuredTool | Tool>,
-): Array<DynamicStructuredTool | Tool> {
-	return tools.map((tool) => {
-		// For DynamicStructuredTool and DynamicTool, we can wrap the func property
-		if ('func' in tool && typeof tool.func === 'function') {
-			const originalFunc = tool.func.bind(tool);
-			return new DynamicStructuredTool({
-				name: tool.name,
-				description: tool.description,
-				schema: tool.schema,
-				func: async (input, runManager, config) => {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					const result = await originalFunc(input, runManager, config);
-					// If result is already a string, return it
-					if (typeof result === 'string') {
-						return result;
-					}
-					// Otherwise, stringify it
-					return JSON.stringify(result);
-				},
-			});
-		}
-		// For other tool types, return as-is (they should already return strings)
-		return tool;
-	});
-}
-
-/**
  * Creates an agent executor with the given configuration
  */
 function createAgentExecutor(
@@ -76,12 +45,9 @@ function createAgentExecutor(
 	memory?: BaseChatMemory,
 	fallbackModel?: BaseChatModel | null,
 ) {
-	// Wrap tools to ensure they always return strings
-	const wrappedTools = wrapToolsWithStringify(tools);
-
 	const agent = createToolCallingAgent({
 		llm: model,
-		tools: wrappedTools,
+		tools,
 		prompt,
 		streamRunnable: false,
 	});
@@ -90,7 +56,7 @@ function createAgentExecutor(
 	if (fallbackModel) {
 		fallbackAgent = createToolCallingAgent({
 			llm: fallbackModel,
-			tools: wrappedTools,
+			tools,
 			prompt,
 			streamRunnable: false,
 		});
@@ -107,7 +73,7 @@ function createAgentExecutor(
 	return AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
 		memory,
-		tools: wrappedTools,
+		tools,
 		returnIntermediateSteps: options.returnIntermediateSteps === true,
 		maxIterations: options.maxIterations ?? 10,
 	});

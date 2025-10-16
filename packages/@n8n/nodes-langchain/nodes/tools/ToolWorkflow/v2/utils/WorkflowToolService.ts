@@ -22,6 +22,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	generateZodSchema,
+	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
 	parseErrorMetadata,
@@ -134,13 +135,17 @@ export class WorkflowToolService {
 				try {
 					const response = await this.runFunction(context, query, itemIndex, runManager);
 
-					const processedResponse = response; // this.handleToolResponse(response);
+					const processedResponse = this.handleToolResponse(response);
 
 					let responseData: INodeExecutionData[];
 					if (isNodeExecutionData(response)) {
 						responseData = response;
 					} else {
-						responseData = [{ json: response }];
+						const reParsedData = jsonParse<IDataObject>(processedResponse, {
+							fallbackValue: { response: processedResponse },
+						});
+
+						responseData = [{ json: reParsedData }];
 					}
 
 					// Once the sub-workflow is executed, add the output data to the context
@@ -200,6 +205,32 @@ export class WorkflowToolService {
 			: new DynamicTool({ name, description, func: toolHandler });
 	}
 
+	private handleToolResponse(response: unknown): string {
+		if (typeof response === 'number') {
+			return response.toString();
+		}
+
+		if (isNodeExecutionData(response)) {
+			return JSON.stringify(
+				response.map((item) => item.json),
+				null,
+				2,
+			);
+		}
+
+		if (isObject(response)) {
+			return JSON.stringify(response, null, 2);
+		}
+
+		if (typeof response !== 'string') {
+			throw new NodeOperationError(this.baseContext.getNode(), 'Wrong output type returned', {
+				description: `The response property should be a string, but it is an ${typeof response}`,
+			});
+		}
+
+		return response;
+	}
+
 	/**
 	 * Executes specified sub-workflow with provided inputs
 	 */
@@ -209,7 +240,7 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<{ response: IDataObject | INodeExecutionData[]; subExecutionId: string }> {
+	): Promise<{ response: string | IDataObject | INodeExecutionData[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
 			receivedData = await context.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
@@ -249,7 +280,7 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<IDataObject | INodeExecutionData[]> {
+	): Promise<string | IDataObject | INodeExecutionData[]> {
 		const source = context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = context.getWorkflowDataProxy(0);
 

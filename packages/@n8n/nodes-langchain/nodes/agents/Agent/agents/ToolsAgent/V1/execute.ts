@@ -1,7 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import { DynamicStructuredTool, type Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
@@ -19,34 +18,6 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
-
-function wrapToolsWithStringify(
-	tools: Array<DynamicStructuredTool | Tool>,
-): Array<DynamicStructuredTool | Tool> {
-	return tools.map((tool) => {
-		// For DynamicStructuredTool and DynamicTool, we can wrap the func property
-		if ('func' in tool && typeof tool.func === 'function') {
-			const originalFunc = tool.func.bind(tool);
-			return new DynamicStructuredTool({
-				name: tool.name,
-				description: tool.description,
-				schema: tool.schema,
-				func: async (input, runManager, config) => {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					const result = await originalFunc(input, runManager, config);
-					// If result is already a string, return it
-					if (typeof result === 'string') {
-						return result;
-					}
-					// Otherwise, stringify it
-					return JSON.stringify(result);
-				},
-			});
-		}
-		// For other tool types, return as-is (they should already return strings)
-		return tool;
-	});
-}
 
 /* -----------------------------------------------------------
    Main Executor Function
@@ -66,7 +37,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 	const outputParser = await getOptionalOutputParser(this);
-	const tools = wrapToolsWithStringify(await getTools(this, outputParser));
+	const tools = await getTools(this, outputParser);
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
