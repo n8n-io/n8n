@@ -25,6 +25,7 @@ export {
 	type ChatSessionId,
 	type ChatHubMessageDto,
 	type ChatHubSessionDto,
+	type ChatHubConversationDto,
 	type ChatHubConversationResponse,
 	type ChatHubConversationsResponse,
 } from './chat-hub';

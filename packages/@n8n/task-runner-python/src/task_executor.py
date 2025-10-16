@@ -160,6 +160,7 @@ class TaskExecutor:
 
             if process.is_alive():
                 process.kill()
+                process.join()
         except (ProcessLookupError, ConnectionError, BrokenPipeError):
             # subprocess is dead or unreachable
             pass
