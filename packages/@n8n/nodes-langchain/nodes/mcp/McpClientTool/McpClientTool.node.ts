@@ -21,6 +21,7 @@ import {
 	getSelectedTools,
 	McpToolkit,
 	mcpToolToDynamicTool,
+	tryRefreshOAuth2Token,
 } from './utils';
 
 export class McpClientTool implements INodeType {
@@ -276,6 +277,7 @@ export class McpClientTool implements INodeType {
 			headers,
 			name: node.type,
 			version: node.typeVersion,
+			onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
 		});
 
 		const setError = (message: string, description?: string): SupplyData => {
