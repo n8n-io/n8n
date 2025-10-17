@@ -6,15 +6,18 @@ import { computed } from 'vue';
 
 const i18n = useI18n();
 
-const { type, justCopied } = defineProps<{
+const { type, justCopied, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
 	type: ChatHubMessageType;
 	justCopied: boolean;
+	isSpeechSynthesisAvailable: boolean;
+	isSpeaking: boolean;
 }>();
 
 const emit = defineEmits<{
 	copy: [];
 	edit: [];
 	regenerate: [];
+	readAloud: [];
 }>();
 
 const copyTooltip = computed(() => {
@@ -32,6 +35,10 @@ function handleEdit() {
 function handleRegenerate() {
 	emit('regenerate');
 }
+
+function handleReadAloud() {
+	emit('readAloud');
+}
 </script>
 
 <template>
@@ -45,6 +52,20 @@ function handleRegenerate() {
 				@click="handleCopy"
 			/>
 			<template #content>{{ copyTooltip }}</template>
+		</N8nTooltip>
+		<N8nTooltip
+			v-if="isSpeechSynthesisAvailable && type === 'ai'"
+			placement="bottom"
+			:show-after="300"
+		>
+			<N8nIconButton
+				:icon="isSpeaking ? 'volume-x' : 'volume-2'"
+				type="tertiary"
+				size="medium"
+				text
+				@click="handleReadAloud"
+			/>
+			<template #content>{{ isSpeaking ? 'Stop reading' : 'Read aloud' }}</template>
 		</N8nTooltip>
 		<N8nTooltip placement="bottom" :show-after="300">
 			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />

@@ -6,11 +6,12 @@ import type MarkdownIt from 'markdown-it';
 import ChatMessageActions from './ChatMessageActions.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useClipboard } from '@/composables/useClipboard';
-import { ref, nextTick, watch, useTemplateRef, computed } from 'vue';
+import { ref, nextTick, watch, useTemplateRef, computed, onBeforeMount } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
 import type { ChatHubMessageDto } from '@n8n/api-types';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { useChatHubMarkdownOptions } from '@/features/chatHub/composables/useChatHubMarkdownOptions';
+import { useSpeechSynthesis } from '@vueuse/core';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatHubMessageDto;
@@ -36,6 +37,12 @@ const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
 const justCopied = ref(false);
 const { markdownOptions, forceReRenderKey } = useChatHubMarkdownOptions();
+
+const speech = useSpeechSynthesis(message.content, {
+	pitch: 1,
+	rate: 1,
+	volume: 1,
+});
 
 const credentialTypeName = computed(() => {
 	if (message.type !== 'ai' || !message.provider) {
@@ -73,6 +80,16 @@ function handleRegenerate() {
 	emit('regenerate', message);
 }
 
+function handleReadAloud() {
+	if (speech.isSupported.value) {
+		if (speech.isPlaying.value) {
+			speech.stop();
+		} else {
+			speech.speak();
+		}
+	}
+}
+
 const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	vueMarkdownItInstance.use(markdownLink, {
 		attrs: {
@@ -96,6 +113,10 @@ watch(
 	},
 	{ immediate: true },
 );
+
+onBeforeMount(() => {
+	speech.stop();
+});
 </script>
 
 <template>
@@ -157,10 +178,13 @@ watch(
 					v-else
 					:type="message.type"
 					:just-copied="justCopied"
+					:is-speech-synthesis-available="speech.isSupported.value"
+					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
 					@copy="handleCopy"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
+					@read-aloud="handleReadAloud"
 				/>
 			</template>
 		</div>
