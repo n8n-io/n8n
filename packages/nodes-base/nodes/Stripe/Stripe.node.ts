@@ -20,6 +20,8 @@ import {
 	customerCardOperations,
 	customerFields,
 	customerOperations,
+	meterEventFields,
+	meterEventOperations,
 	sourceFields,
 	sourceOperations,
 	tokenFields,
@@ -83,6 +85,10 @@ export class Stripe implements INodeType {
 						value: 'customerCard',
 					},
 					{
+						name: 'Meter Event',
+						value: 'meterEvent',
+					},
+					{
 						name: 'Source',
 						value: 'source',
 					},
@@ -102,6 +108,8 @@ export class Stripe implements INodeType {
 			...couponFields,
 			...customerOperations,
 			...customerFields,
+			...meterEventOperations,
+			...meterEventFields,
 			...sourceOperations,
 			...sourceFields,
 			...tokenOperations,
@@ -428,6 +436,77 @@ export class Stripe implements INodeType {
 
 						const sourceId = this.getNodeParameter('sourceId', i);
 						responseData = await stripeApiRequest.call(this, 'GET', `/sources/${sourceId}`, {}, {});
+					}
+				} else if (resource === 'meterEvent') {
+					// *********************************************************************
+					//                           meter event
+					// *********************************************************************
+
+					// https://docs.stripe.com/api/billing/meter-event/create
+
+					if (operation === 'create') {
+						// ----------------------------------
+						//       meterEvent: create
+						// ----------------------------------
+
+						const eventName = this.getNodeParameter('eventName', i) as string;
+						const customerId = this.getNodeParameter('customerId', i) as string;
+						const value = this.getNodeParameter('value', i) as number;
+
+						const body: IDataObject = {
+							event_name: eventName,
+							'payload[stripe_customer_id]': customerId,
+							'payload[value]': value.toString(),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (typeof additionalFields === 'object' && additionalFields !== null) {
+							if (
+								'identifier' in additionalFields &&
+								typeof additionalFields.identifier === 'string'
+							) {
+								body.identifier = additionalFields.identifier;
+							}
+
+							if (
+								'timestamp' in additionalFields &&
+								typeof additionalFields.timestamp === 'string'
+							) {
+								// Convert to Unix timestamp
+								body.timestamp = Math.floor(new Date(additionalFields.timestamp).getTime() / 1000);
+							}
+
+							if (
+								'customPayloadFields' in additionalFields &&
+								typeof additionalFields.customPayloadFields === 'object' &&
+								additionalFields.customPayloadFields !== null
+							) {
+								const customFields = additionalFields.customPayloadFields;
+								if ('values' in customFields && Array.isArray(customFields.values)) {
+									customFields.values.forEach((field) => {
+										if (
+											typeof field === 'object' &&
+											field !== null &&
+											'key' in field &&
+											'value' in field &&
+											typeof field.key === 'string' &&
+											typeof field.value === 'string'
+										) {
+											body[`payload[${field.key}]`] = field.value;
+										}
+									});
+								}
+							}
+						}
+
+						responseData = await stripeApiRequest.call(
+							this,
+							'POST',
+							'/billing/meter_events',
+							body,
+							{},
+						);
 					}
 				} else if (resource === 'token') {
 					// *********************************************************************

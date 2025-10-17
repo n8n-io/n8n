@@ -1,0 +1,35 @@
+{
+	"type": "object",
+	"properties": {
+		"object": {
+			"type": "string"
+		},
+		"created": {
+			"type": "integer"
+		},
+		"event_name": {
+			"type": "string"
+		},
+		"identifier": {
+			"type": "string"
+		},
+		"livemode": {
+			"type": "boolean"
+		},
+		"payload": {
+			"type": "object",
+			"properties": {
+				"stripe_customer_id": {
+					"type": "string"
+				},
+				"value": {
+					"type": "string"
+				}
+			}
+		},
+		"timestamp": {
+			"type": "integer"
+		}
+	},
+	"version": 1
+}
