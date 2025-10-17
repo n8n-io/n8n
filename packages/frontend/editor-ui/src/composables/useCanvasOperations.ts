@@ -12,7 +12,7 @@ import type {
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
-import type { IExecutionResponse } from '@/features/executions/executions.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
@@ -25,7 +25,7 @@ import { type PinDataSource, usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { getExecutionErrorToastConfiguration } from '@/features/executions/executions.utils';
+import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
@@ -46,7 +46,7 @@ import {
 } from '@/models/history';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useExecutionsStore } from '@/features/executions/executions.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -63,15 +63,15 @@ import type {
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ViewportBoundaries,
-} from '@/features/canvas/canvas.types';
-import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
+} from '@/features/workflows/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import {
 	createCanvasConnectionHandleString,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyConnectionToCanvasConnection,
 	parseCanvasConnectionHandleString,
-} from '@/features/canvas/canvas.utils';
+} from '@/features/workflows/canvas/canvas.utils';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
@@ -115,22 +115,22 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { isPresent } from '@/utils/typesUtils';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
-import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
-import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { useParentFolder } from '@/features/folders/composables/useParentFolder';
+import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;

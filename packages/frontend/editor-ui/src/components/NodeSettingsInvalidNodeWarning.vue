@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { useInstallNode } from '@/features/communityNodes/composables/useInstallNode';
+import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CUSTOM_NODES_DOCS_URL } from '@/constants';
-import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/communityNodes/communityNodes.constants';
+import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/settings/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { isCommunityPackageName } from 'n8n-workflow';
 import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
-import ContactAdministratorToInstall from '@/features/communityNodes/components/ContactAdministratorToInstall.vue';
+import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from './Node/NodeCreator/utils';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();

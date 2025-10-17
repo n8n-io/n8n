@@ -1,20 +1,20 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
-import EmptySharedSectionActionBox from '@/features/folders/components/EmptySharedSectionActionBox.vue';
-import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
-import FolderCard from '@/features/folders/components/FolderCard.vue';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/folders/folders.constants';
+import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
+import FolderCard from '@/features/core/folders/components/FolderCard.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/core/folders/folders.constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
+import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { DragTarget, DropTarget, FolderListItem } from '@/features/folders/folders.types';
-import { useFolders } from '@/features/folders/composables/useFolders';
+import type { DragTarget, DropTarget, FolderListItem } from '@/features/core/folders/folders.types';
+import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/composables/useMessage';
-import { useProjectPages } from '@/features/projects/composables/useProjectPages';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
@@ -24,7 +24,7 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/usage/usage.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/components/SuggestedWorkflowCard.vue';
 import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
@@ -36,8 +36,8 @@ import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/comp
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type {
 	BaseFilters,
 	FolderResource,
@@ -48,22 +48,22 @@ import type {
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
-import { useFoldersStore } from '@/features/folders/folders.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useTemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsageStore } from '@/features/usage/usage.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsageStore } from '@/features/settings/usage/usage.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	type Project,
 	type ProjectSharingData,
 	ProjectTypes,
-} from '@/features/projects/projects.types';
-import { getEasyAiWorkflowJson } from '@/features/templates/utils/workflowSamples';
+} from '@/features/collaboration/projects/projects.types';
+import { getEasyAiWorkflowJson } from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
