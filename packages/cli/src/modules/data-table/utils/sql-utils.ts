@@ -49,13 +49,7 @@ export function dataTableColumnTypeToSql(
 ) {
 	switch (type) {
 		case 'string':
-			switch (dbType) {
-				case 'mysql':
-				case 'mariadb':
-					return 'CHAR';
-				default:
-					return 'TEXT';
-			}
+			return 'TEXT';
 		case 'number':
 			switch (dbType) {
 				case 'postgres':
@@ -408,18 +402,19 @@ export function resolvePath(
 			// difference we don't care for in the face of imminent removal of support
 			const path = toSQLitePath(pathArray);
 			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
-			if (typeof value === 'number') {
-				return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
-			}
-			if (value instanceof Date) {
-				return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)})`;
-			}
-			if (typeof value === 'boolean') {
-				return `CAST(${base} as ${dataTableColumnTypeToSql('boolean', dbType)})`;
-			}
-			if (typeof value === 'string') {
-				return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)})`;
-			}
+			// if (typeof value === 'number') {
+			// 	return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
+			// }
+			// if (value instanceof Date) {
+			// 	return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)})`;
+			// }
+			// if (typeof value === 'boolean') {
+			// 	return `CAST(${base} as ${dataTableColumnTypeToSql('boolean', dbType)})`;
+			// }
+			// if (typeof value === 'string') {
+			// 	return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)})`;
+			// }
+			// return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)})`;
 			return base;
 		}
 	}
