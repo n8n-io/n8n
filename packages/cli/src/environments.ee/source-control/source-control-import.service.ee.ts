@@ -62,7 +62,11 @@ import type {
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
-import type { StatusResourceOwner, RemoteResourceOwner } from './types/resource-owner';
+import type {
+	StatusResourceOwner,
+	RemoteResourceOwner,
+	TeamResourceOwner,
+} from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
@@ -669,11 +673,44 @@ export class SourceControlImportService {
 				});
 			}
 
-			const isOwnedLocally = allSharedWorkflows.some(
+			const importedOwnerProject = await this.findOwnerProjectInLocalDb(importedWorkflow.owner);
+			const localOwner = allSharedWorkflows.find(
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 			);
 
-			if (!isOwnedLocally) {
+			if (importedWorkflow.owner?.type === 'team') {
+				const trx = this.workflowRepository.manager;
+
+				// Remove old owner if id does not match the imported owner project
+				// or when the workflow will be owned by a new project
+				const removeOldOwner =
+					localOwner &&
+					(localOwner.projectId !== importedOwnerProject?.id || !importedOwnerProject);
+
+				if (removeOldOwner) {
+					await this.sharedWorkflowRepository.deleteByIds(
+						[importedWorkflow.id],
+						localOwner.projectId,
+						trx,
+					);
+				}
+
+				// Use the existing project or create a new one if it doesn't exist
+				const workflowOwner =
+					importedOwnerProject ?? (await this.createTeamProject(importedWorkflow.owner));
+				await this.sharedWorkflowRepository.makeOwner([importedWorkflow.id], workflowOwner.id, trx);
+
+				console.log({
+					removeOldOwner,
+					createdNewProject: !importedOwnerProject,
+				});
+			} else {
+				// import personal workflow
+				//   if personal project exists in local database -> transfer ownership to the existing personal project
+				//   if personal project does not exist in local database -> transfer ownership the admin personal project
+			}
+
+			if (!localOwner) {
 				const remoteOwnerProject: Project | null = importedWorkflow.owner
 					? await this.findOrCreateOwnerProject(importedWorkflow.owner)
 					: null;
@@ -1088,7 +1125,7 @@ export class SourceControlImportService {
 	}
 
 	private async findOrCreateOwnerProject(owner: RemoteResourceOwner): Promise<Project | null> {
-		let ownerProject = await this.findOwnerProject(owner);
+		let ownerProject = await this.findOwnerProjectInLocalDb(owner);
 
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			if (!ownerProject) {
@@ -1098,13 +1135,7 @@ export class SourceControlImportService {
 		} else if (owner.type === 'team') {
 			if (!ownerProject) {
 				try {
-					ownerProject = await this.projectRepository.save(
-						this.projectRepository.create({
-							id: owner.teamId,
-							name: owner.teamName,
-							type: 'team',
-						}),
-					);
+					ownerProject = await this.createTeamProject(owner);
 				} catch (e) {
 					ownerProject = await this.projectRepository.findOne({
 						where: { id: owner.teamId },
@@ -1128,7 +1159,11 @@ export class SourceControlImportService {
 		);
 	}
 
-	private async findOwnerProject(owner: RemoteResourceOwner) {
+	private async findOwnerProjectInLocalDb(owner: RemoteResourceOwner | IWorkflowToImport['owner']) {
+		if (!owner) {
+			return null;
+		}
+
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
 			const user = await this.userRepository.findOne({
@@ -1151,6 +1186,16 @@ export class SourceControlImportService {
 			`Unknown resource owner type "${
 				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'
 			}" found when finding owner project`,
+		);
+	}
+
+	private async createTeamProject(owner: TeamResourceOwner) {
+		return this.projectRepository.save(
+			this.projectRepository.create({
+				id: owner.teamId,
+				name: owner.teamName,
+				type: 'team',
+			}),
 		);
 	}
 }
