@@ -4,13 +4,15 @@ import {
 	WorkflowStateKey,
 } from '@/constants';
 import type {
-	IExecutionResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/executions/executions.types';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
@@ -28,7 +30,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/utils/typesUtils';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { clearPopupWindowState } from '@/utils/executionUtils';
+import { clearPopupWindowState } from '@/features/executions/executions.utils';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/stores/workflowState.store';
 import { isObject } from '@/utils/objectUtils';

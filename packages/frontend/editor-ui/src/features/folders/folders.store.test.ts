@@ -4,7 +4,7 @@ import { faker } from '@faker-js/faker';
 
 import { useFoldersStore } from './folders.store';
 import * as foldersApi from './folders.api';
-import type { IUsedCredential } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResponseItem } from './folders.types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 

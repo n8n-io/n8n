@@ -78,7 +78,7 @@ export class McpSettingsController {
 			);
 		}
 
-		if (!workflow.active) {
+		if (!workflow.active && dto.availableInMCP) {
 			throw new BadRequestError('MCP access can only be set for active workflows');
 		}
 

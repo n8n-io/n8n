@@ -9,7 +9,7 @@ import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 import { ResourceType } from '@/features/projects/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
@@ -659,10 +659,8 @@ watchEffect(() => {
 
 // Load data when modal opens
 onMounted(async () => {
-	// Only load fresh data if we don't have any initial data
-	if (!props.data.status || props.data.status.length === 0) {
-		await loadSourceControlStatus();
-	}
+	// Always load fresh data to ensure workflow names are populated
+	await loadSourceControlStatus();
 });
 </script>
 

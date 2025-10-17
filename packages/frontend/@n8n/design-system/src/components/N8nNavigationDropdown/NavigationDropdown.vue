@@ -167,7 +167,7 @@ defineExpose({
 
 <style lang="scss" module>
 :global(.el-menu).dropdown {
-	border-bottom: 0;
+	border-bottom: 0 !important;
 	background-color: transparent;
 
 	> :global(.el-sub-menu) {
@@ -208,12 +208,12 @@ defineExpose({
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
 		color: var(--color--text--shade-1);
-		background-color: var(--color-menu-background);
+		background-color: var(--menu--color--background);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item:not(.is-disabled):hover),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title:not(.is-disabled):hover) {
-		background-color: var(--color-menu-hover-background);
+		background-color: var(--menu--color--background--hover);
 	}
 
 	:global(.el-popper) {
@@ -239,7 +239,7 @@ defineExpose({
 .subMenuTitle {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .submenu__icon {

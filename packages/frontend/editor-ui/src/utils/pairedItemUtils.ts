@@ -1,5 +1,6 @@
 import { type IPairedItemData, type IRunData, type ITaskData } from 'n8n-workflow';
-import type { IExecutionResponse, TargetItem } from '@/Interface';
+import type { TargetItem } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { isNotNull } from '@/utils/typeGuards';
 
 export const MAX_ITEM_COUNT_FOR_PAIRING = 1000;

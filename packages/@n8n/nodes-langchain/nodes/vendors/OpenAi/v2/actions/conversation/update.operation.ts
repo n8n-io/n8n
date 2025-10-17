@@ -35,6 +35,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const conversationId = this.getNodeParameter('conversationId', i, '') as string;
 	const metadata = this.getNodeParameter('metadata', i, '') as string;
 
+	if (!conversationId) {
+		throw new Error('Conversation ID is required');
+	}
+
+	if (!metadata) {
+		throw new Error('Metadata is required');
+	}
+
 	const body: IDataObject = {};
 
 	body.metadata = jsonParse(metadata, {

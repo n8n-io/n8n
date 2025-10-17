@@ -61,15 +61,29 @@ export async function formatInputMessages(
 					];
 				}
 			} else if (message.type === 'file') {
-				content = [
-					{
-						type: 'input_file',
-						...(message.fileName && { file_name: message.fileName as string }),
-						...(message.fileType === 'url' && { file_url: message.fileUrl as string }),
-						...(message.fileType === 'fileId' && { file_id: message.fileId as string }),
-						...(message.fileType === 'base64' && { file_data: message.fileData as string }),
-					},
-				];
+				if (message.fileType === 'base64') {
+					const { fileContent, contentType } = await getBinaryDataFile(
+						this,
+						i,
+						message.binaryPropertyName as string,
+					);
+					const buffer = await this.helpers.binaryToBuffer(fileContent);
+					content = [
+						{
+							type: 'input_file',
+							filename: message.fileName as string,
+							file_data: `data:${contentType};base64,${buffer.toString('base64')}`,
+						},
+					];
+				} else {
+					content = [
+						{
+							type: 'input_file',
+							...(message.fileType === 'url' && { file_url: message.fileUrl as string }),
+							...(message.fileType === 'fileId' && { file_id: message.fileId as string }),
+						},
+					];
+				}
 			}
 			return { role, content };
 		}),

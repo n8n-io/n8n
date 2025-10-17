@@ -6,7 +6,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY, VERSIONS_MODAL_KEY } from '@/constants';
 import { useVersionsStore } from '@/stores/versions.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 
 import WhatsNewModal from './WhatsNewModal.vue';

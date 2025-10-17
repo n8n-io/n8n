@@ -18,14 +18,17 @@ import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { Project } from '@/features/projects/projects.types';
-import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResult } from '../folders.types';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
-import type { EventBus } from '@n8n/utils/dist/event-bus';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -801,9 +804,7 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(anotherUserPersonalProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
-		expect(submitButton).toBeEnabled();
-
-		expect(submitButton).toBeEnabled();
+		await waitFor(() => expect(submitButton).toBeEnabled());
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {

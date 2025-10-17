@@ -10,7 +10,7 @@ import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Project } from '@/features/projects/projects.types';
 import { TemplateClickSource } from '@/utils/experiments';

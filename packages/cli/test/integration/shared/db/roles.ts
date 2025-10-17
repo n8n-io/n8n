@@ -10,7 +10,7 @@ export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 
 	const defaultRole: Partial<Role> = {
 		slug: `test-role-${Math.random().toString(36).substring(7)}`,
-		displayName: 'Test Role',
+		displayName: `Test Role ${Math.random().toString(36).substring(7)}`,
 		description: 'A test role for integration testing',
 		systemRole: false,
 		roleType: 'project',
@@ -164,11 +164,7 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const role of testRoles) {
-		try {
-			await roleRepository.delete({ slug: role.slug });
-		} catch (error) {
-			// Ignore errors for system roles or roles with dependencies
-		}
+		await roleRepository.delete({ slug: role.slug });
 	}
 
 	// Delete test scopes
@@ -178,10 +174,6 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const scope of testScopes) {
-		try {
-			await scopeRepository.delete({ slug: scope.slug });
-		} catch (error) {
-			// Ignore errors for scopes with dependencies
-		}
+		await scopeRepository.delete({ slug: scope.slug });
 	}
 }

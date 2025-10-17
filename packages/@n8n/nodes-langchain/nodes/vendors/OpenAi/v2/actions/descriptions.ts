@@ -43,7 +43,7 @@ const imageMessageProperties: INodeProperties[] = [
 		options: [
 			{ name: 'Image URL', value: 'url' },
 			{ name: 'File ID', value: 'fileId' },
-			{ name: 'Base64', value: 'base64' },
+			{ name: 'File Data', value: 'base64' },
 		],
 		displayOptions: {
 			show: {
@@ -133,14 +133,14 @@ export const textMessageProperties: INodeProperties[] = [
 
 const fileMessageProperties: INodeProperties[] = [
 	{
-		displayName: 'FileType',
+		displayName: 'File Type',
 		name: 'fileType',
 		type: 'options',
 		default: 'url',
 		options: [
 			{ name: 'File URL', value: 'url' },
 			{ name: 'File ID', value: 'fileId' },
-			{ name: 'Base64', value: 'base64' },
+			{ name: 'File Data', value: 'base64' },
 		],
 		displayOptions: {
 			show: {
@@ -177,11 +177,12 @@ const fileMessageProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'File Data',
-		name: 'fileData',
+		name: 'binaryPropertyName',
 		type: 'string',
-		default: '',
-		placeholder: 'e.g. data:application/pdf;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAA...',
-		description: 'Base64 encoded file to be sent',
+		default: 'data',
+		placeholder: 'e.g. data',
+		hint: 'The name of the input field containing the binary file data to be processed',
+		description: 'Name of the binary property which contains the file',
 		displayOptions: {
 			show: {
 				type: ['file'],
@@ -194,9 +195,11 @@ const fileMessageProperties: INodeProperties[] = [
 		name: 'fileName',
 		type: 'string',
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				type: ['file'],
+				fileType: ['base64'],
 			},
 		},
 	},

@@ -6,16 +6,10 @@ import { getBinaryDataFile } from '../../../helpers/binary-data';
 import type { VideoJob } from '../../../helpers/interfaces';
 import { pollUntilAvailable } from '../../../helpers/polling';
 import { apiRequest } from '../../../transport';
+import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Model',
-		name: 'model',
-		type: 'options',
-		default: 'sora-2',
-		description: 'The model to use for video generation',
-		options: [{ name: 'Sora 2', value: 'sora-2' }],
-	},
+	modelRLC('videoModelSearch'),
 	{
 		displayName: 'Prompt',
 		name: 'prompt',
@@ -40,7 +34,8 @@ const properties: INodeProperties[] = [
 		name: 'size',
 		type: 'options',
 		default: '1280x720',
-		description: 'Output resolution formatted as width x height',
+		description:
+			'Output resolution formatted as width x height. 1024x1792 and 1792x1024 are only supported by Sora 2 Pro.',
 		options: [
 			{ name: '720x1280', value: '720x1280' },
 			{ name: '1280x720', value: '1280x720' },
@@ -95,7 +90,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('model', i) as string;
+	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const prompt = this.getNodeParameter('prompt', i) as string;
 	const seconds = this.getNodeParameter('seconds', i) as number;
 	const size = this.getNodeParameter('size', i) as string;

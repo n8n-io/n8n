@@ -3,12 +3,13 @@ import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
-import { ASK_AI_SLIDE_OUT_DURATION_MS } from '@/constants';
+import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import type { VIEWS } from '@/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from './assistant.types';
 
@@ -31,10 +32,17 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const uiStore = useUIStore();
 	const route = useRoute();
 	const chatPanelStateStore = useChatPanelStateStore();
+	const settingsStore = useSettingsStore();
 
 	// Computed
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
 	const isBuilderModeActive = computed(() => chatPanelStateStore.activeMode === 'builder');
+
+	const canShowAiButtonOnCanvas = computed(
+		() =>
+			settingsStore.isAiAssistantOrBuilderEnabled &&
+			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
+	);
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode }) {
@@ -56,12 +64,14 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 
-		// Handle mode-specific initialization
+		chatPanelStateStore.isOpen = true;
+
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
 			builderStore.chatMessages = [];
-			await builderStore.fetchBuilderCredits();
-			await builderStore.loadSessions();
+			// Load credits and sessions in the background without blocking panel opening
+			void builderStore.fetchBuilderCredits();
+			void builderStore.loadSessions();
 		} else if (chatPanelStateStore.activeMode === 'assistant') {
 			const assistantStore = useAssistantStore();
 			assistantStore.chatMessages = assistantStore.chatMessages.map((msg) => ({
@@ -69,8 +79,6 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-
-		chatPanelStateStore.isOpen = true;
 		// Update UI grid dimensions when opening
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,
@@ -183,6 +191,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
+		canShowAiButtonOnCanvas,
 		// Actions
 		open,
 		close,

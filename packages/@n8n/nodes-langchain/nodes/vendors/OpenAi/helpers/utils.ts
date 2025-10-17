@@ -46,12 +46,30 @@ export function formatToOpenAIAssistantTool(tool: Tool): OpenAIClient.Beta.Assis
 	};
 }
 
+const requireStrict = (schema: any) => {
+	if (!schema.required) {
+		return false;
+	}
+	// when strict:true, Responses API requires `required` to be present and all properties to be included
+	if (schema.properties) {
+		const propertyNames = Object.keys(schema.properties);
+		const somePropertyMissingFromRequired = propertyNames.some(
+			(propertyName) => !schema.required.includes(propertyName),
+		);
+		const requireStrict = !somePropertyMissingFromRequired;
+		return requireStrict;
+	}
+	return false;
+};
+
 export function formatToOpenAIResponsesTool(tool: Tool): OpenAIClient.Responses.FunctionTool {
+	const schema = zodToJsonSchema(tool.schema) as any;
+	const strict = requireStrict(schema);
 	return {
 		type: 'function',
 		name: tool.name,
-		parameters: zodToJsonSchema(tool.schema),
-		strict: true,
+		parameters: schema,
+		strict,
 		description: tool.description,
 	};
 }
