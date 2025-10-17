@@ -159,6 +159,15 @@ function normalizeAndValidateUrl(input: string): Result<URL, Error> {
 	return parsedUrl;
 }
 
+function isUnauthorizedError(error: unknown): boolean {
+	return (
+		!!error &&
+		typeof error === 'object' &&
+		(('code' in error && Number(error.code) === 401) ||
+			('message' in error && typeof error.message === 'string' && error.message.includes('401')))
+	);
+}
+
 type OnUnauthorizedHandler = (
 	headers?: Record<string, string>,
 ) => Promise<Record<string, string> | null>;
@@ -198,17 +207,16 @@ export async function connectMcpClient({
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
-			// TODO: check if 401
-			if (onUnauthorized) {
+			if (onUnauthorized && isUnauthorizedError(error)) {
 				const newHeaders = await onUnauthorized(headers);
 				if (newHeaders) {
+					// Don't pass `onUnauthorized` to avoid possible infinite recursion
 					return await connectMcpClient({
 						headers: newHeaders,
 						serverTransport,
 						endpointUrl,
 						name,
 						version,
-						onUnauthorized,
 					});
 				}
 			}
@@ -234,17 +242,16 @@ export async function connectMcpClient({
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
-		// TODO: check if 401
-		if (onUnauthorized) {
+		if (onUnauthorized && isUnauthorizedError(error)) {
 			const newHeaders = await onUnauthorized(headers);
 			if (newHeaders) {
+				// Don't pass `onUnauthorized` to avoid possible infinite recursion
 				return await connectMcpClient({
 					headers: newHeaders,
 					serverTransport,
 					endpointUrl,
 					name,
 					version,
-					onUnauthorized,
 				});
 			}
 		}
