@@ -36,6 +36,7 @@ import {
 	isIpWhitelisted,
 	setupOutputConnection,
 	validateWebhookAuthentication,
+	type WebhookOptions,
 } from './utils';
 
 export class Webhook extends Node {
@@ -46,8 +47,8 @@ export class Webhook extends Node {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2, 2.1],
-		defaultVersion: 2.1,
+		version: [1, 1.1, 2, 2.1, 2.2],
+		defaultVersion: 2.2,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -211,13 +212,7 @@ export class Webhook extends Node {
 			checkResponseModeConfiguration(context);
 		}
 
-		const options = context.getNodeParameter('options', {}) as {
-			binaryData: boolean;
-			ignoreBots: boolean;
-			rawBody: boolean;
-			responseData?: string;
-			ipWhitelist?: string;
-		};
+		const options = context.getNodeParameter('options', {}) as WebhookOptions;
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
 		const requestMethod = context.getRequestObject().method;
@@ -244,6 +239,8 @@ export class Webhook extends Node {
 
 		const prepareOutput = setupOutputConnection(context, requestMethod, {
 			jwtPayload: validationData,
+			options,
+			nodeVersion,
 		});
 
 		if (options.binaryData) {

@@ -8,6 +8,7 @@ import {
 	getResponseCode,
 	getResponseData,
 	isIpWhitelisted,
+	redactSensitiveHeaders,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from '../utils';
@@ -151,6 +152,8 @@ describe('Webhook Utils', () => {
 			};
 			const method = 'GET';
 			const additionalData = {
+				nodeVersion: 2.1,
+				options: {},
 				jwtPayload: {
 					userId: '123',
 				},
@@ -181,6 +184,8 @@ describe('Webhook Utils', () => {
 			};
 			const method = 'POST';
 			const additionalData = {
+				nodeVersion: 2.1,
+				options: {},
 				jwtPayload: {
 					userId: '123',
 				},
@@ -202,6 +207,238 @@ describe('Webhook Utils', () => {
 					},
 				],
 			]);
+		});
+
+		it('should use custom reductedHeaders when provided in options', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const method = 'GET';
+			const additionalData = {
+				nodeVersion: 2.2,
+				options: {
+					reductedHeaders: 'custom-header, another-header',
+					binaryData: false,
+					ignoreBots: false,
+					rawBody: false,
+				},
+			};
+			const outputData = {
+				json: {
+					headers: {
+						'custom-header': 'secret-value',
+						'another-header': 'another-secret',
+						'content-type': 'application/json',
+					},
+				},
+			};
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, method, additionalData);
+			const result = setupOutput(outputData);
+			expect(result[0][0].json.headers).toEqual({
+				'custom-header': '**hidden**',
+				'another-header': '**hidden**',
+				'content-type': 'application/json',
+			});
+		});
+
+		it('should use DEFAULT_REDACTED_HEADERS when nodeVersion >= 2.2 and no reductedHeaders provided', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const method = 'GET';
+			const additionalData = {
+				nodeVersion: 2.2,
+				options: {
+					binaryData: false,
+					ignoreBots: false,
+					rawBody: false,
+				},
+			};
+			const outputData = {
+				json: {
+					headers: {
+						authorization: 'Bearer secret-token',
+						'x-api-key': 'secret-key',
+						'content-type': 'application/json',
+					},
+				},
+			};
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, method, additionalData);
+			const result = setupOutput(outputData);
+			expect(result[0][0].json.headers).toEqual({
+				authorization: '**hidden**',
+				'x-api-key': '**hidden**',
+				'content-type': 'application/json',
+			});
+		});
+
+		it('should use DEFAULT_REDACTED_HEADERS when nodeVersion >= 2.2 and options is undefined', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const method = 'GET';
+			const additionalData = {
+				nodeVersion: 2.2,
+				options: {},
+			};
+			const outputData = {
+				json: {
+					headers: {
+						authorization: 'Bearer secret-token',
+						'x-api-key': 'secret-key',
+						'content-type': 'application/json',
+					},
+				},
+			};
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, method, additionalData);
+			const result = setupOutput(outputData);
+			expect(result[0][0].json.headers).toEqual({
+				authorization: '**hidden**',
+				'x-api-key': '**hidden**',
+				'content-type': 'application/json',
+			});
+		});
+
+		it('should not redact headers when nodeVersion < 2.2 and no reductedHeaders provided', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const method = 'GET';
+			const additionalData = {
+				nodeVersion: 2.1,
+				options: {
+					binaryData: false,
+					ignoreBots: false,
+					rawBody: false,
+				},
+			};
+			const outputData = {
+				json: {
+					headers: {
+						authorization: 'Bearer secret-token',
+						'x-api-key': 'secret-key',
+						'content-type': 'application/json',
+					},
+				},
+			};
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, method, additionalData);
+			const result = setupOutput(outputData);
+			expect(result[0][0].json.headers).toEqual({
+				authorization: 'Bearer secret-token',
+				'x-api-key': 'secret-key',
+				'content-type': 'application/json',
+			});
+		});
+
+		it('should not redact headers when nodeVersion = 2.1 and options is undefined', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const method = 'GET';
+			const additionalData = {
+				nodeVersion: 2.1,
+				options: {},
+			};
+			const outputData = {
+				json: {
+					headers: {
+						authorization: 'Bearer secret-token',
+						'x-api-key': 'secret-key',
+						'content-type': 'application/json',
+					},
+				},
+			};
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, method, additionalData);
+			const result = setupOutput(outputData);
+			expect(result[0][0].json.headers).toEqual({
+				authorization: 'Bearer secret-token',
+				'x-api-key': 'secret-key',
+				'content-type': 'application/json',
+			});
+		});
+
+		it('should handle multiple methods with header redaction for nodeVersion >= 2.2', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue(['GET', 'POST']),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const method = 'POST';
+			const additionalData = {
+				nodeVersion: 2.2,
+				options: {},
+			};
+			const outputData = {
+				json: {
+					headers: {
+						authorization: 'Bearer secret-token',
+						cookie: 'session=abc123',
+						'content-type': 'application/json',
+					},
+				},
+			};
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, method, additionalData);
+			const result = setupOutput(outputData);
+			expect(result).toEqual([
+				[],
+				[
+					{
+						json: {
+							headers: {
+								authorization: '**hidden**',
+								cookie: '**hidden**',
+								'content-type': 'application/json',
+							},
+							webhookUrl: 'https://example.com/webhook-test/',
+							executionMode: 'test',
+						},
+					},
+				],
+			]);
+		});
+
+		it('should not redact headers when nodeVersion >= 2.2 and reductedHeaders is empty string', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const method = 'GET';
+			const additionalData = {
+				nodeVersion: 2.2,
+				options: {
+					reductedHeaders: '',
+					binaryData: false,
+					ignoreBots: false,
+					rawBody: false,
+				},
+			};
+			const outputData = {
+				json: {
+					headers: {
+						authorization: 'Bearer secret-token',
+						'x-api-key': 'secret-key',
+						'content-type': 'application/json',
+					},
+				},
+			};
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, method, additionalData);
+			const result = setupOutput(outputData);
+			expect(result[0][0].json.headers).toEqual({
+				authorization: 'Bearer secret-token',
+				'x-api-key': 'secret-key',
+				'content-type': 'application/json',
+			});
 		});
 	});
 
@@ -469,6 +706,138 @@ describe('Webhook Utils', () => {
 				authPropertyName,
 			);
 			expect(result).toEqual(decodedPayload);
+		});
+	});
+
+	describe('redactSensitiveHeaders', () => {
+		it('should redact authorization header', () => {
+			const headers = {
+				authorization: 'Bearer some-token',
+				'content-type': 'application/json',
+			};
+			const result = redactSensitiveHeaders(headers, 'authorization');
+			expect(result).toEqual({
+				authorization: '**hidden**',
+				'content-type': 'application/json',
+			});
+		});
+
+		it('should redact x-api-key header', () => {
+			const headers = {
+				'x-api-key': 'secret-api-key',
+				'user-agent': 'Mozilla/5.0',
+			};
+			const result = redactSensitiveHeaders(headers, 'x-api-key');
+			expect(result).toEqual({
+				'x-api-key': '**hidden**',
+				'user-agent': 'Mozilla/5.0',
+			});
+		});
+
+		it('should redact x-auth-token header', () => {
+			const headers = {
+				'x-auth-token': 'secret-token',
+				accept: 'application/json',
+			};
+			const result = redactSensitiveHeaders(headers, 'x-auth-token');
+			expect(result).toEqual({
+				'x-auth-token': '**hidden**',
+				accept: 'application/json',
+			});
+		});
+
+		it('should redact cookie header', () => {
+			const headers = {
+				cookie: 'session=abc123; auth=secret',
+				'content-length': '100',
+			};
+			const result = redactSensitiveHeaders(headers, 'cookie');
+			expect(result).toEqual({
+				cookie: '**hidden**',
+				'content-length': '100',
+			});
+		});
+
+		it('should redact proxy-authorization header', () => {
+			const headers = {
+				'proxy-authorization': 'Basic dXNlcjpwYXNz',
+				host: 'example.com',
+			};
+			const result = redactSensitiveHeaders(headers, 'proxy-authorization');
+			expect(result).toEqual({
+				'proxy-authorization': '**hidden**',
+				host: 'example.com',
+			});
+		});
+
+		it('should redact sslclientcert header', () => {
+			const headers = {
+				sslclientcert: '-----BEGIN CERTIFICATE-----...',
+				connection: 'keep-alive',
+			};
+			const result = redactSensitiveHeaders(headers, 'sslclientcert');
+			expect(result).toEqual({
+				sslclientcert: '**hidden**',
+				connection: 'keep-alive',
+			});
+		});
+
+		it('should redact headers case-insensitively', () => {
+			const headers = {
+				Authorization: 'Bearer token',
+				'X-API-KEY': 'secret-key',
+				Cookie: 'session=abc',
+			};
+			const result = redactSensitiveHeaders(headers, 'authorization, x-api-key, cookie');
+			expect(result).toEqual({
+				Authorization: '**hidden**',
+				'X-API-KEY': '**hidden**',
+				Cookie: '**hidden**',
+			});
+		});
+
+		it('should redact multiple sensitive headers', () => {
+			const headers = {
+				authorization: 'Bearer token',
+				'x-api-key': 'secret-key',
+				'content-type': 'application/json',
+				cookie: 'session=abc',
+				'user-agent': 'Mozilla/5.0',
+			};
+			const result = redactSensitiveHeaders(headers, 'authorization, x-api-key, cookie');
+			expect(result).toEqual({
+				authorization: '**hidden**',
+				'x-api-key': '**hidden**',
+				'content-type': 'application/json',
+				cookie: '**hidden**',
+				'user-agent': 'Mozilla/5.0',
+			});
+		});
+
+		it('should return the same object if no sensitive headers are present', () => {
+			const headers = {
+				'content-type': 'application/json',
+				'user-agent': 'Mozilla/5.0',
+				accept: 'application/json',
+			};
+			const result = redactSensitiveHeaders(headers);
+			expect(result).toEqual(headers);
+		});
+
+		it('should handle undefined headers', () => {
+			const result = redactSensitiveHeaders(undefined as any);
+			expect(result).toBeUndefined();
+		});
+
+		it('should handle null headers', () => {
+			const result = redactSensitiveHeaders(null as any);
+			expect(result).toBeNull();
+		});
+
+		it('should handle empty headers object', () => {
+			const headers = {};
+			const result = redactSensitiveHeaders(headers);
+			expect(result).toEqual({});
 		});
 	});
 });
