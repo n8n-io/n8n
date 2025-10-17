@@ -34,7 +34,7 @@
 		"Remove Listener Certificate": [
 			{
 				"json": {
-					"sucess": true
+                    "success": true
 				}
 			}
 		]
