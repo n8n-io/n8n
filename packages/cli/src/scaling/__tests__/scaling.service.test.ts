@@ -171,7 +171,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			const concurrency = 5;
 
-			await scalingService.setupWorker(concurrency);
+			scalingService.setupWorker(concurrency);
 
 			expect(queue.process).toHaveBeenCalledWith(JOB_TYPE_NAME, concurrency, expect.any(Function));
 		});
@@ -179,14 +179,14 @@ describe('ScalingService', () => {
 		it('should throw if called on a non-worker instance', async () => {
 			await scalingService.setupQueue();
 
-			await expect(scalingService.setupWorker(5)).rejects.toThrow();
+			expect(() => scalingService.setupWorker(5)).toThrow();
 		});
 
 		it('should throw if called before queue is ready', async () => {
 			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 
-			await expect(scalingService.setupWorker(5)).rejects.toThrow();
+			expect(() => scalingService.setupWorker(5)).toThrow();
 		});
 	});
 

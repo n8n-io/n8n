@@ -246,36 +246,36 @@ const onCheckboxChange = (index: number) => {
 
 <style lang="scss" module>
 .markdown {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	* {
-		font-size: var(--font-size-m);
-		line-height: var(--font-line-height-xloose);
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--xl);
 	}
 
 	h1,
 	h2,
 	h3,
 	h4 {
-		margin-bottom: var(--spacing-s);
-		font-size: var(--font-size-m);
-		font-weight: var(--font-weight-bold);
+		margin-bottom: var(--spacing--sm);
+		font-size: var(--font-size--md);
+		font-weight: var(--font-weight--bold);
 	}
 
 	h3,
 	h4 {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 
 	p,
 	span {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 	}
 
 	ul,
 	ol {
-		margin-bottom: var(--spacing-s);
-		padding-left: var(--spacing-m);
+		margin-bottom: var(--spacing--sm);
+		padding-left: var(--spacing--md);
 
 		li {
 			margin-top: 0.25em;
@@ -283,35 +283,35 @@ const onCheckboxChange = (index: number) => {
 	}
 
 	pre > code {
-		background-color: var(--color-background-base);
-		color: var(--color-text-dark);
+		background-color: var(--color--background);
+		color: var(--color--text--shade-1);
 	}
 
 	li > code,
 	p > code {
-		padding: 0 var(--spacing-4xs);
-		color: var(--color-text-dark);
-		background-color: var(--color-background-base);
+		padding: 0 var(--spacing--4xs);
+		color: var(--color--text--shade-1);
+		background-color: var(--color--background);
 	}
 
 	.label {
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 
 	img {
 		max-width: 100%;
-		border-radius: var(--border-radius-large);
+		border-radius: var(--radius--lg);
 	}
 
 	blockquote {
 		padding-left: 10px;
 		font-style: italic;
-		border-left: var(--border-color-base) 2px solid;
+		border-left: var(--border-color) 2px solid;
 	}
 }
 
 input[type='checkbox'] {
-	accent-color: var(--color-primary);
+	accent-color: var(--color--primary);
 }
 
 input[type='checkbox'] + label {
@@ -319,7 +319,7 @@ input[type='checkbox'] + label {
 }
 
 .sticky {
-	color: var(--color-sticky-font);
+	color: var(--sticky--color--text);
 	overflow-wrap: break-word;
 
 	h1,
@@ -328,16 +328,16 @@ input[type='checkbox'] + label {
 	h4,
 	h5,
 	h6 {
-		color: var(--color-sticky-font);
+		color: var(--sticky--color--text);
 	}
 
 	h1,
 	h2,
 	h3,
 	h4 {
-		margin-bottom: var(--spacing-2xs);
-		font-weight: var(--font-weight-bold);
-		line-height: var(--font-line-height-loose);
+		margin-bottom: var(--spacing--2xs);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
 	}
 
 	h1 {
@@ -352,43 +352,43 @@ input[type='checkbox'] + label {
 	h4,
 	h5,
 	h6 {
-		font-size: var(--font-size-m);
+		font-size: var(--font-size--md);
 	}
 
 	p {
-		margin-bottom: var(--spacing-2xs);
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-regular);
-		line-height: var(--font-line-height-loose);
+		margin-bottom: var(--spacing--2xs);
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--regular);
+		line-height: var(--line-height--lg);
 	}
 
 	ul,
 	ol {
-		margin-bottom: var(--spacing-2xs);
-		padding-left: var(--spacing-m);
+		margin-bottom: var(--spacing--2xs);
+		padding-left: var(--spacing--md);
 
 		li {
 			margin-top: 0.25em;
-			font-size: var(--font-size-s);
-			font-weight: var(--font-weight-regular);
-			line-height: var(--font-line-height-regular);
+			font-size: var(--font-size--sm);
+			font-weight: var(--font-weight--regular);
+			line-height: var(--line-height--md);
 		}
 
 		&:has(input[type='checkbox']) {
 			list-style-type: none;
-			padding-left: var(--spacing-5xs);
+			padding-left: var(--spacing--5xs);
 		}
 	}
 
 	pre > code {
-		background-color: var(--color-sticky-code-background);
-		color: var(--color-sticky-code-font);
+		background-color: var(--sticky--code--color--background);
+		color: var(--sticky--code--color--text);
 	}
 
 	pre > code,
 	li > code,
 	p > code {
-		color: var(--color-sticky-code-font);
+		color: var(--sticky--code--color--text);
 	}
 
 	a {
@@ -399,8 +399,8 @@ input[type='checkbox'] + label {
 
 	img {
 		object-fit: contain;
-		margin-top: var(--spacing-xs);
-		margin-bottom: var(--spacing-2xs);
+		margin-top: var(--spacing--xs);
+		margin-bottom: var(--spacing--2xs);
 
 		&[src*='#full-width'] {
 			width: 100%;
@@ -411,13 +411,13 @@ input[type='checkbox'] + label {
 .sticky,
 .markdown {
 	pre {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing--sm);
 		display: grid;
 	}
 
 	pre > code {
 		display: block;
-		padding: var(--spacing-s);
+		padding: var(--spacing--sm);
 		overflow-x: auto;
 	}
 
@@ -431,6 +431,6 @@ input[type='checkbox'] + label {
 }
 
 .spacer {
-	margin: var(--spacing-2xl);
+	margin: var(--spacing--2xl);
 }
 </style>

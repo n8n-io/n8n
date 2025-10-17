@@ -8,7 +8,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -205,13 +205,13 @@ onMounted(async () => {
 <style lang="scss" module>
 .content {
 	> *:not(:last-child) {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 }
 
 .footer {
 	> * {
-		margin-left: var(--spacing-3xs);
+		margin-left: var(--spacing--3xs);
 	}
 }
 </style>

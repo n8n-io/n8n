@@ -56,6 +56,26 @@ test.describe('Import workflow', () => {
 
 			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
 		});
+
+		test('should import workflow from URL without .json extension', async ({ n8n }) => {
+			await n8n.navigate.toWorkflow('new');
+			await n8n.page.waitForLoadState('load');
+
+			await n8n.canvas.clickWorkflowMenu();
+			await n8n.canvas.clickImportFromURL();
+
+			await expect(n8n.canvas.getImportURLInput()).toBeVisible();
+
+			await n8n.canvas.fillImportURLInput('https://example.com/api/workflow');
+			await n8n.canvas.clickConfirmImportURL();
+
+			await n8n.canvas.clickZoomToFitButton();
+
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+
+			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
+			await expect(n8n.notifications.getSuccessNotifications()).toHaveCount(0);
+		});
 	});
 
 	test.describe('From File', () => {
