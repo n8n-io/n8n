@@ -81,7 +81,7 @@ const items = ref([
 	},
 ])
 const value = ref('light')
-const icon = computed(() => items.value.find(item => item.value === value.value))
+const icon = computed(() => items.value.find(item => item.value === value.value)?.icon)
 </script>
 
 <template>
