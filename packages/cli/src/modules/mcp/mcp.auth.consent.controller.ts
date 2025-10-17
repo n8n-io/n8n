@@ -39,11 +39,11 @@ export class McpConsentController {
 				});
 			}
 
-			return res.json({
+			return {
 				clientName: consentDetails.clientName,
 				clientId: consentDetails.clientId,
 				scopes: consentDetails.scopes,
-			});
+			};
 		} catch (error) {
 			this.logger.error('Failed to get consent details', { error });
 			return res.status(500).json({
@@ -90,10 +90,10 @@ export class McpConsentController {
 			res.clearCookie('n8n-oauth-session');
 
 			// Return the redirect URL (includes authorization code or error)
-			return res.json({
+			return {
 				status: 'success',
 				redirectUrl: result.redirectUrl,
-			});
+			};
 		} catch (error) {
 			this.logger.error('Failed to process consent', { error });
 

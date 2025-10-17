@@ -1,14 +1,11 @@
 <script setup lang="ts">
+import { useConsentStore } from '@/stores/consent.store';
 import { ref, onMounted } from 'vue';
 
 // Reactive state
-const isLoading = ref(false);
 const error = ref<string | null>(null);
-const consentDetails = ref({
-	clientName: 'Claude Desktop',
-	clientId: '',
-	scopes: [] as string[],
-});
+
+const consentStore = useConsentStore();
 
 // Hardcoded permissions
 const permissions = [
@@ -34,108 +31,28 @@ const permissions = [
 	},
 ];
 
-// Methods
 const handleAllow = async () => {
-	isLoading.value = true;
-	error.value = null;
-
 	try {
-		const response = await fetch('/rest/consent/approve', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			credentials: 'include', // Important - sends cookies
-			body: JSON.stringify({
-				approved: true,
-			}),
-		});
-
-		// Parse response
-		const data = await response.json();
-
-		if (!response.ok) {
-			throw new Error(data.message || 'Failed to approve consent');
-		}
-
-		// Check for successful response
-		if (data.status !== 'success' || !data.redirectUrl) {
-			throw new Error('Invalid response from server');
-		}
-
-		// Redirect to client application
-		window.location.href = data.redirectUrl;
+		const response = await consentStore.approveConsent(true);
+		window.location.href = response.redirectUrl;
 	} catch (err) {
-		error.value = err instanceof Error ? err.message : 'Authorization failed. Please try again.';
-		isLoading.value = false;
+		// Error is already set in the store
+		console.error('Failed to approve consent', err);
 	}
 };
 
 const handleDeny = async () => {
-	isLoading.value = true;
-	error.value = null;
-
 	try {
-		const response = await fetch('/rest/oauth/consent/approve', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			credentials: 'include', // Important - sends cookies
-			body: JSON.stringify({
-				approved: false,
-			}),
-		});
-
-		// Parse response
-		const data = await response.json();
-
-		if (!response.ok) {
-			throw new Error(data.message || 'Failed to deny consent');
-		}
-
-		// Check for successful response
-		if (data.status !== 'success' || !data.redirectUrl) {
-			throw new Error('Invalid response from server');
-		}
-
-		// Backend clears the cookie, but we can do it client-side too for safety
-		document.cookie = 'n8n-oauth-session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-
-		// Redirect to client application with error
-		window.location.href = data.redirectUrl;
+		const response = await consentStore.approveConsent(false);
+		window.location.href = response.redirectUrl;
 	} catch (err) {
-		error.value =
-			err instanceof Error ? err.message : 'Failed to deny authorization. Please try again.';
-		isLoading.value = false;
+		console.error('Failed to deny consent', err);
 	}
 };
 
 // Lifecycle
 onMounted(async () => {
-	try {
-		const response = await fetch('/rest/consent/details', {
-			credentials: 'include', // Sends the n8n-oauth-session cookie
-		});
-
-		const data = await response.json();
-
-		if (!response.ok) {
-			throw new Error(data.message || 'Failed to load consent details');
-		}
-
-		// Update consent details with response data
-		consentDetails.value = {
-			clientName: data.clientName || 'Unknown Application',
-			clientId: data.clientId || '',
-			scopes: data.scopes || [],
-		};
-	} catch (err) {
-		error.value =
-			err instanceof Error
-				? err.message
-				: 'Failed to load authorization details. Please try again.';
-	}
+	await consentStore.fetchConsentDetails();
 });
 </script>
 
@@ -152,20 +69,20 @@ onMounted(async () => {
 		<!-- Title -->
 		<div class="title-section">
 			<h1>
-				<span class="client-name">{{ consentDetails.clientName }}</span> wants to access your n8n
-				MCP Server
+				<span class="client-name">{{ consentStore.consentDetails.clientName }}</span> wants to
+				access your n8n MCP Server
 			</h1>
 		</div>
 
 		<!-- Error Message -->
 		<div v-if="error" class="error-message">
-			{{ error }}
+			{{ consentStore.error }}
 		</div>
 
 		<!-- Description -->
 		<p class="description">
-			This will allow <strong>{{ consentDetails.clientName }}</strong> to access the following
-			resources and capabilities:
+			This will allow <strong>{{ consentStore.consentDetails.clientName }}</strong> to access the
+			following resources and capabilities:
 		</p>
 
 		<!-- Permissions List -->
@@ -183,25 +100,34 @@ onMounted(async () => {
 		<div class="warning-box">
 			<p>
 				<span class="warning-icon">⚠️</span>
-				<strong>Important:</strong> Make sure you trust {{ consentDetails.clientName }}. You may be
-				sharing sensitive workflow data and automation capabilities with this application.
+				<strong>Important:</strong> Make sure you trust
+				{{ consentStore.consentDetails.clientName }}. You may be sharing sensitive workflow data and
+				automation capabilities with this application.
 			</p>
 		</div>
 
 		<!-- Legal Text -->
 		<p class="legal-text">
-			The {{ consentDetails.clientName }} <a href="#">terms of service</a> and
+			The {{ consentStore.consentDetails.clientName }} <a href="#">terms of service</a> and
 			<a href="#">privacy policy</a> that you agreed to with them govern their use of your data.
 		</p>
 
 		<!-- Buttons -->
 		<div class="button-container">
-			<button @click="handleDeny" :disabled="isLoading || !!error" class="btn btn-deny">
+			<button
+				@click="handleDeny"
+				:disabled="consentStore.isLoading || !!consentStore.error"
+				class="btn btn-deny"
+			>
 				Deny
 			</button>
-			<button @click="handleAllow" :disabled="isLoading || !!error" class="btn btn-allow">
-				<span v-if="isLoading" class="loading-spinner"></span>
-				{{ isLoading ? 'Authorizing...' : 'Allow' }}
+			<button
+				@click="handleAllow"
+				:disabled="consentStore.isLoading || !!consentStore.error"
+				class="btn btn-allow"
+			>
+				<span v-if="consentStore.isLoading" class="loading-spinner"></span>
+				{{ consentStore.isLoading ? 'Authorizing...' : 'Allow' }}
 			</button>
 		</div>
 	</div>

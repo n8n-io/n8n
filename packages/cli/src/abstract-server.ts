@@ -116,7 +116,7 @@ export abstract class AbstractServer {
 	}
 
 	private setupDevMiddlewares() {
-		this.app.use(corsMiddleware);
+		// this.app.use(corsMiddleware);
 	}
 
 	protected setupPushServer() {}

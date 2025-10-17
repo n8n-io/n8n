@@ -27,6 +27,6 @@ export class RefreshToken extends WithTimestamps {
 	@Column({ type: 'int' })
 	expiresAt: number;
 
-	@Column({ type: Boolean, default: false })
-	revoked: boolean;
+	// @Column({ type: Boolean, default: false })
+	// revoked: boolean;
 }

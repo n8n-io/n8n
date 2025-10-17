@@ -70,13 +70,6 @@ export class ControllerRegistry {
 
 		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
-			// Check if this route has a sub-router (legacy support)
-			if (route?.router) {
-				const middlewares = this.buildMiddlewares(route, controllerMiddlewares);
-				router.use(route.path, ...middlewares, route.router);
-				continue;
-			}
-
 			// Original handler logic for non-router routes
 			const argTypes = Reflect.getMetadata(
 				'design:paramtypes',
@@ -111,6 +104,7 @@ export class ControllerRegistry {
 					}
 				: send(handler);
 
+			console.log(route.method.toUpperCase(), prefix + route.path);
 			router[route.method](route.path, ...middlewares, finalHandler);
 		}
 	}

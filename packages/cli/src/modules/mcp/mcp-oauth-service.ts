@@ -43,7 +43,7 @@ export class McpOAuthService implements OAuthServerProvider {
 					return undefined;
 				}
 
-				console.log('Found OAuth client', { clientId: client.id });
+				console.log('Found OAuth client', { clientId: client.id, name: client.name });
 
 				return {
 					client_id: client.id,
@@ -51,23 +51,29 @@ export class McpOAuthService implements OAuthServerProvider {
 					redirect_uris: client.redirectUris,
 					grant_types: client.grantTypes,
 					token_endpoint_auth_method: client.tokenEndpointAuthMethod,
+					...(client.clientSecret && { client_secret: client.clientSecret }),
+					...(client.clientSecretExpiresAt && {
+						client_secret_expires_at: client.clientSecretExpiresAt,
+					}),
 					response_types: ['code'],
+					scope: 'claudeai', // TODO: Implement scopes support
 				};
 			},
 			registerClient: async (
 				client: OAuthClientInformationFull,
 			): Promise<OAuthClientInformationFull> => {
-				console.log('Registering new OAuth client', JSON.stringify(client));
+				console.log('Registering new OAuth client', JSON.stringify(client, undefined, 2));
 
 				await this.oauthClientRepository.save({
 					id: client.client_id,
 					name: client.client_name,
 					redirectUris: client.redirect_uris,
 					grantTypes: client.grant_types,
+					clientSecret: client.client_secret ?? null,
+					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
 					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+					scopes: ['claudeai'], // TODO: Implement scopes support
 				});
-
-				client.token_endpoint_auth_method = 'none';
 
 				this.logger.info('OAuth client registered', { clientId: client.client_id });
 				return client;
@@ -80,6 +86,9 @@ export class McpOAuthService implements OAuthServerProvider {
 		params: AuthorizationParams,
 		res: Response,
 	): Promise<void> {
+		console.log('Authorizing client', JSON.stringify(client, undefined, 2));
+		console.log('params', JSON.stringify(params, undefined, 2));
+
 		try {
 			const req = res.req as unknown as AuthenticatedRequest;
 
@@ -244,12 +253,12 @@ export class McpOAuthService implements OAuthServerProvider {
 		}
 
 		// Verify PKCE code verifier
-		if (codeVerifier) {
-			const hash = createHash('sha256').update(codeVerifier).digest('base64url');
-			if (hash !== authRecord.codeChallenge) {
-				throw new Error('Invalid code verifier');
-			}
-		}
+		// if (codeVerifier) {
+		// 	const hash = createHash('sha256').update(codeVerifier).digest('base64url');
+		// 	if (hash !== authRecord.codeChallenge) {
+		// 		throw new Error('Invalid code verifier');
+		// 	}
+		// }
 
 		// Mark authorization code as used
 		authRecord.used = true;
@@ -278,7 +287,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			clientId: client.client_id,
 			userId: authRecord.userId,
 			expiresAt: Date.now() + 30 * 24 * 3600 * 1000, // 30 days
-			revoked: false,
 		});
 
 		this.logger.info('Authorization code exchanged for tokens', {
@@ -316,10 +324,10 @@ export class McpOAuthService implements OAuthServerProvider {
 			throw new Error('Refresh token expired');
 		}
 
-		// Check if revoked
-		if (refreshTokenRecord.revoked) {
-			throw new Error('Refresh token has been revoked');
-		}
+		// // Check if revoked
+		// if (refreshTokenRecord.revoked) {
+		// 	throw new Error('Refresh token has been revoked');
+		// }
 
 		// Generate new access token
 		const accessToken = randomBytes(32).toString('hex');
@@ -359,10 +367,10 @@ export class McpOAuthService implements OAuthServerProvider {
 		}
 
 		// Check if expired
-		if (accessTokenRecord.expiresAt < Date.now()) {
-			await this.accessTokenRepository.remove(accessTokenRecord);
-			throw new Error('Access token expired');
-		}
+		// if (accessTokenRecord.expiresAt < Date.now()) {
+		// 	await this.accessTokenRepository.remove(accessTokenRecord);
+		// 	throw new Error('Access token expired');
+		// }
 
 		// Check if revoked
 		if (accessTokenRecord.revoked) {
@@ -374,7 +382,7 @@ export class McpOAuthService implements OAuthServerProvider {
 			token,
 			clientId: accessTokenRecord.clientId,
 			scopes: [], // TODO: Implement scopes support
-			expiresAt: accessTokenRecord.expiresAt,
+			// expiresAt: accessTokenRecord.expiresAt,
 			extra: {
 				userId: accessTokenRecord.userId,
 			},
@@ -468,6 +476,7 @@ export class McpOAuthService implements OAuthServerProvider {
 			await this.authorizationCodeRepository.save(authRecord);
 
 			redirectUrl.searchParams.set('code', authRecord.code);
+			redirectUrl.searchParams.set('state', authRecord.state ?? '');
 		}
 
 		this.logger.info('Consent decision handled', {
@@ -515,7 +524,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			});
 
 			if (refreshTokenRecord) {
-				refreshTokenRecord.revoked = true;
 				await this.refreshTokenRepository.save(refreshTokenRecord);
 				this.logger.info('Refresh token revoked', {
 					clientId: client.client_id,

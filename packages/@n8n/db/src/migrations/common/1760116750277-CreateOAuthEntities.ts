@@ -8,6 +8,8 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 			column('name').varchar(255).notNull,
 			column('redirectUris').json.notNull,
 			column('grantTypes').json.notNull,
+			column('clientSecret').varchar(255),
+			column('clientSecretExpiresAt').int,
 			column('tokenEndpointAuthMethod').varchar(255).notNull.default("'none'"),
 		).withTimestamps;
 
@@ -21,7 +23,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('codeChallenge').varchar(255).notNull,
 				column('codeChallengeMethod').varchar(255).notNull,
 				column('expiresAt').int.notNull,
-				column('state').varchar(255).notNull,
+				column('state').varchar(255), // Should be nullable
 				column('used').bool.notNull.default(false),
 			)
 			.withForeignKey('clientId', {
@@ -44,6 +46,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('token').varchar(255).primary.notNull,
 				column('clientId').varchar(255).notNull,
 				column('userId').varchar(255).notNull,
+				column('revoked').bool.notNull.default(false),
 			)
 			.withForeignKey('clientId', {
 				tableName: 'oauth_clients',

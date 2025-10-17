@@ -34,4 +34,10 @@ export class OAuthClient extends WithTimestamps {
 
 	@OneToMany('UserConsent', 'client')
 	userConsents: UserConsent[];
+
+	@Column({ type: String, nullable: true })
+	clientSecret: string | null;
+
+	@Column({ type: 'int', nullable: true })
+	clientSecretExpiresAt: number | null;
 }

@@ -33,6 +33,25 @@ export class McpController {
 		private readonly telemetry: Telemetry,
 	) {}
 
+	// Add CORS headers helper
+	private setCorsHeaders(res: Response) {
+		// Allow requests from Claude AI playground and other MCP clients
+		res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+		res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+		res.header('Access-Control-Allow-Credentials', 'true');
+		res.header('Access-Control-Max-Age', '86400'); // 24 hours
+	}
+
+	// // Handle OPTIONS preflight requests
+	// @Option('/http', {
+	// 	skipAuth: true,
+	// })
+	// async handlePreflight(req: AuthenticatedRequest, res: Response) {
+	// 	this.setCorsHeaders(res);
+	// 	res.status(204).send();
+	// }
+
 	@Post('/http', {
 		rateLimit: { limit: 100 },
 		middlewares: [getAuthMiddleware()],
@@ -40,6 +59,9 @@ export class McpController {
 		usesTemplates: true,
 	})
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
+		// Set CORS headers for all responses
+		this.setCorsHeaders(res);
+
 		const body = req.body;
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
