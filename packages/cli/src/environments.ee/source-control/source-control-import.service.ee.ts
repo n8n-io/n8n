@@ -678,52 +678,31 @@ export class SourceControlImportService {
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 			);
 
-			if (importedWorkflow.owner?.type === 'team') {
-				const trx = this.workflowRepository.manager;
-
-				// Remove old owner if id does not match the imported owner project
-				// or when the workflow will be owned by a new project
-				const removeOldOwner =
-					localOwner &&
-					(localOwner.projectId !== importedOwnerProject?.id || !importedOwnerProject);
-
-				if (removeOldOwner) {
-					await this.sharedWorkflowRepository.deleteByIds(
-						[importedWorkflow.id],
-						localOwner.projectId,
-						trx,
-					);
-				}
-
-				// Use the existing project or create a new one if it doesn't exist
-				const workflowOwner =
-					importedOwnerProject ?? (await this.createTeamProject(importedWorkflow.owner));
-				await this.sharedWorkflowRepository.makeOwner([importedWorkflow.id], workflowOwner.id, trx);
-
-				console.log({
-					removeOldOwner,
-					createdNewProject: !importedOwnerProject,
-				});
-			} else {
-				// import personal workflow
-				//   if personal project exists in local database -> transfer ownership to the existing personal project
-				//   if personal project does not exist in local database -> transfer ownership the admin personal project
+			let workflowOwner = importedOwnerProject;
+			if (!workflowOwner) {
+				workflowOwner =
+					importedWorkflow.owner?.type === 'team'
+						? await this.createTeamProject(importedWorkflow.owner)
+						: personalProject;
 			}
 
-			if (!localOwner) {
-				const remoteOwnerProject: Project | null = importedWorkflow.owner
-					? await this.findOrCreateOwnerProject(importedWorkflow.owner)
-					: null;
+			const removeOldOwner = localOwner && localOwner.projectId !== workflowOwner.id;
 
-				await this.sharedWorkflowRepository.upsert(
-					{
-						workflowId: importedWorkflow.id,
-						projectId: remoteOwnerProject?.id ?? personalProject.id,
-						role: 'workflow:owner',
-					},
-					['workflowId', 'projectId'],
+			const trx = this.workflowRepository.manager;
+			if (removeOldOwner) {
+				await this.sharedWorkflowRepository.deleteByIds(
+					[importedWorkflow.id],
+					localOwner.projectId,
+					trx,
 				);
 			}
+
+			await this.sharedWorkflowRepository.makeOwner([importedWorkflow.id], workflowOwner.id, trx);
+
+			console.log({
+				removeOldOwner,
+				createdNewProject: !importedOwnerProject,
+			});
 
 			if (existingWorkflow?.active) {
 				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
