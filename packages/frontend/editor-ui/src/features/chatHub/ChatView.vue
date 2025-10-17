@@ -23,6 +23,7 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
 	type ChatHubMessageDto,
+	type ChatMessageId,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
@@ -136,12 +137,32 @@ function scrollToBottom(smooth: boolean) {
 	});
 }
 
+function scrollToMessage(messageId: ChatMessageId) {
+	scrollableRef.value?.querySelector(`[data-message-id="${messageId}"]`)?.scrollIntoView({
+		behavior: 'smooth',
+	});
+}
+
 // Scroll to the bottom when a new message is added
 watch(
 	() => chatMessages.value[chatMessages.value.length - 1]?.id,
 	(lastMessageId) => {
-		if (lastMessageId) {
+		if (!lastMessageId) {
+			return;
+		}
+
+		if (lastMessageId !== chatStore.streamingMessageId) {
 			scrollToBottom(chatStore.streamingMessageId !== undefined);
+			return;
+		}
+
+		const message = chatStore
+			.getActiveMessages(sessionId.value)
+			.find((message) => message.id === lastMessageId);
+
+		if (message?.previousMessageId) {
+			// Scroll to user's prompt when the message is being generated
+			scrollToMessage(message.previousMessageId);
 		}
 	},
 	{ immediate: true, flush: 'post' },
