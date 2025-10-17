@@ -1,6 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
@@ -1144,6 +1144,1614 @@ describe('Salesforce', () => {
 					{ name: 'Medium', value: 'Medium' },
 					{ name: 'High', value: 'High' },
 				]);
+			});
+		});
+	});
+
+	describe('Execute Method - Lead Resource', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { testData: 'value' } }]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index?: number): any => {
+					return mockExecuteFunctions.getNodeParameter.mock.results[0]?.value?.[param] || '';
+				},
+			);
+		});
+
+		describe('Lead Create Operation', () => {
+			it('should handle lead create with minimal fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'Test Company',
+						lastname: 'Test Lead',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/lead',
+					expect.objectContaining({
+						Company: 'Test Company',
+						LastName: 'Test Lead',
+					}),
+				);
+			});
+
+			it('should handle lead create with all additional fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'ACME Corp',
+						lastname: 'Doe',
+						additionalFields: {
+							hasOptedOutOfEmail: true,
+							hasOptedOutOfFax: false,
+							email: 'test@example.com',
+							city: 'New York',
+							phone: '+1234567890',
+							state: 'NY',
+							title: 'Manager',
+							jigsaw: 'JIGSAW123',
+							rating: 'Hot',
+							status: 'Qualified',
+							street: '123 Main St',
+							country: 'USA',
+							owner: 'user123',
+							website: 'https://example.com',
+							industry: 'Technology',
+							fax: 1234567890,
+							firstname: 'John',
+							leadSource: 'Web',
+							postalCode: '10001',
+							salutation: 'Mr.',
+							description: 'Test lead description',
+							annualRevenue: 50000,
+							isUnreadByOwner: true,
+							numberOfEmployees: 100,
+							mobilePhone: '+1987654321',
+							recordTypeId: 'rt123',
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Custom_Field1__c', value: 'Custom Value 1' },
+									{ fieldId: 'Custom_Field2__c', value: 'Custom Value 2' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/lead',
+					expect.objectContaining({
+						Company: 'ACME Corp',
+						LastName: 'Doe',
+						HasOptedOutOfEmail: true,
+						HasOptedOutOfFax: false,
+						Email: 'test@example.com',
+						City: 'New York',
+						Phone: '+1234567890',
+						State: 'NY',
+						Title: 'Manager',
+						Jigsaw: 'JIGSAW123',
+						Rating: 'Hot',
+						Status: 'Qualified',
+						Street: '123 Main St',
+						Country: 'USA',
+						OwnerId: 'user123',
+						Website: 'https://example.com',
+						Industry: 'Technology',
+						Fax: 1234567890,
+						FirstName: 'John',
+						LeadSource: 'Web',
+						PostalCode: '10001',
+						Salutation: 'Mr.',
+						Description: 'Test lead description',
+						AnnualRevenue: 50000,
+						IsUnreadByOwner: true,
+						NumberOfEmployees: 100,
+						MobilePhone: '+1987654321',
+						RecordTypeId: 'rt123',
+						Custom_Field1__c: 'Custom Value 1',
+						Custom_Field2__c: 'Custom Value 2',
+					}),
+				);
+			});
+
+			it('should handle lead upsert operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, index?: number): any => {
+						const params: Record<string, unknown> = {
+							resource: 'lead',
+							operation: 'upsert',
+							company: 'Upsert Company',
+							lastname: 'Upsert Lead',
+							externalId: 'External_Id__c',
+							externalIdValue: 'EXT123',
+							additionalFields: {
+								email: 'upsert@example.com',
+								External_Id__c: 'EXT123', // Should be removed from body
+							},
+						};
+						if (param === 'externalId' && index === 0) {
+							return params.externalId;
+						}
+						if (param === 'externalIdValue') {
+							return params.externalIdValue;
+						}
+						return params[param];
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead789', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/lead/External_Id__c/EXT123',
+					expect.objectContaining({
+						Company: 'Upsert Company',
+						LastName: 'Upsert Lead',
+						Email: 'upsert@example.com',
+					}),
+				);
+
+				// Ensure external ID field is removed from body
+				const callArgs = salesforceApiRequestSpy.mock.calls[0];
+				expect(callArgs[2]).not.toHaveProperty('External_Id__c');
+			});
+		});
+
+		describe('Lead Update Operation', () => {
+			it('should handle lead update with all fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'update',
+						leadId: 'lead123',
+						updateFields: {
+							hasOptedOutOfEmail: false,
+							hasOptedOutOfFax: true,
+							lastname: 'Updated Doe',
+							company: 'Updated Company',
+							email: 'updated@example.com',
+							city: 'Updated City',
+							phone: '+1111111111',
+							state: 'CA',
+							title: 'Senior Manager',
+							jigsaw: 'UPDATED123',
+							rating: 'Warm',
+							status: 'Working',
+							street: '456 Updated St',
+							country: 'Canada',
+							owner: 'user456',
+							website: 'https://updated.com',
+							industry: 'Healthcare',
+							firstname: 'Jane',
+							fax: 9876543210,
+							leadSource: 'Referral',
+							postalCode: '90210',
+							salutation: 'Ms.',
+							description: 'Updated description',
+							annualRevenue: 75000,
+							isUnreadByOwner: false,
+							numberOfEmployees: 200,
+							mobilePhone: '+1555555555',
+							recordTypeId: 'rt456',
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Custom_Field3__c', value: 'Updated Custom Value' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/lead/lead123',
+					expect.objectContaining({
+						HasOptedOutOfEmail: false,
+						hasOptedOutOfFax: true, // Note: This is a bug in the original code (should be HasOptedOutOfFax)
+						LastName: 'Updated Doe',
+						Company: 'Updated Company',
+						Email: 'updated@example.com',
+						City: 'Updated City',
+						Phone: '+1111111111',
+						State: 'CA',
+						Title: 'Senior Manager',
+						Jigsaw: 'UPDATED123',
+						Rating: 'Warm',
+						Status: 'Working',
+						Street: '456 Updated St',
+						Country: 'Canada',
+						OwnerId: 'user456',
+						Website: 'https://updated.com',
+						Industry: 'Healthcare',
+						FirstName: 'Jane',
+						Fax: 9876543210,
+						LeadSource: 'Referral',
+						PostalCode: '90210',
+						Salutation: 'Ms.',
+						Description: 'Updated description',
+						AnnualRevenue: 75000,
+						IsUnreadByOwner: false,
+						NumberOfEmployees: 200,
+						MobilePhone: '+1555555555',
+						RecordTypeId: 'rt456',
+						Custom_Field3__c: 'Updated Custom Value',
+					}),
+				);
+			});
+
+			it('should throw error when no update fields provided', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'update',
+						leadId: 'lead123',
+						updateFields: {},
+					};
+					return params[param];
+				});
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'You must add at least one update field',
+				);
+			});
+		});
+
+		describe('Lead Other Operations', () => {
+			it('should handle lead get operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'get',
+						leadId: 'lead123',
+					};
+					return params[param];
+				});
+
+				const mockLead = { Id: 'lead123', FirstName: 'John', LastName: 'Doe' };
+				salesforceApiRequestSpy.mockResolvedValue(mockLead);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/lead/lead123');
+			});
+
+			it('should handle lead getAll operation with returnAll true', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'getAll',
+						returnAll: true,
+						options: { fields: 'Id,FirstName,LastName' },
+					};
+					return params[param];
+				});
+
+				const mockLeads = [
+					{ Id: 'lead1', FirstName: 'John', LastName: 'Doe' },
+					{ Id: 'lead2', FirstName: 'Jane', LastName: 'Smith' },
+				];
+
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id,FirstName,LastName FROM Lead');
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockLeads);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,FirstName,LastName' }, 'Lead', true);
+				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
+					'records',
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT Id,FirstName,LastName FROM Lead' },
+				);
+			});
+
+			it('should handle lead getAll operation with limit', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'getAll',
+						returnAll: false,
+						limit: 50,
+						options: {},
+					};
+					return params[param];
+				});
+
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT * FROM Lead LIMIT 50');
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 50);
+			});
+
+			it('should handle lead delete operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'delete',
+						leadId: 'lead123',
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('DELETE', '/sobjects/lead/lead123');
+			});
+
+			it('should handle lead getSummary operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'getSummary',
+					};
+					return params[param];
+				});
+
+				const mockSummary = { objectDescribe: { name: 'Lead', fields: [] } };
+				salesforceApiRequestSpy.mockResolvedValue(mockSummary);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/lead');
+			});
+
+			it('should handle lead addToCampaign operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'addToCampaign',
+						leadId: 'lead123',
+						campaignId: 'campaign456',
+						options: { status: 'Sent' },
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'cm123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/CampaignMember',
+					expect.objectContaining({
+						LeadId: 'lead123',
+						CampaignId: 'campaign456',
+						Status: 'Sent',
+					}),
+				);
+			});
+
+			it('should handle lead addNote operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'addNote',
+						leadId: 'lead123',
+						title: 'Important Note',
+						options: {
+							body: 'This is the note body',
+							owner: 'user789',
+							isPrivate: true,
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'note123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/note',
+					expect.objectContaining({
+						Title: 'Important Note',
+						ParentId: 'lead123',
+						Body: 'This is the note body',
+						OwnerId: 'user789',
+						IsPrivate: true,
+					}),
+				);
+			});
+		});
+	});
+
+	describe('Execute Method - Case Resource', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { testData: 'value' } }]);
+		});
+
+		describe('Case Create Operation', () => {
+			it('should handle case create with minimal fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'create',
+						type: 'Problem',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'case123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/case',
+					expect.objectContaining({
+						Type: 'Problem',
+					}),
+				);
+			});
+
+			it('should handle case create with all additional fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'create',
+						type: 'Feature Request',
+						additionalFields: {
+							origin: 'Web',
+							reason: 'Installation',
+							status: 'New',
+							owner: 'user123',
+							subject: 'Test Case Subject',
+							parentId: 'parent123',
+							priority: 'High',
+							accountId: 'acc123',
+							contactId: 'contact123',
+							description: 'Test case description',
+							isEscalated: true,
+							suppliedName: 'John Doe',
+							suppliedEmail: 'john@example.com',
+							suppliedPhone: '+1234567890',
+							suppliedCompany: 'Test Company',
+							recordTypeId: 'rt123',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'case456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/case',
+					expect.objectContaining({
+						Type: 'Feature Request',
+						Origin: 'Web',
+						Reason: 'Installation',
+						Status: 'New',
+						OwnerId: 'user123',
+						Subject: 'Test Case Subject',
+						ParentId: 'parent123',
+						Priority: 'High',
+						AccountId: 'acc123',
+						ContactId: 'contact123',
+						Description: 'Test case description',
+						IsEscalated: true,
+						SuppliedName: 'John Doe',
+						SuppliedEmail: 'john@example.com',
+						SuppliedPhone: '+1234567890',
+						SuppliedCompany: 'Test Company',
+						RecordTypeId: 'rt123',
+					}),
+				);
+			});
+
+			it('should handle case create with custom fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'create',
+						type: 'Question',
+						additionalFields: {
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Custom_Field1__c', value: 'Custom Value 1' },
+									{ fieldId: 'Custom_Field2__c', value: 'Custom Value 2' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'case789', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/case',
+					expect.objectContaining({
+						Type: 'Question',
+						Custom_Field1__c: 'Custom Value 1',
+						Custom_Field2__c: 'Custom Value 2',
+					}),
+				);
+			});
+		});
+
+		describe('Case Update Operation', () => {
+			it('should handle case update with all fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'update',
+						caseId: 'case123',
+						updateFields: {
+							type: 'Updated Problem',
+							origin: 'Email',
+							reason: 'Performance',
+							status: 'Working',
+							owner: 'user456',
+							subject: 'Updated Case Subject',
+							parentId: 'parent456',
+							priority: 'Medium',
+							accountId: 'acc456',
+							recordTypeId: 'rt456',
+							contactId: 'contact456',
+							description: 'Updated case description',
+							isEscalated: false,
+							suppliedName: 'Jane Smith',
+							suppliedEmail: 'jane@example.com',
+							suppliedPhone: '+1987654321',
+							suppliedCompany: 'Updated Company',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/case/case123',
+					expect.objectContaining({
+						Type: 'Updated Problem',
+						Origin: 'Email',
+						Reason: 'Performance',
+						Status: 'Working',
+						OwnerId: 'user456',
+						Subject: 'Updated Case Subject',
+						ParentId: 'parent456',
+						Priority: 'Medium',
+						AccountId: 'acc456',
+						RecordTypeId: 'rt456',
+						ContactId: 'contact456',
+						Description: 'Updated case description',
+						IsEscalated: false,
+						SuppliedName: 'Jane Smith',
+						SuppliedEmail: 'jane@example.com',
+						SuppliedPhone: '+1987654321',
+						SuppliedCompany: 'Updated Company',
+					}),
+				);
+			});
+
+			it('should handle case update with custom fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'update',
+						caseId: 'case789',
+						updateFields: {
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Updated_Custom_Field__c', value: 'Updated Custom Value' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/case/case789',
+					expect.objectContaining({
+						Updated_Custom_Field__c: 'Updated Custom Value',
+					}),
+				);
+			});
+		});
+
+		describe('Case Other Operations', () => {
+			it('should handle case get operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'get',
+						caseId: 'case123',
+					};
+					return params[param];
+				});
+
+				const mockCase = { Id: 'case123', Subject: 'Test Case', Type: 'Problem' };
+				salesforceApiRequestSpy.mockResolvedValue(mockCase);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/case/case123');
+			});
+
+			it('should handle case getAll operation with returnAll true', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'getAll',
+						returnAll: true,
+						options: { fields: 'Id,Subject,Type' },
+					};
+					return params[param];
+				});
+
+				const mockCases = [
+					{ Id: 'case1', Subject: 'Case 1', Type: 'Problem' },
+					{ Id: 'case2', Subject: 'Case 2', Type: 'Question' },
+				];
+
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id,Subject,Type FROM Case');
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockCases);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject,Type' }, 'Case', true);
+				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
+					'records',
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT Id,Subject,Type FROM Case' },
+				);
+			});
+
+			it('should handle case getAll operation with limit', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'getAll',
+						returnAll: false,
+						limit: 25,
+						options: {},
+					};
+					return params[param];
+				});
+
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT * FROM Case LIMIT 25');
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Case', false, 25);
+			});
+
+			it('should handle case getAll operation error handling', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'getAll',
+						returnAll: true,
+						options: {},
+					};
+					return params[param];
+				});
+
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT * FROM Case');
+				salesforceApiRequestAllItemsSpy.mockRejectedValue(new Error('API Error'));
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow();
+			});
+
+			it('should handle case delete operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'delete',
+						caseId: 'case123',
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('DELETE', '/sobjects/case/case123');
+			});
+
+			it('should handle case delete operation error handling', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'delete',
+						caseId: 'case123',
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockRejectedValue(new Error('Delete error'));
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow();
+			});
+
+			it('should handle case getSummary operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'getSummary',
+					};
+					return params[param];
+				});
+
+				const mockSummary = { objectDescribe: { name: 'Case', fields: [] } };
+				salesforceApiRequestSpy.mockResolvedValue(mockSummary);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/case');
+			});
+
+			it('should handle case addComment operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'addComment',
+						caseId: 'case123',
+						options: {
+							commentBody: 'This is a test comment',
+							isPublished: true,
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'comment123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/casecomment',
+					expect.objectContaining({
+						ParentId: 'case123',
+						CommentBody: 'This is a test comment',
+						IsPublished: true,
+					}),
+				);
+			});
+
+			it('should handle case addComment operation with minimal options', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'addComment',
+						caseId: 'case456',
+						options: {},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'comment456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/casecomment',
+					expect.objectContaining({
+						ParentId: 'case456',
+					}),
+				);
+			});
+		});
+	});
+
+	describe('Execute Method - Contact Resource', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { testData: 'value' } }]);
+		});
+
+		describe('Contact Create Operation', () => {
+			it('should handle contact create with minimal fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'create',
+						lastname: 'Test Contact',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'Test Contact',
+					}),
+				);
+			});
+
+			it('should handle contact create with all additional fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'create',
+						lastname: 'Smith',
+						additionalFields: {
+							fax: '1234567890',
+							email: 'contact@example.com',
+							phone: '+1234567890',
+							title: 'Director',
+							jigsaw: 'JIGSAW456',
+							recordTypeId: 'rt789',
+							owner: 'user456',
+							acconuntId: 'acc123', // Note: This is a typo in the original code
+							birthdate: '1990-01-01',
+							firstName: 'Jane',
+							homePhone: '+1987654321',
+							otherCity: 'Other City',
+							department: 'Sales',
+							leadSource: 'Cold Call',
+							otherPhone: '+1555555555',
+							otherState: 'TX',
+							salutation: 'Mrs.',
+							description: 'Contact description',
+							mailingCity: 'Mailing City',
+							mobilePhone: '+1777777777',
+							otherStreet: '789 Other St',
+							mailingState: 'FL',
+							otherCountry: 'Mexico',
+							assistantName: 'Assistant Name',
+							mailingStreet: '456 Mailing St',
+							assistantPhone: '+1666666666',
+							mailingCountry: 'USA',
+							otherPostalCode: '54321',
+							emailBouncedDate: '2023-01-01',
+							mailingPostalCode: '12345',
+							emailBouncedReason: 'Mailbox full',
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Contact_Custom__c', value: 'Contact Custom Value' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'Smith',
+						Fax: '1234567890',
+						Email: 'contact@example.com',
+						Phone: '+1234567890',
+						Title: 'Director',
+						Jigsaw: 'JIGSAW456',
+						RecordTypeId: 'rt789',
+						OwnerId: 'user456',
+						AccountId: 'acc123',
+						Birthdate: '1990-01-01',
+						FirstName: 'Jane',
+						HomePhone: '+1987654321',
+						OtherCity: 'Other City',
+						Department: 'Sales',
+						LeadSource: 'Cold Call',
+						OtherPhone: '+1555555555',
+						OtherState: 'TX',
+						Salutation: 'Mrs.',
+						Description: 'Contact description',
+						MailingCity: 'Mailing City',
+						MobilePhone: '+1777777777',
+						OtherStreet: '789 Other St',
+						MailingState: 'FL',
+						OtherCountry: 'Mexico',
+						AssistantName: 'Assistant Name',
+						MailingStreet: '456 Mailing St',
+						AssistantPhone: '+1666666666',
+						MailingCountry: 'USA',
+						OtherPostalCode: '54321',
+						EmailBouncedDate: '2023-01-01',
+						MailingPostalCode: '12345',
+						EmailBouncedReason: 'Mailbox full',
+						Contact_Custom__c: 'Contact Custom Value',
+					}),
+				);
+			});
+
+			it('should handle contact upsert operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, index?: number): any => {
+						const params: Record<string, unknown> = {
+							resource: 'contact',
+							operation: 'upsert',
+							lastname: 'Upsert Contact',
+							externalId: 'External_Contact_Id__c',
+							externalIdValue: 'EXT_CONTACT_123',
+							additionalFields: {
+								email: 'upsert@contact.com',
+								External_Contact_Id__c: 'EXT_CONTACT_123', // Should be removed from body
+							},
+						};
+						if (param === 'externalId' && index === 0) {
+							return params.externalId;
+						}
+						if (param === 'externalIdValue') {
+							return params.externalIdValue;
+						}
+						return params[param];
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact789', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/contact/External_Contact_Id__c/EXT_CONTACT_123',
+					expect.objectContaining({
+						LastName: 'Upsert Contact',
+						Email: 'upsert@contact.com',
+					}),
+				);
+
+				// Ensure external ID field is removed from body
+				const callArgs = salesforceApiRequestSpy.mock.calls[0];
+				expect(callArgs[2]).not.toHaveProperty('External_Contact_Id__c');
+			});
+		});
+
+		describe('Contact Update Operation', () => {
+			it('should handle contact update with all fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'update',
+						contactId: 'contact123',
+						updateFields: {
+							lastName: 'Updated Contact',
+							fax: '9876543210',
+							email: 'updated@contact.com',
+							recordTypeId: 'rt999',
+							phone: '+1999999999',
+							title: 'Updated Director',
+							jigsaw: 'UPDATED_JIGSAW',
+							owner: 'user999',
+							acconuntId: 'acc999', // Note: This is a typo in the original code
+							birthdate: '1985-05-05',
+							firstName: 'Updated Jane',
+							homePhone: '+1888888888',
+							otherCity: 'Updated Other City',
+							department: 'Updated Sales',
+							leadSource: 'Updated Cold Call',
+							otherPhone: '+1777777777',
+							otherState: 'Updated TX',
+							salutation: 'Dr.',
+							description: 'Updated contact description',
+							mailingCity: 'Updated Mailing City',
+							mobilePhone: '+1666666666',
+							otherStreet: 'Updated 789 Other St',
+							mailingState: 'Updated FL',
+							otherCountry: 'Updated Mexico',
+							assistantName: 'Updated Assistant Name',
+							mailingStreet: 'Updated 456 Mailing St',
+							assistantPhone: '+1555555555',
+							mailingCountry: 'Updated USA',
+							otherPostalCode: 'Updated 54321',
+							emailBouncedDate: '2024-01-01',
+							mailingPostalCode: 'Updated 12345',
+							emailBouncedReason: 'Updated Mailbox full',
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Updated_Contact_Custom__c', value: 'Updated Contact Custom Value' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/contact/contact123',
+					expect.objectContaining({
+						LastName: 'Updated Contact',
+						Fax: '9876543210',
+						Email: 'updated@contact.com',
+						RecordTypeId: 'rt999',
+						Phone: '+1999999999',
+						Title: 'Updated Director',
+						Jigsaw: 'UPDATED_JIGSAW',
+						OwnerId: 'user999',
+						AccountId: 'acc999',
+						Birthdate: '1985-05-05',
+						FirstName: 'Updated Jane',
+						HomePhone: '+1888888888',
+						OtherCity: 'Updated Other City',
+						Department: 'Updated Sales',
+						LeadSource: 'Updated Cold Call',
+						OtherPhone: '+1777777777',
+						OtherState: 'Updated TX',
+						Salutation: 'Dr.',
+						Description: 'Updated contact description',
+						MailingCity: 'Updated Mailing City',
+						MobilePhone: '+1666666666',
+						OtherStreet: 'Updated 789 Other St',
+						MailingState: 'Updated FL',
+						OtherCountry: 'Updated Mexico',
+						AssistantName: 'Updated Assistant Name',
+						MailingStreet: 'Updated 456 Mailing St',
+						AssistantPhone: '+1555555555',
+						MailingCountry: 'Updated USA',
+						OtherPostalCode: 'Updated 54321',
+						EmailBouncedDate: '2024-01-01',
+						MailingPostalCode: 'Updated 12345',
+						EmailBouncedReason: 'Updated Mailbox full',
+						Updated_Contact_Custom__c: 'Updated Contact Custom Value',
+					}),
+				);
+			});
+
+			it('should throw error when no update fields provided for contact', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'update',
+						contactId: 'contact123',
+						updateFields: {},
+					};
+					return params[param];
+				});
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'You must add at least one update field',
+				);
+			});
+		});
+
+		describe('Contact Other Operations', () => {
+			it('should handle contact get operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'get',
+						contactId: 'contact123',
+					};
+					return params[param];
+				});
+
+				const mockContact = { Id: 'contact123', FirstName: 'John', LastName: 'Doe' };
+				salesforceApiRequestSpy.mockResolvedValue(mockContact);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/contact/contact123');
+			});
+
+			it('should handle contact getAll operation with returnAll true', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'getAll',
+						returnAll: true,
+						options: { fields: 'Id,FirstName,LastName' },
+					};
+					return params[param];
+				});
+
+				const mockContacts = [
+					{ Id: 'contact1', FirstName: 'John', LastName: 'Doe' },
+					{ Id: 'contact2', FirstName: 'Jane', LastName: 'Smith' },
+				];
+
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id,FirstName,LastName FROM Contact');
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockContacts);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith(
+					{ fields: 'Id,FirstName,LastName' },
+					'Contact',
+					true,
+				);
+				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
+					'records',
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT Id,FirstName,LastName FROM Contact' },
+				);
+			});
+
+			it('should handle contact delete operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'delete',
+						contactId: 'contact123',
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'DELETE',
+					'/sobjects/contact/contact123',
+				);
+			});
+
+			it('should handle contact getSummary operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'getSummary',
+					};
+					return params[param];
+				});
+
+				const mockSummary = { objectDescribe: { name: 'Contact', fields: [] } };
+				salesforceApiRequestSpy.mockResolvedValue(mockSummary);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/contact');
+			});
+
+			it('should handle contact addToCampaign operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'addToCampaign',
+						contactId: 'contact123',
+						campaignId: 'campaign456',
+						options: { status: 'Responded' },
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'cm456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/CampaignMember',
+					expect.objectContaining({
+						ContactId: 'contact123',
+						CampaignId: 'campaign456',
+						Status: 'Responded',
+					}),
+				);
+			});
+
+			it('should handle contact addNote operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'addNote',
+						contactId: 'contact123',
+						title: 'Contact Note',
+						options: {
+							body: 'This is the contact note body',
+							owner: 'user888',
+							isPrivate: false,
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'note456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/note',
+					expect.objectContaining({
+						Title: 'Contact Note',
+						ParentId: 'contact123',
+						Body: 'This is the contact note body',
+						OwnerId: 'user888',
+						IsPrivate: false,
+					}),
+				);
+			});
+		});
+	});
+
+	describe('Execute Method - CustomObject Resource', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { testData: 'value' } }]);
+		});
+
+		describe('CustomObject Create Operation', () => {
+			it('should handle customObject create with custom fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'customObject',
+						operation: 'create',
+						customObject: 'CustomObject__c',
+						customFieldsUi: {
+							customFieldsValues: [
+								{ fieldId: 'Name', value: 'Test Custom Object' },
+								{ fieldId: 'Custom_Field1__c', value: 'Custom Value 1' },
+								{ fieldId: 'Custom_Field2__c', value: 'Custom Value 2' },
+							],
+						},
+						additionalFields: {
+							recordTypeId: 'rt123',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'custom123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/CustomObject__c',
+					expect.objectContaining({
+						Name: 'Test Custom Object',
+						Custom_Field1__c: 'Custom Value 1',
+						Custom_Field2__c: 'Custom Value 2',
+						RecordTypeId: 'rt123',
+					}),
+				);
+			});
+
+			it('should handle customObject upsert operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, index?: number): any => {
+						const params: Record<string, unknown> = {
+							resource: 'customObject',
+							operation: 'upsert',
+							customObject: 'CustomObject__c',
+							externalId: 'External_Id__c',
+							externalIdValue: 'EXT_CUSTOM_123',
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Name', value: 'Upsert Custom Object' },
+									{ fieldId: 'External_Id__c', value: 'EXT_CUSTOM_123' }, // Should be removed
+								],
+							},
+							additionalFields: {},
+						};
+						if (param === 'externalId' && index === 0) {
+							return params.externalId;
+						}
+						if (param === 'externalIdValue') {
+							return params.externalIdValue;
+						}
+						return params[param];
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'custom456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/CustomObject__c/External_Id__c/EXT_CUSTOM_123',
+					expect.objectContaining({
+						Name: 'Upsert Custom Object',
+					}),
+				);
+
+				// Ensure external ID field is removed from body
+				const callArgs = salesforceApiRequestSpy.mock.calls[0];
+				expect(callArgs[2]).not.toHaveProperty('External_Id__c');
+			});
+		});
+
+		describe('CustomObject Update Operation', () => {
+			it('should handle customObject update operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'customObject',
+						operation: 'update',
+						recordId: 'custom123',
+						customObject: 'CustomObject__c',
+						customFieldsUi: {
+							customFieldsValues: [
+								{ fieldId: 'Name', value: 'Updated Custom Object' },
+								{ fieldId: 'Custom_Field1__c', value: 'Updated Custom Value 1' },
+							],
+						},
+						updateFields: {
+							recordTypeId: 'rt456',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/CustomObject__c/custom123',
+					expect.objectContaining({
+						Name: 'Updated Custom Object',
+						Custom_Field1__c: 'Updated Custom Value 1',
+						RecordTypeId: 'rt456',
+					}),
+				);
+			});
+		});
+
+		describe('CustomObject Other Operations', () => {
+			it('should handle customObject get operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'customObject',
+						operation: 'get',
+						customObject: 'CustomObject__c',
+						recordId: 'custom123',
+					};
+					return params[param];
+				});
+
+				const mockCustomObject = { Id: 'custom123', Name: 'Test Custom Object' };
+				salesforceApiRequestSpy.mockResolvedValue(mockCustomObject);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					'/sobjects/CustomObject__c/custom123',
+				);
+			});
+
+			it('should handle customObject getAll operation with returnAll true', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'customObject',
+						operation: 'getAll',
+						customObject: 'CustomObject__c',
+						returnAll: true,
+						options: {},
+					};
+					return params[param];
+				});
+
+				const mockCustomObjects = [
+					{ Id: 'custom1', Name: 'Custom Object 1' },
+					{ Id: 'custom2', Name: 'Custom Object 2' },
+				];
+
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT * FROM CustomObject__c');
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockCustomObjects);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', true);
+				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
+					'records',
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT * FROM CustomObject__c' },
+				);
+			});
+
+			it('should handle customObject delete operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'customObject',
+						operation: 'delete',
+						customObject: 'CustomObject__c',
+						recordId: 'custom123',
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'DELETE',
+					'/sobjects/CustomObject__c/custom123',
+				);
+			});
+		});
+	});
+
+	describe('Execute Method - Document Resource', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { testData: 'value' } }]);
+		});
+
+		describe('Document Upload Operation', () => {
+			it('should handle document upload operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'document',
+						operation: 'upload',
+						title: 'Test Document',
+						binaryPropertyName: 'data',
+						additionalFields: {
+							ownerId: 'user123',
+							linkToObjectId: 'record456',
+							fileExtension: 'pdf',
+						},
+					};
+					return params[param];
+				});
+
+				const mockBinaryData = {
+					data: Buffer.from('test file content'),
+					mimeType: 'application/pdf',
+					fileExtension: 'pdf',
+					fileName: 'test.pdf',
+				};
+
+				(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(
+					mockBinaryData,
+				);
+				(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+					mockBinaryData.data,
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'cv123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'data');
+				expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(0, 'data');
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/ContentVersion',
+					{},
+					{},
+					undefined,
+					expect.objectContaining({
+						formData: expect.objectContaining({
+							entity_content: expect.objectContaining({
+								value: expect.any(String),
+								options: { contentType: 'application/json' },
+							}),
+							VersionData: expect.objectContaining({
+								value: mockBinaryData.data,
+								options: { filename: 'Test Document.pdf' },
+							}),
+						}),
+					}),
+				);
+
+				// Check entity_content JSON structure
+				const callArgs = salesforceApiRequestSpy.mock.calls[0];
+				const formData = (callArgs[5] as { formData: any }).formData;
+				const entityContent = jsonParse(formData.entity_content.value as string);
+
+				expect(entityContent).toEqual({
+					Title: 'Test Document',
+					ContentLocation: 'S',
+					ownerId: 'user123',
+					FirstPublishLocationId: 'record456',
+					PathOnClient: 'Test Document.pdf',
+				});
+			});
+
+			it('should handle document upload with minimal fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'document',
+						operation: 'upload',
+						title: 'Minimal Document',
+						binaryPropertyName: 'data',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				const mockBinaryData = {
+					data: Buffer.from('minimal content'),
+					mimeType: 'text/plain',
+					fileExtension: 'txt',
+					fileName: 'test.txt',
+				};
+
+				(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(
+					mockBinaryData,
+				);
+				(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+					mockBinaryData.data,
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'cv456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				const callArgs = salesforceApiRequestSpy.mock.calls[0];
+				expect(callArgs).toBeDefined();
+				expect(callArgs[5]).toBeDefined();
+				expect((callArgs[5] as { formData: any }).formData).toBeDefined();
+
+				const formData = (callArgs[5] as { formData: any }).formData;
+				const entityContent = jsonParse(formData.entity_content.value as string);
+
+				expect(entityContent).toEqual({
+					Title: 'Minimal Document',
+					ContentLocation: 'S',
+					PathOnClient: 'Minimal Document.txt',
+				});
+
+				expect(entityContent).not.toHaveProperty('ownerId');
+				expect(entityContent).not.toHaveProperty('FirstPublishLocationId');
 			});
 		});
 	});
