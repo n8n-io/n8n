@@ -32,14 +32,8 @@ import {
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
 
-import type {
-	IExecutionResponse,
-	INodeTypesMaxCount,
-	INodeUi,
-	IWorkflowDb,
-	TargetItem,
-	XYPosition,
-} from '@/Interface';
+import type { INodeTypesMaxCount, INodeUi, IWorkflowDb, TargetItem, XYPosition } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';

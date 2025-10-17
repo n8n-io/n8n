@@ -6,7 +6,6 @@ import type {
 import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import type {
-	IExecutionResponse,
 	NewCredentialsModal,
 	CredentialsResource,
 	FolderResource,
@@ -14,7 +13,9 @@ import type {
 	VariableResource,
 	WorkflowResource,
 	WorkflowListItem,
+	WorkflowListResource,
 } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
@@ -22,7 +23,6 @@ import type { CanvasConnectionMode } from '@/features/canvas/canvas.types';
 import { canvasConnectionModes } from '@/features/canvas/canvas.types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import type { WorkflowListResource } from '@/Interface';
 
 /*
 	Type guards used in editor-ui project

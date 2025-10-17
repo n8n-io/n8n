@@ -136,6 +136,7 @@ export interface FrontendSettings {
 	};
 	aiBuilder: {
 		enabled: boolean;
+		setup: boolean;
 	};
 	deployment: {
 		type: string;

@@ -11,7 +11,7 @@ import {
 	VIEWS,
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/constants';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';

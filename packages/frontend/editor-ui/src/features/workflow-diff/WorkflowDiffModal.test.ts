@@ -17,12 +17,26 @@ const mockRoute = reactive({
 	name: '',
 	params: {},
 	fullPath: '',
+	query: {},
 });
+
+const mockRouterBack = vi.fn();
+const mockRouterReplace = vi.fn();
+const mockShowError = vi.fn();
+
+vi.mock('@/composables/useToast', () => ({
+	useToast: vi.fn(() => ({
+		showError: mockShowError,
+	})),
+}));
 
 vi.mock('vue-router', () => ({
 	useRoute: () => mockRoute,
 	RouterLink: vi.fn(),
-	useRouter: vi.fn(),
+	useRouter: () => ({
+		back: mockRouterBack,
+		replace: mockRouterReplace,
+	}),
 }));
 
 vi.mock('@/features/workflow-diff/useViewportSync', () => ({
@@ -106,6 +120,17 @@ describe('WorkflowDiffModal', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockShowError.mockClear();
+		mockRouterBack.mockClear();
+		mockRouterReplace.mockClear();
+
+		// Mock window.history.length to simulate having navigation history
+		Object.defineProperty(window.history, 'length', {
+			writable: true,
+			configurable: true,
+			value: 2,
+		});
+
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
@@ -448,6 +473,221 @@ describe('WorkflowDiffModal', () => {
 
 			await waitFor(() => {
 				expect(getByText('Changes')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('Error Handling - Remote Workflow', () => {
+		it('should show toast error and close modal when remote workflow fails to load', async () => {
+			sourceControlStore.getRemoteWorkflow.mockRejectedValue(
+				new Error('Remote API error') as never,
+			);
+
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledTimes(1);
+				expect(mockRouterBack).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		it('should continue loading local workflow when remote fails', async () => {
+			sourceControlStore.getRemoteWorkflow.mockRejectedValue(
+				new Error('Remote API error') as never,
+			);
+
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
+			});
+		});
+	});
+
+	describe('Error Handling - Local Workflow', () => {
+		it('should show toast error and close modal when local workflow fails to load', async () => {
+			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
+
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledTimes(1);
+				expect(mockRouterBack).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		it('should continue loading remote workflow when local fails', async () => {
+			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
+
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(sourceControlStore.getRemoteWorkflow).toHaveBeenCalledWith('test-workflow-id');
+			});
+		});
+	});
+
+	describe('Error Handling - Both Workflows', () => {
+		it('should show both toast errors but close modal only once when both workflows fail', async () => {
+			sourceControlStore.getRemoteWorkflow.mockRejectedValue(
+				new Error('Remote API error') as never,
+			);
+			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
+
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledTimes(2);
+				expect(mockRouterBack).toHaveBeenCalledTimes(1);
+			});
+		});
+	});
+
+	describe('Successful Loading', () => {
+		it('should load both remote and local workflows successfully', async () => {
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(sourceControlStore.getRemoteWorkflow).toHaveBeenCalledWith('test-workflow-id');
+				expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
+			});
+		});
+
+		it('should load node types before fetching workflows', async () => {
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
+			});
+		});
+
+		it('should not show toast errors on successful load', async () => {
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(sourceControlStore.getRemoteWorkflow).toHaveBeenCalled();
+				expect(workflowsStore.fetchWorkflow).toHaveBeenCalled();
+			});
+
+			expect(mockShowError).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('handleBeforeClose behavior', () => {
+		it('should call router.back when history length > 1', async () => {
+			Object.defineProperty(window.history, 'length', {
+				writable: true,
+				configurable: true,
+				value: 2,
+			});
+
+			const { container } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			const backButton = container.querySelector('[data-icon="arrow-left"]');
+			await userEvent.click(backButton!);
+
+			expect(mockRouterBack).toHaveBeenCalledTimes(1);
+			expect(mockRouterReplace).not.toHaveBeenCalled();
+		});
+
+		it('should call router.replace when history length = 1', async () => {
+			Object.defineProperty(window.history, 'length', {
+				writable: true,
+				configurable: true,
+				value: 1,
+			});
+
+			mockRoute.query = { diff: 'workflow-id', direction: 'push', other: 'param' };
+
+			const { container } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			const backButton = container.querySelector('[data-icon="arrow-left"]');
+			await userEvent.click(backButton!);
+
+			expect(mockRouterBack).not.toHaveBeenCalled();
+			expect(mockRouterReplace).toHaveBeenCalledTimes(1);
+			expect(mockRouterReplace).toHaveBeenCalledWith({
+				query: { other: 'param' },
 			});
 		});
 	});

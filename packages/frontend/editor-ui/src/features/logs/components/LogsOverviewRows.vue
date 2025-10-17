@@ -2,7 +2,7 @@
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import LogsOverviewRow from '@/features/logs/components/LogsOverviewRow.vue';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { useVirtualList } from '@vueuse/core';
 import { watch } from 'vue';
 import { nextTick } from 'vue';
