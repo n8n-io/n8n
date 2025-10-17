@@ -210,7 +210,6 @@ watch(
 	> .chatMessageMarkdown {
 		display: block;
 		box-sizing: border-box;
-		font-size: inherit;
 
 		> *:first-child {
 			margin-top: 0;
@@ -218,6 +217,11 @@ watch(
 
 		> *:last-child {
 			margin-bottom: 0;
+		}
+
+		& * {
+			font-size: var(--font-size--md);
+			line-height: 1.8;
 		}
 
 		p {

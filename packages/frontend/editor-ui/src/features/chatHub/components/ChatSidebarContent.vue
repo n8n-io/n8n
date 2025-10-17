@@ -114,7 +114,7 @@ onMounted(async () => {
 				:active="route.name === CHAT_VIEW"
 			/>
 		</div>
-		<N8nScrollArea as-child>
+		<N8nScrollArea as-child type="scroll">
 			<div :class="$style.items">
 				<div v-for="group in groupedConversations" :key="group.group" :class="$style.group">
 					<N8nText :class="$style.groupHeader" size="small" bold color="text-light">
@@ -144,6 +144,10 @@ onMounted(async () => {
 	flex-direction: column;
 	align-items: stretch;
 	padding-block: var(--spacing--4xs);
+
+	&.isMobileDevice {
+		padding-block: 0;
+	}
 }
 
 .header {
@@ -153,7 +157,7 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-inline: var(--spacing--2xs);
+	padding-inline: var(--spacing--xs);
 	gap: var(--spacing--2xs);
 }
 
@@ -165,7 +169,7 @@ onMounted(async () => {
 .items {
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing--2xs) var(--spacing--sm) var(--spacing--2xs);
+	padding: 0 var(--spacing--xs) var(--spacing--sm) var(--spacing--xs);
 	gap: var(--spacing--xs);
 
 	.isMobileDevice & {
@@ -176,11 +180,11 @@ onMounted(async () => {
 .group {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--5xs);
+	gap: 1px;
 }
 
 .groupHeader {
-	padding: 0 var(--spacing--2xs) var(--spacing--3xs) var(--spacing--2xs);
+	padding: 0 var(--spacing--4xs) var(--spacing--3xs) var(--spacing--4xs);
 }
 
 .loading,

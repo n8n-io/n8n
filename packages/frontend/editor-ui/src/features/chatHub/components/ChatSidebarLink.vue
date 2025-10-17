@@ -67,6 +67,8 @@ defineSlots<{
 	border-radius: var(--spacing--4xs);
 	padding-right: 0;
 
+	&:focus-within,
+	&:has([aria-expanded='true']),
 	&.active,
 	&:hover {
 		background-color: var(--color--foreground);
@@ -83,11 +85,10 @@ defineSlots<{
 	min-width: 0;
 	flex: 1;
 	text-decoration: none;
+	outline: none;
 
-	&:focus-visible {
-		outline: 1px solid var(--color--secondary);
-		outline-offset: -1px;
-		border-radius: var(--spacing--4xs);
+	&:active {
+		color: var(--color--text--shade-1);
 	}
 }
 
@@ -106,6 +107,7 @@ defineSlots<{
 	flex-shrink: 0;
 	width: 0;
 
+	.menuItem:has([aria-expanded='true']) &,
 	.menuItem:has(:focus) &,
 	.menuItem:hover &,
 	.active & {

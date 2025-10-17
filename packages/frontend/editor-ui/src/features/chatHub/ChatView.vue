@@ -307,7 +307,7 @@ function handleSelectCredentials(provider: ChatHubProvider, credentialsId: strin
 		/>
 
 		<N8nScrollArea
-			type="hover"
+			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
 			as-child
@@ -396,8 +396,12 @@ function handleSelectCredentials(provider: ChatHubProvider, credentialsId: strin
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-	justify-content: center;
+	justify-content: start;
 	gap: var(--spacing--2xl);
+
+	.isNewChat & {
+		justify-content: center;
+	}
 }
 
 .header {
@@ -416,7 +420,7 @@ function handleSelectCredentials(provider: ChatHubProvider, credentialsId: strin
 .messageList {
 	width: 100%;
 	max-width: 55rem;
-	min-height: 100vh;
+	min-height: 100%;
 	align-self: center;
 	display: flex;
 	flex-direction: column;
