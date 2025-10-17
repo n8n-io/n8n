@@ -5,7 +5,7 @@ import { N8N_VERSION } from '@/constants';
 
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { allRules, RuleInstances } from './rules';
-import type { DetectionReport, DetectionOptions } from './types';
+import type { DetectionReport, DetectionOptions, BreakingChangeVersion } from './types';
 import { BreakingChangeSeverity } from './types';
 
 @Service()
@@ -15,7 +15,6 @@ export class BreakingChangeService {
 		private readonly logger: Logger,
 	) {
 		this.logger = logger.scoped('breaking-changes');
-		this.registerRules();
 	}
 
 	registerRules() {
@@ -25,7 +24,10 @@ export class BreakingChangeService {
 		this.ruleRegistry.registerAll(rulesServices);
 	}
 
-	async detect(targetVersion: 'v2', options: DetectionOptions = {}): Promise<DetectionReport> {
+	async detect(
+		targetVersion: BreakingChangeVersion,
+		options: DetectionOptions = {},
+	): Promise<DetectionReport> {
 		const startTime = Date.now();
 		this.logger.info('Starting breaking change detection', { targetVersion, options });
 

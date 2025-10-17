@@ -24,7 +24,7 @@ export class RemovedNodesRule extends AbstractBreakingChangeRule {
 	getMetadata(): BreakingChangeMetadata {
 		return {
 			id: 'removed-nodes-v2',
-			version: 'v2.0.0',
+			version: 'v2',
 			title: 'Removed Deprecated Nodes',
 			description: 'Several deprecated nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.WORKFLOW,

@@ -18,7 +18,7 @@ export class ProcessEnvAccessRule extends AbstractBreakingChangeRule {
 	getMetadata(): BreakingChangeMetadata {
 		return {
 			id: 'process-env-access-v2',
-			version: 'v2.0.0',
+			version: 'v2',
 			title: 'Block process.env Access in Expressions',
 			description: 'Direct access to process.env is blocked by default for security',
 			category: BreakingChangeCategory.WORKFLOW,

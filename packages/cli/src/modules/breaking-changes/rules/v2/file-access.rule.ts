@@ -20,7 +20,7 @@ export class FileAccessRule extends AbstractBreakingChangeRule {
 	getMetadata(): BreakingChangeMetadata {
 		return {
 			id: 'file-access-restriction-v2',
-			version: 'v2.0.0',
+			version: 'v2',
 			title: 'File Access Restrictions',
 			description: 'File access is now restricted to a default directory for security purposes',
 			category: BreakingChangeCategory.WORKFLOW,

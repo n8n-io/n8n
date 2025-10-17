@@ -19,9 +19,11 @@ export const enum IssueLevel {
 	INFO = 'info',
 }
 
+export type BreakingChangeVersion = 'v2';
+
 export interface BreakingChangeMetadata {
 	id: string;
-	version: string; // e.g., 'v2.0.0'
+	version: BreakingChangeVersion;
 	title: string;
 	description: string;
 	category: BreakingChangeCategory;
