@@ -19,7 +19,7 @@ export const dataTableColumnNameSchema = z
 	.min(1)
 	.max(DATA_TABLE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
 	.regex(DATA_TABLE_COLUMN_REGEX, DATA_TABLE_COLUMN_ERROR_MESSAGE);
-export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
+export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'json']);
 
 export const dataTableCreateColumnSchema = z.object({
 	name: dataTableColumnNameSchema,
@@ -64,4 +64,5 @@ export const dataTableColumnValueSchema = z.union([
 	z.boolean(),
 	z.null(),
 	z.date(),
+	z.record(z.any()),
 ]);

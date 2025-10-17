@@ -24,7 +24,7 @@ describe('selectMany utils', () => {
 		filters = [
 			{
 				condition: 'eq',
-				keyName: 'id',
+				keyName: 'id (string) (string)',
 				keyValue: 1,
 			},
 		];
@@ -132,7 +132,7 @@ describe('selectMany utils', () => {
 		describe('filter conditions', () => {
 			it('should handle "eq" condition', async () => {
 				// ARRANGE
-				filters = [{ condition: 'eq', keyName: 'name', keyValue: 'John' }];
+				filters = [{ condition: 'eq', keyName: 'name (string)', keyValue: 'John' }];
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'John' }], count: 1 });
 
 				// ACT
@@ -144,7 +144,7 @@ describe('selectMany utils', () => {
 
 			it('should handle "neq" condition', async () => {
 				// ARRANGE
-				filters = [{ condition: 'neq', keyName: 'name', keyValue: 'John' }];
+				filters = [{ condition: 'neq', keyName: 'name (string)', keyValue: 'John' }];
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'Jane' }], count: 1 });
 
 				// ACT
@@ -156,7 +156,7 @@ describe('selectMany utils', () => {
 
 			it('should handle "gt" condition with numbers', async () => {
 				// ARRANGE
-				filters = [{ condition: 'gt', keyName: 'age', keyValue: 25 }];
+				filters = [{ condition: 'gt', keyName: 'age (number)', keyValue: 25 }];
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, age: 30 }], count: 1 });
 
 				// ACT
@@ -168,7 +168,7 @@ describe('selectMany utils', () => {
 
 			it('should handle "gte" condition with numbers', async () => {
 				// ARRANGE
-				filters = [{ condition: 'gte', keyName: 'age', keyValue: 25 }];
+				filters = [{ condition: 'gte', keyName: 'age (number)', keyValue: 25 }];
 				getManyRowsAndCount.mockReturnValue({
 					data: [
 						{ id: 1, age: 25 },
@@ -186,7 +186,7 @@ describe('selectMany utils', () => {
 
 			it('should handle "lt" condition with numbers', async () => {
 				// ARRANGE
-				filters = [{ condition: 'lt', keyName: 'age', keyValue: 30 }];
+				filters = [{ condition: 'lt', keyName: 'age (number)', keyValue: 30 }];
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, age: 25 }], count: 1 });
 
 				// ACT
@@ -198,7 +198,7 @@ describe('selectMany utils', () => {
 
 			it('should handle "lte" condition with numbers', async () => {
 				// ARRANGE
-				filters = [{ condition: 'lte', keyName: 'age', keyValue: 30 }];
+				filters = [{ condition: 'lte', keyName: 'age (number)', keyValue: 30 }];
 				getManyRowsAndCount.mockReturnValue({
 					data: [
 						{ id: 1, age: 25 },
@@ -216,7 +216,7 @@ describe('selectMany utils', () => {
 
 			it('should handle "like" condition with pattern matching', async () => {
 				// ARRANGE
-				filters = [{ condition: 'like', keyName: 'name', keyValue: '%Mar%' }];
+				filters = [{ condition: 'like', keyName: 'name (string)', keyValue: '%Mar%' }];
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'Anne-Marie' }], count: 1 });
 
 				// ACT
@@ -228,7 +228,7 @@ describe('selectMany utils', () => {
 
 			it('should handle "ilike" condition with case-insensitive pattern matching', async () => {
 				// ARRANGE
-				filters = [{ condition: 'ilike', keyName: 'name', keyValue: '%mar%' }];
+				filters = [{ condition: 'ilike', keyName: 'name (string)', keyValue: '%mar%' }];
 				getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, name: 'Anne-Marie' }], count: 1 });
 
 				// ACT
@@ -241,8 +241,8 @@ describe('selectMany utils', () => {
 			it('should handle multiple conditions with ANY_CONDITION (OR logic - matches records satisfying either condition)', async () => {
 				// ARRANGE
 				filters = [
-					{ condition: 'eq', keyName: 'status', keyValue: 'active' },
-					{ condition: 'gt', keyName: 'age', keyValue: 50 },
+					{ condition: 'eq', keyName: 'status (string)', keyValue: 'active' },
+					{ condition: 'gt', keyName: 'age (number)', keyValue: 50 },
 				];
 				getManyRowsAndCount.mockReturnValue({
 					data: [{ id: 1, status: 'active', age: 25 }],
@@ -259,8 +259,8 @@ describe('selectMany utils', () => {
 			it('should handle multiple conditions with ALL_CONDITIONS (AND logic - matches records satisfying all conditions)', async () => {
 				// ARRANGE
 				filters = [
-					{ condition: 'eq', keyName: 'status', keyValue: 'active' },
-					{ condition: 'gte', keyName: 'age', keyValue: 21 },
+					{ condition: 'eq', keyName: 'status (string)', keyValue: 'active' },
+					{ condition: 'gte', keyName: 'age (number)', keyValue: 21 },
 				];
 				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
 					switch (field) {
@@ -287,8 +287,8 @@ describe('selectMany utils', () => {
 			it('should handle ALL_CONDITIONS excluding records that match only one condition (proves AND logic)', async () => {
 				// ARRANGE
 				filters = [
-					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
-					{ condition: 'gte', keyName: 'age', keyValue: 21 },
+					{ condition: 'eq', keyName: 'status (string)', keyValue: 'inactive' },
+					{ condition: 'gte', keyName: 'age (number)', keyValue: 21 },
 				];
 				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
 					switch (field) {
@@ -315,8 +315,8 @@ describe('selectMany utils', () => {
 			it('should handle ANY_CONDITION including records that match only one condition (proves OR logic)', async () => {
 				// ARRANGE
 				filters = [
-					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
-					{ condition: 'gte', keyName: 'age', keyValue: 21 },
+					{ condition: 'eq', keyName: 'status (string)', keyValue: 'inactive' },
+					{ condition: 'gte', keyName: 'age (number)', keyValue: 21 },
 				];
 				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
 					switch (field) {
@@ -346,8 +346,8 @@ describe('selectMany utils', () => {
 		it('should validate filter conditions against table schema', async () => {
 			// ARRANGE
 			filters = [
-				{ condition: 'eq', keyName: 'name', keyValue: 'John' }, // Valid column
-				{ condition: 'eq', keyName: 'invalid_column', keyValue: 'test' }, // Invalid column
+				{ condition: 'eq', keyName: 'name (string)', keyValue: 'John' }, // Valid column
+				{ condition: 'eq', keyName: 'invalid_column (string)', keyValue: 'test' }, // Invalid column
 			];
 
 			// ACT & ASSERT
@@ -364,8 +364,8 @@ describe('selectMany utils', () => {
 		it('should allow system columns in filter conditions', async () => {
 			// ARRANGE
 			filters = [
-				{ condition: 'eq', keyName: 'id', keyValue: 1 }, // System column
-				{ condition: 'neq', keyName: 'createdAt', keyValue: null }, // System column
+				{ condition: 'eq', keyName: 'id (string)', keyValue: 1 }, // System column
+				{ condition: 'neq', keyName: 'createdAt (date)', keyValue: null }, // System column
 			];
 
 			// ACT
@@ -379,8 +379,8 @@ describe('selectMany utils', () => {
 		it('should allow combination of system and custom columns', async () => {
 			// ARRANGE
 			filters = [
-				{ condition: 'eq', keyName: 'id', keyValue: 1 }, // System column
-				{ condition: 'eq', keyName: 'name', keyValue: 'John' }, // Custom column
+				{ condition: 'eq', keyName: 'id (string)', keyValue: 1 }, // System column
+				{ condition: 'eq', keyName: 'name (string)', keyValue: 'John' }, // Custom column
 			];
 
 			// ACT
@@ -406,8 +406,8 @@ describe('selectMany utils', () => {
 		it('should report multiple invalid columns in error message', async () => {
 			// ARRANGE
 			filters = [
-				{ condition: 'eq', keyName: 'invalid1', keyValue: 'test1' },
-				{ condition: 'eq', keyName: 'invalid2', keyValue: 'test2' },
+				{ condition: 'eq', keyName: 'invalid1 (string)', keyValue: 'test1' },
+				{ condition: 'eq', keyName: 'invalid2 (string)', keyValue: 'test2' },
 			];
 
 			// ACT & ASSERT
