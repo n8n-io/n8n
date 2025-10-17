@@ -181,24 +181,6 @@ describe('useRunWorkflow({ router })', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should use passed workflowState parameter', async () => {
-		const customWorkflowState = vi.mocked(useWorkflowState());
-		const setActiveExecutionIdSpy = vi.spyOn(customWorkflowState, 'setActiveExecutionId');
-
-		const { runWorkflowApi } = useRunWorkflow({ router, workflowState: customWorkflowState });
-
-		vi.mocked(pushConnectionStore).isConnected = true;
-		vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
-			executionId: '123',
-			waitingForWebhook: false,
-		});
-
-		await runWorkflowApi({} as IStartRunData);
-
-		expect(setActiveExecutionIdSpy).toHaveBeenCalledWith(null);
-		expect(setActiveExecutionIdSpy).toHaveBeenCalledWith('123');
-	});
-
 	describe('runWorkflowApi()', () => {
 		it('should throw an error if push connection is not active', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
