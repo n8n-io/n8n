@@ -76,6 +76,7 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
+			aiAssistant: { manage: true },
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
