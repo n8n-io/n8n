@@ -1,6 +1,6 @@
 import ProjectVariables from '@/views/ProjectVariables.vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature, VARIABLE_MODAL_KEY } from '@/constants';
@@ -12,8 +12,8 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
-import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
-import useEnvironmentsStore from '@/features/environments.ee/environments.store';
+import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 
 const router = createRouter({
 	history: createWebHistory(),

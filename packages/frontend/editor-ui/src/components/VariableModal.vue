@@ -16,9 +16,9 @@ import {
 	N8nIcon,
 } from '@n8n/design-system';
 import type { Rule, RuleGroup } from '@/Interface';
-import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
-import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 

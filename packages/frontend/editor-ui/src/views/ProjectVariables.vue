@@ -6,7 +6,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
@@ -32,15 +32,15 @@ import {
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
-import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
-import VariablesUsageBadge from '@/features/environments.ee/components/VariablesUsageBadge.vue';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { useProjectPages } from '@/features/projects/composables/useProjectPages';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import ProjectHeader from '@/features/projects/components/ProjectHeader.vue';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
+import VariablesUsageBadge from '@/features/settings/environments.ee/components/VariablesUsageBadge.vue';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { isVariableResource } from '@/utils/typeGuards';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 

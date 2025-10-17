@@ -23,7 +23,7 @@ const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = vi.hoisted(
 	resolveRelatedExecutionUrl: vi.fn().mockReturnValue('https://test.com'),
 }));
 
-vi.mock('@/features/executions/composables/useExecutionHelpers', () => ({
+vi.mock('@/features/execution/executions/composables/useExecutionHelpers', () => ({
 	useExecutionHelpers: () => ({
 		trackOpeningRelatedExecution,
 		resolveRelatedExecutionUrl,

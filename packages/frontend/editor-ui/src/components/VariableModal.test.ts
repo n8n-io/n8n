@@ -6,9 +6,9 @@ import { VARIABLE_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';
-import useEnvironmentsStore from '@/features/environments.ee/environments.store';
-import type { EnvironmentVariable } from '@/features/environments.ee/environments.types';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({

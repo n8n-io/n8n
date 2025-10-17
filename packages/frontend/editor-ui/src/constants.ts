@@ -9,10 +9,10 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
-} from '@/features/canvas/canvas.types';
+} from '@/features/workflows/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
-import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
+import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
 import type { TelemetryContext } from './types/telemetry';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { WorkflowState } from './composables/useWorkflowState';

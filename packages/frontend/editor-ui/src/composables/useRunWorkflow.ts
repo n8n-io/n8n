@@ -3,7 +3,7 @@ import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsStopData,
-} from '@/features/executions/executions.types';
+} from '@/features/execution/executions/executions.types';
 
 import type {
 	IRunData,
@@ -30,14 +30,14 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { displayForm } from '@/features/executions/executions.utils';
+import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
 import get from 'lodash/get';
-import { useExecutionsStore } from '@/features/executions/executions.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
