@@ -3,9 +3,13 @@ import { type HLJSApi } from 'highlight.js';
 import { ref } from 'vue';
 
 let hljsInstance: HLJSApi | undefined;
-let asyncImportPromise:
-	| Promise<[typeof import('highlight.js'), typeof import('./languageModules')]>
-	| undefined;
+let asyncImport:
+	| {
+			status: 'inProgress';
+			promise: Promise<[typeof import('highlight.js'), typeof import('./languageModules')]>;
+	  }
+	| { status: 'uninitialized' }
+	| { status: 'done' } = { status: 'uninitialized' };
 
 export function useChatHubMarkdownOptions() {
 	const forceReRenderKey = ref(0);
@@ -31,18 +35,24 @@ export function useChatHubMarkdownOptions() {
 	};
 
 	async function loadLanguageModules() {
-		if (asyncImportPromise) {
-			await asyncImportPromise;
+		if (asyncImport.status === 'done') {
+			return;
+		}
+
+		if (asyncImport.status === 'inProgress') {
+			await asyncImport.promise;
 			forceReRenderKey.value++;
 			return;
 		}
 
 		try {
-			asyncImportPromise = Promise.all([import('highlight.js'), import('./languageModules')]);
+			const promise = Promise.all([import('highlight.js'), import('./languageModules')]);
 
-			const [hljs, languages] = await asyncImportPromise;
+			asyncImport = { status: 'inProgress', promise };
 
-			asyncImportPromise = undefined;
+			const [hljs, languages] = await asyncImport.promise;
+
+			asyncImport = { status: 'done' };
 			hljsInstance = hljs.default.newInstance();
 
 			for (const [lang, module] of Object.entries(languages)) {
