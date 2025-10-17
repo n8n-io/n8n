@@ -14,6 +14,7 @@ import {
 
 import type { IExpenseDocument } from './GenericFunctions';
 import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsTextract implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,13 +31,9 @@ export class AwsTextract implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Operation',
 				name: 'operation',

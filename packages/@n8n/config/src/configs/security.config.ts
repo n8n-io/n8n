@@ -51,4 +51,8 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
 	disableBareRepos: boolean = false;
+
+	/** Whether to allow access to AWS system credentials, e.g. in awsAssumeRole credentials */
+	@Env('N8N_AWS_SYSTEM_CREDENTIALS_ACCESS_ENABLED')
+	awsSystemCredentialsAccess: boolean = false;
 }
