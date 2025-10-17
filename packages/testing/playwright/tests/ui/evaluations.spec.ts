@@ -11,7 +11,7 @@ test.describe('Evaluations @capability:proxy', () => {
 	test('should load evaluations workflow and execute twice', async ({ n8n, proxyServer }) => {
 		await proxyServer.loadExpectations('evaluations');
 
-		await n8n.api.credentialApi.createCredentialFromDefinition({
+		await n8n.api.credentials.createCredentialFromDefinition({
 			name: 'Test Google Sheets',
 			type: 'googleApi',
 			data: {

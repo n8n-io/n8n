@@ -7,7 +7,7 @@ import {
 } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useTemplatesStore } from '@/features/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { jsonParse } from 'n8n-workflow';

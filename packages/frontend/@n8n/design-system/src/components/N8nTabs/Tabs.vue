@@ -91,6 +91,7 @@ const scrollRight = () => scroll(50);
 				v-for="option in options"
 				:id="option.value.toString()"
 				:key="option.value"
+				:data-test-id="`tab-${option.value.toString()}`"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
@@ -134,7 +135,6 @@ const scrollRight = () => scroll(50);
 							[$style.noText]: !option.label,
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
-						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
 						<N8nIcon
@@ -175,8 +175,8 @@ const scrollRight = () => scroll(50);
 }
 
 .tabs {
-	color: var(--color-text-base);
-	font-weight: var(--font-weight-medium);
+	color: var(--color--text);
+	font-weight: var(--font-weight--medium);
 	display: flex;
 	align-items: center;
 	width: 100%;
@@ -193,38 +193,38 @@ const scrollRight = () => scroll(50);
 	scrollbar-width: none; /* Firefox */
 
 	.small.modern & {
-		gap: var(--spacing-xs);
+		gap: var(--spacing--xs);
 	}
 }
 
 .tab {
-	--active-tab-border-width: 2px;
+	--tabs--tab--border-width--active: 2px;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
-	padding: 0 var(--spacing-s);
-	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
-	font-size: var(--font-size-s);
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--sm);
+	padding-bottom: calc(var(--spacing--2xs) + var(--tabs--tab--border-width--active));
+	font-size: var(--font-size--sm);
 
 	cursor: pointer;
 	white-space: nowrap;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	span + span {
-		margin-left: var(--spacing-4xs);
+		margin-left: var(--spacing--4xs);
 	}
 
 	.modern & {
-		padding-bottom: calc(var(--spacing-xs) + var(--active-tab-border-width));
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
+		padding-bottom: calc(var(--spacing--xs) + var(--tabs--tab--border-width--active));
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--bold);
 	}
 
 	.small & {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
 	}
 
 	.small.modern & {
@@ -233,12 +233,12 @@ const scrollRight = () => scroll(50);
 }
 
 .activeTab {
-	color: var(--color-primary);
-	padding-bottom: var(--spacing-2xs);
-	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
+	color: var(--color--primary);
+	padding-bottom: var(--spacing--2xs);
+	border-bottom: var(--color--primary) var(--tabs--tab--border-width--active) solid;
 
 	.modern & {
-		padding-bottom: var(--spacing-xs);
+		padding-bottom: var(--spacing--xs);
 	}
 }
 
@@ -248,16 +248,16 @@ const scrollRight = () => scroll(50);
 
 .link {
 	cursor: pointer;
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
 .external {
 	display: inline-block;
-	margin-left: var(--spacing-5xs);
+	margin-left: var(--spacing--5xs);
 
 	.noText & {
 		display: block;
@@ -270,22 +270,22 @@ const scrollRight = () => scroll(50);
 }
 
 .dangerTab {
-	color: var(--color-danger);
+	color: var(--color--danger);
 
 	&:hover {
-		color: var(--color-danger);
+		color: var(--color--danger);
 	}
 }
 
 .button {
 	position: absolute;
-	background-color: var(--color-tabs-arrow-buttons, var(--color-background-base));
+	background-color: var(--tabs--arrow-buttons--color, var(--color--background));
 	z-index: 1;
 	height: 24px;
 	width: 10px;
 	display: flex;
 	align-items: center;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .notificationContainer {
@@ -305,7 +305,7 @@ const scrollRight = () => scroll(50);
 		display: block;
 		height: 0.3em;
 		width: 0.3em;
-		background-color: var(--color-primary);
+		background-color: var(--color--primary);
 		border-radius: 50%;
 	}
 }

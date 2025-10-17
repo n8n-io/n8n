@@ -66,6 +66,7 @@ export const defaultSettings: FrontendSettings = {
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
+		proxy: '',
 	},
 	publicApi: {
 		enabled: false,
@@ -133,6 +134,10 @@ export const defaultSettings: FrontendSettings = {
 	},
 	askAi: {
 		enabled: false,
+	},
+	aiBuilder: {
+		enabled: false,
+		setup: false,
 	},
 	workflowHistory: {
 		pruneTime: 0,

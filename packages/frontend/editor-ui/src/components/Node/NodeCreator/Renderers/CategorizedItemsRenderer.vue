@@ -10,7 +10,7 @@ import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import CommunityNodeInstallHint from '../Panel/CommunityNodeInstallHint.vue';
+import CommunityNodeInstallHint from '@/features/communityNodes/components/nodeCreator/CommunityNodeInstallHint.vue';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -24,6 +24,7 @@ export interface Props {
 
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
@@ -112,12 +113,12 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			@click="toggleExpanded"
 		>
 			<span v-if="mouseOverTooltip" :class="$style.mouseOverTooltip">
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="circle-help" size="small" />
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nIcon icon="circle-help" size="small" />
 					<template #content>
 						<div v-n8n-html="mouseOverTooltip" />
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</span>
 		</CategoryItem>
 
@@ -149,10 +150,10 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 <style lang="scss" module>
 .mouseOverTooltip {
 	opacity: 0;
-	margin-left: var(--spacing-3xs);
-	color: var(--color-foreground-xdark);
+	margin-left: var(--spacing--3xs);
+	color: var(--color--foreground--shade-2);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	.categorizedItemsRenderer:hover & {
@@ -163,11 +164,11 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 	max-width: 260px;
 }
 .contentSlot {
-	padding: 0 var(--spacing-s) var(--spacing-3xs);
-	margin-top: var(--spacing-xs);
+	padding: 0 var(--spacing--sm) var(--spacing--3xs);
+	margin-top: var(--spacing--xs);
 }
 .categorizedItemsRenderer {
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 .preview {
 	opacity: 0.7;

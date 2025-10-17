@@ -16,7 +16,7 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1, 2, 3, 4, 5, 6]'
+        default: '[1, 2, 3, 4, 5, 6, 7]'
         type: string
       docker-image:
         description: 'Docker image to use (for docker-pull mode)'
@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6]') }}
+        shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6, 7]') }}
     name: Test (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
 
     steps:

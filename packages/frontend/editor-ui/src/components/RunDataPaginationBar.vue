@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 
+import { ElPagination } from 'element-plus';
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 const { pageSize, total, currentPage } = defineProps<{
 	pageSize: number;
 	total: number;
@@ -15,7 +17,7 @@ const pageSizes = [1, 10, 25, 50, 100];
 
 <template>
 	<div :class="$style.pagination" data-test-id="ndv-data-pagination">
-		<el-pagination
+		<ElPagination
 			background
 			:hide-on-single-page="true"
 			:current-page="currentPage"
@@ -25,7 +27,7 @@ const pageSizes = [1, 10, 25, 50, 100];
 			:total="total"
 			@update:current-page="(value: number) => emit('update:current-page', value)"
 		>
-		</el-pagination>
+		</ElPagination>
 
 		<div :class="$style.pageSizeSelector">
 			<N8nSelect

@@ -34,6 +34,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -199,6 +200,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await super.init();
+
+		Container.get(DeprecationService).warn();
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 

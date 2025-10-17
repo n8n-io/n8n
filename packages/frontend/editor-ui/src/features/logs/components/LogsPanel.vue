@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { nextTick, computed, useTemplateRef, ref } from 'vue';
-import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/features/logs/composables/useChatState';
 import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
 import ChatMessagesPanel from '@/features/logs/components/ChatMessagesPanel.vue';
@@ -18,6 +17,7 @@ import { type KeyMap } from '@/composables/useKeybindings';
 import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const container = useTemplateRef('container');
@@ -60,7 +60,7 @@ const {
 } = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData();
+	useLogsExecutionData({ isEnabled: isOpen });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
@@ -186,11 +186,12 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
 							:is-new-logs-enabled="true"
+							:is-header-clickable="!isPoppedOut"
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
 							@send-message="sendMessage"
-							@click-header="onToggleOpen(true)"
+							@click-header="onToggleOpen"
 						/>
 					</N8nResizeWrapper>
 					<div ref="logsContainer" :class="$style.logsContainer">
@@ -214,7 +215,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 								:entries="entries"
 								:latest-node-info="latestNodeNameById"
 								:flat-log-entries="flatLogEntries"
-								@click-header="onToggleOpen(true)"
+								:is-header-clickable="!isPoppedOut"
+								@click-header="onToggleOpen"
 								@select="select"
 								@clear-execution-data="resetExecutionData"
 								@toggle-expanded="toggleExpanded"
@@ -238,7 +240,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:panels="logsStore.detailsState"
 							:collapsing-input-table-column-name="inputCollapsingColumnName"
 							:collapsing-output-table-column-name="outputCollapsingColumnName"
-							@click-header="onToggleOpen(true)"
+							:is-header-clickable="!isPoppedOut"
+							@click-header="onToggleOpen"
 							@toggle-input-open="logsStore.toggleInputOpen"
 							@toggle-output-open="logsStore.toggleOutputOpen"
 							@collapsing-input-table-column-changed="handleChangeInputTableColumnCollapsing"
@@ -266,8 +269,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	height: 100%;
 	min-height: 0;
 	flex-basis: 0;
-	border-top: var(--border-base);
-	background-color: var(--color-background-light);
+	border-top: var(--border);
+	background-color: var(--color--background--light-2);
 
 	.poppedOut & {
 		border-top: none;
@@ -280,7 +283,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	flex-grow: 1;
 
 	& > *:not(:last-child) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 
@@ -295,7 +298,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	align-items: stretch;
 
 	& > *:not(:last-child) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 

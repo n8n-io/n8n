@@ -3,10 +3,11 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useRoute, useRouter } from 'vue-router';
 
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 defineProps<{
 	isCollapsed: boolean;
 }>();
@@ -81,11 +82,11 @@ function pullWorkfolder() {
 			data-test-id="main-sidebar-source-control-connected"
 		>
 			<span :class="$style.branchName">
-				<n8n-icon icon="git-branch" />
+				<N8nIcon icon="git-branch" />
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
-				<n8n-tooltip
+				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
 					:show-after="tooltipOpenDelay"
 					:placement="isCollapsed ? 'right' : 'top'"
@@ -99,7 +100,7 @@ function pullWorkfolder() {
 							}}
 						</div>
 					</template>
-					<n8n-button
+					<N8nButton
 						:class="{
 							'mr-2xs': !isCollapsed,
 							'mb-2xs': isCollapsed,
@@ -113,8 +114,8 @@ function pullWorkfolder() {
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
 					/>
-				</n8n-tooltip>
-				<n8n-tooltip
+				</N8nTooltip>
+				<N8nTooltip
 					:disabled="
 						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
 					"
@@ -130,7 +131,7 @@ function pullWorkfolder() {
 							}}
 						</div>
 					</template>
-					<n8n-button
+					<N8nButton
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
@@ -140,7 +141,7 @@ function pullWorkfolder() {
 						size="mini"
 						@click="pushWorkfolder"
 					/>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>
@@ -148,18 +149,17 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
-	margin: var(--spacing-2xs) 0 calc(var(--spacing-2xs) * -1);
-	background: var(--color-background-light);
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	font-size: var(--font-size-2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--lg);
+	background: var(--color--background--light-2);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	font-size: var(--font-size--2xs);
 
 	&.isConnected {
-		padding-left: var(--spacing-m);
-		border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);
+		padding-left: var(--spacing--md);
+		border-left: var(--spacing--3xs) var(--border-style) var(--color--foreground);
 
 		&.collapsed {
-			padding-left: var(--spacing-xs);
+			padding-left: var(--spacing--xs);
 		}
 	}
 
@@ -168,7 +168,7 @@ function pullWorkfolder() {
 	}
 
 	button {
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size--3xs);
 	}
 }
 
@@ -179,8 +179,8 @@ function pullWorkfolder() {
 
 .collapsed {
 	text-align: center;
-	padding-left: var(--spacing-s);
-	padding-right: var(--spacing-s);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--sm);
 
 	.connected {
 		> span {

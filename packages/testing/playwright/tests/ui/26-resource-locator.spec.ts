@@ -121,6 +121,9 @@ test.describe('Resource Locator', () => {
 
 		await n8n.ndv.getInputPanel().click(); // remove focus from input, hide expression preview
 
+		// wait for the expression to be evaluated and show the error
+		await expect(n8n.ndv.getParameterInputHint()).toContainText('ERROR');
+
 		await n8n.ndv.getResourceLocatorInput('rlc').click();
 
 		await expect(n8n.page.getByTestId('rlc-item').first()).toBeVisible();

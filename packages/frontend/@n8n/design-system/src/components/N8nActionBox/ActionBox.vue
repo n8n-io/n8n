@@ -1,12 +1,11 @@
 <script lang="ts" setup>
-import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
-import type { ButtonType } from '@n8n/design-system/types/button';
-
+import type { ButtonType } from '../../types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 interface ActionBoxProps {
 	emoji?: string;
@@ -56,6 +55,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				:disabled="buttonDisabled"
 				:icon="buttonIcon"
 				size="large"
+				role="button"
 				@click="$emit('click:button', $event)"
 			/>
 		</N8nTooltip>
@@ -74,15 +74,15 @@ withDefaults(defineProps<ActionBoxProps>(), {
 
 <style lang="scss" module>
 .container {
-	border: 2px dashed var(--color-foreground-base);
-	border-radius: var(--border-radius-large);
+	border: 2px dashed var(--color--foreground);
+	border-radius: var(--radius--lg);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: var(--spacing-3xl);
+	padding: var(--spacing--3xl);
 
 	> * {
-		margin-bottom: var(--spacing-l);
+		margin-bottom: var(--spacing--lg);
 
 		&:last-child {
 			margin-bottom: 0;
@@ -95,13 +95,13 @@ withDefaults(defineProps<ActionBoxProps>(), {
 }
 
 .heading {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 	text-align: center;
 }
 
 .description {
-	color: var(--color-text-base);
-	margin-bottom: var(--spacing-xl);
+	color: var(--color--text);
+	margin-bottom: var(--spacing--xl);
 	text-align: center;
 }
 

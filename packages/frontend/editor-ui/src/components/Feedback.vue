@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
 	'update:modelValue': [feedback: 'positive' | 'negative'];
 }>();
@@ -49,19 +50,19 @@ function onFeedback(feedback: 'positive' | 'negative') {
 .feedback {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 
 	.feedback-button {
 		cursor: pointer;
-		width: var(--spacing-l);
-		height: var(--spacing-l);
-		color: var(--color-text-light);
+		width: var(--spacing--lg);
+		height: var(--spacing--lg);
+		color: var(--color--text--tint-1);
 		display: flex;
 		justify-content: center;
 		align-items: center;
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 	}
 }

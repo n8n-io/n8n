@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 defineProps<{
 	entityType: 'credential' | 'workflow';
 }>();
@@ -24,11 +24,23 @@ const locale = useI18n();
 						cx="12"
 						cy="12"
 						r="10"
-						stroke="var(--color-text-button-secondary-font)"
+						stroke="var(--text-button--color--text--secondary)"
 						stroke-width="2"
 					/>
-					<rect x="11" y="6" width="2" height="8" fill="var(--color-text-button-secondary-font)" />
-					<rect x="11" y="16" width="2" height="2" fill="var(--color-text-button-secondary-font)" />
+					<rect
+						x="11"
+						y="6"
+						width="2"
+						height="8"
+						fill="var(--text-button--color--text--secondary)"
+					/>
+					<rect
+						x="11"
+						y="16"
+						width="2"
+						height="2"
+						fill="var(--text-button--color--text--secondary)"
+					/>
 				</svg>
 			</div>
 
@@ -62,6 +74,6 @@ const locale = useI18n();
 
 .entity-card {
 	max-width: 400px;
-	padding: var(--spacing-xl);
+	padding: var(--spacing--xl);
 }
 </style>

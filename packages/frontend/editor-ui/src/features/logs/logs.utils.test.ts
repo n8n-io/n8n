@@ -25,7 +25,7 @@ import {
 	createTestLogTreeCreationContext,
 } from './__test__/data';
 import type { LogEntrySelection } from './logs.types';
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
@@ -1166,7 +1166,9 @@ describe(createLogTree, () => {
 		expect(logs[0].children).toHaveLength(1);
 		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
 	});
+});
 
+describe(processFiles, () => {
 	it('should process files correctly', async () => {
 		const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
 		const result = await processFiles([mockFile]);

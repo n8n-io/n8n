@@ -15,6 +15,7 @@ import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import OpenTemplateItem from '../ItemTypes/OpenTemplateItem.vue';
 
+import { N8nLoading } from '@n8n/design-system';
 export interface Props {
 	elements?: INodeCreateElement[];
 	activeIndex?: number;
@@ -215,7 +216,7 @@ watch(
 					/>
 				</div>
 			</div>
-			<n8n-loading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
+			<N8nLoading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
 		</div>
 	</div>
 	<div v-else :class="$style.empty">
@@ -249,7 +250,7 @@ watch(
 }
 .empty {
 	:global([role='alert']) {
-		margin: var(--spacing-xs) var(--spacing-s);
+		margin: var(--spacing--xs) var(--spacing--sm);
 	}
 }
 .itemsRenderer {
@@ -266,18 +267,18 @@ watch(
 	position: relative;
 
 	&:last-child {
-		margin-top: var(--spacing-s);
-		padding-top: var(--spacing-xs);
+		margin-top: var(--spacing--sm);
+		padding-top: var(--spacing--xs);
 
 		&:after {
 			content: '';
 			position: absolute;
-			left: var(--spacing-s);
-			right: var(--spacing-s);
+			left: var(--spacing--sm);
+			right: var(--spacing--sm);
 			top: 0;
 			margin: auto;
 			bottom: 0;
-			border-top: 1px solid var(--color-foreground-base);
+			border-top: 1px solid var(--color--foreground);
 		}
 	}
 }
@@ -285,18 +286,18 @@ watch(
 	position: relative;
 
 	&:last-child {
-		margin-bottom: var(--spacing-s);
-		padding-bottom: var(--spacing-xs);
+		margin-bottom: var(--spacing--sm);
+		padding-bottom: var(--spacing--xs);
 
 		&:after {
 			content: '';
 			position: absolute;
-			left: var(--spacing-s);
-			right: var(--spacing-s);
+			left: var(--spacing--sm);
+			right: var(--spacing--sm);
 			top: 0;
 			margin: auto;
 			bottom: 0;
-			border-bottom: 1px solid var(--color-foreground-base);
+			border-bottom: 1px solid var(--color--foreground);
 		}
 	}
 }

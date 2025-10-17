@@ -39,6 +39,12 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
+import { storeToRefs } from 'pinia';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
 import {
 	N8nCallout,
 	N8nIcon,
@@ -47,13 +53,8 @@ import {
 	N8nLink,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
-import { storeToRefs } from 'pinia';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
 );
@@ -392,10 +393,7 @@ function shouldShowOptions(parameter: INodeProperties): boolean {
 }
 
 function getDependentParametersValues(parameter: INodeProperties): string | null {
-	const loadOptionsDependsOn = getParameterTypeOption<string[] | undefined>(
-		parameter,
-		'loadOptionsDependsOn',
-	);
+	const loadOptionsDependsOn = getParameterTypeOption(parameter, 'loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;
@@ -731,28 +729,28 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	--disabled-fill: var(--color-background-base);
+	--input--color--background--disabled: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;
 		top: -3px;
-		left: calc(-0.5 * var(--spacing-xs));
+		left: calc(-0.5 * var(--spacing--xs));
 		transition: opacity 100ms ease-in;
 		Button {
-			color: var(--color-icon-base);
+			color: var(--icon--color);
 		}
 	}
 	.icon-button > Button:hover {
-		color: var(--color-icon-hover);
+		color: var(--icon--color--hover);
 	}
 
 	.indent > div {
-		padding-left: var(--spacing-s);
+		padding-left: var(--spacing--sm);
 	}
 
 	.multi-parameter {
 		position: relative;
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 
 		.parameter-info {
 			display: none;
@@ -761,7 +759,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 	.parameter-item {
 		position: relative;
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 	}
 	.parameter-item:hover > .icon-button,
 	.multi-parameter:hover > .icon-button {
@@ -769,28 +767,28 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	.parameter-notice {
-		background-color: var(--color-warning-tint-2);
+		background-color: var(--color--warning--tint-2);
 		color: $custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 		}
 	}
 
 	.async-notice {
 		display: block;
-		padding: var(--spacing-3xs) 0;
+		padding: var(--spacing--3xs) 0;
 	}
 
 	.callout-dismiss {
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing--xs);
 		line-height: 1;
 		cursor: pointer;
 	}
 	.callout-dismiss:hover {
-		color: var(--color-icon-hover);
+		color: var(--icon--color--hover);
 	}
 }
 </style>

@@ -1,4 +1,4 @@
-import { createCanvasGraphNode } from '@/__tests__/data';
+import { createCanvasGraphNode } from '@/features/canvas/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -11,7 +11,7 @@ import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { reactive } from 'vue';
-import { useExperimentalNdvStore } from './canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import FocusPanel from './FocusPanel.vue';
 
 vi.mock('vue-router', () => ({
@@ -106,7 +106,7 @@ describe('FocusPanel', () => {
 			vueFlow.addSelectedNodes([graphNode]);
 
 			expect(await rendered.findByTestId('node-parameters')).toBeInTheDocument();
-			expect(rendered.getByText('N0')).toBeInTheDocument(); // title in header
+			expect(rendered.getAllByText('N0')).not.toHaveLength(0); // title in header
 			expect(rendered.getByText('P0')).toBeInTheDocument(); // parameter 0
 			expect(rendered.getByText('P1')).toBeInTheDocument(); // parameter 1
 		});
