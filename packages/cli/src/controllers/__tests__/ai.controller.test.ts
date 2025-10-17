@@ -15,7 +15,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
 
-import { AiUsageService } from '@/services/ai-usage.service';
+import type { AiUsageService } from '@/services/ai-usage.service';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
