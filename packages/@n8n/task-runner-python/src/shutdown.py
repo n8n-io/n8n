@@ -15,8 +15,8 @@ class Shutdown:
     def __init__(
         self,
         task_runner: "TaskRunner",
-        health_check_server: "HealthCheckServer" | None = None,
-        sentry: "TaskRunnerSentry" | None = None,
+        health_check_server: "HealthCheckServer | None" = None,
+        sentry: "TaskRunnerSentry | None" = None,
     ):
         self.logger = logging.getLogger(__name__)
         self.is_shutting_down = False
