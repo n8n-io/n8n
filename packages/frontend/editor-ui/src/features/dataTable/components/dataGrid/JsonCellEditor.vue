@@ -41,10 +41,14 @@ function afterGuiAttached() {
 }
 
 function onKeydown(event: KeyboardEvent) {
+	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey;
 	if (event.key === 'Escape') {
 		event.preventDefault();
 		isCancelledRef.value = true;
 		props.params.api.stopEditing(true);
+	} else if (event.key === 'Enter' && !hasModifier) {
+		event.preventDefault();
+		props.params.api.stopEditing();
 	}
 }
 
@@ -92,9 +96,13 @@ defineExpose({
 	border-radius: var(--radius);
 	font-size: var(--font-size--md);
 
+	.cm-editor {
+		border: none;
+	}
+
 	&:where(:focus-within, :active) {
 		box-shadow: none;
-		border: var(--grid-cell-editing-border);
+		border: var(--grid--cell--border-color--editing);
 	}
 }
 </style>

@@ -194,6 +194,7 @@ function buildModel(): ColumnFilterModel {
 function onReset() {
 	inputValue.value = '';
 	inputValueTo.value = '';
+	inputPath.value = '';
 	selectedOperation.value = availableOptions.value[0]?.key;
 	singleDatePicker.value?.setDate?.(null);
 	startDatePicker.value?.setDate?.(null);
@@ -210,7 +211,7 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 			v-model="inputPath"
 			data-test-id="json-path-input"
 			size="small"
-			:placeholder="i18n.baseText('dataTable.filters.path')"
+			placeholder="a.b[0].c"
 		/>
 		<N8nSelect
 			v-model="selectedOperation"
