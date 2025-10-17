@@ -355,7 +355,7 @@ export const useActions = () => {
 						},
 						{
 							from: { nodeIndex: noOpIndex },
-							to: { nodeIndex: splitInBatchesIndex },
+							to: { nodeIndex: splitInBatchesIndex, inputIndex: 1 },
 						},
 					);
 					break;
