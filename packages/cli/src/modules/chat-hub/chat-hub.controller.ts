@@ -157,7 +157,7 @@ export class ChatHubController {
 		this.logger.debug(`Chat retry request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.regenerateAiMessage(res, req.user, {
+			await this.chatService.regenerateAIMessage(res, req.user, {
 				...payload,
 				userId: req.user.id,
 			});
