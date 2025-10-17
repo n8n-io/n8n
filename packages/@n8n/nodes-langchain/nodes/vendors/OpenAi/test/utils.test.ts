@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import { BufferWindowMemory } from 'langchain/memory';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import {
 	formatToOpenAIFunction,
@@ -10,6 +11,11 @@ import {
 	formatToOpenAIResponsesTool,
 	getChatMessages,
 } from '../helpers/utils';
+
+jest.mock('zod-to-json-schema', () => ({
+	zodToJsonSchema: jest.fn(),
+}));
+const mockZodToJsonSchema = jest.mocked(zodToJsonSchema);
 
 describe('OpenAI message history', () => {
 	it('should only get a limited number of messages', async () => {
@@ -54,8 +60,6 @@ describe('OpenAI message history', () => {
 });
 
 describe('OpenAI formatting functions', () => {
-	const mockZodToJsonSchema = jest.fn();
-
 	const createMockTool = (name: string, description: string, schema: z.ZodSchema): Tool =>
 		({
 			name,
@@ -71,13 +75,6 @@ describe('OpenAI formatting functions', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		jest.doMock('zod-to-json-schema', () => ({
-			zodToJsonSchema: mockZodToJsonSchema,
-		}));
-	});
-
-	afterEach(() => {
-		jest.dontMock('zod-to-json-schema');
 	});
 
 	describe('formatToOpenAIFunction', () => {
