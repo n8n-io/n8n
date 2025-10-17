@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
 import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 import { jsonParse } from 'n8n-workflow';
@@ -17,8 +17,15 @@ const toast = useToast();
 const i18n = useI18n();
 
 const getValue = (): Record<string, unknown> | null => {
+	if (!valueRef.value) {
+		return null;
+	}
 	try {
-		return valueRef.value ? jsonParse(valueRef.value) : null;
+		const parsed = jsonParse(valueRef.value);
+		if (Array.isArray(parsed)) {
+			throw new Error(i18n.baseText('dataTable.error.arrayValuesNotAllowed'));
+		}
+		return parsed as Record<string, unknown>;
 	} catch (e) {
 		toast.showError(e, i18n.baseText('generic.invalidJsonSaveFailed'));
 		return props.params.value;
@@ -44,6 +51,21 @@ function onKeydown(event: KeyboardEvent) {
 function isCancelAfterEnd() {
 	return isCancelledRef.value;
 }
+
+const stopFocusOut = (e: FocusEvent) => {
+	// focus out is triggered when the cm editor is focused in and if we don't stop it it closes the cell editor
+	if (e.target instanceof Element && e.target.classList.contains('ag-cell-focus')) {
+		e.stopImmediatePropagation();
+	}
+};
+
+onMounted(() => {
+	document.addEventListener('focusout', stopFocusOut, true);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('focusout', stopFocusOut, true);
+});
 
 defineExpose({
 	getValue,
