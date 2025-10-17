@@ -1,5 +1,6 @@
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
 import {
+	type IDataObject,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -14,6 +15,7 @@ import { searchModels } from './methods/loadModels';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { formatBuiltInTools } from './common';
 
 export class LmChatOpenAi implements INodeType {
 	methods = {
@@ -28,7 +30,7 @@ export class LmChatOpenAi implements INodeType {
 		name: 'lmChatOpenAi',
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'OpenAI Chat Model',
@@ -187,6 +189,211 @@ export class LmChatOpenAi implements INodeType {
 				},
 			},
 			{
+				displayName: 'Built-in Tools',
+				name: 'builtInTools',
+				placeholder: 'Add Built-in Tool',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Web Search',
+						name: 'webSearch',
+						type: 'collection',
+						default: { searchContextSize: 'medium' },
+						options: [
+							{
+								displayName: 'Search Context Size',
+								name: 'searchContextSize',
+								type: 'options',
+								default: 'medium',
+								options: [
+									{ name: 'Low', value: 'low' },
+									{ name: 'Medium', value: 'medium' },
+									{ name: 'High', value: 'high' },
+								],
+							},
+							{
+								displayName: 'Web Search Allowed Domains',
+								name: 'allowedDomains',
+								type: 'string',
+								default: '',
+								description:
+									'Comma-separated list of domains to search. Only domains in this list will be searched.',
+								placeholder: 'e.g. google.com, wikipedia.org',
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. US, GB',
+							},
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. New York, London',
+							},
+							{
+								displayName: 'Region',
+								name: 'region',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. New York, London',
+							},
+						],
+					},
+					{
+						displayName: 'MCP Servers',
+						name: 'mcpServers',
+						type: 'fixedCollection',
+						placeholder: 'Add MCP Server',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						default: { mcpServerOptions: [{ serverLabel: '' }] },
+						options: [
+							{
+								displayName: 'MCP Server',
+								name: 'mcpServerOptions',
+								values: [
+									{
+										displayName: 'Server Label',
+										name: 'serverLabel',
+										type: 'string',
+										default: '',
+										description: 'A label to identify this MCP server',
+										placeholder: 'e.g. My Database Server',
+									},
+									{
+										displayName: 'Connection Type',
+										name: 'connectionType',
+										type: 'options',
+										default: 'url',
+										options: [
+											{ name: 'URL', value: 'url' },
+											{ name: 'Connector ID', value: 'connector_id' },
+										],
+										description: 'Choose how to connect to the MCP server',
+									},
+									{
+										displayName: 'Server URL',
+										name: 'serverUrl',
+										type: 'string',
+										default: '',
+										description: 'The URL of the MCP server',
+										placeholder: 'e.g. https://api.example.com/mcp',
+										displayOptions: {
+											show: {
+												connectionType: ['url'],
+											},
+										},
+									},
+									{
+										displayName: 'Connector ID',
+										name: 'connectorId',
+										type: 'string',
+										default: '',
+										description: 'The connector ID for the MCP server',
+										placeholder: 'e.g. connector_gmail',
+										displayOptions: {
+											show: {
+												connectionType: ['connector_id'],
+											},
+										},
+									},
+									{
+										displayName: 'Authorization',
+										name: 'authorization',
+										type: 'string',
+										default: '',
+										description: 'Authorization token or credentials for the MCP server',
+									},
+									{
+										displayName: 'Headers',
+										name: 'headers',
+										type: 'json',
+										default: '{}',
+										description: 'Additional headers to send with requests to the MCP server',
+										placeholder: '{"X-Custom-Header": "value"}',
+									},
+									{
+										displayName: 'Server Description',
+										name: 'serverDescription',
+										type: 'string',
+										default: '',
+										description: 'A description of what this MCP server provides',
+										placeholder: 'e.g. Database access for user management',
+										typeOptions: {
+											rows: 2,
+										},
+									},
+									{
+										displayName: 'Allowed Tools',
+										name: 'allowedTools',
+										type: 'string',
+										default: '',
+										description:
+											'Comma-separated list of tools to allow. If not provided, all tools will be allowed.',
+										placeholder: 'e.g. tool1,tool2',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'File Search',
+						name: 'fileSearch',
+						type: 'collection',
+						default: { vectorStoreIds: '[]' },
+						options: [
+							{
+								displayName: 'Vector Store IDs',
+								name: 'vectorStoreIds',
+								type: 'json',
+								default: '[]',
+								required: true,
+							},
+							{
+								displayName: 'Filters',
+								name: 'filters',
+								type: 'json',
+								default: '{}',
+							},
+							{
+								displayName: 'Max Results',
+								name: 'maxResults',
+								type: 'number',
+								default: 1,
+								typeOptions: { minValue: 1, maxValue: 50 },
+							},
+						],
+					},
+					{
+						displayName: 'Local Shell',
+						name: 'localShell',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to allow the model to execute shell commands in a local environment',
+					},
+					{
+						displayName: 'Code Interpreter',
+						name: 'codeInterpreter',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to allow the model to execute code in a local environment',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
@@ -332,6 +539,8 @@ export class LmChatOpenAi implements INodeType {
 				? (this.getNodeParameter('model.value', itemIndex) as string)
 				: (this.getNodeParameter('model', itemIndex) as string);
 
+		const responsesApiEnabled = version >= 1.3;
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;
 			frequencyPenalty?: number;
@@ -378,7 +587,7 @@ export class LmChatOpenAi implements INodeType {
 		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
 			modelKwargs.reasoning_effort = options.reasoningEffort;
 
-		const model = new ChatOpenAI({
+		const fields: ChatOpenAIFields = {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,
@@ -388,10 +597,32 @@ export class LmChatOpenAi implements INodeType {
 			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
-		});
+		};
+
+		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backward compatibility
+		if (responsesApiEnabled) {
+			fields.useResponsesApi = true;
+		}
+
+		const model = new ChatOpenAI(fields);
+
+		if (responsesApiEnabled) {
+			const tools = formatBuiltInTools(
+				this.getNodeParameter('builtInTools', itemIndex, {}) as IDataObject,
+			);
+			if (tools.length) {
+				model.metadata = {
+					...model.metadata,
+					tools,
+				};
+			}
+		}
 
 		return {
 			response: model,
+			metadata: {
+				test: 'aaaa',
+			},
 		};
 	}
 }
