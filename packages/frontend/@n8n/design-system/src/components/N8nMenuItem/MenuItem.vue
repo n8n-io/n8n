@@ -95,40 +95,40 @@ const iconColor = computed(() => {
 	position: relative;
 	width: 100%;
 	max-width: 100%;
-	margin-bottom: var(--spacing-5xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .router-link-active,
 .active {
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 
 .menuItem {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-3xs);
-	gap: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
+	gap: var(--spacing--3xs);
 	cursor: pointer;
-	color: var(--color-text-base);
-	border-radius: var(--spacing-4xs);
+	color: var(--color--text);
+	border-radius: var(--spacing--4xs);
 	cursor: pointer;
 	min-width: 0;
 	width: 100%;
 	position: relative;
 
 	&:hover .menuItemIcon {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 
 .menuItem:hover {
-	background-color: var(--color-foreground-base);
-	color: var(--color-text-dark);
+	background-color: var(--color--foreground);
+	color: var(--color--text--shade-1);
 }
 
 .menuItem:focus-visible {
-	outline: 1px solid var(--color-secondary);
+	outline: 1px solid var(--color--secondary);
 	outline-offset: -1px;
 }
 
@@ -137,40 +137,40 @@ const iconColor = computed(() => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 1;
-	line-height: var(--font-size-l);
+	line-height: var(--font-size--lg);
 	min-width: 0;
 }
 
 .menuItemText * {
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .menuItemIcon {
 	position: relative;
-	width: var(--spacing-s);
-	height: var(--spacing-s);
-	min-width: var(--spacing-s);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	min-width: var(--spacing--sm);
 
 	&.notification::after {
 		content: '';
 		position: absolute;
-		top: calc(var(--spacing-5xs) * -1);
-		right: calc(var(--spacing-5xs) * -1);
-		width: var(--spacing-4xs);
-		height: var(--spacing-4xs);
-		background-color: var(--color-danger);
+		top: calc(var(--spacing--5xs) * -1);
+		right: calc(var(--spacing--5xs) * -1);
+		width: var(--spacing--4xs);
+		height: var(--spacing--4xs);
+		background-color: var(--color--danger);
 		border-radius: 50%;
 	}
 }
 
 .menuItemEmoji {
-	font-size: var(--spacing-s);
+	font-size: var(--spacing--sm);
 	line-height: 1;
 }
 
 .menuItem.active {
 	.menuItemIcon {
-		color: var(--color-foreground-xdark);
+		color: var(--color--foreground--shade-2);
 	}
 }
 </style>

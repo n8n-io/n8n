@@ -2,7 +2,7 @@ import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
@@ -136,7 +136,7 @@ export const usePostHog = defineStore('posthog', () => {
 		const distinctId = `${instanceId}#${userId}`;
 
 		const options: Parameters<typeof window.posthog.init>[1] = {
-			api_host: config.apiHost,
+			api_host: settingsStore.settings.posthog.proxy,
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
 			debug: config.debug,
@@ -179,6 +179,12 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
+	const capture = (event: string, properties: IDataObject) => {
+		if (typeof window.posthog?.capture === 'function') {
+			window.posthog.capture(event, properties);
+		}
+	};
+
 	return {
 		init,
 		isFeatureEnabled,
@@ -187,6 +193,7 @@ export const usePostHog = defineStore('posthog', () => {
 		reset,
 		identify,
 		setMetadata,
+		capture,
 		overrides,
 	};
 });

@@ -1,12 +1,12 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.115.0",
+  "version": "1.116.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
-    "pnpm": ">=10.16.1"
+    "pnpm": ">=10.18.3"
   },
-  "packageManager": "pnpm@10.16.1",
+  "packageManager": "pnpm@10.18.3",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -36,6 +36,7 @@
     "lint:fix": "turbo run lint:fix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "generate:third-party-licenses": "node scripts/generate-third-party-licenses.mjs",
+    "replace-css-tokens": "bash ./scripts/replace-css-tokens.sh",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
@@ -88,6 +89,7 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
+      "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
       "axios": "1.12.0",

@@ -11,7 +11,7 @@ import {
 	VIEWS,
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/constants';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
@@ -23,13 +23,15 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
-import type { FolderShortInfo } from '@/Interface';
+import type { FolderShortInfo } from '@/features/folders/folders.types';
 
 import { N8nIcon } from '@n8n/design-system';
+import { useToast } from '@/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 const pushConnection = usePushConnection({ router });
+const toast = useToast();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
@@ -244,6 +246,23 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 function hideGithubButton() {
 	githubButtonHidden.value = true;
 }
+
+async function onWorkflowDeactivated() {
+	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+		try {
+			// Fetch the updated workflow to get the latest settings after backend processing
+			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value.id);
+			workflowsStore.setWorkflow(updatedWorkflow);
+			toast.showToast({
+				title: locale.baseText('mcp.workflowDeactivated.title'),
+				message: locale.baseText('mcp.workflowDeactivated.message'),
+				type: 'info',
+			});
+		} catch (error) {
+			toast.showError(error, locale.baseText('workflowSettings.showError.fetchSettings.title'));
+		}
+	}
+}
 </script>
 
 <template>
@@ -263,6 +282,7 @@ function hideGithubButton() {
 					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
+					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">
@@ -304,10 +324,10 @@ function hideGithubButton() {
 
 .main-header {
 	min-height: var(--navbar--height);
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	width: 100%;
 	box-sizing: border-box;
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .top-menu {
@@ -316,7 +336,7 @@ function hideGithubButton() {
 	height: var(--navbar--height);
 	align-items: center;
 	font-size: 0.9em;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	overflow-x: auto;
 	overflow-y: hidden;
 }
@@ -325,9 +345,9 @@ function hideGithubButton() {
 	display: flex;
 	align-items: center;
 	align-self: stretch;
-	padding: var(--spacing-5xs) var(--spacing-m);
-	background-color: var(--color-background-xlight);
-	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	padding: var(--spacing--5xs) var(--spacing--md);
+	background-color: var(--color--background--light-3);
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .close-github-button {
@@ -336,13 +356,13 @@ function hideGithubButton() {
 	right: 0;
 	top: 0;
 	transform: translate(50%, -46%);
-	color: var(--color-foreground-xdark);
-	background-color: var(--color-background-xlight);
+	color: var(--color--foreground--shade-2);
+	background-color: var(--color--background--light-3);
 	border-radius: 100%;
 	cursor: pointer;
 
 	&:hover {
-		color: var(--p-color-primary-420);
+		color: var(--p--color--primary-420);
 	}
 }
 .github-button-container {
@@ -355,7 +375,7 @@ function hideGithubButton() {
 
 @media (max-width: 1390px) {
 	.github-button {
-		padding: var(--spacing-5xs) var(--spacing-xs);
+		padding: var(--spacing--5xs) var(--spacing--xs);
 	}
 }
 

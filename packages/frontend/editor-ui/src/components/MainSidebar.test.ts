@@ -8,7 +8,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useVersionsStore } from '@/stores/versions.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 
 vi.mock('vue-router', () => ({

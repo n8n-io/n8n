@@ -5,12 +5,12 @@ import { useCssVar } from '@vueuse/core';
 
 export function useMetricsChart() {
 	const colors = {
-		primary: useCssVar('--color-primary', document.body).value,
-		textBase: useCssVar('--color-text-base', document.body).value,
-		backgroundXLight: useCssVar('--color-background-xlight', document.body).value,
-		foregroundLight: useCssVar('--color-foreground-light', document.body).value,
-		foregroundBase: useCssVar('--color-foreground-base', document.body).value,
-		foregroundDark: useCssVar('--color-foreground-dark', document.body).value,
+		primary: useCssVar('--color--primary', document.body).value,
+		textBase: useCssVar('--color--text', document.body).value,
+		backgroundXLight: useCssVar('--color--background--light-3', document.body).value,
+		foregroundLight: useCssVar('--color--foreground--tint-1', document.body).value,
+		foregroundBase: useCssVar('--color--foreground', document.body).value,
+		foregroundDark: useCssVar('--color--foreground--shade-1', document.body).value,
 	};
 
 	function generateChartData(

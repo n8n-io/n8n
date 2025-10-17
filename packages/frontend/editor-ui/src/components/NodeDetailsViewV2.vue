@@ -327,6 +327,19 @@ const supportedResizeDirections = computed<Array<'left' | 'right'>>(() =>
 	hasInputPanel.value ? ['left', 'right'] : ['right'],
 );
 
+const nodeSettingsProps = computed(() => ({
+	eventBus: settingsEventBus,
+	dragging: isDragging.value,
+	pushRef: pushRef.value,
+	nodeType: activeNodeType.value,
+	foreignCredentials: foreignCredentials.value,
+	readOnly: props.readOnly,
+	blockUI: blockUi.value && showTriggerPanel.value,
+	executable: !props.readOnly,
+	inputSize: inputSize.value,
+	isNdvV2: true,
+}));
+
 const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputPanel.value) return 'inputless';
 	return activeNodeType.value?.parameterPane ?? 'regular';
@@ -703,11 +716,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Teleport
-		v-if="activeNode && activeNodeType && !isActiveStickyNode"
-		:to="`#${APP_MODALS_ELEMENT_ID}`"
-	>
-		<div :class="$style.backdrop" :style="{ zIndex: APP_Z_INDEXES.NDV }" @click="close"></div>
+	<Teleport v-if="activeNode && !isActiveStickyNode" :to="`#${APP_MODALS_ELEMENT_ID}`">
+		<div
+			data-test-id="ndv-backdrop"
+			:class="$style.backdrop"
+			:style="{ zIndex: APP_Z_INDEXES.NDV }"
+			@click="close"
+		></div>
 
 		<dialog
 			ref="dialogRef"
@@ -722,8 +737,10 @@ onBeforeUnmount(() => {
 				<NDVHeader
 					:class="$style.header"
 					:node-name="activeNode.name"
-					:node-type-name="activeNodeType.defaults.name ?? activeNodeType.displayName"
-					:icon="getNodeIconSource(activeNodeType)"
+					:node-type-name="
+						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
+					"
+					:icon="getNodeIconSource(activeNodeType ?? activeNode.type)"
 					:docs-url="docsUrl"
 					@close="close"
 					@rename="onRename"
@@ -795,17 +812,8 @@ onBeforeUnmount(() => {
 								@dragend="onDragEnd"
 							/>
 							<NodeSettings
-								:event-bus="settingsEventBus"
-								:dragging="isDragging"
-								:push-ref="pushRef"
-								:node-type="activeNodeType"
-								:foreign-credentials="foreignCredentials"
-								:read-only="readOnly"
-								:block-u-i="blockUi && showTriggerPanel"
-								:executable="!readOnly"
-								:input-size="inputSize"
+								v-bind="nodeSettingsProps"
 								:class="$style.settings"
-								is-ndv-v2
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
 								@activate="onWorkflowActivate"
@@ -858,31 +866,32 @@ onBeforeUnmount(() => {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-color: var(--color-dialog-overlay-background-dark);
+	background-color: var(--dialog--overlay--color--background--dark);
 }
 
 .dialog {
 	position: absolute;
 	z-index: var(--z-index-ndv);
-	width: calc(100% - var(--spacing-2xl));
-	height: calc(100% - var(--spacing-2xl));
-	top: var(--spacing-l);
-	left: var(--spacing-l);
+	width: calc(100% - var(--spacing--2xl));
+	height: calc(100% - var(--spacing--2xl));
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
 	border: none;
 	background: none;
 	padding: 0;
 	margin: 0;
 	display: flex;
+	outline: none;
 }
 
 .container {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
-	background: var(--border-color-base);
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	color: var(--color-text-base);
+	background: var(--border-color);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	color: var(--color--text);
 	min-width: 0;
 }
 
@@ -900,15 +909,15 @@ onBeforeUnmount(() => {
 	min-width: 0;
 
 	+ .column {
-		border-left: var(--border-base);
+		border-left: var(--border);
 	}
 
 	&:first-child > div {
-		border-bottom-left-radius: var(--border-radius-large);
+		border-bottom-left-radius: var(--radius--lg);
 	}
 
 	&:last-child {
-		border-bottom-right-radius: var(--border-radius-large);
+		border-bottom-right-radius: var(--radius--lg);
 	}
 }
 
@@ -922,9 +931,9 @@ onBeforeUnmount(() => {
 }
 
 .header {
-	border-bottom: var(--border-base);
-	border-top-left-radius: var(--border-radius-large);
-	border-top-right-radius: var(--border-radius-large);
+	border-bottom: var(--border);
+	border-top-left-radius: var(--radius--lg);
+	border-top-right-radius: var(--radius--lg);
 }
 
 .settings {
@@ -933,7 +942,7 @@ onBeforeUnmount(() => {
 }
 
 .draggable {
-	--draggable-height: 22px;
+	--draggable-height: 18px;
 	position: absolute;
 	top: calc(-1 * var(--draggable-height));
 	left: 50%;

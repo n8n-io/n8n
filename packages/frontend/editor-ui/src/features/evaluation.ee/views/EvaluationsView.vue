@@ -115,26 +115,26 @@ watch(runningTestRun, (run) => {
 .content {
 	display: flex;
 	justify-content: center;
-	gap: var(--spacing-m);
-	padding-bottom: var(--spacing-m);
+	gap: var(--spacing--md);
+	padding-bottom: var(--spacing--md);
 }
 
 .header {
 	display: flex;
 	justify-content: end;
 	align-items: center;
-	padding: var(--spacing-m) var(--spacing-l);
+	padding: var(--spacing--md) var(--spacing--lg);
 	padding-left: 27px;
 	padding-bottom: 8px;
 	position: sticky;
 	top: 0;
 	left: 0;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	z-index: 2;
 }
 
 .wrapper {
-	padding: 0 var(--spacing-l);
+	padding: 0 var(--spacing--lg);
 	padding-left: 58px;
 }
 
