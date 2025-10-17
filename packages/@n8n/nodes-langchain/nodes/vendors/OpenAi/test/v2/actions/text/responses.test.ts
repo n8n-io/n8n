@@ -223,7 +223,6 @@ describe('OpenAI Responses Helper Functions', () => {
 					type: 'file',
 					fileType: 'url',
 					fileUrl: 'https://example.com/document.pdf',
-					fileName: 'document.pdf',
 				},
 			];
 
@@ -235,7 +234,6 @@ describe('OpenAI Responses Helper Functions', () => {
 					content: [
 						{
 							type: 'input_file',
-							file_name: 'document.pdf',
 							file_url: 'https://example.com/document.pdf',
 						},
 					],
@@ -251,7 +249,6 @@ describe('OpenAI Responses Helper Functions', () => {
 					type: 'file',
 					fileType: 'fileId',
 					fileId: 'file-1234567890',
-					fileName: 'document.pdf',
 				},
 			];
 
@@ -263,7 +260,6 @@ describe('OpenAI Responses Helper Functions', () => {
 					content: [
 						{
 							type: 'input_file',
-							file_name: 'document.pdf',
 							file_id: 'file-1234567890',
 						},
 					],
@@ -278,21 +274,25 @@ describe('OpenAI Responses Helper Functions', () => {
 					role: 'user',
 					type: 'file',
 					fileType: 'base64',
-					fileData: 'base64encodeddata',
+					binaryPropertyName: 'fileData',
 					fileName: 'document.pdf',
 				},
 			];
 
 			const result = await formatInputMessages.call(executeFunctions, 0, messages);
 
+			expect(mockGetBinaryDataFile).toHaveBeenCalledWith(executeFunctions, 0, 'fileData');
+			expect(executeFunctions.helpers.binaryToBuffer).toHaveBeenCalledWith(
+				Buffer.from('test image data'),
+			);
 			expect(result).toEqual([
 				{
 					role: 'user',
 					content: [
 						{
 							type: 'input_file',
-							file_name: 'document.pdf',
-							file_data: 'base64encodeddata',
+							filename: 'document.pdf',
+							file_data: 'data:image/png;base64,dGVzdCBkYXRh',
 						},
 					],
 				},

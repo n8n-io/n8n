@@ -54,7 +54,7 @@ describe('Video Generate Operation', () => {
 		beforeEach(() => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'sora-2',
+					modelId: 'sora-2',
 					prompt: 'A cat playing with a ball',
 					seconds: 4,
 					size: '1280x720',
@@ -141,7 +141,7 @@ describe('Video Generate Operation', () => {
 		it('should generate video with custom options', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'sora-2',
+					modelId: 'sora-2',
 					prompt: 'A beautiful sunset over mountains',
 					seconds: 8,
 					size: '1792x1024',
@@ -204,7 +204,7 @@ describe('Video Generate Operation', () => {
 		it('should generate video with binary reference image', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'sora-2',
+					modelId: 'sora-2',
 					prompt: 'Continue this scene with motion',
 					seconds: 6,
 					size: '1280x720',
@@ -272,7 +272,7 @@ describe('Video Generate Operation', () => {
 		it('should create FormData with correct parameters', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'sora-2',
+					modelId: 'sora-2',
 					prompt: 'Test video generation',
 					seconds: 6,
 					size: '1024x1792',
@@ -321,7 +321,7 @@ describe('Video Generate Operation', () => {
 		it('should append binary reference when provided', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'sora-2',
+					modelId: 'sora-2',
 					prompt: 'Test with reference',
 					seconds: 4,
 					size: '1280x720',
@@ -386,7 +386,7 @@ describe('Video Generate Operation', () => {
 		it('should process video content with correct MIME type', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'sora-2',
+					modelId: 'sora-2',
 					prompt: 'Test MIME type',
 					seconds: 4,
 					size: '1280x720',
@@ -437,7 +437,7 @@ describe('Video Generate Operation', () => {
 		it('should handle missing content-type header', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'sora-2',
+					modelId: 'sora-2',
 					prompt: 'Test no MIME type',
 					seconds: 4,
 					size: '1280x720',

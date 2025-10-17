@@ -71,7 +71,7 @@ describe('OpenAI Response Operation', () => {
 				type: 'function',
 				name: tool.name,
 				parameters: {},
-				strict: true,
+				strict: false,
 				description: tool.description,
 			};
 		});
@@ -107,7 +107,7 @@ describe('OpenAI Response Operation', () => {
 
 			expect(result).toEqual([
 				{
-					json: mockResponse.output[0],
+					json: mockResponse.output,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -151,7 +151,7 @@ describe('OpenAI Response Operation', () => {
 			]);
 		});
 
-		it('should handle multiple output items', async () => {
+		it('should handle multiple output items with simplified output', async () => {
 			const mockResponse = {
 				id: 'resp_123',
 				status: 'completed',
@@ -178,9 +178,9 @@ describe('OpenAI Response Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(result).toHaveLength(2);
-			expect(result[0].json).toEqual(mockResponse.output[0]);
-			expect(result[1].json).toEqual(mockResponse.output[1]);
+			// With simplify=true, should return the entire output array as a single item
+			expect(result).toHaveLength(1);
+			expect(result[0].json).toEqual(mockResponse.output);
 		});
 	});
 
@@ -230,7 +230,7 @@ describe('OpenAI Response Operation', () => {
 			);
 			expect(result).toEqual([
 				{
-					json: completedResponse.output[0],
+					json: completedResponse.output,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -317,7 +317,7 @@ describe('OpenAI Response Operation', () => {
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
 			expect(result).toEqual([
 				{
-					json: finalResponse.output[0],
+					json: finalResponse.output,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -467,6 +467,105 @@ describe('OpenAI Response Operation', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledTimes(1); // Only initial call
 		});
+
+		it('should handle reasoning models with reasoning items in tool calls', async () => {
+			const mockTool = {
+				name: 'test_tool',
+				invoke: jest.fn().mockResolvedValue('Tool response'),
+				schema: {
+					typeName: 'ZodObject',
+					_def: { typeName: 'ZodObject', shape: () => ({}) },
+					parse: jest.fn(),
+					safeParse: jest.fn(),
+				},
+				call: jest.fn(),
+				description: 'Test tool',
+				returnDirect: false,
+			} as any;
+
+			const initialResponse = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'reasoning',
+						content: 'I need to use the test tool to get information',
+					},
+					{
+						type: 'function_call',
+						call_id: 'call_123',
+						name: 'test_tool',
+						arguments: JSON.stringify({ input: 'test input' }),
+					},
+				],
+			};
+
+			const finalResponse = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'Final response' }],
+					},
+				],
+			};
+
+			mockGetConnectedTools.mockResolvedValue([mockTool]);
+			mockCreateRequest.mockResolvedValue({
+				model: 'gpt-4o',
+				input: [],
+				tools: [{ name: 'test_tool', type: 'function', parameters: {}, strict: false }],
+			});
+			mockApiRequest.mockResolvedValueOnce(initialResponse).mockResolvedValueOnce(finalResponse);
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
+			expect(mockApiRequest).toHaveBeenCalledTimes(2);
+			expect(result).toEqual([
+				{
+					json: finalResponse.output,
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
+
+		it('should handle reasoning models with only reasoning items (no function calls)', async () => {
+			const responseWithOnlyReasoning = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'reasoning',
+						content: 'I am thinking about this problem',
+					},
+					{
+						type: 'reasoning',
+						content: 'I have reached a conclusion',
+					},
+				],
+			};
+
+			mockCreateRequest.mockResolvedValue({
+				model: 'gpt-4o',
+				input: [],
+			});
+			mockApiRequest.mockResolvedValue(responseWithOnlyReasoning);
+			mockGetConnectedTools.mockResolvedValue([]);
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			// Should not make additional API calls since there are no function calls
+			expect(mockApiRequest).toHaveBeenCalledTimes(1);
+			expect(result).toEqual([
+				{
+					json: responseWithOnlyReasoning.output,
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
 	});
 
 	describe('JSON Format Handling', () => {
@@ -498,7 +597,7 @@ describe('OpenAI Response Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect((result[0].json as any).content[0].text).toBe('invalid json');
+			expect((result[0].json as any)[0].content[0].text).toBe('invalid json');
 		});
 	});
 
@@ -524,7 +623,12 @@ describe('OpenAI Response Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(result).toEqual([]);
+			expect(result).toEqual([
+				{
+					json: [],
+					pairedItem: { item: 0 },
+				},
+			]);
 		});
 
 		it('should handle tools hidden for unsupported models', async () => {
@@ -557,7 +661,7 @@ describe('OpenAI Response Operation', () => {
 			expect(mockGetConnectedTools).not.toHaveBeenCalled();
 			expect(result).toEqual([
 				{
-					json: mockResponse.output[0],
+					json: mockResponse.output,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -616,6 +720,81 @@ describe('OpenAI Response Operation', () => {
 			await execute.call(mockExecuteFunctions, 0);
 
 			expect(mockTool.invoke).toHaveBeenCalledTimes(1);
+		});
+
+		it('should use dynamic strict parameter calculation for tools', async () => {
+			const mockTool = {
+				name: 'test_tool',
+				invoke: jest.fn().mockResolvedValue('Tool response'),
+				schema: {
+					typeName: 'ZodObject',
+					_def: { typeName: 'ZodObject', shape: () => ({}) },
+					parse: jest.fn(),
+					safeParse: jest.fn(),
+				},
+				call: jest.fn(),
+				description: 'Test tool',
+				returnDirect: false,
+			} as any;
+
+			// Mock the formatToOpenAIResponsesTool to return different strict values
+			mockFormatToOpenAIResponsesTool.mockImplementation((tool: Tool) => {
+				return {
+					type: 'function',
+					name: tool.name,
+					parameters: {
+						type: 'object',
+						properties: { input: { type: 'string' } },
+						required: ['input'],
+					},
+					strict: true, // This should be calculated dynamically based on schema
+					description: tool.description,
+				};
+			});
+
+			const responseWithToolCalls = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'function_call',
+						call_id: 'call_123',
+						name: 'test_tool',
+						arguments: JSON.stringify({ input: 'test input' }),
+					},
+				],
+			};
+
+			const finalResponse = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'Final response' }],
+					},
+				],
+			};
+
+			mockGetConnectedTools.mockResolvedValue([mockTool]);
+			mockCreateRequest.mockResolvedValue({
+				model: 'gpt-4o',
+				input: [],
+				tools: [{ name: 'test_tool', type: 'function', parameters: {}, strict: true }],
+			});
+			mockApiRequest
+				.mockResolvedValueOnce(responseWithToolCalls)
+				.mockResolvedValueOnce(finalResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockFormatToOpenAIResponsesTool).toHaveBeenCalledWith(
+				mockTool,
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
 		});
 	});
 
