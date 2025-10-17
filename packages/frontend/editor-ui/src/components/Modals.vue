@@ -30,9 +30,9 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
-	VARIABLE_MODAL_KEY,
 } from '@/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/executions/executions.constants';
+import { VARIABLE_MODAL_KEY } from '@/features/environments.ee/environments.constants';
 import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
@@ -105,7 +105,7 @@ import PromptMfaCodeModal from '@/features/auth/components/PromptMfaCodeModal.vu
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
-import VariableModal from '@/components/VariableModal.vue';
+import VariableModal from '@/features/environments.ee/components/VariableModal.vue';
 </script>
 
 <template>

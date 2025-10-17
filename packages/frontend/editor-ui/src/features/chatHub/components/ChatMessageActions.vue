@@ -1,24 +1,31 @@
 <script setup lang="ts">
-import type { ChatHubMessageType } from '@n8n/api-types';
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import type { ChatHubMessageType, ChatMessageId } from '@n8n/api-types';
+import { N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const i18n = useI18n();
 
-const { type, justCopied } = defineProps<{
+const { type, justCopied, messageId, alternatives } = defineProps<{
 	type: ChatHubMessageType;
 	justCopied: boolean;
+	messageId: ChatMessageId;
+	alternatives: ChatMessageId[];
 }>();
 
 const emit = defineEmits<{
 	copy: [];
 	edit: [];
 	regenerate: [];
+	switchAlternative: [messageId: ChatMessageId];
 }>();
 
 const copyTooltip = computed(() => {
 	return justCopied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy');
+});
+
+const currentAlternativeIndex = computed(() => {
+	return alternatives.findIndex((id) => id === messageId);
 });
 
 function handleCopy() {
@@ -63,6 +70,27 @@ function handleRegenerate() {
 			/>
 			<template #content>Regenerate</template>
 		</N8nTooltip>
+		<template v-if="alternatives.length > 1">
+			<N8nIconButton
+				icon="chevron-left"
+				type="tertiary"
+				size="medium"
+				text
+				:disabled="currentAlternativeIndex === 0"
+				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex - 1])"
+			/>
+			<N8nText size="medium" color="text-base">
+				{{ `${currentAlternativeIndex + 1}/${alternatives.length}` }}
+			</N8nText>
+			<N8nIconButton
+				icon="chevron-right"
+				type="tertiary"
+				size="medium"
+				text
+				:disabled="currentAlternativeIndex === alternatives.length - 1"
+				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex + 1])"
+			/>
+		</template>
 	</div>
 </template>
 
