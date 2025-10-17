@@ -2569,7 +2569,7 @@
 	"updatesPanel.andIs": "and is",
 	"updatesPanel.behindTheLatest": "behind the latest and greatest n8n",
 	"updatesPanel.howToUpdateYourN8nVersion": "How to update your n8n version",
-	"updatesPanel.version": "{numberOfVersions} version{howManySuffix}",
+	"updatesPanel.version": "{count} version | {count} versions",
 	"updatesPanel.weVeBeenBusy": "We’ve been busy ✨",
 	"updatesPanel.youReOnVersion": "You’re on {currentVersionName}, which was released",
 	"versionCard.breakingChanges": "Breaking changes",
