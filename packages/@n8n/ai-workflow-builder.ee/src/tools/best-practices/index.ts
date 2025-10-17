@@ -1,6 +1,7 @@
 import type { BestPracticesDocument } from '@/types';
 import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization';
 
+import { FormInputBestPractices } from './form-input';
 import { ScrapingAndResearchBestPractices } from './scraping-and-research';
 
 export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument | undefined> = {
@@ -14,7 +15,7 @@ export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument 
 	[WorkflowTechnique.DATA_TRANSFORMATION]: undefined,
 	[WorkflowTechnique.DOCUMENT_PROCESSING]: undefined,
 	[WorkflowTechnique.ENRICHMENT]: undefined,
-	[WorkflowTechnique.FORM_INPUT]: undefined,
+	[WorkflowTechnique.FORM_INPUT]: new FormInputBestPractices(),
 	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: undefined,
 	[WorkflowTechnique.KNOWLEDGE_BASE]: undefined,
 	[WorkflowTechnique.MONITORING]: undefined,

@@ -10,6 +10,7 @@ import { createAddNodeTool, getAddNodeToolBase } from '../add-node.tool';
 import { getBuilderTools, getBuilderToolsForDisplay } from '../builder-tools';
 import { createCategorizePromptTool, CATEGORIZE_PROMPT_TOOL } from '../categorize-prompt.tool';
 import { CONNECT_NODES_TOOL, createConnectNodesTool } from '../connect-nodes.tool';
+import { GET_BEST_PRACTICES_TOOL, createGetBestPracticesTool } from '../get-best-practices.tool';
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from '../get-node-parameter.tool';
 import { createNodeDetailsTool, NODE_DETAILS_TOOL } from '../node-details.tool';
 import { createNodeSearchTool, NODE_SEARCH_TOOL } from '../node-search.tool';
@@ -27,6 +28,17 @@ jest.mock('../categorize-prompt.tool', () => ({
 	createCategorizePromptTool: jest.fn().mockReturnValue({
 		name: 'categorizePromptTool',
 		tool: { name: 'categorizePromptTool' },
+	}),
+}));
+
+jest.mock('../get-best-practices.tool', () => ({
+	GET_BEST_PRACTICES_TOOL: {
+		name: 'getBestPracticesTool',
+		description: 'Get best practices',
+	},
+	createGetBestPracticesTool: jest.fn().mockReturnValue({
+		name: 'getBestPracticesTool',
+		tool: { name: 'getBestPracticesTool' },
 	}),
 }));
 
@@ -139,8 +151,9 @@ describe('builder-tools', () => {
 				instanceUrl: 'https://test.n8n.io',
 			});
 
-			expect(tools).toHaveLength(9);
+			expect(tools).toHaveLength(10);
 			expect(createCategorizePromptTool).toHaveBeenCalledWith(mockLlmComplexTask, mockLogger);
+			expect(createGetBestPracticesTool).toHaveBeenCalled();
 			expect(createNodeSearchTool).toHaveBeenCalledWith(parsedNodeTypes);
 			expect(createNodeDetailsTool).toHaveBeenCalledWith(parsedNodeTypes);
 			expect(createAddNodeTool).toHaveBeenCalledWith(parsedNodeTypes);
@@ -162,7 +175,7 @@ describe('builder-tools', () => {
 				llmComplexTask: mockLlmComplexTask,
 			});
 
-			expect(tools).toHaveLength(9);
+			expect(tools).toHaveLength(10);
 			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
 			expect(createRemoveNodeTool).toHaveBeenCalledWith(undefined);
 			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
@@ -197,15 +210,16 @@ describe('builder-tools', () => {
 				nodeTypes: parsedNodeTypes,
 			});
 
-			expect(tools).toHaveLength(9);
+			expect(tools).toHaveLength(10);
 			expect(tools[0]).toBe(CATEGORIZE_PROMPT_TOOL);
-			expect(tools[1]).toBe(NODE_SEARCH_TOOL);
-			expect(tools[2]).toBe(NODE_DETAILS_TOOL);
-			expect(tools[4]).toBe(CONNECT_NODES_TOOL);
-			expect(tools[5]).toBe(REMOVE_CONNECTION_TOOL);
-			expect(tools[6]).toBe(REMOVE_NODE_TOOL);
-			expect(tools[7]).toBe(UPDATING_NODE_PARAMETER_TOOL);
-			expect(tools[8]).toBe(GET_NODE_PARAMETER_TOOL);
+			expect(tools[1]).toBe(GET_BEST_PRACTICES_TOOL);
+			expect(tools[2]).toBe(NODE_SEARCH_TOOL);
+			expect(tools[3]).toBe(NODE_DETAILS_TOOL);
+			expect(tools[5]).toBe(CONNECT_NODES_TOOL);
+			expect(tools[6]).toBe(REMOVE_CONNECTION_TOOL);
+			expect(tools[7]).toBe(REMOVE_NODE_TOOL);
+			expect(tools[8]).toBe(UPDATING_NODE_PARAMETER_TOOL);
+			expect(tools[9]).toBe(GET_NODE_PARAMETER_TOOL);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});
 
@@ -214,7 +228,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(9);
+			expect(tools).toHaveLength(10);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 

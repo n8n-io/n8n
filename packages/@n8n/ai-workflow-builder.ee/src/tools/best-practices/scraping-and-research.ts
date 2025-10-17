@@ -7,8 +7,6 @@ export class ScrapingAndResearchBestPractices implements BestPracticesDocument {
 
 	private readonly documentation = `# Best Practices: Scraping & Research Workflows
 
-Version: 1.0.0
-
 ## Performance & Resource Management
 
 Batch requests and introduce delays to avoid hitting API rate limits or overloading target servers. Use Wait nodes and
