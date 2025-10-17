@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
-import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useChatStore } from '@/features/chatHub/chat.store';
 import { groupConversationsByDate } from '@/features/chatHub/chat.utils';
+import ChatSidebarLink from '@/features/chatHub/components/ChatSidebarLink.vue';
+import { useChatHubSidebarState } from '@/features/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/chatHub/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { N8nIcon, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { useSettingsStore } from '@/stores/settings.store';
+import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
+import Logo from '@n8n/design-system/components/N8nLogo';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
 
 defineProps<{ isMobileDevice: boolean }>();
 
 const route = useRoute();
 const router = useRouter();
 const chatStore = useChatStore();
-const uiStore = useUIStore();
 const toast = useToast();
 const message = useMessage();
+const sidebar = useChatHubSidebarState();
+const settingsStore = useSettingsStore();
 
 const renamingSessionId = ref<string>();
 
@@ -28,21 +32,6 @@ const currentSessionId = computed(() =>
 );
 
 const groupedConversations = computed(() => groupConversationsByDate(chatStore.sessions));
-
-function onReturn() {
-	uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY);
-
-	void router.push({ name: VIEWS.HOMEPAGE });
-}
-
-function onNewChat() {
-	uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY);
-
-	void router.push({
-		name: CHAT_VIEW,
-		force: true, // to focus input again when the user is already in CHAT_VIEW
-	});
-}
 
 function handleStartRename(sessionId: string) {
 	renamingSessionId.value = sessionId;
@@ -95,20 +84,38 @@ onMounted(async () => {
 <template>
 	<div :class="[$style.component, { [$style.isMobileDevice]: isMobileDevice }]">
 		<div :class="$style.header">
-			<div :class="$style.returnButton" role="button" @click="onReturn">
-				<N8nIcon icon="arrow-left" />
-				<N8nText bold>Chat</N8nText>
-			</div>
+			<RouterLink :to="{ name: VIEWS.HOMEPAGE }">
+				<Logo
+					:class="$style.logo"
+					size="small"
+					:collapsed="false"
+					:release-channel="settingsStore.settings.releaseChannel"
+				/>
+			</RouterLink>
 			<N8nIconButton
-				title="New chat"
-				icon="square-pen"
+				v-if="sidebar.canBeStatic.value"
+				title="Toggle menu"
+				icon="panel-left"
 				type="tertiary"
 				text
-				:size="isMobileDevice ? 'large' : 'medium'"
-				@click="onNewChat"
+				size="small"
+				icon-size="large"
+				@click="sidebar.toggleStatic()"
 			/>
 		</div>
-		<N8nScrollArea as-child>
+		<div :class="$style.items">
+			<ChatSidebarLink
+				:to="{
+					name: CHAT_VIEW,
+					force: true, // to focus input again when the user is already in CHAT_VIEW
+				}"
+				label="New Chat"
+				icon="square-pen"
+				:active="route.name === CHAT_VIEW"
+				@click="sidebar.toggleOpen(false)"
+			/>
+		</div>
+		<N8nScrollArea as-child type="scroll">
 			<div :class="$style.items">
 				<div v-for="group in groupedConversations" :key="group.group" :class="$style.group">
 					<N8nText :class="$style.groupHeader" size="small" bold color="text-light">
@@ -137,34 +144,33 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
+	padding-block: var(--spacing--4xs);
+
+	&.isMobileDevice {
+		padding-block: 0;
+	}
 }
 
 .header {
+	height: 56px;
+	flex-grow: 0;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--xs);
+	padding-inline: var(--spacing--xs);
 	gap: var(--spacing--2xs);
 }
 
-.returnButton {
-	cursor: pointer;
-	flex-grow: 1;
-	flex-shrink: 1;
-	display: flex;
-	gap: var(--spacing--3xs);
-	align-items: center;
-	flex: 1;
-
-	&:hover {
-		color: var(--color--primary);
-	}
+.logo {
+	/* Adjust vertical alignment */
+	margin-top: -4px;
 }
 
 .items {
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing--3xs);
+	padding: 0 var(--spacing--xs) var(--spacing--sm) var(--spacing--xs);
 	gap: var(--spacing--xs);
 
 	.isMobileDevice & {
@@ -175,11 +181,11 @@ onMounted(async () => {
 .group {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--5xs);
+	gap: 1px;
 }
 
 .groupHeader {
-	padding: 0 var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs);
+	padding: 0 var(--spacing--4xs) var(--spacing--3xs) var(--spacing--4xs);
 }
 
 .loading,

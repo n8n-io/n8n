@@ -14,7 +14,8 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type { BaseFilters, Resource, VariableResource, DatatableColumn } from '@/Interface';
 
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VARIABLE_MODAL_KEY } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import { VARIABLE_MODAL_KEY } from '@/features/environments.ee/environments.constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nActionBox,
