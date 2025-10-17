@@ -4,14 +4,19 @@ import type {
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	NodeConnectionType,
+	IDataObject,
 } from 'n8n-workflow';
-import { mapConnectionsByDestination } from 'n8n-workflow';
+import { mapConnectionsByDestination, Expression } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
 import type { SingleEvaluatorResult } from '../types';
 import { calcSingleEvaluatorScore } from '../utils/score';
 
+/**
+ * Use light version of expression resolver to resolve connections
+ * We need only parameter values of the specific node and no workflow context
+ */
 export function resolveConnections<T = INodeInputConfiguration>(
 	connections: Array<NodeConnectionType | T> | ExpressionString,
 	parameters: Record<string, unknown>,
@@ -26,26 +31,21 @@ export function resolveConnections<T = INodeInputConfiguration>(
 		connections.startsWith('={{') &&
 		connections.endsWith('}}')
 	) {
-		const expressionContent = connections.slice(3, -2).trim();
+		const context: IDataObject = {};
+		Expression.initializeGlobalContext(context);
 
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-implied-eval
-			const evalFunc = new Function(
-				'$parameter',
-				'$nodeVersion',
-				`return ${expressionContent}`,
-			) as (
-				parameters: Record<string, unknown>,
-				nodeVersion: number,
-			) => Array<NodeConnectionType | T>;
+		Object.assign(context, {
+			$parameter: parameters,
+			$nodeVersion: nodeVersion,
+		});
 
-			const result = evalFunc(parameters, nodeVersion);
+		const result: unknown = Expression.resolveWithoutWorkflow(connections.substring(1), context);
 
-			return result;
-		} catch (error) {
-			console.error('Failed to evaluate expression:', error);
-			throw error;
+		if (!Array.isArray(result)) {
+			throw new Error('Expression did not resolve to an array');
 		}
+
+		return result as Array<NodeConnectionType | T>;
 	}
 
 	throw new Error('Unable to resolve connections');
