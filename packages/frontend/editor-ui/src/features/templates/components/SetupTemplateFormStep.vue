@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import CredentialPicker from '@/components/CredentialPicker/CredentialPicker.vue';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import { formatList } from '@/utils/formatters/listFormatter';

@@ -60,7 +60,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 .background {
 	position: absolute;
-	background-color: var(--color-background-input-triple);
+	background-color: var(--input-triple--color--background);
 	top: var(--parameter-input-options-height);
 	bottom: 0;
 	left: 0;
@@ -76,7 +76,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	flex-grow: 1;
 	z-index: 0;
 
-	--input-border-radius: 0;
+	--input--radius: 0;
 
 	&:focus-within {
 		z-index: 1;
@@ -94,15 +94,15 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 }
 
 .item:first-of-type {
-	--input-border-top-left-radius: var(--radius);
-	--input-border-bottom-left-radius: var(--radius);
+	--input--radius--top-left: var(--radius);
+	--input--radius--bottom-left: var(--radius);
 	--input-border-top-right-radius: 0;
 	--input-border-bottom-right-radius: 0;
 }
 
 .item:last-of-type {
-	--input-border-top-left-radius: 0;
-	--input-border-bottom-left-radius: 0;
+	--input--radius--top-left: 0;
+	--input--radius--bottom-left: 0;
 	--input-border-top-right-radius: var(--radius);
 	--input-border-bottom-right-radius: var(--radius);
 }
@@ -118,18 +118,18 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	}
 
 	.item:first-of-type {
-		--input-border-top-left-radius: var(--radius);
+		--input--radius--top-left: var(--radius);
 		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: 0;
+		--input--radius--bottom-left: 0;
 	}
 
 	.item:last-of-type {
 		flex-basis: 400px;
 		margin-top: -1px;
 
-		--input-border-top-left-radius: 0;
+		--input--radius--top-left: 0;
 		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--radius);
+		--input--radius--bottom-left: var(--radius);
 		--input-border-bottom-right-radius: var(--radius);
 	}
 }
@@ -143,13 +143,13 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 	.middle:not(.item:last-of-type) {
 		width: 100%;
-		--input-border-radius: 0;
+		--input--radius: 0;
 	}
 
 	.item:first-of-type {
-		--input-border-top-left-radius: var(--radius);
+		--input--radius--top-left: var(--radius);
 		--input-border-top-right-radius: var(--radius);
-		--input-border-bottom-left-radius: 0;
+		--input--radius--bottom-left: 0;
 		--input-border-bottom-right-radius: 0;
 	}
 
@@ -158,9 +158,9 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	}
 
 	.item:last-of-type {
-		--input-border-top-left-radius: 0;
+		--input--radius--top-left: 0;
 		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--radius);
+		--input--radius--bottom-left: var(--radius);
 		--input-border-bottom-right-radius: var(--radius);
 	}
 }

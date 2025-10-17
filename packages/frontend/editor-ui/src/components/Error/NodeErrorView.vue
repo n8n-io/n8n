@@ -139,7 +139,7 @@ const isAskAssistantAvailable = computed(() => {
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
 
-	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode && !nodeIsHidden();
+	return chatPanelStore.canShowAiButtonOnCanvas && !isCustomNode && !nodeIsHidden();
 });
 
 const assistantAlreadyAsked = computed(() => {
@@ -780,6 +780,7 @@ async function onAskAssistantClick() {
 			width: 100%;
 			overflow: auto;
 			background: var(--color--background--light-2);
+
 			code {
 				font-size: var(--font-size--sm);
 			}
@@ -891,7 +892,7 @@ async function onAskAssistantClick() {
 		word-wrap: break-word;
 
 		code {
-			color: var(--color-json-string);
+			color: var(--json--string--color);
 			white-space: normal;
 			word-wrap: break-word;
 		}

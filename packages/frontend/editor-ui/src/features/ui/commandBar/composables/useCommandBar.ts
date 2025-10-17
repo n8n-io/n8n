@@ -7,19 +7,31 @@ import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
-import { useTemplateCommands } from './useTemplateCommands';
-import { useBaseCommands } from './useBaseCommands';
 import { useDataTableNavigationCommands } from './useDataTableNavigationCommands';
 import { useCredentialNavigationCommands } from './useCredentialNavigationCommands';
-import type { CommandGroup } from '../commandBar.types';
+import { useExecutionNavigationCommands } from './useExecutionNavigationCommands';
+import { useProjectNavigationCommands } from './useProjectNavigationCommands';
+import { useExecutionCommands } from './useExecutionCommands';
+import { useGenericCommands } from './useGenericCommands';
+import { useRecentResources } from './useRecentResources';
+import type { CommandGroup } from '../types';
 import { usePostHog } from '@/stores/posthog.store';
+import { useI18n } from '@n8n/i18n';
+import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/dataTable/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
 	const projectsStore = useProjectsStore();
+	const workflowStore = useWorkflowsStore();
 	const router = useRouter();
 	const route = useRoute();
 	const postHog = usePostHog();
+	const i18n = useI18n();
+	const telemetry = useTelemetry();
+
+	const placeholder = i18n.baseText('commandBar.placeholder');
 
 	const isEnabled = computed(() =>
 		postHog.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
@@ -28,28 +40,27 @@ export function useCommandBar() {
 	const activeNodeId = ref<string | null>(null);
 	const lastQuery = ref('');
 
-	const personalProjectId = computed(() => {
-		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
-	});
-
 	const currentProjectName = computed(() => {
-		if (!route.params.projectId || route.params.projectId === personalProjectId.value) {
+		const projectId = route.params.projectId || projectsStore.currentProjectId;
+
+		if (projectId === projectsStore.personalProject?.id) {
 			return 'Personal';
 		}
-		return (
-			projectsStore.myProjects.find((p) => p.id === route.params.projectId)?.name ?? 'Personal'
-		);
+
+		return projectsStore.myProjects.find((p) => p.id === projectId)?.name ?? 'Personal';
 	});
 
-	const baseCommandGroup = useBaseCommands();
-	const nodeCommandGroup = useNodeCommands();
+	const nodeCommandGroup = useNodeCommands({
+		lastQuery,
+		activeNodeId,
+	});
 	const workflowCommandGroup = useWorkflowCommands();
+	const executionCommandGroup = useExecutionCommands();
 	const workflowNavigationGroup = useWorkflowNavigationCommands({
 		lastQuery,
 		activeNodeId,
 		currentProjectName,
 	});
-	const templateCommandGroup = useTemplateCommands();
 	const dataTableNavigationGroup = useDataTableNavigationCommands({
 		lastQuery,
 		activeNodeId,
@@ -60,49 +71,194 @@ export function useCommandBar() {
 		activeNodeId,
 		currentProjectName,
 	});
+	const executionNavigationGroup = useExecutionNavigationCommands();
+	const projectNavigationGroup = useProjectNavigationCommands({
+		lastQuery,
+		activeNodeId,
+	});
+	const genericCommandGroup = useGenericCommands();
+	const recentResourcesGroup = useRecentResources();
 
 	const canvasViewGroups: CommandGroup[] = [
-		baseCommandGroup,
+		recentResourcesGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
-		templateCommandGroup,
+		workflowNavigationGroup,
+		genericCommandGroup,
+	];
+
+	const executionViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
+		executionCommandGroup,
+		workflowNavigationGroup,
+		projectNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const workflowsListViewGroups: CommandGroup[] = [
-		baseCommandGroup,
+		recentResourcesGroup,
 		workflowNavigationGroup,
+		projectNavigationGroup,
+		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const credentialsListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
 		credentialNavigationGroup,
+		projectNavigationGroup,
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
-		baseCommandGroup,
+		executionNavigationGroup,
+		genericCommandGroup,
+	];
+
+	const executionsListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
+		workflowNavigationGroup,
+		projectNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		genericCommandGroup,
+	];
+
+	const dataStoresListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
+		dataTableNavigationGroup,
+		projectNavigationGroup,
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		executionNavigationGroup,
+		genericCommandGroup,
+	];
+
+	const evaluationViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
+		workflowNavigationGroup,
+		projectNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
+		genericCommandGroup,
+	];
+
+	const fallbackViewCommands: CommandGroup[] = [
+		recentResourcesGroup,
+		projectNavigationGroup,
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
+		genericCommandGroup,
 	];
 
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
-		if (router.currentRoute.value.name === VIEWS.WORKFLOW) {
-			return canvasViewGroups;
-		} else if (
-			router.currentRoute.value.name === VIEWS.WORKFLOWS ||
-			router.currentRoute.value.name === VIEWS.PROJECTS_WORKFLOWS
-		) {
-			return workflowsListViewGroups;
-		} else if (
-			router.currentRoute.value.name === VIEWS.CREDENTIALS ||
-			router.currentRoute.value.name === VIEWS.PROJECTS_CREDENTIALS
-		) {
-			return credentialsListViewGroups;
+		switch (router.currentRoute.value.name) {
+			case VIEWS.WORKFLOW:
+			case VIEWS.NEW_WORKFLOW:
+				return canvasViewGroups;
+			case VIEWS.EXECUTION_PREVIEW:
+			case VIEWS.EXECUTION_DEBUG:
+				return executionViewGroups;
+			case VIEWS.WORKFLOWS:
+			case VIEWS.PROJECTS_WORKFLOWS:
+				return workflowsListViewGroups;
+			case VIEWS.CREDENTIALS:
+			case VIEWS.PROJECTS_CREDENTIALS:
+				return credentialsListViewGroups;
+			case VIEWS.EXECUTIONS:
+			case VIEWS.PROJECTS_EXECUTIONS:
+				return executionsListViewGroups;
+			case PROJECT_DATA_TABLES:
+			case DATA_TABLE_VIEW:
+				return dataStoresListViewGroups;
+			case VIEWS.EVALUATION:
+			case VIEWS.EVALUATION_EDIT:
+			case VIEWS.EVALUATION_RUNS_DETAIL:
+				return evaluationViewGroups;
+			default:
+				return fallbackViewCommands;
 		}
-		return [baseCommandGroup];
 	});
 
+	const context = computed(() => {
+		switch (router.currentRoute.value.name) {
+			case VIEWS.WORKFLOW:
+			case VIEWS.NEW_WORKFLOW:
+				return workflowStore.workflow.name
+					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowStore.workflow.name
+					: '';
+			case VIEWS.EXECUTION_PREVIEW:
+			case VIEWS.EXECUTION_DEBUG:
+				return workflowStore.workflow.name
+					? i18n.baseText('commandBar.sections.execution') + ' ⋅ ' + workflowStore.workflow.name
+					: '';
+			case VIEWS.EVALUATION:
+			case VIEWS.EVALUATION_EDIT:
+			case VIEWS.EVALUATION_RUNS_DETAIL:
+				return workflowStore.workflow.name ? ' ⋅ ' + workflowStore.workflow.name : '';
+			default:
+				return '';
+		}
+	});
+
+	const trackCommand = (item: CommandBarItem, view: string, parentItem?: CommandBarItem) => {
+		telemetry.track('User executed command bar command', {
+			command_id: item.id,
+			command_section: item.section,
+			view,
+			parent_command_id: parentItem?.id,
+		});
+	};
+
+	const wrapItemWithTelemetry = (item: CommandBarItem): CommandBarItem => {
+		const wrappedItem: CommandBarItem = { ...item };
+		const routeName = (router.currentRoute.value.name ?? '').toString();
+
+		if (item.handler) {
+			const originalHandler = item.handler;
+			wrappedItem.handler = async () => {
+				trackCommand(item, routeName);
+				return await originalHandler();
+			};
+		}
+
+		if (item.children) {
+			wrappedItem.children = item.children.map((child) => {
+				if (child.handler) {
+					const originalChildHandler = child.handler;
+					return {
+						...child,
+						handler: async () => {
+							trackCommand(child, routeName, item);
+							return await originalChildHandler();
+						},
+					};
+				}
+				return child;
+			});
+		}
+
+		return wrappedItem;
+	};
+
 	const items = computed<CommandBarItem[]>(() => {
-		return activeCommandGroups.value.flatMap((group) => group.commands.value);
+		const allItems = activeCommandGroups.value.flatMap((group) => group.commands.value);
+		return allItems.map(wrapItemWithTelemetry);
+	});
+
+	const isLoading = computed(() => {
+		return activeCommandGroups.value.some((group) => group.isLoading?.value === true);
 	});
 
 	function onCommandBarChange(query: string) {
+		lastQuery.value = query;
+
 		for (const group of activeCommandGroups.value) {
 			if (group.handlers?.onCommandBarChange) {
 				group.handlers.onCommandBarChange(query);
@@ -120,6 +276,14 @@ export function useCommandBar() {
 
 	async function initialize() {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+
+		const initPromises = activeCommandGroups.value.map(async (group) => {
+			if (group.initialize) {
+				await group.initialize();
+			}
+		});
+
+		await Promise.all(initPromises);
 	}
 
 	return {
@@ -128,5 +292,8 @@ export function useCommandBar() {
 		initialize,
 		onCommandBarChange,
 		onCommandBarNavigateTo,
+		placeholder,
+		context,
+		isLoading,
 	};
 }

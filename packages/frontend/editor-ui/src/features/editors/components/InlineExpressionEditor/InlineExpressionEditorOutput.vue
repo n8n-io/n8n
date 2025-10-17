@@ -98,14 +98,14 @@ defineExpose({
 .dropdown {
 	display: flex;
 	flex-direction: column;
-	background: var(--color-code-background);
+	background: var(--code--color--background);
 	width: 100%;
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
 	border-bottom-left-radius: 4px;
 	border-bottom-right-radius: 4px;
 
 	:global(.cm-editor) {
-		background-color: var(--color-code-background);
+		background-color: var(--code--color--background);
 	}
 
 	.body {

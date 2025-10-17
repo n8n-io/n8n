@@ -10,7 +10,7 @@ export class ApiTemplateIoApi implements ICredentialType {
 
 	displayName = 'APITemplate.io API';
 
-	documentationUrl = 'apiTemplateIo';
+	documentationUrl = 'apitemplateio';
 
 	properties: INodeProperties[] = [
 		{

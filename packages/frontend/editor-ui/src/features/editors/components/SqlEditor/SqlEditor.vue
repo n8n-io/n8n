@@ -23,6 +23,7 @@ import {
 	MSSQL,
 	MariaSQL,
 	MySQL,
+	OracleDB,
 	PLSQL,
 	PostgreSQL,
 	SQLite,
@@ -47,6 +48,7 @@ const SQL_DIALECTS = {
 	SQLite,
 	Cassandra,
 	PLSQL,
+	OracleDB,
 } as const;
 
 type Props = {
@@ -247,7 +249,7 @@ defineExpose({
 
 .codemirror.droppable {
 	:global(.cm-editor) {
-		border-color: var(--color-ndv-droppable-parameter);
+		border-color: var(--ndv--droppable-parameter--color);
 		border-style: dashed;
 		border-width: 1.5px;
 	}

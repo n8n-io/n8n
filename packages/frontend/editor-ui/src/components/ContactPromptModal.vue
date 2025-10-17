@@ -5,7 +5,7 @@ import type { ModalKey } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useToast } from '@/composables/useToast';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';

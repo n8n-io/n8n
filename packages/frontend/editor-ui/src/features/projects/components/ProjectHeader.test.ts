@@ -51,8 +51,10 @@ const ProjectCreateResourceStub = {
 	template: `
 		<div>
 			<div data-test-id="add-resource"><button role="button"></button></div>
-			<button data-test-id="add-resource-workflow" @click="$emit('action', 'workflow')">Workflow</button>
+			<slot></slot>
 			<button data-test-id="action-credential" @click="$emit('action', 'credential')">Credentials</button>
+			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
+			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value"></button>
 			</div>
@@ -479,6 +481,51 @@ describe('ProjectHeader', () => {
 			const actionsContainer = getByTestId('add-resource-actions');
 			expect(actionsContainer).toBeInTheDocument();
 			expect(actionsContainer.children).toHaveLength(1);
+		});
+	});
+
+	describe('mainButton prop', () => {
+		it('should render workflow button as main by default', () => {
+			const project = createTestProject({
+				scopes: ['workflow:create'],
+			});
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('add-resource-workflow')).toBeInTheDocument();
+		});
+
+		it('should render dataTable button as main when mainButton is dataTable', () => {
+			const project = createTestProject({
+				scopes: ['dataTable:create'],
+			});
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'dataTable' } });
+
+			expect(getByTestId('add-resource-dataTable')).toBeInTheDocument();
+		});
+
+		it('should create credential when credential is main button', async () => {
+			const project = createTestProject({
+				scopes: ['credential:create'],
+			});
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'credential' } });
+
+			await userEvent.click(getByTestId('add-resource-credential'));
+
+			expect(mockPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.PROJECTS_CREDENTIALS,
+					params: {
+						projectId: project.id,
+						credentialId: 'create',
+					},
+				}),
+			);
 		});
 	});
 });

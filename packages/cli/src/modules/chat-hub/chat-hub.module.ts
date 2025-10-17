@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 const YELLOW = '\x1b[33m';
 const CLEAR = '\x1b[0m';
 const WARNING_MESSAGE =
-	"[Chat] 'chat' module is experimental, undocumented and subject to change. " +
+	"[Chat] 'chat-hub' module is experimental, undocumented and subject to change. " +
 	'Before its official release any features may become inaccessible at any point, ' +
 	'and using the module could compromise the stability of your system. Use at your own risk!';
 
@@ -24,6 +24,13 @@ export class ChatHubModule implements ModuleInterface {
 		const { ChatHubSettingsService } = await import('./chat-hub.settings.service');
 		const chatAccessEnabled = await Container.get(ChatHubSettingsService).getEnabled();
 		return { chatAccessEnabled };
+	}
+
+	async entities() {
+		const { ChatHubSession } = await import('./chat-hub-session.entity');
+		const { ChatHubMessage } = await import('./chat-hub-message.entity');
+
+		return [ChatHubSession, ChatHubMessage];
 	}
 
 	@OnShutdown()

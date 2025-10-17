@@ -1014,8 +1014,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 					inputData: INodeExecutionData[],
 					options: { itemData: IPairedItemData | IPairedItemData[] },
 				): NodeExecutionWithMetadata[];
-				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
-				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+				assertBinaryData(itemIndex: number, parameterData: string | IBinaryData): IBinaryData;
+				getBinaryDataBuffer(
+					itemIndex: number,
+					parameterData: string | IBinaryData,
+				): Promise<Buffer>;
 				detectBinaryEncoding(buffer: Buffer): string;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
@@ -1355,6 +1358,7 @@ export type SQLDialect =
 	| 'StandardSQL'
 	| 'PostgreSQL'
 	| 'MySQL'
+	| 'OracleDB'
 	| 'MariaSQL'
 	| 'MSSQL'
 	| 'SQLite'
@@ -2472,7 +2476,19 @@ export interface ITaskMetadata {
 		actions: SubNodeExecutionDataAction[];
 		metadata: object;
 	};
+	/**
+	 * When true, preserves sourceOverwrite information in pairedItem data during node execution.
+	 * This is used for AI tool nodes to maintain correct expression resolution context, allowing
+	 * tools to access data from nodes earlier in the workflow chain via $() expressions.
+	 */
 	preserveSourceOverwrite?: boolean;
+	/**
+	 * Indicates that this node execution is resuming from a previous pause (e.g., AI agent
+	 * resuming after tool execution). When true, the nodeExecuteBefore hook is skipped to
+	 * prevent duplicate event emissions that would cause UI state issues.
+	 * @see AI-1414
+	 */
+	nodeWasResumed?: boolean;
 }
 
 /** The data that gets returned when a node execution starts */

@@ -73,7 +73,7 @@ async function loadSourceControlStatus() {
 
 	try {
 		const freshStatus = await sourceControlStore.pullWorkfolder(false);
-		await notifyUserAboutPullWorkFolderOutcome(freshStatus, toast);
+		await notifyUserAboutPullWorkFolderOutcome(freshStatus, toast, router);
 		sourceControlEventBus.emit('pull');
 		close();
 	} catch (error) {
@@ -209,7 +209,7 @@ async function pullWorkfolder() {
 	try {
 		const pullStatus = await sourceControlStore.pullWorkfolder(true);
 
-		await notifyUserAboutPullWorkFolderOutcome(pullStatus, toast);
+		await notifyUserAboutPullWorkFolderOutcome(pullStatus, toast, router);
 
 		sourceControlEventBus.emit('pull');
 	} catch (error) {

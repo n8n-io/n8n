@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from typing import Dict, Optional, Any, Callable, Awaitable
 from urllib.parse import urlparse
 import websockets
@@ -57,10 +58,10 @@ from src.task_analyzer import TaskAnalyzer
 from src.config.security_config import SecurityConfig
 
 
+@dataclass
 class TaskOffer:
-    def __init__(self, offer_id: str, valid_until: float):
-        self.offer_id = offer_id
-        self.valid_until = valid_until
+    offer_id: str
+    valid_until: float
 
     @property
     def has_expired(self) -> bool:
@@ -337,6 +338,12 @@ class TaskRunner:
             response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
             await self._send_message(response)
 
+        except SyntaxError as e:
+            self.logger.warning(f"Task {task_id} failed syntax validation")
+            error = {"message": str(e)}
+            response = RunnerTaskError(task_id=task_id, error=error)
+            await self._send_message(response)
+
         except Exception as e:
             self.logger.error(f"Task {task_id} failed", exc_info=True)
             error = {
@@ -366,8 +373,7 @@ class TaskRunner:
 
         if task_state.status == TaskStatus.RUNNING:
             task_state.status = TaskStatus.ABORTING
-            self.executor.stop_process(task_state.process)
-
+            await asyncio.to_thread(self.executor.stop_process, task_state.process)
             self.logger.info(
                 LOG_TASK_CANCEL.format(task_id=task_id, **task_state.context())
             )
