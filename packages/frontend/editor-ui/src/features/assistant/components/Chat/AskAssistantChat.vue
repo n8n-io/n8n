@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/features/assistant/assistant.store';
 import { useUsersStore } from '@/features/users/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { computed, ref, useSlots } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import AISettingsButton from '@/features/assistant/components/Chat/AISettingsButton.vue';
@@ -14,10 +15,13 @@ const emit = defineEmits<{
 const assistantStore = useAssistantStore();
 const workflowState = injectWorkflowState();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+
+const allowSendingParameterData = computed(() => settingsStore.settings.ai.allowSendingActualData);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -91,7 +95,11 @@ defineExpose({
 			<template #header>
 				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
 					<slot name="header" />
-					<AISettingsButton v-if="showSettingsButton" :disabled="assistantStore.streaming" />
+					<AISettingsButton
+						v-if="showSettingsButton"
+						:show-usability-notice="!allowSendingParameterData"
+						:disabled="assistantStore.streaming"
+					/>
 				</div>
 			</template>
 		</N8nAskAssistantChat>

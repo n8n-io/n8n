@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { N8nLink, N8nTooltip, N8nIcon } from '@n8n/design-system';
-import { useRouter } from 'vue-router';
+import { N8nLink, N8nTooltip, N8nIcon, N8nInfoTip } from '@n8n/design-system';
 import { VIEWS } from '@/constants';
 
 type Props = {
 	disabled?: boolean;
+	showUsabilityNotice?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
+	showUsabilityNotice: false,
 });
 
 const i18n = useI18n();
-const router = useRouter();
 </script>
 <template>
 	<div :class="$style.container" data-test-id="ai-settings-button">
+		<N8nInfoTip v-if="props.showUsabilityNotice" theme="warning" type="tooltip">
+			<span>{{ i18n.baseText('settings.ai.reducedHelp.notice') }}</span>
+		</N8nInfoTip>
 		<N8nTooltip :content="i18n.baseText('settings.ai.button.tooltip')" :disabled="props.disabled">
 			<N8nLink
 				:to="{ name: VIEWS.AI_SETTINGS }"
@@ -34,6 +37,7 @@ const router = useRouter();
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	gap: var(--spacing--2xs);
 }
 
 .link {
