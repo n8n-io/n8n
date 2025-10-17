@@ -112,6 +112,7 @@ onMounted(async () => {
 				label="New Chat"
 				icon="square-pen"
 				:active="route.name === CHAT_VIEW"
+				@click="sidebar.toggleOpen(false)"
 			/>
 		</div>
 		<N8nScrollArea as-child type="scroll">

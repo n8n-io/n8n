@@ -39,8 +39,9 @@ const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
 const justCopied = ref(false);
 const { markdownOptions, forceReRenderKey } = useChatHubMarkdownOptions();
+const messageContent = computed(() => message.content);
 
-const speech = useSpeechSynthesis(message.content, {
+const speech = useSpeechSynthesis(messageContent, {
 	pitch: 1,
 	rate: 1,
 	volume: 1,

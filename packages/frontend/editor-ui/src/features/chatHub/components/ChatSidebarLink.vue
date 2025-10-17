@@ -33,7 +33,7 @@ defineSlots<{
 	<div :class="[$style.menuItem, { [$style.active]: active }]">
 		<slot v-if="$slots.default" />
 		<template v-else>
-			<RouterLink :to="to" :class="$style.menuItemLink">
+			<RouterLink :to="to" :class="$style.menuItemLink" @click="emit('click', $event)">
 				<slot name="icon">
 					<N8nIcon v-if="icon" size="large" :icon="icon" />
 				</slot>
