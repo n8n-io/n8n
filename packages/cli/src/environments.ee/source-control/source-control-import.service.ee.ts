@@ -1,26 +1,25 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
-	Variables,
+	FindOptionsWhere,
 	Project,
 	TagEntity,
 	User,
-	WorkflowTagMapping,
+	Variables,
 	WorkflowEntity,
-	FindOptionsWhere,
+	WorkflowTagMapping,
 } from '@n8n/db';
 import {
-	SharedCredentials,
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRepository,
-	TagRepository,
-	VariablesRepository,
-	WorkflowTagMappingRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	WorkflowRepository,
+	TagRepository,
 	UserRepository,
+	VariablesRepository,
+	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -28,7 +27,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow';
+import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -40,6 +39,7 @@ import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { VariablesService } from '../variables/variables.service.ee';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
@@ -63,13 +63,12 @@ import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
 import type {
-	StatusResourceOwner,
 	RemoteResourceOwner,
+	StatusResourceOwner,
 	TeamResourceOwner,
 } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { VariablesService } from '../variables/variables.service.ee';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -677,14 +676,13 @@ export class SourceControlImportService {
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 			);
 
-			await this.syncResourceOwnership(
-				importedWorkflow.id,
-				importedWorkflow.owner,
-				localOwner,
-				personalProject,
-				this.sharedWorkflowRepository,
-				this.workflowRepository.manager,
-			);
+			await this.syncResourceOwnership({
+				resourceId: importedWorkflow.id,
+				remoteOwner: importedWorkflow.owner,
+				localOwner: localOwner,
+				fallbackProject: personalProject,
+				repository: this.sharedWorkflowRepository,
+			});
 
 			if (existingWorkflow?.active) {
 				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
@@ -757,6 +755,7 @@ export class SourceControlImportService {
 				role: 'credential:owner',
 			},
 		});
+
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
 		importCredentialsResult = await Promise.all(
 			candidates.map(async (candidate) => {
@@ -788,14 +787,13 @@ export class SourceControlImportService {
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
 				);
 
-				await this.syncResourceOwnership(
-					credential.id,
-					credential.ownedBy,
-					localOwner,
-					personalProject,
-					this.sharedCredentialsRepository,
-					this.credentialsRepository.manager,
-				);
+				await this.syncResourceOwnership({
+					resourceId: credential.id,
+					remoteOwner: credential.ownedBy,
+					localOwner: localOwner,
+					fallbackProject: personalProject,
+					repository: this.sharedCredentialsRepository,
+				});
 
 				return {
 					id: newCredentialObject.id as string,
@@ -1082,14 +1080,19 @@ export class SourceControlImportService {
 	 * Syncs ownership of a resource (workflow or credential) during import.
 	 * Handles ownership transfer by removing old ownership and assigning new ownership.
 	 */
-	private async syncResourceOwnership(
-		resourceId: string,
-		remoteOwner: RemoteResourceOwner | null | undefined,
-		localOwner: { projectId: string } | undefined,
-		personalProjectFallback: Project,
-		repository: SharedWorkflowRepository | SharedCredentialsRepository,
-		trx: EntityManager,
-	): Promise<void> {
+	private async syncResourceOwnership({
+		resourceId,
+		remoteOwner,
+		localOwner,
+		fallbackProject,
+		repository,
+	}: {
+		resourceId: string;
+		remoteOwner: RemoteResourceOwner | null | undefined;
+		localOwner: { projectId: string } | undefined;
+		fallbackProject: Project;
+		repository: SharedWorkflowRepository | SharedCredentialsRepository;
+	}): Promise<void> {
 		let targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
 		if (!targetOwnerProject) {
 			const isSharedResource =
@@ -1097,8 +1100,10 @@ export class SourceControlImportService {
 
 			targetOwnerProject = isSharedResource
 				? await this.createTeamProject(remoteOwner)
-				: personalProjectFallback;
+				: fallbackProject;
 		}
+
+		const trx = this.workflowRepository.manager;
 
 		// remove old ownership if it changed
 		const shouldRemoveOldOwner = localOwner && localOwner.projectId !== targetOwnerProject.id;
