@@ -3004,6 +3004,7 @@
 	"dataTable.banner.storageLimitWarning.message": "{usage} of Data tables storage used. Delete data to avoid errors",
 	"dataTable.banner.storageLimitError.message": "{usage} of Data tables storage used, operations may fail. Delete data to avoid errors",
 	"dataTable.error.tableNotInitialized": "Table not initialized",
+	"dataTable.error.arrayValuesNotAllowed": "Array values are not allowed",
 	"dataTable.noRows": "No rows",
 	"dataTable.filters.isNull": "Is null",
 	"dataTable.filters.isNotNull": "Is not null",
