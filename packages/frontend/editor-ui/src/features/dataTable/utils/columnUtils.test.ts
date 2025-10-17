@@ -200,7 +200,7 @@ describe('columnUtils', () => {
 			const data = { test: 'old' };
 			const params = {
 				data,
-				newValue: {},
+				newValue: Symbol('test'),
 			} as unknown as ValueSetterParams<DataTableRow>;
 
 			const setter = createStringValueSetter(col, isTextEditorOpen);

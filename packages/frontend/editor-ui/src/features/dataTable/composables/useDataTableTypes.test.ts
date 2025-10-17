@@ -62,8 +62,8 @@ describe('useDataTableTypes', () => {
 			expect(mapToDataTableColumnType('dateString')).toBe('dateString');
 		});
 
-		it('should preserve object type', () => {
-			expect(mapToDataTableColumnType('object')).toBe('object');
+		it('should map object to json', () => {
+			expect(mapToDataTableColumnType('object')).toBe('json');
 		});
 
 		it('should map unknown type to string', () => {

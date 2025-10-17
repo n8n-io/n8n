@@ -30,7 +30,6 @@ describe('dataTable typeGuards', () => {
 
 		it('should return false for invalid values', () => {
 			expect(isDataTableValue(undefined)).toBe(false);
-			expect(isDataTableValue({})).toBe(false);
 			expect(isDataTableValue([])).toBe(false);
 			expect(isDataTableValue(Symbol('test'))).toBe(false);
 		});

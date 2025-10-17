@@ -162,6 +162,7 @@ defineExpose({
 				:row-selection="selection.rowSelection"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
+				:suppress-click-edit="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
 				:overlay-no-rows-template="customNoRowsOverlay"
