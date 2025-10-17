@@ -8,6 +8,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
+import { useBuilderStore } from '../builder.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -15,11 +16,13 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 const settingsStore = useSettingsStore();
 
 const allowSendingSchema = ref(true);
 
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
+const isBulderEnabled = computed(() => builderStore.isAIBuilderEnabled);
 const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
 const allowSendingActualData = computed(() => settingsStore.isAiDataSharingEnabled);
 
@@ -35,11 +38,25 @@ const aiSettingsDescription = computed(() => {
 	return i18n.baseText('settings.ai.description.both');
 });
 
+const efficiencyNotice = computed(() => {
+	if (isBulderEnabled.value) {
+		return i18n.baseText('settings.ai.efficiencyNotice.builderEnabled');
+	}
+	return i18n.baseText('settings.ai.efficiencyNotice.builderDisabled');
+});
+
+const confirmationMessage = computed(() => {
+	if (isBulderEnabled.value) {
+		return i18n.baseText('settings.ai.confirm.message.builderEnabled');
+	}
+	return i18n.baseText('settings.ai.confirm.message.builderDisabled');
+});
+
 const onAllowSendingActualDataChange = async (newValue: boolean | string | number) => {
 	if (typeof newValue !== 'boolean') return;
 
 	if (!newValue) {
-		const promptResponse = await message.confirm(i18n.baseText('settings.ai.confirm.message'), {
+		const promptResponse = await message.confirm(confirmationMessage.value, {
 			title: i18n.baseText('settings.ai.confirm.title'),
 			confirmButtonText: i18n.baseText('settings.ai.confirm.confirmButtonText'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
@@ -86,7 +103,7 @@ onMounted(async () => {
 				@update:model-value="onAllowSendingActualDataChange"
 			/>
 			<N8nNotice v-if="!allowSendingActualData" type="warning" :closable="false">
-				{{ i18n.baseText('settings.ai.efficiencyNotice') }}
+				{{ efficiencyNotice }}
 			</N8nNotice>
 		</div>
 	</div>
