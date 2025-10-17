@@ -40,6 +40,7 @@ export interface ChatMessage extends ChatHubMessageDto {
 
 export interface ChatConversation extends ChatHubConversationDto {
 	messages: Record<ChatMessageId, ChatMessage>;
+	activeMessageChain: ChatMessageId[];
 }
 
 export interface StreamOutput {

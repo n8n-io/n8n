@@ -8,10 +8,11 @@ import ChatMessageActions from './ChatMessageActions.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { ref, nextTick, watch, useTemplateRef } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
-import type { ChatHubMessageDto } from '@n8n/api-types';
+import type { ChatMessage } from '../chat.types';
+import type { ChatMessageId } from '@n8n/api-types';
 
 const { message, compact, isEditing, isStreaming } = defineProps<{
-	message: ChatHubMessageDto;
+	message: ChatMessage;
 	compact: boolean;
 	isEditing: boolean;
 	isStreaming: boolean;
@@ -20,8 +21,9 @@ const { message, compact, isEditing, isStreaming } = defineProps<{
 const emit = defineEmits<{
 	startEdit: [];
 	cancelEdit: [];
-	update: [message: ChatHubMessageDto];
-	regenerate: [message: ChatHubMessageDto];
+	update: [message: ChatMessage];
+	regenerate: [message: ChatMessage];
+	switchAlternative: [messageId: ChatMessageId];
 }>();
 
 const clipboard = useClipboard();
@@ -57,6 +59,10 @@ function handleConfirmEdit() {
 
 function handleRegenerate() {
 	emit('regenerate', message);
+}
+
+function handleSwitchAlternative(messageId: ChatMessageId) {
+	emit('switchAlternative', messageId);
 }
 
 const markdownOptions = {
@@ -146,9 +152,12 @@ watch(
 					:type="message.type"
 					:just-copied="justCopied"
 					:class="$style.actions"
+					:message-id="message.id"
+					:alternatives="message.alternatives"
 					@copy="handleCopy"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
+					@switchAlternative="handleSwitchAlternative"
 				/>
 			</template>
 		</div>

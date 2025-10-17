@@ -284,7 +284,9 @@ function handleEditMessage(message: ChatHubMessageDto) {
 		return;
 	}
 
-	chatStore.editMessage(sessionId.value, message.id, message.content, selectedModel.value, {
+	const mesasgeToEdit = message.revisionOfMessageId ?? message.id;
+
+	chatStore.editMessage(sessionId.value, mesasgeToEdit, message.content, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -304,12 +306,18 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		return;
 	}
 
-	chatStore.regenerateMessage(sessionId.value, message.id, selectedModel.value, {
+	const messageToRetry = message.retryOfMessageId ?? message.id;
+
+	chatStore.regenerateMessage(sessionId.value, messageToRetry, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
 		},
 	});
+}
+
+function handleSwitchAlternative(messageId: string) {
+	chatStore.switchAlternative(sessionId.value, messageId);
 }
 </script>
 
@@ -377,6 +385,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
 						@update="handleEditMessage"
+						@switch-alternative="handleSwitchAlternative"
 					/>
 				</div>
 
