@@ -3604,7 +3604,7 @@ describe('dataTable', () => {
 			['', '""'],
 			['[', '"["'],
 			['[0]', '"[0]"'],
-			['"', '"\\""'],
+			// ['"', '"\\""'], // disabled until MySQL and MariaDB support is dropped
 		])('inserts json with weird keys %p, path %p', async (input, path) => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
