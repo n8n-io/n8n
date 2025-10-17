@@ -11,25 +11,32 @@ import type {
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
 
+export type WebhookOptions = {
+	binaryData: boolean;
+	ignoreBots: boolean;
+	rawBody: boolean;
+	responseData?: string;
+	ipWhitelist?: string;
+	reductedHeaders?: string;
+};
+
+export const DEFAULT_REDACTED_HEADERS =
+	'authorization, x-api-key, x-auth-token, cookie, proxy-authorization, sslclientcert';
 export const REDACTED = '**hidden**';
 
 /**
  * Redacts sensitive headers from webhook request headers
  * Uses the same blocklist as the HTTP Request node for consistency
  */
-export function redactSensitiveHeaders(headers: IDataObject): IDataObject {
-	if (!headers) {
-		return headers;
-	}
+export function redactSensitiveHeaders(
+	headers: IDataObject,
+	reductedHeaders?: string,
+): IDataObject {
+	if (!headers || !reductedHeaders) return headers;
 
-	const HEADER_BLOCKLIST = new Set([
-		'authorization',
-		'x-api-key',
-		'x-auth-token',
-		'cookie',
-		'proxy-authorization',
-		'sslclientcert',
-	]);
+	const blocklist = reductedHeaders.split(',').map((header) => header.trim());
+
+	const HEADER_BLOCKLIST = new Set(blocklist);
 
 	const redactedHeaders = { ...headers };
 
@@ -115,6 +122,8 @@ export const setupOutputConnection = (
 	ctx: IWebhookFunctions,
 	method: string,
 	additionalData: {
+		nodeVersion: number;
+		options: WebhookOptions;
 		jwtPayload?: IDataObject;
 	},
 ) => {
@@ -126,9 +135,18 @@ export const setupOutputConnection = (
 		webhookUrl = webhookUrl.replace('/webhook/', '/webhook-test/');
 	}
 
+	let redactedHeaders = additionalData.options.reductedHeaders;
+	if (redactedHeaders === undefined && additionalData.nodeVersion >= 2.2) {
+		redactedHeaders = DEFAULT_REDACTED_HEADERS;
+	}
+
 	// multi methods could be set in settings of node, so we need to check if it's an array
 	if (!Array.isArray(httpMethod)) {
 		return (outputData: INodeExecutionData): INodeExecutionData[][] => {
+			outputData.json.headers = redactSensitiveHeaders(
+				outputData.json.headers as IDataObject,
+				redactedHeaders,
+			);
 			outputData.json.webhookUrl = webhookUrl;
 			outputData.json.executionMode = executionMode;
 			if (additionalData?.jwtPayload) {
@@ -142,6 +160,10 @@ export const setupOutputConnection = (
 	const outputs: INodeExecutionData[][] = httpMethod.map(() => []);
 
 	return (outputData: INodeExecutionData): INodeExecutionData[][] => {
+		outputData.json.headers = redactSensitiveHeaders(
+			outputData.json.headers as IDataObject,
+			redactedHeaders,
+		);
 		outputData.json.webhookUrl = webhookUrl;
 		outputData.json.executionMode = executionMode;
 		if (additionalData?.jwtPayload) {
