@@ -1,7 +1,7 @@
 # Component specification
 
-Lets users choose one or more options from a predefined list. It supports both single and multiple selection modes via the multiple prop.
-The Select is ideal when there are less than 10 items to choose from, for bigger datasets or search capabilities use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done)
+Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the multiple prop.
+The Select is ideal when there are less than 10 items to choose from, for bigger datasets or search capabilities, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done)
 
 - **Component Name:** N8nSelect
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2121-630&m=dev)
@@ -16,7 +16,7 @@ The Select is ideal when there are less than 10 items to choose from, for bigger
 
 - `id?: string`
 - `placeholder?: string`
-- `items?: T;` Array or Nested Array for elements to render (nested array represent groups)
+- `items?: T` Array or Nested Array for elements to render (nested array represent groups)
 - `valueKey?: VK` When `items` is an array of objects, select the field to use as the value.
 - `labelKey?: GetItemKeys<T>` When `items` is an array of objects, select the field to use as the label.
 - `defaultValue?: GetModelValue<T, VK, M>` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
@@ -25,6 +25,7 @@ The Select is ideal when there are less than 10 items to choose from, for bigger
 - `open?: boolean`  The controlled open state of the Select. Can be bind as `v-model:open`.
 - `defaultOpen?: boolean` The open state of the select when it is initially rendered. Use when you do not need to control its open state.
 - `disabled?: boolean` When `true`, prevents the user from interacting with Select.
+- `icon?: IconName` Icon to be displayed in the trigger.
 
 
 **UI Props**
@@ -39,7 +40,7 @@ The Select is ideal when there are less than 10 items to choose from, for bigger
 
 **Slots**
 
-- `default`: `{ modelValue?: GetModelValue<A, VK, M>; open: boolean }`
+- `default`: `{ modelValue?: GetModelValue<T, VK, M>; open: boolean }`
 - `item`: `{ item: T; index: number }`
 - `item-leading`: `{ item: T; index: number }`
 - `item-label`: `{ item: T; index: number }`
@@ -79,7 +80,7 @@ const items = ref([
 		icon: 'filled-square',
 	},
 ])
-const value = ref('Backlog')
+const value = ref('light')
 const icon = computed(() => items.value.find(item => item.value === value.value))
 </script>
 
