@@ -247,7 +247,7 @@ export function normalizeAndValidateSourceControlledFilePath(
 	return normalizedPath;
 }
 
-export function areOwnersDifferent(
+export function hasOwnerChanged(
 	owner1?: StatusResourceOwner,
 	owner2?: StatusResourceOwner,
 ): boolean {
@@ -271,7 +271,7 @@ export function isWorkflowModified(
 	const hasVersionIdChanged = remote.versionId !== local.versionId;
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
-	const hasOwnerChanged = areOwnersDifferent(remote.owner, local.owner);
+	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || hasOwnerChanged;
+	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
 }

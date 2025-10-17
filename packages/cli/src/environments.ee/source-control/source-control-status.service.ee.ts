@@ -10,7 +10,7 @@ import { EventService } from '@/events/event.service';
 
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
-	areOwnersDifferent,
+	hasOwnerChanged,
 	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPrePushResult,
@@ -312,7 +312,7 @@ export class SourceControlStatusService {
 					remote.id === local.id &&
 					(remote.name !== local.name ||
 						remote.type !== local.type ||
-						areOwnersDifferent(remote.ownedBy, local.ownedBy))
+						hasOwnerChanged(remote.ownedBy, local.ownedBy))
 				);
 			});
 
