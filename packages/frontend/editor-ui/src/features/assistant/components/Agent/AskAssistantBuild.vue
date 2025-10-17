@@ -60,10 +60,17 @@ const showExecuteMessage = computed(() => {
 			msg.type === 'workflow-updated' ||
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
+
+	// Check if there's an error message after the last workflow update
+	const hasErrorAfterUpdate = builderStore.chatMessages
+		.slice(builderUpdatedWorkflowMessageIndex + 1)
+		.some((msg) => msg.type === 'error');
+
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
-		builderUpdatedWorkflowMessageIndex > -1
+		builderUpdatedWorkflowMessageIndex > -1 &&
+		!hasErrorAfterUpdate
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
