@@ -3133,4 +3133,863 @@ describe('Salesforce', () => {
 			});
 		});
 	});
+
+	describe('Execute Method - Account Resource Extended Fields', () => {
+		describe('Account Create Operation - Additional Fields', () => {
+			it('should handle account create with all additional fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'account',
+						operation: 'create',
+						name: 'Test Account',
+						additionalFields: {
+							fax: '555-0199',
+							type: 'Customer - Direct',
+							jigsaw: 'JIG123',
+							phone: '555-0100',
+							owner: 'user123',
+							sicDesc: 'Technology Services',
+							website: 'https://test.com',
+							industry: 'Technology',
+							parentId: 'parent123',
+							billingCity: 'San Francisco',
+							description: 'Test account description',
+							billingState: 'CA',
+							shippingCity: 'San Francisco',
+							accountNumber: 'ACC-001',
+							accountSource: 'Web',
+							annualRevenue: 1000000,
+							billingStreet: '123 Main St',
+							shippingState: 'CA',
+							billingCountry: 'USA',
+							shippingStreet: '456 Oak Ave',
+							shippingCountry: 'USA',
+							billingPostalCode: '94105',
+							numberOfEmployees: '50',
+							shippingPostalCode: '94105',
+							recordTypeId: 'rt123',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'acc123', success: true });
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/account', {
+					Name: 'Test Account',
+					Fax: '555-0199',
+					Type: 'Customer - Direct',
+					Jigsaw: 'JIG123',
+					Phone: '555-0100',
+					OwnerId: 'user123',
+					SicDesc: 'Technology Services',
+					Website: 'https://test.com',
+					Industry: 'Technology',
+					ParentId: 'parent123',
+					BillingCity: 'San Francisco',
+					Description: 'Test account description',
+					BillingState: 'CA',
+					ShippingCity: 'San Francisco',
+					AccountNumber: 'ACC-001',
+					AccountSource: 'Web',
+					AnnualRevenue: 1000000,
+					BillingStreet: '123 Main St',
+					ShippingState: 'CA',
+					BillingCountry: 'USA',
+					ShippingStreet: '456 Oak Ave',
+					ShippingCountry: 'USA',
+					BillingPostalCode: '94105',
+					NumberOfEmployees: '50',
+					ShippingPostalCode: '94105',
+					RecordTypeId: 'rt123',
+				});
+
+				expect(result).toEqual([[{ json: { id: 'acc123', success: true }, pairedItem: 0 }]]);
+			});
+
+			it('should handle account create with custom fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'account',
+						operation: 'create',
+						name: 'Test Account',
+						additionalFields: {
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Custom_Field__c', value: 'Custom Value 1' },
+									{ fieldId: 'Another_Field__c', value: 'Custom Value 2' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'acc123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/account', {
+					Name: 'Test Account',
+					Custom_Field__c: 'Custom Value 1',
+					Another_Field__c: 'Custom Value 2',
+				});
+			});
+
+			it('should handle account upsert operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, index?: number): any => {
+						if (param === 'externalId' && index === 0) return 'AccountNumber';
+						if (param === 'externalIdValue') return 'ACC-001';
+						const params: Record<string, unknown> = {
+							resource: 'account',
+							operation: 'upsert',
+							name: 'Test Account',
+							additionalFields: {
+								fax: '555-0199',
+								type: 'Customer - Direct',
+							},
+						};
+						return params[param];
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'acc123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/account/AccountNumber/ACC-001',
+					{
+						Name: 'Test Account',
+						Fax: '555-0199',
+						Type: 'Customer - Direct',
+					},
+				);
+			});
+		});
+	});
+
+	describe('Execute Method - Task Resource Extended Fields', () => {
+		describe('Task Create Operation - Additional Fields', () => {
+			it('should handle task create with basic additional fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'create',
+						status: 'Not Started',
+						additionalFields: {
+							type: 'Call',
+							whoId: 'contact123',
+							whatId: 'account123',
+							owner: 'user123',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/task', {
+					Status: 'Not Started',
+					TaskSubtype: 'Call',
+					WhoId: 'contact123',
+					WhatId: 'account123',
+					OwnerId: 'user123',
+				});
+
+				expect(result).toEqual([[{ json: { id: 'task123', success: true }, pairedItem: 0 }]]);
+			});
+
+			it('should handle task create with all extended additional fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'create',
+						status: 'In Progress',
+						additionalFields: {
+							activityDate: '2025-01-15',
+							isReminderSet: true,
+							recurrenceType: 'RecursDaily',
+							callDisposition: 'Completed',
+							reminderDateTime: '2025-01-15T10:00:00Z',
+							recurrenceInstance: 'First',
+							recurrenceInterval: 1,
+							recurrenceDayOfMonth: 15,
+							callDurationInSeconds: 1800,
+							recurrenceEndDateOnly: '2025-12-31',
+							recurrenceMonthOfYear: 'January',
+							recurrenceDayOfWeekMask: 'Monday',
+							recurrenceStartDateOnly: '2025-01-01',
+							recurrenceTimeZoneSidKey: 'America/Los_Angeles',
+							recurrenceRegeneratedType: 'RecurEvery',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/task', {
+					Status: 'In Progress',
+					ActivityDate: '2025-01-15',
+					IsReminderSet: true,
+					RecurrenceType: 'RecursDaily',
+					CallDisposition: 'Completed',
+					ReminderDateTime: '2025-01-15T10:00:00Z',
+					RecurrenceInstance: 'First',
+					RecurrenceInterval: 1,
+					RecurrenceDayOfMonth: 15,
+					CallDurationInSeconds: 1800,
+					RecurrenceEndDateOnly: '2025-12-31',
+					RecurrenceMonthOfYear: 'January',
+					RecurrenceDayOfWeekMask: 'Monday',
+					RecurrenceStartDateOnly: '2025-01-01',
+					RecurrenceTimeZoneSidKey: 'America/Los_Angeles',
+					RecurrenceRegeneratedType: 'RecurEvery',
+				});
+			});
+
+			it('should handle task create with custom fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'create',
+						status: 'Not Started',
+						additionalFields: {
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Custom_Priority__c', value: 'High' },
+									{ fieldId: 'Custom_Category__c', value: 'Sales' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/task', {
+					Status: 'Not Started',
+					Custom_Priority__c: 'High',
+					Custom_Category__c: 'Sales',
+				});
+			});
+		});
+
+		describe('Task Update Operation - Update Fields', () => {
+			it('should handle task update with basic fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'update',
+						taskId: 'task123',
+						updateFields: {
+							type: 'Email',
+							whoId: 'contact456',
+							status: 'Completed',
+							whatId: 'account456',
+							owner: 'user456',
+							subject: 'Updated Task',
+							callType: 'Outbound',
+							priority: 'High',
+							callObject: 'Lead',
+							description: 'Updated description',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('PATCH', '/sobjects/task/task123', {
+					TaskSubtype: 'Email',
+					WhoId: 'contact456',
+					Status: 'Completed',
+					WhatId: 'account456',
+					OwnerId: 'user456',
+					Subject: 'Updated Task',
+					CallType: 'Outbound',
+					Priority: 'High',
+					CallObject: 'Lead',
+					Description: 'Updated description',
+				});
+
+				expect(result).toEqual([[{ json: { id: 'task123', success: true }, pairedItem: 0 }]]);
+			});
+
+			it('should handle task update with all extended fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'update',
+						taskId: 'task123',
+						updateFields: {
+							activityDate: '2025-01-20',
+							isReminderSet: false,
+							recurrenceType: 'RecursWeekly',
+							callDisposition: 'No Answer',
+							reminderDateTime: '2025-01-20T14:00:00Z',
+							recurrenceInstance: 'Second',
+							recurrenceInterval: 2,
+							recurrenceDayOfMonth: 20,
+							callDurationInSeconds: 900,
+							recurrenceEndDateOnly: '2025-06-30',
+							recurrenceMonthOfYear: 'June',
+							recurrenceDayOfWeekMask: 'Friday',
+							recurrenceStartDateOnly: '2025-01-20',
+							recurrenceTimeZoneSidKey: 'America/New_York',
+							recurrenceRegeneratedType: 'RecurChild',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('PATCH', '/sobjects/task/task123', {
+					ActivityDate: '2025-01-20',
+					IsReminderSet: false,
+					RecurrenceType: 'RecursWeekly',
+					CallDisposition: 'No Answer',
+					ReminderDateTime: '2025-01-20T14:00:00Z',
+					RecurrenceInstance: 'Second',
+					RecurrenceInterval: 2,
+					RecurrenceDayOfMonth: 20,
+					CallDurationInSeconds: 900,
+					RecurrenceEndDateOnly: '2025-06-30',
+					RecurrenceMonthOfYear: 'June',
+					RecurrenceDayOfWeekMask: 'Friday',
+					RecurrenceStartDateOnly: '2025-01-20',
+					RecurrenceTimeZoneSidKey: 'America/New_York',
+					RecurrenceRegeneratedType: 'RecurChild',
+				});
+			});
+
+			it('should handle task update with custom fields', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'update',
+						taskId: 'task123',
+						updateFields: {
+							subject: 'Updated Task',
+							customFieldsUi: {
+								customFieldsValues: [
+									{ fieldId: 'Custom_Status__c', value: 'In Review' },
+									{ fieldId: 'Custom_Notes__c', value: 'Updated notes' },
+								],
+							},
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('PATCH', '/sobjects/task/task123', {
+					Subject: 'Updated Task',
+					Custom_Status__c: 'In Review',
+					Custom_Notes__c: 'Updated notes',
+				});
+			});
+		});
+
+		describe('Task GetAll Operation - Query and Error Handling', () => {
+			it('should handle task getAll with limit', async () => {
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id,Subject,Status FROM Task LIMIT 10');
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'getAll',
+						returnAll: false,
+						limit: 10,
+						options: { fields: 'Id,Subject,Status' },
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
+					{ Id: 'task1', Subject: 'Task 1', Status: 'Open' },
+					{ Id: 'task2', Subject: 'Task 2', Status: 'Completed' },
+				]);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith(
+					{ fields: 'Id,Subject,Status' },
+					'Task',
+					false,
+					10,
+				);
+				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
+					'records',
+					'GET',
+					'/query',
+					{},
+					{
+						q: 'SELECT Id,Subject,Status FROM Task LIMIT 10',
+					},
+				);
+
+				expect(result).toEqual([
+					[
+						{ json: { Id: 'task1', Subject: 'Task 1', Status: 'Open' }, pairedItem: 0 },
+						{ json: { Id: 'task2', Subject: 'Task 2', Status: 'Completed' }, pairedItem: 1 },
+					],
+				]);
+			});
+
+			it('should handle task getAll operation error handling', async () => {
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id FROM Task LIMIT 5');
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'task',
+						operation: 'getAll',
+						returnAll: false,
+						limit: 5,
+						options: {},
+					};
+					return params[param];
+				});
+
+				const testError = new Error('Query failed');
+				salesforceApiRequestAllItemsSpy.mockRejectedValue(testError);
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('Query failed');
+			});
+		});
+	});
+
+	describe('Execute Method - Attachment Resource', () => {
+		describe('Attachment Create Operation', () => {
+			it('should handle attachment create with minimal fields', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([
+					{
+						json: {},
+						binary: {
+							data: {
+								data: 'SGVsbG8gV29ybGQ=',
+								mimeType: 'text/plain',
+								fileName: 'test.txt',
+							},
+						},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'create',
+						name: 'Test File',
+						parentId: 'parent123',
+						binaryPropertyName: 'data',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/attachment', {
+					Name: 'Test File',
+					ParentId: 'parent123',
+					Body: 'SGVsbG8gV29ybGQ=',
+					ContentType: 'text/plain',
+				});
+
+				expect(result).toEqual([[{ json: { id: 'att123', success: true }, pairedItem: 0 }]]);
+			});
+
+			it('should handle attachment create with all additional fields', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([
+					{
+						json: {},
+						binary: {
+							document: {
+								data: 'UERGIGRhdGE=',
+								mimeType: 'application/pdf',
+								fileName: 'document.pdf',
+							},
+						},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'create',
+						name: 'Important Document',
+						parentId: 'parent456',
+						binaryPropertyName: 'document',
+						additionalFields: {
+							description: 'Important business document',
+							owner: 'user123',
+							isPrivate: true,
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'att456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/attachment', {
+					Name: 'Important Document',
+					ParentId: 'parent456',
+					Body: 'UERGIGRhdGE=',
+					ContentType: 'application/pdf',
+					Description: 'Important business document',
+					OwnerId: 'user123',
+					IsPrivate: true,
+				});
+			});
+
+			it('should throw error when binary property does not exist', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([
+					{
+						json: {},
+						binary: {},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'create',
+						name: 'Test File',
+						parentId: 'parent123',
+						binaryPropertyName: 'nonexistent',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'The property nonexistent does not exist',
+				);
+			});
+		});
+
+		describe('Attachment Update Operation', () => {
+			it('should handle attachment update with binary data', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([
+					{
+						json: {},
+						binary: {
+							newFile: {
+								data: 'VXBkYXRlZCBkYXRh',
+								mimeType: 'text/plain',
+								fileName: 'updated.txt',
+							},
+						},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'update',
+						attachmentId: 'att123',
+						updateFields: {
+							name: 'Updated File Name',
+							binaryPropertyName: 'newFile',
+							description: 'Updated description',
+							owner: 'user456',
+							isPrivate: false,
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/attachment/att123',
+					{
+						Name: 'Updated File Name',
+						Body: 'VXBkYXRlZCBkYXRh',
+						ContentType: 'text/plain',
+						Description: 'Updated description',
+						OwnerId: 'user456',
+						IsPrivate: false,
+					},
+				);
+
+				expect(result).toEqual([[{ json: { id: 'att123', success: true }, pairedItem: 0 }]]);
+			});
+
+			it('should handle attachment update without binary data', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([
+					{
+						json: {},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'update',
+						attachmentId: 'att123',
+						updateFields: {
+							name: 'Updated Name Only',
+							description: 'Updated description',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/attachment/att123',
+					{
+						Name: 'Updated Name Only',
+						Description: 'Updated description',
+					},
+				);
+			});
+
+			it('should throw error when binary property does not exist for update', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([
+					{
+						json: {},
+						binary: {},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'update',
+						attachmentId: 'att123',
+						updateFields: {
+							binaryPropertyName: 'missing',
+						},
+					};
+					return params[param];
+				});
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'The property missing does not exist',
+				);
+			});
+		});
+
+		describe('Attachment Get Operation', () => {
+			it('should handle attachment get operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'get',
+						attachmentId: 'att123',
+					};
+					return params[param];
+				});
+
+				const mockAttachment = {
+					Id: 'att123',
+					Name: 'Test File',
+					ParentId: 'parent123',
+					ContentType: 'text/plain',
+				};
+				salesforceApiRequestSpy.mockResolvedValue(mockAttachment);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/attachment/att123');
+
+				expect(result).toEqual([[{ json: mockAttachment, pairedItem: 0 }]]);
+			});
+		});
+
+		describe('Attachment GetAll Operation', () => {
+			it('should handle attachment getAll with returnAll true', async () => {
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id,Name,ParentId FROM Attachment');
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'getAll',
+						returnAll: true,
+						options: { fields: 'Id,Name,ParentId' },
+					};
+					return params[param];
+				});
+
+				const mockAttachments = [
+					{ Id: 'att1', Name: 'File 1', ParentId: 'parent1' },
+					{ Id: 'att2', Name: 'File 2', ParentId: 'parent2' },
+				];
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockAttachments);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith(
+					{ fields: 'Id,Name,ParentId' },
+					'Attachment',
+					true,
+				);
+				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
+					'records',
+					'GET',
+					'/query',
+					{},
+					{
+						q: 'SELECT Id,Name,ParentId FROM Attachment',
+					},
+				);
+
+				expect(result).toEqual([
+					[
+						{ json: { Id: 'att1', Name: 'File 1', ParentId: 'parent1' }, pairedItem: 0 },
+						{ json: { Id: 'att2', Name: 'File 2', ParentId: 'parent2' }, pairedItem: 1 },
+					],
+				]);
+			});
+
+			it('should handle attachment getAll with limit', async () => {
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id,Name FROM Attachment LIMIT 5');
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'getAll',
+						returnAll: false,
+						limit: 5,
+						options: {},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([{ Id: 'att1', Name: 'File 1' }]);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Attachment', false, 5);
+			});
+
+			it('should handle attachment getAll operation error handling', async () => {
+				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				getQuerySpy.mockReturnValue('SELECT Id FROM Attachment');
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'getAll',
+						returnAll: true,
+						options: {},
+					};
+					return params[param];
+				});
+
+				const testError = new Error('Query execution failed');
+				salesforceApiRequestAllItemsSpy.mockRejectedValue(testError);
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'Query execution failed',
+				);
+			});
+		});
+
+		describe('Attachment Delete Operation', () => {
+			it('should handle attachment delete operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'delete',
+						attachmentId: 'att123',
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'DELETE',
+					'/sobjects/attachment/att123',
+				);
+
+				expect(result).toEqual([[{ json: { id: 'att123', success: true }, pairedItem: 0 }]]);
+			});
+
+			it('should handle attachment delete operation error handling', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'delete',
+						attachmentId: 'att123',
+					};
+					return params[param];
+				});
+
+				const testError = new Error('Delete operation failed');
+				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'Delete operation failed',
+				);
+			});
+		});
+
+		describe('Attachment GetSummary Operation', () => {
+			it('should handle attachment getSummary operation', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'attachment',
+						operation: 'getSummary',
+					};
+					return params[param];
+				});
+
+				const mockSummary = {
+					objectDescribe: {
+						name: 'Attachment',
+						label: 'Attachment',
+						fields: [{ name: 'Id' }, { name: 'Name' }],
+					},
+				};
+				salesforceApiRequestSpy.mockResolvedValue(mockSummary);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/attachment');
+
+				expect(result).toEqual([[{ json: mockSummary, pairedItem: 0 }]]);
+			});
+		});
+	});
 });
