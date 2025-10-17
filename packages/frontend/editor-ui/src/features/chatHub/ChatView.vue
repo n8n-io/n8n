@@ -31,6 +31,7 @@ import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const router = useRouter();
 const route = useRoute();
@@ -39,6 +40,7 @@ const chatStore = useChatStore();
 const credentialsStore = useCredentialsStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
+const documentTitle = useDocumentTitle();
 
 const inputRef = useTemplateRef('inputRef');
 const sessionId = computed<string>(() =>
@@ -47,6 +49,12 @@ const sessionId = computed<string>(() =>
 const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
+const currentConversation = computed(() =>
+	sessionId.value
+		? chatStore.sessions.find((session) => session.id === sessionId.value)
+		: undefined,
+);
+const currentConversationTitle = computed(() => currentConversation.value?.title);
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
 
@@ -169,6 +177,14 @@ watch(
 		}
 
 		inputRef.value?.focus();
+	},
+	{ immediate: true },
+);
+
+watch(
+	currentConversationTitle,
+	(title) => {
+		documentTitle.set(title ?? 'Chat');
 	},
 	{ immediate: true },
 );
