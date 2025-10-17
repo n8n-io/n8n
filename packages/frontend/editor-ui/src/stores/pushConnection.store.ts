@@ -112,19 +112,22 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		client.value.disconnect();
 	};
 
-	watch(client.value.isConnected, (didConnect) => {
-		if (!didConnect) {
-			return;
-		}
-
-		// Send any buffered messages
-		if (outgoingQueue.value.length) {
-			for (const message of outgoingQueue.value) {
-				serializeAndSend(message);
+	watch(
+		() => client.value.isConnected.value,
+		(didConnect) => {
+			if (!didConnect) {
+				return;
 			}
-			outgoingQueue.value = [];
-		}
-	});
+
+			// Send any buffered messages
+			if (outgoingQueue.value.length) {
+				for (const message of outgoingQueue.value) {
+					serializeAndSend(message);
+				}
+				outgoingQueue.value = [];
+			}
+		},
+	);
 
 	/** Removes all buffered messages from the sent queue */
 	const clearQueue = () => {
