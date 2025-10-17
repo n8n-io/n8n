@@ -406,13 +406,13 @@ export function resolvePath(
 				return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
 			}
 			if (value instanceof Date) {
-				return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)}})`;
+				return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)})`;
 			}
 			if (typeof value === 'boolean') {
-				return `CAST(${base} as ${dataTableColumnTypeToSql('boolean', dbType)}})`;
+				return `CAST(${base} as ${dataTableColumnTypeToSql('boolean', dbType)})`;
 			}
 			if (typeof value === 'string') {
-				return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)}})`;
+				return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)})`;
 			}
 			return base;
 		}
