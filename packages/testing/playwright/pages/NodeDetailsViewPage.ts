@@ -201,6 +201,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('parameter-input-hint');
 	}
 
+	getInputLabel() {
+		return this.page.getByTestId('input-label');
+	}
+
+	getNthParameter(index: number) {
+		return this.getNodeParameters().locator('.parameter-item').nth(index);
+	}
+
+	getCredentialsLabel() {
+		return this.page.getByTestId('credentials-label');
+	}
+
 	async makeWebhookRequest(path: string) {
 		return await this.page.request.get(path);
 	}

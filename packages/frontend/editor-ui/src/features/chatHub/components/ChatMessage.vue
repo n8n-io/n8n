@@ -8,13 +8,14 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import { useClipboard } from '@/composables/useClipboard';
 import { ref, nextTick, watch, useTemplateRef, computed, onBeforeMount } from 'vue';
 import ChatTypingIndicator from '@/features/chatHub/components/ChatTypingIndicator.vue';
-import type { ChatHubMessageDto } from '@n8n/api-types';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { useChatHubMarkdownOptions } from '@/features/chatHub/composables/useChatHubMarkdownOptions';
 import { useSpeechSynthesis } from '@vueuse/core';
+import type { ChatMessage } from '../chat.types';
+import type { ChatMessageId } from '@n8n/api-types';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
-	message: ChatHubMessageDto;
+	message: ChatMessage;
 	compact: boolean;
 	isEditing: boolean;
 	isStreaming: boolean;
@@ -27,8 +28,9 @@ const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 const emit = defineEmits<{
 	startEdit: [];
 	cancelEdit: [];
-	update: [message: ChatHubMessageDto];
-	regenerate: [message: ChatHubMessageDto];
+	update: [message: ChatMessage];
+	regenerate: [message: ChatMessage];
+	switchAlternative: [messageId: ChatMessageId];
 }>();
 
 const clipboard = useClipboard();
@@ -88,6 +90,10 @@ function handleReadAloud() {
 			speech.speak();
 		}
 	}
+}
+
+function handleSwitchAlternative(messageId: ChatMessageId) {
+	emit('switchAlternative', messageId);
 }
 
 const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
@@ -181,10 +187,13 @@ onBeforeMount(() => {
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
+					:message-id="message.id"
+					:alternatives="message.alternatives"
 					@copy="handleCopy"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
+					@switchAlternative="handleSwitchAlternative"
 				/>
 			</template>
 		</div>

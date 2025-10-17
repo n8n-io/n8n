@@ -183,7 +183,7 @@
     "@langchain/google-genai": "0.2.17",
     "@langchain/google-vertexai": "0.2.18",
     "@langchain/groq": "0.2.3",
-    "@langchain/mistralai": "0.2.1",
+    "@langchain/mistralai": "0.2.3",
     "@langchain/mongodb": "^0.1.0",
     "@langchain/ollama": "0.2.3",
     "@langchain/openai": "catalog:",
