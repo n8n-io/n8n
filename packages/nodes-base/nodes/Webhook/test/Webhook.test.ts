@@ -148,7 +148,7 @@ describe('Test Webhook Node', () => {
 				.mockReturnValue('onReceived');
 			context.getNode.calledWith().mockReturnValue({
 				type: 'n8n-nodes-base.webhook',
-				typeVersion: 2.1,
+				typeVersion: 2.2,
 				name: 'Webhook',
 			} as any);
 			context.getNodeParameter.calledWith('authentication').mockReturnValue('none');
@@ -218,7 +218,7 @@ describe('Test Webhook Node', () => {
 				'content-type': 'application/octet-stream',
 			};
 
-			const redactedHeaders = redactSensitiveHeaders(headers);
+			const redactedHeaders = redactSensitiveHeaders(headers, 'x-auth-token, proxy-authorization');
 
 			expect(redactedHeaders).toEqual({
 				'x-auth-token': '**hidden**',

@@ -12,9 +12,9 @@ import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
 
 export type WebhookOptions = {
-	binaryData: boolean;
-	ignoreBots: boolean;
-	rawBody: boolean;
+	binaryData?: boolean;
+	ignoreBots?: boolean;
+	rawBody?: boolean;
 	responseData?: string;
 	ipWhitelist?: string;
 	reductedHeaders?: string;
@@ -135,7 +135,7 @@ export const setupOutputConnection = (
 		webhookUrl = webhookUrl.replace('/webhook/', '/webhook-test/');
 	}
 
-	let redactedHeaders = additionalData.options.reductedHeaders;
+	let redactedHeaders = additionalData.options?.reductedHeaders;
 	if (redactedHeaders === undefined && additionalData.nodeVersion >= 2.2) {
 		redactedHeaders = DEFAULT_REDACTED_HEADERS;
 	}
