@@ -41,10 +41,14 @@ function afterGuiAttached() {
 }
 
 function onKeydown(event: KeyboardEvent) {
+	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey;
 	if (event.key === 'Escape') {
 		event.preventDefault();
 		isCancelledRef.value = true;
 		props.params.api.stopEditing(true);
+	} else if (event.key === 'Enter' && !hasModifier) {
+		event.preventDefault();
+		props.params.api.stopEditing();
 	}
 }
 
