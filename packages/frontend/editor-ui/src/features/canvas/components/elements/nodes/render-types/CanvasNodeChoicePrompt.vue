@@ -3,17 +3,12 @@ import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
 
 import { N8nIcon } from '@n8n/design-system';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
-
-const isChatWindowOpen = computed(
-	() => chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive,
-);
 
 const onAddFirstStepClick = () => {
 	if (nodeCreatorStore.isCreateNodeActive) {
@@ -60,7 +55,7 @@ async function onBuildWithAIClick() {
 
 		<!-- Build with AI Button -->
 		<div :class="$style.option">
-			<div :class="[$style.selectedButtonHighlight, { [$style.highlighted]: isChatWindowOpen }]">
+			<div :class="$style.selectedButtonHighlight">
 				<button
 					:class="[$style.button]"
 					data-test-id="canvas-build-with-ai-button"
