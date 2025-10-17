@@ -15,7 +15,7 @@ import {
 	OPEN_AI_NODE_TYPE,
 } from '@/constants';
 
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { useActions } from '../composables/useActions';
@@ -31,10 +31,11 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
 import { getActiveViewCallouts, isNodePreviewKey } from '../utils';
 
-import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
-import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
+import CommunityNodeInfo from '@/features/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
+import CommunityNodeFooter from '@/features/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
+import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
@@ -280,7 +281,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 				>
 					<!-- Empty state -->
 					<template v-if="hasNoTriggerActions" #empty>
-						<n8n-callout
+						<N8nCallout
 							v-if="hasNoTriggerActions"
 							theme="info"
 							iconless
@@ -294,7 +295,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 									})
 								"
 							/>
-						</n8n-callout>
+						</N8nCallout>
 						<ItemsRenderer :elements="placeholderTriggerActions" @selected="onSelected" />
 					</template>
 					<template v-else #empty>
@@ -316,7 +317,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 					:expanded="!isTriggerRootView || parsedTriggerActions.length === 0"
 					@selected="onSelected"
 				>
-					<n8n-callout
+					<N8nCallout
 						v-if="!userActivated && isTriggerRootView"
 						theme="info"
 						iconless
@@ -324,10 +325,10 @@ const callouts = computed<INodeCreateElement[]>(() =>
 						data-test-id="actions-panel-activation-callout"
 					>
 						<span v-n8n-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
-					</n8n-callout>
+					</N8nCallout>
 					<!-- Empty state -->
 					<template #empty>
-						<n8n-info-tip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
+						<N8nInfoTip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
 							<span
 								v-n8n-html="
 									i18n.baseText('nodeCreator.actionsCallout.noActionItems', {
@@ -335,7 +336,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 									})
 								"
 							/>
-						</n8n-info-tip>
+						</N8nInfoTip>
 						<p
 							v-else
 							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
@@ -374,7 +375,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 }
 
 .containerPaddingBottom {
-	padding-bottom: var(--spacing-3xl);
+	padding-bottom: var(--spacing--3xl);
 }
 
 .communityNodeFooter {
@@ -383,31 +384,31 @@ const callouts = computed<INodeCreateElement[]>(() =>
 
 .resetSearch {
 	cursor: pointer;
-	line-height: var(--font-line-height-regular);
-	font-weight: var(--font-weight-regular);
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-2xs) var(--spacing-s) 0;
-	color: var(--color-text-base);
+	line-height: var(--line-height--md);
+	font-weight: var(--font-weight--regular);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--2xs) var(--spacing--sm) 0;
+	color: var(--color--text);
 
 	i {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 		font-style: normal;
 		text-decoration: underline;
 	}
 }
 .actionsEmpty {
-	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-s);
-	font-weight: var(--font-weight-regular);
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--sm);
+	font-weight: var(--font-weight--regular);
 
 	strong {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 .apiHint {
-	padding: 0 var(--spacing-s) var(--spacing-xl);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	line-height: var(--font-line-height-regular);
+	padding: 0 var(--spacing--sm) var(--spacing--xl);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	line-height: var(--line-height--md);
 	z-index: 1;
 }
 </style>

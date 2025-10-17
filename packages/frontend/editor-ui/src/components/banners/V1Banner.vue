@@ -34,7 +34,7 @@ const hasOwnerPermission = computed(() => hasPermission(['instanceOwner']));
 .v1container {
 	a,
 	.link {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 		text-decoration: underline;
 	}
 }

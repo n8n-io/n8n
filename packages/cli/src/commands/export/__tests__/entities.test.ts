@@ -9,7 +9,7 @@ describe('ExportEntitiesCommand', () => {
 	const mockExportService = mockInstance(ExportService);
 
 	describe('run', () => {
-		it('should export entities', async () => {
+		it('should export entities without large data tables', async () => {
 			const command = new ExportEntitiesCommand();
 			// @ts-expect-error Protected property
 			command.flags = {
@@ -22,7 +22,33 @@ describe('ExportEntitiesCommand', () => {
 			};
 			await command.run();
 
-			expect(mockExportService.exportEntities).toHaveBeenCalledWith('./exports');
+			expect(mockExportService.exportEntities).toHaveBeenCalledWith(
+				'./exports',
+				new Set<string>([
+					'execution_annotation_tags',
+					'execution_annotations',
+					'execution_data',
+					'execution_entity',
+					'execution_metadata',
+				]),
+			);
+		});
+
+		it('should export entities with large data tables', async () => {
+			const command = new ExportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				outputDir: './exports',
+				includeExecutionHistoryDataTables: true,
+			};
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: jest.fn(),
+				error: jest.fn(),
+			};
+			await command.run();
+
+			expect(mockExportService.exportEntities).toHaveBeenCalledWith('./exports', new Set<string>());
 		});
 	});
 

@@ -35,6 +35,48 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Creates a workflow in a project with optional folder placement (Uses Internal API not public API)
+	 * @param project - Required project ID where the workflow will be created
+	 * @param options - Optional configuration for workflow creation
+	 * @param options.folder - Optional folder ID to place the workflow in
+	 * @param options.name - Optional workflow name. If not provided, generates a unique name using nanoid
+	 * @returns Object containing the name and ID of the created workflow
+	 */
+	async createInProject(
+		project: string,
+		options?: {
+			folder?: string;
+			name?: string;
+		},
+	): Promise<{ name: string; id: string }> {
+		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
+
+		const workflow = {
+			name: workflowName,
+			nodes: [],
+			connections: {},
+			settings: {},
+			active: false,
+			projectId: project,
+			...(options?.folder && { parentFolderId: options.folder }),
+		};
+
+		const response = await this.api.request.post('/rest/workflows', { data: workflow });
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to create workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		const workflowData = result.data ?? result;
+
+		return {
+			name: workflowName,
+			id: workflowData.id,
+		};
+	}
+
 	async setActive(workflowId: string, active: boolean) {
 		const response = await this.api.request.patch(`/rest/workflows/${workflowId}?forceSave=true`, {
 			data: { active },
@@ -113,14 +155,21 @@ export class WorkflowApiHelper {
 	 * The workflow will be created with its original active state from the JSON file.
 	 * Returns detailed information about what was imported, including webhook info if present.
 	 */
-	async importWorkflow(
+	async importWorkflowFromFile(
 		fileName: string,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const workflowDefinition: IWorkflowBase = JSON.parse(
-			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),
-		);
+		const filePath = resolveFromRoot('workflows', fileName);
+		const fileContent = readFileSync(filePath, 'utf8');
+		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
 
+		return await this.importWorkflowFromDefinition(workflowDefinition, options);
+	}
+
+	async importWorkflowFromDefinition(
+		workflowDefinition: IWorkflowBase,
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
 		// Ensure the workflow is in the correct active state as specified in the JSON
@@ -135,7 +184,6 @@ export class WorkflowApiHelper {
 		const params = new URLSearchParams();
 		if (workflowId) params.set('workflowId', workflowId);
 		params.set('limit', limit.toString());
-
 		const response = await this.api.request.get('/rest/executions', { params });
 
 		if (!response.ok()) {

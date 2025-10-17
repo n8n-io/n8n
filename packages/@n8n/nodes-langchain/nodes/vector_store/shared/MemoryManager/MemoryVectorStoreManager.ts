@@ -1,5 +1,6 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { OpenAIEmbeddings, AzureOpenAIEmbeddings } from '@langchain/openai';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { Logger } from 'n8n-workflow';
 
@@ -37,7 +38,7 @@ export class MemoryVectorStoreManager {
 	protected ttlCleanupIntervalId: NodeJS.Timeout | null = null;
 
 	protected constructor(
-		protected embeddings: Embeddings,
+		protected embeddings: Embeddings | OpenAIEmbeddings | AzureOpenAIEmbeddings,
 		protected logger: Logger,
 	) {
 		// Initialize storage
@@ -65,7 +66,10 @@ export class MemoryVectorStoreManager {
 	/**
 	 * Get singleton instance
 	 */
-	static getInstance(embeddings: Embeddings, logger: Logger): MemoryVectorStoreManager {
+	static getInstance(
+		embeddings: Embeddings | OpenAIEmbeddings | AzureOpenAIEmbeddings,
+		logger: Logger,
+	): MemoryVectorStoreManager {
 		if (!MemoryVectorStoreManager.instance) {
 			MemoryVectorStoreManager.instance = new MemoryVectorStoreManager(embeddings, logger);
 		} else {

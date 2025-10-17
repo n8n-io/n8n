@@ -13,6 +13,9 @@
         "isSuccess": {
             "type": "boolean"
         },
+        "outcome": {
+            "type": "null"
+        },
         "outputValues": {
             "type": "object",
             "properties": {
@@ -31,5 +34,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

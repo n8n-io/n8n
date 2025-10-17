@@ -1,10 +1,9 @@
+import type { IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsStopData,
-	IStartRunData,
-	IWorkflowDb,
-} from '@/Interface';
+} from '@/features/executions/executions.types';
 
 import type {
 	IRunData,
@@ -31,14 +30,14 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { displayForm } from '@/utils/executionUtils';
+import { displayForm } from '@/features/executions/executions.utils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
 import get from 'lodash/get';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -47,8 +46,13 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
+import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
+import { useDocumentTitle } from './useDocumentTitle';
 
-export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
+export function useRunWorkflow(useRunWorkflowOpts: {
+	router: ReturnType<typeof useRouter>;
+	workflowState?: WorkflowState;
+}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
 	const workflowSaving = useWorkflowSaving({ router: useRunWorkflowOpts.router });
@@ -62,6 +66,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
@@ -93,24 +98,24 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		workflowsStore.subWorkflowExecutionError = null;
 
 		// Set the execution as started, but still waiting for the execution to be retrieved
-		workflowsStore.setActiveExecutionId(null);
+		workflowState.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			workflowsStore.setActiveExecutionId(undefined);
+			workflowState.setActiveExecutionId(undefined);
 			throw error;
 		}
 
 		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
 		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
-			workflowsStore.setActiveExecutionId(response.executionId);
+			workflowState.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
-			workflowsStore.setActiveExecutionId(undefined);
+			workflowState.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
@@ -180,7 +185,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startNodeNames.push(
 					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
-				executedNode = options.triggerNode;
 			} else if (options.destinationNode) {
 				executedNode = options.destinationNode;
 			}
@@ -369,10 +373,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					...workflowData,
 				} as IWorkflowDb,
 			};
-			workflowsStore.setWorkflowExecutionData(executionData);
+			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
+			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 
@@ -406,8 +410,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			return runWorkflowApiResponse;
 		} catch (error) {
-			workflowsStore.setWorkflowExecutionData(null);
-			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'ERROR');
+			workflowState.setWorkflowExecutionData(null);
+			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -495,7 +499,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IExecutionResponse;
-				workflowsStore.setWorkflowExecutionData(executedData);
+				workflowState.setWorkflowExecutionData(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),
@@ -510,7 +514,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				async () => {
 					const execution = await workflowsStore.getExecution(executionId);
 					if (!['running', 'waiting'].includes(execution?.status as string)) {
-						workflowsStore.markExecutionAsStopped(stopData);
+						workflowState.markExecutionAsStopped(stopData);
 						return true;
 					}
 
@@ -521,7 +525,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			);
 
 			if (!markedAsStopped) {
-				workflowsStore.markExecutionAsStopped(stopData);
+				workflowState.markExecutionAsStopped(stopData);
 			}
 		}
 	}

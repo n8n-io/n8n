@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import type { ZodObjectAny } from '../../../../types/types';
 import { checkForStructuredTools } from '../agents/utils';
-import { getInputs } from '../V2/utils';
+import { getInputs } from '../utils';
 
 describe('checkForStructuredTools', () => {
 	let mockNode: INode;

@@ -10,7 +10,12 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
+import {
+	ManualExecutionCancelledError,
+	randomInt,
+	sleep,
+	SystemShutdownExecutionCancelledError,
+} from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
@@ -275,18 +280,22 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should cancel ongoing executions', async () => {
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, new ManualExecutionCancelledError(executionId));
 
-			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
+			expect(responsePromise.reject).toHaveBeenCalledWith(
+				expect.any(ManualExecutionCancelledError),
+			);
 			expect(workflowExecution.cancel).toHaveBeenCalledTimes(1);
-			await expect(postExecutePromise).rejects.toThrow(ExecutionCancelledError);
+			await expect(postExecutePromise).rejects.toThrow(ManualExecutionCancelledError);
 		});
 
 		test('Should cancel waiting executions', async () => {
 			activeExecutions.setStatus(executionId, 'waiting');
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, new ManualExecutionCancelledError(executionId));
 
-			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
+			expect(responsePromise.reject).toHaveBeenCalledWith(
+				expect.any(ManualExecutionCancelledError),
+			);
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
 		});
 	});
@@ -336,8 +345,14 @@ describe('ActiveExecutions', () => {
 			expect(removeAllCaptor.value.sort()).toEqual([newExecutionId1, waitingExecutionId1].sort());
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
 
@@ -362,10 +377,22 @@ describe('ActiveExecutions', () => {
 			);
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(4);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId2);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId2,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId2,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
 		});
 	});
 });

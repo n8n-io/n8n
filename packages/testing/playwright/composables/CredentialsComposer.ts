@@ -20,7 +20,6 @@ export class CredentialsComposer {
 			await this.n8n.navigate.toCredentials();
 		}
 
-		// Open the "new credential" chooser: open add resource -> credential
 		await this.n8n.credentials.addResource.credential();
 		await this.n8n.credentials.createCredentialFromCredentialPicker(credentialType, fields, {
 			name: options?.name,
@@ -47,6 +46,6 @@ export class CredentialsComposer {
 	 * Create a credential directly via API. Returns created credential object.
 	 */
 	async createFromApi(payload: CreateCredentialDto & { projectId?: string }) {
-		return await this.n8n.api.credentialApi.createCredential(payload);
+		return await this.n8n.api.credentials.createCredential(payload);
 	}
 }

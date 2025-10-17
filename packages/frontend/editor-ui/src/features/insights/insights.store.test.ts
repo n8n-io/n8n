@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import * as insightsApi from '@/features/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';

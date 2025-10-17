@@ -8,7 +8,6 @@ import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import pick from 'lodash/pick';
 import { InstanceSettings } from 'n8n-core';
-import { deepCopy } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
@@ -228,45 +227,30 @@ export class Push extends TypedEmitter<PushEvents> {
 	 * See {@link shouldRelayViaPubSub} for more details.
 	 */
 	private relayViaPubSub(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
-		const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
-
-		if (eventSizeBytes <= MAX_PAYLOAD_SIZE_BYTES) {
-			void this.publisher.publishCommand({
-				command: 'relay-execution-lifecycle-event',
-				payload: { ...pushMsg, pushRef, asBinary },
-			});
-			return;
-		}
-
-		// too large for pubsub channel, trim it
-
 		const { type } = pushMsg;
-		const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
-		const eventMb = toMb(eventSizeBytes);
-		const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
 
 		if (type === 'nodeExecuteAfterData') {
-			this.logger.warn(
-				`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
-			);
-			// In case of nodeExecuteAfterData, we omit the message entirely. We
-			// already include the amount of items in the nodeExecuteAfter message,
-			// based on which the FE will construct placeholder data. The actual
-			// data is then fetched at the end of the execution.
-			return;
-		}
+			const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
 
-		this.logger.warn(`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Trimming...`);
+			if (eventSizeBytes > MAX_PAYLOAD_SIZE_BYTES) {
+				const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
+				const eventMb = toMb(eventSizeBytes);
+				const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
 
-		const pushMsgCopy = deepCopy(pushMsg);
-
-		if (pushMsgCopy.type === 'executionFinished') {
-			pushMsgCopy.data.rawData = ''; // prompt client to fetch from DB
+				this.logger.warn(
+					`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
+				);
+				// In case of nodeExecuteAfterData, we omit the message entirely. We
+				// already include the amount of items in the nodeExecuteAfter message,
+				// based on which the FE will construct placeholder data. The actual
+				// data is then fetched at the end of the execution.
+				return;
+			}
 		}
 
 		void this.publisher.publishCommand({
 			command: 'relay-execution-lifecycle-event',
-			payload: { ...pushMsgCopy, pushRef, asBinary },
+			payload: { ...pushMsg, pushRef, asBinary },
 		});
 	}
 }

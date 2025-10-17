@@ -38,7 +38,7 @@ import {
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
 
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -53,7 +53,7 @@ import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { getGenericHints } from '@/utils/nodeViewUtils';
@@ -61,6 +61,22 @@ import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
+import { storeToRefs } from 'pinia';
+import { useRoute } from 'vue-router';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { asyncComputed } from '@vueuse/core';
+import ViewSubExecution from '@/features/executions/components/ViewSubExecution.vue';
+import RunDataItemCount from '@/components/RunDataItemCount.vue';
+import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
+import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
+import { parseAiContent } from '@/utils/aiUtils';
+import { usePostHog } from '@/stores/posthog.store';
+import { I18nT } from 'vue-i18n';
+import RunDataBinary from '@/components/RunDataBinary.vue';
+import { hasTrimmedRunData } from '@/features/executions/executions.utils';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import { type SearchShortcut } from '@/features/canvas/canvas.types';
+
 import {
 	N8nBlockUi,
 	N8nButton,
@@ -75,22 +91,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
-import { asyncComputed } from '@vueuse/core';
-import ViewSubExecution from './ViewSubExecution.vue';
-import RunDataItemCount from '@/components/RunDataItemCount.vue';
-import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
-import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
-import { parseAiContent } from '@/utils/aiUtils';
-import { usePostHog } from '@/stores/posthog.store';
-import { I18nT } from 'vue-i18n';
-import RunDataBinary from '@/components/RunDataBinary.vue';
-import { hasTrimmedRunData } from '@/utils/executionUtils';
-import NDVEmptyState from '@/components/NDVEmptyState.vue';
-
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );
@@ -135,7 +136,7 @@ type Props = {
 	distanceFromActive?: number;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
@@ -149,6 +150,7 @@ type Props = {
 	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -157,7 +159,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideOutputs: undefined,
 	distanceFromActive: 0,
 	blockUI: false,
-	isPaneActive: false,
+	searchShortcut: undefined,
 	isProductionExecutionPreview: false,
 	mappingEnabled: false,
 	isExecuting: false,
@@ -230,9 +232,9 @@ const dataContainerRef = ref<HTMLDivElement>();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
 
@@ -1344,7 +1346,7 @@ function enableNode() {
 			},
 		};
 
-		workflowsStore.updateNodeProperties(updateInformation);
+		workflowState.updateNodeProperties(updateInformation);
 	}
 }
 
@@ -1380,7 +1382,7 @@ defineExpose({ enterEditMode });
 			{
 				[$style['ndv-v2']]: isNDVV2,
 				[$style.compact]: compact,
-				[$style.showActionsOnHover]: showActionsOnHover,
+				[$style.showActionsOnHover]: showActionsOnHover && !search,
 			},
 		]"
 		@mouseover="activatePane"
@@ -1442,7 +1444,7 @@ defineExpose({ enterEditMode });
 						:class="$style.search"
 						:pane-type="paneType"
 						:display-mode="displayMode"
-						:is-area-active="isPaneActive"
+						:shortcut="searchShortcut"
 						@focus="activatePane"
 					/>
 				</Suspense>
@@ -1662,6 +1664,18 @@ defineExpose({ enterEditMode });
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="[$style.center, $style.executingMessage]"
+			>
+				<div v-if="!props.compact" :class="$style.spinner">
+					<N8nSpinner type="ring" />
+				</div>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
@@ -1716,24 +1730,6 @@ defineExpose({ enterEditMode });
 					</N8nLink>
 				</N8nText>
 			</div>
-
-			<div
-				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
-				:class="$style.center"
-			>
-				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
-				<N8nText color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.loading') }}
-				</N8nText>
-			</div>
-
-			<NDVEmptyState
-				v-else-if="isTrimmedManualExecutionDataItem"
-				:class="$style.center"
-				:title="i18n.baseText('runData.trimmedData.title')"
-			>
-				{{ i18n.baseText('runData.trimmedData.message') }}
-			</NDVEmptyState>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>
@@ -1924,6 +1920,7 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:class="$style.schema"
 					:compact="props.compact"
+					:truncate-limit="props.truncateLimit"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -1961,7 +1958,7 @@ defineExpose({ enterEditMode });
 
 <style lang="scss" module>
 .infoIcon {
-	color: var(--color-foreground-dark);
+	color: var(--color--foreground--shade-1);
 }
 
 .center {
@@ -1970,17 +1967,17 @@ defineExpose({ enterEditMode });
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing-xl) var(--ndv-spacing);
+	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing--xl) var(--ndv-spacing);
 	text-align: center;
 
 	> * {
 		max-width: 316px;
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
 .container {
-	--ndv-spacing: var(--spacing-s);
+	--ndv-spacing: var(--spacing--sm);
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -1994,13 +1991,14 @@ defineExpose({ enterEditMode });
 	border-top: 0;
 	border-left: 0;
 	border-right: 0;
+	height: 40px;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--ndv-spacing);
-	padding: var(--ndv-spacing) var(--ndv-spacing) 0 var(--ndv-spacing);
+	padding: var(--ndv-spacing) var(--spacing--3xs) 0 var(--ndv-spacing);
 	position: relative;
 	overflow-x: auto;
 	overflow-y: hidden;
@@ -2009,13 +2007,13 @@ defineExpose({ enterEditMode });
 	container-type: inline-size;
 
 	.compact & {
-		margin-bottom: var(--spacing-4xs);
-		padding: var(--spacing-2xs);
+		margin-bottom: var(--spacing--4xs);
+		padding: var(--spacing--2xs);
 		margin-bottom: 0;
 		flex-shrink: 0;
 		flex-grow: 0;
 		min-height: auto;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing--2xs);
 	}
 
 	> *:first-child {
@@ -2033,20 +2031,20 @@ defineExpose({ enterEditMode });
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding: 0 var(--ndv-spacing) var(--spacing-3xl) var(--ndv-spacing);
+	padding: 0 var(--ndv-spacing) var(--spacing--3xl) var(--ndv-spacing);
 	right: 0;
 	overflow-y: auto;
-	line-height: var(--font-line-height-xloose);
+	line-height: var(--line-height--xl);
 	word-break: normal;
 	height: 100%;
 
 	.compact & {
-		padding: 0 var(--spacing-2xs);
+		padding: 0 var(--spacing--2xs);
 	}
 }
 
 .inlineError {
-	line-height: var(--font-line-height-xloose);
+	line-height: var(--line-height--xl);
 	padding-left: var(--ndv-spacing);
 	padding-right: var(--ndv-spacing);
 	padding-bottom: var(--ndv-spacing);
@@ -2061,10 +2059,10 @@ defineExpose({ enterEditMode });
 	padding-bottom: var(--ndv-spacing);
 
 	.compact & {
-		padding-left: var(--spacing-2xs);
-		padding-right: var(--spacing-2xs);
-		padding-bottom: var(--spacing-2xs);
-		font-size: var(--font-size-2xs);
+		padding-left: var(--spacing--2xs);
+		padding-right: var(--spacing--2xs);
+		padding-bottom: var(--spacing--2xs);
+		font-size: var(--font-size--2xs);
 	}
 }
 
@@ -2073,13 +2071,13 @@ defineExpose({ enterEditMode });
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
-	--color-tabs-arrow-buttons: var(--color-run-data-background);
+	--tabs--arrow-buttons--color: var(--run-data--color--background);
 }
 
 .itemsCount {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	padding-left: var(--ndv-spacing);
 	padding-right: var(--ndv-spacing);
 	padding-bottom: var(--ndv-spacing);
@@ -2087,7 +2085,7 @@ defineExpose({ enterEditMode });
 }
 
 .ndv-v2 .itemsCount {
-	padding-left: var(--spacing-xs);
+	padding-left: var(--spacing--xs);
 }
 
 .inputSelect {
@@ -2103,16 +2101,16 @@ defineExpose({ enterEditMode });
 	padding-left: var(--ndv-spacing);
 	padding-right: var(--ndv-spacing);
 	margin-bottom: var(--ndv-spacing);
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	:global(.el-input--suffix .el-input__inner) {
-		padding-right: var(--spacing-l);
+		padding-right: var(--spacing--lg);
 	}
 }
 
 .runSelectorInner {
 	display: flex;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	align-items: center;
 }
 
@@ -2129,7 +2127,7 @@ defineExpose({ enterEditMode });
 	justify-content: flex-end;
 	align-items: center;
 	flex-grow: 1;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 
 	.compact & {
 		/* let title text alone decide the height */
@@ -2137,15 +2135,17 @@ defineExpose({ enterEditMode });
 	}
 
 	.showActionsOnHover & {
-		visibility: hidden;
+		/* Using opacity instead of visibility so that search input can get focused through keyboard shortcut */
+		opacity: 0;
 
 		:global(.el-input__prefix) {
 			transition-duration: 0ms;
 		}
 	}
 
+	.showActionsOnHover:focus-within &,
 	.showActionsOnHover:hover & {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 
@@ -2159,7 +2159,7 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv-spacing);
 
 	* {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
@@ -2214,12 +2214,12 @@ defineExpose({ enterEditMode });
 }
 
 .hintCallout {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 	margin-left: var(--ndv-spacing);
 	margin-right: var(--ndv-spacing);
 
 	.compact & {
-		margin: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+		margin: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
 	}
 }
 
@@ -2241,7 +2241,7 @@ defineExpose({ enterEditMode });
 .multipleIcons {
 	flex-direction: column;
 	align-items: flex-start;
-	gap: var(--spacing-2xs, 8px);
+	gap: var(--spacing--2xs, 8px);
 }
 
 .multipleIcons .iconStack {
@@ -2252,25 +2252,25 @@ defineExpose({ enterEditMode });
 .iconStack {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs, 4px);
+	gap: var(--spacing--4xs, 4px);
 	flex-shrink: 0;
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing--xs);
 }
 
 .icon {
-	color: var(--color-callout-info-icon);
+	color: var(--callout--icon-color--info);
 	line-height: 1;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .executingMessage {
 	.compact & {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .resetCollapseButton {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 }
 
 @container (max-width: 240px) {
@@ -2283,7 +2283,7 @@ defineExpose({ enterEditMode });
 
 .ndv-v2,
 .compact {
-	--ndv-spacing: var(--spacing-2xs);
+	--ndv-spacing: var(--spacing--2xs);
 }
 </style>
 
@@ -2299,9 +2299,9 @@ defineExpose({ enterEditMode });
 :deep(.highlight) {
 	background-color: #f7dc55;
 	color: black;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	padding: 0 1px;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	font-style: normal;
 }
 </style>

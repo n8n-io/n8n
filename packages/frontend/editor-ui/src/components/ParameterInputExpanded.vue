@@ -17,6 +17,7 @@ import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
+import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	value: NodeParameterValueType;
@@ -114,7 +115,7 @@ function onDocumentationUrlClick(): void {
 </script>
 
 <template>
-	<n8n-input-label
+	<N8nInputLabel
 		:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
 		:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
 		:required="parameter.required"
@@ -153,9 +154,9 @@ function onDocumentationUrlClick(): void {
 			@update="valueChanged"
 		/>
 		<div v-if="showRequiredErrors" :class="$style.errors">
-			<n8n-text color="danger" size="small">
+			<N8nText color="danger" size="small">
 				{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-				<n8n-link
+				<N8nLink
 					v-if="documentationUrl"
 					:to="documentationUrl"
 					size="small"
@@ -163,17 +164,17 @@ function onDocumentationUrlClick(): void {
 					@click="onDocumentationUrlClick"
 				>
 					{{ i18n.baseText('parameterInputExpanded.openDocs') }}
-				</n8n-link>
-			</n8n-text>
+				</N8nLink>
+			</N8nText>
 		</div>
-	</n8n-input-label>
+	</N8nInputLabel>
 </template>
 
 <style lang="scss" module>
 .errors {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 .hint {
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing--4xs);
 }
 </style>

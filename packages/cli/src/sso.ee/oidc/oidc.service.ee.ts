@@ -176,10 +176,19 @@ export class OidcService {
 
 		const prompt = this.oidcConfig.prompt;
 
+		const provisioning = this.globalConfig.sso.provisioning;
+		const provisioningEnabled =
+			provisioning.scopesProvisionInstanceRole || provisioning.scopesProvisionProjectRoles;
+
+		// Include the custom n8n scope if provisioning is enabled
+		const scope = provisioningEnabled
+			? `openid email profile ${provisioning.scopesName}`
+			: 'openid email profile';
+
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
-			scope: 'openid email profile',
+			scope,
 			prompt,
 			state: state.plaintext,
 			nonce: nonce.plaintext,
@@ -340,9 +349,11 @@ export class OidcService {
 
 		if (configFromDB) {
 			try {
-				const oidcConfig = OidcConfigDto.parse(jsonParse<OidcConfigDto>(configFromDB.value));
+				const configValue = jsonParse<OidcConfigDto>(configFromDB.value);
 
-				if (oidcConfig.discoveryEndpoint === '') return undefined;
+				if (configValue.discoveryEndpoint === '') return undefined;
+
+				const oidcConfig = OidcConfigDto.parse(configValue);
 
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 

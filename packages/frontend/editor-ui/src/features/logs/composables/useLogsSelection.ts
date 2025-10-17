@@ -7,8 +7,8 @@ import {
 	isSubNodeLog,
 } from '@/features/logs/logs.utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { canvasEventBus } from '@/event-bus/canvas';
-import type { IExecutionResponse } from '@/Interface';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useLogsStore } from '@/stores/logs.store';
 import { useUIStore } from '@/stores/ui.store';

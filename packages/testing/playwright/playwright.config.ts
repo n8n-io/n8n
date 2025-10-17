@@ -1,4 +1,5 @@
 /* eslint-disable import-x/no-default-export */
+import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { currentsReporter } from '@currents/playwright';
 import { defineConfig } from '@playwright/test';
 import os from 'os';
@@ -21,7 +22,7 @@ const LOCAL_WORKERS = Math.min(6, Math.floor(CPU_COUNT / 2));
 const CI_WORKERS = CPU_COUNT;
 const WORKERS = IS_CI ? CI_WORKERS : LOCAL_WORKERS;
 
-export default defineConfig({
+export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	globalSetup: './global-setup.ts',
 	forbidOnly: IS_CI,
 	retries: IS_CI ? 2 : 0,
@@ -46,6 +47,7 @@ export default defineConfig({
 					N8N_USER_FOLDER: USER_FOLDER,
 					N8N_LOG_LEVEL: 'debug',
 					N8N_METRICS: 'true',
+					N8N_ENABLED_MODULES: 'data-table', // Enable data-table module
 				},
 			}
 		: undefined,
@@ -59,6 +61,7 @@ export default defineConfig({
 		viewport: MACBOOK_WINDOW_SIZE,
 		actionTimeout: 20000, // TODO: We might need to make this dynamic for container tests if we have low resource containers etc
 		navigationTimeout: 10000,
+		currentsFixturesEnabled: !!process.env.CI,
 	},
 
 	reporter: IS_CI

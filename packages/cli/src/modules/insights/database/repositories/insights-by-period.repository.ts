@@ -6,6 +6,7 @@ import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
+import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
 import { InsightsByPeriod } from '../entities/insights-by-period';
 import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
@@ -140,7 +141,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		}>;
 	}
 
-	getAggregationQuery(periodUnit: PeriodUnit) {
+	private getAggregationQuery(periodUnit: PeriodUnit) {
 		// Get the start period expression depending on the period unit and database type
 		const periodStartExpr = this.getPeriodStartExpr(periodUnit);
 
@@ -268,41 +269,25 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		}
 	}
 
-	private getAgeLimitQuery(maxAgeInDays: number) {
-		if (maxAgeInDays === 0) {
-			return dbType === 'sqlite' ? "datetime('now')" : 'NOW()';
-		}
-
-		return dbType === 'sqlite'
-			? `datetime('now', '-${maxAgeInDays} days')`
-			: dbType === 'postgresdb'
-				? `NOW() - INTERVAL '${maxAgeInDays} days'`
-				: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
-	}
-
 	async getPreviousAndCurrentPeriodTypeAggregates({
-		periodLengthInDays,
+		startDate,
+		endDate,
 		projectId,
-	}: { periodLengthInDays: number; projectId?: string }): Promise<
+	}: { projectId?: string; startDate: Date; endDate: Date }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
 			total_value: string | number;
 		}>
 	> {
-		const cte = sql`
-			SELECT
-				${this.getAgeLimitQuery(periodLengthInDays)} AS current_start,
-				${this.getAgeLimitQuery(0)} AS current_end,
-				${this.getAgeLimitQuery(periodLengthInDays * 2)}  AS previous_start
-		`;
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
 			.select(
 				sql`
 						CASE
-							WHEN insights.periodStart >= date_ranges.current_start AND insights.periodStart <= date_ranges.current_end
+							WHEN insights.periodStart >= date_ranges.start_date AND insights.periodStart < date_ranges.end_date
 							THEN 'current'
 							ELSE 'previous'
 						END
@@ -313,8 +298,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.addSelect('SUM(value)', 'total_value')
 			// Use a cross join with the CTE
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
-			.where('insights.periodStart >= date_ranges.previous_start')
-			.andWhere('insights.periodStart <= date_ranges.current_end')
+			.where('insights.periodStart >= date_ranges.prev_start_date')
+			.andWhere('insights.periodStart < date_ranges.end_date')
 			// Group by both period and type
 			.groupBy('period')
 			.addGroupBy('insights.type');
@@ -336,25 +321,27 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	async getInsightsByWorkflow({
-		maxAgeInDays,
+		startDate,
+		endDate,
 		skip = 0,
 		take = 20,
 		sortBy = 'total:desc',
 		projectId,
 	}: {
-		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
 		projectId?: string;
+		startDate: Date;
+		endDate: Date;
 	}) {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
-		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
-			.addCommonTableExpression(cte, 'date_range')
+			.addCommonTableExpression(cte, 'date_ranges')
 			.select([
 				'metadata.workflowId AS "workflowId"',
 				'metadata.workflowName AS "workflowName"',
@@ -376,8 +363,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			])
 			.innerJoin('insights.metadata', 'metadata')
 			// Use a cross join with the CTE
-			.innerJoin('date_range', 'date_range', '1=1')
-			.where('insights.periodStart >= date_range.start_date')
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where('insights.periodStart >= date_ranges.start_date')
+			.andWhere('insights.periodStart < date_ranges.end_date')
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
@@ -395,27 +383,30 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	async getInsightsByTime({
-		maxAgeInDays,
 		periodUnit,
 		insightTypes,
 		projectId,
+		startDate,
+		endDate,
 	}: {
-		maxAgeInDays: number;
 		periodUnit: PeriodUnit;
 		insightTypes: TypeUnit[];
 		projectId?: string;
+		startDate: Date;
+		endDate: Date;
 	}) {
-		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
 
 		const typesAggregation = insightTypes.map((type) => {
 			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
 		});
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
-			.addCommonTableExpression(cte, 'date_range')
+			.addCommonTableExpression(cte, 'date_ranges')
 			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
-			.innerJoin('date_range', 'date_range', '1=1')
-			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
+			.andWhere(`${this.escapeField('periodStart')} <= date_ranges.end_date`)
 			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 

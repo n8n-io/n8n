@@ -1,4 +1,5 @@
-import type { Basic, IExecutionResponse } from '@/Interface';
+import type { Basic } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { IConnections, IWorkflowDataProxyAdditionalKeys, Workflow } from 'n8n-workflow';
 
 type Range = { from: number; to: number };

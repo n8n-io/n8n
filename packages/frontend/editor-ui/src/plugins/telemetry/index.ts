@@ -15,6 +15,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -50,18 +51,12 @@ export class Telemetry {
 			config: { key, proxy, sourceConfig },
 		} = telemetrySettings;
 
-		const settingsStore = useSettingsStore();
 		const rootStore = useRootStore();
-
-		const logLevel = settingsStore.logLevel;
-
-		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
 
 		this.initRudderStack(key, proxy, {
 			integrations: { All: false },
 			loadIntegration: false,
 			configUrl: sourceConfig,
-			...logging,
 		});
 
 		this.identify(instanceId, userId, versionCli, projectId);
@@ -113,6 +108,8 @@ export class Telemetry {
 				ip: '0.0.0.0',
 			},
 		});
+
+		usePostHog().capture(event, updatedProperties);
 	}
 
 	page(route: RouteLocation) {

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from typing import Dict, Optional, Any, Callable, Awaitable
 from urllib.parse import urlparse
 import websockets
@@ -54,12 +55,13 @@ from src.message_serde import MessageSerde
 from src.task_state import TaskState, TaskStatus
 from src.task_executor import TaskExecutor
 from src.task_analyzer import TaskAnalyzer
+from src.config.security_config import SecurityConfig
 
 
+@dataclass
 class TaskOffer:
-    def __init__(self, offer_id: str, valid_until: float):
-        self.offer_id = offer_id
-        self.valid_until = valid_until
+    offer_id: str
+    valid_until: float
 
     @property
     def has_expired(self) -> bool:
@@ -84,7 +86,12 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
-        self.analyzer = TaskAnalyzer(config.stdlib_allow, config.external_allow)
+        self.security_config = SecurityConfig(
+            stdlib_allow=config.stdlib_allow,
+            external_allow=config.external_allow,
+            builtins_deny=config.builtins_deny,
+        )
+        self.analyzer = TaskAnalyzer(self.security_config)
         self.logger = logging.getLogger(__name__)
 
         self.idle_coroutine: Optional[asyncio.Task] = None
@@ -201,6 +208,8 @@ class TaskRunner:
             try:
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
+            except websockets.ConnectionClosedOK:
+                break
             except Exception as e:
                 self.logger.error(f"Error handling message: {e}")
 
@@ -295,15 +304,12 @@ class TaskRunner:
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
-                stdlib_allow=self.config.stdlib_allow,
-                external_allow=self.config.external_allow,
-                builtins_deny=self.config.builtins_deny,
-                can_log=task_settings.can_log,
+                security_config=self.security_config,
             )
 
             task_state.process = process
 
-            result, print_args = await asyncio.to_thread(
+            result, print_args, result_size_bytes = await asyncio.to_thread(
                 self.executor.execute_process,
                 process=process,
                 queue=queue,
@@ -323,12 +329,19 @@ class TaskRunner:
                 LOG_TASK_COMPLETE.format(
                     task_id=task_id,
                     duration=self._get_duration(start_time),
+                    result_size=self._get_result_size(result_size_bytes),
                     **task_state.context(),
                 )
             )
 
         except TaskCancelledError as e:
             response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
+            await self._send_message(response)
+
+        except SyntaxError as e:
+            self.logger.warning(f"Task {task_id} failed syntax validation")
+            error = {"message": str(e)}
+            response = RunnerTaskError(task_id=task_id, error=error)
             await self._send_message(response)
 
         except Exception as e:
@@ -360,8 +373,7 @@ class TaskRunner:
 
         if task_state.status == TaskStatus.RUNNING:
             task_state.status = TaskStatus.ABORTING
-            self.executor.stop_process(task_state.process)
-
+            await asyncio.to_thread(self.executor.stop_process, task_state.process)
             self.logger.info(
                 LOG_TASK_CANCEL.format(task_id=task_id, **task_state.context())
             )
@@ -380,6 +392,8 @@ class TaskRunner:
         serialized = self.serde.serialize_runner_message(message)
         await self.websocket_connection.send(serialized)
 
+    # ========== Formatting ==========
+
     def _get_duration(self, start_time: float) -> str:
         elapsed = time.time() - start_time
 
@@ -390,6 +404,14 @@ class TaskRunner:
             return f"{int(elapsed)}s"
 
         return f"{int(elapsed) // 60}m"
+
+    def _get_result_size(self, size_bytes: int) -> str:
+        if size_bytes < 1024:
+            return f"{size_bytes} bytes"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.1f} KB"
+        else:
+            return f"{size_bytes / (1024 * 1024):.1f} MB"
 
     # ========== Offers ==========
 

@@ -1,5 +1,5 @@
 /* eslint-disable no-control-regex */
-import { type ChildProcess, spawn } from 'child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import type { Formatter } from 'picocolors/types';
 
@@ -115,6 +115,7 @@ export function commands() {
 			cwd: opts.cwd,
 			env: { ...process.env, ...opts.env },
 			stdio: ['inherit', 'pipe', 'pipe'],
+			shell: process.platform === 'win32',
 		});
 
 		registerChild(child);

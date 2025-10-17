@@ -358,6 +358,7 @@ export const useFlattenSchema = () => {
 		prefix = '',
 		level = 0,
 		preview,
+		truncateLimit,
 	}: {
 		isDataEmpty: boolean;
 		schema: Schema;
@@ -368,6 +369,7 @@ export const useFlattenSchema = () => {
 		prefix?: string;
 		level?: number;
 		preview?: boolean;
+		truncateLimit: number;
 	}): Renders[] => {
 		// only show empty item for the first level
 		if (isEmptySchema(schema) && level < 0) {
@@ -416,6 +418,7 @@ export const useFlattenSchema = () => {
 							prefix: itemPrefix,
 							level: level + 1,
 							preview,
+							truncateLimit,
 						});
 					})
 					.flat(),
@@ -428,7 +431,7 @@ export const useFlattenSchema = () => {
 					expression,
 					level,
 					depth,
-					value: shorten(schema.value, 600, 0),
+					value: shorten(schema.value, truncateLimit, 0),
 					id,
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
@@ -446,6 +449,7 @@ export const useFlattenSchema = () => {
 	const flattenMultipleSchemas = (
 		nodes: SchemaNode[],
 		additionalInfo: (node: INodeUi) => string,
+		truncateLimit: number,
 	) => {
 		return nodes.reduce<Renders[]>((acc, item) => {
 			acc.push({
@@ -485,6 +489,7 @@ export const useFlattenSchema = () => {
 					nodeType: item.node.type,
 					nodeName: item.node.name,
 					preview: item.preview,
+					truncateLimit,
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,

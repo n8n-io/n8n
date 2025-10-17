@@ -5,7 +5,7 @@ export class HttpBasicAuth implements ICredentialType {
 
 	displayName = 'Basic Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 

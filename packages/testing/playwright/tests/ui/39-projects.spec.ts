@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/base';
-import { n8nPage } from '../../pages/n8nPage';
+import type { n8nPage } from '../../pages/n8nPage';
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
@@ -18,12 +18,6 @@ async function getCredentialsForProject(n8n: n8nPage, projectId?: string) {
 
 test.describe('Projects', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.api.enableFeature('sharing');
-		await n8n.api.enableFeature('folders');
-		await n8n.api.enableFeature('advancedPermissions');
-		await n8n.api.enableFeature('projectRole:admin');
-		await n8n.api.enableFeature('projectRole:editor');
-		await n8n.api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 	});
 
@@ -64,11 +58,9 @@ test.describe('Projects', () => {
 
 		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
-		const subWorkflowPagePromise = n8n.page.waitForEvent('popup');
-
-		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
-
-		const subn8n = new n8nPage(await subWorkflowPagePromise);
+		const subn8n = await n8n.start.fromNewPage(() =>
+			n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`),
+		);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
@@ -82,7 +74,6 @@ test.describe('Projects', () => {
 		await subn8n.canvas.saveWorkflow();
 
 		await subn8n.page.goto('/home/workflows');
-		await subn8n.sideBar.expand();
 		await subn8n.sideBar.clickProjectMenuItem(projectName);
 		await subn8n.page.getByRole('link', { name: 'Workflows' }).click();
 
@@ -123,9 +114,11 @@ test.describe('Projects', () => {
 			// Initially should have only the owner (current user)
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 
-			// Verify project settings action buttons are present
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeVisible();
+			// Verify save/cancel buttons are disabled initially (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
+
+			// Delete button should always be visible
 			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
 		});
 
@@ -200,30 +193,6 @@ test.describe('Projects', () => {
 			await expect(currentUserRow.getByText('Admin')).toBeVisible();
 		});
 
-		test('should handle member search functionality when search input is used', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Search Test Project');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Search Test Project');
-
-			// Verify search input is visible
-			const searchInput = n8n.page.getByTestId('project-members-search');
-			await expect(searchInput).toBeVisible();
-
-			// Test search functionality - enter search term
-			await searchInput.fill('nonexistent');
-
-			// Since we only have the owner, searching for nonexistent should show no filtered results
-			// But the table structure should still be present
-			await expect(searchInput).toHaveValue('nonexistent');
-
-			// Clear search
-			await n8n.projectSettings.clearMemberSearch();
-			await expect(searchInput).toHaveValue('');
-		});
-
 		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
 			// Create a new project
 			const { projectId } = await n8n.projectComposer.createProject('Validation Test');
@@ -265,13 +234,10 @@ test.describe('Projects', () => {
 			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeEnabled();
 			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeEnabled();
 
-			// Unsaved changes message should be visible
-			await expect(n8n.page.getByText('You have unsaved changes')).toBeVisible();
-
 			// Cancel changes
 			await n8n.projectSettings.clickCancelButton();
 
-			// Buttons should be disabled again
+			// Buttons should be disabled again (no changes)
 			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
 			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
 		});
