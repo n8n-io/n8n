@@ -6,7 +6,7 @@ import { deepCopy } from 'n8n-workflow';
 
 import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
-import CollectionParameter from '@/components/CollectionParameter.vue';
+import CollectionParameter from '@/components/CollectionParameter/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { storeToRefs } from 'pinia';
