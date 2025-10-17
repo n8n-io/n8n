@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/consistent-type-imports */
 import { type HLJSApi } from 'highlight.js';
 import { ref } from 'vue';
 
 let hljsInstance: HLJSApi | undefined;
-let languagesLoaded = false;
+let asyncImportPromise:
+	| Promise<[typeof import('highlight.js'), typeof import('./languageModules')]>
+	| undefined;
 
 export function useChatHubMarkdownOptions() {
 	const forceReRenderKey = ref(0);
@@ -28,18 +31,18 @@ export function useChatHubMarkdownOptions() {
 	};
 
 	async function loadLanguageModules() {
-		if (languagesLoaded) {
+		if (asyncImportPromise) {
+			await asyncImportPromise;
+			forceReRenderKey.value++;
 			return;
 		}
 
-		languagesLoaded = true;
-
 		try {
-			const [hljs, languages] = await Promise.all([
-				import('highlight.js'),
-				import('./languageModules'),
-			]);
+			asyncImportPromise = Promise.all([import('highlight.js'), import('./languageModules')]);
 
+			const [hljs, languages] = await asyncImportPromise;
+
+			asyncImportPromise = undefined;
 			hljsInstance = hljs.default.newInstance();
 
 			for (const [lang, module] of Object.entries(languages)) {
