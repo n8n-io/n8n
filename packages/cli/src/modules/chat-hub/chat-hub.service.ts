@@ -72,6 +72,15 @@ const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	},
 };
 
+const NODE_NAMES = {
+	CHAT_TRIGGER: 'When chat message received',
+	AI_AGENT: 'AI Agent',
+	CHAT_MODEL: 'Chat Model',
+	MEMORY: 'Memory',
+	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
+	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
+} as const;
+
 @Service()
 export class ChatHubService {
 	constructor(
@@ -258,6 +267,7 @@ export class ChatHubService {
 		triggerToStartFrom: { name: string; data: ITaskData };
 	}> {
 		const { nodes, connections, startNodes, triggerToStartFrom } = this.prepareChatWorkflow(
+			sessionId,
 			history,
 			humanMessage,
 			credentials,
@@ -316,18 +326,20 @@ export class ChatHubService {
 		});
 	}
 
-	private getMessage(execution: IExecutionResponse): string | undefined {
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
-		if (typeof lastNodeExecuted !== 'string') return undefined;
+	private getAIOutput(execution: IExecutionResponse): string | undefined {
+		const agent = execution.data.resultData.runData[NODE_NAMES.AI_AGENT];
+		if (!agent || !Array.isArray(agent) || agent.length === 0) return undefined;
 
-		const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-		const mainOutputs = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main;
+		const runIndex = agent.length - 1;
+		const mainOutputs = agent[runIndex].data?.main;
 
 		// Check all main output branches for a message
 		if (mainOutputs && Array.isArray(mainOutputs)) {
 			for (const branch of mainOutputs) {
 				if (branch && Array.isArray(branch) && branch.length > 0 && branch[0].json?.output) {
-					return branch[0].json.output as string;
+					if (typeof branch[0].json.output === 'string') {
+						return branch[0].json.output;
+					}
 				}
 			}
 		}
@@ -449,7 +461,7 @@ export class ChatHubService {
 		);
 	}
 
-	async regenerateAiMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
+	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
 		const { sessionId, retryId, replyId } = payload;
 
 		const selectedModel: ModelWithCredentials = {
@@ -564,30 +576,27 @@ export class ChatHubService {
 		if (!execution) {
 			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
 		}
-		const message = this.getMessage(execution);
-
-		if (message) {
-			await this.saveAiMessage(
-				replyId,
-				sessionId,
-				turnId,
-				execution.id,
-				previousMessageId,
-				message,
-				selectedModel,
-				retryOfMessageId,
-				runIndex,
-			);
-		}
+		const message = this.getAIOutput(execution) ?? 'Error: No response generated';
+		await this.saveAIMessage(
+			replyId,
+			sessionId,
+			turnId,
+			execution.id,
+			previousMessageId,
+			message,
+			selectedModel,
+			retryOfMessageId,
+			runIndex,
+		);
 	}
 
 	private prepareChatWorkflow(
+		sessionId: ChatSessionId,
 		history: ChatHubMessage[],
 		humanMessage: string,
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 	) {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		const nodes: INode[] = [
 			{
 				parameters: {
@@ -599,7 +608,7 @@ export class ChatHubService {
 				typeVersion: 1.3,
 				position: [0, 0],
 				id: uuidv4(),
-				name: 'When chat message received',
+				name: NODE_NAMES.CHAT_TRIGGER,
 				webhookId: uuidv4(),
 			},
 			{
@@ -614,23 +623,25 @@ export class ChatHubService {
 				typeVersion: 3,
 				position: [600, 0],
 				id: uuidv4(),
-				name: 'AI Agent',
+				name: NODE_NAMES.AI_AGENT,
 			},
 			this.createModelNode(credentials, model),
 			{
 				parameters: {
 					sessionIdType: 'customKey',
-					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
+					sessionKey: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.sessionId }}`,
+					contextWindowLength: 20, // TODO: Decide this based on selected model & chat history token size
 				},
 				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 				typeVersion: 1.3,
-				position: [500, 200],
+				position: [480, 208],
 				id: uuidv4(),
-				name: 'Memory',
+				name: NODE_NAMES.MEMORY,
 			},
 			{
 				parameters: {
 					mode: 'insert',
+					insertMode: 'override',
 					messages: {
 						messageValues: history.map((message) => {
 							const typeMap: Record<string, MessageRecord['type']> = {
@@ -639,7 +650,7 @@ export class ChatHubService {
 								system: 'system',
 							};
 
-							// TODO: Tools ?
+							// TODO: Tool messages ?
 							return {
 								type: typeMap[message.type] || 'system',
 								message: message.content,
@@ -650,27 +661,51 @@ export class ChatHubService {
 				},
 				type: '@n8n/n8n-nodes-langchain.memoryManager',
 				typeVersion: 1.1,
-				position: [200, 0],
+				position: [224, 0],
 				id: uuidv4(),
-				name: 'Restore Chat Memory',
+				name: NODE_NAMES.RESTORE_CHAT_MEMORY,
+			},
+			{
+				parameters: {
+					mode: 'delete',
+					deleteMode: 'all',
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryManager',
+				typeVersion: 1.1,
+				position: [976, 0],
+				id: uuidv4(),
+				name: NODE_NAMES.CLEAR_CHAT_MEMORY,
 			},
 		];
 
 		const connections: IConnections = {
-			'When chat message received': {
-				main: [[{ node: 'Restore Chat Memory', type: 'main', index: 0 }]],
+			[NODE_NAMES.CHAT_TRIGGER]: {
+				main: [[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'main', index: 0 }]],
 			},
-			'Restore Chat Memory': {
-				main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
+				main: [[{ node: NODE_NAMES.AI_AGENT, type: 'main', index: 0 }]],
 			},
-			'Chat Model': {
-				ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+			[NODE_NAMES.CHAT_MODEL]: {
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				ai_languageModel: [[{ node: NODE_NAMES.AI_AGENT, type: 'ai_languageModel', index: 0 }]],
 			},
-			Memory: {
+			[NODE_NAMES.MEMORY]: {
 				ai_memory: [
 					[
-						{ node: 'AI Agent', type: 'ai_memory', index: 0 },
-						{ node: 'Restore Chat Memory', type: 'ai_memory', index: 0 },
+						{ node: NODE_NAMES.AI_AGENT, type: 'ai_memory', index: 0 },
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'ai_memory', index: 0 },
+						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: 'ai_memory', index: 0 },
+					],
+				],
+			},
+			[NODE_NAMES.AI_AGENT]: {
+				main: [
+					[
+						{
+							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
+							type: 'main',
+							index: 0,
+						},
 					],
 				],
 			},
@@ -681,7 +716,7 @@ export class ChatHubService {
 			name: string;
 			data: ITaskData;
 		} = {
-			name: 'When chat message received',
+			name: NODE_NAMES.CHAT_TRIGGER,
 			data: {
 				startTime: Date.now(),
 				executionTime: 0,
@@ -692,10 +727,7 @@ export class ChatHubService {
 						[
 							{
 								json: {
-									// TODO: Instead of initializing more and more memory sessions,
-									// load the previous messages from DB and replace the current session with this.
-									// Currently this is just leaking memory, but that shouldn't be a big deal as in memory sessions are short-lived.
-									sessionId: crypto.randomUUID(),
+									sessionId,
 									action: 'sendMessage',
 									chatInput: humanMessage,
 								},
@@ -706,7 +738,6 @@ export class ChatHubService {
 				source: [null],
 			},
 		};
-		/* eslint-enable @typescript-eslint/naming-convention */
 
 		return { nodes, connections, startNodes, triggerToStartFrom };
 	}
@@ -735,7 +766,7 @@ export class ChatHubService {
 		});
 	}
 
-	private async saveAiMessage(
+	private async saveAIMessage(
 		id: ChatMessageId,
 		sessionId: ChatSessionId,
 		turnId: ChatMessageId,
