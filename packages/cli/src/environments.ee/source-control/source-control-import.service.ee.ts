@@ -1088,6 +1088,47 @@ export class SourceControlImportService {
 	}
 
 	private async findOrCreateOwnerProject(owner: RemoteResourceOwner): Promise<Project | null> {
+		let ownerProject = await this.findOwnerProject(owner);
+
+		if (typeof owner === 'string' || owner.type === 'personal') {
+			if (!ownerProject) {
+				return null;
+			}
+			return ownerProject;
+		} else if (owner.type === 'team') {
+			if (!ownerProject) {
+				try {
+					ownerProject = await this.projectRepository.save(
+						this.projectRepository.create({
+							id: owner.teamId,
+							name: owner.teamName,
+							type: 'team',
+						}),
+					);
+				} catch (e) {
+					ownerProject = await this.projectRepository.findOne({
+						where: { id: owner.teamId },
+					});
+					if (!ownerProject) {
+						throw e;
+					}
+				}
+			}
+
+			return ownerProject;
+		}
+
+		assertNever(owner);
+
+		const errorOwner = owner as RemoteResourceOwner;
+		throw new UnexpectedError(
+			`Unknown resource owner type "${
+				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'
+			}" found when importing from source controller`,
+		);
+	}
+
+	private async findOwnerProject(owner: RemoteResourceOwner) {
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
 			const user = await this.userRepository.findOne({
@@ -1098,30 +1139,9 @@ export class SourceControlImportService {
 			}
 			return await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 		} else if (owner.type === 'team') {
-			let teamProject = await this.projectRepository.findOne({
+			return this.projectRepository.findOne({
 				where: { id: owner.teamId },
 			});
-
-			if (!teamProject) {
-				try {
-					teamProject = await this.projectRepository.save(
-						this.projectRepository.create({
-							id: owner.teamId,
-							name: owner.teamName,
-							type: 'team',
-						}),
-					);
-				} catch (e) {
-					teamProject = await this.projectRepository.findOne({
-						where: { id: owner.teamId },
-					});
-					if (!teamProject) {
-						throw e;
-					}
-				}
-			}
-
-			return teamProject;
 		}
 
 		assertNever(owner);
@@ -1130,7 +1150,7 @@ export class SourceControlImportService {
 		throw new UnexpectedError(
 			`Unknown resource owner type "${
 				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'
-			}" found when importing from source controller`,
+			}" found when finding owner project`,
 		);
 	}
 }
