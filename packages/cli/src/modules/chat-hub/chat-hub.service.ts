@@ -629,7 +629,7 @@ export class ChatHubService {
 			{
 				parameters: {
 					sessionIdType: 'customKey',
-					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
+					sessionKey: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.sessionId }}`,
 					contextWindowLength: 20, // TODO: Decide this based on selected model & chat history token size
 				},
 				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
