@@ -94,9 +94,43 @@ async def test_per_item_with_success(broker, manager):
 
     assert done_msg["taskId"] == task_id
     assert done_msg["data"]["result"] == [
-        {"doubled": 20, "pairedItem": {"item": 0}},
-        {"doubled": 40, "pairedItem": {"item": 1}},
-        {"doubled": 60, "pairedItem": {"item": 2}},
+        {"json": {"doubled": 20}, "pairedItem": {"item": 0}},
+        {"json": {"doubled": 40}, "pairedItem": {"item": 1}},
+        {"json": {"doubled": 60}, "pairedItem": {"item": 2}},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_per_item_with_explicit_json_and_binary(broker, manager):
+    task_id = nanoid()
+    items = [{"json": {"value": 10}}]
+    code = "return {'json': {'custom': 'data'}, 'binary': {'file': 'data'}}"
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"] == [
+        {
+            "json": {"custom": "data"},
+            "binary": {"file": "data"},
+            "pairedItem": {"item": 0},
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_per_item_with_binary_only(broker, manager):
+    task_id = nanoid()
+    items = [{"json": {"value": 10}}]
+    code = "return {'binary': {'file': 'data'}}"
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"] == [
+        {"json": {}, "binary": {"file": "data"}, "pairedItem": {"item": 0}}
     ]
 
 
@@ -122,8 +156,8 @@ async def test_per_item_with_filtering(broker, manager):
     result = await wait_for_task_done(broker, task_id)
 
     assert result["data"]["result"] == [
-        {"value": 15, "passed": True, "pairedItem": {"item": 1}},
-        {"value": 25, "passed": True, "pairedItem": {"item": 2}},
+        {"json": {"value": 15, "passed": True}, "pairedItem": {"item": 1}},
+        {"json": {"value": 25, "passed": True}, "pairedItem": {"item": 2}},
     ]
 
 
@@ -246,3 +280,58 @@ async def test_stdlib_submodules_with_wildcard(broker, manager_with_stdlib_wildc
     result = await wait_for_task_done(broker, task_id)
 
     assert result["data"]["result"] == [{"json": {"is_iterable": True}}]
+
+
+@pytest.mark.asyncio
+async def test_cannot_bypass_import_restrictions_via_builtins_dict(broker, manager):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        os = __builtins__['__import__']('os')
+        print(os.getpid())
+        return []
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    error_msg = await wait_for_task_error(broker, task_id)
+
+    assert error_msg["taskId"] == task_id
+    assert "error" in error_msg
+    assert "__import__" in str(error_msg["error"]["description"]).lower()
+
+
+@pytest.mark.asyncio
+async def test_cannot_bypass_import_restrictions_via_builtins_spec_loader(
+    broker, manager
+):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        sys = __builtins__['__spec__'].loader.load_module('sys')
+        os = sys.meta_path[-1].find_spec("os").loader.load_module('os')
+        return [{"json": {"pid": os.getpid()}}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    error_msg = await wait_for_task_error(broker, task_id)
+
+    assert error_msg["taskId"] == task_id
+    assert "error" in error_msg
+
+
+@pytest.mark.asyncio
+async def test_cannot_bypass_import_restrictions_via_sys_builtins_spec_leader(
+    broker, manager_with_stdlib_wildcard
+):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        import sys
+        os = sys.__builtins__['__spec__'].loader.load_module('os')
+        return [{"json": {"pid": os.getpid()}}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+    error_msg = await wait_for_task_error(broker, task_id)
+
+    assert error_msg["taskId"] == task_id
+    assert "error" in error_msg

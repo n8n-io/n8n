@@ -1,19 +1,19 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '../../builder.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import type { RatingFeedback } from '@n8n/design-system/types/assistant';
+import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
-import type { WorkflowSuggestion } from '@n8n/design-system/types/assistant';
+import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 
@@ -51,17 +51,26 @@ const loadingMessage = computed(() => {
 		return undefined;
 	}
 
-	return builderStore.assistantThinkingMessage;
+	return builderStore.builderThinkingMessage;
 });
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
 	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
-		(msg) => msg.type === 'workflow-updated',
+		(msg) =>
+			msg.type === 'workflow-updated' ||
+			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
+
+	// Check if there's an error message after the last workflow update
+	const hasErrorAfterUpdate = builderStore.chatMessages
+		.slice(builderUpdatedWorkflowMessageIndex + 1)
+		.some((msg) => msg.type === 'error');
+
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
-		builderUpdatedWorkflowMessageIndex > -1
+		builderUpdatedWorkflowMessageIndex > -1 &&
+		!hasErrorAfterUpdate
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
@@ -69,11 +78,8 @@ const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	// Only show suggestions when no messages in chat yet (blank state)
-	if (builderStore.chatMessages.length === 0) {
-		return WORKFLOW_SUGGESTIONS;
-	}
-	return undefined;
+	// we don't show the suggestions if there are already messages
+	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
 });
 
 async function onUserMessage(content: string) {
@@ -325,14 +331,14 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	flex-flow: wrap;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	background-color: var(--color--background--light-2);
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	border: 0;
 }
 
 .newWorkflowText {
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUsageStore } from '@/stores/usage.store';
+import { useUsageStore } from '@/features/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
@@ -183,9 +183,9 @@ watch(
 .setupContent {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 	max-width: 1024px;
-	margin-top: var(--spacing-2xl);
+	margin-top: var(--spacing--2xl);
 	padding: 0;
 }
 
@@ -197,15 +197,15 @@ watch(
 .config {
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 }
 
 .setupDescription {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 
 	ul {
 		li {
-			margin-top: var(--spacing-2xs);
+			margin-top: var(--spacing--2xs);
 		}
 	}
 }

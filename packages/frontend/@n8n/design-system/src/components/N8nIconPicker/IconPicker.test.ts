@@ -5,21 +5,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import IconPicker from '.';
 import { ALL_ICON_PICKER_ICONS } from './constants';
 
-// Create a proxy handler that returns a mock icon object for any icon name
-// and mock the entire icon library with the proxy
-vi.mock(
-	'@fortawesome/free-solid-svg-icons',
-	() =>
-		new Proxy(
-			{},
-			{
-				get: (_target, prop) => {
-					return { prefix: 'fas', iconName: prop.toString().replace('fa', '').toLowerCase() };
-				},
-			},
-		),
-);
-
 const router = createRouter({
 	history: createWebHistory(),
 	routes: [

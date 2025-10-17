@@ -6,7 +6,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 } from '@/constants';
-import { type IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { WorkflowOperationError, type IRunData, type Workflow } from 'n8n-workflow';
 import type { LogTreeCreationContext } from '../logs.types';
 

@@ -19,7 +19,8 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/composables/useWorkflowState';
-import type { IExecutionResponse, IStartRunData } from '@/Interface';
+import type { IStartRunData } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -178,6 +179,24 @@ describe('useRunWorkflow({ router })', () => {
 	afterEach(() => {
 		workflowState.setActiveExecutionId(undefined);
 		vi.clearAllMocks();
+	});
+
+	it('should use passed workflowState parameter', async () => {
+		const customWorkflowState = vi.mocked(useWorkflowState());
+		const setActiveExecutionIdSpy = vi.spyOn(customWorkflowState, 'setActiveExecutionId');
+
+		const { runWorkflowApi } = useRunWorkflow({ router, workflowState: customWorkflowState });
+
+		vi.mocked(pushConnectionStore).isConnected = true;
+		vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+			executionId: '123',
+			waitingForWebhook: false,
+		});
+
+		await runWorkflowApi({} as IStartRunData);
+
+		expect(setActiveExecutionIdSpy).toHaveBeenCalledWith(null);
+		expect(setActiveExecutionIdSpy).toHaveBeenCalledWith('123');
 	});
 
 	describe('runWorkflowApi()', () => {
@@ -373,7 +392,7 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('should prevent execution and show error message when workflow is active with multiple tirggers and a single webhook trigger is chosen', async () => {
+		it('should prevent execution and show error message when workflow is active with multiple triggers and a single webhook trigger is chosen', async () => {
 			// ARRANGE
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);

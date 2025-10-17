@@ -50,14 +50,14 @@ const props = withDefaults(
 			--color-fg-subtle: var(--color--text--tint-1); // Muted text
 
 			// deletions
-			--color-diff-blob-deletion-num-bg: var(--diff-del-light);
+			--color-diff-blob-deletion-num-bg: var(--diff--color--deleted--light);
 			--color-diff-blob-deletion-num-text: var(--color--text--tint-3);
-			--color-danger-emphasis: var(--diff-del);
+			--color-danger-emphasis: var(--diff--color--deleted);
 
 			// insertions
 			--color-diff-blob-addition-num-text: var(--color--text--tint-3);
-			--color-diff-blob-addition-num-bg: var(--diff-new-light);
-			--color-success-emphasis: var(--diff-new);
+			--color-diff-blob-addition-num-bg: var(--diff--color--new--light);
+			--color-success-emphasis: var(--diff--color--new);
 
 			--color-diff-blob-hunk-num-bg: var(--color--background--shade-1);
 			:global(.blob-code-hunk) {

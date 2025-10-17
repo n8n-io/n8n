@@ -20,14 +20,22 @@ vi.mock('@/features/dataTable/composables/useDataTableTypes', () => ({
 
 vi.mock('@/composables/useDebounce', () => ({
 	useDebounce: () => ({
-		debounce: (fn: Function) => fn,
+		debounce:
+			(fn: Function) =>
+			(...args: unknown[]) =>
+				fn(...args),
 	}),
+}));
+
+vi.mock('@/features/dataTable/constants', async (importOriginal) => ({
+	...(await importOriginal()),
+	COLUMN_NAME_REGEX: /^[a-zA-Z][a-zA-Z0-9_-]*$/,
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
-		baseText: (key: string) => {
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
 			const translations: Record<string, string> = {
 				'dataTable.addColumn.label': 'Add column',
 				'dataTable.addColumn.nameInput.label': 'Column name',
@@ -36,6 +44,11 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'dataTable.addColumn.invalidName.error': 'Invalid column name',
 				'dataTable.addColumn.invalidName.description':
 					'Column names must start with a letter and contain only letters, numbers, and hyphens',
+				'dataTable.addColumn.error': 'Error adding column',
+				'dataTable.addColumn.alreadyExistsError': `Column "${options?.interpolate?.name}" already exists`,
+				'dataTable.addColumn.systemColumnDescription': 'This is a system column',
+				'dataTable.addColumn.testingColumnDescription': 'This is a testing column',
+				'dataTable.addColumn.alreadyExistsDescription': 'Column already exists',
 			};
 			return translations[key] || key;
 		},
@@ -54,6 +67,8 @@ describe('AddColumnButton', () => {
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		addColumnHandler.mockClear();
+		addColumnHandler.mockResolvedValue({ success: true });
 	});
 
 	it('should render the add column button', () => {
@@ -62,33 +77,46 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should focus name input when popover opens', async () => {
-		const { getByTestId, getByPlaceholderText } = renderComponent();
+		const { getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
 		await waitFor(() => {
-			const nameInput = getByPlaceholderText('Enter column name');
+			const nameInput = getByTestId('add-column-name-input');
 			expect(nameInput).toHaveFocus();
 		});
 	});
 
 	it('should call addColumn with correct payload', async () => {
-		const { getByTestId, getByPlaceholderText } = renderComponent();
+		const { getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'newColumn');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+
+		// Properly trigger v-model binding by setting value and firing input event
+		(nameInput as HTMLInputElement).value = 'newColumn';
+		await fireEvent.input(nameInput);
+
+		await waitFor(() => {
+			const submitButton = getByTestId('data-table-add-column-submit-button');
+			expect(submitButton).not.toBeDisabled();
+		});
 
 		const submitButton = getByTestId('data-table-add-column-submit-button');
-		expect(submitButton).not.toBeDisabled();
 		await fireEvent.click(submitButton);
 
-		expect(addColumnHandler).toHaveBeenCalledWith({
-			name: 'newColumn',
-			type: 'string',
+		await waitFor(() => {
+			expect(addColumnHandler).toHaveBeenCalledWith({
+				name: 'newColumn',
+				type: 'string',
+			});
 		});
 	});
 
@@ -105,16 +133,20 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should show error for invalid column names', async () => {
-		const { getByPlaceholderText, getByText, getByTestId } = renderComponent();
+		const { getByText, getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
 
 		// Test invalid name starting with hyphen
-		await fireEvent.update(nameInput, '-invalid');
-		await fireEvent.blur(nameInput);
+		(nameInput as HTMLInputElement).value = '-invalid';
+		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
 			expect(getByText('Invalid column name')).toBeInTheDocument();
@@ -124,19 +156,23 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should allow valid column names', async () => {
-		const { getByTestId, getByPlaceholderText, queryByText } = renderComponent();
+		const { getByTestId, queryByText } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
 
 		// Test valid names
 		const validNames = ['column1', 'my_column', 'Column123', 'a1b2c3'];
 
 		for (const name of validNames) {
-			await fireEvent.update(nameInput, name);
-			await fireEvent.blur(nameInput);
+			(nameInput as HTMLInputElement).value = name;
+			await fireEvent.input(nameInput);
 
 			await waitFor(() => {
 				expect(queryByText('Invalid column name')).not.toBeInTheDocument();
@@ -145,24 +181,28 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should clear error when correcting invalid name', async () => {
-		const { getByTestId, getByPlaceholderText, getByText, queryByText } = renderComponent();
+		const { getByTestId, getByText, queryByText } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
 
 		// Enter invalid name
-		await fireEvent.update(nameInput, '-invalid');
-		await fireEvent.blur(nameInput);
+		(nameInput as HTMLInputElement).value = '-invalid';
+		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
 			expect(getByText('Invalid column name')).toBeInTheDocument();
 		});
 
 		// Correct the name
-		await fireEvent.update(nameInput, 'valid');
-		await fireEvent.blur(nameInput);
+		(nameInput as HTMLInputElement).value = 'valid';
+		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
 			expect(queryByText('Invalid column name')).not.toBeInTheDocument();
@@ -170,71 +210,115 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should respect max column name length', async () => {
-		const { getByTestId, getByPlaceholderText } = renderComponent();
+		const { getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
 
 		expect(nameInput.getAttribute('maxlength')).toBe(MAX_COLUMN_NAME_LENGTH.toString());
 	});
 
 	it('should allow selecting different column types', async () => {
-		const { getByPlaceholderText, getByRole, getByText, getByTestId } = renderComponent();
+		const { getByRole, getByText, getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'numberColumn');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+		(nameInput as HTMLInputElement).value = 'numberColumn';
+		await fireEvent.input(nameInput);
 
 		// Click on the select to open dropdown
 		const selectElement = getByRole('combobox');
 		await fireEvent.click(selectElement);
 
 		// Select 'number' type
+		await waitFor(() => {
+			expect(getByText('number')).toBeInTheDocument();
+		});
 		const numberOption = getByText('number');
 		await fireEvent.click(numberOption);
+
+		await waitFor(() => {
+			const submitButton = getByTestId('data-table-add-column-submit-button');
+			expect(submitButton).not.toBeDisabled();
+		});
 
 		const submitButton = getByTestId('data-table-add-column-submit-button');
 		await fireEvent.click(submitButton);
 
-		expect(addColumnHandler).toHaveBeenCalledWith({
-			name: 'numberColumn',
-			type: 'number',
+		await waitFor(() => {
+			expect(addColumnHandler).toHaveBeenCalledWith({
+				name: 'numberColumn',
+				type: 'number',
+			});
 		});
 	});
 
 	it('should reset form after successful submission', async () => {
-		const { getByPlaceholderText, getByTestId } = renderComponent();
+		const { getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'testColumn');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+		(nameInput as HTMLInputElement).value = 'testColumn';
+		await fireEvent.input(nameInput);
+
+		await waitFor(() => {
+			const submitButton = getByTestId('data-table-add-column-submit-button');
+			expect(submitButton).not.toBeDisabled();
+		});
 
 		const submitButton = getByTestId('data-table-add-column-submit-button');
 		await fireEvent.click(submitButton);
+
+		// Wait for popover to close
+		await waitFor(() => {
+			expect(addColumnHandler).toHaveBeenCalled();
+		});
 
 		// Click button again to open popover
 		await fireEvent.click(addButton);
 
 		await waitFor(() => {
-			const resetNameInput = getByPlaceholderText('Enter column name');
+			const resetNameInput = getByTestId('add-column-name-input');
 			expect((resetNameInput as HTMLInputElement).value).toBe('');
 		});
 	});
 
 	it('should close popover after successful submission', async () => {
-		const { getByPlaceholderText, getByTestId, queryByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'testColumn');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+		(nameInput as HTMLInputElement).value = 'testColumn';
+		await fireEvent.input(nameInput);
+
+		await waitFor(() => {
+			const submitButton = getByTestId('data-table-add-column-submit-button');
+			expect(submitButton).not.toBeDisabled();
+		});
 
 		const submitButton = getByTestId('data-table-add-column-submit-button');
 		await fireEvent.click(submitButton);
@@ -245,7 +329,7 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should not close popover if submission fails', async () => {
-		const { getByPlaceholderText, getByTestId } = renderComponent();
+		const { getByTestId } = renderComponent();
 		addColumnHandler.mockResolvedValueOnce({
 			success: false,
 			error: 'Column name already exists',
@@ -254,8 +338,18 @@ describe('AddColumnButton', () => {
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'testColumn');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+		(nameInput as HTMLInputElement).value = 'testColumn';
+		await fireEvent.input(nameInput);
+
+		await waitFor(() => {
+			const submitButton = getByTestId('data-table-add-column-submit-button');
+			expect(submitButton).not.toBeDisabled();
+		});
 
 		const submitButton = getByTestId('data-table-add-column-submit-button');
 		await fireEvent.click(submitButton);
@@ -266,18 +360,25 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should allow submission with Enter key', async () => {
-		const { getByTestId, getByPlaceholderText } = renderComponent();
+		const { getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'enterColumn');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+		(nameInput as HTMLInputElement).value = 'enterColumn';
+		await fireEvent.input(nameInput);
 		await fireEvent.keyUp(nameInput, { key: 'Enter' });
 
-		expect(addColumnHandler).toHaveBeenCalledWith({
-			name: 'enterColumn',
-			type: 'string',
+		await waitFor(() => {
+			expect(addColumnHandler).toHaveBeenCalledWith({
+				name: 'enterColumn',
+				type: 'string',
+			});
 		});
 	});
 
@@ -286,6 +387,10 @@ describe('AddColumnButton', () => {
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
+
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
 
 		const selectElement = getByRole('combobox');
 		await fireEvent.click(selectElement);
@@ -299,38 +404,58 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should set value to "date" when selecting "datetime" option', async () => {
-		const { getByTestId, getByRole, getByText, getByPlaceholderText } = renderComponent();
+		const { getByTestId, getByRole, getByText } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'dateColumn');
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+		(nameInput as HTMLInputElement).value = 'dateColumn';
+		await fireEvent.input(nameInput);
 
 		const selectElement = getByRole('combobox');
 		await fireEvent.click(selectElement);
 
+		await waitFor(() => {
+			expect(getByText('datetime')).toBeInTheDocument();
+		});
+
 		const dateOption = getByText('datetime');
 		await fireEvent.click(dateOption);
+
+		await waitFor(() => {
+			const submitButton = getByTestId('data-table-add-column-submit-button');
+			expect(submitButton).not.toBeDisabled();
+		});
 
 		const submitButton = getByTestId('data-table-add-column-submit-button');
 		await fireEvent.click(submitButton);
 
-		expect(addColumnHandler).toHaveBeenCalledWith({
-			name: 'dateColumn',
-			type: 'date',
+		await waitFor(() => {
+			expect(addColumnHandler).toHaveBeenCalledWith({
+				name: 'dateColumn',
+				type: 'date',
+			});
 		});
 	});
 
 	it('should show tooltip with error description', async () => {
-		const { getByPlaceholderText, getByText, getByTestId } = renderComponent();
+		const { getByText, getByTestId } = renderComponent();
 		const addButton = getByTestId('data-table-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, '-invalid');
-		await fireEvent.blur(nameInput);
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId('add-column-name-input');
+		(nameInput as HTMLInputElement).value = '-invalid';
+		await fireEvent.input(nameInput);
 
 		await waitFor(() => {
 			expect(getByText('Invalid column name')).toBeInTheDocument();

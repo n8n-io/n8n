@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import CredentialPicker from '@/components/CredentialPicker/CredentialPicker.vue';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import { formatList } from '@/utils/formatters/listFormatter';
@@ -127,21 +127,21 @@ const onCredentialModalOpened = () => {
 .heading {
 	display: flex;
 	align-items: center;
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .headingOrder {
-	font-weight: var(--font-weight-bold);
-	margin-right: var(--spacing-xs);
+	font-weight: var(--font-weight--bold);
+	margin-right: var(--spacing--xs);
 }
 
 .headingIcon {
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 
 .description {
-	margin-bottom: var(--spacing-l);
-	font-size: var(--font-size-s);
+	margin-bottom: var(--spacing--lg);
+	font-size: var(--font-size--sm);
 	color: var(--color--text);
 }
 
@@ -156,7 +156,7 @@ const onCredentialModalOpened = () => {
 }
 
 .credentialOk {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 	font-size: 24px;
 }
 

@@ -11,11 +11,23 @@ export {
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
 	type ChatHubProvider,
+	type ChatHubMessageType,
+	type ChatHubMessageState,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	chatModelsRequestSchema,
 	type ChatModelsRequest,
 	type ChatModelsResponse,
 	ChatHubSendMessageRequest,
+	ChatHubRegenerateMessageRequest,
+	ChatHubEditMessageRequest,
+	ChatHubChangeConversationTitleRequest,
+	type ChatMessageId,
+	type ChatSessionId,
+	type ChatHubMessageDto,
+	type ChatHubSessionDto,
+	type ChatHubConversationDto,
+	type ChatHubConversationResponse,
+	type ChatHubConversationsResponse,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';

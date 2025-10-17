@@ -1,16 +1,12 @@
-import type { RouteLocation, RouteLocationNormalizedLoaded, Router } from 'vue-router';
-import { hasPermission } from '@/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/types/rbac';
+import { hasPermission } from '@/utils/rbac/permissions';
+import type { RouteLocation, Router } from 'vue-router';
 
-export function useUserHelpers(router: Router, route: RouteLocationNormalizedLoaded) {
+export function useUserHelpers(router: Router) {
 	const canUserAccessRouteByName = (name: string) => {
 		const resolvedRoute = router.resolve({ name });
 
 		return canUserAccessRoute(resolvedRoute);
-	};
-
-	const canUserAccessCurrentRoute = () => {
-		return canUserAccessRoute(route);
 	};
 
 	const canUserAccessRoute = (route: RouteLocation) => {
@@ -26,7 +22,5 @@ export function useUserHelpers(router: Router, route: RouteLocationNormalizedLoa
 
 	return {
 		canUserAccessRouteByName,
-		canUserAccessCurrentRoute,
-		canUserAccessRoute,
 	};
 }

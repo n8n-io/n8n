@@ -1,13 +1,15 @@
 import { computed } from 'vue';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { useCredentialSetupState } from './useCredentialSetupState';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export const useSetupWorkflowCredentialsModalState = () => {
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const nodeHelpers = useNodeHelpers();
 
@@ -63,7 +65,7 @@ export const useSetupWorkflowCredentialsModalState = () => {
 		};
 
 		usages.usedBy.forEach((node) => {
-			workflowsStore.updateNodeProperties({
+			workflowState.updateNodeProperties({
 				name: node.name,
 				properties: {
 					credentials: {
@@ -97,7 +99,7 @@ export const useSetupWorkflowCredentialsModalState = () => {
 			const credentials = { ...node.credentials };
 			delete credentials[usages.credentialType];
 
-			workflowsStore.updateNodeProperties({
+			workflowState.updateNodeProperties({
 				name: node.name,
 				properties: {
 					credentials,

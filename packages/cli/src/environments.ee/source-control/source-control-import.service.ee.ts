@@ -248,6 +248,7 @@ export class SourceControlImportService {
 					project: {
 						projectRelations: {
 							user: true,
+							role: true,
 						},
 					},
 				},
@@ -266,6 +267,8 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
+							userId: true,
 							role: {
 								slug: true,
 							},
@@ -293,6 +296,7 @@ export class SourceControlImportService {
 				});
 				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
 			}
+
 			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
 
 			return {
@@ -371,6 +375,7 @@ export class SourceControlImportService {
 					project: {
 						projectRelations: {
 							user: true,
+							role: true,
 						},
 					},
 				},
@@ -385,6 +390,8 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
+							userId: true,
 							role: {
 								slug: true,
 							},
@@ -793,7 +800,6 @@ export class SourceControlImportService {
 					newSharedCredential.projectId = remoteOwnerProject?.id ?? personalProject.id;
 					newSharedCredential.role = 'credential:owner';
 
-					// @ts-ignore CAT-957
 					await this.sharedCredentialsRepository.upsert({ ...newSharedCredential }, [
 						'credentialsId',
 						'projectId',
@@ -849,7 +855,6 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				// @ts-ignore CAT-957
 				await this.tagRepository.upsert(tagCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
@@ -905,7 +910,6 @@ export class SourceControlImportService {
 					},
 				});
 
-				// @ts-ignore CAT-957
 				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
@@ -964,13 +968,11 @@ export class SourceControlImportService {
 				overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
 			}
 			try {
-				// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 				await this.variablesRepository.upsert({ ...variable }, ['id']);
 			} catch (errorUpsert) {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
 					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);
 					try {
-						// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 						await this.variablesRepository.update({ key: variable.key }, { ...variable });
 					} catch (errorUpdate) {
 						this.logger.debug(`Failed to update variable ${variable.key}, skipping`);

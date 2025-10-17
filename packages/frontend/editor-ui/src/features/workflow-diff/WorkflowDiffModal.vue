@@ -3,6 +3,7 @@ import Node from '@/features/canvas/components/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
@@ -41,6 +42,7 @@ const props = defineProps<{
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
 const telemetry = useTelemetry();
+const toast = useToast();
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
@@ -56,13 +58,17 @@ const manualAsyncConfiguration = {
 	immediate: false,
 } as const;
 
+const isClosed = ref(false);
+
 const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
 		try {
 			const { workflowId } = props.data;
 			const { content: workflow } = await sourceControlStore.getRemoteWorkflow(workflowId);
 			return { workflow, remote: true };
-		} catch {
+		} catch (error) {
+			toast.showError(error, i18n.baseText('generic.error'));
+			handleBeforeClose();
 			return { workflow: undefined, remote: true };
 		}
 	},
@@ -76,19 +82,15 @@ const local = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefi
 			const { workflowId } = props.data;
 			const workflow = await workflowsStore.fetchWorkflow(workflowId);
 			return { workflow, remote: false };
-		} catch {
+		} catch (error) {
+			toast.showError(error, i18n.baseText('generic.error'));
+			handleBeforeClose();
 			return { workflow: undefined, remote: false };
 		}
 	},
 	undefined,
 	manualAsyncConfiguration,
 );
-
-useAsyncState(async () => {
-	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded()]);
-	await Promise.all([remote.execute(), local.execute()]);
-	return true;
-}, false);
 
 const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote : local));
 
@@ -301,6 +303,9 @@ const nodeDiffs = computed(() => {
 });
 
 function handleBeforeClose() {
+	if (isClosed.value) return;
+	isClosed.value = true;
+
 	selectedDetailId.value = undefined;
 
 	// Check if we have history to go back to avoid empty navigation issues
@@ -325,8 +330,11 @@ function handleEscapeKey(event: KeyboardEvent) {
 	}
 }
 
-onMounted(() => {
+onMounted(async () => {
 	document.addEventListener('keydown', handleEscapeKey, true);
+	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	void remote.execute();
+	void local.execute();
 });
 
 onUnmounted(() => {
@@ -348,7 +356,7 @@ const isSourceWorkflowNew = computed(() => {
 	return !sourceExists && targetExists;
 });
 
-onNodeClick((nodeId) => {
+onNodeClick((nodeId: string) => {
 	const node = nodesDiff.value.get(nodeId);
 	if (!node) {
 		return;
@@ -450,7 +458,7 @@ const modifiers = [
 						:popper-class="$style.popper"
 						@visible-change="setActiveTab"
 					>
-						<N8nButton type="secondary" style="--button-border-radius: 4px 0 0 4px">
+						<N8nButton type="secondary" style="--button--radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
@@ -581,14 +589,14 @@ const modifiers = [
 						icon="chevron-left"
 						type="secondary"
 						:class="$style.navigationButton"
-						style="--button-border-radius: 0; margin: 0 -1px"
+						style="--button--radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
 					/>
 					<N8nIconButton
 						icon="chevron-right"
 						type="secondary"
 						:class="$style.navigationButton"
-						style="--button-border-radius: 0 4px 4px 0"
+						style="--button--radius: 0 4px 4px 0"
 						@click="nextNodeChange"
 					/>
 				</div>
@@ -768,15 +776,15 @@ const modifiers = [
 	> li {
 		display: flex;
 		align-items: flex-start;
-		gap: var(--spacing-2xs);
-		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
+		gap: var(--spacing--2xs);
+		padding: 10px 0 var(--spacing--3xs) var(--spacing--2xs);
 
 		> div {
 			min-width: 0;
 		}
 
 		.clickableChange {
-			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
+			padding: var(--spacing--3xs) var(--spacing--xs) var(--spacing--3xs) 0;
 			margin-left: -4px;
 		}
 	}
@@ -791,10 +799,10 @@ const modifiers = [
 .clickableChange {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	border-radius: 4px;
-	padding: var(--spacing-xs) var(--spacing-2xs);
-	margin-right: var(--spacing-xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
+	margin-right: var(--spacing--xs);
 	line-height: unset;
 	min-width: 0;
 	transition: background-color 0.2s ease;
@@ -820,7 +828,7 @@ const modifiers = [
 	width: 1px;
 	height: 10px;
 	background-color: var(--color--foreground--shade-2);
-	margin: 0 0 -5px var(--spacing-xs);
+	margin: 0 0 -5px var(--spacing--xs);
 	position: relative;
 	z-index: 1;
 }
@@ -849,46 +857,46 @@ const modifiers = [
 }
 
 .deleted {
-	--canvas-node--background: var(--diff-del-faint);
-	--canvas-node--border-color: var(--diff-del);
-	--color-sticky-background: var(--diff-del-faint);
-	--color-sticky-border: var(--diff-del);
+	--canvas-node--background: var(--diff--color--deleted--faint);
+	--canvas-node--border-color: var(--diff--color--deleted);
+	--sticky--color--background: var(--diff--color--deleted--faint);
+	--sticky--border-color: var(--diff--color--deleted);
 	&::before {
 		content: 'D';
-		background-color: var(--diff-del);
+		background-color: var(--diff--color--deleted);
 	}
 	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff-del);
+		background-color: var(--diff--color--deleted);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff-del);
+		background-color: var(--diff--color--deleted);
 	}
 
 	/* Ensure disabled nodes still show diff border color */
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff-del) !important;
+		--canvas-node--border-color: var(--diff--color--deleted) !important;
 	}
 }
 .added {
-	--canvas-node--border-color: var(--diff-new);
-	--canvas-node--background: var(--diff-new-faint);
-	--color-sticky-background: var(--diff-new-faint);
-	--color-sticky-border: var(--diff-new);
+	--canvas-node--border-color: var(--diff--color--new);
+	--canvas-node--background: var(--diff--color--new--faint);
+	--sticky--color--background: var(--diff--color--new--faint);
+	--sticky--border-color: var(--diff--color--new);
 	position: relative;
 	&::before {
 		content: 'N';
-		background-color: var(--diff-new);
+		background-color: var(--diff--color--new);
 	}
 	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff-new);
+		background-color: var(--diff--color--new);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff-new);
+		background-color: var(--diff--color--new);
 	}
 
 	/* Ensure disabled nodes still show diff border color */
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff-new) !important;
+		--canvas-node--border-color: var(--diff--color--new) !important;
 	}
 }
 .equal {
@@ -896,43 +904,43 @@ const modifiers = [
 	position: relative;
 	pointer-events: none;
 	cursor: default;
-	--color-sticky-background: rgba(126, 129, 134, 0.2);
+	--sticky--color--background: rgba(126, 129, 134, 0.2);
 	--canvas-node-icon-color: var(--color--foreground--shade-2);
-	--color-sticky-border: var(--color--foreground--shade-2);
+	--sticky--border-color: var(--color--foreground--shade-2);
 	&:deep(img) {
 		filter: contrast(0) grayscale(100%);
 	}
 }
 .modified {
-	--canvas-node--border-color: var(--diff-modified);
-	--canvas-node--background: var(--diff-modified-faint);
-	--color-sticky-background: var(--diff-modified-faint);
-	--color-sticky-border: var(--diff-modified);
+	--canvas-node--border-color: var(--diff--color--modified);
+	--canvas-node--background: var(--diff--color--modified--faint);
+	--sticky--color--background: var(--diff--color--modified--faint);
+	--sticky--border-color: var(--diff--color--modified);
 	position: relative;
 	&::before {
 		content: 'M';
-		background-color: var(--diff-modified);
+		background-color: var(--diff--color--modified);
 	}
 	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff-modified);
+		background-color: var(--diff--color--modified);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff-modified);
+		background-color: var(--diff--color--modified);
 	}
 
 	/* Ensure disabled nodes still show diff border color */
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff-modified) !important;
+		--canvas-node--border-color: var(--diff--color--modified) !important;
 	}
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--diff-del);
-	--edge-highlight-color: var(--diff-del-light);
+	--canvas-edge-color: var(--diff--color--deleted);
+	--edge-highlight-color: var(--diff--color--deleted--light);
 }
 .edge-added {
-	--canvas-edge-color: var(--diff-new);
-	--edge-highlight-color: var(--diff-new-light);
+	--canvas-edge-color: var(--diff--color--new);
+	--edge-highlight-color: var(--diff--color--new--light);
 }
 .edge-equal {
 	opacity: 0.5;
@@ -1026,6 +1034,6 @@ const modifiers = [
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	padding: var(--spacing-m) var(--spacing-xs);
+	padding: var(--spacing--md) var(--spacing--xs);
 }
 </style>

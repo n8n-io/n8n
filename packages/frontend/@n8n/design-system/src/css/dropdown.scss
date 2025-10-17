@@ -87,8 +87,8 @@
 	padding: 10px 0;
 	margin: 5px 0;
 	background-color: var.$color-white;
-	border: 1px solid var(--border-color-light);
-	border-radius: var(--border-radius-base);
+	border: 1px solid var(--border-color--light);
+	border-radius: var(--radius);
 	position: relative;
 	list-style: none;
 
@@ -98,7 +98,7 @@
 		padding: 0 16px;
 		margin: 0;
 		font-size: var.$font-size-base;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 		color: var(--color--text);
 		cursor: pointer;
 		outline: none;
@@ -118,7 +118,7 @@
 
 			position: relative;
 			margin-top: $divided-offset;
-			border-top: 1px solid var(--border-color-light);
+			border-top: 1px solid var(--border-color--light);
 
 			&:before {
 				content: '';

@@ -27,7 +27,6 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
-	IExecutionResponse,
 	INodeUi,
 	IWorkflowDb,
 	NodeCreatorOpenSource,
@@ -35,6 +34,7 @@ import type {
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	Connection,
@@ -88,23 +88,23 @@ import type {
 } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useUsersStore } from '@/stores/users.store';
+import { useExecutionDebugging } from '@/features/executions/composables/useExecutionDebugging';
+import { useUsersStore } from '@/features/users/users.store';
 import { sourceControlEventBus } from '@/features/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -129,13 +129,13 @@ import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/features/folders/composables/useParentFolder';
@@ -1817,9 +1817,7 @@ watch(
 		};
 
 		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled &&
-			builderStore.isAssistantEnabled &&
-			builderStore.assistantMessages.length === 0
+			builderStore.isAIBuilderEnabled && builderStore.assistantMessages.length === 0
 				? [choicePromptItem]
 				: [addNodesItem];
 	},
@@ -2163,12 +2161,12 @@ onBeforeUnmount(() => {
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-s);
+	bottom: var(--spacing--sm);
 	width: auto;
 
 	@include mixins.breakpoint('sm-only') {
 		left: auto;
-		right: var(--spacing-s);
+		right: var(--spacing--sm);
 		transform: none;
 	}
 
@@ -2201,8 +2199,8 @@ onBeforeUnmount(() => {
 
 .setupCredentialsButtonWrapper {
 	position: absolute;
-	left: var(--spacing-s);
-	top: var(--spacing-s);
+	left: var(--spacing--sm);
+	top: var(--spacing--sm);
 }
 
 .readOnlyEnvironmentNotification {

@@ -1359,6 +1359,52 @@ describe('dataTable', () => {
 			);
 		});
 
+		it('converts dates with timezone offsets to UTC when inserting', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'registeredAt', type: 'date' }],
+			});
+
+			const dateWithOffset = new Date('2024-01-15T10:30:00.000+03:00');
+			const expectedUtcTime = new Date('2024-01-15T07:30:00.000Z');
+
+			// ACT
+			const inserted = await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				[{ registeredAt: dateWithOffset }],
+				'all',
+			);
+
+			// ASSERT
+			expect((inserted[0].registeredAt as Date).getTime()).toBe(expectedUtcTime.getTime());
+		});
+
+		it('converts ISO date strings with timezone offsets to UTC when inserting', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'registeredAt', type: 'date' }],
+			});
+
+			const isoWithOffsetPlus = '2024-01-15T10:30:00.000+05:00';
+			const isoWithOffsetMinus = '2024-01-15T02:30:00.000-03:00';
+			const expectedUtcTime = new Date('2024-01-15T05:30:00.000Z');
+
+			// ACT
+			const inserted = await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				[{ registeredAt: isoWithOffsetPlus }, { registeredAt: isoWithOffsetMinus }],
+				'all',
+			);
+
+			// ASSERT
+			expect((inserted[0].registeredAt as Date).getTime()).toBe(expectedUtcTime.getTime());
+			expect((inserted[1].registeredAt as Date).getTime()).toBe(expectedUtcTime.getTime());
+		});
+
 		it('rejects unknown data table id', async () => {
 			// ARRANGE
 			await dataTableService.createDataTable(project1.id, {

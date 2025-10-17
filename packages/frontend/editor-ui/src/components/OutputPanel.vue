@@ -12,14 +12,14 @@ import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { waitingNodeTooltip } from '@/features/executions/executions.utils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/features/canvas/canvas.types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
-import { useExecutionData } from '@/composables/useExecutionData';
+import { useExecutionData } from '@/features/executions/composables/useExecutionData';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
@@ -515,14 +515,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	display: none;
 }
 .runData {
-	background-color: var(--color-run-data-background);
+	background-color: var(--run-data--color--background);
 }
 
 .runDataV2 {
-	background-color: var(--color-ndvv2-run-data-background);
+	background-color: var(--ndvv2--run-data--color--background);
 }
 .outputTypeSelect {
-	margin-bottom: var(--spacing-4xs);
+	margin-bottom: var(--spacing--4xs);
 	width: fit-content;
 }
 .titleSection {
@@ -530,44 +530,44 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	align-items: center;
 
 	> * {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 }
 
 .titleSectionV2 {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 
 .title {
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--sm);
 }
 
 .titleV2 {
 	letter-spacing: 2px;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .noOutputData {
 	max-width: 180px;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
 .link {
 	display: inline;
 	padding: 0;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
 }
 
 .spinner {

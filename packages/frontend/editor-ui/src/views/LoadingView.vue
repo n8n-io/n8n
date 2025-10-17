@@ -19,7 +19,7 @@ import { N8nSpinner } from '@n8n/design-system';
 }
 
 .spinner {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 	position: absolute;
 	left: 50%;
 	top: 30%;

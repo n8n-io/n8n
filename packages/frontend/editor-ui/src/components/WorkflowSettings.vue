@@ -8,7 +8,6 @@ import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import type { WorkflowSettings } from 'n8n-workflow';
@@ -20,12 +19,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/features/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useMcp } from '@/features/mcpAccess/composables/useMcp';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
@@ -35,6 +35,7 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
+const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow } = useMcp();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -98,14 +99,9 @@ const workflowOwnerName = computed(() => {
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
-const isEligibleForMCPAccess = computed(() => {
-	if (!workflow.value?.active) {
-		return false;
-	}
-	// If it's active, check if workflow has at least one enabled webhook trigger:
-	return workflow.value?.nodes.some(
-		(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
-	);
+const isEligibleForMcp = computed(() => {
+	if (!workflow?.value) return false;
+	return isEligibleForMcpAccess(workflow.value);
 });
 
 const onCallerIdsInput = (str: string) => {
@@ -396,6 +392,10 @@ const saveSettings = async () => {
 		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
 		error_workflow: workflowSettings.value.errorWorkflow ?? '',
 	});
+
+	if (isMCPEnabled.value && workflowSettings.value.availableInMCP) {
+		trackMcpAccessEnabledForWorkflow(workflowId.value);
+	}
 };
 
 const toggleTimeout = () => {
@@ -858,7 +858,7 @@ onBeforeUnmount(() => {
 							<N8nTooltip placement="top">
 								<template #content>
 									{{
-										isEligibleForMCPAccess
+										isEligibleForMcp
 											? i18n.baseText('workflowSettings.availableInMCP.tooltip')
 											: i18n.baseText('mcp.workflowNotEligable.description')
 									}}
@@ -869,13 +869,13 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<N8nTooltip placement="top" :disabled="isEligibleForMCPAccess">
+							<N8nTooltip placement="top" :disabled="isEligibleForMcp">
 								<template #content>
 									{{ i18n.baseText('mcp.workflowNotEligable.description') }}
 								</template>
 								<ElSwitch
 									ref="inputField"
-									:disabled="readOnlyEnv || !workflowPermissions.update || !isEligibleForMCPAccess"
+									:disabled="readOnlyEnv || !workflowPermissions.update || !isEligibleForMcp"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"
@@ -929,10 +929,10 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 .workflow-settings {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	:global(.el-row) {
 		display: flex;
@@ -940,7 +940,7 @@ onBeforeUnmount(() => {
 	}
 
 	:global(.el-switch) {
-		padding: var(--spacing-m) 0;
+		padding: var(--spacing--md) 0;
 	}
 }
 
@@ -949,7 +949,7 @@ onBeforeUnmount(() => {
 	& label {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
+		gap: var(--spacing--4xs);
 	}
 
 	svg {
@@ -966,7 +966,7 @@ onBeforeUnmount(() => {
 }
 
 .timeout-input {
-	margin-left: var(--spacing-3xs);
+	margin-left: var(--spacing--3xs);
 }
 
 .time-saved {
@@ -974,11 +974,11 @@ onBeforeUnmount(() => {
 	align-items: center;
 
 	:global(.el-input) {
-		width: var(--spacing-3xl);
+		width: var(--spacing--3xl);
 	}
 
 	span {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>

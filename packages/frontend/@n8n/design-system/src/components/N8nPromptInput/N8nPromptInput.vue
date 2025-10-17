@@ -29,7 +29,7 @@ const INFINITE_CREDITS = -1;
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
-	maxLength: 1000,
+	maxLength: 5000,
 	maxLinesBeforeScroll: 6,
 	minLines: 1,
 	streaming: false,
@@ -242,7 +242,8 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isSubmitKey = event.key === 'Enter' && (event.ctrlKey || event.metaKey || event.shiftKey);
+	const isSubmitKey = event.key === 'Enter' && !event.shiftKey;
+	const isNewlineKey = event.key === 'Enter' && event.shiftKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
 	if (atMaxLength && isPrintableChar && !isDeletionKey) {
@@ -250,11 +251,25 @@ async function handleKeyDown(event: KeyboardEvent) {
 		return;
 	}
 
-	// Submit on Ctrl/Cmd+Enter. If send disabled, don't submit.
+	// Submit on plain Enter - if send disabled, don't submit
 	if (isSubmitKey) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();
+		}
+	}
+
+	// Insert newline on Shift+Enter
+	if (isNewlineKey) {
+		event.preventDefault();
+		const textarea = event.target as HTMLTextAreaElement;
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		textValue.value = textValue.value.substring(0, start) + '\n' + textValue.value.substring(end);
+		// Set cursor position after the newline
+		await nextTick();
+		if (textareaRef.value) {
+			textareaRef.value.selectionStart = textareaRef.value.selectionEnd = start + 1;
 		}
 	}
 }
@@ -406,7 +421,7 @@ defineExpose({
 .wrapper {
 	background: var(--color--background--light-2);
 	border: 1px solid var(--color--foreground);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 }
 
 .container {
@@ -416,16 +431,16 @@ defineExpose({
 	background: var(--color--background--light-3);
 	border: none;
 	border-bottom: 1px transparent solid;
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 	transition:
 		border-color 0.2s ease,
 		box-shadow 0.2s ease;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	box-sizing: border-box;
 
 	// if credit bar is showing
 	&.withBottomBorder {
-		border-bottom: var(--border-base);
+		border-bottom: var(--border);
 	}
 
 	&.focused {
@@ -449,14 +464,14 @@ defineExpose({
 }
 
 .warningCallout {
-	margin: 0 var(--spacing-3xs) var(--spacing-2xs) var(--spacing-3xs);
+	margin: 0 var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs);
 }
 
 // Single line mode
 .singleLineWrapper {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	width: 100%;
 }
 
@@ -467,10 +482,10 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	line-height: 24px;
 	color: var(--color--text--shade-1);
-	padding: 0 var(--spacing-2xs);
+	padding: 0 var(--spacing--2xs);
 	height: 24px;
 	overflow: hidden;
 	box-sizing: border-box;
@@ -484,7 +499,7 @@ defineExpose({
 .inlineActions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 // Multiline mode
@@ -500,10 +515,10 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	line-height: 18px;
 	color: var(--color--text--shade-1);
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 	margin-bottom: 0;
 	box-sizing: border-box;
 	display: block;
@@ -518,8 +533,8 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	gap: var(--spacing-3xs);
-	padding: var(--spacing-2xs) 0 var(--spacing-2xs) var(--spacing-2xs);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xs) 0 var(--spacing--2xs) var(--spacing--2xs);
 	margin-top: auto;
 }
 
@@ -528,19 +543,19 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	border: none;
 }
 
 .creditsInfoWrapper {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	color: var(--color--text);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 
 	b {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
@@ -549,7 +564,7 @@ defineExpose({
 	line-height: 18px;
 
 	b {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
@@ -559,13 +574,13 @@ defineExpose({
 
 // Common styles
 .characterCount {
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
-	padding: 0 var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs);
 
 	.overLimit {
 		color: var(--color--danger);
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 </style>

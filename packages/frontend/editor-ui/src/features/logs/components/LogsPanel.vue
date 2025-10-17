@@ -268,7 +268,7 @@ function onHideChatPanel() {
 	height: 100%;
 	min-height: 0;
 	flex-basis: 0;
-	border-top: var(--border-base);
+	border-top: var(--border);
 	background-color: var(--color--background--light-2);
 
 	.poppedOut & {
@@ -282,7 +282,7 @@ function onHideChatPanel() {
 	flex-grow: 1;
 
 	& > *:not(:last-child) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 
@@ -297,7 +297,7 @@ function onHideChatPanel() {
 	align-items: stretch;
 
 	& > *:not(:last-child) {
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 }
 

@@ -235,14 +235,14 @@ watch(
 
 <style scoped lang="scss">
 .webhooks {
-	padding-bottom: var(--spacing-xs);
-	margin: var(--spacing-xs) 0;
+	padding-bottom: var(--spacing--xs);
+	margin: var(--spacing--xs) 0;
 	border-bottom: 1px solid var(--color--text--tint-2);
 
 	.headline {
 		color: $color-primary;
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight--bold);
+		font-size: var(--font-size--2xs);
 	}
 }
 
@@ -261,8 +261,8 @@ watch(
 	margin-left: 5px;
 	text-align: center;
 	border-radius: 2px;
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 	color: var(--color--foreground--tint-2);
 }
 
@@ -290,7 +290,7 @@ watch(
 }
 
 .url-selection {
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 }
 
 .minimize-button {
@@ -316,7 +316,7 @@ watch(
 	position: relative;
 	top: 0;
 	width: 100%;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
@@ -329,7 +329,7 @@ watch(
 .webhook-wrapper {
 	line-height: 1.5;
 	position: relative;
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 	background-color: var(--color--foreground--tint-2);
 	border-radius: 3px;
 }

@@ -93,7 +93,7 @@
 
 @mixin button-round() {
 	& {
-		--button-border-radius: 20px;
+		--button--radius: 20px;
 	}
 }
 
@@ -103,9 +103,9 @@
 		var.$button-primary-font-color,
 		var.$button-primary-background-color,
 		var.$button-primary-border-color,
-		--color--primary-h,
-		--color--primary-s,
-		--color--primary-l,
+		--color--primary--h,
+		--color--primary--s,
+		--color--primary--l,
 		--color--primary--tint-2-l,
 		$plain: false
 	);
@@ -114,16 +114,16 @@
 @mixin button-outline() {
 	@include button-plain(
 		var.$button-primary-background-color,
-		--color--primary-h,
-		--color--primary-s,
-		--color--primary-l
+		--color--primary--h,
+		--color--primary--s,
+		--color--primary--l
 	);
 }
 
 @mixin button-small() {
-	@include button-size(var(--spacing-3xs), var(--spacing-xs), var(--font-size-2xs));
+	@include button-size(var(--spacing--3xs), var(--spacing--xs), var(--font-size--2xs));
 }
 
 @mixin button-medium() {
-	@include button-size(var(--spacing-2xs), var(--spacing-xs), var(--font-size-2xs));
+	@include button-size(var(--spacing--2xs), var(--spacing--xs), var(--font-size--2xs));
 }

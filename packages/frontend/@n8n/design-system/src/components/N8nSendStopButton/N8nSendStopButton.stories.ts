@@ -238,7 +238,7 @@ const UsageExampleTemplate: StoryFn = () => ({
 				padding: 8px;
 				background: var(--color--background--light-3);
 				border: 1px solid var(--color--foreground);
-				border-radius: var(--border-radius-large);
+				border-radius: var(--radius--lg);
 			">
 				<input
 					v-model="message"

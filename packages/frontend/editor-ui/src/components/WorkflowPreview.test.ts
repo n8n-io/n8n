@@ -5,8 +5,8 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { useExecutionsStore } from '@/stores/executions.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useExecutionsStore } from '@/features/executions/executions.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 const renderComponent = createComponentRenderer(WorkflowPreview);
 

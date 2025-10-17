@@ -14,10 +14,10 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL } from '@/constants';
+import { BASE_NODE_SURVEY_URL, VIEWS } from '@/constants';
 
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
@@ -29,8 +29,8 @@ import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import NodeActionsList from '@/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
-import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+import { useInstalledCommunityPackage } from '@/features/communityNodes/composables/useInstalledCommunityPackage';
+import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -38,14 +38,14 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import NodeStorageLimitCallout from '@/features/dataTable/components/NodeStorageLimitCallout.vue';
 import NodeTitle from '@/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/models/history';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import { ProjectTypes } from '@/types/projects.types';
+import { getNodeIconSource } from '@/utils/nodeIcon';
 import {
 	collectParametersByTab,
 	collectSettings,
@@ -56,12 +56,16 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
-import CommunityNodeFooter from '@/components/Node/NodeCreator/Panel/CommunityNodeFooter.vue';
-import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
+import CommunityNodeFooter from '@/features/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import CommunityNodeUpdateInfo from '@/features/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { useRoute } from 'vue-router';
+import { useSettingsStore } from '@/stores/settings.store';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { ProjectTypes } from '@/features/projects/projects.types';
+
 const props = withDefaults(
 	defineProps<{
 		eventBus?: EventBus;
@@ -124,6 +128,7 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const route = useRoute();
 const nodeSettingsParameters = useNodeSettingsParameters();
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
@@ -146,6 +151,9 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
+const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
+const { isPreviewMode } = useSettingsStore();
+const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
 	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
@@ -412,7 +420,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: newValue,
 		};
 
-		workflowsStore.setNodeValue(updateInformation);
+		workflowState.setNodeValue(updateInformation);
 	}
 };
 
@@ -451,6 +459,8 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
 );
 
+const iconSource = computed(() => getNodeIconSource(nodeType.value ?? node.value?.type));
+
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
 };
@@ -468,7 +478,7 @@ const onNodeExecute = () => {
 
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
-	workflowsStore.updateNodeProperties(updateInformation);
+	workflowState.updateNodeProperties(updateInformation);
 
 	const node = workflowsStore.getNodeByName(updateInformation.name);
 
@@ -617,7 +627,7 @@ function handleSelectAction(params: INodeParameters) {
 					v-if="node"
 					class="node-name"
 					:model-value="node.name"
-					:node-type="nodeType"
+					:icon-source="iconSource"
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
@@ -643,7 +653,7 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 		</div>
 		<NodeSettingsHeader
-			v-else-if="node"
+			v-else-if="node && nodeValid"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"
@@ -659,7 +669,11 @@ function handleSelectAction(params: INodeParameters) {
 			@tab-changed="onTabSelect"
 		/>
 
-		<NodeSettingsInvalidNodeWarning v-if="node && !nodeValid" :node="node" />
+		<NodeSettingsInvalidNodeWarning
+			v-if="node && !nodeValid"
+			:node="node"
+			:preview-mode="isDemoPreview"
+		/>
 
 		<div
 			v-if="node && nodeValid"
@@ -716,7 +730,7 @@ function handleSelectAction(params: INodeParameters) {
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
-						v-if="!isEmbeddedInCanvas"
+						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
@@ -751,7 +765,7 @@ function handleSelectAction(params: INodeParameters) {
 					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 					data-test-id="update-available"
 					:package-name="packageName"
-					style="margin-top: var(--spacing-s)"
+					style="margin-top: var(--spacing--sm)"
 					source="node settings"
 				/>
 				<ParameterInputList
@@ -824,11 +838,11 @@ function handleSelectAction(params: INodeParameters) {
 	a {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
-		margin-top: var(--spacing-xl);
+		gap: var(--spacing--4xs);
+		margin-top: var(--spacing--xl);
 
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--bold);
 		color: var(--color--text--tint-1);
 	}
 }
@@ -844,18 +858,18 @@ function handleSelectAction(params: INodeParameters) {
 	width: 100%;
 
 	.no-parameters {
-		margin-top: var(--spacing-xs);
+		margin-top: var(--spacing--xs);
 	}
 
 	.header-side-menu {
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
-		font-size: var(--font-size-l);
+		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
+		font-size: var(--font-size--lg);
 		display: flex;
 		justify-content: space-between;
 
 		.node-name {
-			padding-top: var(--spacing-5xs);
-			margin-right: var(--spacing-s);
+			padding-top: var(--spacing--5xs);
+			margin-right: var(--spacing--sm);
 		}
 	}
 
@@ -863,27 +877,27 @@ function handleSelectAction(params: INodeParameters) {
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
-		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
+		padding: 0 var(--spacing--md) var(--spacing--lg) var(--spacing--md);
 		flex-grow: 1;
 
 		&.ndv-v2 {
-			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
+			padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
 		}
 	}
 
 	&.embedded .node-parameters-wrapper {
-		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing--xs) var(--spacing--xs) var(--spacing--xs);
 
 		&:has(.action-tab) {
-			padding: 0 0 var(--spacing-xs) 0;
+			padding: 0 0 var(--spacing--xs) 0;
 		}
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing--4xs) var(--spacing--xs) var(--spacing--xs);
 
 		&:has(.action-tab) {
-			padding: 0 0 var(--spacing-xs) 0;
+			padding: 0 0 var(--spacing--xs) 0;
 		}
 
 		@supports not (selector(::-webkit-scrollbar)) {
@@ -891,12 +905,12 @@ function handleSelectAction(params: INodeParameters) {
 		}
 		@supports selector(::-webkit-scrollbar) {
 			&::-webkit-scrollbar {
-				width: var(--spacing-2xs);
+				width: var(--spacing--2xs);
 			}
 			&::-webkit-scrollbar-thumb {
-				border-radius: var(--spacing-2xs);
+				border-radius: var(--spacing--2xs);
 				background: var(--color--foreground--shade-1);
-				border: var(--spacing-5xs) solid var(--color--background--light-3);
+				border: var(--spacing--5xs) solid var(--color--background--light-3);
 			}
 		}
 	}
@@ -943,10 +957,10 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .node-version {
-	border-top: var(--border-base);
-	font-size: var(--font-size-xs);
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
+	border-top: var(--border);
+	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--xs) 0 var(--spacing--2xs) 0;
 	color: var(--color--text--tint-1);
 }
 

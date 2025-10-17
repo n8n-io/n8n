@@ -3,14 +3,14 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
-	EDITABLE_CANVAS_VIEWS,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
@@ -18,9 +18,9 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useBuilderMessages } from '@/composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
-import { generateMessageId, createBuilderPayload } from '@/helpers/builderHelpers';
+import { useBuilderMessages } from './composables/useBuilderMessages';
+import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
+import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
@@ -28,10 +28,9 @@ import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/utils/typesUtils';
-import { useChatPanelStateStore } from './chatPanelState.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -40,14 +39,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const streaming = ref<boolean>(false);
-	const assistantThinkingMessage = ref<string | undefined>();
+	const builderThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
+	const hasMessages = ref<boolean>(false);
 
 	// Store dependencies
-	const chatPanelStateStore = useChatPanelStateStore();
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
@@ -72,9 +71,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getRunningTools,
 	} = useBuilderMessages();
 
-	// Computed properties
-	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
-
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
 	const workflowPrompt = computed(() => {
@@ -84,20 +80,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		return firstUserMessage?.content;
 	});
-	const canShowAssistant = computed(
-		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
-	);
-
-	const canShowAssistantButtonsOnCanvas = computed(
-		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
-	);
-
-	const isAssistantOpen = computed(
-		() =>
-			canShowAssistant.value &&
-			chatPanelStateStore.isOpen &&
-			chatPanelStateStore.activeMode === 'builder',
-	);
 
 	const isAIBuilderEnabled = computed(() => {
 		// Check license first
@@ -154,13 +136,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function resetBuilderChat() {
 		chatMessages.value = clearMessages();
-		assistantThinkingMessage.value = undefined;
+		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
 	}
 
 	// Message handling functions
 	function addLoadingAssistantMessage(message: string) {
-		assistantThinkingMessage.value = message;
+		builderThinkingMessage.value = message;
 	}
 
 	function stopStreaming() {
@@ -182,7 +164,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		assert(e instanceof Error);
 
 		stopStreaming();
-		assistantThinkingMessage.value = undefined;
+		builderThinkingMessage.value = undefined;
 
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
@@ -344,10 +326,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					chatMessages.value = result.messages;
 
 					if (result.shouldClearThinking) {
-						assistantThinkingMessage.value = undefined;
+						builderThinkingMessage.value = undefined;
 					} else {
 						// Always update thinking message, even when undefined (to clear it)
-						assistantThinkingMessage.value = result.thinkingMessage;
+						builderThinkingMessage.value = result.thinkingMessage;
 					}
 				},
 				() => stopStreaming(),
@@ -541,16 +523,45 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
+	async function fetchSessionsMetadata() {
+		const workflowId = workflowsStore.workflowId;
+		if (!workflowId) {
+			hasMessages.value = false;
+			return;
+		}
+
+		try {
+			const response = await getSessionsMetadata(rootStore.restApiContext, workflowId);
+			hasMessages.value = response.hasMessages;
+		} catch (error) {
+			console.error('Failed to fetch sessions metadata:', error);
+			hasMessages.value = false;
+		}
+	}
+
+	// Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
+	watch(
+		() => workflowsStore.workflowId,
+		(newWorkflowId) => {
+			// Only fetch if we have a valid workflow ID, and we're in a builder-enabled view
+			if (
+				newWorkflowId &&
+				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)
+			) {
+				void fetchSessionsMetadata();
+			} else {
+				hasMessages.value = false;
+			}
+		},
+	);
+
 	// Public API
 	return {
 		// State
-		isAssistantEnabled,
-		canShowAssistantButtonsOnCanvas,
 		chatMessages,
 		streaming,
-		isAssistantOpen,
-		canShowAssistant,
-		assistantThinkingMessage,
+		builderThinkingMessage,
 		isAIBuilderEnabled,
 		workflowPrompt,
 		toolMessages,
@@ -562,6 +573,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		hasMessages: computed(() => hasMessages.value),
 
 		// Methods
 		stopStreaming,
@@ -573,5 +585,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchBuilderCredits,
 		updateBuilderCredits,
 		getRunningTools,
+		fetchSessionsMetadata,
 	};
 });

@@ -14,16 +14,16 @@ defineOptions({ name: 'N8nPulse' });
 
 <style lang="scss" module>
 $--light-pulse-color: hsla(
-	var(--color--primary-h),
-	var(--color--primary-s),
-	var(--color--primary-l),
+	var(--color--primary--h),
+	var(--color--primary--s),
+	var(--color--primary--l),
 	0.4
 );
 
 $--dark-pulse-color: hsla(
-	var(--color--primary-h),
-	var(--color--primary-s),
-	var(--color--primary-l),
+	var(--color--primary--h),
+	var(--color--primary--s),
+	var(--color--primary--l),
 	0
 );
 

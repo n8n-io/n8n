@@ -54,7 +54,6 @@ describe('GlobalConfig', () => {
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
-			warningThreshold: 45 * 1024 * 1024,
 			sizeCheckCacheDuration: 60000,
 		},
 		database: {
@@ -110,6 +109,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		userManagement: {
+			inviteLinksEmailOnly: false,
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
@@ -347,6 +347,9 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		aiBuilder: {
+			apiKey: '',
+		},
 		tags: {
 			disabled: false,
 		},
@@ -367,6 +370,14 @@ describe('GlobalConfig', () => {
 			ldap: {
 				loginEnabled: false,
 				loginLabel: '',
+			},
+			provisioning: {
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesProvisioningFrequency: 'never',
+				scopesName: 'n8n',
+				scopesInstanceRoleClaimName: 'n8n_instance_role',
+				scopesProjectsRolesClaimName: 'n8n_projects',
 			},
 		},
 		redis: {

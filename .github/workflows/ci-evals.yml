@@ -30,4 +30,4 @@ jobs:
       - name: Run Evaluations
         working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
         run: |
-          pnpm eval:langsmith
+          pnpm eval:langsmith --repetitions 3

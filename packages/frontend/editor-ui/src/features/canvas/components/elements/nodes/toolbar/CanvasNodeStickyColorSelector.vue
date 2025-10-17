@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: row;
 	width: fit-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .color {
@@ -114,52 +114,52 @@ onBeforeUnmount(() => {
 	border-style: solid;
 	border-color: var(--color--foreground--shade-2);
 	border-radius: 50%;
-	background: var(--color-sticky-background);
+	background: var(--sticky--color--background);
 
 	&:hover {
 		cursor: pointer;
 	}
 
 	&.selected {
-		box-shadow: 0 0 0 1px var(--color-sticky-background);
+		box-shadow: 0 0 0 1px var(--sticky--color--background);
 	}
 
 	&.sticky-color-1 {
-		--color-sticky-background: var(--color-sticky-background-1);
+		--sticky--color--background: var(--sticky--color--background--variant-1);
 	}
 
 	&.sticky-color-2 {
-		--color-sticky-background: var(--color-sticky-background-2);
+		--sticky--color--background: var(--sticky--color--background--variant-2);
 	}
 
 	&.sticky-color-3 {
-		--color-sticky-background: var(--color-sticky-background-3);
+		--sticky--color--background: var(--sticky--color--background--variant-3);
 	}
 
 	&.sticky-color-4 {
-		--color-sticky-background: var(--color-sticky-background-4);
+		--sticky--color--background: var(--sticky--color--background--variant-4);
 	}
 
 	&.sticky-color-5 {
-		--color-sticky-background: var(--color-sticky-background-5);
+		--sticky--color--background: var(--sticky--color--background--variant-5);
 	}
 
 	&.sticky-color-6 {
-		--color-sticky-background: var(--color-sticky-background-6);
+		--sticky--color--background: var(--sticky--color--background--variant-6);
 	}
 
 	&.sticky-color-7 {
-		--color-sticky-background: var(--color-sticky-background-7);
+		--sticky--color--background: var(--sticky--color--background--variant-7);
 	}
 }
 
 .option {
 	display: inline-block;
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 	color: var(--color--text--tint-1);
 
 	svg {
-		width: var(--font-size-s) !important;
+		width: var(--font-size--sm) !important;
 	}
 
 	&:hover {

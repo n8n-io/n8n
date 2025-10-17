@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { waitingNodeTooltip } from '@/features/executions/executions.utils';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
@@ -675,15 +675,15 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 <style lang="scss" module>
 .runData {
-	background-color: var(--color-run-data-background);
+	background-color: var(--run-data--color--background);
 }
 
 .runDataV2 {
-	background-color: var(--color-ndvv2-run-data-background);
+	background-color: var(--ndvv2--run-data--color--background);
 }
 
 .mappedNode {
-	padding: 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .titleSection {
@@ -692,12 +692,12 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	align-items: center;
 
 	> * {
-		margin-right: var(--spacing-2xs);
+		margin-right: var(--spacing--2xs);
 	}
 }
 
 .titleSectionV2 {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 .inputModeTab {
 	margin-left: auto;
@@ -706,7 +706,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 250px;
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -714,11 +714,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 300px;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -729,7 +729,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .titleV2 {
 	letter-spacing: 2px;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size--xs);
 }
 
 .executeButton {

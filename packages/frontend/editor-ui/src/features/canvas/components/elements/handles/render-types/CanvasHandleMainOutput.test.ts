@@ -1,6 +1,6 @@
 import CanvasHandleMainOutput from './CanvasHandleMainOutput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasHandleProvide } from '@/__tests__/data';
+import { createCanvasHandleProvide } from '@/features/canvas/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CanvasHandleMainOutput);
 

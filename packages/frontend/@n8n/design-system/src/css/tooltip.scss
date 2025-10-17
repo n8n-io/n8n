@@ -18,11 +18,11 @@
 		line-height: 1.2;
 		min-width: 10px;
 		word-wrap: break-word;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 
 		a {
 			color: var(--color--primary);
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 		}
 
 		.el-popper__arrow,
