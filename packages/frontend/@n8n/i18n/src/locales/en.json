@@ -3021,6 +3021,7 @@
 	"dataTable.addColumn.testingColumnDescription": "This column is used for testing, choose a different name",
 	"settings.ai": "AI Usage",
 	"settings.ai.description": "Manage how n8n use your data to improve our AI features",
+	"settings.ai.button.tooltip": "AI usage settings",
 	"settings.ldap": "LDAP",
 	"settings.ldap.note": "LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.",
 	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/user-management/ldap/' target='_blank'>LDAP in the Docs</a>",
