@@ -336,7 +336,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model.model,
+			model: model?.model ?? null,
 			workflowId: null,
 			executionId: null,
 			state: 'active',
