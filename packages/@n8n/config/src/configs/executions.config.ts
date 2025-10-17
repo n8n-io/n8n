@@ -1,3 +1,5 @@
+import z from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -37,8 +39,16 @@ class QueueRecoveryConfig {
 	batchSize: number = 100;
 }
 
+const executionModeSchema = z.enum(['regular', 'queue']);
+
+export type ExecutionMode = z.infer<typeof executionModeSchema>;
+
 @Config
 export class ExecutionsConfig {
+	/** Whether to run executions in regular mode (in-process) or scaling mode (in workers). */
+	@Env('EXECUTIONS_MODE', executionModeSchema)
+	mode: ExecutionMode = 'regular';
+
 	/**
 	 * How long (seconds) a workflow execution may run for before timeout.
 	 * On timeout, the execution will be forcefully stopped. `-1` for unlimited.

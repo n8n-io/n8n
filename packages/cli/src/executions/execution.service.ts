@@ -35,7 +35,6 @@ import {
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
@@ -439,7 +438,7 @@ export class ExecutionService {
 
 	private isConcurrentExecutionsCountSupported(): boolean {
 		const isConcurrencyEnabled = this.globalConfig.executions.concurrency.productionLimit !== -1;
-		const isInRegularMode = config.getEnv('executions.mode') === 'regular';
+		const isInRegularMode = this.globalConfig.executions.mode === 'regular';
 
 		if (!isConcurrencyEnabled || !isInRegularMode) {
 			return false;
@@ -499,7 +498,7 @@ export class ExecutionService {
 		this.assertStoppable(execution);
 
 		const { mode, startedAt, stoppedAt, finished, status } =
-			config.getEnv('executions.mode') === 'regular'
+			this.globalConfig.executions.mode === 'regular'
 				? await this.stopInRegularMode(execution)
 				: await this.stopInScalingMode(execution);
 
