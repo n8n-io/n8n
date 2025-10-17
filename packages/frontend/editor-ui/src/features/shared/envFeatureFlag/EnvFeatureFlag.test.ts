@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import type { FrontendSettings, N8nEnvFeatFlags, N8nEnvFeatFlagValue } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
+import EnvFeatureFlag from './EnvFeatureFlag.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 
 const renderComponent = createComponentRenderer(EnvFeatureFlag);

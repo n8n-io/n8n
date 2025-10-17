@@ -1,6 +1,6 @@
 <script lang="ts">
 import { defineComponent, computed } from 'vue';
-import { useEnvFeatureFlag } from '@/features/env-feature-flag/useEnvFeatureFlag';
+import { useEnvFeatureFlag } from './useEnvFeatureFlag';
 
 /*
   EnvFeatureFlag conditionally renders content based on environment variable based feature flags
