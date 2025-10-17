@@ -67,7 +67,7 @@ export class LmChatLemonade implements INodeType {
 			stop?: string;
 		};
 
-		// Process stop sequences if provided
+		// Process stop sequences and maxTokens
 		const processedOptions: {
 			temperature?: number;
 			topP?: number;
@@ -77,6 +77,7 @@ export class LmChatLemonade implements INodeType {
 			stop?: string[] | undefined;
 		} = {
 			...options,
+			maxTokens: options.maxTokens && options.maxTokens > 0 ? options.maxTokens : undefined,
 			stop: undefined, // Will be set below if options.stop exists
 		};
 
