@@ -39,7 +39,7 @@
     }
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.16",
+    "@anthropic-ai/claude-agent-sdk": "next",
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
     "@langchain/langgraph": "0.2.74",
