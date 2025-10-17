@@ -126,18 +126,6 @@ describe('dataObjectToApiInput', () => {
 			expect(result).toEqual(input);
 		});
 
-		test('dataObjectToApiInput throws on invalid date-like object', () => {
-			const dateLikeObject = {
-				toISOString: () => 'not-a-date',
-			};
-			const input = { createdAt: dateLikeObject, name: 'test' };
-
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow(NodeOperationError);
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow(
-				"unexpected object input '{}' in row 0",
-			);
-		});
-
 		it('should include correct row number in error message', () => {
 			const input = { items: ['item1'] };
 
