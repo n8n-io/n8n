@@ -1,16 +1,36 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { N8nHeading, N8nInfoTip, N8nCheckbox, N8nNotice } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 
+const assistantStore = useAssistantStore();
+const settingsStore = useSettingsStore();
+
 const allowSendingSchema = ref(true);
 const allowSendingActualData = ref(true);
+
+const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
+const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
+
+const aiSettingsDescription = computed(() => {
+	if (isAssistantEnabled.value && isAskAiEnabled.value) {
+		return i18n.baseText('settings.ai.description.both');
+	} else if (isAssistantEnabled.value) {
+		return i18n.baseText('settings.ai.description.assistantOnly');
+	} else if (isAskAiEnabled.value) {
+		return i18n.baseText('settings.ai.description.askAiOnly');
+	}
+	// Fallback to 'both' if neither is enabled (edge case)
+	return i18n.baseText('settings.ai.description.both');
+});
 
 const onAllowSendingActualDataChange = (newValue: boolean) => {
 	toast.showMessage({
@@ -29,7 +49,7 @@ onMounted(async () => {
 		<div :class="$style.header">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.ai') }}</N8nHeading>
 			<N8nInfoTip theme="info" type="note">
-				<span v-n8n-html="i18n.baseText('settings.ai.description')"></span>
+				<span v-n8n-html="aiSettingsDescription"></span>
 			</N8nInfoTip>
 		</div>
 		<div :class="$style.content">
