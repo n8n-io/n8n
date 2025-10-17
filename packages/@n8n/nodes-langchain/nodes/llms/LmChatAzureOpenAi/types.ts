@@ -25,6 +25,7 @@ export interface AzureOpenAIApiKeyConfig extends AzureOpenAIConfig {
 export interface AzureOpenAIOptions {
 	frequencyPenalty?: number;
 	maxTokens?: number;
+	maxCompletionTokens?: number;
 	maxRetries?: number;
 	timeout?: number;
 	presencePenalty?: number;

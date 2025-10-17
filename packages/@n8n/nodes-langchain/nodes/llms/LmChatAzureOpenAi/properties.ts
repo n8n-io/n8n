@@ -66,11 +66,19 @@ export const properties: INodeProperties[] = [
 				name: 'maxTokens',
 				default: -1,
 				description:
-					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768). Use -1 for default.',
+					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768). This value is now deprecated in favor of max_completion_tokens, and is not compatible with o-series models. Use -1 for default.',
 				type: 'number',
 				typeOptions: {
 					maxValue: 128000,
 				},
+			},
+			{
+				displayName: 'Maximum Number of Completion Tokens',
+				name: 'maxCompletionTokens',
+				default: -1,
+				description:
+					'The maximum number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens',
+				type: 'number',
 			},
 			{
 				displayName: 'Response Format',
