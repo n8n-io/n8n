@@ -24,8 +24,6 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
-import { programmaticEvaluation } from './programmatic/programmatic';
-import type { ProgrammaticEvaluationResult, ProgrammaticViolation } from './programmatic/types';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
@@ -100,41 +98,6 @@ export class WorkflowBuilderAgent {
 		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
-	private formatWorkflowValidation(validation: ProgrammaticEvaluationResult | null): string {
-		if (!validation) {
-			return 'EMPTY';
-		}
-
-		const categories: Array<[string, ProgrammaticViolation[]]> = [
-			['Connections', validation.connections.violations],
-			['Trigger', validation.trigger.violations],
-			['Agent Prompt', validation.agentPrompt.violations],
-			['Tools', validation.tools.violations],
-			['From AI', validation.fromAi.violations],
-		];
-
-		const violationLines: string[] = [];
-
-		for (const [name, violations] of categories) {
-			if (!violations.length) continue;
-
-			violationLines.push(`${name}:`);
-			for (const violation of violations) {
-				violationLines.push(`- (${violation.type}) ${violation.description}`);
-			}
-		}
-
-		const summaryLines = ['Workflow Validation Summary:'];
-
-		if (violationLines.length === 0) {
-			summaryLines.push('No validation violations detected.');
-		} else {
-			summaryLines.push(...violationLines);
-		}
-
-		return summaryLines.join('\n');
-	}
-
 	private getBuilderTools(): BuilderTool[] {
 		return getBuilderTools({
 			parsedNodeTypes: this.parsedNodeTypes,
@@ -164,6 +127,9 @@ export class WorkflowBuilderAgent {
 			}
 
 			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
+			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+			const executionData = state.workflowContext?.executionData ?? {};
+			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
@@ -173,11 +139,7 @@ export class WorkflowBuilderAgent {
 				resolvedExpressions: state.workflowContext?.expressionValues,
 				instanceUrl: this.instanceUrl,
 				previousSummary: hasPreviousSummary ? state.previousSummary : '',
-				workflowValidation: this.formatWorkflowValidation(state.workflowValidation),
 			});
-			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-			const executionData = state.workflowContext?.executionData ?? {};
-			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
 			const workflowContext = [
 				'',
@@ -273,26 +235,6 @@ export class WorkflowBuilderAgent {
 
 		const customToolExecutor = async (state: typeof WorkflowState.State) => {
 			return await executeToolsInParallel({ state, toolMap });
-		};
-
-		const validateWorkflow = async (state: typeof WorkflowState.State) => {
-			try {
-				if (!state.workflowJSON.nodes || state.workflowJSON.nodes.length === 0) {
-					return {};
-				}
-
-				const evaluation = await programmaticEvaluation(
-					{
-						generatedWorkflow: state.workflowJSON,
-					},
-					this.parsedNodeTypes,
-				);
-
-				return { workflowValidation: evaluation };
-			} catch (error) {
-				this.logger?.warn('Failed to validate workflow', { error });
-				return {};
-			}
 		};
 
 		function deleteMessages(state: typeof WorkflowState.State) {
@@ -409,12 +351,10 @@ export class WorkflowBuilderAgent {
 			.addNode('auto_compact_messages', compactSession)
 			.addNode('create_workflow_name', createWorkflowName)
 			.addNode('cleanup_dangling_tool_calls', cleanupDanglingToolCalls)
-			.addNode('validate_workflow', validateWorkflow)
 			.addEdge('__start__', 'cleanup_dangling_tool_calls')
 			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyState)
 			.addEdge('tools', 'process_operations')
-			.addEdge('process_operations', 'validate_workflow')
-			.addEdge('validate_workflow', 'agent')
+			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')
 			.addEdge('create_workflow_name', 'agent')
 			.addEdge('delete_messages', END)

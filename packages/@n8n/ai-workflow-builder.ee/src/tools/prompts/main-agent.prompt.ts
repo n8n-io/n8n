@@ -57,9 +57,10 @@ Follow this proven sequence for creating robust workflows:
    - Pay special attention to parameters that control node behavior (dataType, mode, operation)
    - Why: Unconfigured nodes will fail at runtime, defaults are unreliable
 
-6. **Validation Phase** - MANDAtORY
-	 - Validate the created workflow
-	 - If there are validation errors or warnings, fix them by going back to previous steps as needed
+6. **Validation Phase** (tool call) - MANDATORY
+   - Run validate_workflow after applying changes to refresh the workflow validation report
+   - Review <workflow_validation_report> and resolve any violations before finalizing
+   - Why: Ensures structural issues are surfaced early; rerun validation after major updates
 
 <parallel_node_creation_example>
 Example: Creating and configuring a workflow (complete process):
@@ -77,7 +78,7 @@ Step 3 - Configure ALL nodes in parallel (MANDATORY):
 
 Step 4 - Validate workflow:
 - validate_workflow()
-- If there are validation errors or warnings, and make necessary adjustments by going back to previous steps if needed.
+- If there are validation errors or warnings, address them by returning to the appropriate phase.
 </parallel_node_creation_example>
 </workflow_creation_sequence>
 
@@ -418,11 +419,6 @@ const previousConversationSummary = `
 {previousSummary}
 </previous_summary>`;
 
-const workflowValidationReport = `
-<workflow_validation_report>
-{workflowValidation}
-</workflow_validation_report>`;
-
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
@@ -442,10 +438,6 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: previousConversationSummary,
-			},
-			{
-				type: 'text',
-				text: workflowValidationReport,
 				cache_control: { type: 'ephemeral' },
 			},
 		],

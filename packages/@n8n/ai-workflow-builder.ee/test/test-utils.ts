@@ -14,6 +14,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
+import type { ProgrammaticEvaluationResult } from '../src/programmatic/types';
 
 export const mockProgress = (): MockProxy<ProgressReporter> => mock<ProgressReporter>();
 
@@ -320,6 +321,7 @@ export interface ParsedToolContent {
 			nodes?: INode[];
 			[key: string]: unknown;
 		}>;
+		workflowValidation?: ProgrammaticEvaluationResult | null;
 	};
 }
 
@@ -403,6 +405,11 @@ export const setupWorkflowState = (
 ) => {
 	mockGetCurrentTaskInput.mockReturnValue({
 		workflowJSON: workflow,
+		workflowOperations: null,
+		workflowContext: {},
+		workflowValidation: null,
+		messages: [],
+		previousSummary: 'EMPTY',
 	});
 };
 
