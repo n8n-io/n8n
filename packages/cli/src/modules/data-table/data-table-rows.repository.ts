@@ -33,59 +33,13 @@ import {
 	normalizeRows,
 	normalizeValueForDatabase,
 	quoteIdentifier,
+	resolvePath,
 	toSqliteGlobFromPercent,
 	toTableName,
 } from './utils/sql-utils';
-import { parsePath, toPostgresPath, toSQLitePath } from './utils/path-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
-
-function resolvePath(
-	ref: string,
-	dbType: DataSourceOptions['type'],
-	value: unknown,
-	path?: string,
-) {
-	if (path) {
-		const pathArray = parsePath(path);
-		if (dbType === 'postgres') {
-			const base = `${ref}${toPostgresPath(pathArray)}`;
-			if (typeof value === 'number') {
-				return `(${base})::numeric`;
-			}
-			if (value instanceof Date) {
-				return `(${base})::timestamp`;
-			}
-			if (typeof value === 'boolean') {
-				return `(${base})::boolean`;
-			}
-
-			// by converting to text by default we end up with `true` for an equals NULL check
-			// both for cases where the key exists and is literally NULL and where it doesn't exist
-			return `(${base})::text`;
-		} else {
-			// maybe it just works for MariaDB and MySQL lol
-			// if (dbType === 'sqlite' || dbType === 'sqlite-pooled') {
-			const path = toSQLitePath(pathArray);
-			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
-			if (typeof value === 'number') {
-				return `CAST(${base} as REAL)`;
-			}
-			if (value instanceof Date) {
-				return `CAST(${base} as DATE)`;
-			}
-			if (typeof value === 'boolean') {
-				return `CAST(${base} as BOOLEAN)`;
-			}
-			if (typeof value === 'string') {
-				return `CAST(${base} AS TEXT)`;
-			}
-			return base;
-		}
-	}
-	return ref;
-}
 
 /**
  * Converts filter conditions to SQL WHERE clauses with parameters.

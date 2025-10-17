@@ -9,7 +9,6 @@ import type {
 	ILoadOptionsFunctions,
 	DataTableColumnJsType,
 	DataTableColumnType,
-	GenericValue,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
