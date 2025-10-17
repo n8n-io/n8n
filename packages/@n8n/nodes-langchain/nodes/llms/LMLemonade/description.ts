@@ -80,15 +80,6 @@ export const lemonadeOptions: INodeProperties = {
 			type: 'number',
 		},
 		{
-			displayName: 'Top K',
-			name: 'topK',
-			default: -1,
-			typeOptions: { maxValue: 100, minValue: -1, numberPrecision: 1 },
-			description:
-				'Limits the number of highest probability vocabulary tokens to consider at each step. A higher value increases diversity but may reduce coherence. Set to -1 to disable.',
-			type: 'number',
-		},
-		{
 			displayName: 'Top P',
 			name: 'topP',
 			default: 1,

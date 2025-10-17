@@ -70,10 +70,11 @@ export class LmLemonade implements INodeType {
 		// Process stop sequences
 		let stop: string[] | undefined;
 		if (options.stop) {
-			stop = options.stop
+			const stopSequences = options.stop
 				.split(',')
 				.map((s) => s.trim())
 				.filter((s) => s.length > 0);
+			stop = stopSequences.length > 0 ? stopSequences : undefined;
 		}
 
 		// Ensure we have an API key for OpenAI client validation
