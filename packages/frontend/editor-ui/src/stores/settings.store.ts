@@ -395,6 +395,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		initialize,
 		getModuleSettings,
 		moduleSettings,
+		updateAiDataSharingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
 		activeModules,

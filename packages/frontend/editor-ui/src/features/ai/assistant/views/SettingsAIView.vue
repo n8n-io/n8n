@@ -15,10 +15,10 @@ const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
 
 const allowSendingSchema = ref(true);
-const allowSendingActualData = ref(true);
 
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
 const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
+const allowSendingActualData = computed(() => settingsStore.isAiDataSharingEnabled);
 
 const aiSettingsDescription = computed(() => {
 	if (isAssistantEnabled.value && isAskAiEnabled.value) {
@@ -28,14 +28,22 @@ const aiSettingsDescription = computed(() => {
 	} else if (isAskAiEnabled.value) {
 		return i18n.baseText('settings.ai.description.askAiOnly');
 	}
+	// Fallback to 'both' if neither is enabled (edge case)
 	return i18n.baseText('settings.ai.description.both');
 });
 
-const onAllowSendingActualDataChange = (newValue: boolean) => {
-	toast.showMessage({
-		title: i18n.baseText('settings.ai.updated.succcess'),
-		type: 'success',
-	});
+const onAllowSendingActualDataChange = async (newValue: boolean | string | number) => {
+	if (typeof newValue !== 'boolean') return;
+
+	try {
+		await settingsStore.updateAiDataSharingSettings(newValue);
+		toast.showMessage({
+			title: i18n.baseText('settings.ai.updated.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.ai.updated.error'));
+	}
 };
 
 onMounted(async () => {
@@ -59,10 +67,10 @@ onMounted(async () => {
 				:tooltip-text="i18n.baseText('settings.ai.allowSendingSchema.description')"
 			/>
 			<N8nCheckbox
-				v-model="allowSendingActualData"
+				:model-value="allowSendingActualData"
 				:label="i18n.baseText('settings.ai.allowSendingActualData.label')"
 				:tooltip-text="i18n.baseText('settings.ai.allowSendingActualData.description')"
-				@change="onAllowSendingActualDataChange"
+				@update:model-value="onAllowSendingActualDataChange"
 			/>
 			<N8nNotice v-if="!allowSendingActualData" type="warning" :closable="false">
 				{{ i18n.baseText('settings.ai.efficiencyNotice') }}
