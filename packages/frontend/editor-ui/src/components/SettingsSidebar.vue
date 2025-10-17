@@ -50,6 +50,14 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			route: { to: { name: VIEWS.USERS_SETTINGS } },
 		},
 		{
+			id: 'settings-ai',
+			icon: 'robot',
+			label: i18n.baseText('settings.ai'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.AI_SETTINGS),
+			route: { to: { name: VIEWS.AI_SETTINGS } },
+		},
+		{
 			id: 'settings-api',
 			icon: 'plug',
 			label: i18n.baseText('settings.n8napi'),
