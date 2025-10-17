@@ -46,7 +46,7 @@ export type ExecutionMode = z.infer<typeof executionModeSchema>;
 @Config
 export class ExecutionsConfig {
 	/** Whether to run executions in regular mode (in-process) or scaling mode (in workers). */
-	@Env('EXECUTIONS_MODE')
+	@Env('EXECUTIONS_MODE', executionModeSchema)
 	mode: ExecutionMode = 'regular';
 
 	/**
