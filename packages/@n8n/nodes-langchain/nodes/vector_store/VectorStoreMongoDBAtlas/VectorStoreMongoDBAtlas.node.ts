@@ -149,6 +149,25 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
+const updateFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Upsert',
+				name: 'upsert',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to perform an insert if no document with the given ID exists',
+			},
+		],
+	},
+];
+
 export const mongoConfig = {
 	client: null as MongoClient | null,
 	connectionString: '',
@@ -315,6 +334,7 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
+	updateFields,
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		try {
