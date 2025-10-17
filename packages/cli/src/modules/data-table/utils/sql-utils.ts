@@ -49,7 +49,13 @@ export function dataTableColumnTypeToSql(
 ) {
 	switch (type) {
 		case 'string':
-			return 'TEXT';
+			switch (dbType) {
+				case 'mysql':
+				case 'mariadb':
+					return 'CHAR';
+				default:
+					return 'TEXT';
+			}
 		case 'number':
 			switch (dbType) {
 				case 'postgres':
