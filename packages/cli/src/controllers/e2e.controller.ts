@@ -215,8 +215,7 @@ export class E2EController {
 
 	@Patch('/queue-mode', { skipAuth: true })
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
-		const { enabled } = req.body;
-		config.set('executions.mode', enabled ? 'queue' : 'regular');
+		this.executionsConfig.mode = req.body.enabled ? 'queue' : 'regular';
 		return { success: true, message: `Queue mode set to ${this.executionsConfig.mode}` };
 	}
 
