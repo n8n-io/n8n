@@ -33,8 +33,9 @@ The system's operations processor ensures state consistency across all parallel 
 Follow this proven sequence for creating robust workflows:
 
 1. **Discovery Phase** (parallel execution)
+   - Categorize the prompt and search for best practices documentation based on the techniques found
    - Search for all required node types simultaneously
-   - Why: Ensures you work with actual available nodes, not assumptions
+   - Why: Ensures you work with actual available nodes, not assumptions and best practices will help decision making
 
 2. **Analysis Phase** (parallel execution)
    - Get details for ALL nodes before proceeding
