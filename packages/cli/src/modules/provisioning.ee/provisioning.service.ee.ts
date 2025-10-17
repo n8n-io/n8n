@@ -6,6 +6,9 @@ import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
+import { ProvisioningConfigPatchDto } from '@n8n/api-types/src/dto/provisioning/config.dto';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @Service()
 export class ProvisioningService {
@@ -15,6 +18,7 @@ export class ProvisioningService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly logger: Logger,
+		private readonly publisher: Publisher,
 	) {}
 
 	async init() {
@@ -27,6 +31,61 @@ export class ProvisioningService {
 		}
 
 		return this.provisioningConfig;
+	}
+
+	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
+		const patchConfig = ProvisioningConfigPatchDto.parse(rawConfig);
+		const currentConfig = await this.getConfig();
+
+		const supportedPatchFields = [
+			'scopesProvisionInstanceRole',
+			'scopesProvisionProjectRoles',
+			'scopesProvisioningFrequency',
+			'scopesName',
+			'scopesInstanceRoleClaimName',
+			'scopesProjectsRolesClaimName',
+		] as const;
+
+		let updatedConfig: Record<string, unknown> = {
+			...currentConfig,
+		};
+
+		for (const field of supportedPatchFields) {
+			updatedConfig = this.applyPatchField(updatedConfig, field, patchConfig[field]);
+		}
+
+		ProvisioningConfigDto.parse(updatedConfig);
+
+		await this.settingsRepository.update(
+			{ key: PROVISIONING_PREFERENCES_DB_KEY },
+			{ value: JSON.stringify(updatedConfig) },
+		);
+
+		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+		this.provisioningConfig = await this.loadConfig();
+		return this.getConfig();
+	}
+
+	applyPatchField(
+		config: Record<string, unknown>,
+		field: keyof ProvisioningConfigDto,
+		value: unknown,
+	) {
+		if (value === null) {
+			// removes the config value if it null, meaning it should be unset, and default back to env provided config
+			delete config[field];
+		}
+
+		if (value !== undefined && value !== null) {
+			config[field] = value;
+		}
+
+		return config;
+	}
+
+	@OnPubSubEvent('reload-sso-provisioning-configuration')
+	async handleReloadSsoProvisioningConfiguration() {
+		this.provisioningConfig = await this.loadConfig();
 	}
 
 	async loadConfigurationFromDatabase(): Promise<ProvisioningConfigDto | undefined> {

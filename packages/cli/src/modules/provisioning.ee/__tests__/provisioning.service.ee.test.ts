@@ -6,12 +6,19 @@ import { type SettingsRepository } from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
 const logger = mock<Logger>();
+const publisher = mock<Publisher>();
 
-const provisioningService = new ProvisioningService(globalConfig, settingsRepository, logger);
+const provisioningService = new ProvisioningService(
+	globalConfig,
+	settingsRepository,
+	logger,
+	publisher,
+);
 
 describe('ProvisioningService', () => {
 	beforeEach(() => {
@@ -130,6 +137,67 @@ describe('ProvisioningService', () => {
 
 			const config = await provisioningService.loadConfig();
 			expect(config).toEqual(provisioningConfigDto);
+		});
+	});
+
+	describe('applyPatchField', () => {
+		it('should apply the patch field to the provisioning config', () => {
+			const config = provisioningService.applyPatchField(
+				{ ...provisioningConfigDto },
+				'scopesProvisionInstanceRole',
+				false,
+			);
+			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
+		});
+
+		it('should remove the field if the value is null', () => {
+			const config = provisioningService.applyPatchField(
+				{ ...provisioningConfigDto },
+				'scopesProvisionInstanceRole',
+				null,
+			);
+			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: undefined });
+		});
+	});
+
+	describe('handleReloadSsoProvisioningConfiguration', () => {
+		it('should reload the provisioning config', async () => {
+			const originStateLoadConfig = provisioningService.loadConfig;
+			provisioningService.loadConfig = jest.fn().mockResolvedValue({ foo: 'bar' });
+
+			await provisioningService.handleReloadSsoProvisioningConfiguration();
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			expect(provisioningService.provisioningConfig).toEqual({ foo: 'bar' });
+
+			provisioningService.loadConfig = originStateLoadConfig;
+		});
+	});
+
+	describe('patchConfig', () => {
+		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload', async () => {
+			const originStateLoadConfig = provisioningService.loadConfig;
+			const originStateGetConfig = provisioningService.getConfig;
+
+			provisioningService.getConfig = jest
+				.fn()
+				.mockResolvedValueOnce(provisioningConfigDto)
+				.mockResolvedValueOnce({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
+			provisioningService.loadConfig = jest
+				.fn()
+				.mockResolvedValue({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
+
+			const config = await provisioningService.patchConfig({ scopesProvisionInstanceRole: false });
+			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
+			expect(provisioningService.loadConfig).toHaveBeenCalledTimes(1);
+			expect(provisioningService.getConfig).toHaveBeenCalledTimes(2);
+			expect(settingsRepository.update).toHaveBeenCalledTimes(1);
+			expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-sso-provisioning-configuration',
+			});
+
+			provisioningService.loadConfig = originStateLoadConfig;
+			provisioningService.getConfig = originStateGetConfig;
 		});
 	});
 });
