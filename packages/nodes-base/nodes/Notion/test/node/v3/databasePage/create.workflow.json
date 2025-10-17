@@ -1,0 +1,39 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "create",
+				"databaseId": {
+					"__rl": true,
+					"value": "138fb9cb-4cf0-804c-8663-d8ecdd5e692f",
+					"mode": "id"
+				},
+				"title": "new name 1",
+				"blockUi": {
+					"blockValues": [
+						{
+							"type": "paragraph",
+							"richText": false,
+							"textContent": "new text"
+						},
+						{
+							"type": "toggle",
+							"richText": false,
+							"textContent": "new toggle"
+						}
+					]
+				},
+				"options": {
+					"icon": "😗",
+					"iconType": "emoji"
+				}
+			},
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [450, 220],
+			"name": "Notion"
+		}
+	],
+	"connections": {}
+}
