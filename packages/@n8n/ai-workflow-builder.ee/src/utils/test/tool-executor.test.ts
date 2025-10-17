@@ -49,7 +49,6 @@ describe('tool-executor', () => {
 			messages,
 			workflowContext: {},
 			previousSummary: 'EMPTY',
-			promptTaxonomy: undefined,
 		});
 
 		// Helper to create mock tool

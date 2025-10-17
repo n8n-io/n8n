@@ -7,6 +7,7 @@ import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { createAddNodeTool, getAddNodeToolBase } from './add-node.tool';
 import { CATEGORIZE_PROMPT_TOOL, createCategorizePromptTool } from './categorize-prompt.tool';
 import { CONNECT_NODES_TOOL, createConnectNodesTool } from './connect-nodes.tool';
+import { createGetBestPracticesTool, GET_BEST_PRACTICES_TOOL } from './get-best-practices.tool';
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import { createNodeDetailsTool, NODE_DETAILS_TOOL } from './node-details.tool';
 import { createNodeSearchTool, NODE_SEARCH_TOOL } from './node-search.tool';
@@ -30,6 +31,7 @@ export function getBuilderTools({
 }): BuilderTool[] {
 	return [
 		createCategorizePromptTool(llmComplexTask, logger),
+		createGetBestPracticesTool(),
 		createNodeSearchTool(parsedNodeTypes),
 		createNodeDetailsTool(parsedNodeTypes),
 		createAddNodeTool(parsedNodeTypes),
@@ -51,6 +53,7 @@ export function getBuilderToolsForDisplay({
 }: { nodeTypes: INodeTypeDescription[] }): BuilderToolBase[] {
 	return [
 		CATEGORIZE_PROMPT_TOOL,
+		GET_BEST_PRACTICES_TOOL,
 		NODE_SEARCH_TOOL,
 		NODE_DETAILS_TOOL,
 		getAddNodeToolBase(nodeTypes),
