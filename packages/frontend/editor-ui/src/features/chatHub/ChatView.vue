@@ -1,50 +1,47 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { v4 as uuidv4 } from 'uuid';
-
-import { N8nScrollArea, N8nIconButton } from '@n8n/design-system';
-import ModelSelector from './components/ModelSelector.vue';
-import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
-
-import { useChatStore } from './chat.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUIStore } from '@/stores/ui.store';
-import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import { useToast } from '@/composables/useToast';
 import {
-	chatHubConversationModelSchema,
-	type ChatHubProvider,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-	type ChatHubConversationModel,
-	chatHubProviderSchema,
-	type ChatHubMessageDto,
-} from '@n8n/api-types';
-import { useLocalStorage, useMediaQuery } from '@vueuse/core';
-import {
-	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
-	CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY,
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 } from '@/constants';
+import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
+import ChatConversationHeader from '@/features/chatHub/components/ChatConversationHeader.vue';
+import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
+import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
+import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
 } from '@/features/chatHub/constants';
-import { findOneFromModelsResponse } from '@/features/chatHub/chat.utils';
-import { useToast } from '@/composables/useToast';
-import ChatMessage from '@/features/chatHub/components/ChatMessage.vue';
-import ChatPrompt from '@/features/chatHub/components/ChatPrompt.vue';
-import ChatStarter from '@/features/chatHub/components/ChatStarter.vue';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/users/users.store';
+import {
+	chatHubConversationModelSchema,
+	type ChatHubProvider,
+	chatHubProviderSchema,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubConversationModel,
+	type ChatHubMessageDto,
+	type ChatMessageId,
+} from '@n8n/api-types';
+import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
+import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { v4 as uuidv4 } from 'uuid';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useChatStore } from './chat.store';
+import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
 const credentialsStore = useCredentialsStore();
-const uiStore = useUIStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
+const documentTitle = useDocumentTitle();
 
 const inputRef = useTemplateRef('inputRef');
 const sessionId = computed<string>(() =>
@@ -52,7 +49,16 @@ const sessionId = computed<string>(() =>
 );
 const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
+const currentConversation = computed(() =>
+	sessionId.value
+		? chatStore.sessions.find((session) => session.id === sessionId.value)
+		: undefined,
+);
+const currentConversationTitle = computed(() => currentConversation.value?.title);
+
+const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
+
 const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -124,48 +130,42 @@ const inputPlaceholder = computed(() => {
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 
-const credentialsName = computed(() =>
-	selectedModel.value
-		? credentialsStore.getCredentialById(
-				mergedCredentials.value[selectedModel.value.provider] ?? '',
-			)?.name
-		: undefined,
-);
-
 function scrollToBottom(smooth: boolean) {
-	scrollableRef.value?.parentElement?.scrollTo({
-		top: scrollableRef.value.scrollHeight,
+	scrollContainerRef.value?.scrollTo({
+		top: scrollableRef.value?.scrollHeight,
 		behavior: smooth ? 'smooth' : 'instant',
 	});
 }
 
-function scrollToMessage(messageId: string) {
-	scrollableRef.value
-		?.querySelector(`[data-message-id="${messageId}"]`)
-		?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function scrollToMessage(messageId: ChatMessageId) {
+	scrollableRef.value?.querySelector(`[data-message-id="${messageId}"]`)?.scrollIntoView({
+		behavior: 'smooth',
+	});
 }
 
-// Scroll to the bottom when messages are loaded
+// Scroll to the bottom when a new message is added
 watch(
-	[chatMessages, didSubmitInCurrentSession],
-	([messages, didSubmit]) => {
-		if (!didSubmit && messages.length > 0) {
-			scrollToBottom(false);
+	() => chatMessages.value[chatMessages.value.length - 1]?.id,
+	(lastMessageId) => {
+		if (!lastMessageId) {
 			return;
+		}
+
+		if (lastMessageId !== chatStore.streamingMessageId) {
+			scrollToBottom(chatStore.streamingMessageId !== undefined);
+			return;
+		}
+
+		const message = chatStore
+			.getActiveMessages(sessionId.value)
+			.find((message) => message.id === lastMessageId);
+
+		if (message?.previousMessageId) {
+			// Scroll to user's prompt when the message is being generated
+			scrollToMessage(message.previousMessageId);
 		}
 	},
 	{ immediate: true, flush: 'post' },
-);
-
-// Scroll user's prompt to the top when start generating response
-watch(
-	() => chatStore.ongoingStreaming?.replyToMessageId,
-	(replyingTo) => {
-		if (replyingTo) {
-			scrollToMessage(replyingTo);
-		}
-	},
-	{ flush: 'post' },
 );
 
 // Reload models when credentials are updated
@@ -202,6 +202,14 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	currentConversationTitle,
+	(title) => {
+		documentTitle.set(title ?? 'Chat');
+	},
+	{ immediate: true },
+);
+
 onMounted(async () => {
 	await Promise.all([
 		credentialsStore.fetchCredentialTypes(false),
@@ -209,54 +217,35 @@ onMounted(async () => {
 	]);
 });
 
-function onModelChange(selection: ChatHubConversationModel) {
-	selectedModel.value = selection;
-}
-
-function onConfigure(provider: ChatHubProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0) {
-		uiStore.openNewCredential(credentialType);
-		return;
-	}
-
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
-}
-
-function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
-	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialId };
-}
-
-function onCreateNewCredential(provider: ChatHubProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
-}
-
 function onSubmit(message: string) {
-	if (!message.trim() || chatStore.isResponding || !selectedModel.value) {
+	if (!message.trim() || chatStore.isResponding) {
 		return;
 	}
 
-	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
-
-	if (!credentialsId) {
-		return;
-	}
+	const credentialsId = selectedModel.value
+		? mergedCredentials.value[selectedModel.value.provider]
+		: undefined;
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(sessionId.value, message, selectedModel.value, {
-		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId,
-			name: '',
-		},
-	});
+	chatStore.sendMessage(
+		sessionId.value,
+		message,
+		selectedModel.value,
+		selectedModel.value && credentialsId
+			? {
+					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+						id: credentialsId,
+						name: '',
+					},
+				}
+			: null,
+	);
 
 	inputRef.value?.setText('');
 
 	if (isNewSession.value) {
+		// TODO: this should not happen when submit fails
 		void router.push({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId.value } });
 	}
 }
@@ -316,6 +305,14 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	});
 }
 
+function handleSelectModel(selection: ChatHubConversationModel) {
+	selectedModel.value = selection;
+}
+
+function handleSelectCredentials(provider: ChatHubProvider, credentialsId: string) {
+	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialsId };
+}
+
 function handleSwitchAlternative(messageId: string) {
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
@@ -328,43 +325,23 @@ function handleSwitchAlternative(messageId: string) {
 			{
 				[$style.isNewChat]: isNewChat,
 				[$style.isMobileDevice]: isMobileDevice,
-				[$style.didSubmitInCurrentSession]: didSubmitInCurrentSession,
 			},
 		]"
 	>
+		<ChatConversationHeader
+			:selected-model="selectedModel"
+			:credentials="mergedCredentials"
+			@select-model="handleSelectModel"
+			@select-credentials="handleSelectCredentials"
+		/>
+
 		<N8nScrollArea
-			type="hover"
+			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
 			as-child
 			:class="$style.scrollArea"
 		>
-			<div :class="$style.floating">
-				<N8nIconButton
-					v-if="isMobileDevice"
-					type="secondary"
-					icon="menu"
-					@click="uiStore.openModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY)"
-				/>
-				<ModelSelector
-					:models="chatStore.models ?? null"
-					:selected-model="selectedModel"
-					:disabled="chatStore.isResponding"
-					:credentials-name="credentialsName"
-					@change="onModelChange"
-					@configure="onConfigure"
-				/>
-			</div>
-
-			<CredentialSelectorModal
-				v-if="credentialSelectorProvider"
-				:key="credentialSelectorProvider"
-				:provider="credentialSelectorProvider"
-				:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
-				@select="onCredentialSelected"
-				@create-new="onCreateNewCredential"
-			/>
-
 			<div :class="$style.scrollable" ref="scrollable">
 				<ChatStarter
 					v-if="isNewChat"
@@ -375,12 +352,20 @@ function handleSwitchAlternative(messageId: string) {
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
-						v-for="message in chatMessages"
+						v-for="(message, index) in chatMessages"
 						:key="message.id"
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
-						:is-streaming="chatStore.ongoingStreaming?.messageId === message.id"
+						:is-streaming="chatStore.streamingMessageId === message.id"
+						:min-height="
+							didSubmitInCurrentSession &&
+							message.type === 'ai' &&
+							index === chatMessages.length - 1 &&
+							scrollContainerRef
+								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
+								: undefined
+						"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
@@ -390,6 +375,15 @@ function handleSwitchAlternative(messageId: string) {
 				</div>
 
 				<div :class="$style.promptContainer">
+					<N8nIconButton
+						v-if="!arrivedState.bottom && !isNewChat"
+						type="secondary"
+						icon="arrow-down"
+						:class="$style.scrollToBottomButton"
+						title="Scroll to bottom"
+						@click="scrollToBottom(true)"
+					/>
+
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
@@ -405,27 +399,25 @@ function handleSwitchAlternative(messageId: string) {
 
 <style lang="scss" module>
 .component {
+	margin: var(--spacing--4xs);
 	width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) 0;
-	background-color: var(--color--background--light-3);
+	background-color: var(--color--background--light-2);
+	border: var(--border);
+	border-radius: var(--radius);
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	overflow: hidden;
 
 	&.isMobileDevice {
-		padding: 0;
+		margin: 0;
+		border: none;
 	}
 }
 
 .scrollArea {
-	border: var(--border);
-	border-radius: var(--radius);
-	background-color: var(--color--background--light-2);
-
-	.isMobileDevice & {
-		border: none;
-	}
-
-	& [data-reka-scroll-area-viewport] {
-		scroll-padding-top: 100px;
-	}
+	flex-grow: 1;
+	flex-shrink: 1;
 }
 
 .scrollable {
@@ -434,12 +426,11 @@ function handleSwitchAlternative(messageId: string) {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-	justify-content: center;
+	justify-content: start;
 	gap: var(--spacing--2xl);
 
-	.didSubmitInCurrentSession & {
-		/* This allows scrolling user's prompt to the top while generating response */
-		padding-bottom: 100vh;
+	.isNewChat & {
+		justify-content: center;
 	}
 }
 
@@ -451,7 +442,7 @@ function handleSwitchAlternative(messageId: string) {
 
 .starter {
 	.isMobileDevice & {
-		padding-top: 100px;
+		padding-top: 30px;
 		padding-bottom: 200px;
 	}
 }
@@ -459,12 +450,12 @@ function handleSwitchAlternative(messageId: string) {
 .messageList {
 	width: 100%;
 	max-width: 55rem;
-	min-height: 100vh;
+	min-height: 100%;
 	align-self: center;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding-top: 100px;
+	padding-top: 30px;
 	padding-bottom: 200px;
 	padding-inline: 64px;
 
@@ -498,14 +489,11 @@ function handleSwitchAlternative(messageId: string) {
 	}
 }
 
-.floating {
+.scrollToBottomButton {
 	position: absolute;
-	padding: var(--spacing--xs);
-	top: 0;
-	left: 0;
-	z-index: 100;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
+	bottom: 100%;
+	left: auto;
+	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+	border-radius: 50%;
 }
 </style>
