@@ -92,9 +92,13 @@ defineExpose({
 	border-radius: var(--radius);
 	font-size: var(--font-size--md);
 
+	.cm-editor {
+		border: none;
+	}
+
 	&:where(:focus-within, :active) {
 		box-shadow: none;
-		border: var(--grid-cell-editing-border);
+		border: var(--grid--cell--border-color--editing);
 	}
 }
 </style>
