@@ -26,6 +26,10 @@ export class LicenseState {
 	// --------------------
 	//     core queries
 	// --------------------
+	/*
+	 * If the feature is a string. checks if the feature is licensed
+	 * If the feature is an array of strings, it checks if any of the features are licensed
+	 */
 	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
 		this.assertProvider();
 
@@ -175,9 +179,7 @@ export class LicenseState {
 	}
 
 	isProvisioningLicensed() {
-		return (
-			this.isLicensed('feat:saml') || this.isLicensed('feat:oidc') || this.isLicensed('feat:ldap')
-		);
+		return this.isLicensed(['feat:saml', 'feat:oidc', 'feat:ldap']);
 	}
 
 	// --------------------
