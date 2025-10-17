@@ -9,6 +9,8 @@ import { useCredentialsStore } from '../credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { Project } from '@/features/projects/projects.types';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -85,6 +87,9 @@ describe('NodeCredentials', () => {
 	const credentialsStore = mockedStore(useCredentialsStore);
 	const ndvStore = mockedStore(useNDVStore);
 	const uiStore = mockedStore(useUIStore);
+	const projectsStore = mockedStore(useProjectsStore);
+
+	projectsStore.currentProject = { id: 'default', scopes: ['credential:create'] } as Project;
 
 	beforeAll(() => {
 		credentialsStore.state.credentialTypes = {
