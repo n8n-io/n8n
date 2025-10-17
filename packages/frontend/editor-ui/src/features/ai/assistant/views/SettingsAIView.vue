@@ -6,10 +6,13 @@ import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useMessage } from '@/composables/useMessage';
+import { MODAL_CONFIRM } from '@/constants';
 
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
+const message = useMessage();
 
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
@@ -35,6 +38,16 @@ const aiSettingsDescription = computed(() => {
 const onAllowSendingActualDataChange = async (newValue: boolean | string | number) => {
 	if (typeof newValue !== 'boolean') return;
 
+	if (!newValue) {
+		const promptResponse = await message.confirm(i18n.baseText('settings.ai.confirm.message'), {
+			title: i18n.baseText('settings.ai.confirm.title'),
+			confirmButtonText: i18n.baseText('settings.ai.confirm.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		});
+		if (promptResponse !== MODAL_CONFIRM) {
+			return;
+		}
+	}
 	try {
 		await settingsStore.updateAiDataSharingSettings(newValue);
 		toast.showMessage({
