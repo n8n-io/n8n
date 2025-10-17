@@ -65,6 +65,9 @@ function getParameterOptionLabel(
 }
 
 function displayNodeParameter(parameter: INodeProperties) {
+	if (parameter.type === 'hidden') {
+		return false;
+	}
 	if (parameter.displayOptions === undefined) {
 		// If it is not defined no need to do a proper check
 		return true;
