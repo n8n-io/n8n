@@ -6,18 +6,22 @@ import { computed } from 'vue';
 
 const i18n = useI18n();
 
-const { type, justCopied, messageId, alternatives } = defineProps<{
-	type: ChatHubMessageType;
-	justCopied: boolean;
-	messageId: ChatMessageId;
-	alternatives: ChatMessageId[];
-}>();
+const { type, justCopied, messageId, alternatives, isSpeaking, isSpeechSynthesisAvailable } =
+	defineProps<{
+		type: ChatHubMessageType;
+		justCopied: boolean;
+		messageId: ChatMessageId;
+		alternatives: ChatMessageId[];
+		isSpeechSynthesisAvailable: boolean;
+		isSpeaking: boolean;
+	}>();
 
 const emit = defineEmits<{
 	copy: [];
 	edit: [];
 	regenerate: [];
 	switchAlternative: [messageId: ChatMessageId];
+	readAloud: [];
 }>();
 
 const copyTooltip = computed(() => {
@@ -39,22 +43,37 @@ function handleEdit() {
 function handleRegenerate() {
 	emit('regenerate');
 }
+
+function handleReadAloud() {
+	emit('readAloud');
+}
 </script>
 
 <template>
 	<div :class="$style.actions">
 		<N8nTooltip placement="bottom" :show-after="300">
-			<Transition name="fade" mode="out-in">
-				<N8nIconButton
-					:key="justCopied ? 'check' : 'copy'"
-					:icon="justCopied ? 'check' : 'copy'"
-					type="tertiary"
-					size="medium"
-					text
-					@click="handleCopy"
-				/>
-			</Transition>
+			<N8nIconButton
+				:icon="justCopied ? 'check' : 'copy'"
+				type="tertiary"
+				size="medium"
+				text
+				@click="handleCopy"
+			/>
 			<template #content>{{ copyTooltip }}</template>
+		</N8nTooltip>
+		<N8nTooltip
+			v-if="isSpeechSynthesisAvailable && type === 'ai'"
+			placement="bottom"
+			:show-after="300"
+		>
+			<N8nIconButton
+				:icon="isSpeaking ? 'volume-x' : 'volume-2'"
+				type="tertiary"
+				size="medium"
+				text
+				@click="handleReadAloud"
+			/>
+			<template #content>{{ isSpeaking ? 'Stop reading' : 'Read aloud' }}</template>
 		</N8nTooltip>
 		<N8nTooltip placement="bottom" :show-after="300">
 			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />

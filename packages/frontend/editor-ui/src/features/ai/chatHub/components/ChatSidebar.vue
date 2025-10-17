@@ -2,6 +2,7 @@
 import ModalDrawer from '@/components/ModalDrawer.vue';
 import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/constants';
 import ChatSidebarContent from '@/features/ai/chatHub/components/ChatSidebarContent.vue';
+import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useMediaQuery } from '@vueuse/core';
@@ -11,6 +12,7 @@ import { useRoute } from 'vue-router';
 const uiStore = useUIStore();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const route = useRoute();
+const sidebar = useChatHubSidebarState();
 
 watch(
 	() => route.fullPath,
@@ -23,8 +25,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+	<ChatSidebarContent
+		v-if="sidebar.isStatic.value"
+		:class="$style.static"
+		:is-mobile-device="isMobileDevice"
+	/>
 	<ModalDrawer
-		v-if="isMobileDevice"
+		v-else
 		direction="ltr"
 		width="min(240px, 80vw)"
 		:name="CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY"
@@ -36,7 +43,6 @@ onBeforeUnmount(() => {
 			<ChatSidebarContent :class="$style.inDrawer" :is-mobile-device="isMobileDevice" />
 		</template>
 	</ModalDrawer>
-	<ChatSidebarContent v-else :class="$style.static" :is-mobile-device="isMobileDevice" />
 </template>
 
 <style lang="scss" module>
@@ -49,12 +55,13 @@ onBeforeUnmount(() => {
 .inDrawer,
 .static {
 	height: 100%;
+	background-color: var(--color--background--light-2);
 }
 
 .static {
 	width: 240px;
-	background-color: var(--color--background--light-3);
 	position: relative;
 	overflow: auto;
+	margin-right: calc(-1 * var(--spacing--4xs));
 }
 </style>

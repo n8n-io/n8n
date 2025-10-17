@@ -13,7 +13,6 @@ import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
 const props = defineProps<{
-	disabled?: boolean;
 	models: ChatModelsResponse | null;
 	selectedModel: ChatHubConversationModel | null;
 	credentialsName?: string;
@@ -80,7 +79,7 @@ function onSelect(id: string) {
 </script>
 
 <template>
-	<N8nNavigationDropdown :menu="menu" :disabled="disabled" @select="onSelect">
+	<N8nNavigationDropdown :menu="menu" @select="onSelect">
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
@@ -90,7 +89,7 @@ function onSelect(id: string) {
 			/>
 		</template>
 
-		<N8nButton :class="$style.dropdownButton" type="secondary">
+		<N8nButton :class="$style.dropdownButton" type="secondary" text>
 			<CredentialIcon
 				v-if="selectedModel"
 				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
@@ -115,6 +114,9 @@ function onSelect(id: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+
+	/* disable underline */
+	text-decoration: none !important;
 }
 
 .selected {

@@ -373,6 +373,8 @@ export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_SELECTED_MODEL`;
 export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_CREDENTIALS`;
+export const LOCAL_STORAGE_CHAT_HUB_STATIC_SIDEBAR = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_STATIC_SIDEBAR`;
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';

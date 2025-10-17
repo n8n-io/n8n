@@ -28,11 +28,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const ongoingStreaming = ref<{ messageId: ChatMessageId; replyToMessageId: ChatMessageId }>();
-	const isResponding = computed(() => ongoingStreaming.value !== undefined);
+	const streamingMessageId = ref<string>();
+	const sessions = ref<ChatHubSessionDto[]>([]);
+
+	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
-	const sessions = ref<ChatHubSessionDto[]>([]);
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
 		conversationsBySession.value.get(sessionId);
@@ -232,7 +233,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		_nodeId: string,
 		_runIndex?: number,
 	) {
-		ongoingStreaming.value = { messageId, replyToMessageId };
+		streamingMessageId.value = messageId;
+
 		addMessage(sessionId, {
 			id: messageId,
 			sessionId,
@@ -268,7 +270,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		ongoingStreaming.value = undefined;
+		streamingMessageId.value = undefined;
 	}
 
 	function onStreamMessage(
@@ -305,20 +307,20 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function onStreamDone() {
-		ongoingStreaming.value = undefined;
+		streamingMessageId.value = undefined;
 		await fetchSessions(); // update the conversation list
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onStreamError(_e: Error) {
-		ongoingStreaming.value = undefined;
+		streamingMessageId.value = undefined;
 	}
 
 	function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
-		model: ChatHubConversationModel,
-		credentials: ChatHubSendMessageRequest['credentials'],
+		model: ChatHubConversationModel | null,
+		credentials: ChatHubSendMessageRequest['credentials'] | null,
 	) {
 		const messageId = uuidv4();
 		const replyId = uuidv4();
@@ -334,7 +336,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model.model,
+			model: model?.model ?? null,
 			workflowId: null,
 			executionId: null,
 			state: 'active',
@@ -348,6 +350,31 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			responses: [],
 			alternatives: [],
 		});
+
+		if (!model || !credentials) {
+			addMessage(sessionId, {
+				id: replyId,
+				sessionId,
+				type: 'ai',
+				name: 'AI',
+				content: '**ERROR:** Select a model to start a conversation.',
+				provider: null,
+				model: null,
+				workflowId: null,
+				executionId: null,
+				state: 'active',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				previousMessageId: messageId,
+				turnId: null,
+				retryOfMessageId: null,
+				revisionOfMessageId: null,
+				runIndex: 0,
+				responses: [],
+				alternatives: [],
+			});
+			return;
+		}
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -480,7 +507,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversationsBySession,
 		loadingModels,
 		isResponding,
-		ongoingStreaming,
+		streamingMessageId,
 		fetchChatModels,
 		sendMessage,
 		editMessage,
