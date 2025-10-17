@@ -7,6 +7,7 @@ import path from 'path';
 import { $, argv, fs } from 'zx';
 import { DockerComposeClient } from './clients/docker-compose-client.mjs';
 import { flagsObjectToCliArgs } from './utils/flags.mjs';
+import { EOL } from 'os';
 
 const paths = {
 	n8nSetupsDir: path.join(__dirname, 'n8n-setups'),
@@ -23,7 +24,7 @@ async function discoverRunnerServices(dockerComposeClient) {
 
 	return result.stdout
 		.trim()
-		.split('\n')
+		.split(EOL)
 		.filter((service) => service === 'runners' || service.endsWith('_runners'));
 }
 
