@@ -26,6 +26,7 @@ import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
 	OperationalError,
 	type IConnections,
 	type INode,
@@ -617,6 +618,7 @@ export class ChatHubService {
 					text: "={{ $('When chat message received').item.json.chatInput }}",
 					options: {
 						enableStreaming: true,
+						maxTokensFromMemory: 10000,
 					},
 				},
 				type: AGENT_LANGCHAIN_NODE_TYPE,
@@ -680,21 +682,25 @@ export class ChatHubService {
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'main', index: 0 }]],
+				main: [
+					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [[{ node: NODE_NAMES.AI_AGENT, type: 'main', index: 0 }]],
+				main: [[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [[{ node: NODE_NAMES.AI_AGENT, type: 'ai_languageModel', index: 0 }]],
+				ai_languageModel: [
+					[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
 			},
 			[NODE_NAMES.MEMORY]: {
 				ai_memory: [
 					[
-						{ node: NODE_NAMES.AI_AGENT, type: 'ai_memory', index: 0 },
-						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'ai_memory', index: 0 },
-						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: 'ai_memory', index: 0 },
+						{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
 					],
 				],
 			},
@@ -703,7 +709,7 @@ export class ChatHubService {
 					[
 						{
 							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
