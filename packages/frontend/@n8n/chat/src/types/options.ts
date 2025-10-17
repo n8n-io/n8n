@@ -1,5 +1,7 @@
 import type { Component, Ref } from 'vue';
 
+import type { SendMessageResponse } from './webhook';
+
 export interface ChatOptions {
 	webhookUrl: string;
 	webhookConfig?: {
@@ -37,7 +39,10 @@ export interface ChatOptions {
 	enableStreaming?: boolean;
 	// Event handlers for message lifecycle
 	beforeMessageSent?: (message: string) => void | Promise<void>;
-	afterMessageSent?: (message: string, response?: any) => void | Promise<void>;
+	afterMessageSent?: (
+		message: string,
+		response?: SendMessageResponse | { hasReceivedChunks: boolean },
+	) => void | Promise<void>;
 	// Message action options
 	enableMessageActions?: boolean;
 }

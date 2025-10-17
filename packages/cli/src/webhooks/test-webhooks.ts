@@ -308,7 +308,6 @@ export class TestWebhooks implements IWebhookManager {
 			sessionId,
 		} = options;
 
-
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
 		const workflow = this.toWorkflow(workflowEntity);
@@ -345,16 +344,17 @@ export class TestWebhooks implements IWebhookManager {
 
 			// Use sessionId-based path for ChatTrigger nodes when sessionId is provided
 			// IMPORTANT: This must happen BEFORE key generation
-			if (sessionId && webhook.node && (
+			if (
+				sessionId &&
+				webhook.node &&
 				workflow.nodes[webhook.node]?.type === '@n8n/n8n-nodes-langchain.chatTrigger'
-			)) {
+			) {
 				// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
 				webhook.path = `${workflow.id}/${sessionId}`;
 			}
 
 			const key = this.registrations.toKey(webhook);
 			const registrationByKey = await this.registrations.get(key);
-
 
 			if (runData && webhook.node in runData) {
 				return false;

@@ -12,6 +12,7 @@ import {
 	useTemplateRef,
 	watch,
 	ref,
+	type App,
 } from 'vue';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -48,7 +49,7 @@ const rootStore = useRootStore();
 const { runWorkflow } = useRunWorkflow({ router });
 const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
 
-let chatApp: any = null;
+let chatApp: App | null = null;
 const webhookRegistered = ref(false);
 const isRegistering = ref(false);
 
