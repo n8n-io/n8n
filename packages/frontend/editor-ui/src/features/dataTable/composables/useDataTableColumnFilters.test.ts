@@ -60,48 +60,6 @@ describe('useDataTableColumnFilters', () => {
 			});
 		});
 
-		it('should process startsWith filter', () => {
-			const filterModel: FilterModel = {
-				name: { filterType: 'text', type: 'startsWith', filter: 'test' },
-			};
-			mockGridApi.getFilterModel = vi.fn().mockReturnValue(filterModel);
-
-			const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
-				gridApi: gridApiRef,
-				colDefs: colDefsRef,
-			});
-
-			onFilterChanged();
-
-			const result = parseFilterJSON(currentFilterJSON.value);
-			expect(result?.filters[0]).toEqual({
-				columnName: 'name',
-				condition: 'ilike',
-				value: 'test%',
-			});
-		});
-
-		it('should process endsWith filter', () => {
-			const filterModel: FilterModel = {
-				name: { filterType: 'text', type: 'endsWith', filter: 'test' },
-			};
-			mockGridApi.getFilterModel = vi.fn().mockReturnValue(filterModel);
-
-			const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
-				gridApi: gridApiRef,
-				colDefs: colDefsRef,
-			});
-
-			onFilterChanged();
-
-			const result = parseFilterJSON(currentFilterJSON.value);
-			expect(result?.filters[0]).toEqual({
-				columnName: 'name',
-				condition: 'ilike',
-				value: '%test',
-			});
-		});
-
 		it('should process equals filter', () => {
 			const filterModel: FilterModel = {
 				name: { filterType: 'text', type: 'equals', filter: 'exact' },

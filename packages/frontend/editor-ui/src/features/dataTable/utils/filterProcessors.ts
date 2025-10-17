@@ -1,5 +1,9 @@
 import type { BackendFilterRecord, FilterModel } from '../types/dataTableFilters.types';
-import { mapTextTypeToBackend, mapNumberDateTypeToBackend } from './filterMappings';
+import {
+	mapTextTypeToBackend,
+	mapNumberDateTypeToBackend,
+	mapJsonTypeToBackend,
+} from './filterMappings';
 
 export function processTextFilter(
 	filter: FilterModel[string],
@@ -8,11 +12,7 @@ export function processTextFilter(
 	let value: string | number | boolean | Date | null = filter.filter ?? null;
 
 	if (typeof filter.filter === 'string') {
-		if (filter.type === 'startsWith') {
-			value = `${filter.filter}%`;
-		} else if (filter.type === 'endsWith') {
-			value = `%${filter.filter}`;
-		} else if (filter.type === 'contains') {
+		if (filter.type === 'contains') {
 			// backend will auto-wrap to %value% if % not present
 			value = filter.filter;
 		}
@@ -30,6 +30,22 @@ export function processTextFilter(
 		columnName: colField,
 		condition: mapTextTypeToBackend(filter.type),
 		value,
+	};
+}
+
+export function processJsonFilter(
+	filter: FilterModel[string],
+	colField: string,
+): BackendFilterRecord {
+	let value = filter.filter ?? null;
+	if (filter.type === 'isEmpty' || filter.type === 'notEmpty') {
+		value = '';
+	}
+	return {
+		columnName: colField,
+		condition: mapJsonTypeToBackend(filter.type),
+		value,
+		path: filter.path,
 	};
 }
 

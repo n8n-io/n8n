@@ -4,6 +4,7 @@ export type BackendFilterRecord = {
 	columnName: string;
 	condition: BackendFilterCondition;
 	value: string | number | boolean | Date | null;
+	path?: string;
 };
 
 export type BackendFilter = {
@@ -15,8 +16,6 @@ export type FilterOperation =
 	| 'contains'
 	| 'equals'
 	| 'notEqual'
-	| 'startsWith'
-	| 'endsWith'
 	| 'isEmpty'
 	| 'notEmpty'
 	| 'null'
@@ -32,11 +31,12 @@ export type FilterOperation =
 
 export type FilterModel = {
 	[colId: string]: {
-		filterType?: 'text' | 'number' | 'date';
+		filterType?: 'text' | 'number' | 'date' | 'json';
 		filter?: string | number;
 		filterTo?: string | number;
 		type: FilterOperation;
 		dateFrom?: string;
 		dateTo?: string;
+		path?: string;
 	};
 };
