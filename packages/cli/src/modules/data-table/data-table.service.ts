@@ -490,7 +490,7 @@ export class DataTableService {
 		const fieldType = columnTypeToFieldType[columnType];
 		if (!fieldType) return cell;
 
-		if (!validateJsonInput && columnType === 'json') return JSON.stringify(cell);
+		if (!validateJsonInput && columnType === 'json') return cell;
 
 		const validationResult = validateFieldType(key, cell, fieldType, {
 			strict: false, // Allow type coercion (e.g., string numbers to numbers)

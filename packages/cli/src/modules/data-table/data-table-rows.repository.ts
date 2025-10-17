@@ -50,7 +50,7 @@ function resolvePath(
 	if (path) {
 		const pathArray = parsePath(path);
 		if (dbType === 'postgres') {
-			const base = `${ref}->${toPostgresPath(pathArray)}`;
+			const base = `${ref}${toPostgresPath(pathArray)}`;
 			if (typeof value === 'number') {
 				return `(${base})::numeric`;
 			}
@@ -83,7 +83,6 @@ function resolvePath(
 			}
 			return base;
 		}
-		return ref;
 	}
 	return ref;
 }

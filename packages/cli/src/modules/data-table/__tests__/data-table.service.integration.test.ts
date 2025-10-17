@@ -54,7 +54,7 @@ describe('dataTable', () => {
 	});
 
 	afterEach(async () => {
-		// await dataTableService.deleteDataTableAll();
+		await dataTableService.deleteDataTableAll();
 	});
 
 	describe('createDataTable', () => {
