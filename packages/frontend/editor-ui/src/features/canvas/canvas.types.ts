@@ -7,7 +7,8 @@ import type {
 	OnConnectStartParams,
 	ViewportTransform,
 } from '@vue-flow/core';
-import type { IExecutionResponse, INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasLayoutSource } from '@/features/canvas/composables/useCanvasLayout';

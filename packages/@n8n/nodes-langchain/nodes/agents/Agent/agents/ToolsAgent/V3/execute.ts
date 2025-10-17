@@ -53,27 +53,34 @@ type ToolCallRequest = {
 	messageLog?: unknown[];
 };
 
-function createEngineRequests(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+async function createEngineRequests(
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
+	tools: Array<DynamicStructuredTool | Tool>,
 ) {
-	const connectedSubnodes = ctx.getParentNodes(ctx.getNode().name, {
-		connectionType: NodeConnectionTypes.AiTool,
-		depth: 1,
+	return toolCalls.map((toolCall) => {
+		// First try to get from metadata (for toolkit tools)
+		const foundTool = tools.find((tool) => tool.name === toolCall.tool);
+
+		if (!foundTool) return;
+
+		const nodeName = foundTool.metadata?.sourceNodeName;
+
+		// For toolkit tools, include the tool name so the node knows which tool to execute
+		const input = foundTool.metadata?.isFromToolkit
+			? { ...toolCall.toolInput, tool: toolCall.tool }
+			: toolCall.toolInput;
+
+		return {
+			nodeName,
+			input,
+			type: NodeConnectionTypes.AiTool,
+			id: toolCall.toolCallId,
+			metadata: {
+				itemIndex,
+			},
+		};
 	});
-	return toolCalls.map((toolCall) => ({
-		nodeName:
-			connectedSubnodes.find(
-				(node: { name: string }) => nodeNameToToolName(node.name) === toolCall.tool,
-			)?.name ?? toolCall.tool,
-		input: toolCall.toolInput,
-		type: NodeConnectionTypes.AiTool,
-		id: toolCall.toolCallId,
-		metadata: {
-			itemIndex,
-		},
-	}));
 }
 
 /**
@@ -469,7 +476,7 @@ export async function toolsAgentExecute(
 
 				// If result contains tool calls, build the request object like the normal flow
 				if (result.toolCalls && result.toolCalls.length > 0) {
-					const actions = createEngineRequests(this, result.toolCalls, itemIndex);
+					const actions = await createEngineRequests(result.toolCalls, itemIndex, tools);
 
 					return {
 						actions,
@@ -519,7 +526,7 @@ export async function toolsAgentExecute(
 				}
 
 				// If response contains tool calls, we need to return this in the right format
-				const actions = createEngineRequests(this, modelResponse, itemIndex);
+				const actions = await createEngineRequests(modelResponse, itemIndex, tools);
 
 				return {
 					actions,

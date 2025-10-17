@@ -1,4 +1,5 @@
-import type { IExecutionResponse, INodeUi, LlmTokenUsageData, IWorkflowDb } from '@/Interface';
+import type { INodeUi, LlmTokenUsageData, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse } from '@/features/executions/executions.types';
 import { addTokenUsageData, emptyTokenUsageData, isChatNode } from '@/utils/aiUtils';
 import {
 	NodeConnectionTypes,

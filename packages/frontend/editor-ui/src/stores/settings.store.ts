@@ -91,7 +91,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
 
-	const isAiBuilderEnabled = computed(() => settings.value.aiBuilder?.enabled);
+	const isAiBuilderEnabled = computed(
+		() => settings.value.aiBuilder?.enabled && settings.value.aiBuilder?.setup,
+	);
+
+	const isAiAssistantOrBuilderEnabled = computed(
+		() => isAiAssistantEnabled.value || isAiBuilderEnabled.value,
+	);
 
 	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
 
@@ -362,6 +368,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isCommunityPlan,
 		isAskAiEnabled,
 		isAiBuilderEnabled,
+		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		reset,

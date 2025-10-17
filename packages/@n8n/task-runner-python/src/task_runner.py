@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 from typing import Any, Callable, Awaitable
+from dataclasses import dataclass
 from urllib.parse import urlparse
 import websockets
 import random
@@ -57,10 +58,10 @@ from src.task_analyzer import TaskAnalyzer
 from src.config.security_config import SecurityConfig
 
 
+@dataclass
 class TaskOffer:
-    def __init__(self, offer_id: str, valid_until: float):
-        self.offer_id = offer_id
-        self.valid_until = valid_until
+    offer_id: str
+    valid_until: float
 
     @property
     def has_expired(self) -> bool:
@@ -372,8 +373,7 @@ class TaskRunner:
 
         if task_state.status == TaskStatus.RUNNING:
             task_state.status = TaskStatus.ABORTING
-            self.executor.stop_process(task_state.process)
-
+            await asyncio.to_thread(self.executor.stop_process, task_state.process)
             self.logger.info(
                 LOG_TASK_CANCEL.format(task_id=task_id, **task_state.context())
             )

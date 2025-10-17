@@ -51,7 +51,7 @@ import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { injectWorkflowState } from './useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -63,12 +63,12 @@ declare namespace HttpRequestNode {
 	}
 }
 
-export function useNodeHelpers() {
+export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowState = opts.workflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
