@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import type { User, TestRun } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -23,9 +24,9 @@ import type {
 	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+import { JsonObject } from 'openid-client';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import {
 	checkNodeParameterNotEmpty,
@@ -35,7 +36,6 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { JsonObject } from 'openid-client';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -69,6 +69,7 @@ export class TestRunnerService {
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly errorReporter: ErrorReporter,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	/**
@@ -260,7 +261,7 @@ export class TestRunnerService {
 
 		// When in queue mode, we need to pass additional data to the execution
 		// the same way as it would be passed in manual mode
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.executionsConfig.mode === 'queue') {
 			data.executionData = {
 				resultData: {
 					pinData,
@@ -352,7 +353,7 @@ export class TestRunnerService {
 
 		if (
 			!(
-				config.get('executions.mode') === 'queue' &&
+				this.executionsConfig.mode === 'queue' &&
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 			) &&
 			data.executionData

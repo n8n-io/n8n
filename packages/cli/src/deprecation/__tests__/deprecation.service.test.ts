@@ -11,7 +11,10 @@ import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();
-	const globalConfig = mockInstance(GlobalConfig, { nodes: { exclude: [] } });
+	const globalConfig = mockInstance(GlobalConfig, {
+		nodes: { exclude: [] },
+		executions: { mode: 'regular' },
+	});
 	const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 	const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
 

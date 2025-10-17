@@ -11,7 +11,6 @@ import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
-import config from '../config';
 
 const flagsSchema = z.object({
 	id: z.string().describe('id of the workflow to execute').optional(),
@@ -86,11 +85,11 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		const workflowRunner = Container.get(WorkflowRunner);
 
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.globalConfig.executions.mode === 'queue') {
 			this.logger.warn(
 				'CLI command `execute` does not support queue mode. Falling back to regular mode.',
 			);
-			workflowRunner.setExecutionMode('regular');
+			this.globalConfig.executions.mode = 'regular';
 		}
 
 		const executionId = await workflowRunner.run(runData);
