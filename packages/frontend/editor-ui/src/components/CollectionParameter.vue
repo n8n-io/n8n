@@ -19,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { pa } from 'element-plus/es/locale/index.mjs';
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
 	hideDelete?: boolean;
@@ -65,6 +66,9 @@ function getParameterOptionLabel(
 }
 
 function displayNodeParameter(parameter: INodeProperties) {
+	if (parameter.type === 'hidden') {
+		return false;
+	}
 	if (parameter.displayOptions === undefined) {
 		// If it is not defined no need to do a proper check
 		return true;
