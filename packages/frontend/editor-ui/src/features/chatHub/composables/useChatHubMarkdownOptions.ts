@@ -29,7 +29,7 @@ export function useChatHubMarkdownOptions() {
 
 	async function loadLanguageModules() {
 		if (languagesLoaded) {
-			return false;
+			return;
 		}
 
 		languagesLoaded = true;
