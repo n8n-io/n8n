@@ -97,6 +97,7 @@ export function createLangsmithEvaluator(
 	llm: BaseChatModel,
 	parsedNodeTypes: INodeTypeDescription[],
 ): (rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]> {
+	// eslint-disable-next-line complexity
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		// Validate and extract outputs
 		const validation = validateRunOutputs(rootRun.outputs);

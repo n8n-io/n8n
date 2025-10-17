@@ -112,8 +112,7 @@ export async function runCliEvaluation(
 			if (repetitions > 1) {
 				const repStats = results.map((r) => r.cacheStats).filter((s) => s !== undefined);
 				if (repStats.length > 0) {
-					const avgHitRate =
-						repStats.reduce((sum, s) => sum + s!.cacheHitRate, 0) / repStats.length;
+					const avgHitRate = repStats.reduce((sum, s) => sum + s.cacheHitRate, 0) / repStats.length;
 					console.log(
 						pc.dim(`\n  Repetition ${rep + 1} cache hit rate: ${(avgHitRate * 100).toFixed(1)}%`),
 					);
