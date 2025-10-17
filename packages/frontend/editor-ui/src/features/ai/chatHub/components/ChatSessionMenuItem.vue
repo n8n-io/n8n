@@ -1,12 +1,7 @@
 <script setup lang="ts">
-<<<<<<< HEAD:packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSessionMenuItem.vue
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
-=======
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
 import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
->>>>>>> origin/master:packages/frontend/editor-ui/src/features/chatHub/components/ChatSessionMenuItem.vue
 import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nIcon, N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';

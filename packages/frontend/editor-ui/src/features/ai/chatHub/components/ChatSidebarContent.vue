@@ -1,13 +1,5 @@
 <script setup lang="ts">
 import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
-<<<<<<< HEAD:packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebarContent.vue
-import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY, MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { groupConversationsByDate } from '@/features/ai/chatHub/chat.utils';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { N8nIcon, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-=======
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
@@ -19,7 +11,6 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import Logo from '@n8n/design-system/components/N8nLogo';
->>>>>>> origin/master:packages/frontend/editor-ui/src/features/chatHub/components/ChatSidebarContent.vue
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
