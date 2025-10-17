@@ -50,20 +50,22 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
+			// Test that the function throws the correct error type and message
+			// Using .rejects ensures the test fails if slackApiRequest doesn't throw
 			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
 				NodeOperationError,
 			);
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				'Your Slack credential is missing required Oauth Scopes',
+			);
 
-			try {
-				await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
-			} catch (error) {
-				expect(error).toBeInstanceOf(NodeOperationError);
-				expect(error.message).toBe('Your Slack credential is missing required Oauth Scopes');
-				expect(error.description).toBe(
-					'Add the following scope(s) to your Slack App: channels:read,users:read',
-				);
-				expect(error.level).toBe('warning');
-			}
+			// Test specific error properties by catching the thrown error
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', '/test'),
+			).rejects.toMatchObject({
+				description: 'Add the following scope(s) to your Slack App: channels:read,users:read',
+				level: 'warning',
+			});
 		});
 
 		it('should handle missing_scope error without needed scopes', async () => {

@@ -35,13 +35,13 @@
 			{
 				"json": {
 					"CertificateArn": "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012",
-                    "IsDefault": false
+					"IsDefault": "false"
 				}
 			},
 			{
 				"json": {
 					"CertificateArn": "arn:aws:acm:us-east-1:123456789012:certificate/87654321-4321-4321-4321-210987654321",
-                    "IsDefault": true
+					"IsDefault": "true"
 				}
 			}
 		]
