@@ -25,7 +25,7 @@ import {
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, type EntityManager } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow';
@@ -673,36 +673,18 @@ export class SourceControlImportService {
 				});
 			}
 
-			const importedOwnerProject = await this.findOwnerProjectInLocalDb(importedWorkflow.owner);
 			const localOwner = allSharedWorkflows.find(
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 			);
 
-			let workflowOwner = importedOwnerProject;
-			if (!workflowOwner) {
-				workflowOwner =
-					importedWorkflow.owner?.type === 'team'
-						? await this.createTeamProject(importedWorkflow.owner)
-						: personalProject;
-			}
-
-			const removeOldOwner = localOwner && localOwner.projectId !== workflowOwner.id;
-
-			const trx = this.workflowRepository.manager;
-			if (removeOldOwner) {
-				await this.sharedWorkflowRepository.deleteByIds(
-					[importedWorkflow.id],
-					localOwner.projectId,
-					trx,
-				);
-			}
-
-			await this.sharedWorkflowRepository.makeOwner([importedWorkflow.id], workflowOwner.id, trx);
-
-			console.log({
-				removeOldOwner,
-				createdNewProject: !importedOwnerProject,
-			});
+			await this.syncResourceOwnership(
+				importedWorkflow.id,
+				importedWorkflow.owner,
+				localOwner,
+				personalProject,
+				this.sharedWorkflowRepository,
+				this.workflowRepository.manager,
+			);
 
 			if (existingWorkflow?.active) {
 				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
@@ -769,7 +751,7 @@ export class SourceControlImportService {
 			select: ['id', 'name', 'type', 'data'],
 		});
 		const existingSharedCredentials = await this.sharedCredentialsRepository.find({
-			select: ['credentialsId', 'role'],
+			select: ['credentialsId', 'projectId', 'role'],
 			where: {
 				credentialsId: In(candidateIds),
 				role: 'credential:owner',
@@ -802,25 +784,18 @@ export class SourceControlImportService {
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await this.credentialsRepository.upsert(newCredentialObject, ['id']);
 
-				const isOwnedLocally = existingSharedCredentials.some(
+				const localOwner = existingSharedCredentials.find(
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
 				);
 
-				if (!isOwnedLocally) {
-					const remoteOwnerProject: Project | null = credential.ownedBy
-						? await this.findOrCreateOwnerProject(credential.ownedBy)
-						: null;
-
-					const newSharedCredential = new SharedCredentials();
-					newSharedCredential.credentialsId = newCredentialObject.id as string;
-					newSharedCredential.projectId = remoteOwnerProject?.id ?? personalProject.id;
-					newSharedCredential.role = 'credential:owner';
-
-					await this.sharedCredentialsRepository.upsert({ ...newSharedCredential }, [
-						'credentialsId',
-						'projectId',
-					]);
-				}
+				await this.syncResourceOwnership(
+					credential.id,
+					credential.ownedBy,
+					localOwner,
+					personalProject,
+					this.sharedCredentialsRepository,
+					this.credentialsRepository.manager,
+				);
 
 				return {
 					id: newCredentialObject.id as string,
@@ -1103,39 +1078,36 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async findOrCreateOwnerProject(owner: RemoteResourceOwner): Promise<Project | null> {
-		let ownerProject = await this.findOwnerProjectInLocalDb(owner);
+	/**
+	 * Syncs ownership of a resource (workflow or credential) during import.
+	 * Handles ownership transfer by removing old ownership and assigning new ownership.
+	 */
+	private async syncResourceOwnership(
+		resourceId: string,
+		remoteOwner: RemoteResourceOwner | null | undefined,
+		localOwner: { projectId: string } | undefined,
+		personalProjectFallback: Project,
+		repository: SharedWorkflowRepository | SharedCredentialsRepository,
+		trx: EntityManager,
+	): Promise<void> {
+		let targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
+		if (!targetOwnerProject) {
+			const isSharedResource =
+				remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
 
-		if (typeof owner === 'string' || owner.type === 'personal') {
-			if (!ownerProject) {
-				return null;
-			}
-			return ownerProject;
-		} else if (owner.type === 'team') {
-			if (!ownerProject) {
-				try {
-					ownerProject = await this.createTeamProject(owner);
-				} catch (e) {
-					ownerProject = await this.projectRepository.findOne({
-						where: { id: owner.teamId },
-					});
-					if (!ownerProject) {
-						throw e;
-					}
-				}
-			}
-
-			return ownerProject;
+			targetOwnerProject = isSharedResource
+				? await this.createTeamProject(remoteOwner)
+				: personalProjectFallback;
 		}
 
-		assertNever(owner);
+		// remove old ownership if it changed
+		const shouldRemoveOldOwner = localOwner && localOwner.projectId !== targetOwnerProject.id;
+		if (shouldRemoveOldOwner) {
+			await repository.deleteByIds([resourceId], localOwner.projectId, trx);
+		}
 
-		const errorOwner = owner as RemoteResourceOwner;
-		throw new UnexpectedError(
-			`Unknown resource owner type "${
-				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'
-			}" found when importing from source controller`,
-		);
+		// Set new ownership
+		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
 	}
 
 	private async findOwnerProjectInLocalDb(owner: RemoteResourceOwner | IWorkflowToImport['owner']) {
@@ -1145,12 +1117,12 @@ export class SourceControlImportService {
 
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
-			const user = await this.userRepository.findOne({
-				where: { email },
-			});
+			const user = await this.userRepository.findOne({ where: { email } });
+
 			if (!user) {
 				return null;
 			}
+
 			return await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 		} else if (owner.type === 'team') {
 			return this.projectRepository.findOne({
@@ -1169,12 +1141,28 @@ export class SourceControlImportService {
 	}
 
 	private async createTeamProject(owner: TeamResourceOwner) {
-		return this.projectRepository.save(
-			this.projectRepository.create({
-				id: owner.teamId,
-				name: owner.teamName,
-				type: 'team',
-			}),
-		);
+		let teamProject: Project | null = null;
+
+		try {
+			teamProject = await this.projectRepository.save(
+				this.projectRepository.create({
+					id: owner.teamId,
+					name: owner.teamName,
+					type: 'team',
+				}),
+			);
+		} catch (error) {
+			// Workaround to handle the race condition where another worker created the project
+			// between our check and insert
+			teamProject = await this.projectRepository.findOne({
+				where: { id: owner.teamId },
+			});
+
+			if (!teamProject) {
+				throw error;
+			}
+		}
+
+		return teamProject;
 	}
 }
