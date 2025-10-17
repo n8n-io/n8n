@@ -1,0 +1,29 @@
+post:
+  x-eov-operation-id: executeWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Execute a workflow
+  description: Execute a workflow by its ID. Returns the execution ID.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Execution started successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              executionId:
+                type: string
+                description: The ID of the created execution
+              waitingForWebhook:
+                type: boolean
+                description: Whether the workflow is waiting for a webhook
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'

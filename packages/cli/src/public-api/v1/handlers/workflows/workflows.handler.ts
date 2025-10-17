@@ -9,15 +9,6 @@ import type express from 'express';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-
 import {
 	getWorkflowById,
 	setWorkflowAsActive,
@@ -35,6 +26,16 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 export = {
 	createWorkflow: [
@@ -211,7 +212,7 @@ export = {
 				where.id = In(workflowsIds);
 			}
 
-			const selectFields: (keyof WorkflowEntity)[] = [
+			const selectFields: Array<keyof WorkflowEntity> = [
 				'id',
 				'name',
 				'active',
@@ -487,6 +488,45 @@ export = {
 			}
 
 			return res.json(tags);
+		},
+	],
+	executeWorkflow: [
+		apiKeyHasScope('workflow:execute'),
+		projectScope('workflow:execute', 'workflow'),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { id: workflowId } = req.params;
+
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
+				workflowId,
+				req.user,
+				['workflow:execute'],
+			);
+
+			if (!workflow) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			// Execute the workflow
+			const workflowExecutionService = Container.get(WorkflowExecutionService);
+
+			try {
+				const result = await workflowExecutionService.executeManually(
+					{
+						workflowData: workflow,
+						runData: undefined,
+						startNodes: undefined,
+						destinationNode: undefined,
+					},
+					req.user,
+				);
+
+				return res.json(result);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+				return res.status(500).json({ message: 'Internal Server Error' });
+			}
 		},
 	],
 };
