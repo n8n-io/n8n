@@ -1,4 +1,4 @@
-import { ProvisioningConfigDto } from '@n8n/api-types';
+import { ProvisioningConfigDto, ProvisioningConfigPatchDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -6,9 +6,8 @@ import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
-import { ProvisioningConfigPatchDto } from '@n8n/api-types/src/dto/provisioning/config.dto';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { type Publisher } from '@/scaling/pubsub/publisher.service';
 
 @Service()
 export class ProvisioningService {
@@ -63,7 +62,7 @@ export class ProvisioningService {
 
 		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
 		this.provisioningConfig = await this.loadConfig();
-		return this.getConfig();
+		return await this.getConfig();
 	}
 
 	applyPatchField(

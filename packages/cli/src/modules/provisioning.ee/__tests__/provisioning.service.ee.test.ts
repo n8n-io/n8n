@@ -6,7 +6,7 @@ import { type SettingsRepository } from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { type Publisher } from '@/scaling/pubsub/publisher.service';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
