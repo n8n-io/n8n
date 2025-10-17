@@ -13,7 +13,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useStorage } from '@/composables/useStorage';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
@@ -131,14 +131,14 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 
 <style lang="scss" module>
 .spaced {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .footer {
 	text-align: right;
 
 	> * {
-		margin-left: var(--spacing-s);
+		margin-left: var(--spacing--sm);
 	}
 }
 </style>

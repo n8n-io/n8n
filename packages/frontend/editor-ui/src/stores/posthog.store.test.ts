@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { usePostHog } from '@/stores/posthog.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
@@ -17,6 +17,7 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
+	proxy: 'proxy',
 };
 const CURRENT_USER_ID = '1';
 const CURRENT_INSTANCE_ID = '456';

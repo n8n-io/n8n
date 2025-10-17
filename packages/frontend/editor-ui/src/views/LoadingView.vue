@@ -15,17 +15,17 @@ import { N8nSpinner } from '@n8n/design-system';
 	width: 100%;
 	height: 100%;
 	position: absolute;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .spinner {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 	position: absolute;
 	left: 50%;
 	top: 30%;
 
 	* {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		min-height: 40px;
 		min-width: 40px;
 	}

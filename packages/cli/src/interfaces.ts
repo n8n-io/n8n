@@ -162,6 +162,7 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	success: boolean;
 	error_node_type?: string;
 	is_manual: boolean;
+	crashed?: boolean;
 }
 
 // ----------------------------------

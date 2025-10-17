@@ -106,7 +106,7 @@ function itemComparator(a: Item, b: Item) {
 	display: flex;
 	flex-direction: row;
 	flex-grow: 1;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .slotContainer {
@@ -120,28 +120,27 @@ function itemComparator(a: Item, b: Item) {
 }
 .selectableCell {
 	display: flex;
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 
 	min-width: max-content;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	font-size: small;
-	background-color: var(--color-ndv-background);
-	color: var(--text-color-dark);
+	color: var(--color--text--shade-1);
 
 	cursor: pointer;
 
 	:hover {
-		color: var(--text-color-dark);
+		color: var(--color--text--shade-1);
 	}
 }
 
 .selectableTextSize {
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
 }
 
 .slotRemoveIcon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	height: 10px;
 	width: 10px;
 	margin-top: 3px;

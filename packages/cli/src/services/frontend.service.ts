@@ -158,6 +158,7 @@ export class FrontendService {
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
+				proxy: `${instanceBaseUrl}/${restEndpoint}/posthog`,
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
@@ -267,6 +268,7 @@ export class FrontendService {
 			},
 			aiBuilder: {
 				enabled: false,
+				setup: false,
 			},
 			aiCredits: {
 				enabled: false,
@@ -424,7 +426,11 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
-		this.settings.aiBuilder.enabled = isAiBuilderEnabled;
+		if (isAiBuilderEnabled) {
+			this.settings.aiBuilder.enabled = isAiBuilderEnabled;
+			this.settings.aiBuilder.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!this.globalConfig.aiBuilder.apiKey;
+		}
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 

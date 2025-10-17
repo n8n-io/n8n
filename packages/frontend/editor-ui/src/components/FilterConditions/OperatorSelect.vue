@@ -79,7 +79,7 @@ function onGroupSelect(group: string) {
 					placement="right-start"
 					:show-arrow="false"
 					:offset="2"
-					:popper-style="{ padding: 'var(--spacing-3xs) 0' }"
+					:popper-style="{ padding: 'var(--spacing--3xs) 0' }"
 					width="auto"
 				>
 					<template #reference>
@@ -123,7 +123,7 @@ function onGroupSelect(group: string) {
 
 <style lang="scss" module>
 .icon {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .groups {
@@ -133,27 +133,27 @@ function onGroupSelect(group: string) {
 
 .group {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 	justify-content: space-between;
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-regular);
-	color: var(--color-text-dark);
-	padding: var(--spacing-2xs) var(--spacing-s);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
+	color: var(--color--text--shade-1);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 	cursor: pointer;
 
 	&.suggested {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 
 	&:hover {
-		background: var(--color-background-base);
+		background: var(--color--background);
 	}
 }
 
 .groupTitle {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 </style>
