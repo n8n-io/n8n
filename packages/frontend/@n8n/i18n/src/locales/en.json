@@ -3031,6 +3031,7 @@
 	"settings.ai.efficiencyNotice": "Not sending data values will result in less helpful AI responses.",
 	"settings.ai.updated.succcess": "AI settings updated",
 	"settings.ai.updated.error": "There was a problem updating AI settings",
+	"settings.ai.prompt.paremetersNotAvailable": "IMPORTANT: The user has opted not to share any node parameters or input data in their privacy settings.",
 	"settings.ldap": "LDAP",
 	"settings.ldap.note": "LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.",
 	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/user-management/ldap/' target='_blank'>LDAP in the Docs</a>",

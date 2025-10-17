@@ -10,6 +10,7 @@ import {
 import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ChatRequest } from '../assistant.types';
 import {
@@ -950,6 +951,598 @@ describe('Trim Payload Size', () => {
 			),
 		).toBe(true);
 		expect(supportPayload.context?.executionData?.runData).toEqual({});
+	});
+});
+
+describe('removeParameterValues', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('Should handle primitive types correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				stringField: 'some string value',
+				numberField: 123,
+				booleanField: true,
+				nullField: null,
+				undefinedField: undefined,
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			stringField: '',
+			numberField: 0,
+			booleanField: false,
+			nullField: null,
+			undefinedField: undefined,
+		});
+	});
+
+	it('Should handle AssignmentCollection correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3.4,
+			position: [0, 0],
+			parameters: {
+				mode: 'manual',
+				assignments: {
+					assignments: [
+						{
+							id: '4c1abbda-52ad-4809-97b6-6a88c421d9a3',
+							name: 'firstName',
+							value: 'John',
+							type: 'string',
+						},
+						{
+							id: 'af2e008d-cde6-45de-b5f1-26576ba463e0',
+							name: 'lastName',
+							value: '{{$json.string}}',
+							type: 'string',
+						},
+						{
+							name: 'age',
+							value: 30,
+							type: 'number',
+						},
+					],
+				},
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			mode: '',
+			assignments: {
+				assignments: [
+					{ name: 'firstName', type: 'string' },
+					{ name: 'lastName', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			},
+		});
+	});
+
+	it('Should handle ResourceLocator correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.googleSheets',
+			typeVersion: 4.5,
+			position: [0, 0],
+			parameters: {
+				documentId: {
+					__rl: true,
+					mode: 'id',
+					value: '1234567890abcdef',
+					cachedResultName: 'My Document',
+					cachedResultUrl: 'https://docs.google.com/spreadsheets/d/1234567890abcdef',
+				},
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			documentId: {
+				__rl: true,
+				mode: 'id',
+				value: '',
+				// cachedResultName and cachedResultUrl should be completely removed
+			},
+		});
+	});
+
+	it('Should handle ResourceMapperValue correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.resourceMapper',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				mapper: {
+					mappingMode: 'defineBelow',
+					value: {
+						field1: 'value1',
+						field2: 'value2',
+					},
+					matchingColumns: ['id'],
+					schema: [
+						{ name: 'field1', type: 'string' },
+						{ name: 'field2', type: 'string' },
+					],
+					attemptToConvertTypes: true,
+					convertFieldsToString: false,
+				},
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			mapper: {
+				mappingMode: 'defineBelow',
+				value: null,
+				matchingColumns: ['id'],
+				schema: [
+					{ name: 'field1', type: 'string' },
+					{ name: 'field2', type: 'string' },
+				],
+				attemptToConvertTypes: true,
+				convertFieldsToString: false,
+			},
+		});
+	});
+
+	it('Should handle FilterValue correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.filter',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				filter: {
+					combinator: 'and',
+					options: {
+						caseSensitive: true,
+					},
+					conditions: [
+						{
+							leftValue: 'field1',
+							operator: 'equals',
+							rightValue: 'value1',
+						},
+						{
+							leftValue: 'field2',
+							operator: 'contains',
+							rightValue: 'value2',
+						},
+					],
+				},
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			filter: {
+				combinator: 'and',
+				options: {
+					caseSensitive: true,
+				},
+				conditions: [
+					{
+						leftValue: '',
+						operator: 'equals',
+						rightValue: '',
+					},
+					{
+						leftValue: '',
+						operator: 'contains',
+						rightValue: '',
+					},
+				],
+			},
+		});
+	});
+
+	it('Should handle nested arrays correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				items: [
+					{
+						name: 'item1',
+						value: 'value1',
+						nested: [
+							{ key: 'key1', val: 'val1' },
+							{ key: 'key2', val: 'val2' },
+						],
+					},
+					{
+						name: 'item2',
+						value: 'value2',
+						nested: [{ key: 'key3', val: 'val3' }],
+					},
+				],
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			items: [
+				{
+					name: '',
+					value: '',
+					nested: [
+						{ key: '', val: '' },
+						{ key: '', val: '' },
+					],
+				},
+				{
+					name: '',
+					value: '',
+					nested: [{ key: '', val: '' }],
+				},
+			],
+		});
+	});
+
+	it('Should handle deeply nested structures correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				level1: {
+					level2: {
+						level3: {
+							level4: {
+								level5: {
+									value: 'deep value',
+									number: 42,
+									bool: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			level1: {
+				level2: {
+					level3: {
+						level4: {
+							level5: {
+								value: '',
+								number: 0,
+								bool: false,
+							},
+						},
+					},
+				},
+			},
+		});
+	});
+
+	it('Should handle max depth limit correctly', () => {
+		// Create a deeply nested structure that exceeds MAX_PARAMETER_DEPTH (10)
+		const createDeepStructure = (depth: number): any => {
+			if (depth <= 0) {
+				return { value: 'bottom' };
+			}
+			return { nested: createDeepStructure(depth - 1) };
+		};
+
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				// Create 12 levels deep (exceeds limit of 10)
+				deepData: createDeepStructure(12),
+			},
+		};
+
+		// Mock console.warn to check if warning is logged
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		// Should have warned about exceeding depth
+		expect(warnSpy).toHaveBeenCalledWith('Parameter nesting depth exceeded 10 levels');
+
+		// At depth 10, it should return null for deeper levels
+		let current: any = processed.parameters.deepData;
+		for (let i = 0; i < 10; i++) {
+			expect(current).toBeDefined();
+			if (current?.nested !== undefined) {
+				current = current.nested;
+			}
+		}
+		// At depth 11, it should be null (exceeded limit)
+		expect(current).toBeNull();
+
+		warnSpy.mockRestore();
+	});
+
+	it('Should handle mixed complex structures correctly', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.complex',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				simpleField: 'text',
+				assignments: {
+					assignments: [{ id: '1', name: 'field1', value: 'val1', type: 'string' }],
+				},
+				resourceLocator: {
+					__rl: true,
+					mode: 'url',
+					value: 'https://example.com',
+					cachedResultName: 'Example',
+				},
+				nestedObject: {
+					filter: {
+						combinator: 'or',
+						conditions: [{ leftValue: 'a', rightValue: 'b' }],
+						options: {},
+					},
+					mapper: {
+						mappingMode: 'auto',
+						value: { key: 'value' },
+						matchingColumns: [],
+						schema: [],
+						attemptToConvertTypes: false,
+						convertFieldsToString: true,
+					},
+				},
+				arrayOfObjects: [
+					{ name: 'obj1', value: 100 },
+					{ name: 'obj2', value: 200 },
+				],
+			},
+		};
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			simpleField: '',
+			assignments: {
+				assignments: [{ name: 'field1', type: 'string' }],
+			},
+			resourceLocator: {
+				__rl: true,
+				mode: 'url',
+				value: '',
+			},
+			nestedObject: {
+				filter: {
+					combinator: 'or',
+					conditions: [{ leftValue: '', rightValue: '' }],
+					options: {},
+				},
+				mapper: {
+					mappingMode: 'auto',
+					value: null,
+					matchingColumns: [],
+					schema: [],
+					attemptToConvertTypes: false,
+					convertFieldsToString: true,
+				},
+			},
+			arrayOfObjects: [
+				{ name: '', value: 0 },
+				{ name: '', value: 0 },
+			],
+		});
+	});
+
+	it('Should handle special parameter types when node type is available', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'test.specialTypes',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				password: 'secretPassword123',
+				apiKey: 'sk-1234567890',
+				normalField: 'normal value',
+				credentialId: 'cred_123',
+			},
+		};
+
+		// Mock the node type with parameter definitions
+		const mockNodeType = {
+			displayName: 'Test Node',
+			name: 'test.specialTypes',
+			properties: [
+				{
+					displayName: 'Password',
+					name: 'password',
+					type: 'password',
+					default: '',
+				},
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'password',
+					default: '',
+				},
+				{
+					displayName: 'Normal Field',
+					name: 'normalField',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Credential',
+					name: 'credentialId',
+					type: 'credentialsSelect',
+					default: '',
+				},
+			],
+		};
+
+		// Mock the nodeTypesStore's getNodeType method
+		const nodeTypesStore = useNodeTypesStore();
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType as any);
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			password: '******', // Masked
+			apiKey: '******', // Masked
+			normalField: '', // Normal string handling
+			credentialId: '', // Credentials removed
+		});
+	});
+
+	it('Should handle nested collections with special types', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'test.nestedSpecialTypes',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				authentication: {
+					username: 'admin',
+					password: 'secret123',
+					apiKey: 'key-12345',
+				},
+			},
+		};
+
+		// Mock the node type with nested collection
+		const mockNodeType = {
+			displayName: 'Test Node',
+			name: 'test.nestedSpecialTypes',
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							displayName: 'Username',
+							name: 'username',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Password',
+							name: 'password',
+							type: 'password',
+							default: '',
+						},
+						{
+							displayName: 'API Key',
+							name: 'apiKey',
+							type: 'password',
+							default: '',
+						},
+					],
+				},
+			],
+		};
+
+		// Mock the nodeTypesStore's getNodeType method
+		const nodeTypesStore = useNodeTypesStore();
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType as any);
+
+		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: false,
+		});
+
+		expect(processed.parameters).toEqual({
+			authentication: {
+				username: '', // Normal string
+				password: '******', // Masked password
+				apiKey: '******', // Masked password
+			},
+		});
+	});
+
+	it('Should preserve parameters when allowSendingParameterData is true', () => {
+		const testNode: INode = {
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				field1: 'value1',
+				field2: 123,
+				assignments: {
+					assignments: [{ id: '1', name: 'test', value: 'keep this', type: 'string' }],
+				},
+			},
+		};
+
+		// When allowSendingParameterData is true (or undefined), parameters should be preserved
+		const processedWithData = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
+			allowSendingParameterData: true,
+		});
+
+		expect(processedWithData.parameters).toEqual(testNode.parameters);
+
+		// Also test with undefined options (default behavior)
+		const processedDefault = aiAssistantHelpers.processNodeForAssistant(testNode, []);
+
+		expect(processedDefault.parameters).toEqual(testNode.parameters);
 	});
 });
 

@@ -6,6 +6,14 @@ import type {
 	NodeError,
 	NodeOperationError,
 	INode,
+	INodeParameters,
+	INodeParameterResourceLocator,
+	NodeParameterValueType,
+	AssignmentCollectionValue,
+	ResourceMapperValue,
+	FilterValue,
+	INodeType,
+	INodeProperties,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -23,6 +31,12 @@ const CANVAS_VIEWS = [VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOW, VIEWS.EXECUTION_DEBUG]
 const EXECUTION_VIEWS = [VIEWS.EXECUTION_PREVIEW];
 const WORKFLOW_LIST_VIEWS = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
 const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
+
+/**
+ * Maximum recursion depth for parameter value removal to prevent stack overflow
+ * Based on practical n8n usage patterns where most nodes use 3-4 levels max
+ */
+const MAX_PARAMETER_DEPTH = 10;
 
 export const useAIAssistantHelpers = () => {
 	const ndvStore = useNDVStore();
@@ -89,23 +103,270 @@ export const useAIAssistantHelpers = () => {
 	}
 
 	/**
+	 * Builds a lookup map of parameter names to their types from node properties
+	 * @param properties The node properties array
+	 * @param prefix Optional prefix for nested properties
+	 * @returns Map of parameter path to type
+	 */
+	function buildParameterTypeLookup(
+		properties: INodeProperties[] | undefined,
+		prefix = '',
+	): Map<string, string> {
+		const lookup = new Map<string, string>();
+		if (!properties) return lookup;
+
+		for (const prop of properties) {
+			const key = prefix ? `${prefix}.${prop.name}` : prop.name;
+			lookup.set(key, prop.type);
+
+			// Handle nested properties in collections and fixed collections
+			if (prop.type === 'collection' && prop.options) {
+				const nestedLookup = buildParameterTypeLookup(prop.options as INodeProperties[], key);
+				nestedLookup.forEach((type, nestedKey) => lookup.set(nestedKey, type));
+			} else if (prop.type === 'fixedCollection' && prop.options) {
+				for (const option of prop.options) {
+					if ('values' in option && Array.isArray(option.values)) {
+						const nestedLookup = buildParameterTypeLookup(
+							option.values as INodeProperties[],
+							`${key}.${option.name}`,
+						);
+						nestedLookup.forEach((type, nestedKey) => lookup.set(nestedKey, type));
+					}
+				}
+			}
+		}
+
+		return lookup;
+	}
+
+	/**
+	 * Removes sensitive values from node parameters while preserving structure
+	 * for AI assistant context when allowSendingParameterData is false
+	 * @param params The parameters to process
+	 * @param parameterPath Current parameter path for type lookup
+	 * @param typeLookup Optional map of parameter paths to types
+	 * @param depth Current recursion depth (for stack overflow prevention)
+	 * @returns Parameters with values removed but structure preserved
+	 */
+	function removeParameterValues(
+		params: NodeParameterValueType,
+		parameterPath = '',
+		typeLookup?: Map<string, string>,
+		depth = 0,
+	): NodeParameterValueType {
+		// Prevent stack overflow with depth limit
+		if (depth > MAX_PARAMETER_DEPTH) {
+			console.warn(`Parameter nesting depth exceeded ${MAX_PARAMETER_DEPTH} levels`);
+			return null;
+		}
+
+		// Handle null/undefined
+		if (params === null || params === undefined) {
+			return params;
+		}
+
+		// Check if we have type information for this parameter
+		const paramType = typeLookup?.get(parameterPath);
+
+		// Handle special types based on schema
+		if (paramType) {
+			switch (paramType) {
+				case 'password':
+					// Mask password fields
+					return '******';
+				case 'credentialsSelect':
+				case 'credentials':
+					// Remove credential values completely
+					return '';
+				case 'assignmentCollection':
+					// We know it's an assignment collection from schema
+					if (typeof params === 'object' && 'assignments' in params) {
+						const assignmentCollection = params as AssignmentCollectionValue;
+						return {
+							assignments: assignmentCollection.assignments.map((assignment) => ({
+								name: assignment.name || '',
+								...(assignment.type && { type: assignment.type }),
+							})),
+						} as AssignmentCollectionValue;
+					}
+					break;
+				case 'resourceLocator':
+					// We know it's a resource locator from schema
+					if (typeof params === 'object' && '__rl' in params) {
+						const resourceLocator = params as INodeParameterResourceLocator;
+						return {
+							__rl: true,
+							mode: resourceLocator.mode,
+							value: '',
+						} as INodeParameterResourceLocator;
+					}
+					break;
+				case 'filter':
+					// We know it's a filter from schema
+					if (typeof params === 'object' && 'combinator' in params) {
+						const filter = params as FilterValue;
+						return {
+							options: filter.options || {},
+							conditions: (filter.conditions || []).map((condition: any) => ({
+								...condition,
+								leftValue: '',
+								rightValue: '',
+							})),
+							combinator: filter.combinator,
+						} as FilterValue;
+					}
+					break;
+				case 'resourceMapper':
+					// We know it's a resource mapper from schema
+					if (typeof params === 'object' && 'mappingMode' in params) {
+						const resourceMapper = params as ResourceMapperValue;
+						return {
+							mappingMode: resourceMapper.mappingMode,
+							value: null,
+							matchingColumns: resourceMapper.matchingColumns || [],
+							schema: resourceMapper.schema || [],
+							attemptToConvertTypes: resourceMapper.attemptToConvertTypes || false,
+							convertFieldsToString: resourceMapper.convertFieldsToString || false,
+						} as ResourceMapperValue;
+					}
+					break;
+			}
+		}
+
+		// Handle primitive types
+		if (typeof params === 'string') {
+			return '';
+		}
+		if (typeof params === 'number') {
+			return 0;
+		}
+		if (typeof params === 'boolean') {
+			return false;
+		}
+
+		// Handle arrays
+		if (Array.isArray(params)) {
+			return params.map((item, index) =>
+				removeParameterValues(item, `${parameterPath}[${index}]`, typeLookup, depth + 1),
+			);
+		}
+
+		// Handle objects
+		if (typeof params === 'object') {
+			const result: any = {};
+
+			// Fallback to structure-based detection if no type info available
+
+			// ResourceLocator - identified by __rl property
+			if ('__rl' in params && (params as any).__rl === true) {
+				const resourceLocator = params as INodeParameterResourceLocator;
+				return {
+					__rl: true,
+					mode: resourceLocator.mode,
+					value: '',
+					// Completely remove cached results as per requirement
+				} as INodeParameterResourceLocator;
+			}
+
+			// AssignmentCollection - identified by assignments array
+			if ('assignments' in params && Array.isArray((params as any).assignments)) {
+				const assignmentCollection = params as AssignmentCollectionValue;
+				return {
+					assignments: assignmentCollection.assignments.map((assignment) => ({
+						// Remove id and value, keep name and type for structure
+						name: assignment.name || '',
+						...(assignment.type && { type: assignment.type }),
+					})),
+				} as AssignmentCollectionValue;
+			}
+
+			// ResourceMapperValue - identified by mappingMode and schema
+			if ('mappingMode' in params && 'schema' in params) {
+				const resourceMapper = params as ResourceMapperValue;
+				return {
+					mappingMode: resourceMapper.mappingMode,
+					value: null,
+					matchingColumns: resourceMapper.matchingColumns || [],
+					schema: resourceMapper.schema || [],
+					attemptToConvertTypes: resourceMapper.attemptToConvertTypes || false,
+					convertFieldsToString: resourceMapper.convertFieldsToString || false,
+				} as ResourceMapperValue;
+			}
+
+			// FilterValue - identified by combinator and conditions
+			if ('combinator' in params && 'conditions' in params) {
+				const filter = params as FilterValue;
+				return {
+					options: filter.options || {},
+					conditions: (filter.conditions || []).map((condition: any) => ({
+						...condition,
+						// Clear the actual values while keeping structure
+						leftValue: '',
+						rightValue: '',
+					})),
+					combinator: filter.combinator,
+				} as FilterValue;
+			}
+
+			// Regular object - recursively process all properties
+			for (const key in params) {
+				if (params.hasOwnProperty(key)) {
+					const childPath = parameterPath ? `${parameterPath}.${key}` : key;
+					result[key] = removeParameterValues(
+						(params as INodeParameters)[key],
+						childPath,
+						typeLookup,
+						depth + 1,
+					);
+				}
+			}
+
+			return result;
+		}
+
+		return params;
+	}
+
+	/**
 	 * Processes node object before sending it to AI assistant
 	 * - Removes unnecessary properties
 	 * - Extracts expressions from the parameters and resolves them
+	 * - Optionally removes parameter values for privacy
 	 * @param node original node object
 	 * @param propsToRemove properties to remove from the node object
+	 * @param options.allowSendingParameterData if false, removes parameter values while keeping structure
 	 * @returns processed node
 	 */
-	function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
+	function processNodeForAssistant(
+		node: INode,
+		propsToRemove: string[],
+		options?: { allowSendingParameterData?: boolean },
+	): INode {
 		// Make a copy of the node object so we don't modify the original
 		const nodeForLLM = deepCopy(node);
 		propsToRemove.forEach((key) => {
 			delete nodeForLLM[key as keyof INode];
 		});
-		const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
-			nodeForLLM.parameters,
-		);
-		nodeForLLM.parameters = resolvedParameters;
+
+		// Remove parameter values if not allowed to send them
+		if (options?.allowSendingParameterData === false) {
+			// Get node type definition to build parameter type lookup
+			const nodeType = nodeTypesStore.getNodeType(node.type);
+			const typeLookup = nodeType ? buildParameterTypeLookup(nodeType.properties) : undefined;
+
+			const cleaned = (nodeForLLM.parameters = removeParameterValues(
+				nodeForLLM.parameters,
+				'',
+				typeLookup,
+			) as INodeParameters);
+			cleaned.note = locale.baseText('settings.ai.prompt.paremetersNotAvailable');
+			nodeForLLM.parameters = cleaned;
+		} else {
+			nodeForLLM.parameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+				nodeForLLM.parameters,
+			);
+		}
+
 		return nodeForLLM;
 	}
 

@@ -41,6 +41,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const settingsStore = useSettingsStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const ndvStore = useNDVStore();
@@ -71,6 +72,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// Indicate if last sent workflow and execution data is stale
 	const workflowDataStale = ref<boolean>(true);
 	const workflowExecutionDataStale = ref<boolean>(true);
+
+	const allowSendingParameterData = computed(
+		() => settingsStore.settings.ai.allowSendingActualData,
+	);
 
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
@@ -313,7 +318,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
+			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'], {
+					allowSendingParameterData: allowSendingParameterData.value,
+				})
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -446,10 +453,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			error: context.error,
-			node: assistantHelpers.processNodeForAssistant(context.node, [
-				'position',
-				'parameters.notice',
-			]),
+			node: assistantHelpers.processNodeForAssistant(
+				context.node,
+				['position', 'parameters.notice'],
+				{ allowSendingParameterData: allowSendingParameterData.value },
+			),
 			nodeInputData,
 			executionSchema: schemas,
 			authType,
