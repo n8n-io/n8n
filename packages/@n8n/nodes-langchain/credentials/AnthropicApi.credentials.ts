@@ -1,7 +1,8 @@
 import type {
-	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -28,16 +29,38 @@ export class AnthropicApi implements ICredentialType {
 			default: 'https://api.anthropic.com',
 			description: 'Override the default base URL for the API',
 		},
-	];
-
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				'x-api-key': '={{$credentials.apiKey}}',
-			},
+		{
+			displayName: 'Add Custom Header',
+			name: 'header',
+			type: 'boolean',
+			default: false,
 		},
-	};
+		{
+			displayName: 'Header Name',
+			name: 'headerName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Header Value',
+			name: 'headerValue',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			},
+			default: '',
+		},
+	];
 
 	test: ICredentialTestRequest = {
 		request: {
@@ -54,4 +77,24 @@ export class AnthropicApi implements ICredentialType {
 			},
 		},
 	};
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		requestOptions.headers ??= {};
+
+		requestOptions.headers['x-api-key'] = credentials.apiKey;
+
+		if (
+			credentials.header &&
+			typeof credentials.headerName === 'string' &&
+			credentials.headerName &&
+			typeof credentials.headerValue === 'string'
+		) {
+			requestOptions.headers[credentials.headerName] = credentials.headerValue;
+		}
+
+		return requestOptions;
+	}
 }

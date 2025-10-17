@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CredentialIcon from '@/components/CredentialIcon.vue';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { CHAT_CONVERSATION_VIEW } from '@/features/chatHub/constants';
 import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';

@@ -8,20 +8,16 @@ import ModelSelector from './components/ModelSelector.vue';
 import CredentialSelectorModal from './components/CredentialSelectorModal.vue';
 
 import { useChatStore } from './chat.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
-import {
-	type ChatMessage as ChatMessageType,
-	credentialsMapSchema,
-	type CredentialsMap,
-	type Suggestion,
-} from './chat.types';
+import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
 import {
 	chatHubConversationModelSchema,
 	type ChatHubProvider,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
+	type ChatHubMessageDto,
 } from '@n8n/api-types';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import {
@@ -113,7 +109,7 @@ const mergedCredentials = computed(() => ({
 	...selectedCredentials.value,
 }));
 
-const chatMessages = computed(() => chatStore.messagesBySession[sessionId.value] ?? []);
+const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const isNewChat = computed(() => route.name === CHAT_VIEW);
 const inputPlaceholder = computed(() => {
 	if (!selectedModel.value) {
@@ -192,7 +188,7 @@ watch(
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
 
-		if (!isNew && !chatStore.messagesBySession[id]) {
+		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
 			} catch (error) {
@@ -251,7 +247,7 @@ function onSubmit(message: string) {
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.askAI(sessionId.value, message, selectedModel.value, {
+	chatStore.sendMessage(sessionId.value, message, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId,
 			name: '',
@@ -277,13 +273,51 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-async function handleUpdateMessage(message: ChatMessageType) {
-	if (message.type === 'error') {
+function handleEditMessage(message: ChatHubMessageDto) {
+	if (chatStore.isResponding || message.type !== 'human' || !selectedModel.value) {
 		return;
 	}
 
-	await chatStore.updateChatMessage(sessionId.value, message.id, message.text);
+	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+
+	if (!credentialsId) {
+		return;
+	}
+
+	const mesasgeToEdit = message.revisionOfMessageId ?? message.id;
+
+	chatStore.editMessage(sessionId.value, mesasgeToEdit, message.content, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	});
 	editingMessageId.value = undefined;
+}
+
+function handleRegenerateMessage(message: ChatHubMessageDto) {
+	if (chatStore.isResponding || message.type !== 'ai' || !selectedModel.value) {
+		return;
+	}
+
+	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+
+	if (!credentialsId) {
+		return;
+	}
+
+	const messageToRetry = message.retryOfMessageId ?? message.id;
+
+	chatStore.regenerateMessage(sessionId.value, messageToRetry, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	});
+}
+
+function handleSwitchAlternative(messageId: string) {
+	chatStore.switchAlternative(sessionId.value, messageId);
 }
 </script>
 
@@ -349,7 +383,9 @@ async function handleUpdateMessage(message: ChatMessageType) {
 						:is-streaming="chatStore.ongoingStreaming?.messageId === message.id"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
-						@update="handleUpdateMessage"
+						@regenerate="handleRegenerateMessage"
+						@update="handleEditMessage"
+						@switch-alternative="handleSwitchAlternative"
 					/>
 				</div>
 

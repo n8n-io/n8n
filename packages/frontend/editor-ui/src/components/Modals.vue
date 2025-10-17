@@ -5,9 +5,6 @@ import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
-	CREDENTIAL_EDIT_MODAL_KEY,
-	CREDENTIAL_SELECT_MODAL_KEY,
-	DEBUG_PAYWALL_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
@@ -35,12 +32,17 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	VARIABLE_MODAL_KEY,
 } from '@/constants';
+import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/executions/executions.constants';
+import {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+} from '@/features/credentials/credentials.constants';
 import {
 	DELETE_USER_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 } from '@/features/users/users.constants';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/usage/usage.constants';
 import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
@@ -64,14 +66,14 @@ import ConfirmPasswordModal from '@/features/auth/components/ConfirmPasswordModa
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/features/communityNodes/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/features/communityNodes/components/CommunityPackageManageConfirmModal.vue';
-import CommunityPlusEnrollmentModal from '@/features/communityPlus/components/CommunityPlusEnrollmentModal.vue';
+import CommunityPlusEnrollmentModal from '@/features/usage/components/CommunityPlusEnrollmentModal.vue';
 import ContactPromptModal from '@/components/ContactPromptModal.vue';
-import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
-import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
-import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
+import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
+import DebugPaywallModal from '@/features/executions/components/DebugPaywallModal.vue';
 import DeleteFolderModal from '@/features/folders/components/DeleteFolderModal.vue';
 import MoveToFolderModal from '@/features/folders/components/MoveToFolderModal.vue';
-import DeleteUserModal from '@/components/DeleteUserModal.vue';
+import DeleteUserModal from '@/features/users/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/externalSecrets/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';

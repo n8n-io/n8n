@@ -1,7 +1,6 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-
 import { createAdmin, createMember } from '@test-integration/db/users';
 
 import { ChatHubService } from '../chat-hub.service';
@@ -176,16 +175,10 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2.id);
-			expect(activeMessageChain[2]).toBe(msg3.id);
-			expect(activeMessageChain[3]).toBe(msg4.id);
 			expect(messages[msg1.id].content).toBe('message 1');
 			expect(messages[msg1.id].type).toBe('human');
 			expect(messages[msg1.id].turnId).toBe(msg1.id);
@@ -283,25 +276,16 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(6);
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2.id);
-			expect(activeMessageChain[2]).toBe(msg5.id);
-			expect(activeMessageChain[3]).toBe(msg6.id);
 			expect(messages[msg1.id].content).toBe('message 1');
 			expect(messages[msg2.id].content).toBe('message 2');
 			expect(messages[msg3.id].content).toBe('message 3a');
 			expect(messages[msg4.id].content).toBe('message 4a');
 			expect(messages[msg5.id].content).toBe('message 3b');
 			expect(messages[msg6.id].content).toBe('message 4b');
-			expect(messages[msg3.id].revisionIds).toEqual([msg5.id]);
-			expect(messages[msg3.id].responseIds).toEqual([msg4.id]);
-			expect(messages[msg3.id].retryIds).toEqual([]);
 			expect(messages[msg5.id].previousMessageId).toBe(msg2.id);
 		});
 
@@ -349,7 +333,7 @@ describe('chatHub', () => {
 				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:10:00Z'),
 			});
-			const msg4 = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: ids[3],
 				sessionId: session.id,
 				name: 'ChatGPT',
@@ -365,14 +349,10 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id, msg3.id]);
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(activeMessageChain).toHaveLength(2);
-			expect(activeMessageChain[0]).toBe(msg3.id);
-			expect(activeMessageChain[1]).toBe(msg4.id);
 		});
 
 		it('should get conversation with a retry branch at last message', async () => {
@@ -448,19 +428,10 @@ describe('chatHub', () => {
 			expect(response.session.id).toBe(session.id);
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(5);
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2.id);
-			expect(activeMessageChain[2]).toBe(msg3.id);
-			expect(activeMessageChain[3]).toBe(msg5.id);
-			expect(messages[msg4.id].revisionIds).toEqual([]);
-			expect(messages[msg4.id].responseIds).toEqual([]);
-			expect(messages[msg4.id].retryIds).toEqual([msg5.id]);
 			expect(messages[msg5.id].previousMessageId).toBe(msg3.id);
 			expect(messages[msg5.id].retryOfMessageId).toBe(msg4.id);
 		});
@@ -523,7 +494,7 @@ describe('chatHub', () => {
 				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:10:00Z'),
 			});
-			const msg4a = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: ids[3],
 				sessionId: session.id,
 				name: 'ChatGPT',
@@ -544,7 +515,7 @@ describe('chatHub', () => {
 				turnId: ids[4],
 				createdAt: new Date('2025-01-03T00:20:00Z'),
 			});
-			const msg4b = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: ids[5],
 				sessionId: session.id,
 				name: 'ChatGPT',
@@ -554,7 +525,7 @@ describe('chatHub', () => {
 				turnId: ids[4],
 				createdAt: new Date('2025-01-03T00:25:00Z'),
 			});
-			const msg1b = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: ids[6],
 				sessionId: session.id,
 				name: 'Nathan',
@@ -585,7 +556,7 @@ describe('chatHub', () => {
 				turnId: ids[8],
 				createdAt: new Date('2025-01-03T00:40:00Z'),
 			});
-			const msg4c = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: crypto.randomUUID(),
 				sessionId: session.id,
 				name: 'ChatGPT',
@@ -601,33 +572,10 @@ describe('chatHub', () => {
 			expect(response.session.id).toBe(session.id);
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id, msg1b.id]);
 			expect(Object.keys(messages)).toHaveLength(10);
-
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2r.id);
-			expect(activeMessageChain[2]).toBe(msg3d.id);
-			expect(activeMessageChain[3]).toBe(msg4c.id);
-
-			expect(messages[msg1.id].revisionIds).toEqual([msg1b.id]);
-			expect(messages[msg1b.id].responseIds).toEqual([]);
-			expect(messages[msg1b.id].retryIds).toEqual([]);
-
-			expect(messages[msg2.id].revisionIds).toEqual([]);
-			expect(messages[msg2.id].responseIds).toEqual([msg3a.id, msg3b.id]);
-			expect(messages[msg2.id].retryIds).toEqual([msg2r.id]);
-
-			expect(messages[msg3b.id].revisionIds).toEqual([]);
-			expect(messages[msg3b.id].responseIds).toEqual([msg4b.id]);
-			expect(messages[msg3b.id].retryIds).toEqual([]);
-
-			expect(messages[msg4a.id].revisionIds).toEqual([]);
-			expect(messages[msg4a.id].responseIds).toEqual([]);
-			expect(messages[msg4a.id].retryIds).toEqual([]);
 
 			expect(messages[msg2r.id].previousMessageId).toBe(msg1.id);
 			expect(messages[msg2r.id].retryOfMessageId).toBe(msg2.id);

@@ -51,18 +51,12 @@ export class Telemetry {
 			config: { key, proxy, sourceConfig },
 		} = telemetrySettings;
 
-		const settingsStore = useSettingsStore();
 		const rootStore = useRootStore();
-
-		const logLevel = settingsStore.logLevel;
-
-		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
 
 		this.initRudderStack(key, proxy, {
 			integrations: { All: false },
 			loadIntegration: false,
 			configUrl: sourceConfig,
-			...logging,
 		});
 
 		this.identify(instanceId, userId, versionCli, projectId);
