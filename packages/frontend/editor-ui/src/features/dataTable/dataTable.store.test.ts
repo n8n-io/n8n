@@ -423,4 +423,33 @@ describe('dataTable.store', () => {
 			expect(dataTableStore.maxSizeMB).toBe(10);
 		});
 	});
+	describe('fetchRowById', () => {
+		it('should fetch a single row by id', async () => {
+			const mockRow = { id: 42, name: 'Test Row', updatedAt: '2025-10-14T12:00:00Z' };
+			const mockResponse = { count: 1, data: [mockRow] };
+			const getDataTableRowsApiSpy = vi
+				.spyOn(dataTableApi, 'getDataTableRowsApi')
+				.mockResolvedValue(mockResponse);
+
+			const result = await dataTableStore.fetchRowById('dt-1', 'p1', 42);
+
+			expect(getDataTableRowsApiSpy).toHaveBeenCalledWith(rootStore.restApiContext, 'dt-1', 'p1', {
+				filter: JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'id', condition: 'eq', value: 42 }],
+				}),
+				take: 1,
+			});
+			expect(result).toEqual(mockRow);
+		});
+
+		it('should return null if no row is found', async () => {
+			const mockResponse = { count: 0, data: [] };
+			vi.spyOn(dataTableApi, 'getDataTableRowsApi').mockResolvedValue(mockResponse);
+
+			const result = await dataTableStore.fetchRowById('dt-1', 'p1', 99);
+
+			expect(result).toBeNull();
+		});
+	});
 });

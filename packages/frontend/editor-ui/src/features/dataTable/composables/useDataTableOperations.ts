@@ -247,11 +247,6 @@ export const useDataTableOperations = ({
 			await dataTableStore.updateRow(dataTableId, projectId, id, {
 				[fieldName]: value,
 			});
-			telemetry.track('User edited data table content', {
-				data_table_id: dataTableId,
-				column_id: colDef.colId,
-				column_type: colDef.cellDataType,
-			});
 		} catch (error) {
 			// Revert cell to original value if the update fails
 			const validOldValue = isDataTableValue(oldValue) ? oldValue : null;
@@ -263,9 +258,30 @@ export const useDataTableOperations = ({
 				update: [revertedData],
 			});
 			toast.showError(error, i18n.baseText('dataTable.updateRow.error'));
+			return;
 		} finally {
 			toggleSave(false);
 		}
+
+		// Fetch the updated row, but do not revert if fetch fails
+		try {
+			const updatedRow = await dataTableStore.fetchRowById(dataTableId, projectId, id);
+			if (updatedRow) {
+				const rowIndex = rowData.value.findIndex((row) => row.id === id);
+				if (rowIndex !== -1) {
+					rowData.value[rowIndex] = updatedRow;
+					setGridData({ rowData: rowData.value });
+				}
+			}
+		} catch (fetchError) {
+			toast.showError(fetchError, i18n.baseText('dataTable.fetchRow.error'));
+		}
+
+		telemetry.track('User edited data table content', {
+			data_table_id: dataTableId,
+			column_id: colDef.colId,
+			column_type: colDef.cellDataType,
+		});
 	};
 
 	async function fetchDataTableRows() {
