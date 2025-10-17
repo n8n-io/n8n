@@ -105,7 +105,7 @@ import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeMod
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
-import VariableModal from '@/features/environments.ee/components/VariableModal.vue';
+import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 </script>
 
 <template>
