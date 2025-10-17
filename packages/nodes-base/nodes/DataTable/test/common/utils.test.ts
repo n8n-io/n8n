@@ -107,18 +107,6 @@ describe('dataObjectToApiInput', () => {
 			expect(result.createdAt).toBeInstanceOf(Date);
 			expect((result.createdAt as Date).toISOString()).toBe('2025-09-01T12:00:00.000Z');
 		});
-
-		it('should handle date-like objects where toISOString throws', () => {
-			const dateLikeObject = {
-				toISOString: () => {
-					throw new Error('toISOString failed');
-				},
-			};
-			const input = { createdAt: dateLikeObject, name: 'test' };
-
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow(NodeOperationError);
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow('unexpected object input');
-		});
 	});
 
 	describe('error cases', () => {
@@ -134,17 +122,8 @@ describe('dataObjectToApiInput', () => {
 		it('should throw error for plain objects', () => {
 			const input = { metadata: { key: 'value' } };
 
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow(NodeOperationError);
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow(
-				'unexpected object input \'{"key":"value"}\' in row 0',
-			);
-		});
-
-		it('should throw error for objects without toISOString method', () => {
-			const input = { config: { setting1: true, setting2: 'value' } };
-
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow(NodeOperationError);
-			expect(() => dataObjectToApiInput(input, mockNode, 0)).toThrow('unexpected object input');
+			const result = dataObjectToApiInput(input, mockNode, 0);
+			expect(result).toEqual(input);
 		});
 
 		test('dataObjectToApiInput throws on invalid date-like object', () => {

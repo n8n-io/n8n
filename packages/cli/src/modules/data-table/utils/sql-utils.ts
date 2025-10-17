@@ -20,6 +20,7 @@ import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { parsePath, toPostgresPath, toSQLitePath } from './path-utils';
 
 export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -42,7 +43,7 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 	});
 }
 
-function dataTableColumnTypeToSql(
+export function dataTableColumnTypeToSql(
 	type: DataTableCreateColumnSchema['type'],
 	dbType: DataSourceOptions['type'],
 ) {
@@ -371,4 +372,50 @@ export function toTableName(dataTableId: string): DataTableUserTableName {
 
 export function toTableId(tableName: DataTableUserTableName) {
 	return tableName.replace(/.*data_table_user_/, '');
+}
+
+export function resolvePath(
+	ref: string,
+	dbType: DataSourceOptions['type'],
+	value: unknown,
+	path?: string,
+) {
+	if (path) {
+		const pathArray = parsePath(path);
+		if (dbType === 'postgres') {
+			const base = `${ref}${toPostgresPath(pathArray)}`;
+			if (typeof value === 'number') {
+				return `(${base})::numeric`;
+			}
+			if (value instanceof Date) {
+				return `(${base})::timestamp`;
+			}
+			if (typeof value === 'boolean') {
+				return `(${base})::boolean`;
+			}
+
+			// by converting to text by default we end up with `true` for an equals NULL check
+			// both for cases where the key exists and is literally NULL and where it doesn't exist
+			return `(${base})::text`;
+		} else {
+			// this is mostly for sqlite, behavior in MariaDB and MySQL mostly aligns though there are subtle
+			// difference we don't care for in the face of imminent removal of support
+			const path = toSQLitePath(pathArray);
+			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
+			if (typeof value === 'number') {
+				return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
+			}
+			if (value instanceof Date) {
+				return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)}})`;
+			}
+			if (typeof value === 'boolean') {
+				return `CAST(${base} as ${dataTableColumnTypeToSql('boolean', dbType)}})`;
+			}
+			if (typeof value === 'string') {
+				return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)}})`;
+			}
+			return base;
+		}
+	}
+	return ref;
 }

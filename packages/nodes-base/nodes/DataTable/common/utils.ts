@@ -163,15 +163,10 @@ export function dataObjectToApiInput(
 			if (v === undefined || v === null) return [k, null];
 
 			if (Array.isArray(v)) {
-				const z = v as GenericValue[] | IDataObject[];
-				return [
-					k,
-					z.map((x) =>
-						typeof x === 'object' && x !== null
-							? dataObjectToApiInput(x as IDataObject, node, row)
-							: (x ?? null),
-					),
-				];
+				throw new NodeOperationError(
+					node,
+					`unexpected array input '${JSON.stringify(v)}' in row ${row}`,
+				);
 			}
 
 			if (v instanceof Date) {

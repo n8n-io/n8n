@@ -87,7 +87,6 @@ export type DataTableColumnJsType =
 	| boolean
 	| Date
 	| { [k: string | number]: DataTableColumnJsType }
-	| DataTableColumnJsType[]
 	| null;
 
 export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataTableColumnType> = {
