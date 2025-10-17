@@ -1435,7 +1435,10 @@ describe('removeParameterValues', () => {
 
 		// Mock the nodeTypesStore's getNodeType method
 		const nodeTypesStore = useNodeTypesStore();
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType as any);
+		Object.defineProperty(nodeTypesStore, 'getNodeType', {
+			value: vi.fn(() => mockNodeType),
+			writable: true,
+		});
 
 		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
 			allowSendingParameterData: false,
@@ -1501,7 +1504,10 @@ describe('removeParameterValues', () => {
 
 		// Mock the nodeTypesStore's getNodeType method
 		const nodeTypesStore = useNodeTypesStore();
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType as any);
+		Object.defineProperty(nodeTypesStore, 'getNodeType', {
+			value: vi.fn(() => mockNodeType),
+			writable: true,
+		});
 
 		const processed = aiAssistantHelpers.processNodeForAssistant(testNode, [], {
 			allowSendingParameterData: false,

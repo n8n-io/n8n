@@ -362,7 +362,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
+						allowSendingParameterData: allowSendingParameterData.value,
+					})
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
@@ -375,7 +377,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const activeNode = workflowsStore.activeNode() as INode;
-		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
+			allowSendingParameterData: allowSendingParameterData.value,
+		});
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
 			chatSessionTask.value === 'support' ? getVisualContext(nodeInfo) : undefined;
@@ -442,6 +446,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
 			context.node,
+			{ allowSendingParameterData: allowSendingParameterData.value },
 		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
@@ -560,7 +565,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				nodeExecutionStatus.value = 'not_executed';
 			}
 			const activeNode = workflowsStore.activeNode() as INode;
-			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
+				allowSendingParameterData: allowSendingParameterData.value,
+			});
 			const userContext = getVisualContext(nodeInfo);
 
 			chatWithAssistant(

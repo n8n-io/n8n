@@ -8,11 +8,9 @@ import type {
 	INode,
 	INodeParameters,
 	INodeParameterResourceLocator,
-	NodeParameterValueType,
 	AssignmentCollectionValue,
 	ResourceMapperValue,
 	FilterValue,
-	INodeType,
 	INodeProperties,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -142,44 +140,52 @@ export const useAIAssistantHelpers = () => {
 	/**
 	 * Removes sensitive values from node parameters while preserving structure
 	 * for AI assistant context when allowSendingParameterData is false
-	 * @param params The parameters to process
-	 * @param parameterPath Current parameter path for type lookup
-	 * @param typeLookup Optional map of parameter paths to types
-	 * @param depth Current recursion depth (for stack overflow prevention)
-	 * @returns Parameters with values removed but structure preserved
 	 */
+	// TODO: Can we do this without function overloading?
 	function removeParameterValues(
-		params: NodeParameterValueType,
+		params: INodeParameters,
+		parameterPath?: string,
+		typeLookup?: Map<string, string>,
+		depth?: number,
+	): INodeParameters;
+
+	function removeParameterValues(
+		params: unknown,
+		parameterPath?: string,
+		typeLookup?: Map<string, string>,
+		depth?: number,
+	): unknown;
+
+	function removeParameterValues(
+		params: unknown,
 		parameterPath = '',
 		typeLookup?: Map<string, string>,
 		depth = 0,
-	): NodeParameterValueType {
+	): unknown {
 		// Prevent stack overflow with depth limit
 		if (depth > MAX_PARAMETER_DEPTH) {
 			console.warn(`Parameter nesting depth exceeded ${MAX_PARAMETER_DEPTH} levels`);
 			return null;
 		}
 
-		// Handle null/undefined
 		if (params === null || params === undefined) {
 			return params;
 		}
 
-		// Check if we have type information for this parameter
+		// Check if we have type information from the node definition
 		const paramType = typeLookup?.get(parameterPath);
 
 		// Handle special types based on schema
 		if (paramType) {
 			switch (paramType) {
 				case 'password':
-					// Mask password fields
+					// Mask password fields and remove credential values
 					return '******';
 				case 'credentialsSelect':
 				case 'credentials':
-					// Remove credential values completely
 					return '';
 				case 'assignmentCollection':
-					// We know it's an assignment collection from schema
+					// TODO: Use type guards for these
 					if (typeof params === 'object' && 'assignments' in params) {
 						const assignmentCollection = params as AssignmentCollectionValue;
 						return {
@@ -191,7 +197,7 @@ export const useAIAssistantHelpers = () => {
 					}
 					break;
 				case 'resourceLocator':
-					// We know it's a resource locator from schema
+					// TODO: Use type guards for these
 					if (typeof params === 'object' && '__rl' in params) {
 						const resourceLocator = params as INodeParameterResourceLocator;
 						return {
@@ -202,7 +208,7 @@ export const useAIAssistantHelpers = () => {
 					}
 					break;
 				case 'filter':
-					// We know it's a filter from schema
+					// TODO: Use type guards for these
 					if (typeof params === 'object' && 'combinator' in params) {
 						const filter = params as FilterValue;
 						return {
@@ -217,7 +223,7 @@ export const useAIAssistantHelpers = () => {
 					}
 					break;
 				case 'resourceMapper':
-					// We know it's a resource mapper from schema
+					// TODO: Use type guards for these
 					if (typeof params === 'object' && 'mappingMode' in params) {
 						const resourceMapper = params as ResourceMapperValue;
 						return {
@@ -233,7 +239,7 @@ export const useAIAssistantHelpers = () => {
 			}
 		}
 
-		// Handle primitive types
+		// Primitive types
 		if (typeof params === 'string') {
 			return '';
 		}
@@ -255,57 +261,59 @@ export const useAIAssistantHelpers = () => {
 		if (typeof params === 'object') {
 			const result: any = {};
 
-			// Fallback to structure-based detection if no type info available
+			// Only use structure-based detection if we don't have type information from schema
+			// TODO: Check if this can be removed
+			if (!paramType) {
+				// ResourceLocator - identified by __rl property
+				if ('__rl' in params && (params as any).__rl === true) {
+					const resourceLocator = params as INodeParameterResourceLocator;
+					return {
+						__rl: true,
+						mode: resourceLocator.mode,
+						value: '',
+						// Completely remove cached results as per requirement
+					} as INodeParameterResourceLocator;
+				}
 
-			// ResourceLocator - identified by __rl property
-			if ('__rl' in params && (params as any).__rl === true) {
-				const resourceLocator = params as INodeParameterResourceLocator;
-				return {
-					__rl: true,
-					mode: resourceLocator.mode,
-					value: '',
-					// Completely remove cached results as per requirement
-				} as INodeParameterResourceLocator;
-			}
+				// AssignmentCollection - identified by assignments array
+				if ('assignments' in params && Array.isArray((params as any).assignments)) {
+					const assignmentCollection = params as AssignmentCollectionValue;
+					return {
+						assignments: assignmentCollection.assignments.map((assignment) => ({
+							// Remove id and value, keep name and type for structure
+							name: assignment.name || '',
+							...(assignment.type && { type: assignment.type }),
+						})),
+					} as AssignmentCollectionValue;
+				}
 
-			// AssignmentCollection - identified by assignments array
-			if ('assignments' in params && Array.isArray((params as any).assignments)) {
-				const assignmentCollection = params as AssignmentCollectionValue;
-				return {
-					assignments: assignmentCollection.assignments.map((assignment) => ({
-						// Remove id and value, keep name and type for structure
-						name: assignment.name || '',
-						...(assignment.type && { type: assignment.type }),
-					})),
-				} as AssignmentCollectionValue;
-			}
+				// ResourceMapperValue - identified by mappingMode and schema
+				if ('mappingMode' in params && 'schema' in params) {
+					const resourceMapper = params as ResourceMapperValue;
+					return {
+						mappingMode: resourceMapper.mappingMode,
+						value: null,
+						matchingColumns: [],
+						schema: resourceMapper.schema || [],
+						attemptToConvertTypes: resourceMapper.attemptToConvertTypes || false,
+						convertFieldsToString: resourceMapper.convertFieldsToString || false,
+					} as ResourceMapperValue;
+				}
 
-			// ResourceMapperValue - identified by mappingMode and schema
-			if ('mappingMode' in params && 'schema' in params) {
-				const resourceMapper = params as ResourceMapperValue;
-				return {
-					mappingMode: resourceMapper.mappingMode,
-					value: null,
-					matchingColumns: resourceMapper.matchingColumns || [],
-					schema: resourceMapper.schema || [],
-					attemptToConvertTypes: resourceMapper.attemptToConvertTypes || false,
-					convertFieldsToString: resourceMapper.convertFieldsToString || false,
-				} as ResourceMapperValue;
-			}
-
-			// FilterValue - identified by combinator and conditions
-			if ('combinator' in params && 'conditions' in params) {
-				const filter = params as FilterValue;
-				return {
-					options: filter.options || {},
-					conditions: (filter.conditions || []).map((condition: any) => ({
-						...condition,
-						// Clear the actual values while keeping structure
-						leftValue: '',
-						rightValue: '',
-					})),
-					combinator: filter.combinator,
-				} as FilterValue;
+				// FilterValue - identified by combinator and conditions
+				if ('combinator' in params && 'conditions' in params) {
+					const filter = params as FilterValue;
+					return {
+						options: filter.options || {},
+						conditions: (filter.conditions || []).map((condition: any) => ({
+							...condition,
+							// Clear the actual values while keeping structure
+							leftValue: '',
+							rightValue: '',
+						})),
+						combinator: filter.combinator,
+					} as FilterValue;
+				}
 			}
 
 			// Regular object - recursively process all properties
@@ -350,17 +358,10 @@ export const useAIAssistantHelpers = () => {
 
 		// Remove parameter values if not allowed to send them
 		if (options?.allowSendingParameterData === false) {
-			// Get node type definition to build parameter type lookup
 			const nodeType = nodeTypesStore.getNodeType(node.type);
 			const typeLookup = nodeType ? buildParameterTypeLookup(nodeType.properties) : undefined;
-
-			const cleaned = (nodeForLLM.parameters = removeParameterValues(
-				nodeForLLM.parameters,
-				'',
-				typeLookup,
-			) as INodeParameters);
-			cleaned.note = locale.baseText('settings.ai.prompt.paremetersNotAvailable');
-			nodeForLLM.parameters = cleaned;
+			// TODO: Break if this is not found
+			nodeForLLM.parameters = removeParameterValues(nodeForLLM.parameters, '', typeLookup, 0);
 		} else {
 			nodeForLLM.parameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeForLLM.parameters,
@@ -370,13 +371,20 @@ export const useAIAssistantHelpers = () => {
 		return nodeForLLM;
 	}
 
-	function getNodeInfoForAssistant(node: INode): ChatRequest.NodeInfo {
+	function getNodeInfoForAssistant(
+		node: INode,
+		options?: { allowSendingParameterData?: boolean },
+	): ChatRequest.NodeInfo {
 		if (!node) {
 			return {};
 		}
+		// Default to true for backward compatibility
+		const allowSendingData = options?.allowSendingParameterData ?? true;
+
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const schemas = getNodesSchemas(referencedNodeNames);
+		// Pass excludeValues based on the privacy setting (exclude values when not allowed to send data)
+		const schemas = getNodesSchemas(referencedNodeNames, !allowSendingData);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -391,7 +399,8 @@ export const useAIAssistantHelpers = () => {
 		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
 		const ndvInput = ndvStore.ndvInputData;
 		if (isNodeReferencingInputData(node) && ndvInput?.length) {
-			const inputData = ndvStore.ndvInputData[0].json;
+			// Only include actual data if allowed
+			const inputData = allowSendingData ? ndvStore.ndvInputData[0].json : {};
 			const inputNodeName = ndvStore.input.nodeName;
 			nodeInputData = {
 				inputNodeName,
@@ -541,12 +550,28 @@ export const useAIAssistantHelpers = () => {
 		return simplifiedResultData;
 	}
 
-	const simplifyWorkflowForAssistant = (workflow: IWorkflowDb): Partial<IWorkflowDb> => ({
-		name: workflow.name,
-		active: workflow.active,
-		connections: workflow.connections,
-		nodes: workflow.nodes,
-	});
+	const simplifyWorkflowForAssistant = (
+		workflow: IWorkflowDb,
+		options?: { allowSendingParameterData?: boolean },
+	): Partial<IWorkflowDb> => {
+		const allowSendingData = options?.allowSendingParameterData ?? true;
+
+		let nodes = workflow.nodes;
+
+		// If not allowed to send parameter data, process each node to remove parameter values
+		if (!allowSendingData) {
+			nodes = workflow.nodes.map((node) =>
+				processNodeForAssistant(node, [], { allowSendingParameterData: false }),
+			);
+		}
+
+		return {
+			name: workflow.name,
+			active: workflow.active,
+			connections: workflow.connections,
+			nodes,
+		};
+	};
 
 	/**
 	 * Extract all expressions from workflow nodes and resolve them to their values.
