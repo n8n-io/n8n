@@ -18,7 +18,7 @@ const i18n = useI18n();
 <template>
 	<div :class="$style.container" data-test-id="ai-settings-button">
 		<N8nInfoTip v-if="props.showUsabilityNotice" theme="warning" type="tooltip">
-			<span>{{ i18n.baseText('settings.ai.reducedHelp.chat.notice') }}</span>
+			<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
 		</N8nInfoTip>
 		<N8nTooltip :content="i18n.baseText('settings.ai.button.tooltip')" :disabled="props.disabled">
 			<N8nLink
