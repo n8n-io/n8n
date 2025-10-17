@@ -49,6 +49,7 @@
       "dist/credentials/BaserowApi.credentials.js",
       "dist/credentials/BeeminderApi.credentials.js",
       "dist/credentials/BeeminderOAuth2Api.credentials.js",
+      "dist/credentials/BitbucketAccessTokenApi.credentials.js",
       "dist/credentials/BitbucketApi.credentials.js",
       "dist/credentials/BitlyApi.credentials.js",
       "dist/credentials/BitlyOAuth2Api.credentials.js",
