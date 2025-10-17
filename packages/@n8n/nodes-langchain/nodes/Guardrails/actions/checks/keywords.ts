@@ -21,9 +21,25 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	// Sanitize keywords by stripping trailing punctuation
 	const sanitizedKeywords = keywords.map((k: string) => k.replace(/[.,!?;:]+$/, ''));
 
+	const validKeywords = sanitizedKeywords.filter((k: string) => k.length > 0);
+
+	if (validKeywords.length === 0) {
+		return {
+			guardrailName: 'keywords',
+			tripwireTriggered: false,
+			info: {
+				matchedKeywords: [],
+				originalKeywords: keywords,
+				sanitizedKeywords,
+				totalKeywords: keywords.length,
+				textLength: text.length,
+			},
+		};
+	}
+
 	// Create regex pattern with word boundaries
 	// Escape special regex characters and join with word boundaries
-	const escapedKeywords = sanitizedKeywords.map((k: string) =>
+	const escapedKeywords = validKeywords.map((k: string) =>
 		k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
 	);
 	const patternText = `\\b(?:${escapedKeywords.join('|')})\\b`;

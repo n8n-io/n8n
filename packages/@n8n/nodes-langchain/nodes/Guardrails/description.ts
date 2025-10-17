@@ -302,7 +302,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'URLs',
 					name: 'urls',
 					type: 'fixedCollection',
-					default: { value: { allowedSchemes: 'https' } },
+					default: { value: { allowedSchemes: ['https'] } },
 					description: 'Blocks URLs that are not in the allowed list',
 					typeOptions: {
 						hideOptionDelete: true,

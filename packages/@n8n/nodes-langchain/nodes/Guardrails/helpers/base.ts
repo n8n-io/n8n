@@ -24,7 +24,11 @@ export async function runStageGuardrails(
 	const guardrailPromises: Array<Promise<GuardrailResult>> = [];
 	for (const guardrail of stageGuardrails[stage]) {
 		guardrailPromises.push(
-			wrapInGuardrailError(guardrail.name, Promise.resolve(guardrail.check(inputText))),
+			wrapInGuardrailError(
+				guardrail.name,
+				// ensure the check is async
+				Promise.resolve().then(async () => await guardrail.check(inputText)),
+			),
 		);
 	}
 	const results = await Promise.allSettled(guardrailPromises);

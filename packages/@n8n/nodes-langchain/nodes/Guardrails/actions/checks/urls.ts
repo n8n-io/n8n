@@ -173,7 +173,7 @@ function validateUrlSecurity(
 			return { parsedUrl: null, reason: `Blocked scheme: ${originalScheme}` };
 		}
 
-		if (config.blockUserinfo && parsedUrl.username) {
+		if (config.blockUserinfo && (parsedUrl.username || parsedUrl.password)) {
 			return { parsedUrl: null, reason: 'Contains userinfo (potential credential injection)' };
 		}
 
