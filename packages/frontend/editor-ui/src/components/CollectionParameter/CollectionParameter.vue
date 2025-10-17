@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
+import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import type { IUpdateInformation } from '@/Interface';
+import { computed, ref } from 'vue';
 
 import type {
 	INodeParameters,
@@ -9,16 +10,13 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
-import get from 'lodash/get';
-
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
-import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { getOptionParameterData } from './utils';
+
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
 	hideDelete?: boolean;
@@ -112,7 +110,7 @@ const parameterOptions = computed(() => {
 	});
 });
 
-function optionSelected(optionName: string) {
+async function optionSelected(optionName: string) {
 	const options = getOptionProperties(optionName);
 	if (options.length === 0) {
 		return;
@@ -121,44 +119,7 @@ function optionSelected(optionName: string) {
 	const option = options[0];
 	const name = `${props.path}.${option.name}`;
 
-	let parameterData;
-
-	if (
-		'typeOptions' in option &&
-		option.typeOptions !== undefined &&
-		option.typeOptions.multipleValues === true
-	) {
-		// Multiple values are allowed
-		let newValue;
-		if (option.type === 'fixedCollection') {
-			// The "fixedCollection" entries are different as they save values
-			// in an object and then underneath there is an array. So initialize
-			// them differently.
-			const retrievedObjectValue = get(props.nodeValues, [props.path, optionName], {});
-			newValue = retrievedObjectValue;
-		} else {
-			// Everything else saves them directly as an array.
-			const retrievedArrayValue = get(props.nodeValues, [props.path, optionName], []) as Array<
-				typeof option.default
-			>;
-			if (Array.isArray(retrievedArrayValue)) {
-				newValue = retrievedArrayValue;
-				newValue.push(deepCopy(option.default));
-			}
-		}
-
-		parameterData = {
-			name,
-			value: newValue,
-		};
-	} else {
-		// Add a new option
-		parameterData = {
-			name,
-			value: 'default' in option ? deepCopy(option.default) : null,
-		};
-	}
-
+	const parameterData = getOptionParameterData(name, option);
 	emit('valueChanged', parameterData);
 	selectedOption.value = undefined;
 }
