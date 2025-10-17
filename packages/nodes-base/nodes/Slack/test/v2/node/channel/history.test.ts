@@ -167,7 +167,9 @@ const API_RESPONSE = {
 
 describe('Test SlackV2, channel => history', () => {
 	nock('https://slack.com')
-		.get('/api/conversations.history?channel=C08514ZPKB8&inclusive=true&page=1&limit=100')
+		.get(
+			'/api/conversations.history?channel=C08514ZPKB8&inclusive=true&latest=1734322597.935429&oldest=1734321942.689159&page=1&limit=100',
+		)
 		.reply(200, API_RESPONSE);
 
 	new NodeTestHarness().setupTests({
