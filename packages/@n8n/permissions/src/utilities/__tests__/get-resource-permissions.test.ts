@@ -6,6 +6,7 @@ import { getResourcePermissions } from '../get-resource-permissions.ee';
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
 		expect(getResourcePermissions()).toEqual({
+			aiAssistant: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -77,7 +78,7 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
-			aiAssistant: { manage: true },
+			aiAssistant: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
