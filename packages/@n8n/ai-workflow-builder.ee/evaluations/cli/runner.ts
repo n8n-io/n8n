@@ -12,6 +12,7 @@ import {
 } from '../core/environment.js';
 import { runSingleTest, initializeTestTracking } from '../core/test-runner.js';
 import type { TestCase } from '../types/evaluation.js';
+import type { TestResult } from '../types/test-result.js';
 import {
 	calculateTestMetrics,
 	calculateCategoryAverages,
@@ -23,9 +24,17 @@ import { generateMarkdownReport } from '../utils/evaluation-reporter.js';
 /**
  * Main CLI evaluation runner that executes all test cases in parallel
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
+ * @param testCaseFilter - Optional test case ID to run only a specific test
+ * @param repetitions - Number of times to run each test (for cache warming analysis)
  */
-export async function runCliEvaluation(testCaseFilter?: string): Promise<void> {
+export async function runCliEvaluation(
+	testCaseFilter?: string,
+	repetitions: number = 1,
+): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
+	if (repetitions > 1) {
+		console.log(pc.yellow(`➔ Each test will be run ${repetitions} times for cache analysis`));
+	}
 	console.log();
 	try {
 		// Setup test environment
@@ -59,37 +68,62 @@ export async function runCliEvaluation(testCaseFilter?: string): Promise<void> {
 		console.log(pc.dim(`Running ${testCases.length} test cases with concurrency=${concurrency}`));
 		console.log();
 
-		// Create progress bar
-		const progressBar = createProgressBar(testCases.length);
-
-		// Create concurrency limiter
-		const limit = pLimit(concurrency);
-
-		// Track progress
-		let completed = 0;
 		const startTime = Date.now();
-		const testResults = initializeTestTracking(testCases);
+		const allRepetitionResults: TestResult[][] = [];
 
-		// Run all test cases in parallel with concurrency limit
-		const promises = testCases.map(
-			async (testCase) =>
-				await limit(async () => {
-					updateProgress(progressBar, completed, testCases.length, `Running: ${testCase.name}`);
+		// Run tests for each repetition
+		for (let rep = 0; rep < repetitions; rep++) {
+			if (repetitions > 1) {
+				console.log(pc.cyan(`\n═══ Repetition ${rep + 1}/${repetitions} ═══\n`));
+			}
 
-					// Create a dedicated agent for this test to avoid state conflicts
-					const testAgent = createAgent(parsedNodeTypes, llm, tracer);
-					const result = await runSingleTest(testAgent, llm, testCase, parsedNodeTypes);
+			// Create progress bar for this repetition
+			const progressBar = createProgressBar(testCases.length);
 
-					testResults[testCase.id] = result.error ? 'fail' : 'pass';
-					completed++;
-					updateProgress(progressBar, completed, testCases.length);
-					return result;
-				}),
-		);
+			// Create concurrency limiter
+			const limit = pLimit(concurrency);
 
-		const results = await Promise.all(promises);
+			// Track progress
+			let completed = 0;
+			const testResults = initializeTestTracking(testCases);
+
+			// Run all test cases in parallel with concurrency limit
+			const promises = testCases.map(
+				async (testCase) =>
+					await limit(async () => {
+						updateProgress(progressBar, completed, testCases.length, `Running: ${testCase.name}`);
+
+						// Create a dedicated agent for this test to avoid state conflicts
+						const testAgent = createAgent(parsedNodeTypes, llm, tracer);
+						const result = await runSingleTest(testAgent, llm, testCase, parsedNodeTypes);
+
+						testResults[testCase.id] = result.error ? 'fail' : 'pass';
+						completed++;
+						updateProgress(progressBar, completed, testCases.length);
+						return result;
+					}),
+			);
+
+			const results = await Promise.all(promises);
+			progressBar.stop();
+			allRepetitionResults.push(results);
+
+			// Show brief stats for this repetition if running multiple times
+			if (repetitions > 1) {
+				const repStats = results.map((r) => r.cacheStats).filter((s) => s !== undefined);
+				if (repStats.length > 0) {
+					const avgHitRate = repStats.reduce((sum, s) => sum + s.cacheHitRate, 0) / repStats.length;
+					console.log(
+						pc.dim(`\n  Repetition ${rep + 1} cache hit rate: ${(avgHitRate * 100).toFixed(1)}%`),
+					);
+				}
+			}
+		}
+
 		const totalTime = Date.now() - startTime;
-		progressBar.stop();
+
+		// Use last repetition results for display (most representative)
+		const results = allRepetitionResults[allRepetitionResults.length - 1];
 
 		// Display results
 		displayResults(testCases, results, totalTime);
