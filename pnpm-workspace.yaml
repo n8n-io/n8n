@@ -49,6 +49,7 @@ catalog:
   tsdown: ^0.15.6
   tsx: ^4.19.3
   simple-git: 3.28.0
+  unplugin-swc: 1.5.7
   uuid: 10.0.0
   vite: npm:rolldown-vite@latest
   vite-plugin-dts: ^4.5.4
