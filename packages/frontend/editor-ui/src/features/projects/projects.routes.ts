@@ -9,7 +9,7 @@ const CredentialsView = async () =>
 	await import('@/features/credentials/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
 const ExecutionsView = async () => await import('@/features/executions/views/ExecutionsView.vue');
-const ProjectVariables = async () => await import('@/views/ProjectVariables.vue');
+const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
 
 const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 	if (!to?.params.projectId) {

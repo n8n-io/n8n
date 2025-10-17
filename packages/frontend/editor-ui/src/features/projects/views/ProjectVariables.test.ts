@@ -1,9 +1,10 @@
-import ProjectVariables from '@/views/ProjectVariables.vue';
+import ProjectVariables from './ProjectVariables.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/features/users/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature, VARIABLE_MODAL_KEY } from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
+import { VARIABLE_MODAL_KEY } from '@/features/environments.ee/environments.constants';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
