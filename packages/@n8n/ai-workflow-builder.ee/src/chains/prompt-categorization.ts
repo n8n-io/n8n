@@ -109,16 +109,14 @@ export async function promptCategorizationChain(
 			.describe('Confidence level in this categorization from 0.0 to 1.0'),
 	});
 
-	const modelWithStructure = llm.withStructuredOutput(categorizationSchema);
+	const modelWithStructure = llm.withStructuredOutput<PromptCategorization>(categorizationSchema);
 
 	const prompt = await promptCategorizationTemplate.invoke({
 		userPrompt,
 		techniques: formatTechniqueList(),
 	});
 
-	const structuredOutput = (await modelWithStructure.invoke(prompt)) as z.infer<
-		typeof categorizationSchema
-	>;
+	const structuredOutput = await modelWithStructure.invoke(prompt);
 
 	return {
 		techniques: structuredOutput.techniques,
