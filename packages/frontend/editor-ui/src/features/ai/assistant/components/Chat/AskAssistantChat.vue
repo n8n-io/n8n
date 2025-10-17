@@ -27,7 +27,7 @@ const user = computed(() => ({
 const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
 
 const showSettingsButton = computed(() => {
-	return usersStore.isInstanceOwner || usersStore.isAdmin;
+	return assistantStore.canManageAISettings;
 });
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {

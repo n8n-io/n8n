@@ -28,6 +28,7 @@ import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import type { WorkflowState } from '@/composables/useWorkflowState';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
@@ -106,6 +107,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			isAssistantEnabled.value &&
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
+
+	const canManageAISettings = computed(() => {
+		return hasPermission(['rbac'], { rbac: { scope: 'aiAssistant:manage' } });
+	});
 
 	function resetAssistantChat() {
 		clearMessages();
@@ -777,6 +782,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		lastUnread,
 		isSessionEnded,
 		isFloatingButtonShown,
+		canManageAISettings,
 		onNodeExecution,
 		trackUserOpenedAssistant,
 		isNodeErrorActive,
