@@ -274,6 +274,9 @@ export class FrontendService {
 				enabled: false,
 				credits: 0,
 			},
+			ai: {
+				allowSendingActualData: false,
+			},
 			workflowHistory: {
 				pruneTime: -1,
 				licensePruneTime: -1,
@@ -341,6 +344,14 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
 		} catch {
 			this.settings.easyAIWorkflowOnboarded = false;
+		}
+
+		// Load AI usage settings
+		try {
+			this.settings.ai.allowSendingActualData = config.getEnv('ai.allowSendingActualData') ?? false;
+		} catch {
+			// Not yet in DB, use default
+			this.settings.ai.allowSendingActualData = false;
 		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
