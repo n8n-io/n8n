@@ -56,10 +56,28 @@ export class WordpressApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',
-			url: '/users',
+			baseURL: '={{$credentials?.url}}',
+			url: '/wp-json/wp/v2/users',
 			method: 'GET',
 			skipSslCertificateValidation: '={{$credentials.allowUnauthorizedCerts}}',
+			// If the request fails with 404, try the non-pretty permalink format
+			ignoreHttpStatusErrors: true,
 		},
+		rules: [
+			{
+				type: 'responseCode',
+				properties: {
+					value: 200,
+					message: 'Authorization successful',
+				},
+			},
+			{
+				type: 'responseCode',
+				properties: {
+					value: 401,
+					message: 'Invalid credentials',
+				},
+			},
+		],
 	};
 }
