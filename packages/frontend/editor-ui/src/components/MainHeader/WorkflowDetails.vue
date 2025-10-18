@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
-import CollaborationPane from '@/features/collaboration/components/CollaborationPane.vue';
-import WorkflowHistoryButton from '@/features/workflowHistory/components/WorkflowHistoryButton.vue';
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
+import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
+import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
@@ -22,15 +22,15 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
-import { ResourceType } from '@/features/projects/projects.utils';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -43,10 +43,10 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/event-bus';
 import type { ActionDropdownItem, IWorkflowDb, IWorkflowToShare } from '@/Interface';
-import type { FolderShortInfo } from '@/features/folders/folders.types';
-import { useFoldersStore } from '@/features/folders/folders.store';
+import type { FolderShortInfo } from '@/features/core/folders/folders.types';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { ProjectTypes } from '@/features/projects/projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { sanitizeFilename } from '@/utils/fileUtils';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';

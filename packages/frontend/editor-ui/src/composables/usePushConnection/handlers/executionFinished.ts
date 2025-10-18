@@ -1,4 +1,4 @@
-import type { IExecutionResponse } from '@/features/executions/executions.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -19,12 +19,12 @@ import {
 	SampleTemplates,
 	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
-} from '@/features/templates/utils/workflowSamples';
+} from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
-} from '@/features/executions/executions.utils';
+} from '@/features/execution/executions/executions.utils';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';

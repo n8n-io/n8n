@@ -6,7 +6,7 @@ import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { type AskAiRequest } from '@/features/assistant/assistant.types';
+import { type AskAiRequest } from '@/features/ai/assistant/assistant.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';

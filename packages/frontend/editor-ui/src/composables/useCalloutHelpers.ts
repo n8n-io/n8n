@@ -3,7 +3,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -26,10 +26,10 @@ import {
 	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 	SampleTemplates,
-} from '@/features/templates/utils/workflowSamples';
+} from '@/features/workflows/templates/utils/workflowSamples';
 import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 export function useCalloutHelpers() {
 	const route = useRoute();

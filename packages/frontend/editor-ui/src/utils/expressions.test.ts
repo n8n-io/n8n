@@ -6,7 +6,7 @@ import {
 	stringifyExpressionResult,
 	unwrapExpression,
 } from './expressions';
-import { executionRetryMessage } from '@/features/executions/executions.utils';
+import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 
 describe('Utils: Expressions', () => {
 	describe('stringifyExpressionResult()', () => {

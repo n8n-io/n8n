@@ -4,7 +4,11 @@ import type { LicenseFlag, ModuleClass } from './module';
 
 type ModuleEntry = {
 	class: ModuleClass;
-	licenseFlag?: LicenseFlag;
+	/*
+	 * If singular, checks if that feature ls licensed,
+	 * if multiple, checks that any of the features are licensed
+	 */
+	licenseFlag?: LicenseFlag | LicenseFlag[];
 };
 
 @Service()

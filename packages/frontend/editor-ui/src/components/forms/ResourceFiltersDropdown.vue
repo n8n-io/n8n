@@ -2,9 +2,9 @@
 import { computed, watch, onBeforeMount } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 

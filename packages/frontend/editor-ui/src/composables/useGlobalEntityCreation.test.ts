@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { mockedStore } from '@/__tests__/utils';
 import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
@@ -8,11 +8,11 @@ import { useToast } from '@/composables/useToast';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/constants';
-import type { Project, ProjectListItem } from '@/features/projects/projects.types';
+import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 import { useGlobalEntityCreation } from './useGlobalEntityCreation';
 

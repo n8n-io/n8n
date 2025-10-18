@@ -98,3 +98,5 @@ export { CreateDataTableColumnDto } from './data-table/create-data-table-column.
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
+
+export { ProvisioningConfigDto } from './provisioning/config.dto';

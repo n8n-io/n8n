@@ -2,8 +2,8 @@
 import type { ITelemetrySettings } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/features/users/users.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onMounted, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';

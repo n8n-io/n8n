@@ -6,8 +6,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n } from '@n8n/i18n';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { splitName } from '@/features/projects/projects.utils';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { computed } from 'vue';
 
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, () => {

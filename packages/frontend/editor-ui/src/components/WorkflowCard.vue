@@ -1,28 +1,31 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { ResourceType } from '@/features/projects/projects.utils';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { UserAction, WorkflowResource } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
-import { type ProjectSharingData, ProjectTypes } from '@/features/projects/projects.types';
+import {
+	type ProjectSharingData,
+	ProjectTypes,
+} from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { useFoldersStore } from '@/features/folders/folders.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
 
 import {
 	N8nActionToggle,
@@ -34,8 +37,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useMCPStore } from '@/features/mcpAccess/mcp.store';
-import { useMcp } from '@/features/mcpAccess/composables/useMcp';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',

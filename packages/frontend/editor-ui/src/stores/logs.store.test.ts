@@ -1,7 +1,7 @@
 import { setActivePinia } from 'pinia';
 import { useLogsStore } from './logs.store';
 import { createTestingPinia } from '@pinia/testing';
-import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
+import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
 
 describe('logs.store', () => {
 	beforeEach(() => {

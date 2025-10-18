@@ -20,7 +20,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { ElCol, ElRow } from 'element-plus';
 import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';

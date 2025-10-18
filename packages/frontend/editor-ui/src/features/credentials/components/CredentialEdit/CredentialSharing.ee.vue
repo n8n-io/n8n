@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
-import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
-import { ProjectTypes } from '@/features/projects/projects.types';
-import { splitName } from '@/features/projects/projects.utils';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import type {
+	ProjectListItem,
+	ProjectSharingData,
+} from '@/features/collaboration/projects/projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';

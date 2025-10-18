@@ -1,5 +1,4 @@
 import sys
-from typing import Optional, Tuple
 
 from src.config.security_config import SecurityConfig
 from src.constants import ERROR_STDLIB_DISALLOWED, ERROR_EXTERNAL_DISALLOWED
@@ -8,7 +7,7 @@ from src.constants import ERROR_STDLIB_DISALLOWED, ERROR_EXTERNAL_DISALLOWED
 def validate_module_import(
     module_path: str,
     security_config: SecurityConfig,
-) -> Tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     stdlib_allow = security_config.stdlib_allow
     external_allow = security_config.external_allow
 

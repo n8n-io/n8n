@@ -6,7 +6,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useEventListener } from '@vueuse/core';
 import { PopOutWindowKey } from '@/constants';
-import { type SearchShortcut } from '@/features/canvas/canvas.types';
+import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
 import { N8nIcon, N8nInput } from '@n8n/design-system';
 type Props = {

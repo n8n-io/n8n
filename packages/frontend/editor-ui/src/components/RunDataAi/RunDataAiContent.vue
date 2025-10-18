@@ -6,12 +6,12 @@ import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useI18n } from '@n8n/i18n';
-import { getConsumedTokens } from '@/features/logs/logs.utils';
+import { getConsumedTokens } from '@/features/execution/logs/logs.utils';
 import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
-import ViewSubExecution from '@/features/executions/components/ViewSubExecution.vue';
+import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import { formatTokenUsageCount } from '@/utils/aiUtils';
 import { getReferencedData } from '@/components/RunDataAi/utils';
-import { type LogEntry } from '@/features/logs/logs.types';
+import { type LogEntry } from '@/features/execution/logs/logs.types';
 
 import { N8nInfoTip, N8nTooltip } from '@n8n/design-system';
 interface RunMeta {

@@ -289,13 +289,18 @@ describe('toolsAgentExecute V3', () => {
 		};
 
 		mockRunnableSequence.streamEvents = jest.fn().mockReturnValue(mockStreamEvents());
+		const mockTool = mock<Tool>();
+		mockTool.name = 'TestTool';
+		mockTool.metadata = {
+			sourceNodeName: 'Test Tool',
+		};
 
 		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
 		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
 
 		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
 		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mock<Tool>()]);
+		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
 		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
 		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
 		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
@@ -329,7 +334,7 @@ describe('toolsAgentExecute V3', () => {
 
 		expect(result.actions).toBeDefined();
 		expect(result.actions).toHaveLength(1);
-		expect(result.actions[0].nodeName).toBe('TestTool');
+		expect(result.actions[0].nodeName).toBe('Test Tool');
 		expect(result.actions[0].input).toEqual({ input: 'test data' });
 	});
 
