@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": ".tmp-compile",
+    "baseUrl": ".",
+    "paths": {
+      "@n8n/i18n": ["node_modules/@n8n/i18n"]
+    }
+  },
+  "include": [
+    "packages/frontend/editor-ui/src/utils/formatters/dateFormatter.ts"
+  ]
+}
