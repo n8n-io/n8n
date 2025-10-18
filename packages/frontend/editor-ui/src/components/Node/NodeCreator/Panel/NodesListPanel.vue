@@ -22,11 +22,11 @@ import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import NodeIcon from '@/components/NodeIcon.vue';
 
-import CommunityNodeDetails from '@/features/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
-import CommunityNodeInfo from '@/features/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
-import CommunityNodeDocsLink from '@/features/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
-import CommunityNodeFooter from '@/features/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
-import { useUsersStore } from '@/features/users/users.store';
+import CommunityNodeDetails from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
+import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
+import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
+import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();

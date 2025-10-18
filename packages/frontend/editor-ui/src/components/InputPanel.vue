@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { waitingNodeTooltip } from '@/features/executions/executions.utils';
+import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
@@ -29,7 +29,7 @@ import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
-import { type SearchShortcut } from '@/features/canvas/canvas.types';
+import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 

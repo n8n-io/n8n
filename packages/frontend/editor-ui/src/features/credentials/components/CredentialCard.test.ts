@@ -5,8 +5,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const renderComponent = createComponentRenderer(CredentialCard);
 

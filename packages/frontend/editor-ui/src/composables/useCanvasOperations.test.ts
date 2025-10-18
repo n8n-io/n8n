@@ -8,10 +8,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
-import type { CanvasConnection, CanvasNode } from '@/features/canvas/canvas.types';
-import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
+import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
-import type { IExecutionResponse } from '@/features/executions/executions.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/history';
@@ -29,9 +29,9 @@ import {
 import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useExecutionsStore } from '@/features/executions/executions.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -46,9 +46,9 @@ import {
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
-import { createCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
+import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { nextTick, reactive, ref } from 'vue';
-import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
+import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
@@ -60,7 +60,7 @@ import {
 
 import { TelemetryHelpers } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 
 const mockRoute = reactive({
 	query: {},

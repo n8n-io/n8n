@@ -8,8 +8,8 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/constants';
 import type { ActionsRecord, INodeCreateElement, INodeUi, SimplifiedNodeType } from '@/Interface';
-import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
-import { parseCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
+import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
+import { parseCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
@@ -44,7 +44,7 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/features/canvas/canvas.utils', () => {
+vi.mock('@/features/workflows/canvas/canvas.utils', () => {
 	return {
 		parseCanvasConnectionHandleString: vi.fn(),
 	};

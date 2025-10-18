@@ -16,11 +16,11 @@ import {
 	provide,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import WorkflowCanvas from '@/features/canvas/components/WorkflowCanvas.vue';
+import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusPanel from '@/components/FocusPanel.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
-import CanvasRunWorkflowButton from '@/features/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
+import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -34,7 +34,7 @@ import type {
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
-import type { IExecutionResponse } from '@/features/executions/executions.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	Connection,
@@ -47,8 +47,8 @@ import type {
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
 	ViewportBoundaries,
-} from '@/features/canvas/canvas.types';
-import { CanvasNodeRenderType } from '@/features/canvas/canvas.types';
+} from '@/features/workflows/canvas/canvas.types';
+import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -69,7 +69,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 } from '@/constants';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
@@ -89,56 +89,56 @@ import type {
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
-import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useExecutionsStore } from '@/features/executions/executions.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useExecutionDebugging } from '@/features/executions/composables/useExecutionDebugging';
-import { useUsersStore } from '@/features/users/users.store';
-import { sourceControlEventBus } from '@/features/sourceControl.ee/sourceControl.eventBus';
+import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
-import CanvasStopCurrentExecutionButton from '@/features/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
-import CanvasStopWaitingForWebhookButton from '@/features/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
+import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { shouldIgnoreCanvasShortcut } from '@/features/canvas/canvas.utils';
-import { getSampleWorkflowByTemplateId } from '@/features/templates/utils/workflowSamples';
-import type { CanvasLayoutEvent } from '@/features/canvas/composables/useCanvasLayout';
+import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
+import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
+import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import { useBuilderStore } from '@/features/assistant/builder.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { usePostHog } from '@/stores/posthog.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
-import { canvasEventBus } from '@/features/canvas/canvas.eventBus';
-import CanvasChatButton from '@/features/canvas/components/elements/buttons/CanvasChatButton.vue';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
-import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
-import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
+import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
-import { useParentFolder } from '@/features/folders/composables/useParentFolder';
+import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
@@ -158,7 +158,8 @@ const LazyNodeDetailsViewV2 = defineAsyncComponent(
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
-	async () => await import('@/features/templates/components/SetupWorkflowCredentialsButton.vue'),
+	async () =>
+		await import('@/features/workflows/templates/components/SetupWorkflowCredentialsButton.vue'),
 );
 
 const $style = useCssModule();

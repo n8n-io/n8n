@@ -1,5 +1,5 @@
 import { PopOutWindowKey } from '@/constants';
-import { shouldIgnoreCanvasShortcut } from '@/features/canvas/canvas.utils';
+import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';

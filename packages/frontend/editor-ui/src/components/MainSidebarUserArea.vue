@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/constants';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import {
 	type IMenuItem,
 	N8nAvatar,

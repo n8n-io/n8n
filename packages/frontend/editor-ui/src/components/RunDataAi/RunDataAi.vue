@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import LogsOverviewRows from '@/features/logs/components/LogsOverviewRows.vue';
-import { useLogsExecutionData } from '@/features/logs/composables/useLogsExecutionData';
-import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand';
-import type { LogEntry, LogTreeFilter } from '@/features/logs/logs.types';
-import { findLogEntryById } from '@/features/logs/logs.utils';
+import LogsOverviewRows from '@/features/execution/logs/components/LogsOverviewRows.vue';
+import { useLogsExecutionData } from '@/features/execution/logs/composables/useLogsExecutionData';
+import { useLogsTreeExpand } from '@/features/execution/logs/composables/useLogsTreeExpand';
+import type { LogEntry, LogTreeFilter } from '@/features/execution/logs/logs.types';
+import { findLogEntryById } from '@/features/execution/logs/logs.utils';
 import type { INodeUi } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';

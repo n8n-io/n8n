@@ -120,6 +120,8 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "insights:*",
   "oidc:manage",
   "oidc:*",
+  "provisioning:manage",
+  "provisioning:*",
   "dataTable:create",
   "dataTable:read",
   "dataTable:update",

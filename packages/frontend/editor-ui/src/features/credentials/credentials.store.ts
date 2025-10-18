@@ -12,10 +12,10 @@ import * as credentialsEeApi from './credentials.ee.api';
 import { EnterpriseEditionFeature } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { i18n } from '@n8n/i18n';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
-import { splitName } from '@/features/projects/projects.utils';
+import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { isEmpty, isPresent } from '@/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,

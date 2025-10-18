@@ -43,7 +43,7 @@ import type { CommunityNodeDetails, ViewStack } from './composables/useViewStack
 import {
 	PrebuiltAgentTemplates,
 	SampleTemplates,
-} from '@/features/templates/utils/workflowSamples';
+} from '@/features/workflows/templates/utils/workflowSamples';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 

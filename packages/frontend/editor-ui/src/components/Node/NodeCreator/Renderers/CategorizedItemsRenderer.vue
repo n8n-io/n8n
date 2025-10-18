@@ -10,7 +10,7 @@ import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import CommunityNodeInstallHint from '@/features/communityNodes/components/nodeCreator/CommunityNodeInstallHint.vue';
+import CommunityNodeInstallHint from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInstallHint.vue';
 
 export interface Props {
 	elements: INodeCreateElement[];

@@ -14,7 +14,7 @@ import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { storeToRefs } from 'pinia';
-import { useExecutionHelpers } from '@/features/executions/composables/useExecutionHelpers';
+import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 

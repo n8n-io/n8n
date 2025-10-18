@@ -19,10 +19,10 @@ import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useAssistantStore } from '@/features/assistant/assistant.store';
-import { useBuilderStore } from '@/features/assistant/builder.store';
-import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
-import { useCommandBar } from '@/features/ui/commandBar/composables/useCommandBar';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 

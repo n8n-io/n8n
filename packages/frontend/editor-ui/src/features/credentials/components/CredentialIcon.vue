@@ -6,10 +6,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
 import type { ICredentialType } from 'n8n-workflow';
 import { computed } from 'vue';
-
 import { N8nNodeIcon } from '@n8n/design-system';
+
 const props = defineProps<{
 	credentialTypeName: string | null;
+	size?: number;
 }>();
 
 const credentialsStore = useCredentialsStore();
@@ -88,7 +89,7 @@ function getCredentialWithIcon(name: string | null): ICredentialType | null {
 	<N8nNodeIcon
 		:class="$style.icon"
 		:type="iconType"
-		:size="26"
+		:size="size ?? 26"
 		:src="iconSource"
 		:name="iconName"
 		:color="iconColor"

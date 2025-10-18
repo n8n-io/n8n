@@ -2,16 +2,16 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
 import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
-import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
+import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
-import type { SourceControlPreferences } from '@/features/sourceControl.ee/sourceControl.types';
+import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,

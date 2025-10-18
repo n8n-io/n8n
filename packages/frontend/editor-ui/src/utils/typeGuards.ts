@@ -15,12 +15,12 @@ import type {
 	WorkflowListItem,
 	WorkflowListResource,
 } from '@/Interface';
-import type { IExecutionResponse } from '@/features/executions/executions.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
-import type { CanvasConnectionMode } from '@/features/canvas/canvas.types';
-import { canvasConnectionModes } from '@/features/canvas/canvas.types';
+import type { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
+import { canvasConnectionModes } from '@/features/workflows/canvas/canvas.types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 

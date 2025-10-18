@@ -5,7 +5,7 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';

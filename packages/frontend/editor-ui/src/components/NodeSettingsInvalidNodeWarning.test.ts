@@ -1,13 +1,13 @@
 import { mockNode } from '@/__tests__/mocks';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { useInstallNode } from '@/features/communityNodes/composables/useInstallNode';
+import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { TestingPinia } from '@pinia/testing';
 import { createTestingPinia } from '@pinia/testing';
@@ -16,7 +16,7 @@ import { vi, type MockedFunction } from 'vitest';
 import { ref } from 'vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
 
-vi.mock('@/features/communityNodes/composables/useInstallNode');
+vi.mock('@/features/settings/communityNodes/composables/useInstallNode');
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
