@@ -119,6 +119,7 @@
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolCode/ToolCode.node.js",
       "dist/nodes/tools/ToolHttpRequest/ToolHttpRequest.node.js",
+      "dist/nodes/tools/ToolN8n/ToolN8n.node.js",
       "dist/nodes/tools/ToolSearXng/ToolSearXng.node.js",
       "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
       "dist/nodes/tools/ToolThink/ToolThink.node.js",
