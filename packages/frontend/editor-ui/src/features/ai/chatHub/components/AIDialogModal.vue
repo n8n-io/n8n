@@ -11,7 +11,6 @@ import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import ConversationListPane from './ConversationListPane.vue';
-import ErrorDisplayPane from './ErrorDisplayPane.vue';
 import ChatPrompt from './ChatPrompt.vue';
 import ModelSelector from './ModelSelector.vue';
 import ChatMessage from './ChatMessage.vue';
