@@ -379,6 +379,11 @@ function openAIDialog() {
 	overflow-y: hidden;
 }
 
+.ai-dialog-button {
+	margin-left: var(--spacing-xs);
+	margin-right: var(--spacing-xs);
+}
+
 .github-button {
 	display: flex;
 	align-items: center;
