@@ -18,7 +18,6 @@ import {
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusPanel from '@/components/FocusPanel.vue';
-import AIAssistantPanel from '@/components/AIAssistantPanel.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
@@ -140,7 +139,6 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
-import { useAIAssistantStore } from '@/stores/aiAssistant.store';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
@@ -203,7 +201,6 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
-const aiAssistantStore = useAIAssistantStore();
 
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
@@ -2148,7 +2145,6 @@ onBeforeUnmount(() => {
 				@context-menu-action="onContextMenuAction"
 			/>
 		</div>
-		<AIAssistantPanel :class="$style.aiAssistantPanel" />
 	</div>
 </template>
 
@@ -2163,12 +2159,6 @@ onBeforeUnmount(() => {
 	flex: 1;
 	display: flex;
 	min-width: 0;
-}
-
-.aiAssistantPanel {
-	flex-shrink: 0;
-	border-left: var(--border-base);
-	background-color: var(--color-background-light);
 }
 
 .executionButtons {
