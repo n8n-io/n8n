@@ -21,11 +21,11 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
-import { useAssistantStore } from '@/features/assistant/assistant.store';
-import type { ChatRequest } from '@/features/assistant/assistant.types';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useUIStore } from '@/stores/ui.store';
-import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
+import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import {
 	N8nInlineAskAssistantButton,
 	N8nButton,
