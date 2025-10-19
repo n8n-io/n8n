@@ -234,6 +234,32 @@ watch([windowX, windowY], () => {
 	}
 });
 
+// Watch credentials and fetch models
+watch(
+	mergedCredentials,
+	async (credentials) => {
+		models.value = await chatStore.fetchChatModels(credentials);
+		
+		// Auto-select first available model if none selected
+		if (selectedModel.value === null && models.value) {
+			// Find first provider with available models
+			for (const provider of ['openai', 'anthropic', 'google', 'ollama'] as ChatHubProvider[]) {
+				const providerModels = models.value[provider]?.models;
+				if (providerModels && providerModels.length > 0) {
+					// Select first model from first available provider
+					selectedModel.value = {
+						provider: provider,
+						model: providerModels[0].name,
+						workflowId: null,
+					};
+					break;
+				}
+			}
+		}
+	},
+	{ immediate: true }
+);
+
 // Panel resize logic (existing)
 const {
 	size: leftPaneWidth,
