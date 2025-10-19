@@ -191,6 +191,7 @@ export function simplifyOutputMessages(data: IDataObject[]) {
 			),
 			categories: item.categories,
 			hasAttachments: item.hasAttachments,
+			raw: item.$raw || item.raw,
 		};
 	});
 }

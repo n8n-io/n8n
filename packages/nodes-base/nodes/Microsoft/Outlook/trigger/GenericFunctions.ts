@@ -74,6 +74,40 @@ export async function getPollResponse(
 			executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 		}
 
+		// AJOUT: Récupération du contenu raw pour chaque message si demandé
+		if (options.getRawContent) {
+			for (let i = 0; i < executionData.length; i++) {
+				const messageId = executionData[i].json.id as string;
+				try {
+					const rawContent = await microsoftApiRequest.call(
+						this,
+						'GET',
+						`/messages/${messageId}/$value`,
+						undefined,
+						{},
+						undefined,
+						{},
+						{ encoding: null, resolveWithFullResponse: true },
+					);
+
+					// Convertir le Buffer en string
+					let rawString: string;
+					if (Buffer.isBuffer(rawContent.body)) {
+						rawString = rawContent.body.toString('utf8');
+					} else if (typeof rawContent.body === 'string') {
+						rawString = rawContent.body;
+					} else {
+						rawString = Buffer.from(rawContent.body as any).toString('utf8');
+					}
+
+					executionData[i].json.raw = rawString;
+				} catch (error) {
+					// Si l'erreur survient pour un message, on continue avec les autres
+					executionData[i].json.raw = `Error fetching raw content: ${error.message}`;
+				}
+			}
+		}
+
 		return executionData;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject, {
