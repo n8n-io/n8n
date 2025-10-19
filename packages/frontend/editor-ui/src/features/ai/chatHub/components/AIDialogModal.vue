@@ -10,6 +10,7 @@ import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import ConversationListPane from './ConversationListPane.vue';
 import ErrorDisplayPane from './ErrorDisplayPane.vue';
 import ChatPrompt from './ChatPrompt.vue';
+import { v4 as uuidv4 } from 'uuid';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
