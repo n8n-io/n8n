@@ -1,18 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed } from 'vue';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { N8nScrollArea, N8nButton } from '@n8n/design-system';
-import ChatMessage from './ChatMessage.vue';
 
 const chatStore = useChatStore();
-const messagesScrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
 const conversations = computed(() => chatStore.sessions);
 const activeSessionId = computed(() => chatStore.currentSessionId);
-const activeMessages = computed(() => {
-	if (!activeSessionId.value) return [];
-	return chatStore.getActiveMessages(activeSessionId.value);
-});
 
 function selectConversation(sessionId: string) {
 	chatStore.setCurrentSessionId(sessionId);
@@ -24,25 +18,6 @@ function createNewChat() {
 	chatStore.setCurrentSessionId(undefined); // Clear current session
 	// Messages area will show empty state
 	// Sending first message creates new backend session
-}
-
-// Auto-scroll to bottom when new messages arrive
-watch(
-	activeMessages,
-	async () => {
-		await nextTick();
-		scrollToBottom();
-	},
-	{ deep: true },
-);
-
-function scrollToBottom() {
-	if (messagesScrollAreaRef.value?.$el) {
-		const scrollContainer = messagesScrollAreaRef.value.$el.querySelector('[data-radix-scroll-area-viewport]');
-		if (scrollContainer) {
-			scrollContainer.scrollTop = scrollContainer.scrollHeight;
-		}
-	}
 }
 
 function getConversationTitle(session: typeof conversations.value[0]): string {
@@ -77,24 +52,6 @@ function getConversationTitle(session: typeof conversations.value[0]): string {
 			>
 				+ New Chat
 			</N8nButton>
-		</div>
-
-		<div :class="$style['messages-area']">
-			<N8nScrollArea ref="messagesScrollAreaRef" :class="$style['messages-scroll']">
-				<div :class="$style['messages-container']">
-					<ChatMessage
-						v-for="message in activeMessages"
-						:key="message.id"
-						:message="message"
-						:compact="false"
-						:is-editing="false"
-						:is-streaming="chatStore.streamingMessageId === message.id"
-					/>
-					<div v-if="activeMessages.length === 0" :class="$style['empty-state']">
-						Start a conversation
-					</div>
-				</div>
-			</N8nScrollArea>
 		</div>
 	</div>
 </template>
