@@ -68,6 +68,16 @@ const inputPlaceholder = computed(() => {
 	return `Message ${selectedModel.value.model}`;
 });
 
+// Messages display state
+const messagesScrollAreaRef = ref<InstanceType<typeof N8nScrollArea> | null>(null);
+const editingMessageId = ref<string | null>(null);
+
+// Get active messages for current session
+const activeMessages = computed(() => {
+	if (!chatStore.currentSessionId) return [];
+	return chatStore.getActiveMessages(chatStore.currentSessionId);
+});
+
 // Load saved position and size from localStorage
 function loadWindowState() {
 	try {
