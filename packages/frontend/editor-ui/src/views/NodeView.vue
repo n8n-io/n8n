@@ -140,6 +140,7 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { useAIAssistantStore } from '@/stores/aiAssistant.store';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
@@ -2003,7 +2004,7 @@ onBeforeUnmount(() => {
 				@update:node:parameters="onUpdateNodeParameters"
 				@update:node:inputs="onUpdateNodeInputs"
 				@update:node:outputs="onUpdateNodeOutputs"
-				@update:logs-open="logsStore.toggleOpen($event)"
+				@update:logs-open="logsStore.toggleOpen"
 				@update:logs:input-open="logsStore.toggleInputOpen"
 				@update:logs:output-open="logsStore.toggleOutputOpen"
 				@update:has-range-selection="canvasStore.setHasRangeSelection"
