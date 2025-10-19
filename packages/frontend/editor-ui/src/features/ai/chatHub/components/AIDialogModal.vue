@@ -640,8 +640,8 @@ function handleSwitchAlternative(messageId: string) {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-end;
-	padding: var(--spacing-m);
+	overflow: hidden;
+	padding: 0;
 }
 
 .model-selector-container {
@@ -649,7 +649,37 @@ function handleSwitchAlternative(messageId: string) {
 	background: var(--color-background-light, #f5f5f5);
 	border-bottom: 1px solid var(--color-foreground-base, #ddd);
 	padding: 12px;
-	margin: calc(var(--spacing-m) * -1) calc(var(--spacing-m) * -1) 0;
+}
+
+.messages-area {
+	flex: 1;
+	overflow: hidden;
+	min-height: 0;
+}
+
+.messages-scroll {
+	height: 100%;
+}
+
+.messages-container {
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-m);
+}
+
+.input-area {
+	flex-shrink: 0;
+	border-top: 1px solid var(--color-foreground-base, #ddd);
+	background: var(--color-background-xlight, #fff);
+	padding: var(--spacing-m);
+}
+
+.empty-state {
+	text-align: center;
+	color: var(--color-text-light, #999);
+	padding: 32px;
+	font-size: 14px;
 }
 
 .right-pane {
