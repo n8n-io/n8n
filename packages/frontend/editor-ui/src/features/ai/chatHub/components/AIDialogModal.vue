@@ -4,11 +4,10 @@ import Modal from '@/components/Modal.vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import ConversationListPane from './ConversationListPane.vue';
 import ErrorDisplayPane from './ErrorDisplayPane.vue';
 import ChatPrompt from './ChatPrompt.vue';
-
-const AI_CHAT_DIALOG_MODAL_KEY = 'aiChatDialog';
 
 const chatStore = useChatStore();
 const container = useTemplateRef('container');
