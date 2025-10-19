@@ -516,7 +516,7 @@ function handleSwitchAlternative(messageId: string) {
 				</N8nResizeWrapper>
 
 				<div :class="$style['right-pane']">
-					<ErrorDisplayPane />
+					<!-- Reserved for future use -->
 				</div>
 			</div>
 
