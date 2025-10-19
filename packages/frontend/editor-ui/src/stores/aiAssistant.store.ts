@@ -360,7 +360,7 @@ export const useAIAssistantStore = defineStore('aiAssistant', () => {
 	function saveConversationToLocalStorage(): void {
 		if (!currentWorkflowId.value) return;
 		const storageKey = `n8n-ai-assistant-session-${currentWorkflowId.value}`;
-		localStorage.setItem(JSON.stringify(messages.value.slice(-50)));
+		localStorage.setItem(storageKey, JSON.stringify(messages.value.slice(-50)));
 	}
 
 	function updateOllamaConfig(config: Partial<OllamaConfig>): void {
