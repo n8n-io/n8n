@@ -5,6 +5,7 @@ import { N8nResizeWrapper } from '@n8n/design-system';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import ConversationListPane from './ConversationListPane.vue';
 import ErrorDisplayPane from './ErrorDisplayPane.vue';
@@ -12,6 +13,7 @@ import ChatPrompt from './ChatPrompt.vue';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
 const container = useTemplateRef('container');
 const wrapper = useTemplateRef('wrapper');
 const header = useTemplateRef('header');
@@ -234,15 +236,37 @@ const {
 });
 
 function handleSubmitMessage(message: string) {
-	// This is a simplified version - in full implementation would need model and credentials
-	// For now, we'll just show this connects to the store
+	// Get current workflow context
+	const workflowContext = {
+		name: workflowsStore.workflowName,
+		nodes: workflowsStore.allNodes.map((n) => ({
+			name: n.name,
+			type: n.type,
+			position: n.position,
+			parameters: n.parameters,
+		})),
+		connections: workflowsStore.allConnections,
+	};
+
+	// Add workflow context to the message
+	const contextualMessage = `${message}\n\n[Workflow Context: ${JSON.stringify(workflowContext)}]`;
+
+	// Ensure we have a session ID
 	if (!chatStore.currentSessionId) {
-		// Create new session by sending first message
-		// The backend will create the session
-		console.log('Would send message to create new session:', message);
-	} else {
-		console.log('Would send message to existing session:', message);
+		// Create a new session by generating a session ID
+		const sessionId = uuidv4();
+		chatStore.setCurrentSessionId(sessionId);
 	}
+
+	// Send message to chat backend
+	// Note: This requires a model and credentials to be selected in the chat UI
+	// The chat store will handle this and show an error if not configured
+	chatStore.sendMessage(
+		chatStore.currentSessionId!,
+		contextualMessage,
+		null, // Model will be selected in chat UI
+		null, // Credentials will be selected in chat UI
+	);
 }
 </script>
 
