@@ -60,6 +60,7 @@ import {
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
@@ -148,6 +149,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 				VARIABLE_MODAL_KEY,
+				AI_CHAT_DIALOG_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {

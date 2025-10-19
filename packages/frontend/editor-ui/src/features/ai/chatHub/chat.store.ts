@@ -30,6 +30,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
+	const currentError = ref<string | null>(null);
+	const currentSessionId = ref<string | undefined>(undefined);
 
 	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
@@ -314,6 +316,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function onStreamError(_e: Error) {
 		streamingMessageId.value = undefined;
+		setError(_e.message || 'Failed to stream message');
 	}
 
 	function sendMessage(
@@ -322,6 +325,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		model: ChatHubConversationModel | null,
 		credentials: ChatHubSendMessageRequest['credentials'] | null,
 	) {
+		clearError(); // Clear any previous errors when sending a new message
 		const messageId = uuidv4();
 		const replyId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -501,6 +505,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
+	function setError(message: string) {
+		currentError.value = message;
+	}
+
+	function clearError() {
+		currentError.value = null;
+	}
+
+	function setCurrentSessionId(sessionId: string | undefined) {
+		currentSessionId.value = sessionId;
+	}
+
 	return {
 		models,
 		sessions,
@@ -508,6 +524,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		isResponding,
 		streamingMessageId,
+		currentError,
+		currentSessionId,
 		fetchChatModels,
 		sendMessage,
 		editMessage,
@@ -519,5 +537,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		getConversation,
 		getActiveMessages,
 		switchAlternative,
+		setError,
+		clearError,
+		setCurrentSessionId,
 	};
 });
