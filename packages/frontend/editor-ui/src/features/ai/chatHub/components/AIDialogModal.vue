@@ -306,15 +306,52 @@ function handleSubmitMessage(message: string) {
 		chatStore.setCurrentSessionId(sessionId);
 	}
 
-	// Send message to chat backend
-	// Note: This requires a model and credentials to be selected in the chat UI
-	// The chat store will handle this and show an error if not configured
+	// Get credentials for selected model's provider
+	const credentialsId = selectedModel.value
+		? mergedCredentials.value[selectedModel.value.provider]
+		: undefined;
+
+	// Build credentials object in required format
+	const credentials = selectedModel.value && credentialsId
+		? {
+				[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+					id: credentialsId,
+					name: '',
+				}
+			}
+		: null;
+
+	// Send message to chat backend with proper model and credentials
 	chatStore.sendMessage(
 		chatStore.currentSessionId!,
 		contextualMessage,
-		null, // Model will be selected in chat UI
-		null, // Credentials will be selected in chat UI
+		selectedModel.value,
+		credentials,
 	);
+}
+
+// Model selection handlers
+function handleSelectModel(selection: ChatHubConversationModel) {
+	selectedModel.value = selection;
+}
+
+function handleSelectCredentials(provider: ChatHubProvider, credentialsId: string) {
+	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialsId };
+}
+
+function handleConfigureCredentials(provider: ChatHubProvider) {
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+	
+	if (existingCredentials.length === 0) {
+		// No credentials exist - open new credential creation modal
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+	
+	// Credentials exist - open credential creation modal
+	// (user can choose to create new or select existing)
+	uiStore.openNewCredential(credentialType);
 }
 </script>
 
