@@ -64,54 +64,6 @@ export function chatWithAssistant(
 	);
 }
 
-export interface WorkflowChanges {
-	nodesToAdd?: Array<{
-		type: string;
-		name: string;
-		parameters: INodeParameters;
-		position: [number, number];
-	}>;
-	nodesToDelete?: string[];
-	nodesToModify?: Array<{
-		name: string;
-		parameters: Partial<INodeParameters>;
-	}>;
-	connectionsToAdd?: Array<{
-		source: string;
-		sourceOutput: number;
-		target: string;
-		targetInput: number;
-	}>;
-	connectionsToDelete?: Array<{
-		source: string;
-		sourceOutput: number;
-		target: string;
-		targetInput: number;
-	}>;
-}
-
-export async function chatWithWorkflowAssistant(
-	ctx: IRestApiContext,
-	payload: {
-		workflowId: string;
-		workflowData: IWorkflowDb;
-		message: string;
-		conversationHistory: Array<{ role: string; content: string }>;
-	},
-	onMessageUpdated: (data: { content: string; changes?: WorkflowChanges }) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-): void {
-	void streamRequest<{ content: string; changes?: WorkflowChanges; done?: boolean }>(
-		ctx,
-		'/ai/workflow-assistant',
-		payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-	);
-}
-
 export async function replaceCode(
 	context: IRestApiContext,
 	data: ReplaceCodeRequest.RequestPayload,
