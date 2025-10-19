@@ -237,8 +237,8 @@ export const useAIAssistantStore = defineStore('aiAssistant', () => {
 				changes.connectionsToDelete.forEach((conn) => {
 					workflowsStore.removeConnection({
 						connection: [
-							{ node: conn.source, type: 'main', index: conn.sourceOutput },
-							{ node: conn.target, type: 'main', index: conn.targetInput },
+							{ node: conn.source, type: 'main' as const, index: conn.sourceOutput },
+							{ node: conn.target, type: 'main' as const, index: conn.targetInput },
 						],
 					});
 				});
@@ -249,7 +249,7 @@ export const useAIAssistantStore = defineStore('aiAssistant', () => {
 				changes.nodesToDelete.forEach((nodeName) => {
 					const node = workflow.nodes.find((n) => n.name === nodeName);
 					if (node) {
-						workflowsStore.removeNode({ name: nodeName });
+						workflowsStore.removeNode(node);
 					}
 				});
 			}
@@ -257,12 +257,18 @@ export const useAIAssistantStore = defineStore('aiAssistant', () => {
 			// 3. Add new nodes
 			if (changes.nodesToAdd && changes.nodesToAdd.length > 0) {
 				changes.nodesToAdd.forEach((nodeData) => {
-					workflowsStore.addNode({
+					// Create proper INodeUi object
+					const newNode = {
+						id: `${Date.now()}-${Math.random()}`,
 						name: nodeData.name,
 						type: nodeData.type,
+						typeVersion: 1,
 						position: nodeData.position,
-						parameters: nodeData.parameters,
-					});
+						parameters: nodeData.parameters || {},
+						credentials: {},
+						disabled: false,
+					};
+					workflowsStore.addNode(newNode);
 				});
 			}
 
@@ -281,8 +287,8 @@ export const useAIAssistantStore = defineStore('aiAssistant', () => {
 				changes.connectionsToAdd.forEach((conn) => {
 					workflowsStore.addConnection({
 						connection: [
-							{ node: conn.source, type: 'main', index: conn.sourceOutput },
-							{ node: conn.target, type: 'main', index: conn.targetInput },
+							{ node: conn.source, type: 'main' as const, index: conn.sourceOutput },
+							{ node: conn.target, type: 'main' as const, index: conn.targetInput },
 						],
 					});
 				});
