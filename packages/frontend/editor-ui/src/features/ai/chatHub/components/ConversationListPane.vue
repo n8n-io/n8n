@@ -58,14 +58,12 @@ function getConversationTitle(session: typeof conversations.value[0]): string {
 
 <style module lang="scss">
 .conversation-list-pane {
-	display: flex;
 	height: 100%;
-	overflow: hidden;
 }
 
 .conversation-sidebar {
-	width: 100px;
-	border-right: 1px solid var(--color-foreground-base);
+	width: 100%;
+	height: 100%;
 	display: flex;
 	flex-direction: column;
 	background: var(--color-background-xlight);
@@ -98,25 +96,6 @@ function getConversationTitle(session: typeof conversations.value[0]): string {
 .new-chat-button {
 	margin: var(--spacing-xs);
 	width: calc(100% - 2 * var(--spacing-xs));
-}
-
-.messages-area {
-	flex-grow: 1;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
-}
-
-.messages-scroll {
-	flex-grow: 1;
-	overflow: hidden;
-}
-
-.messages-container {
-	padding: var(--spacing-m);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-m);
 }
 
 .empty-state {
