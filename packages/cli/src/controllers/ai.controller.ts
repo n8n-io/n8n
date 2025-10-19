@@ -6,6 +6,7 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
+	AiWorkflowAssistantRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
@@ -23,6 +24,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
+import { OllamaService } from '@/services/ollama.service';
 import { UserService } from '@/services/user.service';
 
 export type FlushableResponse = Response & { flush: () => void };
@@ -34,6 +36,7 @@ export class AiController {
 		private readonly workflowBuilderService: WorkflowBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
+		private readonly ollamaService: OllamaService,
 	) {}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
@@ -236,6 +239,105 @@ export class AiController {
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Post('/workflow-assistant', { rateLimit: { limit: 100 }, usesTemplates: true })
+	async workflowAssistant(
+		req: AuthenticatedRequest,
+		res: FlushableResponse,
+		@Body payload: AiWorkflowAssistantRequestDto,
+	) {
+		try {
+			const abortController = new AbortController();
+			const { signal } = abortController;
+
+			const handleClose = () => abortController.abort();
+			res.on('close', handleClose);
+
+			const { workflowData, message, conversationHistory } = payload;
+
+			// Build the prompt with workflow context
+			const systemPrompt = this.ollamaService.buildWorkflowPrompt(workflowData, message);
+
+			// Prepare messages for Ollama
+			const messages = [
+				{ role: 'system' as const, content: systemPrompt },
+				...conversationHistory.map((msg) => ({
+					role: msg.role as 'user' | 'assistant',
+					content: msg.content,
+				})),
+				{ role: 'user' as const, content: message },
+			];
+
+			res.header('Content-type', 'application/json-lines').flush();
+
+			try {
+				let fullResponse = '';
+
+				// Stream response from Ollama
+				for await (const chunk of this.ollamaService.chat(messages, signal)) {
+					fullResponse += chunk;
+
+					// Send streaming chunk to frontend
+					const responseChunk = {
+						content: chunk,
+					};
+					res.write(JSON.stringify(responseChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+					res.flush();
+				}
+
+				// Parse the full response to extract workflow changes
+				try {
+					// Try to find JSON in the response
+					const jsonMatch = fullResponse.match(/\{[\s\S]*"changes"[\s\S]*\}/);
+					if (jsonMatch) {
+						const parsed = JSON.parse(jsonMatch[0]);
+						if (parsed.changes) {
+							// Send final chunk with changes
+							const finalChunk = {
+								content: parsed.explanation || 'Changes applied',
+								changes: parsed.changes,
+								done: true,
+							};
+							res.write(JSON.stringify(finalChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+							res.flush();
+						}
+					}
+				} catch (parseError) {
+					// If parsing fails, just send done without changes
+					const doneChunk = {
+						content: fullResponse,
+						done: true,
+					};
+					res.write(JSON.stringify(doneChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+					res.flush();
+				}
+			} catch (streamError) {
+				assert(streamError instanceof Error);
+
+				const errorChunk = {
+					role: 'assistant',
+					type: 'error',
+					content: streamError.message,
+				};
+				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+			} finally {
+				res.off('close', handleClose);
+			}
+
+			res.end();
+		} catch (e) {
+			assert(e instanceof Error);
+			if (!res.headersSent) {
+				res.status(500).json({
+					code: 500,
+					message: e.message,
+				});
+			} else {
+				res.end();
+			}
 		}
 	}
 }
