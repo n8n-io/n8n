@@ -25,10 +25,11 @@
     "@n8n/config": "workspace:*"
   },
   "dependencies": {
+    "@n8n/db": "workspace:*",
+    "@n8n/permissions": "workspace:*",
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
     "zod": "catalog:",
-    "zod-class": "0.0.16",
-    "@n8n/permissions": "workspace:*"
+    "zod-class": "0.0.16"
   }
 }
