@@ -1,10 +1,10 @@
-import type { IWorkflowDb } from '@n8n/db';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
 export class AiWorkflowAssistantRequestDto extends Z.class({
 	workflowId: z.string(),
-	workflowData: z.custom<IWorkflowDb>((val: IWorkflowDb) => {
+	workflowData: z.custom<IWorkflowBase>((val: IWorkflowBase) => {
 		if (!val.id || !val.name || !val.nodes || !val.connections) {
 			return false;
 		}
