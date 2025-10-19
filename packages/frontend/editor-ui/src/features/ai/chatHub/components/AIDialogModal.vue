@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import { useTemplateRef, ref, onMounted, computed, watch } from 'vue';
-import { useDraggable } from '@vueuse/core';
-import { N8nResizeWrapper } from '@n8n/design-system';
+import { useTemplateRef, ref, onMounted, computed, watch, nextTick } from 'vue';
+import { useDraggable, useLocalStorage } from '@vueuse/core';
+import { N8nResizeWrapper, N8nScrollArea } from '@n8n/design-system';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import ConversationListPane from './ConversationListPane.vue';
-import ErrorDisplayPane from './ErrorDisplayPane.vue';
 import ChatPrompt from './ChatPrompt.vue';
+import ModelSelector from './ModelSelector.vue';
+import ChatMessage from './ChatMessage.vue';
 import { v4 as uuidv4 } from 'uuid';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const credentialsStore = useCredentialsStore();
 const container = useTemplateRef('container');
 const wrapper = useTemplateRef('wrapper');
 const header = useTemplateRef('header');
@@ -45,6 +50,32 @@ const resizeStartWidth = ref(0);
 const resizeStartHeight = ref(0);
 const resizeStartPosX = ref(0);
 const resizeStartPosY = ref(0);
+
+// Model selection state
+const selectedModel = useLocalStorage<ChatHubConversationModel | null>('n8n-ai-dialog-selected-model', null);
+const selectedCredentials = useLocalStorage<Record<string, string>>('n8n-ai-dialog-credentials', {});
+const models = ref<any | null>(null);
+
+// Merged credentials (combines selected credentials with auto-detected ones)
+const mergedCredentials = computed(() => selectedCredentials.value);
+
+// Input placeholder based on model selection
+const inputPlaceholder = computed(() => {
+	if (!selectedModel.value) {
+		return 'Select a model to start';
+	}
+	return `Message ${selectedModel.value.model}`;
+});
+
+// Messages display state
+const messagesScrollAreaRef = ref<InstanceType<typeof N8nScrollArea> | null>(null);
+const editingMessageId = ref<string | null>(null);
+
+// Get active messages for current session
+const activeMessages = computed(() => {
+	if (!chatStore.currentSessionId) return [];
+	return chatStore.getActiveMessages(chatStore.currentSessionId);
+});
 
 // Load saved position and size from localStorage
 function loadWindowState() {
@@ -213,6 +244,54 @@ watch([windowX, windowY], () => {
 	}
 });
 
+// Watch credentials and fetch models
+watch(
+	mergedCredentials,
+	async (credentials) => {
+		models.value = await chatStore.fetchChatModels(credentials);
+
+		// Auto-select first available model if none selected
+		if (selectedModel.value === null && models.value) {
+			// Find first provider with available models
+			for (const provider of ['openai', 'anthropic', 'google', 'ollama'] as ChatHubProvider[]) {
+				const providerModels = models.value[provider]?.models;
+				if (providerModels && providerModels.length > 0) {
+					// Select first model from first available provider
+					selectedModel.value = {
+						provider: provider,
+						model: providerModels[0].name,
+						workflowId: null,
+					};
+					break;
+				}
+			}
+		}
+	},
+	{ immediate: true }
+);
+
+// Auto-scroll to bottom when new messages arrive
+function scrollToBottom() {
+	nextTick(() => {
+		if (messagesScrollAreaRef.value) {
+			const scrollContainer = messagesScrollAreaRef.value.$el.querySelector('[data-radix-scroll-area-viewport]');
+			if (scrollContainer) {
+				scrollContainer.scrollTop = scrollContainer.scrollHeight;
+			}
+		}
+	});
+}
+
+watch(
+	activeMessages,
+	(newMessages, oldMessages) => {
+		if (newMessages.length !== oldMessages?.length) {
+			scrollToBottom();
+		}
+	},
+	{ deep: true }
+);
+
 // Panel resize logic (existing)
 const {
 	size: leftPaneWidth,
@@ -259,15 +338,91 @@ function handleSubmitMessage(message: string) {
 		chatStore.setCurrentSessionId(sessionId);
 	}
 
-	// Send message to chat backend
-	// Note: This requires a model and credentials to be selected in the chat UI
-	// The chat store will handle this and show an error if not configured
+	// Get credentials for selected model's provider
+	const credentialsId = selectedModel.value
+		? mergedCredentials.value[selectedModel.value.provider]
+		: undefined;
+
+	// Build credentials object in required format
+	const credentials = selectedModel.value && credentialsId
+		? {
+				[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+					id: credentialsId,
+					name: '',
+				}
+			}
+		: null;
+
+	// Send message to chat backend with proper model and credentials
 	chatStore.sendMessage(
 		chatStore.currentSessionId!,
 		contextualMessage,
-		null, // Model will be selected in chat UI
-		null, // Credentials will be selected in chat UI
+		selectedModel.value,
+		credentials,
 	);
+}
+
+// Model selection handlers
+function handleSelectModel(selection: ChatHubConversationModel) {
+	selectedModel.value = selection;
+}
+
+function handleSelectCredentials(provider: ChatHubProvider, credentialsId: string) {
+	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialsId };
+}
+
+function handleConfigureCredentials(provider: ChatHubProvider) {
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0) {
+		// No credentials exist - open new credential creation modal
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+
+	// Credentials exist - open credential creation modal
+	// (user can choose to create new or select existing)
+	uiStore.openNewCredential(credentialType);
+}
+
+// Message interaction handlers
+function handleEditMessage(messageId: string) {
+	editingMessageId.value = messageId;
+	// Note: Inline editing would be handled by ChatMessage component
+	// When done editing, call chatStore.editMessage
+}
+
+function handleRegenerateMessage(messageId: string) {
+	// Get credentials for selected model's provider
+	const credentialsId = selectedModel.value
+		? mergedCredentials.value[selectedModel.value.provider]
+		: undefined;
+
+	// Build credentials object in required format
+	const credentials = selectedModel.value && credentialsId
+		? {
+				[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+					id: credentialsId,
+					name: '',
+				}
+			}
+		: null;
+
+	if (chatStore.currentSessionId && selectedModel.value && credentials) {
+		chatStore.regenerateMessage(
+			chatStore.currentSessionId,
+			messageId,
+			selectedModel.value,
+			credentials
+		);
+	}
+}
+
+function handleSwitchAlternative(messageId: string) {
+	if (chatStore.currentSessionId) {
+		chatStore.switchAlternative(chatStore.currentSessionId, messageId);
+	}
 }
 </script>
 
@@ -317,51 +472,85 @@ function handleSubmitMessage(message: string) {
 					@resizeend="onMiddlePaneResizeEnd"
 				>
 					<div :class="$style['middle-pane-content']">
-						<ChatPrompt
-							placeholder="Type your message..."
-							:disabled="false"
-							@submit="handleSubmitMessage"
-						/>
+						<div :class="$style['model-selector-container']">
+							<ModelSelector
+								:models="models"
+								:selected-model="selectedModel"
+								@change="handleSelectModel"
+								@configure="handleConfigureCredentials"
+							/>
+						</div>
+
+						<!-- Messages display area -->
+						<div :class="$style['messages-area']">
+							<N8nScrollArea ref="messagesScrollAreaRef" :class="$style['messages-scroll']">
+								<div :class="$style['messages-container']">
+									<ChatMessage
+										v-for="message in activeMessages"
+										:key="message.id"
+										:message="message"
+										:compact="false"
+										:is-editing="editingMessageId === message.id"
+										:is-streaming="chatStore.streamingMessageId === message.id"
+										@edit="handleEditMessage"
+										@regenerate="handleRegenerateMessage"
+										@switch-alternative="handleSwitchAlternative"
+									/>
+									<div v-if="activeMessages.length === 0" :class="$style['empty-state']">
+										Start a conversation
+									</div>
+								</div>
+							</N8nScrollArea>
+						</div>
+
+						<!-- Input area -->
+						<div :class="$style['input-area']">
+							<ChatPrompt
+								:placeholder="inputPlaceholder"
+								:disabled="!selectedModel"
+								@submit="handleSubmitMessage"
+							/>
+						</div>
 					</div>
 				</N8nResizeWrapper>
 
 				<div :class="$style['right-pane']">
-					<ErrorDisplayPane />
+					<!-- Reserved for future use -->
 				</div>
 			</div>
 
 			<!-- Resize handles -->
 			<div
 				:class="$style['resize-handle-top']"
-				@mousemove="startResize('top', $event)"
+				@mousedown="startResize('top', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-right']"
-				@mousemove="startResize('right', $event)"
+				@mousedown="startResize('right', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-bottom']"
-				@mousemove="startResize('bottom', $event)"
+				@mousedown="startResize('bottom', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-left']"
-				@mousemove="startResize('left', $event)"
+				@mousedown="startResize('left', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-top-left']"
-				@mousemove="startResize('top-left', $event)"
+				@mousedown="startResize('top-left', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-top-right']"
-				@mousemove="startResize('top-right', $event)"
+				@mousedown="startResize('top-right', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-bottom-left']"
-				@mousemove="startResize('bottom-left', $event)"
+				@mousedown="startResize('bottom-left', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-bottom-right']"
-				@mousemove="startResize('bottom-right', $event)"
+				@mousedown="startResize('bottom-right', $event)"
 			></div>
 		</div>
 	</div>
@@ -450,8 +639,46 @@ function handleSubmitMessage(message: string) {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-end;
+	overflow: hidden;
+	padding: 0;
+}
+
+.model-selector-container {
+	flex-shrink: 0;
+	background: var(--color-background-light, #f5f5f5);
+	border-bottom: 1px solid var(--color-foreground-base, #ddd);
+	padding: 12px;
+}
+
+.messages-area {
+	flex: 1;
+	overflow: hidden;
+	min-height: 0;
+}
+
+.messages-scroll {
+	height: 100%;
+}
+
+.messages-container {
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-m);
+}
+
+.input-area {
+	flex-shrink: 0;
+	border-top: 1px solid var(--color-foreground-base, #ddd);
+	background: var(--color-background-xlight, #fff);
 	padding: var(--spacing-m);
+}
+
+.empty-state {
+	text-align: center;
+	color: var(--color-text-light, #999);
+	padding: 32px;
+	font-size: 14px;
 }
 
 .right-pane {
