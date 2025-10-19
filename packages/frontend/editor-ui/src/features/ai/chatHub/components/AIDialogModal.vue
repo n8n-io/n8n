@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import { useTemplateRef, ref, onMounted, computed, watch } from 'vue';
-import { useDraggable } from '@vueuse/core';
+import { useTemplateRef, ref, onMounted, computed, watch, nextTick } from 'vue';
+import { useDraggable, useLocalStorage } from '@vueuse/core';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import ConversationListPane from './ConversationListPane.vue';
 import ErrorDisplayPane from './ErrorDisplayPane.vue';
 import ChatPrompt from './ChatPrompt.vue';
+import ModelSelector from './ModelSelector.vue';
 import { v4 as uuidv4 } from 'uuid';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const credentialsStore = useCredentialsStore();
 const container = useTemplateRef('container');
 const wrapper = useTemplateRef('wrapper');
 const header = useTemplateRef('header');
