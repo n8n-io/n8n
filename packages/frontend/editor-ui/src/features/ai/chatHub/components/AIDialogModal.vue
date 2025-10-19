@@ -249,7 +249,7 @@ watch(
 	mergedCredentials,
 	async (credentials) => {
 		models.value = await chatStore.fetchChatModels(credentials);
-		
+
 		// Auto-select first available model if none selected
 		if (selectedModel.value === null && models.value) {
 			// Find first provider with available models
@@ -374,13 +374,13 @@ function handleSelectCredentials(provider: ChatHubProvider, credentialsId: strin
 function handleConfigureCredentials(provider: ChatHubProvider) {
 	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
 	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-	
+
 	if (existingCredentials.length === 0) {
 		// No credentials exist - open new credential creation modal
 		uiStore.openNewCredential(credentialType);
 		return;
 	}
-	
+
 	// Credentials exist - open credential creation modal
 	// (user can choose to create new or select existing)
 	uiStore.openNewCredential(credentialType);
@@ -522,35 +522,35 @@ function handleSwitchAlternative(messageId: string) {
 			<!-- Resize handles -->
 			<div
 				:class="$style['resize-handle-top']"
-				@mousemove="startResize('top', $event)"
+				@mousedown="startResize('top', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-right']"
-				@mousemove="startResize('right', $event)"
+				@mousedown="startResize('right', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-bottom']"
-				@mousemove="startResize('bottom', $event)"
+				@mousedown="startResize('bottom', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-left']"
-				@mousemove="startResize('left', $event)"
+				@mousedown="startResize('left', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-top-left']"
-				@mousemove="startResize('top-left', $event)"
+				@mousedown="startResize('top-left', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-top-right']"
-				@mousemove="startResize('top-right', $event)"
+				@mousedown="startResize('top-right', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-bottom-left']"
-				@mousemove="startResize('bottom-left', $event)"
+				@mousedown="startResize('bottom-left', $event)"
 			></div>
 			<div
 				:class="$style['resize-handle-bottom-right']"
-				@mousemove="startResize('bottom-right', $event)"
+				@mousedown="startResize('bottom-right', $event)"
 			></div>
 		</div>
 	</div>
