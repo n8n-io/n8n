@@ -43,6 +43,7 @@
 				--color-label: #555555;
 				--color-input-border: #dbdfe7;
 				--color-input-text: #71747A;
+				--color-input-bg: #ffffff;
 				--color-focus-border: rgb(90, 76, 194);
 				--color-submit-btn-bg: #ff6d5a;
 				--color-submit-btn-text: #ffffff;
@@ -174,6 +175,7 @@
 				width: 100%;
 				font-size: var(--font-size-input);
 				color: var(--color-input-text);
+				background-color: var(--color-input-bg);
 				font-weight: 400;
 				padding: var(--padding-form-input);
 			}
@@ -293,9 +295,46 @@
 			}
 
 			input[type='checkbox'] {
+				appearance: none;
 				width: var(--checkbox-size);
 				height: var(--checkbox-size);
+				border: 1px solid var(--color-input-border);
+				border-radius: 3px;
 				cursor: pointer;
+				position: relative;
+			}
+			.multiselect-checkbox:checked {
+				background: var(--color-focus-border);
+				border-color: var(--color-focus-border);
+			}
+			.multiselect-checkbox:checked::after {
+				content: '✔';
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				color: white;
+				font-size: var(--font-size-label);
+				font-weight: bold;
+			}
+
+			.multiselect[data-radio-select] .multiselect-checkbox {
+				border-radius: 50%;
+				width: var(--checkbox-size);
+				height: var(--checkbox-size);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.multiselect[data-radio-select] .multiselect-checkbox:checked {
+				background: white;
+				border-color: var(--color-focus-border);
+				border-width: 4px;
+				border-radius: 50%;
+			}
+			.multiselect[data-radio-select] .multiselect-checkbox:checked::after {
+				content: '';
 			}
 			/* required field ----------------------------- */
 			.form-required {
@@ -452,7 +491,22 @@
 							{{#if isMultiSelect}}
 								<div>
 									<label class='form-label {{inputRequired}}'>{{label}}</label>
-									<div class='multiselect {{inputRequired}}' id='{{id}}'>
+									<div
+									  class='multiselect {{inputRequired}}'
+										id='{{id}}'
+										{{#if radioSelect}}
+											data-radio-select='{{radioSelect}}'
+										{{/if}}
+										{{#if exactSelectedOptions}}
+											data-exact-select='{{exactSelectedOptions}}'
+										{{/if}}
+										{{#if minSelectedOptions}}
+											data-min-select='{{minSelectedOptions}}'
+										{{/if}}
+										{{#if maxSelectedOptions}}
+											data-max-select='{{maxSelectedOptions}}'
+										{{/if}}
+									>
 										{{#each multiSelectOptions}}
 											<div class='multiselect-option'>
 												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
@@ -618,6 +672,15 @@
 			</section>
 		</div>
 		<script>
+			function updateError(errorElement, action = 'add', message = '') {
+				if(action === 'add') {
+					errorElement.textContent = message;
+					errorElement.classList.add('error-show');
+				} else {
+					errorElement.classList.remove('error-show');
+				}
+			}
+
 			function validateInput(input, errorElement) {
 				const value = input.value.trim();
 				const type = input.type;
@@ -626,19 +689,17 @@
 					return validateEmailInput(value, errorElement);
 				} else if (type === 'number' && value !== '') {
 					if (isNaN(value)) {
-						errorElement.textContent = 'Enter only numbers in this field';
-						errorElement.classList.add('error-show');
+						updateError(errorElement, 'add', 'Enter only numbers in this field');
 						return false;
 					} else {
-						errorElement.classList.remove('error-show');
+						updateError(errorElement, 'remove');
 						return true;
 					}
 				} else if (value === '') {
-					errorElement.textContent = 'This field is required';
-					errorElement.classList.add('error-show');
+					updateError(errorElement, 'add', 'This field is required');
 					return false;
 				} else {
-					errorElement.classList.remove('error-show');
+					updateError(errorElement, 'remove');
 					return true;
 				}
 			}
@@ -648,12 +709,11 @@
 				const isValidEmail = regex.test(value);
 
 				if (!isValidEmail) {
-					errorElement.textContent = 'Enter a valid email address in this field';
-					errorElement.classList.add('error-show');
+					updateError(errorElement, 'add', 'Enter a valid email address in this field');
 					return false;
 				} else {
 					errorElement.textContent = 'This field is required';
-					errorElement.classList.remove('error-show');
+					updateError(errorElement, 'remove');
 					return true;
 				}
 			}
@@ -672,16 +732,41 @@
 				return selectedValues;
 			}
 
-			function validateMultiselect(input, errorElement) {
-				const selectedValues = getSelectedValues(input);
+			function getDataValues(input) {
+				const radio = input.dataset.radioSelect ? true : false;
+				const exact = input.dataset.exactSelect ? parseInt(input.dataset.exactSelect, 10) : null;
+				const maxSelect = input.dataset.maxSelect ? parseInt(input.dataset.maxSelect, 10) : null;
+				const minSelect = input.dataset.minSelect ? parseInt(input.dataset.minSelect, 10) : null;
+				return { radio, exact, maxSelect, minSelect };
+			}
 
-				if (!selectedValues.length) {
-					errorElement.classList.add('error-show');
+			function validateMultiselect(input, errorElement) {
+				const values = getSelectedValues(input);
+				const data = getDataValues(input);
+				const required = input.classList.contains('form-required');
+
+				if (required && !values.length) {
+					updateError(errorElement, 'add', 'This field is required');
 					return false;
-				} else {
-					errorElement.classList.remove('error-show');
-					return true;
 				}
+
+				if (data.exact && values.length !== data.exact) {
+					updateError(errorElement, 'add', `You must select ${data.exact} options`);
+					return false;
+				}
+
+				if (data.minSelect && values.length < data.minSelect) {
+					updateError(errorElement, 'add', `You must select at least ${data.minSelect} options`);
+					return false;
+				}
+
+				if(data.maxSelect && values.length > data.maxSelect) {
+					updateError(errorElement, 'add', `You can select a maximum of ${data.maxSelect} options`);
+					return false;
+				}
+
+				updateError(errorElement, 'remove');
+				return true;
 			}
 
 			const form = document.querySelector('#n8n-form');
@@ -724,6 +809,32 @@
 
 			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
 			const emailInputs = document.querySelectorAll("input[type=email]");
+			const multiselectInputs = document.querySelectorAll('.multiselect');
+
+			multiselectInputs.forEach((input) => {
+				const data = getDataValues(input);
+				const errorElement = document.querySelector(`.error-${input.id}`);
+
+				if (data.radio) {
+					const checkboxes = input.querySelectorAll('.multiselect-checkbox');
+					checkboxes.forEach((checkbox) => {
+						checkbox.addEventListener('change', (event) => {
+							if (event.target.checked) {
+								checkboxes.forEach((cb) => {
+									if (cb !== event.target) {
+										cb.checked = false;
+									}
+								});
+								updateError(errorElement, 'remove');
+							}
+						});
+					});
+				}
+
+				input.addEventListener('click', () => {
+					validateMultiselect(input, errorElement);
+				});
+			});
 
 			requiredInputs.forEach((input) => {
 				const errorSelector = `.error-${input.id}`;
@@ -738,7 +849,7 @@
 						validateInput(input, error);
 					});
 					input.addEventListener('input', () => {
-						error.classList.remove('error-show');
+						updateError(error, 'remove');
 					});
 				}
 			});
@@ -821,7 +932,7 @@
 					valid.push(validateEmailInput(value, error));
 				});
 
-				requiredInputs.forEach((input) => {
+				[...requiredInputs, ...multiselectInputs].forEach((input) => {
 					const errorSelector = `.error-${input.id}`;
 					const error = document.querySelector(errorSelector);
 

@@ -2,6 +2,7 @@
 	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"baseUrl": ".",
+		"moduleResolution": "bundler",
 		"rootDirs": [
 			".",
 			"../@n8n/rest-api-client/src",

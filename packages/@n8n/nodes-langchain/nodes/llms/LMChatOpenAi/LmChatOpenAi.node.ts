@@ -290,8 +290,8 @@ export class LmChatOpenAi implements INodeType {
 						],
 						displayOptions: {
 							show: {
-								// reasoning_effort is only available on o1, o1-versioned, or on o3-mini and beyond. Not on o1-mini or other GPT-models.
-								'/model': [{ _cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)' } }],
+								// reasoning_effort is only available on o1, o1-versioned, or on o3-mini and beyond, and gpt-5 models. Not on o1-mini or other GPT-models.
+								'/model': [{ _cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)|(^gpt-5.*)' } }],
 							},
 						},
 					},
@@ -358,6 +358,16 @@ export class LmChatOpenAi implements INodeType {
 				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
 			};
 		}
+		if (
+			credentials.header &&
+			typeof credentials.headerName === 'string' &&
+			credentials.headerName &&
+			typeof credentials.headerValue === 'string'
+		) {
+			configuration.defaultHeaders = {
+				[credentials.headerName]: credentials.headerValue,
+			};
+		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
 		const modelKwargs: {
@@ -369,7 +379,7 @@ export class LmChatOpenAi implements INodeType {
 			modelKwargs.reasoning_effort = options.reasoningEffort;
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,

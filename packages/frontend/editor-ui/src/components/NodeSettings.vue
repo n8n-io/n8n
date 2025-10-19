@@ -1,86 +1,105 @@
 <script setup lang="ts">
-import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type {
-	INodeParameters,
-	INodeProperties,
-	NodeConnectionType,
-	NodeParameterValue,
-	INodeCredentialDescription,
-} from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+import type {
+	INodeCredentialDescription,
+	INodeParameters,
+	NodeConnectionType,
+	NodeParameterValue,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import {
-	BASE_NODE_SURVEY_URL,
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	CUSTOM_NODES_DOCS_URL,
-	NDV_UI_OVERHAUL_EXPERIMENT,
-} from '@/constants';
+import { BASE_NODE_SURVEY_URL, VIEWS } from '@/constants';
 
-import ParameterInputList from '@/components/ParameterInputList.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
-import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
+import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
+import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import get from 'lodash/get';
 
-import NodeExecuteButton from './NodeExecuteButton.vue';
-import { nameIsParameter } from '@/utils/nodeSettingsUtils';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useHistoryStore } from '@/stores/history.store';
-import { RenameNodeCommand } from '@/models/history';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import type { EventBus } from '@n8n/utils/event-bus';
+import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import NodeActionsList from '@/components/NodeActionsList.vue';
+import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
+import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@n8n/i18n';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
-import { ProjectTypes } from '@/types/projects.types';
-import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { usePostHog } from '@/stores/posthog.store';
-import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
+import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
+import { RenameNodeCommand } from '@/models/history';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
+import { getNodeIconSource } from '@/utils/nodeIcon';
+import {
+	collectParametersByTab,
+	collectSettings,
+	createCommonNodeSettings,
+	getNodeSettingsInitialValues,
+	nameIsParameter,
+} from '@/utils/nodeSettingsUtils';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
+import NodeExecuteButton from './NodeExecuteButton.vue';
+
+import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { useRoute } from 'vue-router';
+import { useSettingsStore } from '@/stores/settings.store';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 const props = withDefaults(
 	defineProps<{
-		eventBus: EventBus;
+		eventBus?: EventBus;
 		dragging: boolean;
 		pushRef: string;
 		readOnly: boolean;
 		foreignCredentials: string[];
 		blockUI: boolean;
 		executable: boolean;
-		inputSize: number;
+		inputSize?: number;
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
-		noWheel?: boolean;
+		subTitle?: string;
+		extraTabsClassName?: string;
+		extraParameterWrapperClassName?: string;
+		isNdvV2?: boolean;
+		hideExecute?: boolean;
+		hideDocs?: boolean;
+		hideSubConnections?: boolean;
 	}>(),
 	{
-		foreignCredentials: () => [],
-		readOnly: false,
-		executable: true,
 		inputSize: 0,
-		blockUI: false,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
-		noWheel: false,
+		subTitle: undefined,
+		isNdvV2: false,
+		hideExecute: false,
+		hideDocs: true,
+		hideSubConnections: false,
 	},
 );
 
 const emit = defineEmits<{
 	stopExecution: [];
-	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
 	switchSelectedNode: [nodeName: string];
 	openConnectionNodeCreator: [
@@ -90,23 +109,27 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	captureWheelBody: [WheelEvent];
+	dblclickHeader: [MouseEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
 
+const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
+
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
-const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const route = useRoute();
 const nodeSettingsParameters = useNodeSettingsParameters();
-const nodeValues = nodeSettingsParameters.nodeValues;
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
 const shouldShowStaticScrollbar = ref(false);
@@ -120,18 +143,19 @@ if (props.isEmbeddedInCanvas) {
 }
 
 const nodeValid = ref(true);
-const openPanel = ref<Tab>('params');
+const openPanel = ref<NodeSettingsTab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
 
 const hiddenIssuesInputs = ref<string[]>([]);
-const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
-const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
-const currentWorkflow = computed(() =>
-	workflowsStore.getWorkflowById(currentWorkflowInstance.value.id),
+const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
+const { isPreviewMode } = useSettingsStore();
+const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
+const currentWorkflow = computed(
+	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -145,6 +169,11 @@ const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
 );
+
+const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
+
+const nodeTypeName = computed(() => node.value?.type);
+const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -201,14 +230,9 @@ const parameters = computed(() => {
 	return nodeType.value?.properties ?? [];
 });
 
-const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
-
-const parametersNoneSetting = computed(() => {
-	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
-	const paramsToShow = parameters.value.filter((item) => !item.isNodeSetting);
-
-	return props.isEmbeddedInCanvas ? parameters.value.filter(shouldShowParameter) : paramsToShow;
-});
+const parametersByTab = computed(() =>
+	collectParametersByTab(parameters.value, props.isEmbeddedInCanvas),
+);
 
 const isDisplayingCredentials = computed(
 	() =>
@@ -221,12 +245,13 @@ const isDisplayingCredentials = computed(
 const showNoParametersNotice = computed(
 	() =>
 		!isDisplayingCredentials.value &&
-		parametersNoneSetting.value.filter((item) => item.type !== 'notice').length === 0,
+		(parametersByTab.value.params ?? []).filter((item) => item.type !== 'notice').length === 0,
 );
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
+const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
 	Object.values(workflowsStore.usedCredentials).filter((credential) =>
@@ -246,18 +271,19 @@ const credentialOwnerName = computed(() => {
 	return credentialsStore.getCredentialOwnerName(credential);
 });
 
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
-
 const featureRequestUrl = computed(() => {
 	if (!nodeType.value) {
 		return '';
 	}
 	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
+});
+
+const hasOutputConnection = computed(() => {
+	if (!node.value) return false;
+	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.value.name);
+
+	// Check if there's at-least one output connection
+	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
 });
 
 const valueChanged = (parameterData: IUpdateInformation) => {
@@ -282,11 +308,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 	if (_node === null) {
 		return;
-	}
-
-	if (parameterData.name === 'onError') {
-		// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
-		emit('redrawRequired');
 	}
 
 	if (parameterData.name === 'name') {
@@ -355,7 +376,11 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 		for (const key of Object.keys(nodeParameters as object)) {
 			if (nodeParameters?.[key] !== null && nodeParameters?.[key] !== undefined) {
-				nodeSettingsParameters.setValue(`parameters.${key}`, nodeParameters[key] as string);
+				nodeSettingsParameters.setValue(
+					nodeValues,
+					`parameters.${key}`,
+					nodeParameters[key] as string,
+				);
 			}
 		}
 
@@ -365,14 +390,20 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				value: nodeParameters,
 			};
 
-			workflowsStore.setNodeParameters(updateInformation);
+			workflowState.setNodeParameters(updateInformation);
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
-		nodeSettingsParameters.updateNodeParameter(parameterData, newValue, _node, isToolNode.value);
+		nodeSettingsParameters.updateNodeParameter(
+			nodeValues,
+			parameterData,
+			newValue,
+			_node,
+			isToolNode.value,
+		);
 	} else {
 		// A property on the node itself changed
 
@@ -389,7 +420,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: newValue,
 		};
 
-		workflowsStore.setNodeValue(updateInformation);
+		workflowState.setNodeValue(updateInformation);
 	}
 };
 
@@ -418,138 +449,17 @@ const onOpenConnectionNodeCreator = (
 const populateHiddenIssuesSet = () => {
 	if (!node.value || !workflowsStore.isNodePristine(node.value.name)) return;
 	hiddenIssuesInputs.value.push('credentials');
-	parametersNoneSetting.value.forEach((parameter) => {
+	parametersByTab.value.params.forEach((parameter) => {
 		hiddenIssuesInputs.value.push(parameter.name);
 	});
 	workflowsStore.setNodePristine(node.value.name, false);
 };
 
-const populateSettings = () => {
-	if (isExecutable.value && !isTriggerNode.value) {
-		nodeSettings.value.push(
-			...([
-				{
-					displayName: i18n.baseText('nodeSettings.alwaysOutputData.displayName'),
-					name: 'alwaysOutputData',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.alwaysOutputData.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.executeOnce.displayName'),
-					name: 'executeOnce',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.executeOnce.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.retryOnFail.displayName'),
-					name: 'retryOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.retryOnFail.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.maxTries.displayName'),
-					name: 'maxTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 2,
-						maxValue: 5,
-					},
-					default: 3,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.maxTries.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.waitBetweenTries.displayName'),
-					name: 'waitBetweenTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 0,
-						maxValue: 5000,
-					},
-					default: 1000,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.waitBetweenTries.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.onError.displayName'),
-					name: 'onError',
-					type: 'options',
-					options: [
-						{
-							name: i18n.baseText('nodeSettings.onError.options.stopWorkflow.displayName'),
-							value: 'stopWorkflow',
-							description: i18n.baseText('nodeSettings.onError.options.stopWorkflow.description'),
-						},
-						{
-							name: i18n.baseText('nodeSettings.onError.options.continueRegularOutput.displayName'),
-							value: 'continueRegularOutput',
-							description: i18n.baseText(
-								'nodeSettings.onError.options.continueRegularOutput.description',
-							),
-						},
-						{
-							name: i18n.baseText('nodeSettings.onError.options.continueErrorOutput.displayName'),
-							value: 'continueErrorOutput',
-							description: i18n.baseText(
-								'nodeSettings.onError.options.continueErrorOutput.description',
-							),
-						},
-					],
-					default: 'stopWorkflow',
-					description: i18n.baseText('nodeSettings.onError.description'),
-					noDataExpression: true,
-					isNodeSetting: true,
-				},
-			] as INodeProperties[]),
-		);
-	}
-	nodeSettings.value.push(
-		...([
-			{
-				displayName: i18n.baseText('nodeSettings.notes.displayName'),
-				name: 'notes',
-				type: 'string',
-				typeOptions: {
-					rows: 5,
-				},
-				default: '',
-				noDataExpression: true,
-				description: i18n.baseText('nodeSettings.notes.description'),
-				isNodeSetting: true,
-			},
-			{
-				displayName: i18n.baseText('nodeSettings.notesInFlow.displayName'),
-				name: 'notesInFlow',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-				description: i18n.baseText('nodeSettings.notesInFlow.description'),
-				isNodeSetting: true,
-			},
-		] as INodeProperties[]),
-	);
-};
+const nodeSettings = computed(() =>
+	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
+);
+
+const iconSource = computed(() => getNodeIconSource(nodeType.value ?? node.value?.type));
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -568,7 +478,7 @@ const onNodeExecute = () => {
 
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
-	workflowsStore.updateNodeProperties(updateInformation);
+	workflowState.updateNodeProperties(updateInformation);
 
 	const node = workflowsStore.getNodeByName(updateInformation.name);
 
@@ -599,124 +509,12 @@ const setNodeValues = () => {
 
 	if (nodeType.value !== null) {
 		nodeValid.value = true;
-
-		const foundNodeSettings = [];
-		if (node.value.color) {
-			foundNodeSettings.push('color');
-			nodeValues.value = {
-				...nodeValues.value,
-				color: node.value.color,
-			};
-		}
-
-		if (node.value.notes) {
-			foundNodeSettings.push('notes');
-			nodeValues.value = {
-				...nodeValues.value,
-				notes: node.value.notes,
-			};
-		}
-
-		if (node.value.alwaysOutputData) {
-			foundNodeSettings.push('alwaysOutputData');
-			nodeValues.value = {
-				...nodeValues.value,
-				alwaysOutputData: node.value.alwaysOutputData,
-			};
-		}
-
-		if (node.value.executeOnce) {
-			foundNodeSettings.push('executeOnce');
-			nodeValues.value = {
-				...nodeValues.value,
-				executeOnce: node.value.executeOnce,
-			};
-		}
-
-		if (node.value.continueOnFail) {
-			foundNodeSettings.push('onError');
-			nodeValues.value = {
-				...nodeValues.value,
-				onError: 'continueRegularOutput',
-			};
-		}
-
-		if (node.value.onError) {
-			foundNodeSettings.push('onError');
-			nodeValues.value = {
-				...nodeValues.value,
-				onError: node.value.onError,
-			};
-		}
-
-		if (node.value.notesInFlow) {
-			foundNodeSettings.push('notesInFlow');
-			nodeValues.value = {
-				...nodeValues.value,
-				notesInFlow: node.value.notesInFlow,
-			};
-		}
-
-		if (node.value.retryOnFail) {
-			foundNodeSettings.push('retryOnFail');
-			nodeValues.value = {
-				...nodeValues.value,
-				retryOnFail: node.value.retryOnFail,
-			};
-		}
-
-		if (node.value.maxTries) {
-			foundNodeSettings.push('maxTries');
-			nodeValues.value = {
-				...nodeValues.value,
-				maxTries: node.value.maxTries,
-			};
-		}
-
-		if (node.value.waitBetweenTries) {
-			foundNodeSettings.push('waitBetweenTries');
-			nodeValues.value = {
-				...nodeValues.value,
-				waitBetweenTries: node.value.waitBetweenTries,
-			};
-		}
-
-		// Set default node settings
-		for (const nodeSetting of nodeSettings.value) {
-			if (!foundNodeSettings.includes(nodeSetting.name)) {
-				// Set default value
-				nodeValues.value = {
-					...nodeValues.value,
-					[nodeSetting.name]: nodeSetting.default,
-				};
-			}
-		}
-
-		nodeValues.value = {
-			...nodeValues.value,
-			parameters: deepCopy(node.value.parameters),
-		};
+		nodeValues.value = collectSettings(node.value, nodeSettings.value);
 	} else {
 		nodeValid.value = false;
 	}
 
 	nodeValuesInitialized.value = true;
-};
-
-const onMissingNodeTextClick = (event: MouseEvent) => {
-	if ((event.target as Element).localName === 'a') {
-		telemetry.track('user clicked cnr browse button', {
-			source: 'cnr missing node modal',
-		});
-	}
-};
-
-const onMissingNodeLearnMoreLinkClick = () => {
-	telemetry.track('user clicked cnr docs link', {
-		source: 'missing node modal source',
-		package_name: node.value?.type.split('.')[0],
-		node_type: node.value?.type,
-	});
 };
 
 const onStopExecution = () => {
@@ -727,7 +525,7 @@ const openSettings = () => {
 	openPanel.value = 'settings';
 };
 
-const onTabSelect = (tab: Tab) => {
+const onTabSelect = (tab: NodeSettingsTab) => {
 	openPanel.value = tab;
 };
 
@@ -748,9 +546,8 @@ watch(node, () => {
 	setNodeValues();
 });
 
-onMounted(() => {
+onMounted(async () => {
 	populateHiddenIssuesSet();
-	populateSettings();
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
@@ -778,9 +575,18 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 	);
 }
 
-function handleWheelEvent(event: WheelEvent) {
-	if (event.ctrlKey) {
-		event.preventDefault();
+function handleSelectAction(params: INodeParameters) {
+	for (const [key, value] of Object.entries(params)) {
+		valueChanged({ name: `parameters.${key}`, value });
+	}
+
+	if (isDisplayingCredentials.value && !areAllCredentialsSet.value) {
+		onTabSelect('credential');
+		return;
+	}
+
+	if (parametersByTab.value.params.length > 0) {
+		onTabSelect('params');
 	}
 }
 </script>
@@ -792,33 +598,51 @@ function handleWheelEvent(event: WheelEvent) {
 			dragging: dragging,
 			embedded: props.isEmbeddedInCanvas,
 		}"
+		:data-has-output-connection="hasOutputConnection"
 		@keydown.stop
 	>
-		<div v-if="!isNDVV2" :class="$style.header">
+		<ExperimentalEmbeddedNdvHeader
+			v-if="isEmbeddedInCanvas && node"
+			:node="node"
+			:selected-tab="openPanel"
+			:read-only="readOnly"
+			:node-type="nodeType"
+			:push-ref="pushRef"
+			:sub-title="subTitle"
+			:extra-tabs-class-name="extraTabsClassName"
+			:include-action="parametersByTab.action.length > 0"
+			:include-credential="isDisplayingCredentials"
+			:has-credential-issue="!areAllCredentialsSet"
+			@name-changed="nameChanged"
+			@tab-changed="onTabSelect"
+			@dblclick-title="emit('dblclickHeader', $event)"
+		>
+			<template #actions>
+				<slot name="actions" />
+			</template>
+		</ExperimentalEmbeddedNdvHeader>
+		<div v-else-if="!isNdvV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
 					class="node-name"
 					:model-value="node.name"
-					:node-type="nodeType"
+					:icon-source="iconSource"
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
-				<template v-if="isExecutable || slots.actions">
-					<NodeExecuteButton
-						v-if="isExecutable && !blockUI && node && nodeValid"
-						data-test-id="node-execute-button"
-						:node-name="node.name"
-						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-						:tooltip="executeButtonTooltip"
-						size="small"
-						telemetry-source="parameters"
-						@execute="onNodeExecute"
-						@stop-execution="onStopExecution"
-						@value-changed="valueChanged"
-					/>
-					<slot name="actions" />
-				</template>
+				<NodeExecuteButton
+					v-if="isExecutable && !blockUI && node && nodeValid"
+					data-test-id="node-execute-button"
+					:node-name="node.name"
+					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+					:tooltip="executeButtonTooltip"
+					size="small"
+					telemetry-source="parameters"
+					@execute="onNodeExecute"
+					@stop-execution="onStopExecution"
+					@value-changed="valueChanged"
+				/>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -829,75 +653,41 @@ function handleWheelEvent(event: WheelEvent) {
 			/>
 		</div>
 		<NodeSettingsHeader
-			v-else-if="node"
+			v-else-if="node && nodeValid"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
+			:hide-docs="props.hideDocs"
 			:push-ref="pushRef"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"
 			@value-changed="valueChanged"
 			@tab-changed="onTabSelect"
 		/>
-		<div v-if="node && !nodeValid" class="node-is-not-valid">
-			<p :class="$style.warningIcon">
-				<n8n-icon icon="triangle-alert" />
-			</p>
-			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text size="large" color="text-dark" bold>
-					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
-				</n8n-text>
-			</div>
-			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
-				<div class="mb-l">
-					<i18n-t
-						keypath="nodeSettings.communityNodeUnknown.description"
-						tag="span"
-						@click="onMissingNodeTextClick"
-					>
-						<template #action>
-							<a
-								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
-								target="_blank"
-								>{{ node.type.split('.')[0] }}</a
-							>
-						</template>
-					</i18n-t>
-				</div>
-				<n8n-link
-					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
-					@click="onMissingNodeLearnMoreLinkClick"
-				>
-					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
-				</n8n-link>
-			</div>
-			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
-				<template #action>
-					<a
-						:href="CUSTOM_NODES_DOCS_URL"
-						target="_blank"
-						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
-					/>
-				</template>
-			</i18n-t>
-		</div>
+
+		<NodeSettingsInvalidNodeWarning
+			v-if="node && !nodeValid"
+			:node="node"
+			:preview-mode="isDemoPreview"
+		/>
+
 		<div
 			v-if="node && nodeValid"
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
-				{ 'ndv-v2': isNDVV2 },
+				{ 'ndv-v2': isNdvV2 },
+				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
-			@wheel="noWheel ? handleWheelEvent : undefined"
+			@wheel.capture="emit('captureWheelBody', $event)"
 		>
-			<n8n-notice
+			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
 					i18n.baseText('nodeSettings.hasForeignCredential', {
@@ -906,12 +696,29 @@ function handleWheelEvent(event: WheelEvent) {
 				"
 			/>
 			<FreeAiCreditsCallout />
+			<NodeStorageLimitCallout />
+			<NodeActionsList
+				v-if="openPanel === 'action'"
+				class="action-tab"
+				:node="node"
+				@action-selected="handleSelectAction"
+			/>
+			<NodeCredentials
+				v-if="openPanel === 'credential'"
+				:node="node"
+				:readonly="isReadOnly"
+				:show-all="true"
+				:hide-issues="hiddenIssuesInputs.includes('credentials')"
+				@credential-selected="credentialSelected"
+				@value-changed="valueChanged"
+				@blur="onParameterBlur"
+			/>
 			<div v-show="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
-					:parameters="parametersNoneSetting"
+					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
@@ -923,7 +730,7 @@ function handleWheelEvent(event: WheelEvent) {
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
-						v-if="!isEmbeddedInCanvas"
+						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
@@ -934,9 +741,9 @@ function handleWheelEvent(event: WheelEvent) {
 					/>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" class="no-parameters">
-					<n8n-text>
+					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 
 				<div
@@ -944,7 +751,7 @@ function handleWheelEvent(event: WheelEvent) {
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
-					<n8n-notice
+					<N8nNotice
 						:content="
 							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
@@ -954,8 +761,15 @@ function handleWheelEvent(event: WheelEvent) {
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">
+				<CommunityNodeUpdateInfo
+					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+					data-test-id="update-available"
+					:package-name="packageName"
+					style="margin-top: var(--spacing--sm)"
+					source="node settings"
+				/>
 				<ParameterInputList
-					:parameters="parametersSetting"
+					:parameters="parametersByTab.settings"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
 					:hide-delete="true"
@@ -986,7 +800,10 @@ function handleWheelEvent(event: WheelEvent) {
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
-			<div v-if="isNDVV2 && featureRequestUrl" :class="$style.featureRequest">
+			<div
+				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				:class="$style.featureRequest"
+			>
 				<a target="_blank" @click="onFeatureRequestClick">
 					<N8nIcon icon="lightbulb" />
 					{{ i18n.baseText('ndv.featureRequest') }}
@@ -994,29 +811,24 @@ function handleWheelEvent(event: WheelEvent) {
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.isEmbeddedInCanvas"
+			v-if="node && !hideSubConnections"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<n8n-block-ui :show="blockUI" />
+		<N8nBlockUi :show="blockUI" />
+		<CommunityNodeFooter
+			v-if="openPanel === 'settings' && isCommunityNode"
+			:package-name="packageName"
+			:show-manage="useUsersStore().isInstanceOwner"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color-background-base);
-}
-
-.warningIcon {
-	color: var(--color-text-lighter);
-	font-size: var(--font-size-2xl);
-}
-
-.descriptionContainer {
-	display: flex;
-	flex-direction: column;
+	background-color: var(--color--background);
 }
 
 .featureRequest {
@@ -1026,12 +838,12 @@ function handleWheelEvent(event: WheelEvent) {
 	a {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
-		margin-top: var(--spacing-xl);
+		gap: var(--spacing--4xs);
+		margin-top: var(--spacing--xl);
 
-		font-size: var(--font-size-3xs);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text-light);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text--tint-1);
 	}
 }
 </style>
@@ -1041,77 +853,71 @@ function handleWheelEvent(event: WheelEvent) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	height: 100%;
 	width: 100%;
 
 	.no-parameters {
-		margin-top: var(--spacing-xs);
+		margin-top: var(--spacing--xs);
 	}
 
 	.header-side-menu {
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
-		font-size: var(--font-size-l);
+		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
+		font-size: var(--font-size--lg);
 		display: flex;
 		justify-content: space-between;
 
 		.node-name {
-			padding-top: var(--spacing-5xs);
+			padding-top: var(--spacing--5xs);
+			margin-right: var(--spacing--sm);
 		}
-	}
-
-	&.embedded .header-side-menu {
-		padding: var(--spacing-xs);
-	}
-
-	.node-is-not-valid {
-		height: 75%;
-		padding: 10px;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		line-height: var(--font-line-height-regular);
 	}
 
 	.node-parameters-wrapper {
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
-		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
+		padding: 0 var(--spacing--md) var(--spacing--lg) var(--spacing--md);
 		flex-grow: 1;
 
 		&.ndv-v2 {
-			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
+			padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
 		}
 	}
 
 	&.embedded .node-parameters-wrapper {
-		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing--xs) var(--spacing--xs) var(--spacing--xs);
+
+		&:has(.action-tab) {
+			padding: 0 0 var(--spacing--xs) 0;
+		}
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing--4xs) var(--spacing--xs) var(--spacing--xs);
+
+		&:has(.action-tab) {
+			padding: 0 0 var(--spacing--xs) 0;
+		}
 
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;
 		}
 		@supports selector(::-webkit-scrollbar) {
 			&::-webkit-scrollbar {
-				width: var(--spacing-2xs);
+				width: var(--spacing--2xs);
 			}
 			&::-webkit-scrollbar-thumb {
-				border-radius: var(--spacing-2xs);
-				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid white;
+				border-radius: var(--spacing--2xs);
+				background: var(--color--foreground--shade-1);
+				border: var(--spacing--5xs) solid var(--color--background--light-3);
 			}
 		}
 	}
 
 	&.dragging {
-		border-color: var(--color-primary);
-		box-shadow: 0px 6px 16px rgba(255, 74, 51, 0.15);
+		border-color: var(--color--primary);
+		box-shadow: 0 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
 
@@ -1151,11 +957,11 @@ function handleWheelEvent(event: WheelEvent) {
 }
 
 .node-version {
-	border-top: var(--border-base);
-	font-size: var(--font-size-xs);
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
-	color: var(--color-text-light);
+	border-top: var(--border);
+	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--xs) 0 var(--spacing--2xs) 0;
+	color: var(--color--text--tint-1);
 }
 
 .parameter-value {
@@ -1168,5 +974,12 @@ function handleWheelEvent(event: WheelEvent) {
 		box-sizing: border-box;
 		background-color: #793300;
 	}
+}
+</style>
+
+<style lang="scss">
+// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
+[data-has-output-connection='true'] .ndv-connection-hint-notice {
+	display: none;
 }
 </style>

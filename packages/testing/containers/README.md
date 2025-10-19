@@ -13,6 +13,9 @@ pnpm stack --postgres
 
 # Start in queue mode (with Redis + PostgreSQL)
 pnpm stack --queue
+
+# Start with starter performance plan constraints
+pnpm stack:starter
 ```
 
 When started, you'll see:
@@ -28,6 +31,17 @@ pnpm run stack              # SQLite
 pnpm run stack:postgres     # PostgreSQL
 pnpm run stack:queue        # Queue mode
 pnpm run stack:multi-main   # Multiple main instances
+pnpm run stack:starter      # Starter performance plan
+```
+
+### Performance Plan Presets
+```bash
+# Use predefined performance plans (simulates cloud constraints, differs from cloud CPU wise due to non burstable docker)
+pnpm stack --plan trial        # Trial: 0.75GB RAM, 0.2 CPU (SQLite only)
+pnpm stack --plan starter      # Starter: 0.75GB RAM, 0.2 CPU (SQLite only)
+pnpm stack --plan pro-1       # Pro-1: 1.25GB RAM, 0.5 CPU (SQLite only)
+pnpm stack --plan pro-2       # Pro-2: 2.5GB RAM, 0.75 CPU (SQLite only)
+pnpm stack --plan enterprise  # Enterprise: 8GB RAM, 1.0 CPU (SQLite only)
 ```
 
 ### Queue Mode with Scaling
@@ -81,6 +95,14 @@ const stack = await createN8NStack({
   queueMode: { mains: 2, workers: 3 }
 });
 
+// Resource-constrained container (simulating cloud plans)
+const stack = await createN8NStack({
+  resourceQuota: {
+    memory: 0.375,  // 384MB RAM
+    cpu: 0.25       // 250 millicore CPU
+  }
+});
+
 // Use the stack
 console.log(`n8n available at: ${stack.baseUrl}`);
 
@@ -98,6 +120,38 @@ await stack.stop();
 | `--workers <n>` | Number of worker instances (requires queue mode) | `--workers 5` |
 | `--name <name>` | Custom project name for parallel runs | `--name my-test` |
 | `--env KEY=VALUE` | Set environment variables | `--env N8N_LOG_LEVEL=debug` |
+| `--plan <plan>` | Use performance plan preset | `--plan starter` |
+
+## Performance Plans
+
+Simulate cloud plan resource constraints for testing. **Performance plans are SQLite-only** (like cloud n8n):
+
+```bash
+# CLI usage
+pnpm stack --plan trial        # 0.375GB RAM, 0.2 CPU cores
+pnpm stack --plan starter      # 0.375GB RAM, 0.2 CPU cores
+pnpm stack --plan pro-1       # 0.625GB RAM, 0.5 CPU cores
+pnpm stack --plan pro-2       # 1.25GB RAM, 0.75 CPU cores
+pnpm stack --plan enterprise  # 4GB RAM, 1.0 CPU cores
+```
+
+**Common Cloud Plan Quotas:**
+- **Trial/Starter**: 0.375GB RAM, 0.2 CPU cores
+- **Pro-1**: 0.625GB RAM, 0.5 CPU cores
+- **Pro-2**: 1.25GB RAM, 0.75 CPU cores
+- **Enterprise**: 4GB RAM, 1.0 CPU cores
+
+Resource quotas are applied using Docker's `--memory` and `--cpus` flags for realistic cloud simulation.
+
+## Package.json Scripts
+
+| Script | Description | Equivalent CLI |
+|--------|-------------|----------------|
+| `stack` | Basic SQLite instance | `pnpm stack` |
+| `stack:postgres` | PostgreSQL database | `pnpm stack --postgres` |
+| `stack:queue` | Queue mode | `pnpm stack --queue` |
+| `stack:multi-main` | Multi-main setup | `pnpm stack --mains 2 --workers 1` |
+| `stack:starter` | Starter performance plan (SQLite only) | `pnpm stack --plan starter` |
 
 ## Container Architecture
 
@@ -159,6 +213,7 @@ pnpm run stack:clean:all
 - **Parallel Testing**: Use `--name` parameter to run multiple stacks without conflicts
 - **Queue Mode**: Automatically enables PostgreSQL (required for queue mode)
 - **Multi-Main**: Requires queue mode and special licensing read from N8N_LICENSE_ACTIVATION_KEY environment variable
+- **Performance Plans**: Use `--plan` for quick cloud plan simulation
 - **Log Monitoring**: Use the `ContainerTestHelpers` class for advanced log monitoring in tests
 
 ## Docker Image

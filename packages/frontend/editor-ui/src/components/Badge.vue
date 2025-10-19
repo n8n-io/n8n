@@ -1,11 +1,14 @@
 <script lang="ts">
+import { ElTag } from 'element-plus';
+
 export default {
+	components: { ElTag },
 	props: ['text', 'type'],
 };
 </script>
 
 <template>
-	<el-tag
+	<ElTag
 		v-if="type === 'danger'"
 		type="danger"
 		size="small"
@@ -13,15 +16,15 @@ export default {
 		:disable-transitions="true"
 	>
 		{{ text }}
-	</el-tag>
-	<el-tag
+	</ElTag>
+	<ElTag
 		v-else-if="type === 'warning'"
 		size="small"
 		:class="$style['warning']"
 		:disable-transitions="true"
 	>
 		{{ text }}
-	</el-tag>
+	</ElTag>
 </template>
 
 <style lang="scss" module>
@@ -29,7 +32,7 @@ export default {
 	font-size: 11px;
 	line-height: 18px;
 	max-height: 18px;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 	display: flex;
 	align-items: center;
 	padding: 2px 4px;

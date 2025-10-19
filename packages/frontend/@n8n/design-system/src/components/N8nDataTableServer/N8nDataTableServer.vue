@@ -74,6 +74,7 @@ const slots = useSlots();
 defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
+	cover?: () => void;
 }>();
 
 const emit = defineEmits<{
@@ -433,6 +434,13 @@ const table = useVueTable({
 						</tr>
 					</thead>
 					<tbody>
+						<template v-if="slots.cover">
+							<tr>
+								<td class="cover" :colspan="table.getVisibleFlatColumns().length">
+									<slot name="cover" />
+								</td>
+							</tr>
+						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
 							<tr v-for="item in itemsPerPage" :key="item">
 								<td
@@ -499,7 +507,7 @@ const table = useVueTable({
 <style lang="scss" scoped>
 .n8n-data-table-server {
 	height: 100%;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 
 	table {
 		width: 100%;
@@ -517,15 +525,7 @@ const table = useVueTable({
 	th {
 		position: relative;
 		text-align: left;
-	}
-
-	thead {
-		background-color: var(--color-background-light-base);
-		border-bottom: 1px solid var(--color-foreground-base);
-	}
-
-	th {
-		color: var(--color-text-base);
+		color: var(--color--text);
 		font-weight: 600;
 		font-size: 12px;
 		padding: 0 8px;
@@ -536,14 +536,20 @@ const table = useVueTable({
 		&:first-child {
 			padding-left: 16px;
 		}
+
 		&:last-child {
 			padding-right: 16px;
 		}
 	}
 
+	thead {
+		background-color: var(--color--background--light-1);
+		border-bottom: 1px solid var(--color--foreground);
+	}
+
 	tbody > tr {
 		&:hover {
-			background-color: var(--color-background-light);
+			background-color: var(--color--background--light-2);
 		}
 
 		&:last-child > td {
@@ -552,12 +558,12 @@ const table = useVueTable({
 	}
 
 	tbody tr {
-		background-color: var(--color-background-xlight);
-		border-bottom: 1px solid var(--color-foreground-base);
+		background-color: var(--color--background--light-3);
+		border-bottom: 1px solid var(--color--foreground);
 	}
 
 	td {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		padding: 0 8px;
 		height: 48px;
 
@@ -567,12 +573,20 @@ const table = useVueTable({
 		&:last-child {
 			padding-right: 16px;
 		}
+
+		&.cover {
+			width: 0;
+			height: 0;
+			padding: 0;
+			border: 0;
+			overflow: visible;
+		}
 	}
 }
 
 .n8n-data-table-server-wrapper {
 	border-radius: 8px;
-	border: 1px solid var(--color-foreground-base);
+	border: 1px solid var(--color--foreground);
 	overflow: hidden;
 }
 
@@ -586,7 +600,7 @@ th.loading-row {
 	background-color: transparent;
 	padding: 0 !important;
 	border: 0 !important;
-	height: 0px;
+	height: 0;
 	position: relative;
 }
 
@@ -600,7 +614,7 @@ th.loading-row {
 .progress-bar-value {
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-primary);
+	background-color: var(--color--primary);
 	animation: indeterminateAnimation 1s infinite linear;
 	transform-origin: 0% 50%;
 	position: absolute;
@@ -634,21 +648,21 @@ th.loading-row {
 		display: flex;
 
 		&__label {
-			color: var(--color-text-base);
-			background-color: var(--color-background-light);
-			border: 1px solid var(--color-foreground-base);
+			color: var(--color--text);
+			background-color: var(--color--background--light-2);
+			border: 1px solid var(--color--foreground);
 			border-right: 0;
 			font-size: 12px;
 			display: flex;
 			align-items: center;
 			padding: 0 8px;
-			border-top-left-radius: var(--border-radius-base);
-			border-bottom-left-radius: var(--border-radius-base);
+			border-top-left-radius: var(--radius);
+			border-bottom-left-radius: var(--radius);
 		}
 
 		&__select {
-			--input-border-top-left-radius: 0;
-			--input-border-bottom-left-radius: 0;
+			--input--radius--top-left: 0;
+			--input--radius--bottom-left: 0;
 			width: 70px;
 		}
 	}
@@ -659,7 +673,7 @@ th.loading-row {
 	top: 0;
 	height: 100%;
 	width: 3px;
-	background: var(--color-primary);
+	background: var(--color--primary);
 	cursor: col-resize;
 	user-select: none;
 	touch-action: none;

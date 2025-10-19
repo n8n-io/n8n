@@ -8,10 +8,12 @@ import {
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
+import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
+import { N8nActionToggle, N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	isReadOnly: boolean;
@@ -22,6 +24,7 @@ interface Props {
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingMessage?: string;
+	isContentOverridden?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,6 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
+	isContentOverridden: false,
 });
 
 const emit = defineEmits<{
@@ -40,29 +44,33 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
-const posthogStore = usePostHog();
 
 const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
-const isHtmlEditor = computed(
-	() => getParameterTypeOption(props.parameter, 'editor') === 'htmlEditor',
-);
+const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+const isInEmbeddedNdv = useIsInExperimentalNdv();
+const experimentalNdvStore = useExperimentalNdvStore();
 
-const isFocusPanelFeatureEnabled = computed(() => {
-	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+const canBeOpenedInFocusPanel = computed(() => {
+	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
+		return false;
+	}
+
+	if (!activeNode.value && !isInEmbeddedNdv.value) {
+		// The current parameter is focused parameter in focus panel
+		return false;
+	}
+
+	if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+		return (props.parameter.typeOptions?.rows ?? 1) > 1 || editor.value !== undefined;
+	}
+
+	return props.parameter.type === 'string' || props.parameter.type === 'json';
 });
-const hasFocusAction = computed(
-	() =>
-		isFocusPanelFeatureEnabled.value &&
-		!props.parameter.isNodeSetting &&
-		!props.isReadOnly &&
-		activeNode.value && // checking that it's inside ndv
-		(props.parameter.type === 'string' || props.parameter.type === 'json'),
-);
 
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
@@ -71,10 +79,6 @@ const shouldShowOptions = computed(() => {
 
 	if (props.parameter.type === 'collection' || props.parameter.type === 'credentialsSelect') {
 		return false;
-	}
-
-	if (hasFocusAction.value) {
-		return true;
 	}
 
 	if (['codeNodeEditor', 'sqlEditor'].includes(props.parameter.typeOptions?.editor ?? '')) {
@@ -105,19 +109,13 @@ const actions = computed(() => {
 		return props.customActions;
 	}
 
-	const focusAction = {
-		label: i18n.baseText('parameterInput.focusParameter'),
-		value: 'focus',
-		disabled: false,
-	};
-
-	if (isHtmlEditor.value && !isValueAnExpression.value) {
-		const formatHtmlAction = {
-			label: i18n.baseText('parameterInput.formatHtml'),
-			value: 'formatHtml',
-		};
-
-		return hasFocusAction.value ? [formatHtmlAction, focusAction] : [formatHtmlAction];
+	if (editor.value === 'htmlEditor' && !isValueAnExpression.value) {
+		return [
+			{
+				label: i18n.baseText('parameterInput.formatHtml'),
+				value: 'formatHtml',
+			},
+		];
 	}
 
 	const resetAction = {
@@ -131,11 +129,7 @@ const actions = computed(() => {
 		props.parameter.typeOptions?.editor ?? '',
 	);
 
-	// Conditionally build actions array without nulls to ensure correct typing
-	const parameterActions = [
-		hasResetAction ? [resetAction] : [],
-		hasFocusAction.value ? [focusAction] : [],
-	].flat();
+	const parameterActions = [hasResetAction ? resetAction : []].flat();
 
 	if (
 		hasRemoteMethod.value ||
@@ -170,18 +164,27 @@ const onViewSelected = (selected: string) => {
 <template>
 	<div :class="$style.container" data-test-id="parameter-options-container">
 		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
-			<n8n-text v-if="loading" size="small">
-				<n8n-icon icon="refresh-cw" size="xsmall" :spin="true" />
+			<N8nText v-if="loading" size="small">
+				<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
 				{{ loadingMessage }}
-			</n8n-text>
+			</N8nText>
 		</div>
 		<div v-else :class="$style.controlsContainer">
+			<N8nTooltip v-if="canBeOpenedInFocusPanel">
+				<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
+				<N8nIcon
+					size="medium"
+					:icon="'panel-right'"
+					:class="$style.focusButton"
+					@click="$emit('update:modelValue', 'focus')"
+				/>
+			</N8nTooltip>
 			<div
 				:class="{
 					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
 				}"
 			>
-				<n8n-action-toggle
+				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
 					size="small"
@@ -193,7 +196,7 @@ const onViewSelected = (selected: string) => {
 					@visible-change="onMenuToggle"
 				/>
 			</div>
-			<n8n-radio-buttons
+			<N8nRadioButtons
 				v-if="shouldShowExpressionSelector"
 				size="small"
 				:model-value="selectedView"
@@ -209,13 +212,16 @@ const onViewSelected = (selected: string) => {
 </template>
 
 <style lang="scss" module>
+$container-height: 22px;
+
 .container {
 	display: flex;
-	min-height: 22px;
+	min-height: $container-height;
+	max-height: $container-height;
 }
 
 .loader {
-	padding-bottom: var(--spacing-4xs);
+	padding-bottom: var(--spacing--4xs);
 
 	& > span {
 		line-height: 1em;
@@ -228,10 +234,18 @@ const onViewSelected = (selected: string) => {
 }
 
 .noExpressionSelector {
-	margin-bottom: var(--spacing-4xs);
-
 	span {
 		padding-right: 0 !important;
+	}
+}
+
+.focusButton {
+	outline: none;
+	color: var(--color--text--tint-1);
+
+	&:hover {
+		cursor: pointer;
+		color: var(--color--primary);
 	}
 }
 </style>

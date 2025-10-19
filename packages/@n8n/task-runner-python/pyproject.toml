@@ -1,0 +1,27 @@
+[project]
+name = "task-runner-python"
+version = "0.1.0"
+description = "Native Python task runner for n8n"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "websockets>=15.0.1",
+]
+
+[project.optional-dependencies]
+sentry = ["sentry-sdk>=2.35.2"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.8",
+    "ty>=0.0.1a17",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-asyncio>=0.24.0",
+    "aiohttp>=3.10.0"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-v"

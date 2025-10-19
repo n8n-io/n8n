@@ -7,8 +7,11 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 
 import { BaseCommand } from './base-command';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 
 @Command({
 	name: 'webhook',
@@ -62,6 +65,7 @@ export class Webhook extends BaseCommand {
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
+		Container.get(DeprecationService).warn();
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
@@ -73,6 +77,11 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
+
+		await Container.get(MessageEventBus).initialize({
+			webhookProcessorId: this.instanceSettings.hostId,
+		});
+		Container.get(LogStreamingEventRelay).init();
 
 		await this.moduleRegistry.initModules();
 	}

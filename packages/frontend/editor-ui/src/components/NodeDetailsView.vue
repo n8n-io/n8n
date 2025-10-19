@@ -39,7 +39,10 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -49,7 +52,6 @@ const emit = defineEmits<{
 		connectionType: NodeConnectionType,
 		connectionIndex?: number,
 	];
-	redrawNode: [nodeName: string];
 	stopExecution: [];
 }>();
 
@@ -76,12 +78,12 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
 const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
-const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const selectedInput = ref<string | undefined>();
@@ -205,14 +207,6 @@ const showTriggerPanel = computed(() => {
 	return (
 		!props.readOnly && isTriggerNode.value && (isWebhookBasedNode || isPollingNode || override)
 	);
-});
-
-const hasOutputConnection = computed(() => {
-	if (!activeNode.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(activeNode.value.name);
-
-	// Check if there's at-least one output connection
-	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
 });
 
 const isExecutableTriggerNode = computed(() => {
@@ -381,7 +375,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onWorkflowActivate = () => {
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	setTimeout(() => {
 		void workflowActivate.activateCurrentWorkflow('ndv');
 	}, 1000);
@@ -498,18 +492,6 @@ const close = async () => {
 		return;
 	}
 
-	if (
-		activeNode.value &&
-		(typeof activeNodeType.value?.outputs === 'string' ||
-			typeof activeNodeType.value?.inputs === 'string' ||
-			redrawRequired.value)
-	) {
-		const nodeName = activeNode.value.name;
-		setTimeout(() => {
-			emit('redrawNode', nodeName);
-		}, 1);
-	}
-
 	if (outputPanelEditMode.value.enabled && activeNode.value) {
 		const shouldPinDataBeforeClosing = await message.confirm(
 			'',
@@ -539,7 +521,7 @@ const close = async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	ndvStore.resetNDVPushRef();
 };
 
@@ -671,6 +653,7 @@ watch(
 						data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
 						input_displayed_row_height_avg: avgInputRowHeight.value,
 						output_displayed_row_height_avg: avgOutputRowHeight.value,
+						source: telemetryContext.ndv_source?.value ?? 'other',
 					});
 				}
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip
@@ -715,7 +698,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<el-dialog
+	<ElDialog
 		id="ndv"
 		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
@@ -726,9 +709,8 @@ onBeforeUnmount(() => {
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		data-test-id="ndv"
 		:z-index="APP_Z_INDEXES.NDV"
-		:data-has-output-connection="hasOutputConnection"
 	>
-		<n8n-tooltip
+		<N8nTooltip
 			placement="bottom-start"
 			:visible="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
@@ -739,12 +721,12 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
-				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
-				<n8n-text color="text-xlight" size="medium" :bold="true">
+				<N8nIcon icon="arrow-left" color="text-xlight" size="medium" />
+				<N8nText color="text-xlight" size="medium" :bold="true">
 					{{ i18n.baseText('ndv.backToCanvas') }}
-				</n8n-text>
+				</N8nText>
 			</div>
-		</n8n-tooltip>
+		</N8nTooltip>
 
 		<div
 			v-if="activeNode"
@@ -779,16 +761,19 @@ onBeforeUnmount(() => {
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
 						:linked-runs="linked"
+						:active-node-name="activeNode.name"
 						:current-node-name="inputNodeName"
 						:push-ref="pushRef"
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
-						:is-pane-active="isInputPaneActive"
+						:search-shortcut="isInputPaneActive ? '/' : undefined"
 						:display-mode="inputPanelDisplayMode"
+						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+						:focused-mappable-input="ndvStore.focusedMappableInput"
 						@activate-pane="activateInputPane"
 						@link-run="onLinkRunToInput"
 						@unlink-run="() => onUnlinkRun('input')"
@@ -805,7 +790,7 @@ onBeforeUnmount(() => {
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"
@@ -839,7 +824,6 @@ onBeforeUnmount(() => {
 						@value-changed="valueChanged"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
-						@redraw-required="redrawRequired = true"
 						@activate="onWorkflowActivate"
 						@switch-selected-node="onSwitchSelectedNode"
 						@open-connection-node-creator="onOpenConnectionNodeCreator"
@@ -850,20 +834,16 @@ onBeforeUnmount(() => {
 						target="_blank"
 						@click="onFeatureRequestClick"
 					>
-						<n8n-icon icon="lightbulb" />
+						<N8nIcon icon="lightbulb" />
 						{{ i18n.baseText('ndv.featureRequest') }}
 					</a>
 				</template>
 			</NDVDraggablePanels>
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style lang="scss">
-// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
-[data-has-output-connection='true'] .ndv-connection-hint-notice {
-	display: none;
-}
 .ndv-wrapper {
 	overflow: visible;
 	margin-top: 0;
@@ -871,8 +851,8 @@ onBeforeUnmount(() => {
 
 .data-display-wrapper {
 	height: 100%;
-	margin-top: var(--spacing-xl) !important;
-	margin-bottom: var(--spacing-xl) !important;
+	margin-top: var(--spacing--xl) !important;
+	margin-bottom: var(--spacing--xl) !important;
 	width: 100%;
 	background: none;
 	border: none;
@@ -911,39 +891,38 @@ $main-panel-width: 360px;
 
 .backToCanvas {
 	position: fixed;
-	top: var(--spacing-xs);
-	left: var(--spacing-l);
+	top: var(--spacing--xs);
+	left: var(--spacing--lg);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 
 	span {
-		color: var(--color-ndv-back-font);
+		color: var(--ndv--back--color--text);
 	}
 
 	&:hover {
 		cursor: pointer;
 	}
-
-	> * {
-		margin-right: var(--spacing-3xs);
-	}
 }
 
 @media (min-width: $breakpoint-lg) {
 	.backToCanvas {
-		top: var(--spacing-xs);
-		left: var(--spacing-m);
+		top: var(--spacing--xs);
+		left: var(--spacing--md);
 	}
 }
 
 .featureRequest {
 	position: absolute;
-	bottom: var(--spacing-4xs);
-	left: calc(100% + var(--spacing-s));
-	color: var(--color-feature-request-font);
-	font-size: var(--font-size-2xs);
+	bottom: var(--spacing--4xs);
+	left: calc(100% + var(--spacing--sm));
+	color: var(--feature-request--color--text);
+	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 
 	* {
-		margin-right: var(--spacing-3xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 </style>

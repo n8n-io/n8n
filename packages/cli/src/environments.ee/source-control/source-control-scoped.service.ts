@@ -12,9 +12,9 @@ import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-
 import { SourceControlContext } from './types/source-control-context';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class SourceControlScopedService {
@@ -29,20 +29,21 @@ export class SourceControlScopedService {
 		}
 
 		const ctx = new SourceControlContext(req.user);
-		const projectsWithAdminAccess = await this.getAdminProjectsFromContext(ctx);
+		const projectsWithAdminAccess = await this.getAuthorizedProjectsFromContext(ctx);
 
 		if (projectsWithAdminAccess?.length === 0) {
 			throw new ForbiddenError('You are not allowed to push changes');
 		}
 	}
 
-	async getAdminProjectsFromContext(context: SourceControlContext): Promise<Project[]> {
+	async getAuthorizedProjectsFromContext(context: SourceControlContext): Promise<Project[]> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return await this.projectRepository.find({
 				relations: {
 					projectRelations: {
 						user: true,
+						role: true,
 					},
 				},
 			});
@@ -52,6 +53,7 @@ export class SourceControlScopedService {
 			relations: {
 				projectRelations: {
 					user: true,
+					role: true,
 				},
 			},
 			select: {
@@ -59,27 +61,33 @@ export class SourceControlScopedService {
 				name: true,
 				type: true,
 			},
-			where: this.getAdminProjectsByContextFilter(context),
+			where: this.getProjectsWithPushScopeByContextFilter(context),
 		});
 	}
 
 	async getWorkflowsInAdminProjectsFromContext(
 		context: SourceControlContext,
+		id?: string,
 	): Promise<WorkflowEntity[] | undefined> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
 
+		const where = this.getWorkflowsInAdminProjectsFromContextFilter(context);
+		if (id) {
+			where.id = id;
+		}
+
 		return await this.workflowRepository.find({
 			select: {
 				id: true,
 			},
-			where: this.getWorkflowsInAdminProjectsFromContextFilter(context),
+			where,
 		});
 	}
 
-	getAdminProjectsByContextFilter(
+	getProjectsWithPushScopeByContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<Project> | undefined {
 		if (context.hasAccessToAllProjects()) {
@@ -90,7 +98,11 @@ export class SourceControlScopedService {
 		return {
 			type: 'team',
 			projectRelations: {
-				role: 'project:admin',
+				role: {
+					scopes: {
+						slug: 'sourceControl:push',
+					},
+				},
 				userId: context.user.id,
 			},
 		};
@@ -107,7 +119,7 @@ export class SourceControlScopedService {
 		// We build a filter to only select folder, that belong to a team project
 		// that the user is an admin off
 		return {
-			homeProject: this.getAdminProjectsByContextFilter(context),
+			homeProject: this.getProjectsWithPushScopeByContextFilter(context),
 		};
 	}
 
@@ -124,7 +136,7 @@ export class SourceControlScopedService {
 		return {
 			shared: {
 				role: 'workflow:owner',
-				project: this.getAdminProjectsByContextFilter(context),
+				project: this.getProjectsWithPushScopeByContextFilter(context),
 			},
 		};
 	}
@@ -142,7 +154,7 @@ export class SourceControlScopedService {
 		return {
 			shared: {
 				role: 'credential:owner',
-				project: this.getAdminProjectsByContextFilter(context),
+				project: this.getProjectsWithPushScopeByContextFilter(context),
 			},
 		};
 	}

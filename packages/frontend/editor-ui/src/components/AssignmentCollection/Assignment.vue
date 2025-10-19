@@ -5,13 +5,15 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { N8nIconButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	path: string;
 	modelValue: AssignmentValue;
@@ -25,12 +27,14 @@ interface Props {
 const props = defineProps<Props>();
 
 const assignment = ref<AssignmentValue>(props.modelValue);
+const valueInputHovered = ref(false);
 
 const emit = defineEmits<{
 	'update:model-value': [value: AssignmentValue];
 	remove: [];
 }>();
 
+const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
 
@@ -49,6 +53,8 @@ const assignmentTypeToNodeProperty = (
 			};
 		case 'array':
 		case 'object':
+		case 'binary':
+			return { type: 'string' };
 		case 'any':
 			return { type: 'string' };
 		default:
@@ -66,11 +72,15 @@ const nameParameter = computed<INodeProperties>(() => ({
 }));
 
 const valueParameter = computed<INodeProperties>(() => {
+	const placeholder =
+		assignment.value.type === 'binary'
+			? i18n.baseText('assignment.binaryData.placeholder')
+			: 'value';
 	return {
 		name: 'value',
 		displayName: 'Value',
 		default: '',
-		placeholder: 'value',
+		placeholder,
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
 	};
 });
@@ -112,6 +122,10 @@ const onRemove = (): void => {
 
 const onBlur = (): void => {
 	emit('update:model-value', assignment.value);
+};
+
+const onValueInputHoverChange = (hovered: boolean): void => {
+	valueInputHovered.value = hovered;
 };
 </script>
 
@@ -161,13 +175,18 @@ const onBlur = (): void => {
 					/>
 				</template>
 				<template v-if="!hideType" #middle>
-					<TypeSelect
-						:class="$style.select"
-						:model-value="assignment.type ?? 'string'"
-						:is-read-only="disableType || isReadOnly"
-						@update:model-value="onAssignmentTypeChange"
-					>
-					</TypeSelect>
+					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
+						<template #content>
+							{{ BINARY_DATA_ACCESS_TOOLTIP }}
+						</template>
+						<TypeSelect
+							:class="$style.select"
+							:model-value="assignment.type ?? 'string'"
+							:is-read-only="disableType || isReadOnly"
+							@update:model-value="onAssignmentTypeChange"
+						>
+						</TypeSelect>
+					</N8nTooltip>
 				</template>
 				<template #right="{ breakpoint }">
 					<div :class="$style.value">
@@ -186,11 +205,16 @@ const onBlur = (): void => {
 							data-test-id="assignment-value"
 							@update="onAssignmentValueChange"
 							@blur="onBlur"
+							@hover="onValueInputHoverChange"
 						/>
 						<ParameterInputHint
 							v-if="resolvedExpressionString"
 							data-test-id="parameter-expression-preview-value"
-							:class="$style.hint"
+							:class="{
+								[$style.hint]: true,
+								[$style.optionsPadding]:
+									breakpoint !== 'default' && !isReadOnly && valueInputHovered,
+							}"
 							:highlight="highlightHint"
 							:hint="hint"
 							single-line
@@ -211,14 +235,14 @@ const onBlur = (): void => {
 	position: relative;
 	display: flex;
 	align-items: flex-end;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 
 	&.hasIssues {
-		--input-border-color: var(--color-danger);
+		--input--border-color: var(--color--danger);
 	}
 
 	&.hasHint {
-		padding-bottom: var(--spacing-s);
+		padding-bottom: var(--spacing--sm);
 	}
 
 	&:hover {
@@ -244,9 +268,14 @@ const onBlur = (): void => {
 
 	.hint {
 		position: absolute;
-		bottom: calc(var(--spacing-s) * -1);
+		bottom: calc(var(--spacing--sm) * -1);
 		left: 0;
 		right: 0;
+		font-family: monospace;
+	}
+
+	.optionsPadding {
+		width: calc(100% - 140px);
 	}
 }
 
@@ -258,11 +287,11 @@ const onBlur = (): void => {
 	color: var(--icon-base-color);
 }
 .extraTopPadding {
-	top: calc(20px + var(--spacing-l));
+	top: calc(20px + var(--spacing--lg));
 }
 
 .defaultTopPadding {
-	top: var(--spacing-l);
+	top: var(--spacing--lg);
 }
 
 .status {
@@ -271,6 +300,6 @@ const onBlur = (): void => {
 }
 
 .statusIcon {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 </style>

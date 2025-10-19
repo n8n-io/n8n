@@ -3,12 +3,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onClickOutside } from '@vueuse/core';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/composables/useToast';
 
+import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
@@ -59,7 +59,9 @@ const container = ref<HTMLDivElement>();
 const dropdownId = uuid();
 
 const options = computed<ITag[]>(() => {
-	return props.allTags.filter((tag: ITag) => tag && tag.name.includes(filter.value));
+	return props.allTags.filter(
+		(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
+	);
 });
 
 const appliedTags = computed<string[]>(() => {
@@ -70,12 +72,14 @@ const containerClasses = computed(() => {
 	return { 'tags-container': true, focused: focused.value };
 });
 
-const dropdownClasses = computed(() => ({
-	'tags-dropdown': true,
-	[`tags-dropdown-${dropdownId}`]: true,
-	'tags-dropdown-create-enabled': props.createEnabled,
-	'tags-dropdown-manage-enabled': props.manageEnabled,
-}));
+const dropdownClasses = computed(() =>
+	[
+		'tags-dropdown',
+		`tags-dropdown-${dropdownId}`,
+		props.createEnabled ? 'tags-dropdown-create-enabled' : '',
+		props.manageEnabled ? 'tags-dropdown-manage-enabled' : '',
+	].join(' '),
+);
 
 watch(
 	() => props.allTags,
@@ -233,7 +237,7 @@ onClickOutside(
 				:value="CREATE_KEY"
 				class="ops"
 			>
-				<n8n-icon icon="circle-plus" />
+				<N8nIcon icon="circle-plus" />
 				<span>
 					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
 				</span>
@@ -257,7 +261,7 @@ onClickOutside(
 			/>
 
 			<N8nOption v-if="manageEnabled" :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
-				<n8n-icon icon="cog" />
+				<N8nIcon icon="cog" />
 				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
 			</N8nOption>
 		</N8nSelect>
@@ -281,11 +285,11 @@ onClickOutside(
 	}
 
 	.el-tag {
-		padding: var(--spacing-5xs) var(--spacing-4xs);
-		color: var(--color-text-base);
-		background-color: var(--color-background-base);
-		border-radius: var(--border-radius-base);
-		font-size: var(--font-size-2xs);
+		padding: var(--spacing--5xs) var(--spacing--4xs);
+		color: var(--color--text);
+		background-color: var(--color--background);
+		border-radius: var(--radius);
+		font-size: var(--font-size--2xs);
 		border: 0;
 
 		.el-tag__close {
@@ -348,11 +352,11 @@ onClickOutside(
 
 	li {
 		height: $--item-height;
-		background-color: var(--color-foreground-xlight);
+		background-color: var(--color--foreground--tint-2);
 		padding: $--item-padding;
 		margin: 0;
 		line-height: $--item-line-height;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 		font-size: $--item-font-size;
 
 		&.is-disabled {
@@ -361,7 +365,7 @@ onClickOutside(
 		}
 
 		&.selected {
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 
 			> span {
 				display: inline-block;
@@ -393,7 +397,7 @@ onClickOutside(
 			position: absolute;
 			bottom: 0;
 			min-width: $--dropdown-width;
-			border-top: 1px solid var(--color-foreground-base);
+			border-top: 1px solid var(--color--foreground);
 		}
 	}
 }

@@ -4,7 +4,11 @@ import type { LicenseFlag, ModuleClass } from './module';
 
 type ModuleEntry = {
 	class: ModuleClass;
-	licenseFlag?: LicenseFlag;
+	/*
+	 * If singular, checks if that feature ls licensed,
+	 * if multiple, checks that any of the features are licensed
+	 */
+	licenseFlag?: LicenseFlag | LicenseFlag[];
 };
 
 @Service()
@@ -13,6 +17,10 @@ export class ModuleMetadata {
 
 	register(moduleName: string, moduleEntry: ModuleEntry) {
 		this.modules.set(moduleName, moduleEntry);
+	}
+
+	get(moduleName: string) {
+		return this.modules.get(moduleName);
 	}
 
 	getEntries() {

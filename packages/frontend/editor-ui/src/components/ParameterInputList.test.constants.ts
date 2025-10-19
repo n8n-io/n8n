@@ -55,7 +55,8 @@ export const TEST_PARAMETERS: INodeProperties[] = [
 		typeOptions: {
 			calloutAction: {
 				label: 'and action!',
-				type: 'openRagStarterTemplate',
+				type: 'openSampleWorkflowTemplate',
+				templateId: 'test-template-id',
 			},
 		},
 	},

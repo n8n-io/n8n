@@ -39,9 +39,11 @@ export class ConcurrencyControlService {
 	) {
 		this.logger = this.logger.scoped('concurrency');
 
+		const { productionLimit, evaluationLimit } = this.globalConfig.executions.concurrency;
+
 		this.limits = new Map([
-			['production', config.getEnv('executions.concurrency.productionLimit')],
-			['evaluation', config.getEnv('executions.concurrency.evaluationLimit')],
+			['production', productionLimit],
+			['evaluation', evaluationLimit],
 		]);
 
 		this.limits.forEach((limit, type) => {

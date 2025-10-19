@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -36,7 +36,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
-// eslint-disable-next-line import-x/no-cycle
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import {
@@ -363,21 +362,35 @@ export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) 
 
 /**
  * Returns the base additional data without webhooks
+ * @returns {IWorkflowExecuteAdditionalData}
+ * param userId - The ID of the user executing the workflow, if available
+ * param workflowId - The ID of the workflow being executed, if available
+ * param projectId - The ID of the project the workflow is owned by, if available
+ * param currentNodeParameters - The parameters of the currently executing node
+ * param executionTimeoutTimestamp - The timestamp (in ms) when the execution should time out
  */
-export async function getBase(
-	userId?: string,
-	currentNodeParameters?: INodeParameters,
-	executionTimeoutTimestamp?: number,
-): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase({
+	userId,
+	workflowId,
+	projectId,
+	currentNodeParameters,
+	executionTimeoutTimestamp,
+}: {
+	userId?: string;
+	workflowId?: string;
+	projectId?: string;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
+} = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
-	const variables = await WorkflowHelpers.getVariables();
+	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
 
-	return {
+	const additionalData: IWorkflowExecuteAdditionalData = {
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
@@ -442,4 +455,12 @@ export async function getBase(
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
 	};
+
+	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
+		// @ts-expect-error Adding an index signature `[key: string]: unknown`
+		// to `IWorkflowExecuteAdditionalData` triggers complex type errors for derived types.
+		additionalData[moduleName] = moduleContext;
+	}
+
+	return additionalData;
 }

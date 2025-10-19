@@ -8,6 +8,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 
+import { N8nTooltip } from '@n8n/design-system';
 interface Props {
 	rootNode: INodeUi;
 }
@@ -45,13 +46,11 @@ function moveNodeDirection(direction: FloatingNodePosition) {
 
 function onKeyDown(e: KeyboardEvent) {
 	if (e.shiftKey && e.altKey && (e.ctrlKey || e.metaKey)) {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		const mapper = {
 			ArrowUp: FloatingNodePosition.top,
 			ArrowRight: FloatingNodePosition.right,
 			ArrowLeft: FloatingNodePosition.left,
 		};
-		/* eslint-enable @typescript-eslint/naming-convention */
 
 		const matchingDirection = mapper[e.key as keyof typeof mapper] || null;
 		if (matchingDirection) {
@@ -76,18 +75,18 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
-	const workflow = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 	const rootName = props.rootNode.name;
 
 	return {
 		[FloatingNodePosition.top]: getINodesFromNames(
-			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
+			workflowObject.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(
-			workflow.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 		[FloatingNodePosition.left]: getINodesFromNames(
-			workflow.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 	};
 });
@@ -123,7 +122,7 @@ defineExpose({
 			:class="[$style.nodesList, $style[connectionGroup]]"
 		>
 			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
-				<n8n-tooltip
+				<N8nTooltip
 					v-if="node && nodeType"
 					:key="node.name"
 					:placement="tooltipPositionMapper[connectionGroup]"
@@ -147,7 +146,7 @@ defineExpose({
 							circle
 						/>
 					</li>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</template>
 		</ul>
 	</aside>
@@ -163,9 +162,6 @@ defineExpose({
 	z-index: 10;
 	pointer-events: none;
 }
-.floatingNodes {
-	right: 0;
-}
 
 .nodesList {
 	list-style: none;
@@ -178,7 +174,7 @@ defineExpose({
 	width: min-content;
 	margin: auto;
 	transform-origin: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	transition: transform 0.2s ease-in-out;
 
 	&.inputSub,
@@ -189,9 +185,11 @@ defineExpose({
 	}
 	&.outputSub {
 		top: 0;
+		transform: translateY(-50%);
 	}
 	&.inputSub {
 		bottom: 0;
+		transform: translateY(50%);
 	}
 	&.outputMain,
 	&.inputMain {
@@ -200,29 +198,18 @@ defineExpose({
 	}
 	&.outputMain {
 		right: 0;
+		transform: translateX(50%);
 	}
 	&.inputMain {
 		left: 0;
-	}
-
-	&.outputMain {
-		transform: translateX(50%);
-	}
-	&.outputSub {
-		transform: translateY(-50%);
-	}
-	&.inputMain {
 		transform: translateX(-50%);
-	}
-	&.inputSub {
-		transform: translateY(50%);
 	}
 }
 .connectedNode {
-	border: var(--border-base);
-	background-color: var(--color-node-background);
+	border: var(--border);
+	background-color: var(--node--color--background);
 	border-radius: 100%;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	cursor: pointer;
 	pointer-events: all;
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
@@ -241,13 +228,15 @@ defineExpose({
 		left: -15%;
 		z-index: -1;
 	}
+
 	.outputMain &,
 	.inputMain & {
-		border-radius: var(--border-radius-large);
+		border-radius: var(--radius--lg);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
+
 	.outputMain & {
 		&:hover {
 			transform: scale(1.2) translateX(-50%);
@@ -268,29 +257,15 @@ defineExpose({
 			transform: scale(1.2) translateY(-50%);
 		}
 	}
-}
 
-.connectedNode {
-	&::after {
-		display: none;
-	}
-	padding: var(--spacing-xs);
-	.v2 .outputMain & {
-		&:hover {
-			transform: scale(1.1);
+	// V2 styles override
+	.v2 & {
+		padding: var(--spacing--xs);
+
+		&::after {
+			display: none;
 		}
-	}
-	.v2 .outputSub & {
-		&:hover {
-			transform: scale(1.1);
-		}
-	}
-	.v2 .inputMain & {
-		&:hover {
-			transform: scale(1.1);
-		}
-	}
-	.v2 .inputSub & {
+
 		&:hover {
 			transform: scale(1.1);
 		}

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ElDialog } from 'element-plus';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -7,6 +6,8 @@ import type { ModalKey } from '@/Interface';
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import { useStyles } from '@/composables/useStyles';
 
+import { ElDialog } from 'element-plus';
+import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		name: ModalKey;
@@ -160,15 +161,15 @@ function getCustomClass() {
 		@opened="onOpened"
 	>
 		<template v-if="$slots.header" #header>
-			<slot v-if="!loading" name="header" />
+			<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
 		</template>
 		<template v-else-if="title" #title>
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
+					<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
+					<N8nHeading tag="h3" size="small" color="text-light">{{ subtitle }}</N8nHeading>
 				</div>
 			</div>
 		</template>
@@ -180,7 +181,7 @@ function getCustomClass() {
 		>
 			<slot v-if="!loading" name="content" />
 			<div v-else :class="$style.loader">
-				<n8n-spinner />
+				<N8nSpinner />
 			</div>
 		</div>
 		<div v-if="!loading && $slots.footer" :class="$style.footer">
@@ -229,7 +230,7 @@ function getCustomClass() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-primary-tint-1);
+	color: var(--color--primary--tint-1);
 	font-size: 30px;
 	height: 80%;
 }
@@ -239,10 +240,10 @@ function getCustomClass() {
 }
 
 .subtitle {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .footer {
-	margin-top: var(--spacing-l);
+	margin-top: var(--spacing--lg);
 }
 </style>

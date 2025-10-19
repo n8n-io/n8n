@@ -61,7 +61,11 @@ export async function saveExecutionProgress(
 		// Set last executed node so that it may resume on failure
 		fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
 
-		fullExecutionData.status = 'running';
+		// If the execution was canceled, we do not change the status
+		// to running, because it is already canceled.
+		if (fullExecutionData.status !== 'canceled') {
+			fullExecutionData.status = 'running';
+		}
 
 		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 	} catch (e) {

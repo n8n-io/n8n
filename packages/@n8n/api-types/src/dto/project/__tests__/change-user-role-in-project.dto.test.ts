@@ -1,3 +1,5 @@
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+
 import { ChangeUserRoleInProject } from '../change-user-role-in-project.dto';
 
 describe('ChangeUserRoleInProject', () => {
@@ -30,15 +32,8 @@ describe('ChangeUserRoleInProject', () => {
 				expectedErrorPath: ['role'],
 			},
 			{
-				name: 'invalid role value',
-				request: {
-					role: 'invalid-role',
-				},
-				expectedErrorPath: ['role'],
-			},
-			{
 				name: 'personal owner role',
-				request: { role: 'project:personalOwner' },
+				request: { role: PROJECT_OWNER_ROLE_SLUG },
 				expectedErrorPath: ['role'],
 			},
 		])('should reject $name', ({ request, expectedErrorPath }) => {

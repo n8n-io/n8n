@@ -2,13 +2,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
-	type ExtractableSubgraphData,
-	type ExtractableErrorResult,
 	extractReferencesInNodeExpressions,
-	type IConnections,
-	type INode,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+} from 'n8n-workflow';
+import type {
+	ExtractableSubgraphData,
+	ExtractableErrorResult,
+	IConnections,
+	INode,
+	Workflow,
 } from 'n8n-workflow';
 import { computed } from 'vue';
 import { useToast } from './useToast';
@@ -43,6 +46,8 @@ export function useWorkflowExtraction() {
 	const telemetry = useTelemetry();
 
 	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
+
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -213,14 +218,14 @@ export function useWorkflowExtraction() {
 				]
 			: [];
 		const triggerParameters =
-			selectionVariables.size > 0
+			selectionVariables.size === 0
 				? {
+						inputSource: 'passthrough',
+					}
+				: {
 						workflowInputs: {
 							values: [...selectionVariables.keys().map((k) => ({ name: k, type: 'any' }))],
 						},
-					}
-				: {
-						inputSource: 'passthrough',
 					};
 
 		const triggerNode: INode = {
@@ -309,7 +314,7 @@ export function useWorkflowExtraction() {
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (!nodeType) return true; // invariant broken -> abort onto error path
 
-			const ios = getIOs(workflowsStore.getCurrentWorkflow(), node, nodeType);
+			const ios = getIOs(workflowObject.value, node, nodeType);
 			return (
 				ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length <= 1
 			);
@@ -427,7 +432,6 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 
 		let startNodeName = 'Start';
@@ -438,16 +442,16 @@ export function useWorkflowExtraction() {
 		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
-			? currentWorkflow
+			? workflowObject.value
 					.getChildNodes(end, 'main', 1)
-					.map((x) => currentWorkflow.getNode(x)?.name)
+					.map((x) => workflowObject.value.getNode(x)?.name)
 					.filter((x) => x !== undefined)
 			: [];
 
 		const allAfterEndNodes = end
-			? currentWorkflow
+			? workflowObject.value
 					.getChildNodes(end, 'ALL')
-					.map((x) => currentWorkflow.getNode(x))
+					.map((x) => workflowObject.value.getNode(x))
 					.filter((x) => x !== null)
 			: [];
 
@@ -501,6 +505,20 @@ export function useWorkflowExtraction() {
 		return true;
 	}
 
+	function trackStartExtractWorkflow(nodeCount: number, success: boolean) {
+		telemetry.track('User started nodes to sub-workflow extraction', {
+			node_count: nodeCount,
+			success,
+		});
+	}
+
+	function trackExtractWorkflow(nodeCount: number, success: boolean) {
+		telemetry.track('User extracted nodes to sub-workflow', {
+			node_count: nodeCount,
+			success,
+		});
+	}
+
 	/**
 	 * This mutates the current workflow and creates a new one.
 	 * Intended to be called from @WorkflowExtractionNameModal spawned
@@ -522,23 +540,9 @@ export function useWorkflowExtraction() {
 	 *
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
-	async function extractWorkflow(nodeIds: string[]) {
+	function extractWorkflow(nodeIds: string[]) {
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);
-	}
-
-	function trackStartExtractWorkflow(nodeCount: number, success: boolean) {
-		telemetry.track('User started nodes to sub-workflow extraction', {
-			node_count: nodeCount,
-			success,
-		});
-	}
-
-	function trackExtractWorkflow(nodeCount: number, success: boolean) {
-		telemetry.track('User extracted nodes to sub-workflow', {
-			node_count: nodeCount,
-			success,
-		});
 	}
 
 	return {

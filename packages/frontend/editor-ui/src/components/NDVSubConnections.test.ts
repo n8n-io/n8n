@@ -69,7 +69,7 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
-		getCurrentWorkflow: vi.fn(() => new Workflow(mockWorkflowData)),
+		workflowObject: new Workflow(mockWorkflowData),
 		getNodeByName: mockGetNodeByName,
 	})),
 }));

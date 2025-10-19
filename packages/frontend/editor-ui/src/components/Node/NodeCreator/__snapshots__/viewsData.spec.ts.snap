@@ -8,7 +8,7 @@ exports[`viewsData > AIView > should return ai view with ai transform node 1`] =
       "properties": {
         "description": "See what's possible and get started 5x faster",
         "icon": "box-open",
-        "name": "ai_templates_root",
+        "key": "ai_templates_root",
         "tag": {
           "text": "Recommended",
           "type": "info",
@@ -17,6 +17,7 @@ exports[`viewsData > AIView > should return ai view with ai transform node 1`] =
         "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
       },
       "type": "link",
+      "uuid": "ai_templates_root",
     },
     {
       "key": "agent",
@@ -81,7 +82,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
       "properties": {
         "description": "See what's possible and get started 5x faster",
         "icon": "box-open",
-        "name": "ai_templates_root",
+        "key": "ai_templates_root",
         "tag": {
           "text": "Recommended",
           "type": "info",
@@ -90,6 +91,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
         "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
       },
       "type": "link",
+      "uuid": "ai_templates_root",
     },
     {
       "key": "agent",
@@ -141,7 +143,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
       "properties": {
         "description": "See what's possible and get started 5x faster",
         "icon": "box-open",
-        "name": "ai_templates_root",
+        "key": "ai_templates_root",
         "tag": {
           "text": "Recommended",
           "type": "info",
@@ -150,6 +152,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
         "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
       },
       "type": "link",
+      "uuid": "ai_templates_root",
     },
     {
       "key": "agent",

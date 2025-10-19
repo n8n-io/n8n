@@ -7,31 +7,43 @@ import type {
 	SectionCreateElement,
 	ActionTypeDescription,
 	NodeFilterType,
+	OpenTemplateElement,
+	LinkCreateElement,
+	ViewCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_OTHER_TOOLS,
+	AI_CATEGORY_TOOLS,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
+	AI_CATEGORY_LANGUAGE_MODELS,
+	AI_CATEGORY_MEMORY,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
+	PRE_BUILT_AGENTS_COLLECTION,
 } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
+import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@n8n/i18n';
 import sortBy from 'lodash/sortBy';
 import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { NodeIconSource } from '../../../utils/nodeIcon';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
-import { useNodeTypesStore } from '../../../stores/nodeTypes.store';
+import {
+	PrebuiltAgentTemplates,
+	SampleTemplates,
+} from '@/features/workflows/templates/utils/workflowSamples';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -114,7 +126,11 @@ export function removeTrailingTrigger(searchFilter: string) {
 	return searchFilter;
 }
 
-export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
+export function searchNodes(
+	searchFilter: string,
+	items: INodeCreateElement[],
+	additionalFactors = {},
+) {
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	if (!askAiEnabled) {
 		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
@@ -123,12 +139,12 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
-	// Please update the snapshots per the README next to the the snapshots if you modify items significantly.
-	const result = (sublimeSearch<INodeCreateElement>(trimmedFilter, items) || []).map(
-		({ item }) => item,
-	);
+	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
+	const searchResults = sublimeSearch<INodeCreateElement>(trimmedFilter, items) || [];
 
-	return result;
+	const reRankedResults = reRankSearchResults(searchResults, additionalFactors);
+
+	return reRankedResults.map(({ item }) => item);
 }
 
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
@@ -308,27 +324,145 @@ export function prepareCommunityNodeDetailsViewStack(
 	};
 }
 
-export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false }) {
+export function getRagStarterCallout(): OpenTemplateElement {
+	return {
+		uuid: SampleTemplates.RagStarterTemplate,
+		key: SampleTemplates.RagStarterTemplate,
+		type: 'openTemplate',
+		properties: {
+			templateId: SampleTemplates.RagStarterTemplate,
+			title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
+			icon: 'database',
+			description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
+			tag: {
+				type: 'info',
+				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+			},
+		},
+	};
+}
+
+// Callout without a divider
+export function getPreBuiltAgentsCallout(): ViewCreateElement {
+	return {
+		uuid: uuidv4(),
+		key: PRE_BUILT_AGENTS_COLLECTION,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.preBuiltAgents.title'),
+			icon: 'box',
+			description: i18n.baseText('nodeCreator.preBuiltAgents.description'),
+			borderless: true,
+			tag: {
+				type: 'info',
+				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+			},
+		},
+	};
+}
+
+// Callout with divider after it
+export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
+	return {
+		uuid: uuidv4(),
+		key: PRE_BUILT_AGENTS_COLLECTION,
+		type: 'link',
+		properties: {
+			key: PRE_BUILT_AGENTS_COLLECTION,
+			url: '',
+			title: i18n.baseText('nodeCreator.preBuiltAgents.title'),
+			icon: 'box',
+			description: i18n.baseText('nodeCreator.preBuiltAgents.description'),
+			tag: {
+				type: 'info',
+				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+			},
+		},
+	};
+}
+
+export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {
+	return {
+		uuid: 'ai_templates_root',
+		key: 'ai_templates_root',
+		type: 'link',
+		properties: {
+			title: i18n.baseText('nodeCreator.aiPanel.linkItem.title'),
+			icon: 'box-open',
+			description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
+			key: 'ai_templates_root',
+			url: aiTemplatesURL,
+			tag: {
+				type: 'info',
+				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+			},
+		},
+	};
+}
+
+export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false } = {}) {
 	const results: INodeCreateElement[] = [];
 
 	const ragKeywords = ['rag', 'vec', 'know'];
 	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
-		results.push({
-			uuid: 'rag-starter-template',
-			key: 'rag-starter-template',
-			type: 'openTemplate',
-			properties: {
-				key: 'rag-starter-template',
-				title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
-				icon: 'database',
-				description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
-				tag: {
-					type: 'info',
-					text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
-				},
-			},
-		});
+		results.push(getRagStarterCallout());
 	}
+	return results;
+}
+
+const getTemplateLink = (
+	templateId: string,
+	availableTemplates: OpenTemplateElement[],
+): OpenTemplateElement | undefined => {
+	const templateLink = availableTemplates.find((template) => template.key === templateId);
+
+	if (templateLink?.properties) {
+		templateLink.properties.compact = true;
+	}
+
+	return templateLink;
+};
+
+export function getActiveViewCallouts(
+	title: string | undefined,
+	isPreBuiltAgentsCalloutVisible: boolean,
+	templates: OpenTemplateElement[],
+) {
+	const results: INodeCreateElement[] = [];
+
+	if (isPreBuiltAgentsCalloutVisible && title) {
+		if (title === AI_CATEGORY_LANGUAGE_MODELS) {
+			results.push(getPreBuiltAgentsCalloutWithDivider());
+		} else if ([AI_CATEGORY_MEMORY, AI_CATEGORY_TOOLS].includes(title)) {
+			results.push(getPreBuiltAgentsCallout());
+		} else if (title === 'Google Calendar') {
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.CalendarAgent, templates);
+			if (templateLink) {
+				results.push(templateLink);
+			}
+		} else if (title === 'Telegram') {
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.VoiceAssistantAgent, templates);
+			if (templateLink) {
+				results.push(templateLink);
+			}
+		} else if (title === 'Google Drive') {
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.KnowledgeStoreAgent, templates);
+			if (templateLink) {
+				results.push(templateLink);
+			}
+		} else if (title === 'Google Sheets') {
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.TaskManagementAgent, templates);
+			if (templateLink) {
+				results.push(templateLink);
+			}
+		} else if (title === 'Gmail') {
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.EmailTriageAgent, templates);
+			if (templateLink) {
+				results.push(templateLink);
+			}
+		}
+	}
+
 	return results;
 }
 

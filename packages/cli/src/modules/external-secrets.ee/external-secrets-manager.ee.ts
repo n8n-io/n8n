@@ -1,13 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
-import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
 import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {
 	EXTERNAL_SECRETS_DB_KEY,
@@ -17,6 +13,10 @@ import {
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
+
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @Service()
 export class ExternalSecretsManager implements IExternalSecretsManager {
@@ -28,7 +28,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	initialized = false;
 
-	updateInterval: NodeJS.Timeout;
+	updateInterval?: NodeJS.Timeout;
 
 	initRetryTimeouts: Record<string, NodeJS.Timeout> = {};
 
@@ -46,34 +46,40 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async init(): Promise<void> {
-		if (!this.initialized) {
-			if (!this.initializingPromise) {
-				this.initializingPromise = new Promise<void>(async (resolve) => {
+		if (this.initialized) return;
+		if (!this.initializingPromise) {
+			this.initializingPromise = (async () => {
+				try {
 					await this.internalInit();
-					this.initialized = true;
-					resolve();
-					this.initializingPromise = undefined;
 					this.updateInterval = setInterval(
 						async () => await this.updateSecrets(),
 						this.config.updateInterval * 1000,
 					);
-				});
-			}
-			await this.initializingPromise;
+					this.initialized = true;
+				} catch (error) {
+					this.logger.error('External secrets manager failed to initialize', {
+						error: ensureError(error),
+					});
+					throw error;
+				} finally {
+					this.initializingPromise = undefined;
+				}
+			})();
 		}
+		await this.initializingPromise;
 
 		this.logger.debug('External secrets manager initialized');
 	}
 
-	@OnShutdown()
 	shutdown() {
-		clearInterval(this.updateInterval);
+		if (this.updateInterval) clearInterval(this.updateInterval);
 		Object.values(this.providers).forEach((p) => {
 			// Disregard any errors as we're shutting down anyway
 			void p.disconnect().catch(() => {});
 		});
 		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
 
+		this.initialized = false;
 		this.logger.debug('External secrets manager shut down');
 	}
 
@@ -88,6 +94,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			await this.reloadProvider(provider, backoff);
 		}
 
+		await this.updateSecrets();
 		this.logger.debug('External secrets managed reloaded all providers');
 	}
 
@@ -288,6 +295,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await this.saveAndSetSettings(settings);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
+		await this.updateSecrets();
 		this.broadcastReloadExternalSecretsProviders();
 
 		void this.trackProviderSave(provider, isNewProvider, userId);

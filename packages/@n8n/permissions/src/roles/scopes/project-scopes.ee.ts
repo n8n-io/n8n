@@ -32,6 +32,18 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:list',
 	'folder:move',
 	'sourceControl:push',
+	'dataTable:create',
+	'dataTable:delete',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:listProject',
+	'dataTable:readRow',
+	'dataTable:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -58,6 +70,13 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'folder:delete',
 	'folder:list',
 	'folder:move',
+	'dataTable:create',
+	'dataTable:delete',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:listProject',
+	'dataTable:readRow',
+	'dataTable:writeRow',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -79,6 +98,18 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'folder:update',
 	'folder:delete',
 	'folder:list',
+	'dataTable:create',
+	'dataTable:delete',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:listProject',
+	'dataTable:readRow',
+	'dataTable:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -90,4 +121,9 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'workflow:read',
 	'folder:read',
 	'folder:list',
+	'dataTable:listProject',
+	'dataTable:read',
+	'dataTable:readRow',
+	'projectVariable:list',
+	'projectVariable:read',
 ];

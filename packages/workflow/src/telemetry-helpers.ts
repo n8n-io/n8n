@@ -1,8 +1,11 @@
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
+	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	CODE_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -19,7 +22,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
 import type {
 	IConnection,
@@ -39,6 +42,7 @@ import type {
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters } from './node-helpers';
 import { jsonParse } from './utils';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -235,6 +239,11 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
+		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (nodeType?.description?.communityNodePackageVersion) {
+			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
+		}
+
 		if (runData?.[node.name]) {
 			const runs = runData[node.name] ?? [];
 			nodeItem.runs = runs.length;
@@ -254,6 +263,20 @@ export function generateNodesGraph(
 			nodeItem.prompts = { instructions: node.parameters.instructions as string };
 		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
+
+			if (node.typeVersion >= 2.1) {
+				const options = node.parameters?.options;
+				if (
+					typeof options === 'object' &&
+					options &&
+					'enableStreaming' in options &&
+					options.enableStreaming === false
+				) {
+					nodeItem.is_streaming = false;
+				} else {
+					nodeItem.is_streaming = true;
+				}
+			}
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;
 
@@ -365,6 +388,24 @@ export function generateNodesGraph(
 			}
 		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
+			const responseMode = node.parameters?.responseMode;
+			nodeItem.response_mode = typeof responseMode === 'string' ? responseMode : 'onReceived';
+		} else if (node.type === CHAT_TRIGGER_NODE_TYPE) {
+			// Capture streaming response mode parameter
+			const options = node.parameters?.options;
+			if (
+				typeof options === 'object' &&
+				options &&
+				'responseMode' in options &&
+				typeof options.responseMode === 'string'
+			) {
+				nodeItem.response_mode = options.responseMode;
+			}
+			// Capture public chat setting
+			const isPublic = node.parameters?.public;
+			if (typeof isPublic === 'boolean') {
+				nodeItem.public_chat = isPublic;
+			}
 		} else if (
 			node.type === EXECUTE_WORKFLOW_NODE_TYPE ||
 			node.type === WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE
@@ -379,11 +420,28 @@ export function generateNodesGraph(
 			options?.isCloudDeployment &&
 			node.parameters?.operation === 'setMetrics'
 		) {
-			const metrics = node.parameters?.metrics as IDataObject;
+			const metrics = node.parameters?.metrics as IDataObject | undefined;
 
-			nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
-				(metric: { name: string }) => metric.name,
-			);
+			// If metrics are not defined, it means the node is using preconfigured metric
+			if (!metrics) {
+				const predefinedMetricKey =
+					(node.parameters?.metric as string | undefined) ?? DEFAULT_EVALUATION_METRIC;
+				nodeItem.metric_names = [predefinedMetricKey];
+			} else {
+				nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
+					(metric: { name: string }) => metric.name,
+				);
+			}
+		} else if (node.type === CODE_NODE_TYPE) {
+			const { language } = node.parameters;
+			nodeItem.language =
+				language === undefined
+					? 'javascript'
+					: language === 'python'
+						? 'python'
+						: language === 'pythonNative'
+							? 'pythonNative'
+							: 'unknown';
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -411,7 +469,13 @@ export function generateNodesGraph(
 					}
 				}
 			} catch (e: unknown) {
-				if (!(e instanceof Error && e.message.includes('Unrecognized node type'))) {
+				if (
+					!(
+						e instanceof Error &&
+						typeof e.message === 'string' &&
+						e.message.includes('Unrecognized node type')
+					)
+				) {
 					throw e;
 				}
 			}
@@ -423,7 +487,7 @@ export function generateNodesGraph(
 					(((node.parameters?.messages as IDataObject) ?? {}).values as IDataObject[]) ?? [];
 			}
 
-			if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+			if (node.type === AGENT_LANGCHAIN_NODE_TYPE || node.type === AGENT_TOOL_LANGCHAIN_NODE_TYPE) {
 				const prompts: IDataObject = {};
 
 				if (node.parameters?.text) {
@@ -500,7 +564,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 

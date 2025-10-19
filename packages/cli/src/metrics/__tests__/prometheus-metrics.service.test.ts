@@ -174,7 +174,7 @@ describe('PrometheusMetricsService', () => {
 				includeStatusCode: false,
 			});
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_last_activity',
 				help: 'last instance activity (backend request) in Unix time (seconds).',
 			});
@@ -209,12 +209,12 @@ describe('PrometheusMetricsService', () => {
 
 			// call 1 is for `n8n_version_info` (always enabled)
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_scaling_mode_queue_jobs_waiting',
 				help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
 			});
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(4, {
 				name: 'n8n_scaling_mode_queue_jobs_active',
 				help: 'Current number of jobs being processed across all workers in scaling mode.',
 			});
@@ -238,7 +238,7 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + instance role metric
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
@@ -260,9 +260,9 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			// First call is n8n version metric
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3);
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_active_workflow_count',
 				help: 'Total number of active workflows.',
 				collect: expect.any(Function),
@@ -528,6 +528,37 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({}, 1);
+		});
+	});
+
+	describe('instance role metric', () => {
+		it('should set up instance role metric for main instance', async () => {
+			// @ts-expect-error Private field
+			instanceSettings.instanceType = 'main';
+
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Gauge).toHaveBeenCalledWith({
+				name: 'n8n_instance_role_leader',
+				help: 'Whether this main instance is the leader (1) or not (0).',
+			});
+		});
+
+		it('should not set up instance role metric for worker instance', async () => {
+			// @ts-expect-error Private field
+			instanceSettings.instanceType = 'worker';
+
+			await prometheusMetricsService.init(app);
+
+			// Only version and active workflow count metrics should be created
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+
+			// Verify instance role metric was not created
+			const calls = (promClient.Gauge as jest.Mock).mock.calls;
+			const hasInstanceRoleMetric = calls.some(
+				(call) => call[0]?.name === 'n8n_instance_role_leader',
+			);
+			expect(hasInstanceRoleMetric).toBe(false);
 		});
 	});
 });

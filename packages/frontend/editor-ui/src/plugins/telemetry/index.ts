@@ -15,6 +15,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -47,21 +48,15 @@ export class Telemetry {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
 		const {
-			config: { key, url },
+			config: { key, proxy, sourceConfig },
 		} = telemetrySettings;
 
-		const settingsStore = useSettingsStore();
 		const rootStore = useRootStore();
 
-		const logLevel = settingsStore.logLevel;
-
-		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
-
-		this.initRudderStack(key, url, {
+		this.initRudderStack(key, proxy, {
 			integrations: { All: false },
 			loadIntegration: false,
-			configUrl: 'https://api-rs.n8n.io',
-			...logging,
+			configUrl: sourceConfig,
 		});
 
 		this.identify(instanceId, userId, versionCli, projectId);
@@ -99,9 +94,12 @@ export class Telemetry {
 	track(event: string, properties?: ITelemetryTrackProperties) {
 		if (!this.rudderStack) return;
 
+		const posthogSessionId = window.posthog?.get_session_id?.();
+
 		const updatedProperties = {
 			...properties,
 			version_cli: useRootStore().versionCli,
+			posthog_session_id: posthogSessionId,
 		};
 
 		this.rudderStack.track(event, updatedProperties, {
@@ -110,6 +108,8 @@ export class Telemetry {
 				ip: '0.0.0.0',
 			},
 		});
+
+		usePostHog().capture(event, updatedProperties);
 	}
 
 	page(route: RouteLocation) {
@@ -201,7 +201,7 @@ export class Telemetry {
 		}
 	}
 
-	private initRudderStack(key: string, url: string, options: IDataObject) {
+	private initRudderStack(key: string, proxy: string, options: IDataObject) {
 		window.rudderanalytics = window.rudderanalytics || [];
 		if (!this.rudderStack) {
 			return;
@@ -252,7 +252,7 @@ export class Telemetry {
 		};
 
 		this.rudderStack.loadJS();
-		this.rudderStack.load(key, url, options);
+		this.rudderStack.load(key, proxy, options);
 	}
 }
 

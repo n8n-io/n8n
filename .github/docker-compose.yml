@@ -10,16 +10,6 @@ services:
     tmpfs:
       - /var/lib/mysql
 
-  mysql-8.0.13:
-    image: mysql:8.0.13
-    environment:
-      - MYSQL_DATABASE=n8n
-      - MYSQL_ROOT_PASSWORD=password
-    ports:
-      - 3306:3306
-    tmpfs:
-      - /var/lib/mysql
-
   mysql-8.4:
     image: mysql:8.4
     environment:

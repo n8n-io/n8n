@@ -42,7 +42,7 @@ export class HooksService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 	) {
-		this.innerAuthMiddleware = authService.createAuthMiddleware(false);
+		this.innerAuthMiddleware = authService.createAuthMiddleware({ allowSkipMFA: false });
 	}
 
 	/**

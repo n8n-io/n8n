@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -9,9 +10,13 @@ import {
 	TEST_MODEL_VALUE,
 	TEST_NODE_MULTI_MODE,
 	TEST_NODE_SINGLE_MODE,
+	TEST_NODE_NO_CREDENTIALS,
+	TEST_NODE_URL_REDIRECT,
 	TEST_PARAMETER_ADD_RESOURCE,
 	TEST_PARAMETER_MULTI_MODE,
 	TEST_PARAMETER_SINGLE_MODE,
+	TEST_PARAMETER_SKIP_CREDENTIALS_CHECK,
+	TEST_PARAMETER_URL_REDIRECT,
 } from './ResourceLocator.test.constants';
 
 vi.mock('vue-router', async () => {
@@ -41,7 +46,11 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
+// Mock window.open
+vi.spyOn(window, 'open').mockImplementation(() => null);
+
 let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 const renderComponent = createComponentRenderer(ResourceLocator, {
 	props: {
@@ -59,7 +68,6 @@ const renderComponent = createComponentRenderer(ResourceLocator, {
 			ExpressionParameterInput: true,
 			ParameterIssues: true,
 			N8nCallout: true,
-			'font-awesome-icon': true,
 			FromAiOverrideField: true,
 			FromAiOverrideButton: true,
 			ParameterOverrideSelectableList: true,
@@ -72,6 +80,8 @@ describe('ResourceLocator', () => {
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ displayName: 'Test Node' });
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProjectId = 'test-project-123';
 	});
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -126,8 +136,9 @@ describe('ResourceLocator', () => {
 		await waitFor(() => {
 			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
 		});
-		// Expect the items to be rendered
-		expect(getAllByTestId('rlc-item')).toHaveLength(TEST_ITEMS.length);
+		// Expect the items to be rendered, including the cached value from
+		// TEST_MODEL_VALUE
+		expect(getAllByTestId('rlc-item')).toHaveLength(TEST_ITEMS.length + 1);
 		// We should be getting one item for each result
 		TEST_ITEMS.forEach((item) => {
 			expect(getByText(item.name)).toBeInTheDocument();
@@ -195,6 +206,103 @@ describe('ResourceLocator', () => {
 				name: 'Test Resource',
 			},
 		});
+	});
+
+	it('renders error when credentials are required and skipCredentialsCheckInRLC is false', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [
+				{
+					name: 'Test Resource',
+					value: 'test-resource',
+					url: 'https://test.com/test-resource',
+				},
+			],
+			paginationToken: null,
+		});
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'Test Node',
+			credentials: [
+				{
+					name: 'testAuth',
+					required: true,
+				},
+			],
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_MULTI_MODE,
+				path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+				node: TEST_NODE_NO_CREDENTIALS,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+				isValueExpression: false,
+			},
+		});
+
+		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('rlc-input'));
+
+		expect(getByTestId('rlc-error-container')).toBeInTheDocument();
+		expect(getByTestId('permission-error-link')).toBeInTheDocument();
+		expect(queryByTestId('rlc-item')).not.toBeInTheDocument();
+	});
+
+	it('renders list items when skipCredentialsCheckInRLC is true even without credentials', async () => {
+		const TEST_ITEMS = [
+			{ name: 'Test Resource', value: 'test-resource', url: 'https://test.com/test-resource' },
+			{
+				name: 'Test Resource 2',
+				value: 'test-resource-2',
+				url: 'https://test.com/test-resource-2',
+			},
+		];
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: TEST_ITEMS,
+			paginationToken: null,
+		});
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'Test Node',
+			credentials: [
+				{
+					name: 'testAuth',
+					required: true,
+				},
+			],
+		});
+
+		const { getByTestId, getByText, getAllByTestId, queryByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_SKIP_CREDENTIALS_CHECK,
+				path: `parameters.${TEST_PARAMETER_SKIP_CREDENTIALS_CHECK.name}`,
+				node: TEST_NODE_NO_CREDENTIALS,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+				isValueExpression: false,
+			},
+		});
+
+		expect(
+			getByTestId(`resource-locator-${TEST_PARAMETER_SKIP_CREDENTIALS_CHECK.name}`),
+		).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('rlc-input'));
+
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+		});
+
+		// Expect the items to be rendered, including the cached value from
+		// TEST_MODEL_VALUE
+		expect(getAllByTestId('rlc-item')).toHaveLength(TEST_ITEMS.length + 1);
+		TEST_ITEMS.forEach((item) => {
+			expect(getByText(item.name)).toBeInTheDocument();
+		});
+		expect(queryByTestId('rlc-error-container')).not.toBeInTheDocument();
+		expect(queryByTestId('permission-error-link')).not.toBeInTheDocument();
 	});
 
 	// Testing error message deduplication
@@ -332,5 +440,35 @@ describe('ResourceLocator', () => {
 				},
 			],
 		]);
+	});
+
+	it('opens URL in new tab when add resource button is clicked with URL configuration', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('rlc-input'));
+
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'/projects/test-project-123/datatables/new',
+			'_blank',
+		);
+
+		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
 	});
 });

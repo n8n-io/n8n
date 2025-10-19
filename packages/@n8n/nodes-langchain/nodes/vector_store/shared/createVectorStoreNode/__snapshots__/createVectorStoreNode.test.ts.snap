@@ -86,7 +86,8 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "typeOptions": {
         "calloutAction": {
           "label": "RAG starter template",
-          "type": "openRagStarterTemplate",
+          "templateId": "rag-starter-template",
+          "type": "openSampleWorkflowTemplate",
         },
       },
     },

@@ -7,7 +7,10 @@ import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
 import { useDebugInfo } from '@/composables/useDebugInfo';
 import { useI18n } from '@n8n/i18n';
+import { getThirdPartyLicenses } from '@n8n/rest-api-client';
 
+import { ElCol, ElRow } from 'element-plus';
+import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 const modalBus = createEventBus();
 const toast = useToast();
 const i18n = useI18n();
@@ -17,6 +20,23 @@ const rootStore = useRootStore();
 
 const closeDialog = () => {
 	modalBus.emit('close');
+};
+
+const downloadThirdPartyLicenses = async () => {
+	try {
+		const thirdPartyLicenses = await getThirdPartyLicenses(rootStore.restApiContext);
+
+		const blob = new File([thirdPartyLicenses], 'THIRD_PARTY_LICENSES.md', {
+			type: 'text/markdown',
+		});
+		window.open(URL.createObjectURL(blob));
+	} catch (error) {
+		toast.showToast({
+			title: i18n.baseText('about.thirdPartyLicenses.downloadError'),
+			message: error.message,
+			type: 'error',
+		});
+	}
 };
 
 const copyDebugInfoToClipboard = async () => {
@@ -40,56 +60,66 @@ const copyDebugInfoToClipboard = async () => {
 	>
 		<template #content>
 			<div :class="$style.container">
-				<el-row>
-					<el-col :span="8" class="info-name">
-						<n8n-text>{{ i18n.baseText('about.n8nVersion') }}</n8n-text>
-					</el-col>
-					<el-col :span="16">
-						<n8n-text>{{ rootStore.versionCli }}</n8n-text>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="8" class="info-name">
-						<n8n-text>{{ i18n.baseText('about.sourceCode') }}</n8n-text>
-					</el-col>
-					<el-col :span="16">
-						<n8n-link to="https://github.com/n8n-io/n8n">https://github.com/n8n-io/n8n</n8n-link>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="8" class="info-name">
-						<n8n-text>{{ i18n.baseText('about.license') }}</n8n-text>
-					</el-col>
-					<el-col :span="16">
-						<n8n-link to="https://github.com/n8n-io/n8n/blob/master/LICENSE.md">
+				<ElRow>
+					<ElCol :span="8" class="info-name">
+						<N8nText>{{ i18n.baseText('about.n8nVersion') }}</N8nText>
+					</ElCol>
+					<ElCol :span="16">
+						<N8nText>{{ rootStore.versionCli }}</N8nText>
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="8" class="info-name">
+						<N8nText>{{ i18n.baseText('about.sourceCode') }}</N8nText>
+					</ElCol>
+					<ElCol :span="16">
+						<N8nLink to="https://github.com/n8n-io/n8n">https://github.com/n8n-io/n8n</N8nLink>
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="8" class="info-name">
+						<N8nText>{{ i18n.baseText('about.license') }}</N8nText>
+					</ElCol>
+					<ElCol :span="16">
+						<N8nLink to="https://github.com/n8n-io/n8n/blob/master/LICENSE.md">
 							{{ i18n.baseText('about.n8nLicense') }}
-						</n8n-link>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="8" class="info-name">
-						<n8n-text>{{ i18n.baseText('about.instanceID') }}</n8n-text>
-					</el-col>
-					<el-col :span="16">
-						<n8n-text>{{ rootStore.instanceId }}</n8n-text>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="8" class="info-name">
-						<n8n-text>{{ i18n.baseText('about.debug.title') }}</n8n-text>
-					</el-col>
-					<el-col :span="16">
+						</N8nLink>
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="8" class="info-name">
+						<N8nText>{{ i18n.baseText('about.thirdPartyLicenses') }}</N8nText>
+					</ElCol>
+					<ElCol :span="16">
+						<N8nLink @click="downloadThirdPartyLicenses">
+							{{ i18n.baseText('about.thirdPartyLicensesLink') }}
+						</N8nLink>
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="8" class="info-name">
+						<N8nText>{{ i18n.baseText('about.instanceID') }}</N8nText>
+					</ElCol>
+					<ElCol :span="16">
+						<N8nText>{{ rootStore.instanceId }}</N8nText>
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="8" class="info-name">
+						<N8nText>{{ i18n.baseText('about.debug.title') }}</N8nText>
+					</ElCol>
+					<ElCol :span="16">
 						<div :class="$style.debugInfo" @click="copyDebugInfoToClipboard">
-							<n8n-link>{{ i18n.baseText('about.debug.message') }}</n8n-link>
+							<N8nLink>{{ i18n.baseText('about.debug.message') }}</N8nLink>
 						</div>
-					</el-col>
-				</el-row>
+					</ElCol>
+				</ElRow>
 			</div>
 		</template>
 
 		<template #footer>
 			<div class="action-buttons">
-				<n8n-button
+				<N8nButton
 					float="right"
 					:label="i18n.baseText('about.close')"
 					data-test-id="close-about-modal-button"
@@ -102,7 +132,7 @@ const copyDebugInfoToClipboard = async () => {
 
 <style module lang="scss">
 .container > * {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 	overflow-wrap: break-word;
 }
 </style>

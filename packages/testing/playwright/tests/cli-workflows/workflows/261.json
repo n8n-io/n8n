@@ -1,0 +1,160 @@
+{
+	"createdAt": "2025-09-08T10:32:07.628Z",
+	"updatedAt": "2025-09-08T10:32:07.628Z",
+	"name": "Tools in Loops: Nodes as Tools, one invocation per item 2 items at a time",
+	"id": "261",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-640, 112],
+			"id": "7a325082-7672-4327-a8be-c5809a28fe49",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "const result = [\n  'n8n',\n  'make',\n  'zappier',\n  'workato'\n].map(i => ({ json: {name: i}}))\n\nreturn result;"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-464, 112],
+			"id": "7926764f-d960-43bc-a19a-cf2655c3c753",
+			"name": "Code"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "=Search HackerNews for {{ $json.name }}",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [352, 112],
+			"id": "ad397dbe-eda4-45ee-b7d1-a737747da710",
+			"name": "AI Agent8"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-4.1-nano",
+					"mode": "list",
+					"cachedResultName": "gpt-4.1-nano"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [352, 304],
+			"id": "b8e27be1-989f-48a7-ab62-ea2b55089144",
+			"name": "OpenAI Chat Model8",
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "all",
+				"limit": 1,
+				"additionalFields": {
+					"keyword": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Keyword', ``, 'string') }}"
+				}
+			},
+			"type": "n8n-nodes-base.hackerNewsTool",
+			"typeVersion": 1,
+			"position": [576, 304],
+			"id": "1f80c02d-c58b-4fb5-a2a0-75dcf451cfdc",
+			"name": "Hacker News5"
+		},
+		{
+			"parameters": {
+				"batchSize": 2,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [64, 80],
+			"id": "7c0409e9-3d45-4e26-8a13-c66339690e6c",
+			"name": "Loop Over Items4"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent8": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model8": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent8",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hacker News5": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent8",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items4": {
+			"main": [
+				[],
+				[
+					{
+						"node": "AI Agent8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": null,
+	"versionId": null,
+	"meta": null,
+	"tags": []
+}

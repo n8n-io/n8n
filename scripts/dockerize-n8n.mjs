@@ -14,7 +14,6 @@ import path from 'path';
 // Disable verbose mode for cleaner output
 $.verbose = false;
 process.env.FORCE_COLOR = '1';
-process.env.DOCKER_BUILDKIT = '1';
 
 // #region ===== Helper Functions =====
 
@@ -71,6 +70,18 @@ async function commandExists(command) {
 	} catch {
 		return false;
 	}
+}
+
+const SupportedContainerEngines = /** @type {const} */(['docker', 'podman'])
+/**
+ * @returns {Promise<(typeof SupportedContainerEngines[number])>}
+ */
+async function getContainerEngine() {
+	if (await commandExists('podman')) {
+		return 'podman';
+	}
+	// use docker by default
+	return 'docker';
 }
 
 // #endregion ===== Helper Functions =====
@@ -133,16 +144,30 @@ async function checkPrerequisites() {
 
 async function buildDockerImage() {
 	const startTime = Date.now();
-	echo(chalk.yellow('INFO: Building Docker image...'));
+	const containerEngine = await getContainerEngine();
+	echo(chalk.yellow(`INFO: Building Docker image using ${containerEngine}...`));
 
 	try {
-		const { stdout } = await $`DOCKER_BUILDKIT=1 docker build \
-			--platform ${platform} \
-			-t ${config.fullImageName} \
-			-f ${config.dockerfilePath} \
-			${config.buildContext}`;
+		if (containerEngine === 'podman') {
+			const { stdout } = await $`podman build \
+				--platform ${platform} \
+				--build-arg TARGETPLATFORM=${platform} \
+				-t ${config.fullImageName} \
+				-f ${config.dockerfilePath} \
+				${config.buildContext}`;
+			echo(stdout);
+		} else {
+			// use docker command by default since most other engines have compatibility layers for it.
+			const { stdout } = await $`docker build \
+				--platform ${platform} \
+				--build-arg TARGETPLATFORM=${platform} \
+				-t ${config.fullImageName} \
+				-f ${config.dockerfilePath} \
+				--load \
+				${config.buildContext}`;
+			echo(stdout);
+		}
 
-		echo(stdout);
 		return formatDuration(Date.now() - startTime);
 	} catch (error) {
 		echo(chalk.red(`ERROR: Docker build failed: ${error.stderr || error.message}`));

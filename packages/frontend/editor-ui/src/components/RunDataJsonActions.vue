@@ -9,15 +9,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { nonExistingJsonPath, PiPWindowSymbol } from '@/constants';
+import { nonExistingJsonPath, PopOutWindowKey } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { inject, computed } from 'vue';
+import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nIconButton } from '@n8n/design-system';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-
+import { N8nIconButton } from '@n8n/design-system';
 type JsonPathData = {
 	path: string;
 	startPath: string;
@@ -39,8 +38,8 @@ const props = withDefaults(
 	},
 );
 
-const pipWindow = inject(PiPWindowSymbol);
-const isInPiPWindow = computed(() => pipWindow?.value !== undefined);
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
+const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
@@ -68,7 +67,7 @@ const normalisedJsonPath = computed((): string => {
 });
 
 function getJsonValue(): string {
-	let selectedValue = jp.query(props.jsonData, `$${normalisedJsonPath.value}`)[0];
+	let selectedValue;
 	if (noSelection.value) {
 		const inExecutionsFrame =
 			window !== window.parent && window.parent.location.pathname.includes('/executions');
@@ -80,6 +79,11 @@ function getJsonValue(): string {
 				nodeHelpers.getNodeInputData(props.node, props.runIndex, props.outputIndex),
 			);
 		}
+	} else {
+		const jsonPath = normalisedJsonPath.value.startsWith('$')
+			? normalisedJsonPath.value
+			: `$${normalisedJsonPath.value}`;
+		selectedValue = jp.query(props.jsonData, jsonPath)[0];
 	}
 
 	let value = '';
@@ -195,7 +199,7 @@ function handleCopyClick(commandData: { command: string }) {
 			v-else
 			trigger="click"
 			:teleported="
-				!isInPiPWindow // disabling teleport ensures the menu is rendered in PiP window
+				!isInPopOutWindow // disabling teleport ensures the menu is rendered in pop-out window
 			"
 			@command="handleCopyClick"
 		>
@@ -230,7 +234,7 @@ function handleCopyClick(commandData: { command: string }) {
 	z-index: 10;
 	top: 0;
 	right: 0;
-	padding-right: var(--spacing-s);
+	padding-right: var(--spacing--sm);
 	opacity: 0;
 	transition: opacity 0.3s ease;
 }

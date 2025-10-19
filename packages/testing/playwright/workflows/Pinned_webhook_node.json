@@ -1,0 +1,36 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"path": "FwrbSiaua2Xmvn6-Z-7CQ",
+				"options": {}
+			},
+			"id": "8fcc7e5f-2cef-4938-9564-eea504c20aa0",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [360, 220],
+			"webhookId": "9c778f2a-e882-46ed-a0e4-c8e2f76ccd65"
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Webhook": [
+			{
+				"headers": {
+					"connection": "keep-alive",
+					"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+					"accept": "*/*",
+					"cookie": "n8n-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjNiM2FhOTE5LWRhZDgtNDE5MS1hZWZiLTlhZDIwZTZkMjJjNiIsImhhc2giOiJ1ZVAxR1F3U2paIiwiaWF0IjoxNzI4OTE1NTQyLCJleHAiOjE3Mjk1MjAzNDJ9.fV02gpUnSiUoMxHwfB0npBjcjct7Mv9vGfj-jRTT3-I",
+					"host": "localhost:5678",
+					"accept-encoding": "gzip, deflate"
+				},
+				"params": {},
+				"query": {},
+				"body": {},
+				"webhookUrl": "http://localhost:5678/webhook-test/FwrbSiaua2Xmvn6-Z-7CQ",
+				"executionMode": "test"
+			}
+		]
+	}
+}

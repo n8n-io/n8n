@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
@@ -59,6 +60,7 @@ export class PrometheusMetricsService {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.initDefaultMetrics();
 		this.initN8nVersionMetric();
+		if (this.instanceSettings.instanceType === 'main') this.initInstanceRoleMetric();
 		this.initCacheMetrics();
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
@@ -110,6 +112,25 @@ export class PrometheusMetricsService {
 		const { version, major, minor, patch } = n8nVersion;
 
 		versionGauge.set({ version: 'v' + version, major, minor, patch }, 1);
+	}
+
+	private initInstanceRoleMetric() {
+		this.gauges.instanceRoleLeader = new promClient.Gauge({
+			name: this.prefix + 'instance_role_leader',
+			help: 'Whether this main instance is the leader (1) or not (0).',
+		});
+
+		this.gauges.instanceRoleLeader.set(this.instanceSettings.isLeader ? 1 : 0);
+	}
+
+	@OnLeaderTakeover()
+	updateOnLeaderTakeover() {
+		this.gauges.instanceRoleLeader?.set(1);
+	}
+
+	@OnLeaderStepdown()
+	updateOnLeaderStepdown() {
+		this.gauges.instanceRoleLeader?.set(0);
 	}
 
 	/**

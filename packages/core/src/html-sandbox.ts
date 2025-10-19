@@ -1,17 +1,15 @@
-/**
- * Sandboxes the HTML response to prevent possible exploitation. Embeds the
- * response in an iframe to make sure the HTML has a different origin.
- */
-export const sandboxHtmlResponse = (html: string) => {
-	// Escape & and " as mentioned in the spec:
-	// https://html.spec.whatwg.org/multipage/iframe-embed-object.html#the-iframe-element
-	const escapedHtml = html.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
-	return `
-		<iframe srcdoc="${escapedHtml}" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
-			allowtransparency="true">
-		</iframe>`;
+export const isWebhookHtmlSandboxingDisabled = () => {
+	return Container.get(SecurityConfig).disableWebhookHtmlSandboxing;
+};
+
+/**
+ * Returns the CSP header value that sandboxes the HTML page into a separate origin.
+ */
+export const getWebhookSandboxCSP = (): string => {
+	return 'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
 };
 
 /**

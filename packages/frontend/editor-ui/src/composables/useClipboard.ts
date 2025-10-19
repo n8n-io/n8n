@@ -1,6 +1,6 @@
 import { inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore, useThrottleFn } from '@vueuse/core';
-import { PiPWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
@@ -9,9 +9,9 @@ export function useClipboard({
 }: {
 	onPaste?: ClipboardEventFn;
 } = {}) {
-	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
+	const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 	const { copy, copied, isSupported, text } = useClipboardCore({
-		navigator: pipWindow?.value?.navigator ?? window.navigator,
+		navigator: popOutWindow?.value?.navigator ?? window.navigator,
 		legacy: true,
 	});
 

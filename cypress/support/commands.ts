@@ -1,5 +1,5 @@
 import 'cypress-real-events';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import FakeTimers from '@sinonjs/fake-timers';
 
 import {
@@ -10,7 +10,6 @@ import {
 	N8N_AUTH_COOKIE,
 } from '../constants';
 import { WorkflowPage } from '../pages';
-import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -26,22 +25,17 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
 });
 
-Cypress.Commands.add(
-	'createFixtureWorkflow',
-	(fixtureKey: string, workflowName = getUniqueWorkflowName()) => {
-		const workflowPage = new WorkflowPage();
+Cypress.Commands.add('createFixtureWorkflow', (fixtureKey: string) => {
+	const workflowPage = new WorkflowPage();
 
-		// We need to force the click because the input is hidden
-		workflowPage.getters
-			.workflowImportInput()
-			.selectFile(`fixtures/${fixtureKey}`, { force: true });
+	// We need to force the click because the input is hidden
+	workflowPage.getters.workflowImportInput().selectFile(`fixtures/${fixtureKey}`, { force: true });
 
-		cy.waitForLoad(false);
-		workflowPage.actions.setWorkflowName(workflowName);
-		workflowPage.getters.saveButton().should('contain', 'Saved');
-		workflowPage.actions.zoomToFit();
-	},
-);
+	cy.waitForLoad(false);
+	workflowPage.actions.saveWorkflowOnButtonClick();
+	workflowPage.getters.saveButton().should('contain', 'Saved');
+	workflowPage.actions.zoomToFit();
+});
 
 Cypress.Commands.addQuery('findChildByTestId', function (testId: string) {
 	return (subject: Cypress.Chainable) => subject.find(`[data-test-id="${testId}"]`);
@@ -114,6 +108,25 @@ Cypress.Commands.add('changeQuota', (feature: string, value: number) => setQuota
 Cypress.Commands.add('disableFeature', (feature: string) => setFeature(feature, false));
 Cypress.Commands.add('enableQueueMode', () => setQueueMode(true));
 Cypress.Commands.add('disableQueueMode', () => setQueueMode(false));
+
+const setEnvFeatureFlags = (flags: N8nEnvFeatFlags) =>
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/env-feature-flags`, {
+		flags,
+	});
+
+const getEnvFeatureFlags = () =>
+	cy.request('GET', `${BACKEND_BASE_URL}/rest/e2e/env-feature-flags`);
+
+// Environment feature flags commands (using E2E API)
+Cypress.Commands.add('setEnvFeatureFlags', (flags: N8nEnvFeatFlags) =>
+	setEnvFeatureFlags(flags).then((response) => response.body.data),
+);
+Cypress.Commands.add('clearEnvFeatureFlags', () =>
+	setEnvFeatureFlags({}).then((response) => response.body.data),
+);
+Cypress.Commands.add('getEnvFeatureFlags', () =>
+	getEnvFeatureFlags().then((response) => response.body.data),
+);
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {
@@ -238,6 +251,57 @@ Cypress.Commands.add('resetDatabase', () => {
 		owner: INSTANCE_OWNER,
 		members: INSTANCE_MEMBERS,
 		admin: INSTANCE_ADMIN,
+	});
+});
+
+Cypress.Commands.add('clearIndexedDB', (dbName: string, storeName?: string) => {
+	cy.window().then((win) => {
+		return new Promise<void>((resolve, reject) => {
+			if (!win.indexedDB) {
+				resolve();
+				return;
+			}
+
+			// If storeName is provided, clear specific store; otherwise delete entire database
+			if (storeName) {
+				const openRequest = win.indexedDB.open(dbName);
+
+				openRequest.onsuccess = () => {
+					const db = openRequest.result;
+
+					if (!db.objectStoreNames.contains(storeName)) {
+						db.close();
+						resolve();
+						return;
+					}
+
+					const transaction = db.transaction([storeName], 'readwrite');
+					const store = transaction.objectStore(storeName);
+					const clearRequest = store.clear();
+
+					clearRequest.onsuccess = () => {
+						db.close();
+						resolve();
+					};
+
+					clearRequest.onerror = () => {
+						db.close();
+						// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+						reject(clearRequest.error);
+					};
+				};
+
+				openRequest.onerror = () => {
+					resolve(); // Database doesn't exist, nothing to clear
+				};
+			} else {
+				const deleteRequest = win.indexedDB.deleteDatabase(dbName);
+
+				deleteRequest.onsuccess = () => resolve();
+				deleteRequest.onerror = () => resolve(); // Ignore errors if DB doesn't exist
+				deleteRequest.onblocked = () => resolve(); // Ignore if blocked
+			}
+		});
 	});
 });
 

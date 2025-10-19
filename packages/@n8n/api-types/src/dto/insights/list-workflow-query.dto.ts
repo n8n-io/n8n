@@ -21,6 +21,8 @@ const VALID_SORT_OPTIONS = [
 	'runTime:desc',
 	'averageRunTime:asc',
 	'averageRunTime:desc',
+	'workflowName:asc',
+	'workflowName:desc',
 ] as const;
 
 // ---------------------
@@ -34,6 +36,12 @@ const sortByValidator = z
 export class ListInsightsWorkflowQueryDto extends Z.class({
 	...paginationSchema,
 	take: createTakeValidator(MAX_ITEMS_PER_PAGE),
+	/**
+	 * @deprecated use startDate and endDate instead
+	 */
 	dateRange: InsightsDateFilterDto.shape.dateRange,
+	startDate: z.coerce.date().optional(),
+	endDate: z.coerce.date().optional(),
 	sortBy: sortByValidator,
+	projectId: z.string().optional(),
 }) {}

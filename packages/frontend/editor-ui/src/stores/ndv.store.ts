@@ -5,7 +5,6 @@ import type {
 	IRunDataDisplayMode,
 	MainPanelDimensions,
 	MainPanelType,
-	NDVState,
 	NodePanelType,
 	OutputPanel,
 	TargetItem,
@@ -25,6 +24,8 @@ import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';
+import type { TelemetryNdvSource } from '@/types/telemetry';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,
@@ -91,8 +92,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const isAutocompleteOnboarded = ref(localStorageAutoCompleteIsOnboarded.value === 'true');
 
 	const highlightDraggables = ref(false);
+	const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 
 	const activeNode = computed(() => {
 		return workflowsStore.getNodeByName(activeNodeName.value || '');
@@ -149,9 +152,8 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const ndvNodeInputNumber = computed(() => {
 		const returnData: { [nodeName: string]: number[] } = {};
-		const workflow = workflowsStore.getCurrentWorkflow();
 		const activeNodeConections = (
-			workflow.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
+			workflowsStore.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
 		).main;
 
 		if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
@@ -181,8 +183,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const parentNodes = workflow.getParentNodes(activeNode.value.name, NodeConnectionTypes.Main, 1);
+		const parentNodes = workflowsStore.workflowObject.getParentNodes(
+			activeNode.value.name,
+			NodeConnectionTypes.Main,
+			1,
+		);
 		return parentNodes.includes(inputNodeName);
 	});
 
@@ -213,8 +218,18 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const isNDVOpen = computed(() => activeNodeName.value !== null);
 
-	const setActiveNodeName = (nodeName: string | null): void => {
+	const unsetActiveNodeName = (): void => {
+		activeNodeName.value = null;
+		lastSetActiveNodeSource.value = undefined;
+	};
+
+	const setActiveNodeName = (nodeName: string, source: TelemetryNdvSource): void => {
+		if (activeNodeName.value === nodeName) {
+			return;
+		}
+
 		activeNodeName.value = nodeName;
+		lastSetActiveNodeSource.value = source;
 	};
 
 	const setInputNodeName = (nodeName: string | undefined): void => {
@@ -298,7 +313,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		};
 	};
 
-	const setDraggableTarget = (target: NDVState['draggable']['activeTarget']): void => {
+	const setDraggableTarget = (target: Draggable['activeTarget']): void => {
 		draggable.value.activeTarget = target;
 	};
 
@@ -358,7 +373,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 				return node.name === activeNode.name;
 			});
 
-			workflowsStore.updateNodeAtIndex(nodeIndex, {
+			workflowState.updateNodeAtIndex(nodeIndex, {
 				issues: {
 					...activeNode.issues,
 					...issues,
@@ -409,7 +424,9 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		expressionOutputItemIndex,
 		isTableHoverOnboarded,
 		mainPanelDimensions,
+		lastSetActiveNodeSource,
 		setActiveNodeName,
+		unsetActiveNodeName,
 		setInputNodeName,
 		setInputRunIndex,
 		setOutputRunIndex,

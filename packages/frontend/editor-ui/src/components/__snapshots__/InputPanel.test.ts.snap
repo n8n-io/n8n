@@ -8,7 +8,6 @@ exports[`InputPanel > should render 1`] = `
     data-v-2e5cd75c=""
   >
     <!--v-if-->
-    <!--v-if-->
     <div
       class="header"
       data-v-2e5cd75c=""
@@ -22,9 +21,11 @@ exports[`InputPanel > should render 1`] = `
           class="titleSection"
         >
           <span
-            class="title"
+            class="n8n-text text-light size-medium bold title title"
           >
+            
             Input
+            
           </span>
           <div
             class="n8n-radio-buttons radioGroup"
@@ -157,20 +158,27 @@ exports[`InputPanel > should render 1`] = `
           </button>
         </div>
       </div>
+      
+      
+    </div>
+    <div
+      data-v-2e5cd75c=""
+    >
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      
+      
       <!--v-if-->
     </div>
-    <!--v-if-->
-    <!--v-if-->
-    <!--v-if-->
-    <!--v-if-->
-    
-    
-    <!--v-if-->
     <div
       class="dataContainer"
       data-test-id="ndv-data-container"
       data-v-2e5cd75c=""
     >
+      <!--v-if-->
       <!---->
     </div>
     <!--v-if-->

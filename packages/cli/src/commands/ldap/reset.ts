@@ -2,6 +2,7 @@ import { LDAP_FEATURE_NAME, LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import {
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
+	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SettingsRepository,
@@ -169,7 +170,10 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	private async getOwner() {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+		const owner = await Container.get(UserRepository).findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
+		});
 		if (!owner) {
 			throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}

@@ -107,7 +107,7 @@ export class ObjectStoreService {
 			};
 
 			if (metadata.fileName) {
-				params.Metadata = { filename: metadata.fileName };
+				params.Metadata = { filename: encodeURIComponent(metadata.fileName) };
 			}
 
 			if (metadata.mimeType) {
@@ -174,7 +174,8 @@ export class ObjectStoreService {
 			// Add metadata with the expected prefix format
 			if (response.Metadata) {
 				Object.entries(response.Metadata).forEach(([key, value]) => {
-					headers[`x-amz-meta-${key.toLowerCase()}`] = value;
+					headers[`x-amz-meta-${key.toLowerCase()}`] =
+						key === 'filename' ? decodeURIComponent(value) : value;
 				});
 			}
 

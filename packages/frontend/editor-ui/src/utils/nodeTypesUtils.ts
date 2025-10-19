@@ -1,9 +1,4 @@
-import type {
-	AppliedThemeOption,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	NodeAuthenticationOption,
-} from '@/Interface';
+import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
@@ -13,9 +8,8 @@ import {
 	TEMPLATES_NODES_FILTER,
 } from '@/constants';
 import { i18n as locale } from '@n8n/i18n';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isJsonKeyObject } from '@/utils/typesUtils';
 import {
 	isResourceLocatorValue,
@@ -28,6 +22,7 @@ import {
 	type ResourceMapperField,
 	type Themed,
 } from 'n8n-workflow';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -36,8 +31,7 @@ import {
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
-const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
-const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
+const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\["(.+?)"\]/s;
 
 export function getAppNameFromCredType(name: string) {
 	return name
@@ -72,14 +66,6 @@ export function filterTemplateNodes(nodes: ITemplatesNode[]) {
 	return results.filter((elem) => !TEMPLATES_NODES_FILTER.includes(elem.name));
 }
 
-export function isCommunityPackageName(packageName: string): boolean {
-	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
-	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
-	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
-
-	return !!nameMatch;
-}
-
 export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }
@@ -105,10 +91,13 @@ export function isValueExpression(
 }
 
 export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObject[] =>
-	inputData.reduce<IDataObject[]>(
-		(acc, item) => (isJsonKeyObject(item) ? acc.concat(item.json) : acc),
-		[],
-	);
+	inputData.reduce<IDataObject[]>((acc, item) => {
+		if (isJsonKeyObject(item)) {
+			acc.push(item.json);
+		}
+
+		return acc;
+	}, []);
 
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	return (
@@ -371,7 +360,11 @@ export const getCredentialsRelatedFields = (
 	return fields;
 };
 
-export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
+export const updateNodeAuthType = (
+	workflowState: WorkflowState,
+	node: INodeUi | null,
+	type: string,
+) => {
 	if (!node) {
 		return;
 	}
@@ -386,9 +379,9 @@ export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
 						...node.parameters,
 						[nodeAuthField.name]: type,
 					},
-				} as IDataObject,
-			} as INodeUpdatePropertiesInformation;
-			useWorkflowsStore().updateNodeProperties(updateInformation);
+				},
+			};
+			workflowState.updateNodeProperties(updateInformation);
 		}
 	}
 };
@@ -484,7 +477,7 @@ export const isMatchingField = (
 };
 
 export const getThemedValue = <T extends string>(
-	value: Themed<T> | undefined,
+	value: Themed<T> | T | undefined,
 	theme: AppliedThemeOption = 'light',
 ): T | null => {
 	if (!value) {
