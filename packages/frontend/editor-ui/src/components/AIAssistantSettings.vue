@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { N8nDialog, N8nButton, N8nInput, N8nText, N8nFormInput } from '@n8n/design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
+import Modal from './Modal.vue';
+import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useAIAssistantStore } from '@/stores/aiAssistant.store';
 import { useToast } from '@/composables/useToast';
 
@@ -8,6 +10,7 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
+const modalBus = createEventBus();
 const aiAssistantStore = useAIAssistantStore();
 const toast = useToast();
 
@@ -94,20 +97,26 @@ function handleSave() {
 		type: 'success',
 	});
 
-	emit('close');
+	closeDialog();
 }
 
 function handleCancel() {
+	closeDialog();
+}
+
+function closeDialog() {
+	modalBus.emit('close');
 	emit('close');
 }
 </script>
 
 <template>
-	<N8nDialog
-		:model-value="true"
+	<Modal
+		:name="'aiAssistantSettings'"
 		:title="'AI Assistant Settings'"
+		:event-bus="modalBus"
 		width="500px"
-		@update:model-value="emit('close')"
+		@enter="handleSave"
 	>
 		<template #content>
 			<div :class="$style.container">
@@ -196,7 +205,7 @@ function handleCancel() {
 				Save
 			</N8nButton>
 		</template>
-	</N8nDialog>
+	</Modal>
 </template>
 
 <style module lang="scss">
