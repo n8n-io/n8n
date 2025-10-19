@@ -3,12 +3,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onClickOutside } from '@vueuse/core';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/composables/useToast';
 
+import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
@@ -285,11 +285,11 @@ onClickOutside(
 	}
 
 	.el-tag {
-		padding: var(--spacing-5xs) var(--spacing-4xs);
-		color: var(--color-text-base);
-		background-color: var(--color-background-base);
-		border-radius: var(--border-radius-base);
-		font-size: var(--font-size-2xs);
+		padding: var(--spacing--5xs) var(--spacing--4xs);
+		color: var(--color--text);
+		background-color: var(--color--background);
+		border-radius: var(--radius);
+		font-size: var(--font-size--2xs);
 		border: 0;
 
 		.el-tag__close {
@@ -352,11 +352,11 @@ onClickOutside(
 
 	li {
 		height: $--item-height;
-		background-color: var(--color-foreground-xlight);
+		background-color: var(--color--foreground--tint-2);
 		padding: $--item-padding;
 		margin: 0;
 		line-height: $--item-line-height;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 		font-size: $--item-font-size;
 
 		&.is-disabled {
@@ -365,7 +365,7 @@ onClickOutside(
 		}
 
 		&.selected {
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 
 			> span {
 				display: inline-block;
@@ -397,7 +397,7 @@ onClickOutside(
 			position: absolute;
 			bottom: 0;
 			min-width: $--dropdown-width;
-			border-top: 1px solid var(--color-foreground-base);
+			border-top: 1px solid var(--color--foreground);
 		}
 	}
 }

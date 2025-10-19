@@ -53,27 +53,34 @@ type ToolCallRequest = {
 	messageLog?: unknown[];
 };
 
-function createEngineRequests(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+async function createEngineRequests(
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
+	tools: Array<DynamicStructuredTool | Tool>,
 ) {
-	const connectedSubnodes = ctx.getParentNodes(ctx.getNode().name, {
-		connectionType: NodeConnectionTypes.AiTool,
-		depth: 1,
+	return toolCalls.map((toolCall) => {
+		// First try to get from metadata (for toolkit tools)
+		const foundTool = tools.find((tool) => tool.name === toolCall.tool);
+
+		if (!foundTool) return;
+
+		const nodeName = foundTool.metadata?.sourceNodeName;
+
+		// For toolkit tools, include the tool name so the node knows which tool to execute
+		const input = foundTool.metadata?.isFromToolkit
+			? { ...toolCall.toolInput, tool: toolCall.tool }
+			: toolCall.toolInput;
+
+		return {
+			nodeName,
+			input,
+			type: NodeConnectionTypes.AiTool,
+			id: toolCall.toolCallId,
+			metadata: {
+				itemIndex,
+			},
+		};
 	});
-	return toolCalls.map((toolCall) => ({
-		nodeName:
-			connectedSubnodes.find(
-				(node: { name: string }) => nodeNameToToolName(node.name) === toolCall.tool,
-			)?.name ?? toolCall.tool,
-		input: toolCall.toolInput,
-		type: NodeConnectionTypes.AiTool,
-		id: toolCall.toolCallId,
-		metadata: {
-			itemIndex,
-		},
-	}));
 }
 
 /**
@@ -275,8 +282,14 @@ function buildSteps(
 
 	if (response) {
 		const responses = response?.actionResponses ?? [];
+
+		if (response.metadata?.previousRequests) {
+			steps.push(...response.metadata.previousRequests);
+		}
+
 		for (const tool of responses) {
 			if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
+
 			const toolInput: IDataObject = {
 				...tool.action.input,
 				id: tool.action.id,
@@ -386,13 +399,17 @@ export async function toolsAgentExecute(
 			}
 			const outputParser = await getOptionalOutputParser(this, itemIndex);
 			const tools = await getTools(this, outputParser);
-			const options = this.getNodeParameter('options', itemIndex, { enableStreaming: true }) as {
+			const options = this.getNodeParameter('options', itemIndex) as {
 				systemMessage?: string;
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
 				enableStreaming?: boolean;
 			};
+
+			if (options.enableStreaming === undefined) {
+				options.enableStreaming = true;
+			}
 
 			// Prepare the prompt messages and prompt template.
 			const messages = await prepareMessages(this, itemIndex, {
@@ -459,7 +476,7 @@ export async function toolsAgentExecute(
 
 				// If result contains tool calls, build the request object like the normal flow
 				if (result.toolCalls && result.toolCalls.length > 0) {
-					const actions = createEngineRequests(this, result.toolCalls, itemIndex);
+					const actions = await createEngineRequests(result.toolCalls, itemIndex, tools);
 
 					return {
 						actions,
@@ -476,16 +493,16 @@ export async function toolsAgentExecute(
 					const memoryVariables = await memory.loadMemoryVariables({});
 					chatHistory = memoryVariables['chat_history'];
 				}
-				const response = await executor.invoke({
+				const modelResponse = await executor.invoke({
 					...invokeParams,
 					chat_history: chatHistory,
 				});
 
-				if ('returnValues' in response) {
+				if ('returnValues' in modelResponse) {
 					// Save conversation to memory including any tool call context
-					if (memory && input && response.returnValues.output) {
+					if (memory && input && modelResponse.returnValues.output) {
 						// If there were tool calls in this conversation, include them in the context
-						let fullOutput = response.returnValues.output as string;
+						let fullOutput = modelResponse.returnValues.output as string;
 
 						if (steps.length > 0) {
 							// Include tool call information in the conversation context
@@ -501,7 +518,7 @@ export async function toolsAgentExecute(
 						await memory.saveContext({ input }, { output: fullOutput });
 					}
 					// Include intermediate steps if requested
-					const result = { ...response.returnValues };
+					const result = { ...modelResponse.returnValues };
 					if (options.returnIntermediateSteps && steps.length > 0) {
 						result.intermediateSteps = steps;
 					}
@@ -509,7 +526,7 @@ export async function toolsAgentExecute(
 				}
 
 				// If response contains tool calls, we need to return this in the right format
-				const actions = createEngineRequests(this, response, itemIndex);
+				const actions = await createEngineRequests(modelResponse, itemIndex, tools);
 
 				return {
 					actions,

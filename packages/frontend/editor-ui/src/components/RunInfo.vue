@@ -3,8 +3,7 @@ import type { ITaskData } from 'n8n-workflow';
 import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nInfoTip } from '@n8n/design-system';
-
+import { N8nInfoTip, N8nText } from '@n8n/design-system';
 const i18n = useI18n();
 
 const props = defineProps<{
@@ -89,6 +88,6 @@ const runMetadata = computed(() => {
 <style lang="scss" module>
 .tooltipRow {
 	display: flex;
-	column-gap: var(--spacing-4xs);
+	column-gap: var(--spacing--4xs);
 }
 </style>

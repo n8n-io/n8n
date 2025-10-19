@@ -9,7 +9,7 @@ import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet4 } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
@@ -41,7 +41,7 @@ export class AiWorkflowBuilderService {
 		authHeaders?: Record<string, string>;
 		apiKey?: string;
 	} = {}): Promise<ChatAnthropic> {
-		return await anthropicClaudeSonnet4({
+		return await anthropicClaudeSonnet45({
 			baseUrl,
 			apiKey,
 			headers: {
@@ -148,7 +148,10 @@ export class AiWorkflowBuilderService {
 			})
 			.filter(
 				(nodeType): nodeType is INodeTypeDescription =>
-					nodeType !== undefined && nodeType.hidden !== true,
+					// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
+					// See more details in DataTable.node.ts#L29
+					nodeType !== undefined &&
+					(nodeType.hidden !== true || nodeType.name === 'n8n-nodes-base.dataTable'),
 			)
 			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
 				// If the node type is a tool, we need to find the corresponding non-tool node type

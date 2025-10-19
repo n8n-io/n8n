@@ -1,3 +1,4 @@
+import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -93,8 +94,13 @@ import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
+import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
+import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
+import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
+import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -193,6 +199,12 @@ const sqliteMigrations: Migration[] = [
 	ReplaceDataStoreTablesWithDataTables1754475614602,
 	LinkRoleToProjectRelationTable1753953244168,
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
+	AddProjectIdToVariableTable1758794506893,
+	AddAudienceColumnToApiKeys1758731786132,
+	ChangeValueTypesForInsights1759399811000,
+	CreateChatHubTables1760019379982,
+	UniqueRoleNames1760020838000,
+	CreateWorkflowDependencyTable1760314000000,
 ];
 
 export { sqliteMigrations };

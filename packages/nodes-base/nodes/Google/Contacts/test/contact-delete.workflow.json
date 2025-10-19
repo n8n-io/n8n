@@ -1,0 +1,57 @@
+{
+	"name": "Google Contacts Delete Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "c123456789"
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-delete",
+			"name": "Delete Contact",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete Contact": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Delete Contact",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

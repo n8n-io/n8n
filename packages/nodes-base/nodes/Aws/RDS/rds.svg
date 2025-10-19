@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="#527FFF">
+  <rect x="15" y="20" width="50" height="40" rx="3" fill="#527FFF"/>
+  <line x1="15" y1="32" x2="65" y2="32" stroke="white" stroke-width="2"/>
+  <line x1="15" y1="42" x2="65" y2="42" stroke="white" stroke-width="2"/>
+  <line x1="15" y1="52" x2="65" y2="52" stroke="white" stroke-width="2"/>
+  <circle cx="25" cy="26" r="2" fill="white"/>
+  <circle cx="25" cy="37" r="2" fill="white"/>
+  <circle cx="25" cy="47" r="2" fill="white"/>
+  <text x="40" y="72" text-anchor="middle" fill="#527FFF" font-size="10" font-family="Arial">RDS</text>
+</svg>

@@ -95,8 +95,8 @@ export class ProjectService {
 	}
 
 	private get dataTableService() {
-		return import('@/modules/data-table/data-store.service').then(({ DataStoreService }) =>
-			Container.get(DataStoreService),
+		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
+			Container.get(DataTableService),
 		);
 	}
 
@@ -122,7 +122,7 @@ export class ProjectService {
 			targetProject = await this.getProjectWithScope(user, migrateToProject, [
 				'credential:create',
 				'workflow:create',
-				'dataStore:create',
+				'dataTable:create',
 			]);
 
 			if (!targetProject) {
@@ -189,9 +189,9 @@ export class ProjectService {
 			const dataTableService = await this.dataTableService;
 
 			if (targetProject) {
-				await dataTableService.transferDataStoresByProjectId(project.id, targetProject.id);
+				await dataTableService.transferDataTablesByProjectId(project.id, targetProject.id);
 			} else {
-				await dataTableService.deleteDataStoreByProjectId(project.id);
+				await dataTableService.deleteDataTableByProjectId(project.id);
 			}
 		}
 
@@ -509,7 +509,6 @@ export class ProjectService {
 	) {
 		await em.insert(
 			ProjectRelation,
-			// @ts-ignore CAT-957
 			relations.map((v) =>
 				this.projectRelationRepository.create({
 					projectId: project.id,
@@ -546,6 +545,28 @@ export class ProjectService {
 		return await em.findOne(Project, {
 			where,
 		});
+	}
+
+	async getProjectIdsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {
+		const where: FindOptionsWhere<Project> = {};
+		if (projectIds) {
+			where.id = In(projectIds);
+		}
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			where.type = 'team';
+			where.projectRelations = {
+				role: In(projectRoles),
+				userId: user.id,
+			};
+		}
+
+		const projects = await this.projectRepository.find({
+			where,
+			select: ['id'],
+		});
+		return projects.map((p) => p.id);
 	}
 
 	/**

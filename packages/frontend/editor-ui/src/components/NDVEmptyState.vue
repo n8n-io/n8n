@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nIcon } from '@n8n/design-system';
 const { icon } = defineProps<{ title?: string; wide?: boolean; icon?: IconName }>();
 
 defineSlots<{
@@ -26,21 +26,21 @@ defineSlots<{
 	flex-flow: column;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 
 	line-height: 2;
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .title {
-	font-size: var(--font-size-m);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-text-base);
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
 	margin: 0;
 }
 
 .description {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	margin: 0;
 	text-align: center;
 	max-width: 240px;

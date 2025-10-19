@@ -2,6 +2,7 @@
 import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -14,15 +15,15 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@n8n/i18n';
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData, Project } from '@/types/projects.types';
-import { ProjectTypes } from '@/types/projects.types';
+import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
@@ -30,6 +31,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	data: {
 		id: string;
@@ -388,6 +390,6 @@ watch(
 }
 
 .roleSelectRemoveOption {
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: 1px solid var(--color--foreground);
 }
 </style>
