@@ -386,6 +386,45 @@ function handleConfigureCredentials(provider: ChatHubProvider) {
 	// (user can choose to create new or select existing)
 	uiStore.openNewCredential(credentialType);
 }
+
+// Message interaction handlers
+function handleEditMessage(messageId: string) {
+	editingMessageId.value = messageId;
+	// Note: Inline editing would be handled by ChatMessage component
+	// When done editing, call chatStore.editMessage
+}
+
+function handleRegenerateMessage(messageId: string) {
+	// Get credentials for selected model's provider
+	const credentialsId = selectedModel.value
+		? mergedCredentials.value[selectedModel.value.provider]
+		: undefined;
+
+	// Build credentials object in required format
+	const credentials = selectedModel.value && credentialsId
+		? {
+				[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+					id: credentialsId,
+					name: '',
+				}
+			}
+		: null;
+
+	if (chatStore.currentSessionId && selectedModel.value && credentials) {
+		chatStore.regenerateMessage(
+			chatStore.currentSessionId,
+			messageId,
+			selectedModel.value,
+			credentials
+		);
+	}
+}
+
+function handleSwitchAlternative(messageId: string) {
+	if (chatStore.currentSessionId) {
+		chatStore.switchAlternative(chatStore.currentSessionId, messageId);
+	}
+}
 </script>
 
 <template>
