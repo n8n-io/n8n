@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTemplateRef, ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useDraggable, useLocalStorage } from '@vueuse/core';
-import { N8nResizeWrapper } from '@n8n/design-system';
+import { N8nResizeWrapper, N8nScrollArea } from '@n8n/design-system';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -14,6 +14,7 @@ import ConversationListPane from './ConversationListPane.vue';
 import ErrorDisplayPane from './ErrorDisplayPane.vue';
 import ChatPrompt from './ChatPrompt.vue';
 import ModelSelector from './ModelSelector.vue';
+import ChatMessage from './ChatMessage.vue';
 import { v4 as uuidv4 } from 'uuid';
 
 const chatStore = useChatStore();
