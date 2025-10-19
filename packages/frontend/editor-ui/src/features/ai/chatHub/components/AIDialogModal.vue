@@ -401,9 +401,18 @@ function handleConfigureCredentials(provider: ChatHubProvider) {
 					@resizeend="onMiddlePaneResizeEnd"
 				>
 					<div :class="$style['middle-pane-content']">
+						<div :class="$style['model-selector-container']">
+							<ModelSelector
+								:models="models"
+								:selected-model="selectedModel"
+								@change="handleSelectModel"
+								@configure="handleConfigureCredentials"
+							/>
+						</div>
+						
 						<ChatPrompt
-							placeholder="Type your message..."
-							:disabled="false"
+							:placeholder="inputPlaceholder"
+							:disabled="!selectedModel"
 							@submit="handleSubmitMessage"
 						/>
 					</div>
