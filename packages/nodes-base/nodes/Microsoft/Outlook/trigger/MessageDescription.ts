@@ -135,6 +135,13 @@ export const properties: INodeProperties[] = [
 				description:
 					"Whether the message's attachments will be downloaded and included in the output",
 			},
+			{
+				displayName: 'Get Raw Content',
+				name: 'getRawContent',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include the raw MIME content of each email',
+			},
 		],
 	},
 ];
