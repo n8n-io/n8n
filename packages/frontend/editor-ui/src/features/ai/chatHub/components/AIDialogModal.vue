@@ -51,6 +51,22 @@ const resizeStartHeight = ref(0);
 const resizeStartPosX = ref(0);
 const resizeStartPosY = ref(0);
 
+// Model selection state
+const selectedModel = useLocalStorage<ChatHubConversationModel | null>('n8n-ai-dialog-selected-model', null);
+const selectedCredentials = useLocalStorage<Record<string, string>>('n8n-ai-dialog-credentials', {});
+const models = ref<any | null>(null);
+
+// Merged credentials (combines selected credentials with auto-detected ones)
+const mergedCredentials = computed(() => selectedCredentials.value);
+
+// Input placeholder based on model selection
+const inputPlaceholder = computed(() => {
+	if (!selectedModel.value) {
+		return 'Select a model to start';
+	}
+	return `Message ${selectedModel.value.model}`;
+});
+
 // Load saved position and size from localStorage
 function loadWindowState() {
 	try {
