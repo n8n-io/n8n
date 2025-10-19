@@ -271,6 +271,28 @@ watch(
 	{ immediate: true }
 );
 
+// Auto-scroll to bottom when new messages arrive
+function scrollToBottom() {
+	nextTick(() => {
+		if (messagesScrollAreaRef.value) {
+			const scrollContainer = messagesScrollAreaRef.value.$el.querySelector('[data-radix-scroll-area-viewport]');
+			if (scrollContainer) {
+				scrollContainer.scrollTop = scrollContainer.scrollHeight;
+			}
+		}
+	});
+}
+
+watch(
+	activeMessages,
+	(newMessages, oldMessages) => {
+		if (newMessages.length !== oldMessages?.length) {
+			scrollToBottom();
+		}
+	},
+	{ deep: true }
+);
+
 // Panel resize logic (existing)
 const {
 	size: leftPaneWidth,
