@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nDialog, N8nButton, N8nText, N8nIcon } from '@n8n/design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
+import Modal from './Modal.vue';
+import { N8nButton, N8nText, N8nIcon } from '@n8n/design-system';
 import { useAIAssistantStore } from '@/stores/aiAssistant.store';
 import { useToast } from '@/composables/useToast';
 
@@ -8,6 +10,7 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
+const modalBus = createEventBus();
 const aiAssistantStore = useAIAssistantStore();
 const toast = useToast();
 
@@ -66,20 +69,26 @@ function confirmRevert() {
 	});
 
 	confirmRevertVersionId.value = null;
-	emit('close');
+	closeDialog();
 }
 
 function cancelRevert() {
 	confirmRevertVersionId.value = null;
 }
+
+function closeDialog() {
+	modalBus.emit('close');
+	emit('close');
+}
 </script>
 
 <template>
-	<N8nDialog
-		:model-value="true"
+	<Modal
+		:name="'aiAssistantVersionHistory'"
 		:title="'AI Assistant Version History'"
+		:event-bus="modalBus"
 		width="600px"
-		@update:model-value="emit('close')"
+		@enter="closeDialog"
 	>
 		<template #content>
 			<div :class="$style.container">
@@ -134,7 +143,7 @@ function cancelRevert() {
 		<template #footer>
 			<N8nButton type="tertiary" @click="emit('close')">Close</N8nButton>
 		</template>
-	</N8nDialog>
+	</Modal>
 
 	<!-- Confirmation Dialog -->
 	<N8nDialog
