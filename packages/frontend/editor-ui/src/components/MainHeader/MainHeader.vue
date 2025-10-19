@@ -25,8 +25,9 @@ import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useToast } from '@/composables/useToast';
+import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
@@ -263,6 +264,32 @@ async function onWorkflowDeactivated() {
 		}
 	}
 }
+
+async function openWorkflowSettings() {
+	if (workflowsStore.isNewWorkflow) {
+		await saveCurrentWorkflow();
+		if (workflowsStore.isNewWorkflow) {
+			// Workflow couldn't be created or is still new
+			return;
+		}
+	}
+	if (!workflowsStore.workflowId) {
+		return;
+	}
+	uiStore.openModalWithData({
+		name: WORKFLOW_SETTINGS_MODAL_KEY,
+		data: { workflowId: workflowsStore.workflowId },
+	});
+	try {
+		await workflowsStore.fetchWorkflow(workflowsStore.workflowId);
+	} catch (error) {
+		toast.showError(error, locale.baseText('workflowSettings.showError.fetchSettings.title'));
+	}
+}
+
+function openAIDialog() {
+	uiStore.openModal(AI_CHAT_DIALOG_MODAL_KEY);
+}
 </script>
 
 <template>
@@ -284,6 +311,17 @@ async function onWorkflowDeactivated() {
 					:is-archived="workflow.isArchived"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>
+
+				<!-- AI Dialog reopen button -->
+				<N8nIconButton
+					:class="$style['ai-dialog-button']"
+					icon="comments"
+					type="tertiary"
+					size="medium"
+					:title="locale.baseText('mainHeader.aiAssistant')"
+					@click="openAIDialog"
+				/>
+
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">
 						<GithubButton
