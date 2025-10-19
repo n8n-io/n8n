@@ -4,7 +4,7 @@ import { Z } from 'zod-class';
 /**
  * Supported AI model providers
  */
-export const chatHubProviderSchema = z.enum(['openai', 'anthropic', 'google']);
+export const chatHubProviderSchema = z.enum(['openai', 'anthropic', 'google', 'ollama']);
 
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
@@ -15,6 +15,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
+	ollama: 'ollamaApi',
 };
 
 /**

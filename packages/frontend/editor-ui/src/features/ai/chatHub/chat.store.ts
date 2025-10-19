@@ -23,6 +23,8 @@ import type {
 	ChatHubMessageDto,
 } from '@n8n/api-types';
 import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import { WorkflowOperationExecutor } from '@/features/ai/workflow-modifier/WorkflowOperationExecutor';
+import type { WorkflowOperation, OperationResult } from '@/features/ai/workflow-modifier/types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -517,6 +519,25 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		currentSessionId.value = sessionId;
 	}
 
+	async function executeWorkflowOperations(
+		operations: WorkflowOperation[],
+	): Promise<OperationResult[]> {
+		const executor = new WorkflowOperationExecutor();
+		const results: OperationResult[] = [];
+
+		for (const operation of operations) {
+			const result = await executor.executeOperation(operation);
+			results.push(result);
+
+			if (!result.success) {
+				// Stop on first error
+				break;
+			}
+		}
+
+		return results;
+	}
+
 	return {
 		models,
 		sessions,
@@ -540,5 +561,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		setError,
 		clearError,
 		setCurrentSessionId,
+		executeWorkflowOperations,
 	};
 });
