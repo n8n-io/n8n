@@ -481,12 +481,37 @@ function handleSwitchAlternative(messageId: string) {
 								@configure="handleConfigureCredentials"
 							/>
 						</div>
-						
-						<ChatPrompt
-							:placeholder="inputPlaceholder"
-							:disabled="!selectedModel"
-							@submit="handleSubmitMessage"
-						/>
+
+						<!-- Messages display area -->
+						<div :class="$style['messages-area']">
+							<N8nScrollArea ref="messagesScrollAreaRef" :class="$style['messages-scroll']">
+								<div :class="$style['messages-container']">
+									<ChatMessage
+										v-for="message in activeMessages"
+										:key="message.id"
+										:message="message"
+										:compact="false"
+										:is-editing="editingMessageId === message.id"
+										:is-streaming="chatStore.streamingMessageId === message.id"
+										@edit="handleEditMessage"
+										@regenerate="handleRegenerateMessage"
+										@switch-alternative="handleSwitchAlternative"
+									/>
+									<div v-if="activeMessages.length === 0" :class="$style['empty-state']">
+										Start a conversation
+									</div>
+								</div>
+							</N8nScrollArea>
+						</div>
+
+						<!-- Input area -->
+						<div :class="$style['input-area']">
+							<ChatPrompt
+								:placeholder="inputPlaceholder"
+								:disabled="!selectedModel"
+								@submit="handleSubmitMessage"
+							/>
+						</div>
 					</div>
 				</N8nResizeWrapper>
 
