@@ -5,7 +5,7 @@ import FormData from 'form-data';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
-import { ExecutionCancelledError } from './errors/execution-cancelled.error';
+import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
 
@@ -211,7 +211,7 @@ export const sleep = async (ms: number): Promise<void> =>
 export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
 	await new Promise((resolve, reject) => {
 		if (abortSignal?.aborted) {
-			reject(new ExecutionCancelledError(''));
+			reject(new ManualExecutionCancelledError(''));
 			return;
 		}
 
@@ -219,7 +219,7 @@ export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Pro
 
 		const abortHandler = () => {
 			clearTimeout(timeout);
-			reject(new ExecutionCancelledError(''));
+			reject(new ManualExecutionCancelledError(''));
 		};
 
 		abortSignal?.addEventListener('abort', abortHandler, { once: true });
@@ -397,4 +397,14 @@ export function isDomainAllowed(
 		// If URL parsing fails, deny access to be safe
 		return false;
 	}
+}
+
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	return !!nameMatch;
 }

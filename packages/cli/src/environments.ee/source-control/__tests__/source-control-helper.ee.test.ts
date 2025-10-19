@@ -10,6 +10,7 @@ import {
 	SOURCE_CONTROL_GIT_FOLDER,
 } from '@/environments.ee/source-control/constants';
 import {
+	areOwnersDifferent,
 	generateSshKeyPair,
 	getRepoType,
 	getTrackingInformationFromPostPushResult,
@@ -311,6 +312,76 @@ describe('isWorkflowModified', () => {
 		const remote = createWorkflowVersion({ parentFolderId: null });
 
 		expect(isWorkflowModified(local, remote)).toBe(false);
+	});
+
+	it('should detect modifications when owner changes', () => {
+		const local = createWorkflowVersion({
+			owner: {
+				type: 'personal',
+				projectId: 'project1',
+				projectName: 'Project 1',
+			},
+		});
+		const remote = createWorkflowVersion({
+			owner: {
+				type: 'team',
+				projectId: 'team1',
+				projectName: 'Team 1',
+			},
+		});
+
+		expect(isWorkflowModified(local, remote)).toBe(true);
+	});
+});
+
+describe('areOwnersDifferent', () => {
+	it('should return true if the owners are different', () => {
+		const owner1 = {
+			type: 'personal' as const,
+			projectId: 'personal1',
+			projectName: 'Personal 1',
+		};
+		const owner2 = {
+			type: 'team' as const,
+			projectId: 'team1',
+			projectName: 'Team 1',
+		};
+
+		expect(areOwnersDifferent(owner1, owner2)).toBe(true);
+	});
+
+	it('should return false if the owners are the same', () => {
+		const owner = {
+			type: 'personal' as const,
+			projectId: 'personal1',
+			projectName: 'Personal 1',
+		};
+
+		expect(areOwnersDifferent(owner, { ...owner })).toBe(false);
+	});
+
+	describe('both owners undefined/null', () => {
+		it('should return false when both owners are undefined', () => {
+			expect(areOwnersDifferent(undefined, undefined)).toBe(false);
+			expect(areOwnersDifferent(undefined, null as any)).toBe(false);
+			expect(areOwnersDifferent(null as any, null as any)).toBe(false);
+		});
+	});
+
+	describe('one owner undefined', () => {
+		const owner = {
+			type: 'personal' as const,
+			projectId: 'project1',
+			projectName: 'Project 1',
+		};
+
+		it('should return true when owner1 is undefined and owner2 is defined', () => {
+			expect(areOwnersDifferent(undefined, owner)).toBe(true);
+		});
+
+		it('should return true when owner1 is defined and owner2 is undefined', () => {
+			expect(areOwnersDifferent(owner, undefined)).toBe(true);
+		});
 	});
 });
 

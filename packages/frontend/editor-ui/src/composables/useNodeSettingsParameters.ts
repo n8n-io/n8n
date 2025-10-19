@@ -31,9 +31,11 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
@@ -129,7 +131,7 @@ export function useNodeSettingsParameters() {
 			workflowsStore.setConnections(updatedConnections);
 		}
 
-		workflowsStore.setNodeParameters(updateInformation);
+		workflowState.setNodeParameters(updateInformation);
 
 		void externalHooks.run('nodeSettings.valueChanged', {
 			parameterPath,

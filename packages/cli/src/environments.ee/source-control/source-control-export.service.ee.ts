@@ -20,7 +20,6 @@ import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workfl
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
-import { VariablesService } from '../variables/variables.service.ee';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -40,14 +39,15 @@ import {
 	stringContainsExpression,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
+import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-import { ExportableProject } from './types/exportable-project';
 
 @Service()
 export class SourceControlExportService {
@@ -269,7 +269,7 @@ export class SourceControlExportService {
 			// keep all folders that are not accessible by the current user
 			// if allowedProjects is undefined, all folders are accessible by the current user
 			const foldersToKeepUnchanged = context.hasAccessToAllProjects()
-				? existingFolders.folders
+				? []
 				: existingFolders.folders.filter((folder) => {
 						return !allowedProjects.some((project) => project.id === folder.homeProjectId);
 					});
@@ -326,6 +326,7 @@ export class SourceControlExportService {
 					files: [{ id: '', name: fileName }],
 				};
 			}
+
 			const mappingsOfAllowedWorkflows = await this.workflowTagMappingRepository.find({
 				where:
 					this.sourceControlScopedService.getWorkflowTagMappingInAdminProjectsFromContextFilter(
@@ -472,50 +473,37 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
+	/**
+	 * Writes candidates projects to files in the work folder.
+	 *
+	 * Only team projects are supported.
+	 * Personal project are not supported because they are not stable across instances
+	 * (different ids across instances).
+	 */
+	async exportTeamProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.projectExportFolder], true);
 
 			const projectIds = candidates.map((e) => e.id);
 			const projects = await this.projectRepository.find({
-				where: { id: In(projectIds) },
-				relations: { projectRelations: { user: true, role: true } },
+				where: { id: In(projectIds), type: 'team' },
 			});
 
 			await Promise.all(
 				projects.map(async (project) => {
 					const fileName = getProjectExportPath(project.id, this.projectExportFolder);
 
-					let owner: RemoteResourceOwner;
-
-					if (project.type === 'personal') {
-						const personalOwner = project.projectRelations.find(
-							(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
-						);
-
-						if (!personalOwner) {
-							throw new UnexpectedError(`Project ${project.name} has no owner`);
-						}
-
-						owner = {
-							type: 'personal',
-							projectId: project.id,
-							projectName: project.name,
-							personalEmail: personalOwner.user.email,
-						};
-					} else {
-						owner = {
-							type: 'team',
-							teamId: project.id,
-							teamName: project.name,
-						};
-					}
 					const sanitizedProject: ExportableProject = {
 						id: project.id,
 						name: project.name,
 						icon: project.icon,
 						description: project.description,
-						owner,
+						type: 'team',
+						owner: {
+							type: 'team',
+							teamId: project.id,
+							teamName: project.name,
+						},
 					};
 
 					this.logger.debug(`Writing project ${project.id} to ${fileName}`);

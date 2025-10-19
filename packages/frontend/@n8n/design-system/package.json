@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "1.100.0",
+  "version": "1.103.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -43,7 +43,6 @@
     "sass": "^1.71.1",
     "tailwindcss": "^3.4.3",
     "unplugin-icons": "catalog:frontend",
-    "unplugin-vue-components": "catalog:frontend",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
@@ -51,9 +50,6 @@
     "@vue/test-utils": "catalog:frontend"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.36",
-    "@fortawesome/free-solid-svg-icons": "^5.15.4",
-    "@fortawesome/vue-fontawesome": "^3.0.3",
     "@n8n/composables": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@tanstack/vue-table": "^8.21.2",

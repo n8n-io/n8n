@@ -10,6 +10,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useStyles } from '@/composables/useStyles';
 
+import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	isActive?: boolean;
 }>();
@@ -198,7 +199,7 @@ watch(
 	}
 
 	h2 {
-		color: var(--color-nps-survey-font);
+		color: var(--nps-survey--color--text);
 	}
 }
 
@@ -216,7 +217,7 @@ watch(
 	display: flex;
 	flex-direction: column;
 	.text span {
-		color: var(--color-nps-survey-font);
+		color: var(--nps-survey--color--text);
 	}
 }
 
@@ -275,7 +276,7 @@ watch(
 }
 
 .npsSurvey {
-	background: var(--color-nps-survey-background);
+	background: var(--nps-survey--color--background);
 	height: 120px;
 	top: auto;
 
@@ -296,8 +297,8 @@ watch(
 			top: 12px;
 			right: 16px;
 			position: absolute;
-			font-weight: var(--font-weight-bold);
-			color: var(--color-nps-survey-font);
+			font-weight: var(--font-weight--bold);
+			color: var(--nps-survey--color--text);
 
 			@media (max-width: $breakpoint-xs) {
 				top: 2px;

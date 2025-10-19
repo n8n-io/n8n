@@ -63,6 +63,9 @@
                     "snippet": {
                         "type": "string"
                     },
+                    "source": {
+                        "type": "string"
+                    },
                     "title": {
                         "type": "string"
                     },
@@ -101,5 +104,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -28,8 +28,9 @@ import {
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
-import { CanvasNodeRenderType } from '@/types';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 

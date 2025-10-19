@@ -4,7 +4,7 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { DatatableColumn } from '@n8n/design-system';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -15,6 +15,20 @@ import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/composables/useResourcesListI18n';
 
+import { ElPagination } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nDatatable,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nLink,
+	N8nLoading,
+	N8nOption,
+	N8nRecycleScroller,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 type UIConfig = {
 	searchEnabled: boolean;
 	showFiltersDropdown: boolean;
@@ -109,6 +123,7 @@ const slots = defineSlots<{
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
+	postdata(): unknown;
 	'add-button'(): unknown;
 	callout(): unknown;
 	filters(props: {
@@ -743,6 +758,10 @@ defineExpose({
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
 						</template>
+
+						<template #postdata>
+							<slot name="postdata" />
+						</template>
 					</N8nDatatable>
 				</div>
 
@@ -768,21 +787,21 @@ defineExpose({
 	align-items: center;
 	justify-content: space-between;
 	width: 100%;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .filters {
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr max-content max-content max-content;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	align-items: center;
 	justify-content: end;
 	width: 100%;
 
 	.sort-and-filter {
 		display: flex;
-		gap: var(--spacing-4xs);
+		gap: var(--spacing--4xs);
 		align-items: center;
 	}
 
@@ -817,7 +836,7 @@ defineExpose({
 	flex-direction: column;
 	height: 100%;
 	overflow: auto;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 }
 
 .listItems {
@@ -827,7 +846,7 @@ defineExpose({
 .listPagination {
 	display: flex;
 	justify-content: flex-end;
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 
 	:global(.el-pagination__sizes) {
 		height: 100%;
@@ -840,7 +859,7 @@ defineExpose({
 		}
 
 		:global(.el-input__suffix) {
-			width: var(--spacing-m);
+			width: var(--spacing--md);
 		}
 	}
 }
@@ -854,7 +873,7 @@ defineExpose({
 }
 
 .datatable {
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 </style>
 

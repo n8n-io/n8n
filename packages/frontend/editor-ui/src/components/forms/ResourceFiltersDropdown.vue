@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, watch, onBeforeMount } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectSharingData } from '@/types/projects.types';
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nBadge, N8nButton, N8nInputLabel, N8nLink, N8nPopover } from '@n8n/design-system';
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 const props = withDefaults(
@@ -177,7 +179,7 @@ onBeforeMount(async () => {
 	}
 
 	.filter-button-count {
-		margin-right: var(--spacing-4xs);
+		margin-right: var(--spacing--4xs);
 
 		@include mixins.breakpoint('xs-only') {
 			margin-right: 0;

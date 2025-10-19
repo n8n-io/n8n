@@ -5,15 +5,15 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	path: string;
 	modelValue: AssignmentValue;
@@ -235,14 +235,14 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 	position: relative;
 	display: flex;
 	align-items: flex-end;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 
 	&.hasIssues {
-		--input-border-color: var(--color-danger);
+		--input--border-color: var(--color--danger);
 	}
 
 	&.hasHint {
-		padding-bottom: var(--spacing-s);
+		padding-bottom: var(--spacing--sm);
 	}
 
 	&:hover {
@@ -268,7 +268,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 
 	.hint {
 		position: absolute;
-		bottom: calc(var(--spacing-s) * -1);
+		bottom: calc(var(--spacing--sm) * -1);
 		left: 0;
 		right: 0;
 		font-family: monospace;
@@ -287,11 +287,11 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 	color: var(--icon-base-color);
 }
 .extraTopPadding {
-	top: calc(20px + var(--spacing-l));
+	top: calc(20px + var(--spacing--lg));
 }
 
 .defaultTopPadding {
-	top: var(--spacing-l);
+	top: var(--spacing--lg);
 }
 
 .status {
@@ -300,6 +300,6 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 }
 
 .statusIcon {
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing--4xs);
 }
 </style>

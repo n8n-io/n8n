@@ -1,0 +1,21 @@
+@use './date-picker/date-table.scss';
+@use './date-picker/month-table.scss';
+@use './date-picker/year-table.scss';
+@use './date-picker/time-spinner.scss';
+@use './date-picker/picker.scss';
+@use './date-picker/date-picker.scss';
+@use './date-picker/date-range-picker.scss';
+@use './date-picker/time-range-picker.scss';
+@use './date-picker/time-picker.scss';
+@use './input.scss';
+@use './scrollbar.scss';
+@use './popper';
+
+.el-picker-panel__footer {
+	.el-picker-panel__link-btn {
+		&:last-child {
+			background: var(--color--primary);
+			color: var(--color--foreground--tint-2);
+		}
+	}
+}

@@ -5,12 +5,13 @@ import type { ModalKey } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useToast } from '@/composables/useToast';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
 defineProps<{
 	modalName: ModalKey;
 }>();
@@ -110,11 +111,11 @@ const send = async () => {
 
 <style lang="scss" module>
 .description {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 
 .disclaimer {
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing--4xs);
 }
 </style>
 

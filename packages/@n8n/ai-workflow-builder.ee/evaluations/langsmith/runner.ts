@@ -74,9 +74,13 @@ function createWorkflowGenerator(
 
 /**
  * Runs evaluation using Langsmith
+ * @param repetitions - Number of times to run each example (default: 1)
  */
-export async function runLangsmithEvaluation(): Promise<void> {
+export async function runLangsmithEvaluation(repetitions: number = 1): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Langsmith Evaluation', 70));
+	if (repetitions > 1) {
+		console.log(pc.yellow(`➔ Each example will be run ${repetitions} times`));
+	}
 	console.log();
 
 	// Check for Langsmith API key
@@ -121,8 +125,8 @@ export async function runLangsmithEvaluation(): Promise<void> {
 		// Create workflow generation function
 		const generateWorkflow = createWorkflowGenerator(parsedNodeTypes, llm, tracer);
 
-		// Create LLM-based evaluator
-		const evaluator = createLangsmithEvaluator(llm);
+		// Create evaluator with both LLM-based and programmatic evaluation
+		const evaluator = createLangsmithEvaluator(llm, parsedNodeTypes);
 
 		// Run Langsmith evaluation
 		const results = await evaluate(generateWorkflow, {
@@ -130,6 +134,7 @@ export async function runLangsmithEvaluation(): Promise<void> {
 			evaluators: [evaluator],
 			maxConcurrency: 7,
 			experimentPrefix: 'workflow-builder-evaluation',
+			numRepetitions: repetitions,
 			metadata: {
 				evaluationType: 'llm-based',
 				modelName: process.env.LLM_MODEL ?? 'default',

@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -29,7 +29,7 @@ Object.defineProperty(window, 'open', {
 	writable: true,
 });
 
-let mockAiAssistantStore: ReturnType<typeof mockedStore<typeof useAssistantStore>>;
+let mockChatPanelStore: ReturnType<typeof mockedStore<typeof useChatPanelStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -41,7 +41,7 @@ describe('NodeErrorView.vue', () => {
 
 	beforeEach(() => {
 		createTestingPinia();
-		mockAiAssistantStore = mockedStore(useAssistantStore);
+		mockChatPanelStore = mockedStore(useChatPanelStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
 		mockNDVStore = mockedStore(useNDVStore);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
@@ -86,7 +86,7 @@ describe('NodeErrorView.vue', () => {
 				error: {
 					node: error.node,
 					messages: ['Unexpected identifier [line 1]'],
-				},
+				} as NodeError,
 			},
 		});
 
@@ -101,7 +101,7 @@ describe('NodeErrorView.vue', () => {
 				error: {
 					node: error.node,
 					message: 'Unexpected identifier [line 1]',
-				},
+				} as NodeError,
 			},
 		});
 
@@ -118,7 +118,7 @@ describe('NodeErrorView.vue', () => {
 			hidden: true,
 		}));
 
-		mockAiAssistantStore.canShowAssistantButtonsOnCanvas = true;
+		mockChatPanelStore.canShowAiButtonOnCanvas = true;
 
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -128,7 +128,7 @@ describe('NodeErrorView.vue', () => {
 						type: 'n8n-nodes-base.function',
 						typeVersion: 1,
 					},
-				},
+				} as NodeError,
 			},
 		});
 
@@ -167,7 +167,7 @@ describe('NodeErrorView.vue', () => {
 					...error,
 					name: 'NodeOperationError',
 					functionality: 'configuration-node',
-				},
+				} as NodeError,
 			},
 		});
 
@@ -177,7 +177,7 @@ describe('NodeErrorView.vue', () => {
 	});
 
 	it('does not renders open node button when the error is in sub node', () => {
-		mockAiAssistantStore.canShowAssistantButtonsOnCanvas = true;
+		mockChatPanelStore.canShowAiButtonOnCanvas = true;
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				error,
@@ -200,7 +200,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { queryByTestId } = renderComponent({
 				props: {
-					error: errorWithoutNode,
+					error: errorWithoutNode as unknown as NodeError,
 				},
 			});
 
@@ -231,7 +231,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					error: testError,
+					error: testError as unknown as NodeError,
 				},
 			});
 
@@ -265,7 +265,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					error: testError,
+					error: testError as unknown as NodeError,
 				},
 			});
 
@@ -285,7 +285,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					error: testError,
+					error: testError as NodeError,
 				},
 			});
 

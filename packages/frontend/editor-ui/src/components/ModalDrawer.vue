@@ -14,12 +14,14 @@ const props = withDefaults(
 		width: string;
 		wrapperClosable?: boolean;
 		closeOnClickModal?: boolean;
+		showClose?: boolean;
 		zIndex?: number;
 	}>(),
 	{
 		modal: true,
 		wrapperClosable: true,
 		closeOnClickModal: false,
+		showClose: true,
 	},
 );
 
@@ -75,13 +77,14 @@ onBeforeUnmount(() => {
 <template>
 	<ElDrawer
 		:direction="direction"
-		:model-value="uiStore.modalsById[name].open"
+		:model-value="uiStore.modalsById[name]?.open ?? false"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
 		:wrapper-closable="wrapperClosable"
 		:close-on-click-modal="closeOnClickModal"
 		:z-index="zIndex"
+		:show-close="showClose"
 	>
 		<template #header>
 			<slot name="header" />

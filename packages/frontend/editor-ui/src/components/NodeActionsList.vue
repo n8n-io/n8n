@@ -4,11 +4,12 @@ import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/u
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import type { ActionCreateElement, INodeCreateElement, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type INodeParameters } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
+import { N8nIcon, N8nText } from '@n8n/design-system';
 const { node } = defineProps<{
 	node: INodeUi;
 }>();
@@ -115,24 +116,24 @@ watch(
 
 <style lang="scss" module>
 .component {
-	padding-block: var(--spacing-2xs);
+	padding-block: var(--spacing--2xs);
 }
 
 .label {
-	padding: var(--spacing-3xs) var(--spacing-s);
+	padding: var(--spacing--3xs) var(--spacing--sm);
 	text-transform: uppercase;
 }
 
 .option {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-3xs) var(--spacing-s);
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--3xs) var(--spacing--sm);
+	gap: var(--spacing--2xs);
 	cursor: pointer;
 
 	&.selected,
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 	}
 }
 
