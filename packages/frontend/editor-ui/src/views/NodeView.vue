@@ -17,6 +17,7 @@ import {
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import FocusPanel from '@/components/FocusPanel.vue';
+import AIAssistantPanel from '@/components/AIAssistantPanel.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
@@ -204,6 +205,7 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const aiAssistantStore = useAIAssistantStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -1966,7 +1968,7 @@ onBeforeUnmount(() => {
 			@update:node:parameters="onUpdateNodeParameters"
 			@update:node:inputs="onUpdateNodeInputs"
 			@update:node:outputs="onUpdateNodeOutputs"
-			@update:logs-open="logsStore.toggleOpen($event)"
+			@update:logs-open="logsStore.toggleOpen"
 			@update:logs:input-open="logsStore.toggleInputOpen"
 			@update:logs:output-open="logsStore.toggleOutputOpen"
 			@update:has-range-selection="canvasStore.setHasRangeSelection"
@@ -2080,8 +2082,7 @@ onBeforeUnmount(() => {
 					:workflow-object="editableWorkflowObject"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="isProductionExecutionPreview"
-					:renaming="false"
-					@value-changed="onRenameNode($event.value as string)"
+					@rename-node="onRenameNode"
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
