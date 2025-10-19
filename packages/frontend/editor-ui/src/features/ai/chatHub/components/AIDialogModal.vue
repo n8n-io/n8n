@@ -547,6 +547,14 @@ function handleConfigureCredentials(provider: ChatHubProvider) {
 	padding: var(--spacing-m);
 }
 
+.model-selector-container {
+	flex-shrink: 0;
+	background: var(--color-background-light, #f5f5f5);
+	border-bottom: 1px solid var(--color-foreground-base, #ddd);
+	padding: 12px;
+	margin: calc(var(--spacing-m) * -1) calc(var(--spacing-m) * -1) 0;
+}
+
 .right-pane {
 	flex-grow: 1;
 	height: 100%;
