@@ -6,6 +6,7 @@ export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
 export { AiWorkflowAssistantRequestDto } from './ai/ai-workflow-assistant-request.dto';
 export { AiSessionMetadataResponseDto } from './ai/ai-session-metadata-response.dto';
+export { AiWorkflowAssistantRequestDto } from './ai/ai-workflow-assistant-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';

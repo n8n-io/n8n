@@ -1,4 +1,4 @@
-import type { IWorkflowDb } from 'n8n-workflow';
+import type { IWorkflowDb } from '@n8n/db';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
