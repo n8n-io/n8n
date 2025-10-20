@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, reactive } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
@@ -16,6 +16,7 @@ import {
 	N8nSelect,
 	N8nOption,
 } from '@n8n/design-system';
+import { ProvisioningConfig } from '@n8n/rest-api-client';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -47,13 +48,15 @@ onMounted(async () => {
 const loading = ref(false);
 const saving = ref(false);
 
-// Form data
-const scopesName = ref('');
-const scopesInstanceRoleClaimName = ref('');
-const scopesProjectsRolesClaimName = ref('');
-const scopesProvisionInstanceRole = ref(false);
-const scopesProvisionProjectRoles = ref(false);
-const scopesProvisioningFrequency = ref('');
+// Form data (reactive object)
+const form = reactive({
+	scopesName: '',
+	scopesInstanceRoleClaimName: '',
+	scopesProjectsRolesClaimName: '',
+	scopesProvisionInstanceRole: false,
+	scopesProvisionProjectRoles: false,
+	scopesProvisioningFrequency: 'never',
+});
 
 // Frequency options
 const frequencyOptions = [
@@ -63,52 +66,36 @@ const frequencyOptions = [
 ];
 
 const isFormDirty = computed(() => {
-	if (!provisioningStore.provisioningConfig) return false;
-
-	return (
-		scopesName.value !== provisioningStore.provisioningConfig.scopesName ||
-		scopesInstanceRoleClaimName.value !==
-			provisioningStore.provisioningConfig.scopesInstanceRoleClaimName ||
-		scopesProjectsRolesClaimName.value !==
-			provisioningStore.provisioningConfig.scopesProjectsRolesClaimName ||
-		scopesProvisionInstanceRole.value !==
-			provisioningStore.provisioningConfig.scopesProvisionInstanceRole ||
-		scopesProvisionProjectRoles.value !==
-			provisioningStore.provisioningConfig.scopesProvisionProjectRoles ||
-		scopesProvisioningFrequency.value !==
-			provisioningStore.provisioningConfig.scopesProvisioningFrequency
-	);
+	const cfg = provisioningStore.provisioningConfig;
+	if (!cfg) return false;
+	const keys: Array<keyof ProvisioningConfig> = [
+		'scopesName',
+		'scopesInstanceRoleClaimName',
+		'scopesProjectsRolesClaimName',
+		'scopesProvisionInstanceRole',
+		'scopesProvisionProjectRoles',
+		'scopesProvisioningFrequency',
+	];
+	return keys.some((key) => form[key] !== cfg[key]);
 });
 
 const loadFormData = () => {
-	if (provisioningStore.provisioningConfig) {
-		scopesName.value = provisioningStore.provisioningConfig.scopesName || '';
-		scopesInstanceRoleClaimName.value =
-			provisioningStore.provisioningConfig.scopesInstanceRoleClaimName || '';
-		scopesProjectsRolesClaimName.value =
-			provisioningStore.provisioningConfig.scopesProjectsRolesClaimName || '';
-		scopesProvisionInstanceRole.value =
-			provisioningStore.provisioningConfig.scopesProvisionInstanceRole || false;
-		scopesProvisionProjectRoles.value =
-			provisioningStore.provisioningConfig.scopesProvisionProjectRoles || false;
-		scopesProvisioningFrequency.value =
-			provisioningStore.provisioningConfig.scopesProvisioningFrequency || 'never';
-	}
+	const cfg = provisioningStore.provisioningConfig;
+	if (!cfg) return;
+	Object.assign(form, {
+		scopesName: cfg.scopesName || '',
+		scopesInstanceRoleClaimName: cfg.scopesInstanceRoleClaimName || '',
+		scopesProjectsRolesClaimName: cfg.scopesProjectsRolesClaimName || '',
+		scopesProvisionInstanceRole: cfg.scopesProvisionInstanceRole ?? false,
+		scopesProvisionProjectRoles: cfg.scopesProvisionProjectRoles ?? false,
+		scopesProvisioningFrequency: cfg.scopesProvisioningFrequency || 'never',
+	});
 };
 
 const onSave = async () => {
 	saving.value = true;
 	try {
-		const config = {
-			scopesName: scopesName.value,
-			scopesInstanceRoleClaimName: scopesInstanceRoleClaimName.value,
-			scopesProjectsRolesClaimName: scopesProjectsRolesClaimName.value,
-			scopesProvisionInstanceRole: scopesProvisionInstanceRole.value,
-			scopesProvisionProjectRoles: scopesProvisionProjectRoles.value,
-			scopesProvisioningFrequency: scopesProvisioningFrequency.value,
-		};
-
-		await provisioningStore.saveProvisioningConfig(config);
+		await provisioningStore.saveProvisioningConfig({ ...form });
 		await provisioningStore.getProvisioningConfig();
 		loadFormData();
 
@@ -146,10 +133,14 @@ const onSave = async () => {
 				<label>{{ i18n.baseText('settings.provisioning.scopesProvisionInstanceRole') }}</label>
 				<div :class="$style.switchContainer">
 					<label :class="$style.switchLabel">
-						<input v-model="scopesProvisionInstanceRole" type="checkbox" :class="$style.checkbox" />
+						<input
+							v-model="form.scopesProvisionInstanceRole"
+							type="checkbox"
+							:class="$style.checkbox"
+						/>
 						<span :class="$style.switchText">
 							{{
-								scopesProvisionInstanceRole
+								form.scopesProvisionInstanceRole
 									? i18n.baseText('generic.yes')
 									: i18n.baseText('generic.no')
 							}}
@@ -163,10 +154,14 @@ const onSave = async () => {
 				<label>{{ i18n.baseText('settings.provisioning.scopesProvisionProjectRoles') }}</label>
 				<div :class="$style.switchContainer">
 					<label :class="$style.switchLabel">
-						<input v-model="scopesProvisionProjectRoles" type="checkbox" :class="$style.checkbox" />
+						<input
+							v-model="form.scopesProvisionProjectRoles"
+							type="checkbox"
+							:class="$style.checkbox"
+						/>
 						<span :class="$style.switchText">
 							{{
-								scopesProvisionProjectRoles
+								form.scopesProvisionProjectRoles
 									? i18n.baseText('generic.yes')
 									: i18n.baseText('generic.no')
 							}}
@@ -179,7 +174,7 @@ const onSave = async () => {
 			<div :class="$style.group">
 				<label>{{ i18n.baseText('settings.provisioning.scopesProvisioningFrequency') }}</label>
 				<N8nSelect
-					v-model="scopesProvisioningFrequency"
+					v-model="form.scopesProvisioningFrequency"
 					size="large"
 					:placeholder="
 						i18n.baseText('settings.provisioning.scopesProvisioningFrequency.placeholder')
@@ -198,7 +193,7 @@ const onSave = async () => {
 			<div :class="$style.group">
 				<label>{{ i18n.baseText('settings.provisioning.scopesName') }}</label>
 				<N8nInput
-					v-model="scopesName"
+					v-model="form.scopesName"
 					type="text"
 					size="large"
 					:placeholder="i18n.baseText('settings.provisioning.scopesName.placeholder')"
@@ -209,7 +204,7 @@ const onSave = async () => {
 			<div :class="$style.group">
 				<label>{{ i18n.baseText('settings.provisioning.scopesInstanceRoleClaimName') }}</label>
 				<N8nInput
-					v-model="scopesInstanceRoleClaimName"
+					v-model="form.scopesInstanceRoleClaimName"
 					type="text"
 					size="large"
 					:placeholder="
@@ -222,7 +217,7 @@ const onSave = async () => {
 			<div :class="$style.group">
 				<label>{{ i18n.baseText('settings.provisioning.scopesProjectsRolesClaimName') }}</label>
 				<N8nInput
-					v-model="scopesProjectsRolesClaimName"
+					v-model="form.scopesProjectsRolesClaimName"
 					type="text"
 					size="large"
 					:placeholder="
