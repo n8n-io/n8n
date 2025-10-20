@@ -1,2 +1,3 @@
-export * as cluster from './cluster/Cluster.resource';
-export * as task from './task/Task.resource';
+export { clusterOperations, clusterFields } from './cluster/Cluster.resource';
+export { taskDefinitionOperations, taskDefinitionFields } from './taskDefinition/TaskDefinition.resource';
+export { serviceOperations, serviceFields } from './service/Service.resource';
