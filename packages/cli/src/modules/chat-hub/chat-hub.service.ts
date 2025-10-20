@@ -59,6 +59,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { ExecutionService } from '@/executions/execution.service';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -89,6 +90,7 @@ export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
+		private readonly executionService: ExecutionService,
 		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
@@ -407,7 +409,7 @@ export class ChatHubService {
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, sessionId, selectedModel);
+		const session = await this.getChatSession(user, sessionId);
 		const messageToEdit = await this.getChatMessage(session.id, editId);
 
 		if (messageToEdit.type !== 'human') {
@@ -460,7 +462,7 @@ export class ChatHubService {
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, sessionId, selectedModel);
+		const session = await this.getChatSession(user, sessionId);
 		const messageToRetry = await this.getChatMessage(session.id, retryId);
 
 		if (messageToRetry.type !== 'ai') {
@@ -511,6 +513,29 @@ export class ChatHubService {
 		}
 	}
 
+	async stopAIMessage(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
+		const session = await this.getChatSession(user, sessionId);
+		const message = await this.getChatMessage(session.id, messageId, [
+			'execution',
+			'execution.workflow',
+		]);
+
+		if (message.type !== 'ai') {
+			throw new BadRequestError('Can only stop AI messages');
+		}
+
+		if (!message.executionId || !message.execution) {
+			throw new BadRequestError('Message is not associated with a workflow execution');
+		}
+
+		if (message.status !== 'running') {
+			throw new BadRequestError('Can only stop messages that are currently running');
+		}
+
+		await this.executionService.stop(message.execution.id, [message.execution.workflowId]);
+		await this.messageRepository.updateChatMessage(messageId, { status: 'cancelled' });
+	}
+
 	private async executeChatWorkflow(
 		res: Response,
 		user: User,
@@ -554,7 +579,7 @@ export class ChatHubService {
 			message: '',
 			selectedModel,
 			retryOfMessageId,
-			status: 'pending',
+			status: 'running',
 		});
 
 		try {
@@ -807,7 +832,7 @@ export class ChatHubService {
 	private async getChatSession(
 		user: User,
 		sessionId: ChatSessionId,
-		selectedModel: ModelWithCredentials,
+		selectedModel?: ModelWithCredentials,
 		initialize: boolean = false,
 		title: string | null = null,
 	) {
@@ -828,8 +853,12 @@ export class ChatHubService {
 		});
 	}
 
-	private async getChatMessage(sessionId: ChatSessionId, messageId: ChatMessageId) {
-		const message = await this.messageRepository.getOneById(messageId, sessionId);
+	private async getChatMessage(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		relations: string[] = [],
+	) {
+		const message = await this.messageRepository.getOneById(messageId, sessionId, relations);
 		if (!message) {
 			throw new NotFoundError('Chat message not found');
 		}

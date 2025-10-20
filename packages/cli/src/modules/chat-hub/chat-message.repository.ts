@@ -47,9 +47,10 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		});
 	}
 
-	async getOneById(id: ChatMessageId, sessionId: ChatSessionId) {
+	async getOneById(id: ChatMessageId, sessionId: ChatSessionId, relations: string[] = []) {
 		return await this.findOne({
 			where: { id, sessionId },
+			relations,
 		});
 	}
 }

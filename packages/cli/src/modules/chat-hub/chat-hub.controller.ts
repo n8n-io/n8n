@@ -196,6 +196,19 @@ export class ChatHubController {
 		}
 	}
 
+	@GlobalScope('chatHub:message')
+	@Post('/conversations/:sessionId/messages/:messageId/stop')
+	async stopMessage(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') messageId: ChatMessageId,
+	) {
+		this.logger.debug(`Chat stop request received: ${JSON.stringify({ sessionId, messageId })}`);
+
+		await this.chatService.stopAIMessage(req.user, sessionId, messageId);
+	}
+
 	@Post('/conversations/:sessionId/rename')
 	@GlobalScope('chatHub:message')
 	async updateConversationTitle(

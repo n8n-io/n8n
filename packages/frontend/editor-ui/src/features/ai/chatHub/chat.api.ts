@@ -82,6 +82,15 @@ export function regenerateMessageApi(
 	);
 }
 
+export const stopMessageApi = async (
+	context: IRestApiContext,
+	sessionId: ChatSessionId,
+	messageId: ChatMessageId,
+): Promise<void> => {
+	const apiEndpoint = `/chat/conversations/${sessionId}/messages/${messageId}/stop`;
+	await makeRestApiRequest(context, 'POST', apiEndpoint);
+};
+
 export const fetchConversationsApi = async (
 	context: IRestApiContext,
 ): Promise<ChatHubConversationsResponse> => {

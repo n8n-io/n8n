@@ -11,6 +11,7 @@ import {
 	fetchSingleConversationApi as fetchMessagesApi,
 	updateConversationTitleApi,
 	deleteConversationApi,
+	stopMessageApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -467,6 +468,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
+	async function stopStreamingMessage(sessionId: ChatSessionId) {
+		if (streamingMessageId.value) {
+			await stopMessageApi(rootStore.restApiContext, sessionId, streamingMessageId.value);
+		}
+	}
+
 	async function renameSession(sessionId: ChatSessionId, title: string) {
 		const updated = await updateConversationTitleApi(rootStore.restApiContext, sessionId, title);
 
@@ -504,6 +511,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sendMessage,
 		editMessage,
 		regenerateMessage,
+		stopStreamingMessage,
 		fetchSessions,
 		fetchMessages,
 		renameSession,
