@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateCodeForAiTransform, reducePayloadSizeOrThrow } from './utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { generateCodeForPrompt } from '@/api/ai';
+import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
 import type { Schema } from '@/Interface';
 
@@ -37,7 +37,7 @@ vi.mock('prettier', () => ({
 	format: vi.fn(async (code) => await Promise.resolve(`formatted-${code}`)),
 }));
 
-vi.mock('@/api/ai', () => ({
+vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	generateCodeForPrompt: vi.fn(),
 }));
 
