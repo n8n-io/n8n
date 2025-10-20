@@ -27,7 +27,7 @@ const router = useRouter();
 // Check if provisioning feature is enabled
 onMounted(async () => {
 	if (!settingsStore.isEnterpriseFeatureEnabled.provisioning) {
-		router.push({ name: VIEWS.SETTINGS });
+		await router.push({ name: VIEWS.SETTINGS });
 		return;
 	}
 
@@ -38,7 +38,7 @@ onMounted(async () => {
 		await provisioningStore.getProvisioningConfig();
 		loadFormData();
 	} catch (error) {
-		showError(error, i18n.baseText('settings.provisioning.loadError' as any));
+		showError(error, i18n.baseText('settings.provisioning.loadError'));
 	} finally {
 		loading.value = false;
 	}
@@ -114,13 +114,13 @@ const onSave = async () => {
 
 		// Show success message
 		showMessage({
-			title: i18n.baseText('settings.provisioning.saveSuccess' as any),
-			message: i18n.baseText('settings.provisioning.saveSuccessMessage' as any),
+			title: i18n.baseText('settings.provisioning.saveSuccess'),
+			message: i18n.baseText('settings.provisioning.saveSuccessMessage'),
 			type: 'success',
 			duration: 3000,
 		});
 	} catch (error) {
-		showError(error, i18n.baseText('settings.provisioning.saveError' as any));
+		showError(error, i18n.baseText('settings.provisioning.saveError'));
 	} finally {
 		saving.value = false;
 	}
@@ -134,7 +134,7 @@ const onSave = async () => {
 		</div>
 
 		<N8nText color="text-light">
-			{{ i18n.baseText('settings.provisioning.description' as any) }}
+			{{ i18n.baseText('settings.provisioning.description') }}
 		</N8nText>
 
 		<div v-if="loading" :class="$style.loading">
@@ -143,9 +143,7 @@ const onSave = async () => {
 
 		<div v-else>
 			<div :class="$style.group">
-				<label>{{
-					i18n.baseText('settings.provisioning.scopesProvisionInstanceRole' as any)
-				}}</label>
+				<label>{{ i18n.baseText('settings.provisioning.scopesProvisionInstanceRole') }}</label>
 				<div :class="$style.switchContainer">
 					<label :class="$style.switchLabel">
 						<input v-model="scopesProvisionInstanceRole" type="checkbox" :class="$style.checkbox" />
@@ -158,15 +156,11 @@ const onSave = async () => {
 						</span>
 					</label>
 				</div>
-				<small>{{
-					i18n.baseText('settings.provisioning.scopesProvisionInstanceRole.help' as any)
-				}}</small>
+				<small>{{ i18n.baseText('settings.provisioning.scopesProvisionInstanceRole.help') }}</small>
 			</div>
 
 			<div :class="$style.group">
-				<label>{{
-					i18n.baseText('settings.provisioning.scopesProvisionProjectRoles' as any)
-				}}</label>
+				<label>{{ i18n.baseText('settings.provisioning.scopesProvisionProjectRoles') }}</label>
 				<div :class="$style.switchContainer">
 					<label :class="$style.switchLabel">
 						<input v-model="scopesProvisionProjectRoles" type="checkbox" :class="$style.checkbox" />
@@ -179,20 +173,16 @@ const onSave = async () => {
 						</span>
 					</label>
 				</div>
-				<small>{{
-					i18n.baseText('settings.provisioning.scopesProvisionProjectRoles.help' as any)
-				}}</small>
+				<small>{{ i18n.baseText('settings.provisioning.scopesProvisionProjectRoles.help') }}</small>
 			</div>
 
 			<div :class="$style.group">
-				<label>{{
-					i18n.baseText('settings.provisioning.scopesProvisioningFrequency' as any)
-				}}</label>
+				<label>{{ i18n.baseText('settings.provisioning.scopesProvisioningFrequency') }}</label>
 				<N8nSelect
 					v-model="scopesProvisioningFrequency"
 					size="large"
 					:placeholder="
-						i18n.baseText('settings.provisioning.scopesProvisioningFrequency.placeholder' as any)
+						i18n.baseText('settings.provisioning.scopesProvisioningFrequency.placeholder')
 					"
 				>
 					<N8nOption
@@ -202,53 +192,45 @@ const onSave = async () => {
 						:label="option.label"
 					/>
 				</N8nSelect>
-				<small>{{
-					i18n.baseText('settings.provisioning.scopesProvisioningFrequency.help' as any)
-				}}</small>
+				<small>{{ i18n.baseText('settings.provisioning.scopesProvisioningFrequency.help') }}</small>
 			</div>
 
 			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.provisioning.scopesName' as any) }}</label>
+				<label>{{ i18n.baseText('settings.provisioning.scopesName') }}</label>
 				<N8nInput
 					v-model="scopesName"
 					type="text"
 					size="large"
-					:placeholder="i18n.baseText('settings.provisioning.scopesName.placeholder' as any)"
+					:placeholder="i18n.baseText('settings.provisioning.scopesName.placeholder')"
 				/>
-				<small>{{ i18n.baseText('settings.provisioning.scopesName.help' as any) }}</small>
+				<small>{{ i18n.baseText('settings.provisioning.scopesName.help') }}</small>
 			</div>
 
 			<div :class="$style.group">
-				<label>{{
-					i18n.baseText('settings.provisioning.scopesInstanceRoleClaimName' as any)
-				}}</label>
+				<label>{{ i18n.baseText('settings.provisioning.scopesInstanceRoleClaimName') }}</label>
 				<N8nInput
 					v-model="scopesInstanceRoleClaimName"
 					type="text"
 					size="large"
 					:placeholder="
-						i18n.baseText('settings.provisioning.scopesInstanceRoleClaimName.placeholder' as any)
+						i18n.baseText('settings.provisioning.scopesInstanceRoleClaimName.placeholder')
 					"
 				/>
-				<small>{{
-					i18n.baseText('settings.provisioning.scopesInstanceRoleClaimName.help' as any)
-				}}</small>
+				<small>{{ i18n.baseText('settings.provisioning.scopesInstanceRoleClaimName.help') }}</small>
 			</div>
 
 			<div :class="$style.group">
-				<label>{{
-					i18n.baseText('settings.provisioning.scopesProjectsRolesClaimName' as any)
-				}}</label>
+				<label>{{ i18n.baseText('settings.provisioning.scopesProjectsRolesClaimName') }}</label>
 				<N8nInput
 					v-model="scopesProjectsRolesClaimName"
 					type="text"
 					size="large"
 					:placeholder="
-						i18n.baseText('settings.provisioning.scopesProjectsRolesClaimName.placeholder' as any)
+						i18n.baseText('settings.provisioning.scopesProjectsRolesClaimName.placeholder')
 					"
 				/>
 				<small>{{
-					i18n.baseText('settings.provisioning.scopesProjectsRolesClaimName.help' as any)
+					i18n.baseText('settings.provisioning.scopesProjectsRolesClaimName.help')
 				}}</small>
 			</div>
 
@@ -259,7 +241,7 @@ const onSave = async () => {
 					:loading="saving"
 					@click="onSave"
 				>
-					{{ i18n.baseText('settings.provisioning.save' as any) }}
+					{{ i18n.baseText('settings.provisioning.save') }}
 				</N8nButton>
 			</div>
 		</div>
