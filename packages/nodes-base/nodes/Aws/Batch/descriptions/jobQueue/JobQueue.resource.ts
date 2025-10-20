@@ -1,13 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const jobQueueOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'list',
 		displayOptions: {
 			show: {
 				resource: ['jobQueue'],
@@ -17,91 +15,107 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Describe',
 				value: 'describe',
-				description: 'Describe job queues',
+				description: 'Get details about job queues',
 				action: 'Describe job queues',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '/v1/describejobqueues',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: {
-							jobQueues: '={{ $parameter["jobQueues"] }}',
-							maxResults: '={{ $parameter["maxResults"] }}',
-							nextToken: '={{ $parameter["nextToken"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List job queues (simple)',
+				description: 'List job queues',
 				action: 'List job queues',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '/v1/describejobqueues',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: {
-							maxResults: '={{ $parameter["maxResults"] }}',
-							nextToken: '={{ $parameter["nextToken"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Describe operation
+];
+
+export const jobQueueFields: INodeProperties[] = [
 	{
-		displayName: 'Job Queues',
-		name: 'jobQueues',
-		type: 'json',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['jobQueue'],
 				operation: ['describe'],
 			},
 		},
-		default: '[]',
-		description: 'Array of job queue names or ARNs (optional, empty for all)',
+		options: [
+			{
+				displayName: 'Job Queues',
+				name: 'jobQueues',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated list of job queue names or ARNs',
+				routing: {
+					request: {
+						body: {
+							jobQueues: '={{ $value.split(",").map(v => v.trim()) }}',
+						},
+					},
+				},
+			},
+		],
 	},
-	// List/Describe operations
 	{
-		displayName: 'Max Results',
-		name: 'maxResults',
-		type: 'number',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['jobQueue'],
-				operation: ['describe', 'list'],
+				operation: ['list'],
 			},
 		},
-		default: 100,
-		description: 'Maximum number of job queues to return',
-	},
-	{
-		displayName: 'Next Token',
-		name: 'nextToken',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['jobQueue'],
-				operation: ['describe', 'list'],
+		options: [
+			{
+				displayName: 'Max Results',
+				name: 'maxResults',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'Maximum number of results',
+				routing: {
+					request: {
+						body: {
+							maxResults: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '',
-		description: 'Pagination token',
+			{
+				displayName: 'Next Token',
+				name: 'nextToken',
+				type: 'string',
+				default: '',
+				description: 'Pagination token',
+				routing: {
+					request: {
+						body: {
+							nextToken: '={{ $value }}',
+						},
+					},
+				},
+			},
+		],
 	},
 ];
