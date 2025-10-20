@@ -346,8 +346,7 @@ test.describe('Data Table details view', () => {
 		expect(initialName).not.toEqual(newName);
 	});
 
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Should filter correctly using column filters', async ({ n8n }) => {
+	test('Should filter correctly using column filters', async ({ n8n }) => {
 		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
 
 		await n8n.dataTableDetails.setPageSize('10');
@@ -409,12 +408,12 @@ test.describe('Data Table details view', () => {
 
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(5);
 
-		await n8n.dataTableDetails.setTextFilter(COLUMN_NAMES.name, 'User 1');
+		await n8n.dataTableDetails.setTextOrNumberFilter(COLUMN_NAMES.name, 'User 1');
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(7);
 		await n8n.dataTableDetails.clearColumnFilter(COLUMN_NAMES.name);
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(10);
 
-		await n8n.dataTableDetails.setNumberFilter(COLUMN_NAMES.age, '22', 'greaterThan');
+		await n8n.dataTableDetails.setTextOrNumberFilter(COLUMN_NAMES.age, '22', 'greaterThan');
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(6);
 		await n8n.dataTableDetails.clearColumnFilter(COLUMN_NAMES.age);
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(10);
@@ -430,7 +429,7 @@ test.describe('Data Table details view', () => {
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(10);
 
 		await n8n.dataTableDetails.setBooleanFilter(COLUMN_NAMES.active, true);
-		await n8n.dataTableDetails.setNumberFilter(COLUMN_NAMES.age, '22', 'greaterThan');
+		await n8n.dataTableDetails.setTextOrNumberFilter(COLUMN_NAMES.age, '22', 'greaterThan');
 		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(4);
 	});
 

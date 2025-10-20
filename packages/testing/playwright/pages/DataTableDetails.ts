@@ -203,11 +203,16 @@ export class DataTableDetails extends BasePage {
 	}
 
 	private async selectPickerOption(label: string) {
-		await this.filterPanel.getByRole('combobox').first().click();
-		const option = this.page.getByRole('option', { name: label }).first();
-		await option.waitFor({ state: 'visible' });
-		// eslint-disable-next-line playwright/no-force-option
-		await option.click({ force: true });
+		const combobox = this.filterPanel.getByRole('combobox').first();
+		await combobox.click();
+
+		const controlsId = await combobox.getAttribute('aria-controls');
+		if (!controlsId) {
+			throw new Error('Could not find aria-controls for combobox');
+		}
+		const listbox = this.page.locator(`#${controlsId}`);
+		await listbox.waitFor({ state: 'visible' });
+		await listbox.getByRole('option', { name: label }).first().click();
 	}
 
 	private async selectFilterOperator(condition: 'equals' | 'greaterThan' | 'lessThan') {
@@ -219,20 +224,10 @@ export class DataTableDetails extends BasePage {
 	async clearColumnFilter(columnName: string) {
 		await this.openColumnFilter(columnName);
 		await this.page.getByTestId('reset-filter-button').click();
+		await this.page.keyboard.press('Escape');
 	}
 
-	async setTextFilter(columnName: string, value: string) {
-		await this.openColumnFilter(columnName);
-
-		const filterPanel = this.page.locator('.ag-filter');
-		await filterPanel.waitFor({ state: 'visible' });
-
-		await filterPanel.getByTestId('single-input').fill(value);
-
-		await this.page.keyboard.press('Enter');
-	}
-
-	async setNumberFilter(
+	async setTextOrNumberFilter(
 		columnName: string,
 		value: string,
 		condition: 'equals' | 'greaterThan' | 'lessThan' = 'equals',
@@ -241,11 +236,13 @@ export class DataTableDetails extends BasePage {
 		await this.selectFilterOperator(condition);
 		await this.filterPanel.getByTestId('single-input').fill(value);
 		await this.page.keyboard.press('Enter');
+		await this.page.keyboard.press('Escape');
 	}
 
 	async setBooleanFilter(columnName: string, value: boolean) {
 		await this.openFilterPanelAndWait(columnName);
 		await this.selectPickerOption(value ? 'True' : 'False');
+		await this.page.keyboard.press('Escape');
 	}
 
 	async setDateFilter(
@@ -257,6 +254,7 @@ export class DataTableDetails extends BasePage {
 		await this.selectFilterOperator(condition);
 		await this.filterPanel.getByTestId('date-filter-input').first().locator('input').fill(value);
 		await this.page.keyboard.press('Enter');
+		await this.page.keyboard.press('Escape');
 	}
 
 	getPagination() {
