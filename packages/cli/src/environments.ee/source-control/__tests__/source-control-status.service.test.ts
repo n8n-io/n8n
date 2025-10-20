@@ -954,114 +954,275 @@ describe('getStatus', () => {
 	});
 
 	describe('folders', () => {
-		describe('folders', () => {
-			const mockFolders = {
-				withProject: {
-					id: 'folder1',
-					name: 'Test Folder',
-					homeProjectId: 'project1',
-					parentFolderId: null,
-					createdAt: '2023-07-10T10:10:59.000Z',
-					updatedAt: '2023-07-10T10:10:59.000Z',
-				},
-				withDifferentProject: {
-					id: 'folder1',
-					name: 'Test Folder',
-					homeProjectId: 'project2',
-					parentFolderId: null,
-					createdAt: '2023-07-10T10:10:59.000Z',
-					updatedAt: '2023-07-10T10:10:59.000Z',
-				},
+		const mockFolders = {
+			withProject: {
+				id: 'folder1',
+				name: 'Test Folder',
+				homeProjectId: 'project1',
+				parentFolderId: null,
+				createdAt: '2023-07-10T10:10:59.000Z',
+				updatedAt: '2023-07-10T10:10:59.000Z',
+			},
+			withDifferentProject: {
+				id: 'folder1',
+				name: 'Test Folder',
+				homeProjectId: 'project2',
+				parentFolderId: null,
+				createdAt: '2023-07-10T10:10:59.000Z',
+				updatedAt: '2023-07-10T10:10:59.000Z',
+			},
+		};
+
+		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+
+		it('should detect folder as modified when homeProjectId changes', async () => {
+			// ARRANGE
+			sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([
+				{
+					id: 'project1',
+					name: 'Project 1',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project1', teamName: 'Project 1' },
+				} as ExportableProjectWithFileName,
+				{
+					id: 'project2',
+					name: 'Project 2',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project2', teamName: 'Project 2' },
+				} as ExportableProjectWithFileName,
+			]);
+
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [mockFolders.withDifferentProject],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [mockFolders.withProject],
+			});
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object.');
+			}
+
+			expect(result.foldersModifiedInEither).toHaveLength(1);
+			expect(result.foldersModifiedInEither[0]).toMatchObject({
+				id: mockFolders.withProject.id,
+				homeProjectId: mockFolders.withDifferentProject.homeProjectId,
+			});
+		});
+
+		it('should not detect folder as modified when name, parentFolderId, and homeProjectId are the same', async () => {
+			// ARRANGE
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [mockFolders.withProject],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [mockFolders.withProject],
+			});
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object.');
+			}
+
+			expect(result.foldersModifiedInEither).toHaveLength(0);
+			expect(result.sourceControlledFiles.filter((f) => f.type === 'folders')).toHaveLength(0);
+		});
+
+		it('should detect modifications when both name/parentFolderId and homeProjectId change', async () => {
+			// ARRANGE
+			sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([
+				{
+					id: 'project1',
+					name: 'Project 1',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project1', teamName: 'Project 1' },
+				} as ExportableProjectWithFileName,
+				{
+					id: 'project2',
+					name: 'Project 2',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project2', teamName: 'Project 2' },
+				} as ExportableProjectWithFileName,
+			]);
+
+			const remoteFolder = {
+				...mockFolders.withDifferentProject,
+				name: 'Different Folder Name',
+				parentFolderId: 'parent1',
 			};
 
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [remoteFolder],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [mockFolders.withProject],
+			});
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object.');
+			}
+
+			expect(result.foldersModifiedInEither).toHaveLength(1);
+			expect(result.foldersModifiedInEither[0]).toMatchObject({
+				id: mockFolders.withProject.id,
+				name: remoteFolder.name,
+				homeProjectId: remoteFolder.homeProjectId,
+			});
+		});
+
+		describe('owner changes', () => {
 			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
 
-			it('should detect folder as modified when homeProjectId changes', async () => {
-				// ARRANGE
-				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
-					folders: [mockFolders.withDifferentProject],
-				});
-				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
-					folders: [mockFolders.withProject],
-				});
-
-				// ACT
-				const result = await sourceControlStatusService.getStatus(user, {
-					direction: 'push',
-					verbose: true,
-					preferLocalVersion: false,
-				});
-
-				// ASSERT
-				if (Array.isArray(result)) {
-					fail('Expected result to be an object.');
-				}
-
-				expect(result.foldersModifiedInEither).toHaveLength(1);
-				expect(result.foldersModifiedInEither[0]).toMatchObject({
-					id: mockFolders.withProject.id,
-					homeProjectId: mockFolders.withDifferentProject.homeProjectId,
-				});
+			const createFolder = (overrides = {}) => ({
+				id: 'folder1',
+				name: 'Test Folder',
+				homeProjectId: 'project1',
+				parentFolderId: null,
+				createdAt: '2023-07-10T10:10:59.000Z',
+				updatedAt: '2023-07-10T10:10:59.000Z',
+				...overrides,
 			});
 
-			it('should not detect folder as modified when name, parentFolderId, and homeProjectId are the same', async () => {
-				// ARRANGE
-				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
-					folders: [mockFolders.withProject],
-				});
-				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
-					folders: [mockFolders.withProject],
-				});
+			it('should detect when team project changes for folder', async () => {
+				const localFolder = createFolder({ homeProjectId: 'team1' });
+				const remoteFolder = createFolder({ homeProjectId: 'team2' });
 
-				// ACT
-				const result = await sourceControlStatusService.getStatus(user, {
-					direction: 'push',
-					verbose: true,
-					preferLocalVersion: false,
-				});
-
-				// ASSERT
-				if (Array.isArray(result)) {
-					fail('Expected result to be an object.');
-				}
-
-				expect(result.foldersModifiedInEither).toHaveLength(0);
-				expect(result.sourceControlledFiles.filter((f) => f.type === 'folders')).toHaveLength(0);
-			});
-
-			it('should detect modifications when both name/parentFolderId and homeProjectId change', async () => {
-				// ARRANGE
-				const remoteFolder = {
-					...mockFolders.withDifferentProject,
-					name: 'Different Folder Name',
-					parentFolderId: 'parent1',
-				};
+				// Mock team projects
+				sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([
+					{
+						id: 'team1',
+						name: 'Team 1',
+						type: 'team',
+						owner: { type: 'team', teamId: 'team1', teamName: 'Team 1' },
+					} as ExportableProjectWithFileName,
+					{
+						id: 'team2',
+						name: 'Team 2',
+						type: 'team',
+						owner: { type: 'team', teamId: 'team2', teamName: 'Team 2' },
+					} as ExportableProjectWithFileName,
+				]);
 
 				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
 					folders: [remoteFolder],
 				});
 				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
-					folders: [mockFolders.withProject],
+					folders: [localFolder],
 				});
 
-				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
 					direction: 'push',
 					verbose: true,
 					preferLocalVersion: false,
 				});
 
-				// ASSERT
-				if (Array.isArray(result)) {
-					fail('Expected result to be an object.');
-				}
-
+				if (Array.isArray(result)) fail('Expected result to be an object.');
 				expect(result.foldersModifiedInEither).toHaveLength(1);
-				expect(result.foldersModifiedInEither[0]).toMatchObject({
-					id: mockFolders.withProject.id,
-					name: remoteFolder.name,
-					homeProjectId: remoteFolder.homeProjectId,
+			});
+
+			it('should detect when changing folder from personal to team project', async () => {
+				const localFolder = createFolder({ homeProjectId: 'personal1' });
+				const remoteFolder = createFolder({ homeProjectId: 'team1' });
+
+				sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([
+					{
+						id: 'team1',
+						name: 'Team 1',
+						type: 'team',
+						owner: { type: 'team', teamId: 'team1', teamName: 'Team 1' },
+					} as ExportableProjectWithFileName,
+				]);
+
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [remoteFolder],
 				});
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [localFolder],
+				});
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				expect(result.foldersModifiedInEither).toHaveLength(1);
+			});
+
+			it('should NOT detect when both folders are personal projects with different IDs', async () => {
+				const localFolder = createFolder({ homeProjectId: 'personal1' });
+				const remoteFolder = createFolder({ homeProjectId: 'personal2' });
+
+				sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([]);
+
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [remoteFolder],
+				});
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [localFolder],
+				});
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				expect(result.foldersModifiedInEither).toHaveLength(0);
+			});
+
+			it('should not detect as modified when everything is the same', async () => {
+				const folder = createFolder({ homeProjectId: 'team1' });
+
+				sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([
+					{
+						id: 'team1',
+						name: 'Team 1',
+						type: 'team',
+						owner: { type: 'team', teamId: 'team1', teamName: 'Team 1' },
+					} as ExportableProjectWithFileName,
+				]);
+
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [folder],
+				});
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [folder],
+				});
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				expect(result.foldersModifiedInEither).toHaveLength(0);
 			});
 		});
 	});
