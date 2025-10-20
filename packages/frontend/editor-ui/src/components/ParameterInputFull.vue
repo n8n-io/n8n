@@ -46,6 +46,8 @@ type Props = {
 	hideLabel?: boolean;
 	hideIssues?: boolean;
 	entryIndex?: number;
+	showDelete?: boolean;
+	onDelete?: () => void;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -56,6 +58,8 @@ const props = withDefaults(defineProps<Props>(), {
 	hideLabel: false,
 	hideIssues: false,
 	label: () => ({ size: 'small' }),
+	showDelete: false,
+	onDelete: undefined,
 });
 const emit = defineEmits<{
 	blur: [];
@@ -358,6 +362,8 @@ function removeOverride(clearField = false) {
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				:is-content-overridden="isContentOverride"
+				:show-delete="showDelete"
+				:on-delete="onDelete"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -421,6 +427,8 @@ function removeOverride(clearField = false) {
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				:is-content-overridden="isContentOverride"
+				:show-delete="showDelete"
+				:on-delete="onDelete"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>

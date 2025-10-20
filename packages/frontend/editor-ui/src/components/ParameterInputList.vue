@@ -41,6 +41,7 @@ import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
 import { storeToRefs } from 'pinia';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -75,6 +76,9 @@ type Props = {
 	isReadOnly?: boolean;
 	hiddenIssuesInputs?: string[];
 	entryIndex?: number;
+	isNested?: boolean;
+	removeFirstParameterMargin?: boolean;
+	removeLastParameterMargin?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs: () => [] });
@@ -93,6 +97,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -504,7 +509,14 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 		<div
 			v-for="(parameter, index) in filteredParameters"
 			:key="parameter.name"
-			:class="{ indent }"
+			:class="[
+				{
+					indent,
+					[$style.firstParameter]: index === 0 && removeFirstParameterMargin,
+					[$style.lastParameter]:
+						index === filteredParameters.length - 1 && removeLastParameterMargin,
+				},
+			]"
 			data-test-id="parameter-item"
 		>
 			<slot v-if="indexToShowSlotAt === index" />
@@ -593,6 +605,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 				class="multi-parameter"
 			>
 				<N8nInputLabel
+					v-if="!isCollectionOverhaulEnabled"
 					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 					:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 					size="small"
@@ -626,6 +639,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
+							:is-nested="isNested"
 							@value-changed="valueChanged"
 						/>
 						<LazyFixedCollectionParameter
@@ -635,6 +649,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
+							:is-nested="isNested"
 							@value-changed="valueChanged"
 						/>
 					</template>
@@ -650,7 +665,12 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					v-if="
+						hideDelete !== true &&
+						!isReadOnly &&
+						!parameter.isNodeSetting &&
+						!isCollectionOverhaulEnabled
+					"
 					type="tertiary"
 					text
 					size="small"
@@ -694,7 +714,12 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					v-if="
+						hideDelete !== true &&
+						!isReadOnly &&
+						!parameter.isNodeSetting &&
+						!isCollectionOverhaulEnabled
+					"
 					type="tertiary"
 					text
 					size="small"
@@ -716,6 +741,10 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					"
 					:hide-label="false"
 					:node-values="nodeValues"
+					:show-delete="
+						!isReadOnly && !parameter.isNodeSetting && !hideDelete && isCollectionOverhaulEnabled
+					"
+					:on-delete="() => deleteOption(parameter.name)"
 					@update="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
@@ -789,6 +818,22 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 	.callout-dismiss:hover {
 		color: var(--icon--color--hover);
+	}
+}
+</style>
+
+<style lang="scss" module>
+.firstParameter {
+	> :global(.parameter-item),
+	> :global(.multi-parameter) {
+		margin-top: 0;
+	}
+}
+
+.lastParameter {
+	> :global(.parameter-item),
+	> :global(.multi-parameter) {
+		margin-bottom: 0;
 	}
 }
 </style>
