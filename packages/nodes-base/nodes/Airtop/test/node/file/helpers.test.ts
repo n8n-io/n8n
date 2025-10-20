@@ -226,7 +226,7 @@ describe('Test Airtop file helpers', () => {
 			);
 		});
 
-		it('should throw error when `upload_failed` status is received', async () => {
+		it('should throw error when uploading a file with invalid file format', async () => {
 			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
 			const mockEvent = {
 				event: 'file_upload_status',
@@ -245,7 +245,7 @@ describe('Test Airtop file helpers', () => {
 			).rejects.toMatchObject({ description: 'Upload failed due to invalid file format' });
 		});
 
-		it('should throw error when file_upload_status event with upload_failed status is received without error message', async () => {
+		it('should throw error when upload_failed status is received', async () => {
 			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
 			const mockEvent = {
 				fileId: 'file-123',

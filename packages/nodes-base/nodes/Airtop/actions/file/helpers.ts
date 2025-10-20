@@ -167,7 +167,7 @@ export async function waitForFileInSession(
 	if (event.status === 'upload_failed') {
 		const error = new NodeApiError(this.getNode(), {
 			message: event.eventData?.error ?? `Upload failed for File ID: ${fileId}`,
-			code: '5XX',
+			code: 500,
 		});
 		throw error;
 	}
